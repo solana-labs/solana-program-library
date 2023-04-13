@@ -45,11 +45,12 @@ pub fn process_validate(
 
     let data = extra_account_metas_info.try_borrow_data()?;
     let state = TlvStateBorrowed::unpack(&data).unwrap();
-    let validation_pubkeys = state.get_value::<ExtraAccountMetas>()?;
+    let bytes = state.get_bytes::<ExtraAccountMetas>()?;
+    let extra_account_metas = ExtraAccountMetas::unpack(bytes)?;
 
     // if incorrect number of are provided, error
     let extra_account_infos = account_info_iter.as_slice();
-    let account_metas = validation_pubkeys.data();
+    let account_metas = extra_account_metas.data();
     if extra_account_infos.len() != account_metas.len() {
         return Err(PermissionedTransferError::IncorrectAccount.into());
     }
@@ -100,8 +101,9 @@ pub fn process_initialize_extra_account_metas(
     let signer_seeds = collect_extra_account_metas_signer_seeds(mint_info.key, &bump_seed);
     let extra_account_infos = account_info_iter.as_slice();
     let length = extra_account_infos.len();
+    let tlv_size = ExtraAccountMetas::byte_size_of(length)?;
     let account_size = get_base_len()
-        .checked_add(ExtraAccountMetas::byte_size_of(length)?)
+        .checked_add(tlv_size)
         .ok_or(PermissionedTransferError::CalculationFailure)? as u64;
     invoke_signed(
         &system_instruction::allocate(extra_account_metas_info.key, account_size),
@@ -117,9 +119,10 @@ pub fn process_initialize_extra_account_metas(
     // Write the data
     let mut data = extra_account_metas_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut data).unwrap();
-    let mut validation_pubkeys = state.init_value::<ExtraAccountMetas>(false)?;
+    let bytes = state.allocate::<ExtraAccountMetas>(tlv_size)?;
+    let mut extra_account_metas = ExtraAccountMetas::init(bytes)?;
     for account_info in extra_account_infos {
-        validation_pubkeys.push(PodAccountMeta::from(account_info));
+        extra_account_metas.push(PodAccountMeta::from(account_info))?;
     }
 
     Ok(())

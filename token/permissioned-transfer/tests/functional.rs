@@ -134,14 +134,17 @@ async fn success() {
         .unwrap();
     let destination = destination.pubkey();
 
-    let mut context = context.lock().await;
-    let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent.minimum_balance(tlv::get_len::<ExtraAccountMetas>());
     let extra_account_pubkeys = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
         AccountMeta::new(extra_account_metas, false),
     ];
+    let mut context = context.lock().await;
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let rent_lamports = rent.minimum_balance(
+        tlv::get_base_len()
+            .saturating_add(ExtraAccountMetas::byte_size_of(extra_account_pubkeys.len()).unwrap()),
+    );
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
@@ -323,7 +326,9 @@ async fn fail_incorrect_derivation() {
 
     let mut context = context.lock().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent.minimum_balance(tlv::get_len::<ExtraAccountMetas>());
+    let rent_lamports = rent.minimum_balance(
+        tlv::get_base_len().saturating_add(ExtraAccountMetas::byte_size_of(0).unwrap()),
+    );
 
     let transaction = Transaction::new_signed_with_payer(
         &[

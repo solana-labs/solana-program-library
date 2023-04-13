@@ -49,7 +49,11 @@ struct TlvIndices {
     pub length_start: usize,
     pub value_start: usize,
 }
-fn get_indices<V: Value>(tlv_data: &[u8], init: bool) -> Result<TlvIndices, ProgramError> {
+fn get_indices(
+    tlv_data: &[u8],
+    value_discriminator: Discriminator,
+    init: bool,
+) -> Result<TlvIndices, ProgramError> {
     let mut start_index = 0;
     while start_index < tlv_data.len() {
         let tlv_indices = get_indices_unchecked(start_index);
@@ -58,7 +62,7 @@ fn get_indices<V: Value>(tlv_data: &[u8], init: bool) -> Result<TlvIndices, Prog
         }
         let discriminator =
             Discriminator::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
-        if discriminator == V::TYPE {
+        if discriminator == value_discriminator {
             // found an instance of the extension that we're initializing, return!
             return Ok(tlv_indices);
         // got to an empty spot, init here, or error if we're searching, since
@@ -123,19 +127,19 @@ fn get_discriminators(tlv_data: &[u8]) -> Result<Vec<Discriminator>, ProgramErro
     Ok(discriminators)
 }
 
-fn get_value<V: Value>(tlv_data: &[u8]) -> Result<&V, ProgramError> {
+fn get_bytes<V: TlvType>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
     let TlvIndices {
         type_start: _,
         length_start,
         value_start,
-    } = get_indices::<V>(tlv_data, false)?;
+    } = get_indices(tlv_data, V::TYPE, false)?;
     // get_indices has checked that tlv_data is long enough to include these indices
     let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::try_from(*length)?);
     if tlv_data.len() < value_end {
         return Err(ProgramError::InvalidAccountData);
     }
-    V::try_from_bytes(&tlv_data[value_start..value_end])
+    Ok(&tlv_data[value_start..value_end])
 }
 
 /// Trait for all TLV state
@@ -144,8 +148,14 @@ pub trait TlvState {
     fn get_data(&self) -> &[u8];
 
     /// Unpack a portion of the TLV data as the desired type
-    fn get_value<V: Value>(&self) -> Result<&V, ProgramError> {
-        get_value::<V>(self.get_data())
+    fn get_value<V: TlvType + Value>(&self) -> Result<&V, ProgramError> {
+        let data = get_bytes::<V>(self.get_data())?;
+        V::try_from_bytes(data)
+    }
+
+    /// Unpack a portion of the TLV data as bytes
+    fn get_bytes<V: TlvType>(&self) -> Result<&[u8], ProgramError> {
+        get_bytes::<V>(self.get_data())
     }
 
     /// Iterates through the TLV entries, returning only the types
@@ -213,53 +223,63 @@ impl<'data> TlvStateMut<'data> {
     }
 
     /// Unpack a portion of the TLV data as the desired type that allows modifying the type
-    pub fn get_value_mut<V: Value>(&mut self) -> Result<&mut V, ProgramError> {
-        let TlvIndices {
-            type_start,
-            length_start,
-            value_start,
-        } = get_indices::<V>(self.data, false)?;
-
-        //        if self.data[type_start..].len() < get_len::<V>() {
-        //            return Err(ProgramError::InvalidAccountData);
-        //        }
-        let length = pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
-        let value_end = value_start.saturating_add(usize::try_from(*length)?);
-        V::try_from_bytes_mut(&mut self.data[value_start..value_end])
+    pub fn get_value_mut<V: TlvType + Value>(&mut self) -> Result<&mut V, ProgramError> {
+        let data = self.get_bytes_mut::<V>()?;
+        V::try_from_bytes_mut(data)
     }
 
-    /// Packs the default extension data into an open slot if not already found in the
-    /// data buffer. If extension is already found in the buffer, it overwrites the existing
+    /// Unpack a portion of the TLV data as bytes
+    pub fn get_bytes_mut<V: TlvType + Value>(&mut self) -> Result<&mut [u8], ProgramError> {
+        let TlvIndices {
+            type_start: _,
+            length_start,
+            value_start,
+        } = get_indices(self.data, V::TYPE, false)?;
+
+        let length = pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
+        let value_end = value_start.saturating_add(usize::try_from(*length)?);
+        if self.data.len() < value_end {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        Ok(&mut self.data[value_start..value_end])
+    }
+
+    /// Packs the default TLV data into the first open slot in the data buffer.
+    /// If extension is already found in the buffer, it returns an error.
     /// extension with the default state if `overwrite` is set. If extension found, but
     /// `overwrite` is not set, it returns error.
-    pub fn init_value<V: Value>(&mut self, overwrite: bool) -> Result<&mut V, ProgramError> {
+    pub fn init_value<V: TlvType + Value>(&mut self) -> Result<&mut V, ProgramError> {
+        let length = size_of::<V>();
+        let buffer = self.allocate::<V>(length)?;
+        let extension_ref = V::try_from_bytes_mut(buffer)?;
+        *extension_ref = V::default();
+        Ok(extension_ref)
+    }
+
+    /// Allocate the given number of bytes for the given TlvType, and whether
+    pub fn allocate<V: TlvType>(&mut self, length: usize) -> Result<&mut [u8], ProgramError> {
         let TlvIndices {
             type_start,
             length_start,
             value_start,
-        } = get_indices::<V>(self.data, true)?;
+        } = get_indices(self.data, V::TYPE, true)?;
 
-        //        if self.data[type_start..].len() < get_len::<V>() {
-        //            return Err(ProgramError::InvalidAccountData);
-        //        }
         let discriminator = Discriminator::try_from(&self.data[type_start..length_start])?;
-        if discriminator == Discriminator::UNINITIALIZED || overwrite {
+        if discriminator == Discriminator::UNINITIALIZED {
             // write type
             let discriminator_ref = &mut self.data[type_start..length_start];
             discriminator_ref.copy_from_slice(V::TYPE.as_ref());
             // write length
             let length_ref =
                 pod_from_bytes_mut::<Length>(&mut self.data[length_start..value_start])?;
-            // maybe this becomes smarter later for dynamically sized extensions
-            let length = size_of::<V>();
             *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
-            let extension_ref = V::try_from_bytes_mut(&mut self.data[value_start..value_end])?;
-            extension_ref.initialize();
-            Ok(extension_ref)
+            if self.data.len() < value_end {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            Ok(&mut self.data[value_start..value_end])
         } else {
-            // extension is already initialized, but no overwrite permission
             Err(PermissionedTransferError::TypeAlreadyExists.into())
         }
     }
@@ -307,11 +327,15 @@ impl TryFrom<&[u8]> for Discriminator {
 }
 
 /// Trait to be implemented by all value types in the TLV structure, specifying
-/// the discriminator to check against
-pub trait Value {
+/// just the discriminator
+pub trait TlvType {
     /// Associated value type enum, checked at the start of TLV entries
     const TYPE: Discriminator;
+}
 
+/// Trait to be implemented by all value types in the TLV structure, specifying
+/// how to deserialize it
+pub trait Value: Default {
     /// Turn raw bytes into a reference of the underlying type. If the type
     /// implements `Pod`, then you can simply do `pod_from_bytes`.
     fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError>;
@@ -319,9 +343,6 @@ pub trait Value {
     /// Turn raw bytes into a mutable reference of the underlying type. If the
     /// type implements `Pod`, then you can simply do `pod_from_bytes`.
     fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError>;
-
-    /// Initialize all data to their "zero" state
-    fn initialize(&mut self);
 }
 
 /// Get the base size required for TLV data
@@ -362,19 +383,15 @@ mod test {
     struct TestValue {
         data: [u8; 32],
     }
-    impl Value for TestValue {
+    impl TlvType for TestValue {
         const TYPE: Discriminator = Discriminator::new([1; DISCRIMINATOR_LENGTH]);
-
+    }
+    impl Value for TestValue {
         fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
             pod_from_bytes(bytes)
         }
-
         fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
             pod_from_bytes_mut(bytes)
-        }
-
-        fn initialize(&mut self) {
-            *self = Self::default();
         }
     }
 
@@ -383,38 +400,30 @@ mod test {
     struct TestSmallValue {
         data: [u8; 3],
     }
-    impl Value for TestSmallValue {
+    impl TlvType for TestSmallValue {
         const TYPE: Discriminator = Discriminator::new([2; DISCRIMINATOR_LENGTH]);
-
+    }
+    impl Value for TestSmallValue {
         fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
             pod_from_bytes(bytes)
         }
-
         fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
             pod_from_bytes_mut(bytes)
-        }
-
-        fn initialize(&mut self) {
-            *self = Self::default();
         }
     }
 
     #[repr(transparent)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
     struct TestEmptyValue;
-    impl Value for TestEmptyValue {
+    impl TlvType for TestEmptyValue {
         const TYPE: Discriminator = Discriminator::new([3; DISCRIMINATOR_LENGTH]);
-
+    }
+    impl Value for TestEmptyValue {
         fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
             pod_from_bytes(bytes)
         }
-
         fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
             pod_from_bytes_mut(bytes)
-        }
-
-        fn initialize(&mut self) {
-            *self = Self::default();
         }
     }
 
@@ -424,19 +433,15 @@ mod test {
         data: [u8; 5],
     }
     const TEST_NON_ZERO_DEFAULT_DATA: [u8; 5] = [4; 5];
-    impl Value for TestNonZeroDefault {
+    impl TlvType for TestNonZeroDefault {
         const TYPE: Discriminator = Discriminator::new([4; DISCRIMINATOR_LENGTH]);
-
+    }
+    impl Value for TestNonZeroDefault {
         fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
             pod_from_bytes(bytes)
         }
-
         fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
             pod_from_bytes_mut(bytes)
-        }
-
-        fn initialize(&mut self) {
-            *self = Self::default();
         }
     }
     impl Default for TestNonZeroDefault {
@@ -545,7 +550,7 @@ mod test {
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         // success init and write value
-        let value = state.init_value::<TestValue>(false).unwrap();
+        let value = state.init_value::<TestValue>().unwrap();
         let data = [100; 32];
         value.data = data;
         assert_eq!(&state.get_discriminators().unwrap(), &[TestValue::TYPE],);
@@ -553,7 +558,7 @@ mod test {
 
         // fail init extension when already initialized
         assert_eq!(
-            state.init_value::<TestValue>(false).unwrap_err(),
+            state.init_value::<TestValue>().unwrap_err(),
             PermissionedTransferError::TypeAlreadyExists.into(),
         );
 
@@ -593,7 +598,7 @@ mod test {
 
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
         // init one more value
-        let new_value = state.init_value::<TestSmallValue>(false).unwrap();
+        let new_value = state.init_value::<TestSmallValue>().unwrap();
         let small_data = [102; 3];
         new_value.data = small_data;
 
@@ -619,7 +624,7 @@ mod test {
         // fail to init one more extension that does not fit
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
         assert_eq!(
-            state.init_value::<TestEmptyValue>(true),
+            state.init_value::<TestEmptyValue>(),
             Err(ProgramError::InvalidAccountData),
         );
     }
@@ -636,9 +641,9 @@ mod test {
         let small_data = [98; 3];
 
         // write values
-        let value = state.init_value::<TestValue>(false).unwrap();
+        let value = state.init_value::<TestValue>().unwrap();
         value.data = data;
-        let value = state.init_value::<TestSmallValue>(false).unwrap();
+        let value = state.init_value::<TestSmallValue>().unwrap();
         value.data = small_data;
 
         assert_eq!(
@@ -650,9 +655,9 @@ mod test {
         let mut other_buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut other_buffer).unwrap();
 
-        let value = state.init_value::<TestSmallValue>(false).unwrap();
+        let value = state.init_value::<TestSmallValue>().unwrap();
         value.data = small_data;
-        let value = state.init_value::<TestValue>(false).unwrap();
+        let value = state.init_value::<TestValue>().unwrap();
         value.data = data;
 
         assert_eq!(
@@ -681,7 +686,7 @@ mod test {
         let account_size = get_base_len() + size_of::<TestNonZeroDefault>();
         let mut buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
-        let value = state.init_value::<TestNonZeroDefault>(false).unwrap();
+        let value = state.init_value::<TestNonZeroDefault>().unwrap();
         assert_eq!(value.data, TEST_NON_ZERO_DEFAULT_DATA);
     }
 
@@ -690,7 +695,7 @@ mod test {
         let account_size = get_base_len() + size_of::<TestValue>();
         let mut buffer = vec![0; account_size - 1];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
-        let err = state.init_value::<TestValue>(true).unwrap_err();
+        let err = state.init_value::<TestValue>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
 
         // hack the buffer to look like it was initialized, still fails
@@ -716,16 +721,12 @@ mod test {
             PermissionedTransferError::TypeNotFound.into(),
         );
 
-        // init without overwrite works
-        state.init_value::<TestEmptyValue>(false).unwrap();
+        state.init_value::<TestEmptyValue>().unwrap();
         state.get_value::<TestEmptyValue>().unwrap();
 
-        // re-init with overwrite works
-        state.init_value::<TestEmptyValue>(true).unwrap();
-
-        // re-init without overwrite fails
+        // re-init fails
         assert_eq!(
-            state.init_value::<TestEmptyValue>(false).unwrap_err(),
+            state.init_value::<TestEmptyValue>().unwrap_err(),
             PermissionedTransferError::TypeAlreadyExists.into(),
         );
     }

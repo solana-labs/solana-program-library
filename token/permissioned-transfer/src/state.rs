@@ -2,30 +2,32 @@
 
 use {
     crate::{
-        pod::{PodAccountMeta, PodSliceMut},
-        tlv::{Discriminator, Value},
+        pod::{PodAccountMeta, PodSlice, PodSliceMut},
+        tlv::{Discriminator, TlvType},
     },
     solana_program::program_error::ProgramError,
 };
 
-/// State for all pubkeys required to validate a transfer
-pub type ExtraAccountMetas<'a> = PodSliceMut<'a, PodAccountMeta>;
+/// State for all pubkeys required to validate a transfer, accessed through a `PodSlice`
+pub struct ExtraAccountMetas;
+impl ExtraAccountMetas {
+    /// Unpack a buffer with slice data as a pod slice
+    pub fn unpack(data: &[u8]) -> Result<PodSlice<'_, PodAccountMeta>, ProgramError> {
+        PodSlice::unpack(data)
+    }
+    /// Initialize pod slice data into the given buffer
+    pub fn init(data: &mut [u8]) -> Result<PodSliceMut<'_, PodAccountMeta>, ProgramError> {
+        PodSliceMut::unpack(data, /* init */ true)
+    }
+    /// Get the byte size required to hold `num_items` items
+    pub fn byte_size_of(num_items: usize) -> Result<usize, ProgramError> {
+        PodSlice::<PodAccountMeta>::byte_size_of(num_items)
+    }
+}
 
-impl<'a> Value for ExtraAccountMetas<'a> {
+impl TlvType for ExtraAccountMetas {
     /// First 8 bytes of `hash::hashv(&["permissioned-transfer:validation-pubkeys"])`
     const TYPE: Discriminator = Discriminator::new([250, 175, 124, 64, 235, 120, 63, 195]);
-
-    fn try_from_bytes(bytes: &[u8]) -> Result<&Self, ProgramError> {
-        Self::unpack(bytes)
-    }
-
-    fn try_from_bytes_mut(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
-        Self::unpack(bytes)
-    }
-
-    fn initialize(&mut self) {
-        self.initialize()
-    }
 }
 
 #[cfg(test)]
