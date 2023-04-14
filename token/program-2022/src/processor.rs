@@ -14,6 +14,7 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
+            permissioned_transfer::{self, PermissionedTransfer},
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -757,6 +758,19 @@ impl Processor {
                     )?;
                     extension.authority = new_authority.try_into()?;
                 }
+                AuthorityType::PermissionedTransfer => {
+                    let extension = mint.get_extension_mut::<PermissionedTransfer>()?;
+                    let maybe_authority: Option<Pubkey> = extension.authority.into();
+                    let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.authority = new_authority.try_into()?;
+                }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
@@ -1458,6 +1472,13 @@ impl Processor {
             TokenInstruction::InitializePermanentDelegate { delegate } => {
                 msg!("Instruction: InitializePermanentDelegate");
                 Self::process_initialize_permanent_delegate(accounts, delegate)
+            }
+            TokenInstruction::PermissionedTransferExtension => {
+                permissioned_transfer::processor::process_instruction(
+                    program_id,
+                    accounts,
+                    &input[1..],
+                )
             }
         }
     }

@@ -6472,6 +6472,7 @@ dependencies = [
  "solana-sdk",
  "solana-zk-token-sdk",
  "spl-memo 3.0.1",
+ "spl-permissioned-transfer",
  "spl-token 3.5.0",
  "thiserror",
 ]
