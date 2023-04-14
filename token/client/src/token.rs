@@ -440,40 +440,44 @@ where
 
         instructions.extend_from_slice(token_instructions);
 
-        let latest_blockhash = self.nonce_blockhash.unwrap_or(
-            self.client
-                .get_latest_blockhash()
-                .await
-                .map_err(TokenError::Client)?,
-        );
-
-        let message = if let (Some(nonce_account), Some(nonce_authority)) =
-            (self.nonce_account, &self.nonce_authority)
-        {
-            let mut message = Message::new_with_nonce(
-                token_instructions.to_vec(),
-                fee_payer,
-                &nonce_account,
-                &nonce_authority.pubkey(),
-            );
-            message.recent_blockhash = latest_blockhash;
-            message
-        } else {
-            Message::new_with_blockhash(&instructions, fee_payer, &latest_blockhash)
-        };
+        let (message, blockhash) =
+            if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
+                self.nonce_account,
+                &self.nonce_authority,
+                self.nonce_blockhash,
+            ) {
+                let mut message = Message::new_with_nonce(
+                    token_instructions.to_vec(),
+                    fee_payer,
+                    &nonce_account,
+                    &nonce_authority.pubkey(),
+                );
+                message.recent_blockhash = nonce_blockhash;
+                (message, nonce_blockhash)
+            } else {
+                let latest_blockhash = self
+                    .client
+                    .get_latest_blockhash()
+                    .await
+                    .map_err(TokenError::Client)?;
+                (
+                    Message::new_with_blockhash(&instructions, fee_payer, &latest_blockhash),
+                    latest_blockhash,
+                )
+            };
 
         let mut transaction = Transaction::new_unsigned(message);
 
         transaction
-            .try_partial_sign(&vec![self.payer.clone()], latest_blockhash)
+            .try_partial_sign(&vec![self.payer.clone()], blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
         if let Some(nonce_authority) = &self.nonce_authority {
             transaction
-                .try_partial_sign(&vec![nonce_authority.clone()], latest_blockhash)
+                .try_partial_sign(&vec![nonce_authority.clone()], blockhash)
                 .map_err(|error| TokenError::Client(error.into()))?;
         }
         transaction
-            .try_partial_sign(signing_keypairs, latest_blockhash)
+            .try_partial_sign(signing_keypairs, blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
 
         Ok(transaction)

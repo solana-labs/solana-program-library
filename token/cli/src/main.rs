@@ -178,8 +178,6 @@ pub fn mint_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .takes_value(true)
         .value_name("MINT_ADDRESS")
         .validator(is_valid_pubkey)
-        .requires(SIGN_ONLY_ARG.name)
-        .requires(BLOCKHASH_ARG.name)
         .help(MINT_ADDRESS_ARG.help)
 }
 
@@ -213,8 +211,6 @@ pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .takes_value(true)
         .value_name("DELEGATE_ADDRESS")
         .validator(is_valid_pubkey)
-        .requires(SIGN_ONLY_ARG.name)
-        .requires(BLOCKHASH_ARG.name)
         .help(DELEGATE_ADDRESS_ARG.help)
 }
 
