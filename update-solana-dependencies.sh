@@ -21,27 +21,72 @@ while IFS='' read -r line; do tomls+=("$line"); done < <(find . -name Cargo.toml
 
 crates=(
   solana-account-decoder
+  solana-address-lookup-table-program
   solana-banks-client
+  solana-banks-interface
   solana-banks-server
+  solana-bench-tps
+  solana-bloom
   solana-bpf-loader-program
+  solana-bucket-map
+  solana-connection-cache
   solana-clap-utils
   solana-clap-v3-utils
+  solana-cli
   solana-cli-config
   solana-cli-output
   solana-client
+  solana-compute-budget-program
+  solana-config-program
   solana-core
+  solana-download-utils
+  solana-entry
+  solana-faucet
+  solana-frozen-abi
+  solana-frozen-abi-macro
+  solana-genesis
+  solana-genesis-utils
+  solana-geyser-plugin-interface
+  solana-geyser-plugin-manager
+  solana-gossip
+  solana-ledger
+  solana-local-cluster
   solana-logger
+  solana-measure
+  solana-merkle-tree
+  solana-metrics
+  solana-net-utils
   solana-notifier
+  solana-perf
+  solana-poh
   solana-program
+  solana-program-runtime
   solana-program-test
+  solana-pubsub-client
+  solana-quic-client
+  solana-rayon-threadlimit
   solana-remote-wallet
+  solana-rpc
+  solana-rpc-client
+  solana-rpc-client-api
+  solana-rpc-client-nonce-utils
   solana-runtime
   solana-sdk
+  solana-sdk-macro
+  solana-send-transaction-service
   solana-stake-program
+  solana-storage-bigtable
+  solana-storage-proto
+  solana-streamer
+  solana-sys-tuner
   solana-test-validator
+  solana-thin-client
+  solana-tpu-client
   solana-transaction-status
-  solana-vote-program
+  solana-udp-client
   solana-version
+  solana-vote-program
+  solana-zk-token-proof-program
   solana-zk-token-sdk
 )
 
