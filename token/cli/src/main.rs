@@ -2352,11 +2352,17 @@ impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
     }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
+    }
 }
 
 struct SignOnlyNeedsMintDecimals {}
 impl offline::ArgsConfig for SignOnlyNeedsMintDecimals {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[MINT_DECIMALS_ARG.name])
+    }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[MINT_DECIMALS_ARG.name])
     }
 }
@@ -2366,11 +2372,17 @@ impl offline::ArgsConfig for SignOnlyNeedsMintAddress {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name])
     }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[MINT_ADDRESS_ARG.name])
+    }
 }
 
 struct SignOnlyNeedsDelegateAddress {}
 impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
+    }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
     }
 }
