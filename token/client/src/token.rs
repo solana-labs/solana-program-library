@@ -237,6 +237,7 @@ pub struct Token<T> {
     program_id: Pubkey,
     nonce_account: Option<Pubkey>,
     nonce_authority: Option<Arc<dyn Signer>>,
+    nonce_blockhash: Option<Hash>,
     memo: Arc<RwLock<Option<TokenMemo>>>,
 }
 
@@ -252,6 +253,7 @@ impl<T> fmt::Debug for Token<T> {
                 "nonce_authority",
                 &self.nonce_authority.as_ref().map(|s| s.pubkey()),
             )
+            .field("nonce_blockhash", &self.nonce_blockhash)
             .field("memo", &self.memo.read().unwrap())
             .finish()
     }
@@ -296,6 +298,7 @@ where
             program_id: *program_id,
             nonce_account: None,
             nonce_authority: None,
+            nonce_blockhash: None,
             memo: Arc::new(RwLock::new(None)),
         }
     }
@@ -332,11 +335,17 @@ where
             program_id: self.program_id,
             nonce_account: self.nonce_account,
             nonce_authority: self.nonce_authority,
+            nonce_blockhash: self.nonce_blockhash,
             memo: Arc::new(RwLock::new(None)),
         }
     }
 
-    pub fn with_nonce(self, nonce_account: &Pubkey, nonce_authority: Arc<dyn Signer>) -> Token<T> {
+    pub fn with_nonce(
+        self,
+        nonce_account: &Pubkey,
+        nonce_authority: Arc<dyn Signer>,
+        nonce_blockhash: &Hash,
+    ) -> Token<T> {
         Token {
             client: Arc::clone(&self.client),
             pubkey: self.pubkey,
@@ -345,6 +354,7 @@ where
             program_id: self.program_id,
             nonce_account: Some(*nonce_account),
             nonce_authority: Some(nonce_authority),
+            nonce_blockhash: Some(*nonce_blockhash),
             memo: Arc::new(RwLock::new(None)),
         }
     }
@@ -430,11 +440,12 @@ where
 
         instructions.extend_from_slice(token_instructions);
 
-        let latest_blockhash = self
-            .client
-            .get_latest_blockhash()
-            .await
-            .map_err(TokenError::Client)?;
+        let latest_blockhash = self.nonce_blockhash.unwrap_or(
+            self.client
+                .get_latest_blockhash()
+                .await
+                .map_err(TokenError::Client)?,
+        );
 
         let message = if let (Some(nonce_account), Some(nonce_authority)) =
             (self.nonce_account, &self.nonce_authority)
