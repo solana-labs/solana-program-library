@@ -33,7 +33,7 @@ If you change X5 to X5' then you will have to recompute the root hash in the fol
 - X1' = H(X2',X3)
 
 ### Concurrent leaf replacement
-We know that there can be multiple concurrent requests to write to the same state, however when the root changes while the first write is happenning the second write will generate an invalid root, in other words everytime a root is modified all modifications in progress will be invalid.
+We know that there can be multiple concurrent requests to write to the same state, however when the root changes while the first write is happening the second write will generate an invalid root, in other words everytime a root is modified all modifications in progress will be invalid.
 ```txt
           X1'              X1''
         /    \           /    \
