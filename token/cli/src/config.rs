@@ -307,7 +307,8 @@ impl<'a> Config<'a> {
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
-        let token = pubkey_of_signer(arg_matches, "token", wallet_manager).unwrap();
+        let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
+            .map_err(|e| -> Error { e.to_string().into() })?;
         self.associated_token_address_for_token_or_override(
             arg_matches,
             override_name,
@@ -326,13 +327,14 @@ impl<'a> Config<'a> {
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         token: Option<Pubkey>,
     ) -> Result<Pubkey, Error> {
-        if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager).unwrap()
+        if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager)
+            .map_err(|e| -> Error { e.to_string().into() })?
         {
             return Ok(address);
         }
 
         let token = token.unwrap();
-        let program_id = self.get_mint_info(&token, None).await.unwrap().program_id;
+        let program_id = self.get_mint_info(&token, None).await?.program_id;
         let owner = self.pubkey_or_default(arg_matches, "owner", wallet_manager)?;
         self.associated_token_address_for_token_and_program(&token, &owner, &program_id)
     }
@@ -355,7 +357,8 @@ impl<'a> Config<'a> {
         address_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
-        if let Some(address) = pubkey_of_signer(arg_matches, address_name, wallet_manager).unwrap()
+        if let Some(address) = pubkey_of_signer(arg_matches, address_name, wallet_manager)
+            .map_err(|e| -> Error { e.to_string().into() })?
         {
             return Ok(address);
         }
