@@ -21,6 +21,13 @@ More information: https://github.com/orgs/solana-labs/projects/34
 
 ## Remaining items
 
+### v1.14 with curve syscalls
+
+In order to use confidential tokens, the cluster must run at least version 1.14
+with the elliptic curve operations syscalls enabled.
+
+More information: https://github.com/solana-labs/solana/issues/29612
+
 ### Zero-knowledge proof split
 
 To fit within the current transaction size limits, the zero knowledge proofs must
