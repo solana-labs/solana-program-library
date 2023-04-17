@@ -31,6 +31,18 @@ if [[ -f "$toolchain_file" ]]; then
   cp "$toolchain_file" .
 fi
 
+echo "Excluding $solana_dir from workspace"
+echo
+for crate in "${workspace_crates[@]}"; do
+  if grep -q "exclude.*$solana_dir" "$crate"; then
+    echo "$crate is already patched"
+  else
+    cat >> $crate << EXCLUDE
+exclude = ["$solana_dir"]
+EXCLUDE
+  fi
+done
+
 # get version from Cargo.toml first. if it is empty, get it from other places.
 solana_ver="$(readCargoVariable version "$solana_dir"/Cargo.toml)"
 solana_ver=${solana_ver:-$(readCargoVariable version "$solana_dir"/sdk/Cargo.toml)}

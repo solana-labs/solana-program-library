@@ -1,3 +1,6 @@
+[profile.dev]
+split-debuginfo = "unpacked"
+
 [workspace]
 members = [
   "associated-token-account/program",
@@ -46,6 +49,3 @@ members = [
   "utils/test-client",
   "token-lending/flash_loan_receiver",
 ]
-
-[profile.dev]
-split-debuginfo = "unpacked"
