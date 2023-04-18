@@ -31,17 +31,21 @@ if [[ -f "$toolchain_file" ]]; then
   cp "$toolchain_file" .
 fi
 
-echo "Excluding $solana_dir from workspace"
-echo
-for crate in "${workspace_crates[@]}"; do
-  if grep -q "exclude.*$solana_dir" "$crate"; then
-    echo "$crate is already patched"
-  else
-    cat >> $crate << EXCLUDE
+# only add exclude rule when solana root is under spl root
+spl_project_root=$(git rev-parse --show-toplevel)
+if echo "$solana_dir" | grep "^$spl_project_root" > /dev/null; then
+  echo "Excluding $solana_dir from workspace"
+  echo
+  for crate in "${workspace_crates[@]}"; do
+    if grep -q "exclude.*$solana_dir" "$crate"; then
+      echo "$crate is already patched"
+    else
+      cat >> $crate << EXCLUDE
 exclude = ["$solana_dir"]
 EXCLUDE
-  fi
-done
+    fi
+  done
+fi
 
 # get version from Cargo.toml first. if it is empty, get it from other places.
 solana_ver="$(readCargoVariable version "$solana_dir"/Cargo.toml)"
