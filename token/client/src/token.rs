@@ -4,7 +4,7 @@ use {
     solana_sdk::{
         account::Account as BaseAccount,
         hash::Hash,
-        instruction::Instruction,
+        instruction::{AccountMeta, Instruction},
         message::Message,
         program_error::ProgramError,
         program_pack::Pack,
@@ -17,11 +17,12 @@ use {
         get_associated_token_address_with_program_id, instruction::create_associated_token_account,
         instruction::create_associated_token_account_idempotent,
     },
+    spl_transfer_hook_interface::offchain::get_extra_account_metas,
     spl_token_2022::{
         extension::{
             confidential_transfer, cpi_guard, default_account_state, interest_bearing_mint,
-            memo_transfer, transfer_fee, BaseStateWithExtensions, ExtensionType,
-            StateWithExtensionsOwned,
+            memo_transfer, transfer_hook, transfer_fee, BaseStateWithExtensions,
+            ExtensionType, StateWithExtensionsOwned,
         },
         instruction,
         pod::EncryptionPubkey,
@@ -133,6 +134,10 @@ pub enum ExtensionInitializationParams {
     PermanentDelegate {
         delegate: Pubkey,
     },
+    TransferHook {
+        authority: Option<Pubkey>,
+        program_id: Option<Pubkey>,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -145,6 +150,7 @@ impl ExtensionInitializationParams {
             Self::InterestBearingConfig { .. } => ExtensionType::InterestBearingConfig,
             Self::NonTransferable => ExtensionType::NonTransferable,
             Self::PermanentDelegate { .. } => ExtensionType::PermanentDelegate,
+            Self::TransferHook { .. } => ExtensionType::TransferHook,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -209,6 +215,15 @@ impl ExtensionInitializationParams {
             Self::PermanentDelegate { delegate } => {
                 instruction::initialize_permanent_delegate(token_program_id, mint, &delegate)
             }
+            Self::TransferHook {
+                authority,
+                program_id,
+            } => transfer_hook::instruction::initialize(
+                token_program_id,
+                mint,
+                authority,
+                program_id,
+            ),
         }
     }
 }
@@ -239,6 +254,7 @@ pub struct Token<T> {
     nonce_authority: Option<Arc<dyn Signer>>,
     nonce_blockhash: Option<Hash>,
     memo: Arc<RwLock<Option<TokenMemo>>>,
+    transfer_hook_accounts: Option<Vec<Pubkey>>,
 }
 
 impl<T> fmt::Debug for Token<T> {
@@ -300,6 +316,7 @@ where
             nonce_authority: None,
             nonce_blockhash: None,
             memo: Arc::new(RwLock::new(None)),
+            transfer_hook_accounts: None,
         }
     }
 
@@ -326,18 +343,9 @@ where
         &self.pubkey
     }
 
-    pub fn with_payer(self, payer: Arc<dyn Signer>) -> Token<T> {
-        Token {
-            client: Arc::clone(&self.client),
-            pubkey: self.pubkey,
-            decimals: self.decimals,
-            payer,
-            program_id: self.program_id,
-            nonce_account: self.nonce_account,
-            nonce_authority: self.nonce_authority,
-            nonce_blockhash: self.nonce_blockhash,
-            memo: Arc::new(RwLock::new(None)),
-        }
+    pub fn with_payer(mut self, payer: Arc<dyn Signer>) -> Self {
+        self.payer = payer;
+        self
     }
 
     pub fn with_nonce(
@@ -345,18 +353,18 @@ where
         nonce_account: &Pubkey,
         nonce_authority: Arc<dyn Signer>,
         nonce_blockhash: &Hash,
-    ) -> Token<T> {
-        Token {
-            client: Arc::clone(&self.client),
-            pubkey: self.pubkey,
-            decimals: self.decimals,
-            payer: self.payer.clone(),
-            program_id: self.program_id,
-            nonce_account: Some(*nonce_account),
-            nonce_authority: Some(nonce_authority),
-            nonce_blockhash: Some(*nonce_blockhash),
-            memo: Arc::new(RwLock::new(None)),
-        }
+    ) -> Self {
+        self.nonce_account = Some(*nonce_account);
+        self.nonce_authority = Some(nonce_authority);
+        self.nonce_blockhash = Some(*nonce_blockhash);
+    }
+
+    pub fn with_transfer_hook_accounts(
+        mut self,
+        transfer_hook_accounts: Vec<Pubkey>,
+    ) -> Self {
+        self.transfer_hook_accounts = Some(transfer_hook_accounts);
+        self
     }
 
     pub fn with_memo<M: AsRef<str>>(&self, memo: M, signers: Vec<Pubkey>) -> &Self {
@@ -799,8 +807,8 @@ where
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let instructions = if let Some(decimals) = self.decimals {
-            [instruction::transfer_checked(
+        let mut instruction = if let Some(decimals) = self.decimals {
+            instruction::transfer_checked(
                 &self.program_id,
                 source,
                 &self.pubkey,
@@ -809,20 +817,42 @@ where
                 &multisig_signers,
                 amount,
                 decimals,
-            )?]
+            )?
         } else {
             #[allow(deprecated)]
-            [instruction::transfer(
+            instruction::transfer(
                 &self.program_id,
                 source,
                 destination,
                 authority,
                 &multisig_signers,
                 amount,
-            )?]
+            )?
+        };
+        if let Some(transfer_hook_accounts) = &self.transfer_hook_accounts {
+            let additional_account_metas = transfer_hook_accounts
+                .iter()
+                .map(|p| AccountMeta::new_readonly(*p, false));
+            instruction.accounts.extend(additional_account_metas);
+        } else {
+            let state = self.get_mint_info().await.unwrap();
+            if let Some(program_id) =
+                transfer_hook::get_program_id(&state)
+            {
+                let extra_account_metas = get_extra_account_metas(
+                    |address| self.client.get_account(address),
+                    &program_id,
+                    self.get_address(),
+                )
+                .await
+                .map_err(|_| TokenError::AccountNotFound)?;
+                extra_account_metas
+                    .into_iter()
+                    .for_each(|m| instruction.accounts.push(m));
+            }
         };
 
-        self.process_ixs(&instructions, signing_keypairs).await
+        self.process_ixs(&[instruction], signing_keypairs).await
     }
 
     /// Transfer tokens to an associated account, creating it if it does not exist
@@ -1507,6 +1537,29 @@ where
                 authority,
                 &multisig_signers,
                 new_rate,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Update transfer hook program id
+    pub async fn update_transfer_hook_program_id<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        new_program_id: Option<Pubkey>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[transfer_hook::instruction::update(
+                &self.program_id,
+                self.get_address(),
+                authority,
+                &multisig_signers,
+                new_program_id,
             )?],
             signing_keypairs,
         )
