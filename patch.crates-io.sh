@@ -22,6 +22,7 @@ set -e
 
 solana_dir=$(cd "$solana_dir" && pwd)
 cd "$(dirname "$0")"
+project_root=$(pwd)
 
 source "$solana_dir"/scripts/read-cargo-variable.sh
 
@@ -32,8 +33,7 @@ if [[ -f "$toolchain_file" ]]; then
 fi
 
 # only add exclude rule when solana root is under spl root
-spl_project_root=$(git rev-parse --show-toplevel)
-if echo "$solana_dir" | grep "^$spl_project_root" > /dev/null; then
+if echo "$solana_dir" | grep "^$project_root" > /dev/null; then
   echo "Excluding $solana_dir from workspace"
   echo
   for crate in "${workspace_crates[@]}"; do
