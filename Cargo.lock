@@ -6452,12 +6452,14 @@ name = "spl-token-2022-test"
 version = "0.0.1"
 dependencies = [
  "async-trait",
+ "bytemuck",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 1.1.3",
  "spl-instruction-padding",
  "spl-memo 3.0.1",
+ "spl-permissioned-transfer",
  "spl-token-2022 0.6.1",
  "spl-token-client",
  "walkdir",
@@ -6508,6 +6510,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 1.1.3",
  "spl-memo 3.0.1",
+ "spl-permissioned-transfer",
  "spl-token 3.5.0",
  "spl-token-2022 0.6.1",
  "thiserror",
