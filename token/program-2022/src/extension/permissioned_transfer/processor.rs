@@ -47,7 +47,7 @@ fn process_initialize(
             return Err(ProgramError::IncorrectProgramId);
         }
     }
-    extension.permissioned_transfer_program_id = *permissioned_transfer_program_id;
+    extension.program_id = *permissioned_transfer_program_id;
     Ok(())
 }
 
@@ -81,7 +81,7 @@ fn process_update(
         }
     }
 
-    extension.permissioned_transfer_program_id = *new_program_id;
+    extension.program_id = *new_program_id;
     Ok(())
 }
 

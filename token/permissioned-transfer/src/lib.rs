@@ -9,6 +9,9 @@
 pub mod error;
 pub mod inline_spl_token;
 pub mod instruction;
+pub mod invoke;
+#[cfg(feature = "offchain-client")]
+pub mod offchain;
 pub mod pod;
 pub mod processor;
 pub mod state;

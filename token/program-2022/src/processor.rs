@@ -14,7 +14,10 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
-            permissioned_transfer::{self, PermissionedTransfer},
+            permissioned_transfer::{
+                self, get_permissioned_transfer_program_id, PermissionedTransfer,
+                PermissionedTransferAccount,
+            },
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -294,42 +297,58 @@ impl Processor {
         {
             return Err(TokenError::NonTransferable.into());
         }
-        let (fee, maybe_permanent_delegate) = if let Some((mint_info, expected_decimals)) =
-            expected_mint_info
-        {
-            if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
-                return Err(TokenError::MintMismatch.into());
-            }
+        let (fee, maybe_permanent_delegate, maybe_permissioned_transfer_program_id) =
+            if let Some((mint_info, expected_decimals)) = expected_mint_info {
+                if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
+                    return Err(TokenError::MintMismatch.into());
+                }
 
-            let mint_data = mint_info.try_borrow_data()?;
-            let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+                let mint_data = mint_info.try_borrow_data()?;
+                let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
 
-            if expected_decimals != mint.base.decimals {
-                return Err(TokenError::MintDecimalsMismatch.into());
-            }
+                if expected_decimals != mint.base.decimals {
+                    return Err(TokenError::MintDecimalsMismatch.into());
+                }
 
-            let fee = if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
-                transfer_fee_config
-                    .calculate_epoch_fee(Clock::get()?.epoch, amount)
-                    .ok_or(TokenError::Overflow)?
+                let fee = if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>()
+                {
+                    transfer_fee_config
+                        .calculate_epoch_fee(Clock::get()?.epoch, amount)
+                        .ok_or(TokenError::Overflow)?
+                } else {
+                    0
+                };
+
+                let maybe_permanent_delegate = get_permanent_delegate(&mint);
+                let maybe_permissioned_transfer_program_id =
+                    get_permissioned_transfer_program_id(&mint);
+
+                (
+                    fee,
+                    maybe_permanent_delegate,
+                    maybe_permissioned_transfer_program_id,
+                )
             } else {
-                0
+                // Permissioned transfer extension exists on the account, but no mint
+                // was provided to figure required accounts, abor
+                if source_account
+                    .get_extension::<PermissionedTransferAccount>()
+                    .is_ok()
+                {
+                    return Err(TokenError::MintRequiredForTransfer.into());
+                }
+
+                // Transfer fee amount extension exists on the account, but no mint
+                // was provided to calculate the fee, abort
+                if source_account
+                    .get_extension_mut::<TransferFeeAmount>()
+                    .is_ok()
+                {
+                    return Err(TokenError::MintRequiredForTransfer.into());
+                } else {
+                    (0, None, None)
+                }
             };
-
-            let maybe_permanent_delegate = get_permanent_delegate(&mint);
-            (fee, maybe_permanent_delegate)
-        } else {
-            // Transfer fee amount extension exists on the account, but no mint
-            // was provided to calculate the fee, abort
-            if source_account
-                .get_extension_mut::<TransferFeeAmount>()
-                .is_ok()
-            {
-                return Err(TokenError::MintRequiredForTransfer.into());
-            } else {
-                (0, None)
-            }
-        };
         if let Some(expected_fee) = expected_fee {
             if expected_fee != fee {
                 msg!("Calculated fee {}, received {}", fee, expected_fee);
@@ -460,6 +479,25 @@ impl Processor {
 
         source_account.pack_base();
         destination_account.pack_base();
+
+        if let Some(program_id) = maybe_permissioned_transfer_program_id {
+            if let Some((mint_info, _)) = expected_mint_info {
+                // must drop these to avoid the double-borrow during CPI
+                drop(source_account_data);
+                drop(destination_account_data);
+                spl_permissioned_transfer::invoke::validate(
+                    &program_id,
+                    source_account_info.clone(),
+                    mint_info.clone(),
+                    destination_account_info.clone(),
+                    authority_info.clone(),
+                    account_info_iter.as_slice(),
+                    amount,
+                )?;
+            } else {
+                return Err(TokenError::MintRequiredForTransfer.into());
+            }
+        }
 
         Ok(())
     }

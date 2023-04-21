@@ -13,7 +13,7 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::PermanentDelegate,
-            permissioned_transfer::PermissionedTransfer,
+            permissioned_transfer::{PermissionedTransfer, PermissionedTransferAccount},
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
         pod::*,
@@ -537,6 +537,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             ExtensionType::NonTransferableAccount => self
                 .init_extension::<NonTransferableAccount>(true)
                 .map(|_| ()),
+            ExtensionType::PermissionedTransferAccount => self
+                .init_extension::<PermissionedTransferAccount>(true)
+                .map(|_| ()),
             // ConfidentialTransfers are currently opt-in only, so this is a no-op for extra safety
             // on InitializeAccount
             ExtensionType::ConfidentialTransferAccount => Ok(()),
@@ -651,6 +654,8 @@ pub enum ExtensionType {
     NonTransferableAccount,
     /// Mint requires a CPI to a program implementing the "permissioned transfer" interface
     PermissionedTransfer,
+    /// Indicates that the tokens in this account belong to a permissioned transfer mint
+    PermissionedTransferAccount,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -695,6 +700,9 @@ impl ExtensionType {
             ExtensionType::PermanentDelegate => pod_get_packed_len::<PermanentDelegate>(),
             ExtensionType::NonTransferableAccount => pod_get_packed_len::<NonTransferableAccount>(),
             ExtensionType::PermissionedTransfer => pod_get_packed_len::<PermissionedTransfer>(),
+            ExtensionType::PermissionedTransferAccount => {
+                pod_get_packed_len::<PermissionedTransferAccount>()
+            }
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -759,6 +767,7 @@ impl ExtensionType {
             | ExtensionType::ConfidentialTransferAccount
             | ExtensionType::MemoTransfer
             | ExtensionType::NonTransferableAccount
+            | ExtensionType::PermissionedTransferAccount
             | ExtensionType::CpiGuard => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
@@ -778,6 +787,9 @@ impl ExtensionType {
                 }
                 ExtensionType::NonTransferable => {
                     account_extension_types.push(ExtensionType::NonTransferableAccount);
+                }
+                ExtensionType::PermissionedTransfer => {
+                    account_extension_types.push(ExtensionType::PermissionedTransferAccount);
                 }
                 #[cfg(test)]
                 ExtensionType::MintPaddingTest => {
