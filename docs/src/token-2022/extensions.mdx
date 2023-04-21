@@ -1236,6 +1236,18 @@ Decimals:  9
 Signature: 439yVq2WfUEegAPv5BAkFampBPo696UbZ58RAYCzvUcbcBcxhfThpt1pcdKmiQrurHj65CqmWiHzrfT12BhL3Nxb
 ```
 
+The CLI defaults the permanent delegate to the mint authority, but you can change
+it using the `authorize` command.
+
+```console
+$ spl-token authorize 7LUgoQCqhk3VMPhpAnmS1zdCFW4C6cupxgbqWrTwydGx permanent-delegate GFMniFoE5X4F87L9jzjHaW4MTkXyX1AYHNfhFencgamg
+Updating 7LUgoQCqhk3VMPhpAnmS1zdCFW4C6cupxgbqWrTwydGx 
+  Current permanent delegate: 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+  New permanent delegate: GFMniFoE5X4F87L9jzjHaW4MTkXyX1AYHNfhFencgamg
+
+Signature: 2ABDrR6meXk4rrAwd2LsHaTsnM5BuTC9RbiZmgBxgzze8ZM2yxuYp8iyg8viHgVaKRbXGzjKsFjF5RR9Kkzn4Prj
+```
+
   </TabItem>
   <TabItem value="jsx" label="JS">
 
