@@ -13,8 +13,8 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::PermanentDelegate,
-            permissioned_transfer::PermissionedTransfer,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
+            transfer_hook::{TransferHook, TransferHookAccount},
         },
         pod::*,
         state::{Account, Mint, Multisig},
@@ -52,12 +52,12 @@ pub mod mint_close_authority;
 pub mod non_transferable;
 /// Permanent Delegate extension
 pub mod permanent_delegate;
-/// Permissioned Transfer extension
-pub mod permissioned_transfer;
 /// Utility to reallocate token accounts
 pub mod reallocate;
 /// Transfer Fee extension
 pub mod transfer_fee;
+/// Transfer Hook extension
+pub mod transfer_hook;
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -537,6 +537,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             ExtensionType::NonTransferableAccount => self
                 .init_extension::<NonTransferableAccount>(true)
                 .map(|_| ()),
+            ExtensionType::TransferHookAccount => {
+                self.init_extension::<TransferHookAccount>(true).map(|_| ())
+            }
             // ConfidentialTransfers are currently opt-in only, so this is a no-op for extra safety
             // on InitializeAccount
             ExtensionType::ConfidentialTransferAccount => Ok(()),
@@ -649,8 +652,10 @@ pub enum ExtensionType {
     PermanentDelegate,
     /// Indicates that the tokens in this account belong to a non-transferable mint
     NonTransferableAccount,
-    /// Mint requires a CPI to a program implementing the "permissioned transfer" interface
-    PermissionedTransfer,
+    /// Mint requires a CPI to a program implementing the "transfer hook" interface
+    TransferHook,
+    /// Indicates that the tokens in this account belong to a mint with a transfer hook
+    TransferHookAccount,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -694,7 +699,8 @@ impl ExtensionType {
             ExtensionType::CpiGuard => pod_get_packed_len::<CpiGuard>(),
             ExtensionType::PermanentDelegate => pod_get_packed_len::<PermanentDelegate>(),
             ExtensionType::NonTransferableAccount => pod_get_packed_len::<NonTransferableAccount>(),
-            ExtensionType::PermissionedTransfer => pod_get_packed_len::<PermissionedTransfer>(),
+            ExtensionType::TransferHook => pod_get_packed_len::<TransferHook>(),
+            ExtensionType::TransferHookAccount => pod_get_packed_len::<TransferHookAccount>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -753,12 +759,13 @@ impl ExtensionType {
             | ExtensionType::NonTransferable
             | ExtensionType::InterestBearingConfig
             | ExtensionType::PermanentDelegate
-            | ExtensionType::PermissionedTransfer => AccountType::Mint,
+            | ExtensionType::TransferHook => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
             | ExtensionType::MemoTransfer
             | ExtensionType::NonTransferableAccount
+            | ExtensionType::TransferHookAccount
             | ExtensionType::CpiGuard => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
@@ -778,6 +785,9 @@ impl ExtensionType {
                 }
                 ExtensionType::NonTransferable => {
                     account_extension_types.push(ExtensionType::NonTransferableAccount);
+                }
+                ExtensionType::TransferHook => {
+                    account_extension_types.push(ExtensionType::TransferHookAccount);
                 }
                 #[cfg(test)]
                 ExtensionType::MintPaddingTest => {

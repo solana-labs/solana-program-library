@@ -14,11 +14,11 @@ use {
     std::convert::TryInto,
 };
 
-/// Permissioned transfer mint extension instructions
+/// Transfer hook extension instructions
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
-pub enum PermissionedTransferInstruction {
-    /// Initialize a new mint with permissioned transfer.
+pub enum TransferHookInstruction {
+    /// Initialize a new mint with a transfer hook program.
     ///
     /// Fails if the mint has already been initialized, so must be called before
     /// `InitializeMint`.
@@ -32,25 +32,25 @@ pub enum PermissionedTransferInstruction {
     ///   0. `[writable]` The mint to initialize.
     ///
     /// Data expected by this instruction:
-    ///   `crate::extension::permissioned_transfer::instruction::InitializeInstructionData`
+    ///   `crate::extension::transfer_hook::instruction::InitializeInstructionData`
     ///
     Initialize,
-    /// Update the permissioned transfer program id. Only supported for mints that
-    /// include the `PermissionedTransfer` extension.
+    /// Update the transfer hook program id. Only supported for mints that
+    /// include the `TransferHook` extension.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single authority
     ///   0. `[writable]` The mint.
-    ///   1. `[signer]` The permissioned transfer authority.
+    ///   1. `[signer]` The transfer hook authority.
     ///
     ///   * Multisignature authority
     ///   0. `[writable]` The mint.
-    ///   1. `[]` The mint's permissioned transfer authority.
+    ///   1. `[]` The mint's transfer hook authority.
     ///   2. ..2+M `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
-    ///   `crate::extension::permissioned_transfer::UpdateInstructionData`
+    ///   `crate::extension::transfer_hook::UpdateInstructionData`
     ///
     Update,
 }
@@ -61,16 +61,16 @@ pub enum PermissionedTransferInstruction {
 pub struct InitializeInstructionData {
     /// The public key for the account that can update the program id
     pub authority: OptionalNonZeroPubkey,
-    /// The program id that validates transfers
-    pub permissioned_transfer_program_id: OptionalNonZeroPubkey,
+    /// The program id that performs logic during transfers
+    pub program_id: OptionalNonZeroPubkey,
 }
 
 /// Data expected by `Update`
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct UpdateInstructionData {
-    /// The program id that validates transfers
-    pub permissioned_transfer_program_id: OptionalNonZeroPubkey,
+    /// The program id that performs logic during transfers
+    pub program_id: OptionalNonZeroPubkey,
 }
 
 /// Create an `Initialize` instruction
@@ -78,18 +78,18 @@ pub fn initialize(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: Option<Pubkey>,
-    permissioned_transfer_program_id: Option<Pubkey>,
+    transfer_hook_program_id: Option<Pubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        TokenInstruction::PermissionedTransferExtension,
-        PermissionedTransferInstruction::Initialize,
+        TokenInstruction::TransferHookExtension,
+        TransferHookInstruction::Initialize,
         &InitializeInstructionData {
             authority: authority.try_into()?,
-            permissioned_transfer_program_id: permissioned_transfer_program_id.try_into()?,
+            program_id: transfer_hook_program_id.try_into()?,
         },
     ))
 }
@@ -100,7 +100,7 @@ pub fn update(
     mint: &Pubkey,
     authority: &Pubkey,
     signers: &[&Pubkey],
-    permissioned_transfer_program_id: Option<Pubkey>,
+    transfer_hook_program_id: Option<Pubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -113,10 +113,10 @@ pub fn update(
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        TokenInstruction::PermissionedTransferExtension,
-        PermissionedTransferInstruction::Update,
+        TokenInstruction::TransferHookExtension,
+        TransferHookInstruction::Update,
         &UpdateInstructionData {
-            permissioned_transfer_program_id: permissioned_transfer_program_id.try_into()?,
+            program_id: transfer_hook_program_id.try_into()?,
         },
     ))
 }

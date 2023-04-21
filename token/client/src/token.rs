@@ -17,18 +17,18 @@ use {
         get_associated_token_address_with_program_id, instruction::create_associated_token_account,
         instruction::create_associated_token_account_idempotent,
     },
-    spl_transfer_hook_interface::offchain::get_extra_account_metas,
     spl_token_2022::{
         extension::{
             confidential_transfer, cpi_guard, default_account_state, interest_bearing_mint,
-            memo_transfer, transfer_hook, transfer_fee, BaseStateWithExtensions,
-            ExtensionType, StateWithExtensionsOwned,
+            memo_transfer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
+            StateWithExtensionsOwned,
         },
         instruction,
         pod::EncryptionPubkey,
         solana_zk_token_sdk::errors::ProofError,
         state::{Account, AccountState, Mint, Multisig},
     },
+    spl_transfer_hook_interface::offchain::get_extra_account_metas,
     std::{
         fmt, io,
         sync::{Arc, RwLock},
@@ -349,7 +349,7 @@ where
     }
 
     pub fn with_nonce(
-        self,
+        mut self,
         nonce_account: &Pubkey,
         nonce_authority: Arc<dyn Signer>,
         nonce_blockhash: &Hash,
@@ -357,12 +357,10 @@ where
         self.nonce_account = Some(*nonce_account);
         self.nonce_authority = Some(nonce_authority);
         self.nonce_blockhash = Some(*nonce_blockhash);
+        self
     }
 
-    pub fn with_transfer_hook_accounts(
-        mut self,
-        transfer_hook_accounts: Vec<Pubkey>,
-    ) -> Self {
+    pub fn with_transfer_hook_accounts(mut self, transfer_hook_accounts: Vec<Pubkey>) -> Self {
         self.transfer_hook_accounts = Some(transfer_hook_accounts);
         self
     }
@@ -836,9 +834,7 @@ where
             instruction.accounts.extend(additional_account_metas);
         } else {
             let state = self.get_mint_info().await.unwrap();
-            if let Some(program_id) =
-                transfer_hook::get_program_id(&state)
-            {
+            if let Some(program_id) = transfer_hook::get_program_id(&state) {
                 let extra_account_metas = get_extra_account_metas(
                     |address| self.client.get_account(address),
                     &program_id,

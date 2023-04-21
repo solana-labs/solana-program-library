@@ -3,12 +3,11 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
-            permissioned_transfer::{
+            transfer_hook::{
                 instruction::{
-                    InitializeInstructionData, PermissionedTransferInstruction,
-                    UpdateInstructionData,
+                    InitializeInstructionData, TransferHookInstruction, UpdateInstructionData,
                 },
-                PermissionedTransfer,
+                TransferHook,
             },
             StateWithExtensionsMut,
         },
@@ -30,24 +29,22 @@ fn process_initialize(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
-    permissioned_transfer_program_id: &OptionalNonZeroPubkey,
+    transfer_hook_program_id: &OptionalNonZeroPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
     let mut mint_data = mint_account_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
 
-    let extension = mint.init_extension::<PermissionedTransfer>(true)?;
+    let extension = mint.init_extension::<TransferHook>(true)?;
     extension.authority = *authority;
 
-    if let Some(permissioned_transfer_program_id) =
-        Option::<Pubkey>::from(*permissioned_transfer_program_id)
-    {
-        if permissioned_transfer_program_id == *program_id {
+    if let Some(transfer_hook_program_id) = Option::<Pubkey>::from(*transfer_hook_program_id) {
+        if transfer_hook_program_id == *program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
     }
-    extension.permissioned_transfer_program_id = *permissioned_transfer_program_id;
+    extension.program_id = *transfer_hook_program_id;
     Ok(())
 }
 
@@ -63,7 +60,7 @@ fn process_update(
 
     let mut mint_data = mint_account_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
-    let extension = mint.get_extension_mut::<PermissionedTransfer>()?;
+    let extension = mint.get_extension_mut::<TransferHook>()?;
     let authority =
         Option::<Pubkey>::from(extension.authority).ok_or(TokenError::NoAuthorityExists)?;
 
@@ -81,7 +78,7 @@ fn process_update(
         }
     }
 
-    extension.permissioned_transfer_program_id = *new_program_id;
+    extension.program_id = *new_program_id;
     Ok(())
 }
 
@@ -92,25 +89,20 @@ pub(crate) fn process_instruction(
 ) -> ProgramResult {
     check_program_account(program_id)?;
     match decode_instruction_type(input)? {
-        PermissionedTransferInstruction::Initialize => {
-            msg!("PermissionedTransferInstruction::Initialize");
+        TransferHookInstruction::Initialize => {
+            msg!("TransferHookInstruction::Initialize");
             let InitializeInstructionData {
                 authority,
-                permissioned_transfer_program_id,
+                program_id: transfer_hook_program_id,
             } = decode_instruction_data(input)?;
-            process_initialize(
-                program_id,
-                accounts,
-                authority,
-                permissioned_transfer_program_id,
-            )
+            process_initialize(program_id, accounts, authority, transfer_hook_program_id)
         }
-        PermissionedTransferInstruction::Update => {
-            msg!("PermissionedTransferInstruction::Update");
+        TransferHookInstruction::Update => {
+            msg!("TransferHookInstruction::Update");
             let UpdateInstructionData {
-                permissioned_transfer_program_id,
+                program_id: transfer_hook_program_id,
             } = decode_instruction_data(input)?;
-            process_update(program_id, accounts, permissioned_transfer_program_id)
+            process_update(program_id, accounts, transfer_hook_program_id)
         }
     }
 }

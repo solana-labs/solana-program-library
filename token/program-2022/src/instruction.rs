@@ -630,12 +630,12 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
-    /// The common instruction prefix for permissioned transfer extension instructions.
+    /// The common instruction prefix for transfer hook extension instructions.
     ///
-    /// See `extension::permissioned_transfer::instruction::PermissionedTransferInstruction`
+    /// See `extension::transfer_hook::instruction::TransferHookInstruction`
     /// for further details about the extended instructions that share this instruction
     /// prefix
-    PermissionedTransferExtension,
+    TransferHookExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -771,7 +771,7 @@ impl<'a> TokenInstruction<'a> {
                 let (delegate, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializePermanentDelegate { delegate }
             }
-            36 => Self::PermissionedTransferExtension,
+            36 => Self::TransferHookExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -931,7 +931,7 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
             }
-            &Self::PermissionedTransferExtension => {
+            &Self::TransferHookExtension => {
                 buf.push(36);
             }
         };
@@ -1020,8 +1020,8 @@ pub enum AuthorityType {
     /// Authority to update confidential transfer mint and aprove accounts for confidential
     /// transfers
     ConfidentialTransferMint,
-    /// Authority to set the permissioned transfer program id
-    PermissionedTransfer,
+    /// Authority to set the transfer hook program id
+    TransferHook,
 }
 
 impl AuthorityType {
@@ -1037,7 +1037,7 @@ impl AuthorityType {
             AuthorityType::InterestRate => 7,
             AuthorityType::PermanentDelegate => 8,
             AuthorityType::ConfidentialTransferMint => 9,
-            AuthorityType::PermissionedTransfer => 10,
+            AuthorityType::TransferHook => 10,
         }
     }
 
@@ -1053,7 +1053,7 @@ impl AuthorityType {
             7 => Ok(AuthorityType::InterestRate),
             8 => Ok(AuthorityType::PermanentDelegate),
             9 => Ok(AuthorityType::ConfidentialTransferMint),
-            10 => Ok(AuthorityType::PermissionedTransfer),
+            10 => Ok(AuthorityType::TransferHook),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
