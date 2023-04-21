@@ -44,6 +44,7 @@ use spl_token_2022::{
         memo_transfer::MemoTransfer,
         mint_close_authority::MintCloseAuthority,
         permanent_delegate::PermanentDelegate,
+        permissioned_transfer::PermissionedTransfer,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
@@ -143,6 +144,7 @@ pub enum CommandName {
     UpdateDefaultAccountState,
     WithdrawWithheldTokens,
     SetTransferFee,
+    SetPermissionedTransferProgram,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -415,6 +417,7 @@ async fn command_create_token(
     default_account_state: Option<AccountState>,
     transfer_fee: Option<(u16, u64)>,
     confidential_transfer_auto_approve: Option<bool>,
+    permissioned_transfer_program_id: Option<Pubkey>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(
@@ -477,6 +480,13 @@ async fn command_create_token(
             auto_approve_new_accounts: auto_approve,
             auditor_encryption_pubkey: None,
             withdraw_withheld_authority_encryption_pubkey: None,
+        });
+    }
+
+    if let Some(program_id) = permissioned_transfer_program_id {
+        extensions.push(ExtensionInitializationParams::PermissionedTransfer {
+            authority: Some(authority),
+            permissioned_transfer_program_id: Some(program_id),
         });
     }
 
@@ -555,6 +565,72 @@ async fn command_set_interest_rate(
 
     let res = token
         .update_interest_rate(&rate_authority, rate_bps, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+async fn command_set_permissioned_transfer_program(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    authority: Pubkey,
+    new_permissioned_transfer_program_id: Option<Pubkey>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    if !config.sign_only {
+        let mint_account = config.get_account_checked(&token_pubkey).await?;
+
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
+            .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+
+        if let Ok(extension) = mint_state.get_extension::<PermissionedTransfer>() {
+            let authority_pubkey = Option::<Pubkey>::from(extension.authority);
+
+            if authority_pubkey != Some(authority) {
+                return Err(format!(
+                    "Mint {} has permissioned-transfer authority {}, but {} was provided",
+                    token_pubkey,
+                    authority_pubkey
+                        .map(|pubkey| pubkey.to_string())
+                        .unwrap_or_else(|| "disabled".to_string()),
+                    authority
+                )
+                .into());
+            }
+        } else {
+            return Err(
+                format!("Mint {} does not have permissioned-transfers", token_pubkey).into(),
+            );
+        }
+    }
+
+    println_display(
+        config,
+        format!(
+            "Setting Permissioned Transfer Program id for {} to {}",
+            token_pubkey,
+            new_permissioned_transfer_program_id
+                .map(|pubkey| pubkey.to_string())
+                .unwrap_or_else(|| "disabled".to_string())
+        ),
+    );
+
+    let res = token
+        .update_permissioned_transfer_program_id(
+            &authority,
+            new_permissioned_transfer_program_id,
+            &bulk_signers,
+        )
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -777,6 +853,7 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
         AuthorityType::PermanentDelegate => "permanent delegate",
         AuthorityType::ConfidentialTransferMint => "confidential transfer mint authority",
+        AuthorityType::PermissionedTransfer => "permissioned transfer authority",
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -854,6 +931,16 @@ async fn command_authorize(
                         ))
                     }
                 }
+                AuthorityType::PermissionedTransfer => {
+                    if let Ok(extension) = mint.get_extension::<PermissionedTransfer>() {
+                        Ok(COption::<Pubkey>::from(extension.authority))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support permissioned transfers",
+                            account
+                        ))
+                    }
+                }
             }?;
 
             Ok((account, previous_authority))
@@ -888,6 +975,7 @@ async fn command_authorize(
                 | AuthorityType::WithheldWithdraw
                 | AuthorityType::InterestRate
                 | AuthorityType::PermanentDelegate
+                | AuthorityType::PermissionedTransfer
                 | AuthorityType::ConfidentialTransferMint => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
@@ -979,6 +1067,7 @@ async fn command_transfer(
     bulk_signers: BulkSigners,
     no_wait: bool,
     allow_non_system_account_recipient: bool,
+    permissioned_transfer_accounts: Option<Vec<Pubkey>>,
 ) -> CommandResult {
     let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
 
@@ -1006,7 +1095,10 @@ async fn command_transfer(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &token_pubkey, decimals)?;
+    let mut token = token_client_from_config(config, &token_pubkey, decimals)?;
+    if let Some(permissioned_transfer_accounts) = permissioned_transfer_accounts {
+        token = token.with_permissioned_transfer_accounts(permissioned_transfer_accounts);
+    }
 
     // pubkey of the actual account we are sending from
     let sender = if let Some(sender) = sender {
@@ -2584,6 +2676,14 @@ fn app<'a, 'b>(
                             before it can make confidential transfers."
                         )
                 )
+                .arg(
+                    Arg::with_name("permissioned_transfer")
+                        .long("permissioned-transfer")
+                        .value_name("PERMISSIONED_TRANSFER_PROGRAM_ID")
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Enable the mint authority to set the permissioned transfer program for this mint"),
+                )
                 .nonce_args(true)
                 .arg(memo_arg())
         )
@@ -2615,6 +2715,43 @@ fn app<'a, 'b>(
                         "Specify the rate authority keypair. \
                         Defaults to the client keypair address."
                     )
+                )
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::SetPermissionedTransferProgram.into())
+                .about("Set the permissioned transfer program id for a permissioned token")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The permissioned token address"),
+                )
+                .arg(
+                    Arg::with_name("new_permissioned_transfer_program_id")
+                        .validator(is_valid_pubkey)
+                        .value_name("NEW_PERMISSIONED_TRANSFER_PROGRAM_ID")
+                        .takes_value(true)
+                        .required_unless("disable")
+                        .index(2)
+                        .help("The new permissioned transfer program to set for this mint"),
+                )
+                .arg(
+                    Arg::with_name("disable")
+                        .long("disable")
+                        .takes_value(false)
+                        .conflicts_with("new_permissioned_transfer_program_id")
+                        .help("Disable permissioned transfer functionality by setting program id to None.")
+                )
+                .arg(
+                    Arg::with_name("program_authority")
+                    .long("program-authority")
+                    .validator(is_valid_signer)
+                    .value_name("SIGNER")
+                    .takes_value(true)
+                    .help("Specify the authority keypair. Defaults to the client keypair address.")
                 )
         )
         .subcommand(
@@ -2708,7 +2845,8 @@ fn app<'a, 'b>(
                         .possible_values(&[
                             "mint", "freeze", "owner", "close",
                             "close-mint", "transfer-fee-config", "withheld-withdraw",
-                            "interest-rate", "permanent-delegate", "confidential-transfer-mint"
+                            "interest-rate", "permanent-delegate", "confidential-transfer-mint",
+                            "permissioned-transfer",
                         ])
                         .index(2)
                         .required(true)
@@ -2847,6 +2985,16 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .help("Expected fee amount collected during the transfer"),
+                )
+                .arg(
+                    Arg::with_name("permissioned_transfer_account")
+                        .long("permissioned-transfer-account")
+                        .validator(is_valid_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .multiple(true)
+                        .min_values(0u64)
+                        .help("Additional pubkey(s) required for a permissioned transfer. Used for offline transaction creation and signing.")
                 )
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
@@ -3690,6 +3838,9 @@ async fn process_command<'a>(
                         "frozen" => AccountState::Frozen,
                         _ => unreachable!(),
                     });
+            let permissioned_transfer_program_id =
+                pubkey_of_signer(arg_matches, "permissioned_transfer", &mut wallet_manager)
+                    .unwrap();
 
             let confidential_transfer_auto_approve = arg_matches
                 .value_of("enable_confidential_transfers")
@@ -3709,6 +3860,7 @@ async fn process_command<'a>(
                 default_account_state,
                 transfer_fee,
                 confidential_transfer_auto_approve,
+                permissioned_transfer_program_id,
                 bulk_signers,
             )
             .await
@@ -3727,6 +3879,30 @@ async fn process_command<'a>(
                 token_pubkey,
                 rate_authority_pubkey,
                 rate_bps,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::SetPermissionedTransferProgram, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let new_permissioned_transfer_program_id = pubkey_of_signer(
+                arg_matches,
+                "new_permissioned_transfer_program_id",
+                &mut wallet_manager,
+            )
+            .unwrap();
+            println!("{:?}", new_permissioned_transfer_program_id);
+            let (authority_signer, authority_pubkey) =
+                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+            let bulk_signers = vec![authority_signer];
+
+            command_set_permissioned_transfer_program(
+                config,
+                token_pubkey,
+                authority_pubkey,
+                new_permissioned_transfer_program_id,
                 bulk_signers,
             )
             .await
@@ -3789,6 +3965,7 @@ async fn process_command<'a>(
                 "withheld-withdraw" => AuthorityType::WithheldWithdraw,
                 "interest-rate" => AuthorityType::InterestRate,
                 "permanent-delegate" => AuthorityType::PermanentDelegate,
+                "permissioned-transfer" => AuthorityType::PermissionedTransfer,
                 "confidential-transfer-mint" => AuthorityType::ConfidentialTransferMint,
                 _ => unreachable!(),
             };
@@ -3841,6 +4018,13 @@ async fn process_command<'a>(
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
             let memo = value_t!(arg_matches, "memo", String).ok();
+            let permissioned_transfer_accounts = arg_matches
+                .values_of("permissioned_transfer_account")
+                .map(|v| {
+                    v.into_iter()
+                        .map(|s| Pubkey::from_str(s).unwrap_or_else(print_error_and_exit))
+                        .collect::<Vec<_>>()
+                });
 
             command_transfer(
                 config,
@@ -3859,6 +4043,7 @@ async fn process_command<'a>(
                 bulk_signers,
                 arg_matches.is_present("no_wait"),
                 arg_matches.is_present("allow_non_system_account_recipient"),
+                permissioned_transfer_accounts,
             )
             .await
         }
@@ -4541,6 +4726,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -4569,6 +4755,7 @@ mod tests {
             false,
             None,
             Some(rate_bps),
+            None,
             None,
             None,
             None,
@@ -5957,6 +6144,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -6003,6 +6191,7 @@ mod tests {
             false,
             false,
             true,
+            None,
             None,
             None,
             None,
@@ -6078,6 +6267,7 @@ mod tests {
             false,
             false,
             true,
+            None,
             None,
             None,
             None,
@@ -6439,6 +6629,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -6494,6 +6685,7 @@ mod tests {
             None,
             None,
             Some(AccountState::Frozen),
+            None,
             None,
             None,
             bulk_signers,
@@ -6565,6 +6757,7 @@ mod tests {
             None,
             None,
             Some((transfer_fee_basis_points, maximum_fee)),
+            None,
             None,
             bulk_signers,
         )
@@ -6836,6 +7029,7 @@ mod tests {
             None,
             None,
             Some(auto_approve),
+            None,
             bulk_signers,
         )
         .await
