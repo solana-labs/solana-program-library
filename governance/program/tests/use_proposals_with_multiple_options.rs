@@ -1191,20 +1191,24 @@ async fn test_vote_multi_weighted_choice_proposal_non_executable() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
+    // None executable proposal transitions to Completed when vote is finalized
+    assert_eq!(ProposalState::Completed, proposal_account.state);
+
+    // For survey like options the vote results are not defined intentionally
     assert_eq!(
-        OptionVoteResult::Succeeded,
+        OptionVoteResult::None,
         proposal_account.options[0].vote_result
     );
     assert_eq!(
-        OptionVoteResult::Defeated,
+        OptionVoteResult::None,
         proposal_account.options[1].vote_result
     );
     assert_eq!(
-        OptionVoteResult::Succeeded,
+        OptionVoteResult::None,
         proposal_account.options[2].vote_result
     );
     assert_eq!(
-        OptionVoteResult::Defeated,
+        OptionVoteResult::None,
         proposal_account.options[3].vote_result
     );
     assert_eq!(
@@ -1220,9 +1224,6 @@ async fn test_vote_multi_weighted_choice_proposal_non_executable() {
         proposal_account.options[2].vote_weight
     );
     assert_eq!(0_u64, proposal_account.options[3].vote_weight);
-
-    // None executable proposal transitions to Completed when vote is finalized
-    assert_eq!(ProposalState::Completed, proposal_account.state);
 }
 
 #[tokio::test]

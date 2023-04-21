@@ -487,23 +487,23 @@ impl ProposalV2 {
                     self.resolve_min_vote_threshold_options(min_vote_threshold_weight)
                 }
                 VoteThreshold::AttendanceQuorum {
-                    threshold: _,
-                    pass_level,
+                    quorum_bps: _,
+                    yes_vote_percentage,
                 } => {
-                    // first pass quorum on approve vote weight of the whole proposal
-                    // second verify pass_level for particular option to succeed
+                    // first pass quorum_bps that limits vote weight voted on the whole proposal
+                    // second verify yes_vote_percentage for particular option to succeed
                     if self.approve_vote_weight + self.deny_vote_weight.unwrap_or(0)
                         >= min_vote_threshold_weight
                     {
-                        let pass_level_vote_threshold_weight = get_min_vote_threshold_weight(
+                        let yes_vote_threshold_weight = get_min_vote_threshold_weight(
                             &VoteThreshold::AttendanceQuorum {
-                                threshold: (*pass_level as u16) * 100,
-                                pass_level: u8::MAX, // not used
+                                quorum_bps: (*yes_vote_percentage as u16) * 100,
+                                yes_vote_percentage: u8::MAX, // not used
                             },
                             max_vote_weight,
                         )
                         .unwrap();
-                        self.resolve_min_vote_threshold_options(pass_level_vote_threshold_weight)
+                        self.resolve_min_vote_threshold_options(yes_vote_threshold_weight)
                     } else {
                         self.options
                             .iter_mut()
@@ -568,8 +568,8 @@ impl ProposalV2 {
             final_state = match vote_threshold {
                 VoteThreshold::YesVotePercentage(_) => ProposalState::Completed,
                 VoteThreshold::AttendanceQuorum {
-                    threshold: _,
-                    pass_level: _,
+                    quorum_bps: _,
+                    yes_vote_percentage: _,
                 } => {
                     if self.approve_vote_weight + self.deny_vote_weight.unwrap_or(0)
                         >= min_vote_threshold_weight
@@ -737,19 +737,19 @@ impl ProposalV2 {
             get_min_vote_threshold_weight(vote_threshold, max_voter_weight).unwrap();
 
         if let VoteThreshold::AttendanceQuorum {
-            threshold: _,
-            pass_level,
+            quorum_bps: _,
+            yes_vote_percentage,
         } = *vote_threshold
         {
-            // if all votes weight exceeds the quorum size then pass_level is used to calculate
+            // if all votes weight exceeds the quorum_bps size then yes_vote_percentage is used to calculate
             // the minimal vote threshold weight that's needed to tip the vote
             if self.approve_vote_weight + self.deny_vote_weight.unwrap_or(0)
                 >= min_vote_threshold_weight
             {
                 min_vote_threshold_weight = get_min_vote_threshold_weight(
                     &VoteThreshold::AttendanceQuorum {
-                        threshold: (pass_level as u16) * 100,
-                        pass_level: u8::MAX, // not used
+                        quorum_bps: (yes_vote_percentage as u16) * 100,
+                        yes_vote_percentage: u8::MAX, // not used
                     },
                     max_voter_weight,
                 )
@@ -1120,8 +1120,8 @@ fn get_min_vote_threshold_weight(
             (*yes_vote_threshold_percentage as u16) * 100
         }
         VoteThreshold::AttendanceQuorum {
-            threshold,
-            pass_level: _,
+            quorum_bps: threshold,
+            yes_vote_percentage: _,
         } => *threshold,
         _ => {
             return Err(GovernanceError::VoteThresholdTypeNotSupported.into());

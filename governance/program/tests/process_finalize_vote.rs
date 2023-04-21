@@ -5,6 +5,7 @@ mod program_test;
 use solana_program_test::tokio;
 
 use program_test::*;
+use spl_governance::state::proposal::MultiChoiceType;
 use spl_governance::{
     error::GovernanceError,
     state::{
@@ -521,11 +522,11 @@ async fn test_finalize_vote_attendance_quorum() {
 
     let mut governance_config = governance_test.get_default_governance_config();
 
-    // Attendance quorum, all mint owners mustvote (100% of them), only 30% needed for an option being successful
+    // Attendance quorum, all mint owners must vote (100% of them), only 30% needed for an option being successful
     // Total 300 tokens; one token owner owns 100 that will be voted with
     governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
-        threshold: 10000,
-        pass_level: 30,
+        quorum_bps: 10000,
+        yes_vote_percentage: 30,
     };
 
     let token_owner_record_cookie1 = governance_test
@@ -562,8 +563,10 @@ async fn test_finalize_vote_attendance_quorum() {
             ],
             true, // no transactions but not a survey
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::FullWeight,
                 max_winning_options: 3,
                 max_voter_options: 3,
+                min_voter_options: 1,
             },
         )
         .await
@@ -679,8 +682,8 @@ async fn test_finalize_vote_attendance_quorum_as_survey() {
     // Attendance quorum, 50% of owners has to vote, 50% needed for an option to be successful
     // Total 300 tokens; one token owner owns 100 that will be voted with
     governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
-        threshold: 5000,
-        pass_level: 100, // survey does not consider pass level
+        quorum_bps: 5000,
+        yes_vote_percentage: 100, // survey does not consider yes vote percentage
     };
 
     let token_owner_record_cookie1 = governance_test
@@ -717,8 +720,10 @@ async fn test_finalize_vote_attendance_quorum_as_survey() {
             ],
             false, // a survey
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::FullWeight,
                 max_winning_options: 3,
                 max_voter_options: 3,
+                min_voter_options: 1,
             },
         )
         .await
@@ -821,8 +826,8 @@ async fn test_finalize_vote_attendance_quorum_fail_threshold() {
 
     // Attendance quorum, all must vote
     governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
-        threshold: 10000,
-        pass_level: 0,
+        quorum_bps: 10000,
+        yes_vote_percentage: 0,
     };
 
     // 300 tokens for governance mint but no votes cast
@@ -860,8 +865,10 @@ async fn test_finalize_vote_attendance_quorum_fail_threshold() {
             ],
             true, // no transactions but not a survey
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::FullWeight,
                 max_winning_options: 3,
                 max_voter_options: 3,
+                min_voter_options: 1,
             },
         )
         .await
@@ -930,8 +937,8 @@ async fn test_finalize_vote_attendance_quorum_survey_fail_threshold() {
 
     // Attendance quorum, somebody must vote
     governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
-        threshold: 1,
-        pass_level: 0,
+        quorum_bps: 1,
+        yes_vote_percentage: 0,
     };
 
     // 300 tokens for governance mint but no votes cast
@@ -957,8 +964,10 @@ async fn test_finalize_vote_attendance_quorum_survey_fail_threshold() {
             vec!["option 1".to_string(), "option 2".to_string()],
             false, // a survey (no transactions, no deny votes)
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::FullWeight,
                 max_winning_options: 2,
                 max_voter_options: 2,
+                min_voter_options: 1,
             },
         )
         .await
@@ -997,7 +1006,7 @@ async fn test_finalize_vote_attendance_quorum_survey_fail_threshold() {
 }
 
 #[tokio::test]
-async fn test_finalize_vote_attendance_quorum_pass_level_0() {
+async fn test_finalize_vote_attendance_quorum_yes_vote_percentage_0() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -1008,8 +1017,8 @@ async fn test_finalize_vote_attendance_quorum_pass_level_0() {
 
     // Attendance quorum, 50% of the votes must vote
     governance_config.community_vote_threshold = VoteThreshold::AttendanceQuorum {
-        threshold: 50,
-        pass_level: 0, // pass level 0 still means 0% of the votes failed
+        quorum_bps: 50,
+        yes_vote_percentage: 0, // 0 still means 0% of the votes failed
     };
 
     // 300 tokens for governance mint but no votes cast
@@ -1039,8 +1048,10 @@ async fn test_finalize_vote_attendance_quorum_pass_level_0() {
             vec!["option 1".to_string(), "option 2".to_string()],
             true, // no transactions but not a survey
             VoteType::MultiChoice {
+                choice_type: MultiChoiceType::FullWeight,
                 max_winning_options: 2,
                 max_voter_options: 2,
+                min_voter_options: 1,
             },
         )
         .await

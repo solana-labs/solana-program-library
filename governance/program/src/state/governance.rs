@@ -612,17 +612,27 @@ pub fn assert_is_valid_vote_threshold(vote_threshold: &VoteThreshold) -> Result<
             }
         }
         VoteThreshold::AttendanceQuorum {
-            threshold,
-            pass_level,
+            quorum_bps,
+            yes_vote_percentage,
         } => {
-            if !(0..=10000).contains(&threshold) {
-                msg!("threshold (basispoints) has to be in interval [0,10000]");
+            if !(0..=10000).contains(&quorum_bps) {
+                msg!(
+                    "quorum_bps (basis points) has to be in interval [0,10000], was {}",
+                    quorum_bps
+                );
                 return Err(GovernanceError::InvalidVoteThresholdBasisPoints.into());
             }
-            if !(0..=100).contains(&pass_level) {
-                msg!("pass_level (percent) has to be in interval [0,100]");
+            if !(0..=100).contains(&yes_vote_percentage) {
+                msg!(
+                    "yes_vote_percentage (percent) has to be in interval [0,100], was {}",
+                    yes_vote_percentage
+                );
                 return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
             }
+        }
+        #[allow(deprecated)]
+        VoteThreshold::QuorumPercentage(_) => {
+            return Err(GovernanceError::VoteThresholdTypeNotSupported.into());
         }
         VoteThreshold::Disabled => {}
     }
@@ -639,26 +649,26 @@ mod test {
     fn create_test_governance_config() -> GovernanceConfig {
         GovernanceConfig {
             community_vote_threshold: VoteThreshold::AttendanceQuorum {
-                threshold: 1000,
-                pass_level: 99,
+                quorum_bps: 1000,
+                yes_vote_percentage: 99,
             },
             min_community_weight_to_create_proposal: 5,
             min_transaction_hold_up_time: 10,
             voting_base_time: 5,
             community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::AttendanceQuorum {
-                threshold: 1000,
-                pass_level: 99,
+                quorum_bps: 1000,
+                yes_vote_percentage: 99,
             },
             council_veto_vote_threshold: VoteThreshold::AttendanceQuorum {
-                threshold: 1000,
-                pass_level: 99,
+                quorum_bps: 1000,
+                yes_vote_percentage: 99,
             },
             min_council_weight_to_create_proposal: 1,
             council_vote_tipping: VoteTipping::Strict,
             community_veto_vote_threshold: VoteThreshold::AttendanceQuorum {
-                threshold: 1000,
-                pass_level: 99,
+                quorum_bps: 1000,
+                yes_vote_percentage: 99,
             },
             voting_cool_off_time: 2,
             deposit_exempt_proposal_count: 0,
@@ -987,20 +997,20 @@ mod test {
         // Arrange
         let governance_config = GovernanceConfig {
             community_vote_threshold: VoteThreshold::AttendanceQuorum {
-                threshold: 0,
-                pass_level: 1,
+                quorum_bps: 0,
+                yes_vote_percentage: 1,
             },
             council_vote_threshold: VoteThreshold::AttendanceQuorum {
-                threshold: 10000,
-                pass_level: 100,
+                quorum_bps: 10000,
+                yes_vote_percentage: 100,
             },
             council_veto_vote_threshold: VoteThreshold::AttendanceQuorum {
-                threshold: 1,
-                pass_level: 1,
+                quorum_bps: 1,
+                yes_vote_percentage: 1,
             },
             community_veto_vote_threshold: VoteThreshold::AttendanceQuorum {
-                threshold: 9999,
-                pass_level: 99,
+                quorum_bps: 9999,
+                yes_vote_percentage: 99,
             },
             voting_cool_off_time: 0,
             min_community_weight_to_create_proposal: 1,
@@ -1020,8 +1030,8 @@ mod test {
     fn test_assert_invalid_quorum_attendance_threshold_over_threshold_basis_points_error() {
         // Arrange
         let vote_threshold = VoteThreshold::AttendanceQuorum {
-            threshold: 10001,
-            pass_level: 100,
+            quorum_bps: 10001,
+            yes_vote_percentage: 100,
         };
 
         // Act
@@ -1034,11 +1044,11 @@ mod test {
     }
 
     #[test]
-    fn test_assert_invalid_quorum_attendance_threshold_over_pass_level_percentage_error() {
+    fn test_assert_invalid_quorum_attendance_threshold_over_yes_vote_percentage_error() {
         // Arrange
         let vote_threshold = VoteThreshold::AttendanceQuorum {
-            threshold: 10000,
-            pass_level: 101,
+            quorum_bps: 10000,
+            yes_vote_percentage: 101,
         };
 
         // Act

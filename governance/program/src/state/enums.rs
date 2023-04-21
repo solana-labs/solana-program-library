@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! State enumerations
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -152,18 +153,27 @@ pub enum VoteThreshold {
     /// In other words a '+1 vote' tie breaker is always required to have a successful vote
     YesVotePercentage(u8),
 
+    #[deprecated(note = "use `AttendanceQuorum` instead")]
+    /// The minimum number of votes in % out of the entire pool of governance tokens eligible to vote
+    /// which must be cast for the vote to be valid
+    /// Once the quorum is achieved a simple majority (50%+1) of Yes votes is required for the vote to succeed
+    /// Note: Quorum is not implemented in the current version
+    QuorumPercentage(u8),
+
     /// The minimum number of votes in basis points (1/10000) out of the entire pool of governance tokens eligible to vote
-    /// which must be cast for the proposal to be considered valid.
-    /// Once the quorum is achieved then pass level (in %) has to be casted for an option to succeed,
+    /// which must be cast for the proposal to be considered valid
+    /// Once the quorum is achieved then yes votes (in % out of the entire pool of governance tokens eligible to vote)
+    /// have to be casted for an option to succeed,
     /// if defined to 50% it's a simple majority (50%+1) of Yes votes for the option to succeed
     AttendanceQuorum {
-        #[allow(dead_code)]
         /// The minimum number of votes in basis points (1/10000) out of the entire pool of governance tokens eligible to vote
         /// which must be cast for the proposal being considered as successful
-        threshold: u16,
         #[allow(dead_code)]
-        /// The minimum number of Yes votes in % required to be voted on an option for an option being successful
-        pass_level: u8,
+        quorum_bps: u16,
+        /// When quorum_bps is passed then a minimum percentage of Yes votes out of the entire pool
+        /// of governance tokens eligible to vote is necessary for the option to succeed
+        #[allow(dead_code)]
+        yes_vote_percentage: u8,
     },
 
     /// Disabled vote threshold indicates the given voting population (community or council) is not allowed to vote
