@@ -129,6 +129,34 @@ fn get_bytes<V: TlvType>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
 }
 
 /// Trait for all TLV state
+///
+/// Stores data as any number of type-length-value structures underneath, where:
+///
+///   * the "type" is a `Discriminator`, 8 bytes
+///   * the "length" is a `Length`, 4 bytes
+///   * the "value" is a slab of "length" bytes
+///
+/// With this structure, it's possible to hold onto any number of entries with
+/// unique discriminators, provided that the total underlying data has enough
+/// bytes for every entry.
+///
+/// For example, if we have two distinct types, one which is just a little-endian
+/// `u64` of value `256` and discriminator `[1, 0, 0, 0, 0, 0, 0, 0]`, and
+/// another which is just a single `u8` of value `4` with the discriminator
+/// `[2, 0, 0, 0, 0, 0, 0, 0]`, the underlying slab of bytes will give us:
+///
+/// ```ignore
+/// [
+///   1, 0, 0, 0, 0, 0, 0, 0, // first type's discriminator
+///   8, 0, 0, 0,             // first type's length
+///   0, 1, 0, 0, 0, 0, 0, 0, // first type's value
+///   2, 0, 0, 0, 0, 0, 0, 0, // second type's discriminator
+///   1, 0, 0, 0,             // second type's length
+///   4,                      // second type's value
+/// ]
+/// ```
+///
+/// See the README and tests for more examples on how to use these types.
 pub trait TlvState {
     /// Get the full buffer containing all TLV data
     fn get_data(&self) -> &[u8];
@@ -771,6 +799,11 @@ mod borsh_test {
     #[derive(Clone, Debug, PartialEq, borsh::BorshDeserialize, borsh::BorshSerialize)]
     struct TestBorsh {
         data: String, // test with a variable length type
+        inner: TestInnerBorsh,
+    }
+    #[derive(Clone, Debug, PartialEq, borsh::BorshDeserialize, borsh::BorshSerialize)]
+    struct TestInnerBorsh {
+        data: String,
     }
     impl TlvType for TestBorsh {
         const TYPE: Discriminator = Discriminator::new([5; Discriminator::LENGTH]);
@@ -778,8 +811,9 @@ mod borsh_test {
     #[test]
     fn borsh_value() {
         let initial_data = "This is a pretty cool test!";
+        let initial_inner_data = "And it gets even cooler!";
         // exactly the right size
-        let tlv_size = 4 + initial_data.len();
+        let tlv_size = 4 + initial_data.len() + 4 + initial_inner_data.len();
         let account_size = get_base_len() + tlv_size;
         let mut buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
@@ -788,6 +822,9 @@ mod borsh_test {
         let _ = state.alloc::<TestBorsh>(tlv_size).unwrap();
         let test_borsh = TestBorsh {
             data: initial_data.to_string(),
+            inner: TestInnerBorsh {
+                data: initial_inner_data.to_string(),
+            },
         };
         state.borsh_serialize(&test_borsh).unwrap();
         let deser = state.borsh_deserialize::<TestBorsh>().unwrap();
@@ -798,7 +835,10 @@ mod borsh_test {
         assert_eq!(
             state
                 .borsh_serialize(&TestBorsh {
-                    data: too_much_data.to_string()
+                    data: too_much_data.to_string(),
+                    inner: TestInnerBorsh {
+                        data: initial_inner_data.to_string(),
+                    }
                 })
                 .unwrap_err(),
             ProgramError::BorshIoError("failed to write whole buffer".to_string()),

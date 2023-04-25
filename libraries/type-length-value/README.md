@@ -8,27 +8,70 @@ This simple examples defines a zero-copy type with its discriminator.
 
 ```rust
 use {
+    borsh::{BorshSerialize, BorshDeserialize},
     bytemuck::{Pod, Zeroable},
-    spl_type_length_value::{discriminator::TlvType, state::{TlvState, TlvStateMut}},
+    spl_type_length_value::{
+        discriminator::{Discriminator, TlvType},
+        state::{TlvState, TlvStateBorrowed, TlvStateMut}
+    },
 }
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-struct MyValue {
+struct MyPodValue {
     data: [u8; 32],
 }
-impl TlvType for MyValue {
+impl TlvType for MyPodValue {
+    // Give it a unique discriminator, can also be generated using a hash function
     const TYPE: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
 }
-let account_size = TlvState::get_base_len() + std::mem::size_of::<MyValue>();
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+struct MyOtherPodValue {
+    data: u64,
+}
+// Give this type a non-derivable implementation of `Default` to write some data
+impl Default for MyOtherPodValue {
+    fn default() -> Self {
+        Self {
+            data: 10,
+        }
+    }
+}
+impl TlvType for MyOtherPodValue {
+    // Some other unique discriminator
+    const TYPE: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+}
+
+// Account will have two sets of `get_base_len()` (8-byte discriminator and 4-byte length),
+// and enough room for a `MyPodValue` and a `MyOtherPodValue`
+let account_size = TlvState::get_base_len() + std::mem::size_of::<MyPodValue>() + \
+    TlvState::get_base_len() + std::mem::size_of::<MyOtherPodValue>();
 
 // Buffer likely comes from a Solana `solana_program::account_info::AccountInfo`,
 // but this example just uses a vector.
 let mut buffer = vec![0; account_size];
+
+// Unpack the base buffer as a TLV structure
 let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
-// init and write default value
-let value = state.init_value::<MyValue>().unwrap();
+// Init and write default value
+let value = state.init_value::<MyPodValue>().unwrap();
+// Update it in-place
+value.data[0] = 1;
+
+// Init and write another default value
+let other_value = state.init_value::<MyOtherPodValue>().unwrap();
+assert_eq!(other_value.data, 10);
+// Update it in-place
+other_value.data = 2;
+
+// Later on, to work with it again
+let value = state.get_value_mut::<MyPodValue>().unwrap();
+
+// Or fetch it from an immutable buffer
+let state = TlvStateBorrowed::unpack(&buffer).unwrap();
+let value = state.get_value::<MyOtherPodValue>().unwrap();
 ```
 
 ## Motivation
