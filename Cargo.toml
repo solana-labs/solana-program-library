@@ -22,6 +22,7 @@ members = [
   "governance/tools",
   "governance/chat/program",
   "instruction-padding/program",
+  "libraries/account-resolution",
   "libraries/math",
   "libraries/concurrent-merkle-tree",
   "libraries/merkle-tree-reference",
