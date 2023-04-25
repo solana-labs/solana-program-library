@@ -1,1 +1,0 @@
-../docs/crate.md

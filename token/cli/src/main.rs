@@ -179,8 +179,6 @@ pub fn mint_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .takes_value(true)
         .value_name("MINT_ADDRESS")
         .validator(is_valid_pubkey)
-        .requires(SIGN_ONLY_ARG.name)
-        .requires(BLOCKHASH_ARG.name)
         .help(MINT_ADDRESS_ARG.help)
 }
 
@@ -194,8 +192,6 @@ pub fn mint_decimals_arg<'a, 'b>() -> Arg<'a, 'b> {
         .takes_value(true)
         .value_name("MINT_DECIMALS")
         .validator(is_mint_decimals)
-        .requires(SIGN_ONLY_ARG.name)
-        .requires(BLOCKHASH_ARG.name)
         .help(MINT_DECIMALS_ARG.help)
 }
 
@@ -216,8 +212,6 @@ pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .takes_value(true)
         .value_name("DELEGATE_ADDRESS")
         .validator(is_valid_pubkey)
-        .requires(SIGN_ONLY_ARG.name)
-        .requires(BLOCKHASH_ARG.name)
         .help(DELEGATE_ADDRESS_ARG.help)
 }
 
@@ -368,10 +362,16 @@ fn token_client_from_config(
         config.fee_payer()?.clone(),
     );
 
-    if let (Some(nonce_account), Some(nonce_authority)) =
-        (config.nonce_account, &config.nonce_authority)
-    {
-        Ok(token.with_nonce(&nonce_account, Arc::clone(nonce_authority)))
+    if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
+        config.nonce_account,
+        &config.nonce_authority,
+        config.nonce_blockhash,
+    ) {
+        Ok(token.with_nonce(
+            &nonce_account,
+            Arc::clone(nonce_authority),
+            &nonce_blockhash,
+        ))
     } else {
         Ok(token)
     }
@@ -386,10 +386,16 @@ fn native_token_client_from_config(
         config.fee_payer()?.clone(),
     );
 
-    if let (Some(nonce_account), Some(nonce_authority)) =
-        (config.nonce_account, &config.nonce_authority)
-    {
-        Ok(token.with_nonce(&nonce_account, Arc::clone(nonce_authority)))
+    if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
+        config.nonce_account,
+        &config.nonce_authority,
+        config.nonce_blockhash,
+    ) {
+        Ok(token.with_nonce(
+            &nonce_account,
+            Arc::clone(nonce_authority),
+            &nonce_blockhash,
+        ))
     } else {
         Ok(token)
     }
@@ -2385,11 +2391,17 @@ impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
     }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
+    }
 }
 
 struct SignOnlyNeedsMintDecimals {}
 impl offline::ArgsConfig for SignOnlyNeedsMintDecimals {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[MINT_DECIMALS_ARG.name])
+    }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[MINT_DECIMALS_ARG.name])
     }
 }
@@ -2399,11 +2411,17 @@ impl offline::ArgsConfig for SignOnlyNeedsMintAddress {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name])
     }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[MINT_ADDRESS_ARG.name])
+    }
 }
 
 struct SignOnlyNeedsDelegateAddress {}
 impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
+    }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
     }
 }
@@ -4492,6 +4510,7 @@ mod tests {
             default_signer: Some(Arc::new(clone_keypair(payer))),
             nonce_account: None,
             nonce_authority: None,
+            nonce_blockhash: None,
             sign_only: false,
             dump_transaction_message: false,
             multisigner_pubkeys: vec![],
@@ -4518,6 +4537,7 @@ mod tests {
             default_signer: None,
             nonce_account: None,
             nonce_authority: None,
+            nonce_blockhash: None,
             sign_only: false,
             dump_transaction_message: false,
             multisigner_pubkeys: vec![],

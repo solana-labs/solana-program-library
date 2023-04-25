@@ -110,6 +110,7 @@ program, that creates new token accounts for either Token or Token-2022.
 To get started with Token-2022:
 
 - [Install the Solana Tools](https://docs.solana.com/cli/install-solana-cli-tools)
+- [Project Status](token-2022/status.md)
 - [Extension Guide](token-2022/extensions.mdx)
 - [Wallet Guide](token-2022/wallet.md)
 - [On-Chain Program Guide](token-2022/onchain.md)
@@ -139,19 +140,8 @@ Here are the completed audits as of 3 April 2023:
     - Review commit hash [`54695b`](https://github.com/solana-labs/solana-program-library/tree/54695b233484722458b18c0e26ebb8334f98422c/token/program-2022)
     - Final report https://github.com/solana-labs/security-audits/blob/master/spl/ZellicToken2022Audit-2022-12-05.pdf
 * Trail of Bits
-    - Review commit hash ['50abad'](https://github.com/solana-labs/solana-program-library/tree/50abadd819df2e406567d6eca31c213264c1c7cd/token/program-2022)
+    - Review commit hash [`50abad`](https://github.com/solana-labs/solana-program-library/tree/50abadd819df2e406567d6eca31c213264c1c7cd/token/program-2022)
     - Final report https://github.com/solana-labs/security-audits/blob/master/spl/TrailOfBitsToken2022Audit-2023-02-10.pdf
-
-Here are the ongoing audits:
-
 * NCC Group
-
-## Status and Upgradability
-
-The Token-2022 program is still under audit and not meant for full production use.
-All clusters have the latest program deployed **for testing and development purposes
-ONLY**.
-
-To facilitate deploying updates and security fixes, the program deployment remains
-upgradable. Once audits are complete, the deployment will be marked final and no
-further upgrades will be possible. This is expected to happen sometime in Q2 2023.
+    - Review commit hash [`4e43aa`](https://github.com/solana-labs/solana/tree/4e43aa6c18e6bb4d98559f80eb004de18bc6b418/zk-token-sdk)
+    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/NCCToken2022Audit-2023-04-05.pdf

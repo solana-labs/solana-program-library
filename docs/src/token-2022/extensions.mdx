@@ -1202,3 +1202,108 @@ Signature: 5DQs6hzkfGq3uotESuVwF7MGeMawwfQcm1e9RHaUeVySDV6xpUzYhzdb6ygqJfsEZqewg
 
   </TabItem>
 </Tabs>
+
+### Permanent Delegate
+
+With Token-2022, it's possible to specify a permanent account delegate for a
+mint. This authority has unlimited delegate privileges over any account for that
+mint, meaning that it can burn or transfer any amount of tokens.
+
+While this feature certainly has room for abuse, it has many important real-world
+use cases.
+
+In some jurisdictions, a stablecoin issuer must be able to seize assets from
+sanctioned entities. Through the permanent delegate, the stablecoin issuer can
+transfer or burn tokens from accounts owned by sanctioned entities.
+
+It's also possible to implement a [Harberger Tax](http://www.harbergertax.com/)
+on an NFT, whereby an auction program has permanent delegate authority for the
+token. After a sale, the permanent delegate can move the NFT from the owner to
+the buyer if the previous owner doesn't pay the tax.
+
+#### Example: Create a mint with a permanent delegate
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --enable-permanent-delegate
+Creating token 7LUgoQCqhk3VMPhpAnmS1zdCFW4C6cupxgbqWrTwydGx under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  7LUgoQCqhk3VMPhpAnmS1zdCFW4C6cupxgbqWrTwydGx
+Decimals:  9
+
+Signature: 439yVq2WfUEegAPv5BAkFampBPo696UbZ58RAYCzvUcbcBcxhfThpt1pcdKmiQrurHj65CqmWiHzrfT12BhL3Nxb
+```
+
+The CLI defaults the permanent delegate to the mint authority, but you can change
+it using the `authorize` command.
+
+```console
+$ spl-token authorize 7LUgoQCqhk3VMPhpAnmS1zdCFW4C6cupxgbqWrTwydGx permanent-delegate GFMniFoE5X4F87L9jzjHaW4MTkXyX1AYHNfhFencgamg
+Updating 7LUgoQCqhk3VMPhpAnmS1zdCFW4C6cupxgbqWrTwydGx 
+  Current permanent delegate: 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+  New permanent delegate: GFMniFoE5X4F87L9jzjHaW4MTkXyX1AYHNfhFencgamg
+
+Signature: 2ABDrR6meXk4rrAwd2LsHaTsnM5BuTC9RbiZmgBxgzze8ZM2yxuYp8iyg8viHgVaKRbXGzjKsFjF5RR9Kkzn4Prj
+```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+    Connection,
+    Keypair,
+    SystemProgram,
+    Transaction,
+    LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+
+import {
+    ExtensionType,
+    createInitializeMintInstruction,
+    createInitializePermanentDelegateInstruction,
+    mintTo,
+    createAccount,
+    getMintLen,
+    TOKEN_2022_PROGRAM_ID,
+} from '../src';
+
+(async () => {
+    const payer = Keypair.generate();
+
+    const mintAuthority = Keypair.generate();
+    const mintKeypair = Keypair.generate();
+    const mint = mintKeypair.publicKey;
+    const permanentDelegate = Keypair.generate();
+
+    const extensions = [ExtensionType.PermanentDelegate];
+    const mintLen = getMintLen(extensions);
+    const decimals = 9;
+
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
+
+    const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen);
+    const mintTransaction = new Transaction().add(
+        SystemProgram.createAccount({
+            fromPubkey: payer.publicKey,
+            newAccountPubkey: mint,
+            space: mintLen,
+            lamports: mintLamports,
+            programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializePermanentDelegateInstruction(mint, permanentDelegate.publicKey, TOKEN_2022_PROGRAM_ID),
+        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
+    );
+    await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
+})();
+```
+
+  </TabItem>
+</Tabs>

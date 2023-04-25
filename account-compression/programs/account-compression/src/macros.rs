@@ -6,6 +6,7 @@ enum TreeLoad {
 
 /// This macro applies functions on a ConcurrentMerkleT:ee and emits leaf information
 /// needed to sync the merkle tree state with off-chain indexers.
+#[macro_export]
 macro_rules! _merkle_tree_depth_size_apply_fn {
     ($max_depth:literal, $max_size:literal, $id:ident, $bytes:ident, $func:ident, TreeLoad::Mutable, $($arg:tt)*)
      => {
@@ -51,6 +52,7 @@ macro_rules! _merkle_tree_depth_size_apply_fn {
 /// This applies a given function on a ConcurrentMerkleTree by
 /// allowing the compiler to infer the size of the tree based
 /// upon the header information stored on-chain
+#[macro_export]
 macro_rules! _merkle_tree_apply_fn {
     ($header:ident, $($arg:tt)*) => {
         // Note: max_buffer_size MUST be a power of 2

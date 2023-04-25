@@ -11,8 +11,8 @@ use solana_cli_output::OutputFormat;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
 use solana_sdk::{
-    account::Account as RawAccount, commitment_config::CommitmentConfig, pubkey::Pubkey,
-    signature::Signer,
+    account::Account as RawAccount, commitment_config::CommitmentConfig, hash::Hash,
+    pubkey::Pubkey, signature::Signer,
 };
 use spl_associated_token_account::*;
 use spl_token_2022::{
@@ -39,6 +39,7 @@ pub(crate) struct Config<'a> {
     pub(crate) fee_payer: Option<Arc<dyn Signer>>,
     pub(crate) nonce_account: Option<Pubkey>,
     pub(crate) nonce_authority: Option<Arc<dyn Signer>>,
+    pub(crate) nonce_blockhash: Option<Hash>,
     pub(crate) sign_only: bool,
     pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
@@ -255,6 +256,7 @@ impl<'a> Config<'a> {
                 (default_program_id, false)
             };
 
+        let nonce_blockhash = value_of(matches, BLOCKHASH_ARG.name);
         Self {
             default_signer,
             rpc_client,
@@ -264,6 +266,7 @@ impl<'a> Config<'a> {
             fee_payer,
             nonce_account,
             nonce_authority,
+            nonce_blockhash,
             sign_only,
             dump_transaction_message,
             multisigner_pubkeys,
@@ -304,7 +307,8 @@ impl<'a> Config<'a> {
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
-        let token = pubkey_of_signer(arg_matches, "token", wallet_manager).unwrap();
+        let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
+            .map_err(|e| -> Error { e.to_string().into() })?;
         self.associated_token_address_for_token_or_override(
             arg_matches,
             override_name,
@@ -323,13 +327,14 @@ impl<'a> Config<'a> {
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         token: Option<Pubkey>,
     ) -> Result<Pubkey, Error> {
-        if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager).unwrap()
+        if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager)
+            .map_err(|e| -> Error { e.to_string().into() })?
         {
             return Ok(address);
         }
 
         let token = token.unwrap();
-        let program_id = self.get_mint_info(&token, None).await.unwrap().program_id;
+        let program_id = self.get_mint_info(&token, None).await?.program_id;
         let owner = self.pubkey_or_default(arg_matches, "owner", wallet_manager)?;
         self.associated_token_address_for_token_and_program(&token, &owner, &program_id)
     }
@@ -352,7 +357,8 @@ impl<'a> Config<'a> {
         address_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
-        if let Some(address) = pubkey_of_signer(arg_matches, address_name, wallet_manager).unwrap()
+        if let Some(address) = pubkey_of_signer(arg_matches, address_name, wallet_manager)
+            .map_err(|e| -> Error { e.to_string().into() })?
         {
             return Ok(address);
         }
