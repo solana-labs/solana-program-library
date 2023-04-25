@@ -179,21 +179,21 @@ pub fn process_cast_vote(
         } else {
             proposal_owner_record_data.decrease_outstanding_proposal_count();
             proposal_owner_record_data
-                .serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
+                .serialize(&mut proposal_owner_record_info.data.borrow_mut()[..])?;
         };
 
         // If the proposal is tipped decrease Governance active_proposal_count
         governance_data.active_proposal_count =
             governance_data.active_proposal_count.saturating_sub(1);
-        governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
+        governance_data.serialize(&mut governance_info.data.borrow_mut()[..])?;
     }
 
     let governing_token_owner = voter_token_owner_record_data.governing_token_owner;
 
     voter_token_owner_record_data
-        .serialize(&mut *voter_token_owner_record_info.data.borrow_mut())?;
+        .serialize(&mut voter_token_owner_record_info.data.borrow_mut()[..])?;
 
-    proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
+    proposal_data.serialize(&mut proposal_info.data.borrow_mut()[..])?;
 
     // Create and serialize VoteRecord
     let vote_record_data = VoteRecordV2 {

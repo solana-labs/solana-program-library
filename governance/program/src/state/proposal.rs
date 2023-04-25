@@ -950,9 +950,9 @@ impl ProposalV2 {
     }
 
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::ProposalV2 {
-            BorshSerialize::serialize(&self, writer)?
+            borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::ProposalV1 {
             // V1 account can't be resized and we have to translate it back to the original format
 
@@ -1003,7 +1003,7 @@ impl ProposalV2 {
                 description_link: self.description_link,
             };
 
-            BorshSerialize::serialize(&proposal_data_v1, writer)?;
+            borsh::to_writer(writer, &proposal_data_v1)?
         }
 
         Ok(())
@@ -3200,7 +3200,7 @@ mod test {
         let proposal_v2 = get_proposal_data(&program_id, &account_info).unwrap();
 
         proposal_v2
-            .serialize(&mut &mut **account_info.data.borrow_mut())
+            .serialize(&mut account_info.data.borrow_mut()[..])
             .unwrap();
 
         // Assert

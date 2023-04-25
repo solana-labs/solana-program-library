@@ -236,9 +236,9 @@ impl GovernanceV2 {
     }
 
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: W) -> Result<(), ProgramError> {
         if is_governance_v2_account_type(&self.account_type) {
-            BorshSerialize::serialize(&self, writer)?
+            borsh::to_writer(writer, &self)?
         } else if is_governance_v1_account_type(&self.account_type) {
             // V1 account can't be resized and we have to translate it back to the original format
 
@@ -258,7 +258,7 @@ impl GovernanceV2 {
                 config: self.config,
             };
 
-            BorshSerialize::serialize(&governance_data_v1, writer)?;
+            borsh::to_writer(writer, &governance_data_v1)?
         }
 
         Ok(())
@@ -289,7 +289,7 @@ impl GovernanceV2 {
             )?;
         }
 
-        self.serialize(&mut *governance_info.data.borrow_mut())
+        self.serialize(&mut governance_info.data.borrow_mut()[..])
     }
 
     /// Asserts the provided voting population represented by the given governing_token_mint
@@ -352,7 +352,7 @@ impl GovernanceV2 {
     }
 
     /// Returns the required deposit amount for creating Nth Proposal based on the number of active proposals
-    /// where N equals to active_proposal_count - deposit_exempt_proposal_count  
+    /// where N equals to active_proposal_count - deposit_exempt_proposal_count
     /// The deposit is not payed unless there are more active Proposal than the exempt amount
     ///
     /// Note: The exact deposit payed for Nth Proposal is N*SECURITY_DEPOSIT_BASE_LAMPORTS + min_rent_for(ProposalDeposit)

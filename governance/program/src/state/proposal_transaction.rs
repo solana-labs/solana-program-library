@@ -136,9 +136,9 @@ impl IsInitialized for ProposalTransactionV2 {
 
 impl ProposalTransactionV2 {
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::ProposalTransactionV2 {
-            BorshSerialize::serialize(&self, writer)?
+            borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::ProposalInstructionV1 {
             if self.instructions.len() != 1 {
                 panic!("Multiple instructions are not supported by ProposalInstructionV1")
@@ -161,7 +161,7 @@ impl ProposalTransactionV2 {
                 execution_status: self.execution_status,
             };
 
-            BorshSerialize::serialize(&proposal_transaction_data_v1, writer)?;
+            borsh::to_writer(writer, &proposal_transaction_data_v1)?
         }
 
         Ok(())
@@ -393,7 +393,7 @@ mod test {
             get_proposal_transaction_data(&program_id, &account_info).unwrap();
 
         proposal_transaction_v2
-            .serialize(&mut &mut **account_info.data.borrow_mut())
+            .serialize(&mut account_info.data.borrow_mut()[..])
             .unwrap();
 
         // Assert

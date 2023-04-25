@@ -36,7 +36,7 @@ pub fn process_set_governance_config(
 
     governance_data.config = config;
 
-    governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
+    governance_data.serialize(&mut governance_info.data.borrow_mut()[..])?;
 
     Ok(())
 }
