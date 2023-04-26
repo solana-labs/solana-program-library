@@ -1,7 +1,7 @@
 {
   "name": "@solana/spl-account-compression",
   "description": "SPL Account Compression Program JS API",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
   "repository": {
     "url": "https://github.com/solana-labs/solana-program-library",
@@ -22,18 +22,18 @@
     "access": "public"
   },
   "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
+  "module": "./dist/cjs/index.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
       "require": "./dist/cjs/index.js",
-      "import": "./dist/esm/index.js",
+      "import": "./dist/cjs/index.js",
       "types": "./dist/types/index.d.ts"
     },
     "./idl/spl_account_compression.json": "./idl/spl_account_compression.json"
   },
   "scripts": {
-    "build": "rm -rf dist/ && tsc && tsc -p tsconfig.cjs.json",
+    "build": "rm -rf dist/ && tsc -p tsconfig.json",
     "fmt": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'",
     "pretty": "prettier --check '{,{src,test}/**/}*.{j,t}s'",
     "pretty:fix": "prettier --write '{,{src,test}/**/}*.{j,t}s'",
