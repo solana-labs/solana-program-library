@@ -4,8 +4,8 @@
 
 use {
     crate::{
-        find_default_deposit_account_address, find_pool_authority_address, find_pool_mint_address,
-        find_pool_stake_address, USER_STAKE_SEED,
+        find_default_deposit_account_address_and_seed, find_pool_authority_address,
+        find_pool_mint_address, find_pool_stake_address,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     mpl_token_metadata::pda::find_metadata_account,
@@ -119,7 +119,7 @@ pub fn initialize(
 ) -> Vec<Instruction> {
     let stake_address = find_pool_stake_address(program_id, vote_account);
     let stake_space = std::mem::size_of::<stake::state::StakeState>();
-    let stake_rent_plus_one = rent
+    let stake_rent_plus_minimum = rent
         .minimum_balance(stake_space)
         .saturating_add(minimum_delegation);
 
@@ -127,7 +127,7 @@ pub fn initialize(
     let mint_rent = rent.minimum_balance(spl_token::state::Mint::LEN);
 
     vec![
-        system_instruction::transfer(payer, &stake_address, stake_rent_plus_one),
+        system_instruction::transfer(payer, &stake_address, stake_rent_plus_minimum),
         system_instruction::transfer(payer, &mint_address, mint_rent),
         initialize_pool(program_id, vote_account),
         create_token_metadata(program_id, vote_account, payer),
@@ -306,13 +306,21 @@ pub fn withdraw_stake(
 pub fn create_and_delegate_user_stake(
     vote_account: &Pubkey,
     user_wallet: &Pubkey,
-    lamports: u64,
+    rent: &Rent,
+    stake_amount: u64,
 ) -> Vec<Instruction> {
+    let stake_space = std::mem::size_of::<stake::state::StakeState>();
+    let lamports = rent
+        .minimum_balance(stake_space)
+        .saturating_add(stake_amount);
+    let (deposit_address, deposit_seed) =
+        find_default_deposit_account_address_and_seed(vote_account, user_wallet);
+
     stake::instruction::create_account_with_seed_and_delegate_stake(
         user_wallet,
-        &find_default_deposit_account_address(vote_account, user_wallet),
-        vote_account,
-        USER_STAKE_SEED,
+        &deposit_address,
+        user_wallet,
+        &deposit_seed,
         vote_account,
         &stake::state::Authorized {
             staker: *user_wallet,

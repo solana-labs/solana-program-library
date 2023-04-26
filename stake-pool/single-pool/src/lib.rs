@@ -11,7 +11,7 @@ pub mod entrypoint;
 
 // export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
-use solana_program::pubkey::Pubkey;
+use solana_program::{pubkey::Pubkey, stake};
 
 // XXX TODO FIXME change this
 // (XXX ask how do we as a company handle privkeys for our onchain programs?)
@@ -26,8 +26,6 @@ const MINT_DECIMALS: u8 = 9;
 // authorized withdrawer starts immediately after the enum tag
 const VOTE_STATE_START: usize = 4;
 const VOTE_STATE_END: usize = 36;
-
-const USER_STAKE_SEED: &str = "single-pool-user-stake";
 
 fn find_address_and_bump(
     program_id: &Pubkey,
@@ -58,6 +56,18 @@ fn find_pool_mint_address_and_bump(
     find_address_and_bump(program_id, vote_account_address, POOL_MINT_PREFIX)
 }
 
+fn find_default_deposit_account_address_and_seed(
+    vote_account_address: &Pubkey,
+    user_wallet_address: &Pubkey,
+) -> (Pubkey, String) {
+    let vote_address_str = vote_account_address.to_string();
+    let seed = format!("svsp{}", &vote_address_str[0..28]);
+    let address =
+        Pubkey::create_with_seed(user_wallet_address, &seed, &stake::program::id()).unwrap();
+
+    (address, seed)
+}
+
 /// Find the canonical stake account address for a given vote account.
 pub fn find_pool_stake_address(program_id: &Pubkey, vote_account_address: &Pubkey) -> Pubkey {
     find_pool_stake_address_and_bump(program_id, vote_account_address).0
@@ -78,5 +88,5 @@ pub fn find_default_deposit_account_address(
     vote_account_address: &Pubkey,
     user_wallet_address: &Pubkey,
 ) -> Pubkey {
-    Pubkey::create_with_seed(vote_account_address, USER_STAKE_SEED, user_wallet_address).unwrap()
+    find_default_deposit_account_address_and_seed(vote_account_address, user_wallet_address).0
 }
