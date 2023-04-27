@@ -6604,6 +6604,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-type-length-value"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "borsh",
+ "bytemuck",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
+ "thiserror",
+]
+
+[[package]]
 name = "stateless-asks"
 version = "0.1.0"
 dependencies = [

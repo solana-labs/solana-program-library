@@ -25,6 +25,7 @@ members = [
   "libraries/math",
   "libraries/concurrent-merkle-tree",
   "libraries/merkle-tree-reference",
+  "libraries/type-length-value",
   "memo/program",
   "name-service/program",
   "managed-token/program",
