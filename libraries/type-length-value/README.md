@@ -11,24 +11,24 @@ use {
     borsh::{BorshSerialize, BorshDeserialize},
     bytemuck::{Pod, Zeroable},
     spl_type_length_value::{
-        discriminator::{Discriminator, TlvType},
+        discriminator::{Discriminator, TlvDiscriminator},
         state::{TlvState, TlvStateBorrowed, TlvStateMut}
     },
-}
+};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 struct MyPodValue {
     data: [u8; 32],
 }
-impl TlvType for MyPodValue {
+impl TlvDiscriminator for MyPodValue {
     // Give it a unique discriminator, can also be generated using a hash function
-    const TYPE: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
 }
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 struct MyOtherPodValue {
-    data: u64,
+    data: u8,
 }
 // Give this type a non-derivable implementation of `Default` to write some data
 impl Default for MyOtherPodValue {
@@ -38,9 +38,9 @@ impl Default for MyOtherPodValue {
         }
     }
 }
-impl TlvType for MyOtherPodValue {
+impl TlvDiscriminator for MyOtherPodValue {
     // Some other unique discriminator
-    const TYPE: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
 }
 
 // Account will have two sets of `get_base_len()` (8-byte discriminator and 4-byte length),
@@ -123,8 +123,8 @@ use {
 struct MyBorsh {
     data: String, // variable length type
 }
-impl TlvType for MyBorsh {
-    const TYPE: Discriminator = Discriminator::new([5; Discriminator::LENGTH]);
+impl TlvDiscriminator for MyBorsh {
+    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([5; Discriminator::LENGTH]);
 }
 let initial_data = "This is a pretty cool test!";
 // Allocate exactly the right size for the string, can go bigger if desired

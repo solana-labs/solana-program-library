@@ -9,9 +9,9 @@ use {
 
 /// Trait to be implemented by all value types in the TLV structure, specifying
 /// just the discriminator
-pub trait TlvType {
-    /// Associated value type enum, checked at the start of TLV entries
-    const TYPE: Discriminator;
+pub trait TlvDiscriminator {
+    /// Associated value type discriminator, checked at the start of TLV entries
+    const TLV_DISCRIMINATOR: Discriminator;
 }
 
 /// Discriminator used as the type in the TLV structure
