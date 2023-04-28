@@ -46,6 +46,7 @@ members = [
   "token/program",
   "token/program-2022",
   "token/program-2022-test",
+  "token/transfer-hook-interface",
   "token/client",
   "utils/cgen",
   "utils/test-client",
