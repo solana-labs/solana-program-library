@@ -141,9 +141,6 @@ impl ExtraAccountMetas {
         let state = TlvStateBorrowed::unpack(data)?;
         let bytes = state.get_bytes::<T>()?;
         let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
-        cpi_instruction
-            .accounts
-            .extend(extra_account_metas.data().iter().map(Into::into));
 
         for account_meta in extra_account_metas.data().iter().map(AccountMeta::from) {
             let account_info = account_infos
@@ -152,6 +149,7 @@ impl ExtraAccountMetas {
                 .ok_or(AccountResolutionError::IncorrectAccount)?
                 .clone();
             cpi_account_infos.push(account_info);
+            cpi_instruction.accounts.push(account_meta);
         }
         Ok(())
     }
