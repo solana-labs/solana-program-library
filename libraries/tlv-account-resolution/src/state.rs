@@ -74,21 +74,21 @@ use {
 /// ```
 pub struct ExtraAccountMetas;
 impl ExtraAccountMetas {
-    /// Initialize pod slice data for the given instruction and account infos
-    /// into the given buffer
-    pub fn init<'a, T: TlvDiscriminator, M: 'a>(
+    /// Initialize pod slice data for the given instruction and any type
+    /// convertible to account metas
+    pub fn init<'a, T: TlvDiscriminator, M>(
         data: &mut [u8],
-        account_infos: &'a [M],
+        convertible_account_metas: &'a [M],
     ) -> Result<(), ProgramError>
     where
         PodAccountMeta: From<&'a M>,
     {
         let mut state = TlvStateMut::unpack(data).unwrap();
-        let tlv_size = PodSlice::<PodAccountMeta>::size_of(account_infos.len())?;
+        let tlv_size = PodSlice::<PodAccountMeta>::size_of(convertible_account_metas.len())?;
         let bytes = state.alloc::<T>(tlv_size)?;
         let mut extra_account_metas = PodSliceMut::init(bytes)?;
-        for account_info in account_infos {
-            extra_account_metas.push(PodAccountMeta::from(account_info))?;
+        for account_metas in convertible_account_metas {
+            extra_account_metas.push(PodAccountMeta::from(account_metas))?;
         }
         Ok(())
     }
