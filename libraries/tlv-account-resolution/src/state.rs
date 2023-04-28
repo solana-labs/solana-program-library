@@ -32,7 +32,7 @@ use {
 ///         pubkey::Pubkey
 ///     },
 ///     spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator},
-///     spl_account_resolution::state::ExtraAccountMetas,
+///     spl_tlv_account_resolution::state::ExtraAccountMetas,
 /// };
 ///
 /// struct MyInstruction;
