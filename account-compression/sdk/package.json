@@ -26,9 +26,9 @@
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/types/index.d.ts",
       "require": "./dist/cjs/index.js",
-      "import": "./dist/cjs/index.js",
-      "types": "./dist/types/index.d.ts"
+      "import": "./dist/cjs/index.js"
     },
     "./idl/spl_account_compression.json": "./idl/spl_account_compression.json"
   },
