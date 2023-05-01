@@ -46,9 +46,9 @@ async fn setup(
     Arc<Keypair>,
 ) {
     let mut program_test = ProgramTest::new(
-        "spl_transfer_hook_interface",
+        "spl_transfer_hook_example",
         *program_id,
-        processor!(spl_transfer_hook_interface::example_processor::process),
+        processor!(spl_transfer_hook_example::processor::process),
     );
 
     program_test.prefer_bpf(false); // simplicity in the build
@@ -382,9 +382,9 @@ pub fn process_instruction(
 async fn success_on_chain_invoke() {
     let hook_program_id = Pubkey::new_unique();
     let mut program_test = ProgramTest::new(
-        "spl_transfer_hook_interface",
+        "spl_transfer_hook_example",
         hook_program_id,
-        processor!(spl_transfer_hook_interface::example_processor::process),
+        processor!(spl_transfer_hook_example::processor::process),
     );
     program_test.prefer_bpf(false);
     program_test.add_program(

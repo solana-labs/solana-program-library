@@ -1,5 +1,7 @@
-//! Structs required to handle verify token mints. By having the types here, we
-//! don't need to create a circular dependency between token and permissioned-transfer
+//! Structs required to verify spl-token-2022 mints.
+//!
+//! By copying the required functions here, we avoid a circular dependency
+//! between spl-token-2022 and this crate.
 
 use {
     arrayref::{array_ref, array_refs},

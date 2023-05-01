@@ -1,13 +1,7 @@
 //! Program state processor
 
 use {
-    crate::{
-        collect_extra_account_metas_signer_seeds,
-        error::TransferHookError,
-        get_extra_account_metas_address, get_extra_account_metas_address_and_bump_seed,
-        inline_spl_token,
-        instruction::{ExecuteInstruction, TransferHookInstruction},
-    },
+    crate::inline_spl_token,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -18,6 +12,12 @@ use {
         system_instruction,
     },
     spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_transfer_hook_interface::{
+        collect_extra_account_metas_signer_seeds,
+        error::TransferHookError,
+        get_extra_account_metas_address, get_extra_account_metas_address_and_bump_seed,
+        instruction::{ExecuteInstruction, TransferHookInstruction},
+    },
     spl_type_length_value::state::TlvStateBorrowed,
 };
 

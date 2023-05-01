@@ -8,15 +8,10 @@
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
 pub mod error;
-pub mod example_processor;
-pub mod inline_spl_token;
 pub mod instruction;
 pub mod invoke;
 #[cfg(feature = "offchain-client")]
 pub mod offchain;
-
-#[cfg(not(feature = "no-entrypoint"))]
-mod entrypoint;
 
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
@@ -28,23 +23,29 @@ pub const NAMESPACE: &str = "spl-transfer-hook-interface";
 /// Seed for the state
 const EXTRA_ACCOUNT_METAS_SEED: &[u8] = b"extra-account-metas";
 
-/// Get the validate state address
+/// Get the state address PDA
 pub fn get_extra_account_metas_address(mint: &Pubkey, program_id: &Pubkey) -> Pubkey {
     get_extra_account_metas_address_and_bump_seed(mint, program_id).0
 }
 
-pub(crate) fn get_extra_account_metas_address_and_bump_seed(
+/// Function used by programs implementing the interface, when creating the PDA,
+/// to also get the bump seed
+pub fn get_extra_account_metas_address_and_bump_seed(
     mint: &Pubkey,
     program_id: &Pubkey,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(&collect_extra_account_metas_seeds(mint), program_id)
 }
 
-pub(crate) fn collect_extra_account_metas_seeds(mint: &Pubkey) -> [&[u8]; 2] {
+/// Function used by programs implementing the interface, when creating the PDA,
+/// to get all of the PDA seeds
+pub fn collect_extra_account_metas_seeds(mint: &Pubkey) -> [&[u8]; 2] {
     [EXTRA_ACCOUNT_METAS_SEED, mint.as_ref()]
 }
 
-pub(crate) fn collect_extra_account_metas_signer_seeds<'a>(
+/// Function used by programs implementing the interface, when creating the PDA,
+/// to sign for the PDA
+pub fn collect_extra_account_metas_signer_seeds<'a>(
     mint: &'a Pubkey,
     bump_seed: &'a [u8],
 ) -> [&'a [u8]; 3] {
