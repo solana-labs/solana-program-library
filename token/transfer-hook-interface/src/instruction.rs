@@ -48,6 +48,7 @@ pub enum TransferHookInstruction {
 /// by this type.
 pub struct ExecuteInstruction;
 impl TlvDiscriminator for ExecuteInstruction {
+    /// Please use this discriminator in your program when matching
     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(EXECUTE_DISCRIMINATOR);
 }
 /// First 8 bytes of `hash::hashv(&["spl-transfer-hook-interface:execute"])`
@@ -180,6 +181,8 @@ mod test {
         let amount = 111_111_111;
         let check = TransferHookInstruction::Execute { amount };
         let packed = check.pack();
+        // Please use ExecuteInstruction::TLV_DISCRIMINATOR in your program, the
+        // following is just for test purposes
         let preimage = hash::hashv(&[format!("{NAMESPACE}:execute").as_bytes()]);
         let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
         let mut expect = vec![];
@@ -194,6 +197,8 @@ mod test {
     fn initialize_validation_pubkeys_packing() {
         let check = TransferHookInstruction::InitializeExtraAccountMetas;
         let packed = check.pack();
+        // Please use INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR in your program,
+        // the following is just for test purposes
         let preimage =
             hash::hashv(&[format!("{NAMESPACE}:initialize-extra-account-metas").as_bytes()]);
         let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];

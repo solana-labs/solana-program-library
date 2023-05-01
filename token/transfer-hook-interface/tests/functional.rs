@@ -38,15 +38,17 @@ fn keypair_clone(kp: &Keypair) -> Keypair {
     Keypair::from_bytes(&kp.to_bytes()).expect("failed to copy keypair")
 }
 
-async fn setup() -> (
+async fn setup(
+    program_id: &Pubkey,
+) -> (
     Arc<Mutex<ProgramTestContext>>,
     Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>>,
     Arc<Keypair>,
 ) {
     let mut program_test = ProgramTest::new(
         "spl_transfer_hook_interface",
-        spl_transfer_hook_interface::id(),
-        processor!(spl_transfer_hook_interface::processor::process),
+        *program_id,
+        processor!(spl_transfer_hook_interface::example_processor::process),
     );
 
     program_test.prefer_bpf(false); // simplicity in the build
@@ -93,7 +95,8 @@ async fn setup_mint<T: SendTransaction>(
 
 #[tokio::test]
 async fn success() {
-    let (context, client, payer) = setup().await;
+    let program_id = Pubkey::new_unique();
+    let (context, client, payer) = setup(&program_id).await;
 
     let token_program_id = spl_token_2022::id();
     let wallet = Keypair::new();
@@ -110,8 +113,7 @@ async fn success() {
     )
     .await;
 
-    let extra_account_metas =
-        get_extra_account_metas_address(token.get_address(), &spl_transfer_hook_interface::id());
+    let extra_account_metas = get_extra_account_metas_address(token.get_address(), &program_id);
 
     token
         .create_associated_token_account(&wallet.pubkey())
@@ -153,7 +155,7 @@ async fn success() {
                 rent_lamports,
             ),
             initialize_extra_account_metas(
-                &spl_transfer_hook_interface::id(),
+                &program_id,
                 &extra_account_metas,
                 token.get_address(),
                 &mint_authority_pubkey,
@@ -175,7 +177,7 @@ async fn success() {
     {
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
-                &spl_transfer_hook_interface::id(),
+                &program_id,
                 &source,
                 token.get_address(),
                 &destination,
@@ -212,7 +214,7 @@ async fn success() {
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
-                &spl_transfer_hook_interface::id(),
+                &program_id,
                 &source,
                 token.get_address(),
                 &destination,
@@ -249,7 +251,7 @@ async fn success() {
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
-                &spl_transfer_hook_interface::id(),
+                &program_id,
                 &source,
                 token.get_address(),
                 &destination,
@@ -281,7 +283,7 @@ async fn success() {
     {
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
-                &spl_transfer_hook_interface::id(),
+                &program_id,
                 &source,
                 token.get_address(),
                 &destination,
@@ -304,7 +306,8 @@ async fn success() {
 
 #[tokio::test]
 async fn fail_incorrect_derivation() {
-    let (context, client, payer) = setup().await;
+    let program_id = Pubkey::new_unique();
+    let (context, client, payer) = setup(&program_id).await;
 
     let token_program_id = spl_token_2022::id();
     let mint_authority = Keypair::new();
@@ -321,8 +324,7 @@ async fn fail_incorrect_derivation() {
     .await;
 
     // wrong derivation
-    let extra_account_metas =
-        get_extra_account_metas_address(&spl_transfer_hook_interface::id(), token.get_address());
+    let extra_account_metas = get_extra_account_metas_address(&program_id, token.get_address());
 
     let mut context = context.lock().await;
     let rent = context.banks_client.get_rent().await.unwrap();
@@ -336,7 +338,7 @@ async fn fail_incorrect_derivation() {
                 rent_lamports,
             ),
             initialize_extra_account_metas(
-                &spl_transfer_hook_interface::id(),
+                &program_id,
                 &extra_account_metas,
                 token.get_address(),
                 &mint_authority_pubkey,
@@ -378,10 +380,11 @@ pub fn process_instruction(
 
 #[tokio::test]
 async fn success_on_chain_invoke() {
+    let hook_program_id = Pubkey::new_unique();
     let mut program_test = ProgramTest::new(
         "spl_transfer_hook_interface",
-        spl_transfer_hook_interface::id(),
-        processor!(spl_transfer_hook_interface::processor::process),
+        hook_program_id,
+        processor!(spl_transfer_hook_interface::example_processor::process),
     );
     program_test.prefer_bpf(false);
     program_test.add_program(
@@ -423,7 +426,7 @@ async fn success_on_chain_invoke() {
     .await;
 
     let extra_account_metas =
-        get_extra_account_metas_address(token.get_address(), &spl_transfer_hook_interface::id());
+        get_extra_account_metas_address(token.get_address(), &hook_program_id);
 
     let source = Pubkey::new_unique();
     let destination = Pubkey::new_unique();
@@ -445,7 +448,7 @@ async fn success_on_chain_invoke() {
                 rent_lamports,
             ),
             initialize_extra_account_metas(
-                &spl_transfer_hook_interface::id(),
+                &hook_program_id,
                 &extra_account_metas,
                 token.get_address(),
                 &mint_authority_pubkey,
@@ -474,10 +477,9 @@ async fn success_on_chain_invoke() {
         &extra_account_pubkeys,
         0,
     );
-    test_instruction.accounts.insert(
-        0,
-        AccountMeta::new_readonly(spl_transfer_hook_interface::id(), false),
-    );
+    test_instruction
+        .accounts
+        .insert(0, AccountMeta::new_readonly(hook_program_id, false));
     let transaction = Transaction::new_signed_with_payer(
         &[test_instruction],
         Some(&context.payer.pubkey()),

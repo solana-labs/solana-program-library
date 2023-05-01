@@ -8,12 +8,12 @@
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
 pub mod error;
+pub mod example_processor;
 pub mod inline_spl_token;
 pub mod instruction;
 pub mod invoke;
 #[cfg(feature = "offchain-client")]
 pub mod offchain;
-pub mod processor;
 
 #[cfg(not(feature = "no-entrypoint"))]
 mod entrypoint;
@@ -24,9 +24,6 @@ use solana_program::pubkey::Pubkey;
 
 /// Namespace for all programs implementing transfer-hook
 pub const NAMESPACE: &str = "spl-transfer-hook-interface";
-
-/// Size for discriminator in account and instruction data
-pub const DISCRIMINATOR_LENGTH: usize = 8;
 
 /// Seed for the state
 const EXTRA_ACCOUNT_METAS_SEED: &[u8] = b"extra-account-metas";
@@ -53,5 +50,3 @@ pub(crate) fn collect_extra_account_metas_signer_seeds<'a>(
 ) -> [&'a [u8]; 3] {
     [EXTRA_ACCOUNT_METAS_SEED, mint.as_ref(), bump_seed]
 }
-
-solana_program::declare_id!("pERmRFhRmg9JaJdsocrUnLLigHXrwWTxBu2SafwK2cd");
