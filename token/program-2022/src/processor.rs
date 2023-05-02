@@ -326,7 +326,7 @@ impl Processor {
                 )
             } else {
                 // Permissioned transfer extension exists on the account, but no mint
-                // was provided to figure required accounts, abor
+                // was provided to figure out required accounts, abort
                 if source_account
                     .get_extension::<TransferHookAccount>()
                     .is_ok()

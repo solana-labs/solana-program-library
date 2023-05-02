@@ -149,6 +149,60 @@ impl ExtraAccountMetas {
         Self::add_to_vec::<T>(&mut instruction.accounts, data)
     }
 
+    /// Add the additional account metas and account infos for a CPI, while
+    /// de-escalating repeated accounts.
+    ///
+    /// If an added account already exists in the instruction with lower
+    /// privileges, match it to the existing account. This prevents a lower
+    /// program from gaining unexpected privileges.
+    pub fn add_to_cpi_instruction_with_de_escalation<'a, T: TlvDiscriminator>(
+        cpi_instruction: &mut Instruction,
+        cpi_account_infos: &mut Vec<AccountInfo<'a>>,
+        data: &[u8],
+        account_infos: &[AccountInfo<'a>],
+    ) -> Result<(), ProgramError> {
+        let state = TlvStateBorrowed::unpack(data)?;
+        let bytes = state.get_bytes::<T>()?;
+        let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
+
+        let initial_cpi_instruction_length = cpi_instruction.accounts.len();
+
+        for mut account_meta in extra_account_metas.data().iter().map(AccountMeta::from) {
+            let account_info = account_infos
+                .iter()
+                .find(|&x| *x.key == account_meta.pubkey)
+                .ok_or(AccountResolutionError::IncorrectAccount)?
+                .clone();
+            // This is a little tricky to read, but the idea is to see if
+            // this account is marked as writable or signer anywhere in
+            // the instruction at the start. If so, DON'T escalate it to
+            // be a writer or signer in the CPI
+            let maybe_highest_privileges = cpi_instruction
+                .accounts
+                .iter()
+                .take(initial_cpi_instruction_length)
+                .filter(|&x| x.pubkey == account_meta.pubkey)
+                .map(|x| (x.is_signer, x.is_writable))
+                .reduce(|acc, x| (acc.0 || x.0, acc.1 || x.1));
+            // If `Some`, then the account was found somewhere in the instruction
+            if let Some((is_signer, is_writable)) = maybe_highest_privileges {
+                if !is_signer && is_signer != account_meta.is_signer {
+                    // Existing account is *NOT* a signer already, but the CPI
+                    // wants it to be, so de-escalate to not be a signer
+                    account_meta.is_signer = false;
+                }
+                if !is_writable && is_writable != account_meta.is_writable {
+                    // Existing account is *NOT* writable already, but the CPI
+                    // wants it to be, so de-escalate to not be writable
+                    account_meta.is_writable = false;
+                }
+            }
+            cpi_account_infos.push(account_info);
+            cpi_instruction.accounts.push(account_meta);
+        }
+        Ok(())
+    }
+
     /// Add the additional account metas and account infos for a CPI
     pub fn add_to_cpi_instruction<'a, T: TlvDiscriminator>(
         cpi_instruction: &mut Instruction,
