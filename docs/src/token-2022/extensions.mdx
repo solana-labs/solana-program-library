@@ -1307,3 +1307,108 @@ import {
 
   </TabItem>
 </Tabs>
+
+### Transfer Hook
+
+#### Motivation
+
+Token creators may need more control over how their token is transferred. The
+most prominent use case revolves around NFT royalties. Whenever a token is moved,
+the creator should be entitled to royalties, but due to the design of the current
+token program, it's impossible to stop a transfer at the protocol level.
+
+Current solutions typically resort to perpetually freezing tokens, which requires
+a whole proxy layer to interact with the token. Wallets and marketplaces need
+to be aware of the proxy layer in order to properly use the token.
+
+Worse still, different royalty systems have different proxy layers for using
+their token. All in all, these systems harm composability and make development
+harder.
+
+#### Solution
+
+To improve the situation, Token-2022 introduces the concept of the transfer-hook
+interface and extension. A token creator must develop and deploy a program that
+implements the interface and then configure their token mint to use their program.
+
+During transfer, Token-2022 calls into the program with the accounts specified
+at a well-defined program-derived address for that mint and program id. This
+call happens after all other transfer logic, so the accounts reflect the *end*
+state of the transfer.
+
+#### Resources
+
+The interface description and structs exist at
+[spl-transfer-hook-interface](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface),
+along with a sample minimal program implementation.
+
+A usable example program exists at
+[spl-transfer-hook-example](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-example).
+Token-2022 uses this example program in tests to ensure that it properly uses
+the transfer hook interface.
+
+#### How to use
+
+Developers must implement the `Execute` instruction, and optionally the
+`InitializeExtraAccountMetas` instruction to write the required additional account
+pubkeys into the program-derived address defined by the mint and program id.
+
+Note: it's technically not required to implement `InitializeExtraAccountMetas`
+at that instruction descriminator. Your program may implement multiple interfaces,
+so any other instruction in your program can create the account at the program-derived
+address!
+
+More information in the
+[spl-transfer-hook-interface README](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/README.md).
+
+#### Utilities
+
+The `spl-transfer-hook-interface` library provides offchain and onchain helpers
+for resolving the additional accounts required. See
+[invoke.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/src/invoke.rs)
+for usage on-chain, and
+[offchain.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/src/offchain.rs)
+for fetching the additional required account metas with any async off-chain client
+like `BanksClient` or `RpcClient`.
+
+#### Example: Create a permissioned-transfer mint
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --transfer-hook-program-id 7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj
+Creating token HFg1FFaj4PqFHmkYrqbZsarNJEZT436aXAXgQFMJihwc under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  HFg1FFaj4PqFHmkYrqbZsarNJEZT436aXAXgQFMJihwc
+Decimals:  9
+
+Signature: 3ug4Ejs16jJgEm1WyBwDDxzh9xqPzQ3a2cmy1hSYiPFcLQi9U12HYF1Dbhzb2bx75SSydfU6W4e11dGUXaPbJqVc
+```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+Coming soon!
+
+  </TabItem>
+</Tabs>
+
+#### Example: Update permissioned-transfer program in mint
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-token set-transfer-hook-program-id HFg1FFaj4PqFHmkYrqbZsarNJEZT436aXAXgQFMJihwc EbPBt3XkCb9trcV4c8fidhrvoeURbDbW87Acustzyi8N
+
+Signature: 3Ffw6yjseDsL3Az5n2LjdwXXwVPYxDF3JUU1JC1KGAEb1LE68S9VN4ebtAyvKeYMHvhjdz1LJVyugGNdWHyotzay
+```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+Coming soon!
+
+  </TabItem>
+</Tabs>
