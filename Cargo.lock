@@ -6355,6 +6355,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-tlv-account-resolution"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-type-length-value",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-token"
 version = "3.5.0"
 dependencies = [
