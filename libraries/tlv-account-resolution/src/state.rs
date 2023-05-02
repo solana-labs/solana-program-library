@@ -102,6 +102,18 @@ impl ExtraAccountMetas {
         Self::init::<T, AccountInfo>(data, account_infos)
     }
 
+    /// Get the underlying `PodSlice<PodAccountMeta>` from an unpacked TLV
+    ///
+    /// Due to lifetime annoyances, this function can't just take in the bytes,
+    /// since then we would be returning a reference to a locally created
+    /// `TlvStateBorrowed`. I hope there's a better way to do this!
+    pub fn unpack_with_tlv_state<'a, T: TlvDiscriminator>(
+        tlv_state: &'a TlvStateBorrowed,
+    ) -> Result<PodSlice<'a, PodAccountMeta>, ProgramError> {
+        let bytes = tlv_state.get_bytes::<T>()?;
+        PodSlice::<PodAccountMeta>::unpack(bytes)
+    }
+
     /// Initialize a TLV entry for the given discriminator, populating the data
     /// with the given account metas
     pub fn init_with_account_metas<T: TlvDiscriminator>(
@@ -118,17 +130,23 @@ impl ExtraAccountMetas {
     }
 
     /// Add the additional account metas to an existing instruction
-    pub fn add_to_instruction<T: TlvDiscriminator>(
-        instruction: &mut Instruction,
+    pub fn add_to_vec<T: TlvDiscriminator>(
+        account_metas: &mut Vec<AccountMeta>,
         data: &[u8],
     ) -> Result<(), ProgramError> {
         let state = TlvStateBorrowed::unpack(data)?;
         let bytes = state.get_bytes::<T>()?;
         let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
-        instruction
-            .accounts
-            .extend(extra_account_metas.data().iter().map(|m| m.into()));
+        account_metas.extend(extra_account_metas.data().iter().map(|m| m.into()));
         Ok(())
+    }
+
+    /// Add the additional account metas to an existing instruction
+    pub fn add_to_instruction<T: TlvDiscriminator>(
+        instruction: &mut Instruction,
+        data: &[u8],
+    ) -> Result<(), ProgramError> {
+        Self::add_to_vec::<T>(&mut instruction.accounts, data)
     }
 
     /// Add the additional account metas and account infos for a CPI

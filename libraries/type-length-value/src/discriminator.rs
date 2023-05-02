@@ -34,6 +34,11 @@ impl AsRef<[u8]> for Discriminator {
         &self.0[..]
     }
 }
+impl AsRef<[u8; Discriminator::LENGTH]> for Discriminator {
+    fn as_ref(&self) -> &[u8; Discriminator::LENGTH] {
+        &self.0
+    }
+}
 impl From<u64> for Discriminator {
     fn from(from: u64) -> Self {
         Self(from.to_le_bytes())
