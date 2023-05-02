@@ -45,6 +45,7 @@ use spl_token_2022::{
         mint_close_authority::MintCloseAuthority,
         permanent_delegate::PermanentDelegate,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig},
+        transfer_hook::TransferHook,
         BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
@@ -777,6 +778,7 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
         AuthorityType::PermanentDelegate => "permanent delegate",
         AuthorityType::ConfidentialTransferMint => "confidential transfer mint authority",
+        AuthorityType::TransferHook => "transfer hook authority",
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -854,6 +856,16 @@ async fn command_authorize(
                         ))
                     }
                 }
+                AuthorityType::TransferHook => {
+                    if let Ok(transfer_hook) = mint.get_extension::<TransferHook>() {
+                        Ok(COption::<Pubkey>::from(transfer_hook.authority))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support a transfer hook",
+                            account
+                        ))
+                    }
+                }
             }?;
 
             Ok((account, previous_authority))
@@ -888,7 +900,8 @@ async fn command_authorize(
                 | AuthorityType::WithheldWithdraw
                 | AuthorityType::InterestRate
                 | AuthorityType::PermanentDelegate
-                | AuthorityType::ConfidentialTransferMint => Err(format!(
+                | AuthorityType::ConfidentialTransferMint
+                | AuthorityType::TransferHook => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
@@ -3790,6 +3803,7 @@ async fn process_command<'a>(
                 "interest-rate" => AuthorityType::InterestRate,
                 "permanent-delegate" => AuthorityType::PermanentDelegate,
                 "confidential-transfer-mint" => AuthorityType::ConfidentialTransferMint,
+                "transfer-hook" => AuthorityType::TransferHook,
                 _ => unreachable!(),
             };
 
