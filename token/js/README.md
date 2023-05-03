@@ -20,7 +20,7 @@ If you've found a bug or you'd like to request a feature, please
 
 ### No export named Token
 
-Please see [upgrading from 0.1.x](#upgrading-from-0.1.x).
+Please see [upgrading from 0.1.x](#upgrading-from-01x).
 
 ## Install
 
