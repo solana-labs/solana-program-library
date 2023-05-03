@@ -14,7 +14,7 @@ test-sbf = []
 bytemuck = { version = "1.13.0", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"
-num_enum = "0.5.9"
+num_enum = "0.6.1"
 solana-program = "1.14.12"
 spl-type-length-value = { version = "0.1", path = "../type-length-value" }
 thiserror = "1.0"

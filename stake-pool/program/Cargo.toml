@@ -17,7 +17,7 @@ borsh = "0.9"
 mpl-token-metadata =  { version = "1.7.0", features = [ "no-entrypoint" ] }
 num-derive = "0.3"
 num-traits = "0.2"
-num_enum = "0.5.9"
+num_enum = "0.6.1"
 serde = "1.0.130"
 serde_derive = "1.0.103"
 solana-program = "1.14.12"

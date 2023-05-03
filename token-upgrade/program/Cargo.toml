@@ -14,7 +14,7 @@ test-sbf = []
 [dependencies]
 num-derive = "0.3"
 num-traits = "0.2"
-num_enum = "0.5.9"
+num_enum = "0.6.1"
 solana-program = "1.14.12"
 spl-token-2022 = { version = "0.6", path = "../../token/program-2022", features = ["no-entrypoint"] }
 thiserror = "1.0"
