@@ -1,5 +1,6 @@
 use {
     crate::client::{ProgramClient, ProgramClientError, SendTransaction},
+    futures::future::TryFutureExt,
     solana_program_test::tokio::time,
     solana_sdk::{
         account::Account as BaseAccount,
@@ -838,7 +839,11 @@ where
             let state = self.get_mint_info().await.unwrap();
             if let Some(program_id) = transfer_hook::get_program_id(&state) {
                 let extra_account_metas = get_extra_account_metas(
-                    |address| self.client.get_account(address),
+                    |address| {
+                        self.client
+                            .get_account(address)
+                            .map_ok(|opt| opt.map(|acc| acc.data))
+                    },
                     &program_id,
                     self.get_address(),
                 )

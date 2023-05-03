@@ -10,7 +10,6 @@
 pub mod error;
 pub mod instruction;
 pub mod invoke;
-#[cfg(feature = "offchain-client")]
 pub mod offchain;
 
 // Export current sdk types for downstream users building with a different sdk version
