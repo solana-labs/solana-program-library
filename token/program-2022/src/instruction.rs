@@ -1021,7 +1021,7 @@ pub enum AuthorityType {
     /// transfers
     ConfidentialTransferMint,
     /// Authority to set the transfer hook program id
-    TransferHook,
+    TransferHookProgramId,
 }
 
 impl AuthorityType {
@@ -1037,7 +1037,7 @@ impl AuthorityType {
             AuthorityType::InterestRate => 7,
             AuthorityType::PermanentDelegate => 8,
             AuthorityType::ConfidentialTransferMint => 9,
-            AuthorityType::TransferHook => 10,
+            AuthorityType::TransferHookProgramId => 10,
         }
     }
 
@@ -1053,7 +1053,7 @@ impl AuthorityType {
             7 => Ok(AuthorityType::InterestRate),
             8 => Ok(AuthorityType::PermanentDelegate),
             9 => Ok(AuthorityType::ConfidentialTransferMint),
-            10 => Ok(AuthorityType::TransferHook),
+            10 => Ok(AuthorityType::TransferHookProgramId),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

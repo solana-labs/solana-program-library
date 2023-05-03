@@ -792,7 +792,7 @@ impl Processor {
                     )?;
                     extension.authority = new_authority.try_into()?;
                 }
-                AuthorityType::TransferHook => {
+                AuthorityType::TransferHookProgramId => {
                     let extension = mint.get_extension_mut::<TransferHook>()?;
                     let maybe_authority: Option<Pubkey> = extension.authority.into();
                     let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;

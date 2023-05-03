@@ -192,7 +192,7 @@ async fn set_authority() {
             token.get_address(),
             &wrong.pubkey(),
             Some(&new_authority.pubkey()),
-            instruction::AuthorityType::TransferHook,
+            instruction::AuthorityType::TransferHookProgramId,
             &[&wrong],
         )
         .await
@@ -213,7 +213,7 @@ async fn set_authority() {
             token.get_address(),
             &authority.pubkey(),
             Some(&new_authority.pubkey()),
-            instruction::AuthorityType::TransferHook,
+            instruction::AuthorityType::TransferHookProgramId,
             &[&authority],
         )
         .await
@@ -231,7 +231,7 @@ async fn set_authority() {
             token.get_address(),
             &new_authority.pubkey(),
             None,
-            instruction::AuthorityType::TransferHook,
+            instruction::AuthorityType::TransferHookProgramId,
             &[&new_authority],
         )
         .await
@@ -246,7 +246,7 @@ async fn set_authority() {
             token.get_address(),
             &new_authority.pubkey(),
             Some(&authority.pubkey()),
-            instruction::AuthorityType::TransferHook,
+            instruction::AuthorityType::TransferHookProgramId,
             &[&new_authority],
         )
         .await

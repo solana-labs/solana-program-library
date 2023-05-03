@@ -778,7 +778,7 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
         AuthorityType::PermanentDelegate => "permanent delegate",
         AuthorityType::ConfidentialTransferMint => "confidential transfer mint authority",
-        AuthorityType::TransferHook => "transfer hook authority",
+        AuthorityType::TransferHookProgramId => "transfer hook program id authority",
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -856,7 +856,7 @@ async fn command_authorize(
                         ))
                     }
                 }
-                AuthorityType::TransferHook => {
+                AuthorityType::TransferHookProgramId => {
                     if let Ok(transfer_hook) = mint.get_extension::<TransferHook>() {
                         Ok(COption::<Pubkey>::from(transfer_hook.authority))
                     } else {
@@ -901,7 +901,7 @@ async fn command_authorize(
                 | AuthorityType::InterestRate
                 | AuthorityType::PermanentDelegate
                 | AuthorityType::ConfidentialTransferMint
-                | AuthorityType::TransferHook => Err(format!(
+                | AuthorityType::TransferHookProgramId => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
@@ -3803,7 +3803,7 @@ async fn process_command<'a>(
                 "interest-rate" => AuthorityType::InterestRate,
                 "permanent-delegate" => AuthorityType::PermanentDelegate,
                 "confidential-transfer-mint" => AuthorityType::ConfidentialTransferMint,
-                "transfer-hook" => AuthorityType::TransferHook,
+                "transfer-hook-program-id" => AuthorityType::TransferHookProgramId,
                 _ => unreachable!(),
             };
 
