@@ -430,11 +430,12 @@ async fn success_on_chain_invoke() {
 
     let source = Pubkey::new_unique();
     let destination = Pubkey::new_unique();
+    let writable_pubkey = Pubkey::new_unique();
 
     let extra_account_pubkeys = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
-        AccountMeta::new(extra_account_metas, false),
+        AccountMeta::new(writable_pubkey, false),
     ];
     let mut context = context.lock().await;
     let rent = context.banks_client.get_rent().await.unwrap();
