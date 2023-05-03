@@ -155,7 +155,7 @@ impl ExtraAccountMetas {
     /// If an added account already exists in the instruction with lower
     /// privileges, match it to the existing account. This prevents a lower
     /// program from gaining unexpected privileges.
-    pub fn add_to_cpi_instruction_with_de_escalation<'a, T: TlvDiscriminator>(
+    pub fn add_to_cpi_instruction<'a, T: TlvDiscriminator>(
         cpi_instruction: &mut Instruction,
         cpi_account_infos: &mut Vec<AccountInfo<'a>>,
         data: &[u8],
@@ -197,29 +197,6 @@ impl ExtraAccountMetas {
                     account_meta.is_writable = false;
                 }
             }
-            cpi_account_infos.push(account_info);
-            cpi_instruction.accounts.push(account_meta);
-        }
-        Ok(())
-    }
-
-    /// Add the additional account metas and account infos for a CPI
-    pub fn add_to_cpi_instruction<'a, T: TlvDiscriminator>(
-        cpi_instruction: &mut Instruction,
-        cpi_account_infos: &mut Vec<AccountInfo<'a>>,
-        data: &[u8],
-        account_infos: &[AccountInfo<'a>],
-    ) -> Result<(), ProgramError> {
-        let state = TlvStateBorrowed::unpack(data)?;
-        let bytes = state.get_bytes::<T>()?;
-        let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
-
-        for account_meta in extra_account_metas.data().iter().map(AccountMeta::from) {
-            let account_info = account_infos
-                .iter()
-                .find(|&x| *x.key == account_meta.pubkey)
-                .ok_or(AccountResolutionError::IncorrectAccount)?
-                .clone();
             cpi_account_infos.push(account_info);
             cpi_instruction.accounts.push(account_meta);
         }

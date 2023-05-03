@@ -271,6 +271,7 @@ impl<T> fmt::Debug for Token<T> {
             )
             .field("nonce_blockhash", &self.nonce_blockhash)
             .field("memo", &self.memo.read().unwrap())
+            .field("transfer_hook_accounts", &self.transfer_hook_accounts)
             .finish()
     }
 }

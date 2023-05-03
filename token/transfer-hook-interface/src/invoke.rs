@@ -41,7 +41,7 @@ pub fn execute<'a>(
         authority_info,
         validation_info.clone(),
     ];
-    ExtraAccountMetas::add_to_cpi_instruction_with_de_escalation::<instruction::ExecuteInstruction>(
+    ExtraAccountMetas::add_to_cpi_instruction::<instruction::ExecuteInstruction>(
         &mut cpi_instruction,
         &mut cpi_account_infos,
         &validation_info.try_borrow_data()?,
