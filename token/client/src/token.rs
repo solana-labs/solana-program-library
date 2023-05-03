@@ -358,6 +358,7 @@ where
         self.nonce_account = Some(*nonce_account);
         self.nonce_authority = Some(nonce_authority);
         self.nonce_blockhash = Some(*nonce_blockhash);
+        self.transfer_hook_accounts = Some(vec![]);
         self
     }
 
