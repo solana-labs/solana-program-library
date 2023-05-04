@@ -29,8 +29,8 @@ pub fn process_execute(
     // Validates extra account metas are provided
     TransferHookManager::check(
         program_id,
-        &extra_account_metas_info,
-        &mint_info,
+        extra_account_metas_info,
+        mint_info,
         account_info_iter.as_slice(),
     )?;
 
@@ -54,9 +54,9 @@ pub fn process_initialize_extra_account_metas(
     // Create the account & write the data - runs checks internally
     TransferHookManager::write(
         program_id,
-        &extra_account_metas_info,
-        &mint_info,
-        &authority_info,
+        extra_account_metas_info,
+        mint_info,
+        authority_info,
         account_info_iter.as_slice(),
     )
 }
