@@ -17,7 +17,7 @@ borsh = "0.9"
 mpl-token-metadata =  { version = "1.7.0", features = [ "no-entrypoint" ] }
 num-derive = "0.3"
 num-traits = "0.2"
-num_enum = "0.5.9"
+num_enum = "0.6.1"
 solana-program = "1.14.12"
 spl-token = { version = "3.5", path = "../../token/program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.1", path = "../../associated-token-account/program", features = [ "no-entrypoint" ] }
