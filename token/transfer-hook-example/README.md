@@ -15,7 +15,7 @@ import this crate, and then use it with `solana-program-test`, ie:
 ```rust
 use {
     solana_program_test::{processor, ProgramTest},
-    solana_sdk::account::Account,
+    solana_sdk::{account::Account, instruction::AccountMeta},
     spl_transfer_hook_example::state::example_data,
     spl_transfer_hook_interface::get_extra_account_metas_address,
 };
@@ -38,7 +38,19 @@ fn my_program_test() {
 
     let mint = Pubkey::new_unique();
     let extra_accounts_address = get_extra_account_metas_address(&mint, &transfer_hook_program_id);
-    let data = example_data();
+    let account_metas = vec![
+        AccountMeta {
+            pubkey: Pubkey::new_unique(),
+            is_signer: false,
+            is_writable: false,
+        },
+        AccountMeta {
+            pubkey: Pubkey::new_unique(),
+            is_signer: false,
+            is_writable: false,
+        },
+    ];
+    let data = example_data(&account_metas);
     program_test.add_account(
         extra_accounts_address,
         Account {
