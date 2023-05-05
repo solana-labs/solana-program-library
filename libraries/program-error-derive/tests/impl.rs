@@ -1,3 +1,4 @@
+//! Tests that all macros compile
 use solana_program_error_derive::*;
 
 /// Example error

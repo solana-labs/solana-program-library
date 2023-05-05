@@ -13,3 +13,9 @@ num-traits = "0.2.15"
 solana-program = "1.14.12"
 solana-program-error-derive-impl = { version = "0.1.0", path = "./derive" }
 thiserror = "1.0.40"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]

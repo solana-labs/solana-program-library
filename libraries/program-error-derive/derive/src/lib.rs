@@ -1,3 +1,5 @@
+//! Crate defining a procedural macro for building Solana progrem errors
+
 extern crate proc_macro;
 
 mod program_error;
