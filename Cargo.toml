@@ -25,6 +25,7 @@ members = [
   "libraries/math",
   "libraries/concurrent-merkle-tree",
   "libraries/merkle-tree-reference",
+  "libraries/program-error-derive",
   "libraries/tlv-account-resolution",
   "libraries/type-length-value",
   "memo/program",

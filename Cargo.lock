@@ -5390,6 +5390,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-program-error-derive"
+version = "0.1.0"
+dependencies = [
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "solana-program-error-derive-impl",
+ "thiserror",
+]
+
+[[package]]
+name = "solana-program-error-derive-impl"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2 1.0.56",
+ "quote 1.0.26",
+ "syn 1.0.107",
+]
+
+[[package]]
 name = "solana-program-runtime"
 version = "1.14.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
