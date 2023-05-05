@@ -1,5 +1,9 @@
 //! Crate defining a procedural macro for building Solana progrem errors
 
+#![allow(clippy::integer_arithmetic)]
+#![deny(missing_docs)]
+#![cfg_attr(not(test), forbid(unsafe_code))]
+
 extern crate proc_macro;
 
 mod program_error;
