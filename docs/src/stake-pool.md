@@ -51,7 +51,7 @@ chronological order, and the commit hash that each was reviewed at:
     - Review commit hash [`eba709b`](https://github.com/solana-labs/solana-program-library/tree/eba709b9317f8c7b8b197045161cb744241f0bff)
     - Report https://github.com/solana-labs/security-audits/blob/master/spl/OtterSecStakePoolAudit-2023-01-20.pdf
 * Neodyme Third Audit
-    - Review commit hash [`eba709b`](https://github.com/solana-labs/solana-program-library/tree/eba709b9317f8c7b8b197045161cb744241f0bff)
+    - Review commit hash [`b341022`](https://github.com/solana-labs/solana-program-library/tree/b34102211f2a5ea6b83f3ee22f045fb115d87813)
     - Report https://github.com/solana-labs/security-audits/blob/master/spl/NeodymeStakePoolAudit-2023-01-31.pdf
 * Halborn
     - Review commit hash [`eba709b`](https://github.com/solana-labs/solana-program-library/tree/eba709b9317f8c7b8b197045161cb744241f0bff)
