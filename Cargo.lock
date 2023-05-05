@@ -6480,6 +6480,7 @@ name = "spl-token-2022-test"
 version = "0.0.1"
 dependencies = [
  "async-trait",
+ "futures-util",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -6532,7 +6533,7 @@ name = "spl-token-client"
 version = "0.5.0"
 dependencies = [
  "async-trait",
- "futures 0.3.21",
+ "futures-util",
  "solana-cli-output",
  "solana-client",
  "solana-program-test",

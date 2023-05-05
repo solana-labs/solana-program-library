@@ -1,6 +1,6 @@
 use {
     crate::client::{ProgramClient, ProgramClientError, SendTransaction},
-    futures::future::TryFutureExt,
+    futures_util::TryFutureExt,
     solana_program_test::tokio::time,
     solana_sdk::{
         account::Account as BaseAccount,
@@ -24,12 +24,11 @@ use {
             memo_transfer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
             StateWithExtensionsOwned,
         },
-        instruction,
+        instruction, offchain,
         pod::EncryptionPubkey,
         solana_zk_token_sdk::errors::ProofError,
         state::{Account, AccountState, Mint, Multisig},
     },
-    spl_transfer_hook_interface::offchain::get_extra_account_metas,
     std::{
         fmt, io,
         sync::{Arc, RwLock},
@@ -673,9 +672,9 @@ where
     }
 
     /// Retrieve a raw account
-    pub async fn get_account(&self, account: &Pubkey) -> TokenResult<BaseAccount> {
+    pub async fn get_account(&self, account: Pubkey) -> TokenResult<BaseAccount> {
         self.client
-            .get_account(*account)
+            .get_account(account)
             .await
             .map_err(TokenError::Client)?
             .ok_or(TokenError::AccountNotFound)
@@ -683,7 +682,7 @@ where
 
     /// Retrive mint information.
     pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
-        let account = self.get_account(&self.pubkey).await?;
+        let account = self.get_account(self.pubkey).await?;
         if account.owner != self.program_id {
             return Err(TokenError::AccountInvalidOwner);
         }
@@ -705,7 +704,7 @@ where
         &self,
         account: &Pubkey,
     ) -> TokenResult<StateWithExtensionsOwned<Account>> {
-        let account = self.get_account(account).await?;
+        let account = self.get_account(*account).await?;
         if account.owner != self.program_id {
             return Err(TokenError::AccountInvalidOwner);
         }
@@ -836,23 +835,17 @@ where
                 .map(|p| AccountMeta::new_readonly(*p, false));
             instruction.accounts.extend(additional_account_metas);
         } else {
-            let state = self.get_mint_info().await.unwrap();
-            if let Some(program_id) = transfer_hook::get_program_id(&state) {
-                let extra_account_metas = get_extra_account_metas(
-                    |address| {
-                        self.client
-                            .get_account(address)
-                            .map_ok(|opt| opt.map(|acc| acc.data))
-                    },
-                    &program_id,
-                    self.get_address(),
-                )
-                .await
-                .map_err(|_| TokenError::AccountNotFound)?;
-                extra_account_metas
-                    .into_iter()
-                    .for_each(|m| instruction.accounts.push(m));
-            }
+            offchain::get_extra_transfer_account_metas(
+                &mut instruction.accounts,
+                |address| {
+                    self.client
+                        .get_account(address)
+                        .map_ok(|opt| opt.map(|acc| acc.data))
+                },
+                self.get_address(),
+            )
+            .await
+            .map_err(|_| TokenError::AccountNotFound)?;
         };
 
         self.process_ixs(&[instruction], signing_keypairs).await

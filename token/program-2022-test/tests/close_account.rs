@@ -59,7 +59,7 @@ async fn success_init_after_close_account() {
         )
         .await
         .unwrap();
-    let destination = token.get_account(&destination).await.unwrap();
+    let destination = token.get_account(destination).await.unwrap();
     assert!(destination.lamports > 0);
 }
 
@@ -109,7 +109,7 @@ async fn fail_init_after_close_account() {
             TransactionError::InstructionError(2, InstructionError::InvalidAccountData,)
         )))
     );
-    let error = token.get_account(&destination).await.unwrap_err();
+    let error = token.get_account(destination).await.unwrap_err();
     assert_eq!(error, TokenClientError::AccountNotFound);
 }
 
@@ -165,6 +165,6 @@ async fn fail_init_after_close_mint() {
             TransactionError::InstructionError(2, InstructionError::InvalidAccountData,)
         )))
     );
-    let error = token.get_account(&destination).await.unwrap_err();
+    let error = token.get_account(destination).await.unwrap_err();
     assert_eq!(error, TokenClientError::AccountNotFound);
 }

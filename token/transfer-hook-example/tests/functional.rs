@@ -29,7 +29,7 @@ use {
         error::TransferHookError,
         get_extra_account_metas_address,
         instruction::{execute_with_extra_account_metas, initialize_extra_account_metas},
-        invoke,
+        onchain,
     },
     std::sync::Arc,
 };
@@ -367,7 +367,7 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     _input: &[u8],
 ) -> ProgramResult {
-    invoke::execute(
+    onchain::invoke_execute(
         accounts[0].key,
         accounts[1].clone(),
         accounts[2].clone(),
