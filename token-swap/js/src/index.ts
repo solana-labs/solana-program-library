@@ -71,49 +71,49 @@ export const TokenSwapLayout = struct<RawTokenSwap>([
 ]);
 
 export interface CreateInstruction {
-  instruction: number,
-  tradeFeeNumerator: bigint,
-  tradeFeeDenominator: bigint,
-  ownerTradeFeeNumerator: bigint,
-  ownerTradeFeeDenominator: bigint,
-  ownerWithdrawFeeNumerator: bigint,
-  ownerWithdrawFeeDenominator: bigint,
-  hostFeeNumerator: bigint,
-  hostFeeDenominator: bigint,
-  curveType: number,
-  curveParameters: Uint8Array,
+  instruction: number;
+  tradeFeeNumerator: bigint;
+  tradeFeeDenominator: bigint;
+  ownerTradeFeeNumerator: bigint;
+  ownerTradeFeeDenominator: bigint;
+  ownerWithdrawFeeNumerator: bigint;
+  ownerWithdrawFeeDenominator: bigint;
+  hostFeeNumerator: bigint;
+  hostFeeDenominator: bigint;
+  curveType: number;
+  curveParameters: Uint8Array;
 }
 
 export interface SwapInstruction {
-  instruction: number,
-  amountIn: bigint,
-  minimumAmountOut: bigint,
+  instruction: number;
+  amountIn: bigint;
+  minimumAmountOut: bigint;
 }
 
 export interface DepositAllInstruction {
-  instruction: number,
-  poolTokenAmount: bigint,
-  maximumTokenA: bigint,
-  maximumTokenB: bigint,
+  instruction: number;
+  poolTokenAmount: bigint;
+  maximumTokenA: bigint;
+  maximumTokenB: bigint;
 }
 
 export interface WithdrawAllInstruction {
-  instruction: number,
-  poolTokenAmount: bigint,
-  minimumTokenA: bigint,
-  minimumTokenB: bigint,
+  instruction: number;
+  poolTokenAmount: bigint;
+  minimumTokenA: bigint;
+  minimumTokenB: bigint;
 }
 
 export interface DepositSingleTokenTypeInstruction {
-  instruction: number,
-  sourceTokenAmount: bigint,
-  minimumPoolTokenAmount: bigint,
+  instruction: number;
+  sourceTokenAmount: bigint;
+  minimumPoolTokenAmount: bigint;
 }
 
 export interface WithdrawSingleTokenTypeInstruction {
-  instruction: number,
-  destinationTokenAmount: bigint,
-  maximumPoolTokenAmount: bigint,
+  instruction: number;
+  destinationTokenAmount: bigint;
+  maximumPoolTokenAmount: bigint;
 }
 
 export const CurveType = Object.freeze({
