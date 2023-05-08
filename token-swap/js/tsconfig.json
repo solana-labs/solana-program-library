@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true
   },
-  "include": ["./src/**/*"]
+  "include": ["./src/**/*", ".eslintrc.js"]
 }
