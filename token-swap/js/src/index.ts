@@ -47,7 +47,7 @@ export interface RawTokenSwap {
   curveParameters: Uint8Array;
 }
 
-export const TokenSwapLayout = struct([
+export const TokenSwapLayout = struct<RawTokenSwap>([
   u8('version'),
   u8('isInitialized'),
   u8('bumpSeed'),
@@ -69,6 +69,52 @@ export const TokenSwapLayout = struct([
   u8('curveType'),
   blob(32, 'curveParameters'),
 ]);
+
+export interface CreateInstruction {
+  instruction: number,
+  tradeFeeNumerator: bigint,
+  tradeFeeDenominator: bigint,
+  ownerTradeFeeNumerator: bigint,
+  ownerTradeFeeDenominator: bigint,
+  ownerWithdrawFeeNumerator: bigint,
+  ownerWithdrawFeeDenominator: bigint,
+  hostFeeNumerator: bigint,
+  hostFeeDenominator: bigint,
+  curveType: number,
+  curveParameters: Uint8Array,
+}
+
+export interface SwapInstruction {
+  instruction: number,
+  amountIn: bigint,
+  minimumAmountOut: bigint,
+}
+
+export interface DepositAllInstruction {
+  instruction: number,
+  poolTokenAmount: bigint,
+  maximumTokenA: bigint,
+  maximumTokenB: bigint,
+}
+
+export interface WithdrawAllInstruction {
+  instruction: number,
+  poolTokenAmount: bigint,
+  minimumTokenA: bigint,
+  minimumTokenB: bigint,
+}
+
+export interface DepositSingleTokenTypeInstruction {
+  instruction: number,
+  sourceTokenAmount: bigint,
+  minimumPoolTokenAmount: bigint,
+}
+
+export interface WithdrawSingleTokenTypeInstruction {
+  instruction: number,
+  destinationTokenAmount: bigint,
+  maximumPoolTokenAmount: bigint,
+}
 
 export const CurveType = Object.freeze({
   ConstantProduct: 0, // Constant product curve, Uniswap-style
@@ -194,7 +240,7 @@ export class TokenSwap {
       {pubkey: tokenAccountPool, isSigner: false, isWritable: true},
       {pubkey: poolTokenProgramId, isSigner: false, isWritable: false},
     ];
-    const commandDataLayout = struct([
+    const commandDataLayout = struct<CreateInstruction>([
       u8('instruction'),
       u64('tradeFeeNumerator'),
       u64('tradeFeeDenominator'),
@@ -488,7 +534,7 @@ export class TokenSwap {
     amountIn: bigint,
     minimumAmountOut: bigint,
   ): TransactionInstruction {
-    const dataLayout = struct([
+    const dataLayout = struct<SwapInstruction>([
       u8('instruction'),
       u64('amountIn'),
       u64('minimumAmountOut'),
@@ -603,7 +649,7 @@ export class TokenSwap {
     maximumTokenA: bigint,
     maximumTokenB: bigint,
   ): TransactionInstruction {
-    const dataLayout = struct([
+    const dataLayout = struct<DepositAllInstruction>([
       u8('instruction'),
       u64('poolTokenAmount'),
       u64('maximumTokenA'),
@@ -720,7 +766,7 @@ export class TokenSwap {
     minimumTokenA: bigint,
     minimumTokenB: bigint,
   ): TransactionInstruction {
-    const dataLayout = struct([
+    const dataLayout = struct<WithdrawAllInstruction>([
       u8('instruction'),
       u64('poolTokenAmount'),
       u64('minimumTokenA'),
@@ -823,7 +869,7 @@ export class TokenSwap {
     sourceTokenAmount: bigint,
     minimumPoolTokenAmount: bigint,
   ): TransactionInstruction {
-    const dataLayout = struct([
+    const dataLayout = struct<DepositSingleTokenTypeInstruction>([
       u8('instruction'),
       u64('sourceTokenAmount'),
       u64('minimumPoolTokenAmount'),
@@ -923,7 +969,7 @@ export class TokenSwap {
     destinationTokenAmount: bigint,
     maximumPoolTokenAmount: bigint,
   ): TransactionInstruction {
-    const dataLayout = struct([
+    const dataLayout = struct<WithdrawSingleTokenTypeInstruction>([
       u8('instruction'),
       u64('destinationTokenAmount'),
       u64('maximumPoolTokenAmount'),
