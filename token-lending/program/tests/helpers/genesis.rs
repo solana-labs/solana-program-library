@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use solana_program::bpf_loader_upgradeable;
 use solana_program_test::*;
@@ -24,7 +25,7 @@ impl From<Account> for Base64Account {
             owner: account.owner.to_string(),
             balance: account.lamports,
             executable: account.executable,
-            data: base64::encode(&account.data),
+            data: general_purpose::STANDARD_NO_PAD.encode(&account.data),
         }
     }
 }

@@ -248,11 +248,12 @@ pub fn get_proposal_transaction_data_for_proposal(
 #[cfg(test)]
 mod test {
 
-    use std::str::FromStr;
-
-    use solana_program::{bpf_loader_upgradeable, clock::Epoch};
-
-    use super::*;
+    use {
+        super::*,
+        base64::{engine::general_purpose, Engine as _},
+        solana_program::{bpf_loader_upgradeable, clock::Epoch},
+        std::str::FromStr,
+    };
 
     fn create_test_account_meta_data() -> AccountMetaData {
         AccountMetaData {
@@ -341,7 +342,7 @@ mod test {
         instruction_data.serialize(&mut instruction_bytes).unwrap();
 
         // base64 encoded message is accepted as the input in the UI
-        let base64 = base64::encode(instruction_bytes.clone());
+        let encoded = general_purpose::STANDARD_NO_PAD.encode(&instruction_bytes);
 
         // Assert
         let instruction =
@@ -349,7 +350,7 @@ mod test {
 
         assert_eq!(upgrade_instruction, instruction);
 
-        assert_eq!(base64,"Aqj2kU6IobDiEBU+92OuKwDCuT0WwSTSwFN6EASAAAAHAAAAchkHXTU9jF+rKpILT6dzsVyNI9NsQy9cab+GGvdwNn0AAfh2HVruy2YibpgcQUmJf5att5YdPXSv1k2pRAKAfpSWAAFDVQuXWos2urmegSPblI813GlTm7CJ/8rv+9yzNE3yfwAB3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwAAQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAAAAAGp9UXGMd0yShWY5hpHV62i164o5tLbVxzVVshAAAAAAAA3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwBAAQAAAADAAAA");
+        assert_eq!(encoded,"Aqj2kU6IobDiEBU+92OuKwDCuT0WwSTSwFN6EASAAAAHAAAAchkHXTU9jF+rKpILT6dzsVyNI9NsQy9cab+GGvdwNn0AAfh2HVruy2YibpgcQUmJf5att5YdPXSv1k2pRAKAfpSWAAFDVQuXWos2urmegSPblI813GlTm7CJ/8rv+9yzNE3yfwAB3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwAAQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAAAAAGp9UXGMd0yShWY5hpHV62i164o5tLbVxzVVshAAAAAAAA3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwBAAQAAAADAAAA");
     }
 
     #[test]
