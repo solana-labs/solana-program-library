@@ -47,7 +47,7 @@
     "@solana/buffer-layout": "^4.0.0"
   },
   "devDependencies": {
-    "@solana/spl-token": "0.1.8",
+    "@solana/spl-token": "0.3.7",
     "@types/bn.js": "^5.1.0",
     "eslint": "^8.31.0",
     "eslint-plugin-import": "^2.22.0",
