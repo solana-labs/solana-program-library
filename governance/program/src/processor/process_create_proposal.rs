@@ -108,7 +108,7 @@ pub fn process_create_proposal(
         .outstanding_proposal_count
         .checked_add(1)
         .unwrap();
-    proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
+    proposal_owner_record_data.serialize(&mut proposal_owner_record_info.data.borrow_mut()[..])?;
 
     assert_valid_proposal_options(&options, &vote_type)?;
 

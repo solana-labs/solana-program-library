@@ -105,11 +105,11 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
         proposal_data.state = ProposalState::Completed;
     }
 
-    proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
+    proposal_data.serialize(&mut proposal_info.data.borrow_mut()[..])?;
 
     proposal_transaction_data.executed_at = Some(clock.unix_timestamp);
     proposal_transaction_data.execution_status = TransactionExecutionStatus::Success;
-    proposal_transaction_data.serialize(&mut *proposal_transaction_info.data.borrow_mut())?;
+    proposal_transaction_data.serialize(&mut proposal_transaction_info.data.borrow_mut()[..])?;
 
     Ok(())
 }

@@ -1,6 +1,5 @@
 //! Program state processor
 
-use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::Clock,
@@ -61,7 +60,10 @@ pub fn process_update_program_metadata(
         program_metadata_data.version = VERSION.to_string();
         program_metadata_data.updated_at = updated_at;
 
-        program_metadata_data.serialize(&mut *program_metadata_info.data.borrow_mut())?;
+        borsh::to_writer(
+            &mut program_metadata_info.data.borrow_mut()[..],
+            &program_metadata_data,
+        )?;
     }
 
     Ok(())

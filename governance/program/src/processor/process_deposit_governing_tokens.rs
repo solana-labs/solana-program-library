@@ -132,7 +132,7 @@ pub fn process_deposit_governing_tokens(
             .checked_add(amount)
             .unwrap();
 
-        token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;
+        token_owner_record_data.serialize(&mut token_owner_record_info.data.borrow_mut()[..])?;
     }
 
     Ok(())

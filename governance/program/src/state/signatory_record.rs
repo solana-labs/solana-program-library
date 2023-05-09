@@ -66,9 +66,9 @@ impl SignatoryRecordV2 {
     }
 
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::SignatoryRecordV2 {
-            BorshSerialize::serialize(&self, writer)?
+            borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::SignatoryRecordV1 {
             // V1 account can't be resized and we have to translate it back to the original format
 
@@ -84,7 +84,7 @@ impl SignatoryRecordV2 {
                 signed_off: self.signed_off,
             };
 
-            BorshSerialize::serialize(&signatory_record_data_v1, writer)?;
+            borsh::to_writer(writer, &signatory_record_data_v1)?
         }
 
         Ok(())
