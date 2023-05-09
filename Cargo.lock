@@ -4330,17 +4330,6 @@ dependencies = [
 
 [[package]]
 name = "serial_test"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0bccbcf40c8938196944a3da0e133e031a33f4d6b72db3bda3cc556e361905d"
-dependencies = [
- "lazy_static",
- "parking_lot 0.11.2",
- "serial_test_derive 0.5.1",
-]
-
-[[package]]
-name = "serial_test"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7eec42e7232e5ca56aa59d63af3c7f991fe71ee6a3ddd2d3480834cf3902b007"
@@ -4349,18 +4338,7 @@ dependencies = [
  "lazy_static",
  "log",
  "parking_lot 0.12.0",
- "serial_test_derive 0.8.0",
-]
-
-[[package]]
-name = "serial_test_derive"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2acd6defeddb41eb60bb468f8825d0cfd0c2a76bc03bfd235b6a1dc4f6a1ad5"
-dependencies = [
- "proc-macro2 1.0.56",
- "quote 1.0.26",
- "syn 1.0.107",
+ "serial_test_derive",
 ]
 
 [[package]]
@@ -6426,7 +6404,7 @@ dependencies = [
  "num-traits",
  "num_enum 0.6.1",
  "proptest",
- "serial_test 0.5.1",
+ "serial_test",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -6480,7 +6458,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "serial_test 0.5.1",
+ "serial_test",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -6517,7 +6495,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "serial_test 0.8.0",
+ "serial_test",
  "solana-account-decoder",
  "solana-clap-utils",
  "solana-cli-config",
