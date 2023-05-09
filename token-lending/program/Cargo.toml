@@ -29,7 +29,7 @@ proptest = "1.1"
 solana-program-test = "1.14.12"
 solana-sdk = "1.14.12"
 serde = "1.0"
-serde_yaml = "0.8"
+serde_yaml = "0.9"
 
 [lib]
 crate-type = ["cdylib", "lib"]
