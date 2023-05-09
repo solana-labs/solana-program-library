@@ -11,7 +11,7 @@ use crate::{
         assert_initialized, assert_keys_equal, assert_keys_unequal, assert_owned_by,
     },
 };
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::BorshDeserialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -175,8 +175,10 @@ pub fn process_initialize_binary_option(
     binary_option.escrow_mint_account_pubkey = *escrow_mint_info.key;
     binary_option.escrow_account_pubkey = *escrow_account_info.key;
     binary_option.owner = *update_authority_info.key;
-    binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
-
+    borsh::to_writer(
+        &mut binary_option_account_info.data.borrow_mut()[..],
+        &binary_option,
+    )?;
     Ok(())
 }
 
@@ -576,7 +578,10 @@ pub fn process_trade(
         s_l,
         long_token_mint.decimals,
     )?;
-    binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
+    borsh::to_writer(
+        &mut binary_option_account_info.data.borrow_mut()[..],
+        &binary_option,
+    )?;
     Ok(())
 }
 
@@ -607,7 +612,10 @@ pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         return Err(BinaryOptionError::InvalidWinner.into());
     }
     binary_option.settled = true;
-    binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
+    borsh::to_writer(
+        &mut binary_option_account_info.data.borrow_mut()[..],
+        &binary_option,
+    )?;
     Ok(())
 }
 
@@ -724,6 +732,9 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         )?;
         binary_option.decrement_supply(reward)?;
     }
-    binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
+    borsh::to_writer(
+        &mut binary_option_account_info.data.borrow_mut()[..],
+        &binary_option,
+    )?;
     Ok(())
 }

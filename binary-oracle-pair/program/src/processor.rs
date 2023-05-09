@@ -5,7 +5,7 @@ use crate::{
     instruction::PoolInstruction,
     state::{Decision, Pool, POOL_VERSION},
 };
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::BorshDeserialize;
 use solana_program::{
     account_info::next_account_info,
     account_info::AccountInfo,
@@ -300,8 +300,7 @@ impl Processor {
         pool.decide_end_slot = decide_end_slot;
         pool.decision = Decision::Undecided;
 
-        pool.serialize(&mut *pool_account_info.data.borrow_mut())
-            .map_err(|e| e.into())
+        borsh::to_writer(&mut pool_account_info.data.borrow_mut()[..], &pool).map_err(|e| e.into())
     }
 
     /// Process Deposit instruction
@@ -556,8 +555,7 @@ impl Processor {
             Decision::Fail
         };
 
-        pool.serialize(&mut *pool_account_info.data.borrow_mut())
-            .map_err(|e| e.into())
+        borsh::to_writer(&mut pool_account_info.data.borrow_mut()[..], &pool).map_err(|e| e.into())
     }
 
     /// Processes an instruction
