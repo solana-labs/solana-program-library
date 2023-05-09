@@ -63,7 +63,7 @@
         "@types/chai-as-promised": "^7.1.4",
         "@types/chai": "^4.3.3",
         "@types/mocha": "^10.0.0",
-        "@types/node": "^18.7.9",
+        "@types/node": "^20.1.1",
         "@types/node-fetch": "^2.6.2",
         "@types/prettier": "^2.7.0",
         "@typescript-eslint/eslint-plugin": "^5.34.0",
