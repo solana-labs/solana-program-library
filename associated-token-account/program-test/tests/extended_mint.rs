@@ -28,8 +28,7 @@ use {
 async fn test_associated_token_account_with_transfer_fees() {
     let wallet_sender = Keypair::new();
     let wallet_address_sender = wallet_sender.pubkey();
-    let wallet_receiver = Keypair::new();
-    let wallet_address_receiver = wallet_receiver.pubkey();
+    let wallet_address_receiver = Pubkey::new_unique();
     let (mut banks_client, payer, recent_blockhash) =
         program_test_2022(Pubkey::new_unique(), true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
@@ -85,6 +84,11 @@ async fn test_associated_token_account_with_transfer_fees() {
     );
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
+
+    let recent_blockhash = banks_client
+        .get_new_latest_blockhash(&recent_blockhash)
+        .await
+        .unwrap();
 
     let mut transaction = Transaction::new_with_payer(
         &[create_associated_token_account(
@@ -155,6 +159,11 @@ async fn test_associated_token_account_with_transfer_fees() {
             InstructionError::Custom(TokenError::InsufficientFunds as u32)
         )
     );
+
+    let recent_blockhash = banks_client
+        .get_new_latest_blockhash(&recent_blockhash)
+        .await
+        .unwrap();
 
     // success
     let transfer_amount = 500;

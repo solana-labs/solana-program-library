@@ -175,6 +175,11 @@ async fn check_same_mint(context: &mut ProgramTestContext, program_id: &Pubkey) 
     )
     .await;
 
+    context.last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::recover_nested(
             &wallet.pubkey(),
@@ -233,6 +238,11 @@ async fn check_different_mints(context: &mut ProgramTestContext, program_id: &Pu
     let destination_token_address =
         create_associated_token_account(context, &wallet.pubkey(), &nested_mint, program_id).await;
 
+    context.last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::recover_nested(
             &wallet.pubkey(),
@@ -291,6 +301,11 @@ async fn check_missing_wallet_signature(context: &mut ProgramTestContext, progra
 
     let mut recover = instruction::recover_nested(&wallet.pubkey(), &mint, &mint, program_id);
     recover.accounts[5] = AccountMeta::new(wallet.pubkey(), false);
+    context.last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[recover],
         Some(&context.payer.pubkey()),
@@ -342,6 +357,11 @@ async fn check_wrong_signer(context: &mut ProgramTestContext, program_id: &Pubke
     )
     .await;
 
+    context.last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::recover_nested(
             &wrong_wallet.pubkey(),
@@ -385,14 +405,19 @@ async fn fail_wrong_signer() {
 
 async fn check_not_nested(context: &mut ProgramTestContext, program_id: &Pubkey) {
     let wallet = Keypair::new();
-    let wrong_wallet = Keypair::new();
+    let wrong_wallet = Pubkey::new_unique();
     let (mint, mint_authority) = create_mint(context, program_id).await;
 
     let owner_associated_token_address =
         create_associated_token_account(context, &wallet.pubkey(), &mint, program_id).await;
     let nested_associated_token_address =
-        create_associated_token_account(context, &wrong_wallet.pubkey(), &mint, program_id).await;
+        create_associated_token_account(context, &wrong_wallet, &mint, program_id).await;
 
+    context.last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::recover_nested(
             &wallet.pubkey(),
@@ -439,7 +464,7 @@ async fn check_wrong_address_derivation_owner(
     program_id: &Pubkey,
 ) {
     let wallet = Keypair::new();
-    let wrong_wallet = Keypair::new();
+    let wrong_wallet = Pubkey::new_unique();
     let (mint, mint_authority) = create_mint(context, program_id).await;
 
     let owner_associated_token_address =
@@ -453,9 +478,14 @@ async fn check_wrong_address_derivation_owner(
     .await;
 
     let wrong_owner_associated_token_address =
-        get_associated_token_address_with_program_id(&mint, &wrong_wallet.pubkey(), program_id);
+        get_associated_token_address_with_program_id(&mint, &wrong_wallet, program_id);
     let mut recover = instruction::recover_nested(&wallet.pubkey(), &mint, &mint, program_id);
     recover.accounts[3] = AccountMeta::new(wrong_owner_associated_token_address, false);
+    context.last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[recover],
         Some(&context.payer.pubkey()),
@@ -506,6 +536,11 @@ async fn check_owner_account_does_not_exist(context: &mut ProgramTestContext, pr
     )
     .await;
 
+    context.last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::recover_nested(
             &wallet.pubkey(),
@@ -559,6 +594,11 @@ async fn fail_wrong_spl_token_program() {
     )
     .await;
 
+    context.last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::recover_nested(
             &wallet.pubkey(),
@@ -587,7 +627,7 @@ async fn fail_wrong_spl_token_program() {
 #[tokio::test]
 async fn fail_destination_not_wallet_ata() {
     let wallet = Keypair::new();
-    let wrong_wallet = Keypair::new();
+    let wrong_wallet = Pubkey::new_unique();
     let dummy_mint = Pubkey::new_unique();
     let pt = program_test_2022(dummy_mint, true);
     let program_id = spl_token_2022::id();
@@ -604,13 +644,17 @@ async fn fail_destination_not_wallet_ata() {
     )
     .await;
     let wrong_destination_associated_token_account_address =
-        create_associated_token_account(&mut context, &wrong_wallet.pubkey(), &mint, &program_id)
-            .await;
+        create_associated_token_account(&mut context, &wrong_wallet, &mint, &program_id).await;
 
     let mut recover = instruction::recover_nested(&wallet.pubkey(), &mint, &mint, &program_id);
     recover.accounts[2] =
         AccountMeta::new(wrong_destination_associated_token_account_address, false);
 
+    context.last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&context.last_blockhash)
+        .await
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[recover],
         Some(&context.payer.pubkey()),
