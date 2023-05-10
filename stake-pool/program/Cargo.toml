@@ -13,7 +13,7 @@ test-sbf = []
 
 [dependencies]
 arrayref = "0.3.7"
-borsh = "0.9"
+borsh = "0.10"
 mpl-token-metadata =  { version = "1.7.0", features = [ "no-entrypoint" ] }
 num-derive = "0.3"
 num-traits = "0.2"

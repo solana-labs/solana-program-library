@@ -13,7 +13,7 @@ borsh = ["dep:borsh"]
 
 [dependencies]
 arrayref = "0.3.7"
-borsh = { version = "0.9.1", optional = true }
+borsh = { version = "0.10.3", optional = true }
 bytemuck = { version = "1.13.0", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"
