@@ -13,7 +13,7 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-arrayref = "0.3.6"
+arrayref = "0.3.7"
 bytemuck = "1.13.0"
 num-derive = "0.3"
 num-traits = "0.2"
