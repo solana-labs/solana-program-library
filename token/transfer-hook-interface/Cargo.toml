@@ -11,7 +11,7 @@ edition = "2021"
 offchain-client = ["dep:solana-sdk"]
 
 [dependencies]
-arrayref = "0.3.6"
+arrayref = "0.3.7"
 bytemuck = { version = "1.13.0", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"

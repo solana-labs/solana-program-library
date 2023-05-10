@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-arrayref = "0.3.6"
+arrayref = "0.3.7"
 bincode = "1.3.2"
 borsh = "0.9.1"
 num-derive = "0.3"
