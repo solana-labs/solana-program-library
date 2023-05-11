@@ -33,4 +33,4 @@ borsh = "0.9.3"
 solana-program-test = "1.14.12"
 solana-sdk = "1.14.12"
 tokio = { version = "1.8.4", features = ["full"] }
-anyhow = "1.0.52"
+anyhow = "1.0.71"
