@@ -60,6 +60,7 @@
     "@rollup/plugin-typescript": "^11.1.0",
     "@types/bn.js": "^5.1.0",
     "@types/jest": "^27.4.0",
+    "@types/node-fetch": "^2.6.3",
     "@typescript-eslint/eslint-plugin": "^5.11.0",
     "@typescript-eslint/parser": "^5.11.0",
     "cross-env": "^7.0.3",
