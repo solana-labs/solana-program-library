@@ -6218,7 +6218,6 @@ dependencies = [
 name = "spl-managed-token"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "borsh",
  "shank 0.0.5",
  "solana-program",
@@ -6227,7 +6226,6 @@ dependencies = [
  "spl-associated-token-account 1.1.2",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
- "tokio",
 ]
 
 [[package]]
