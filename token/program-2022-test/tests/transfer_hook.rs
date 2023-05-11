@@ -176,6 +176,43 @@ async fn success_init() {
 }
 
 #[tokio::test]
+async fn fail_init_all_none() {
+    let mut program_test = ProgramTest::default();
+    program_test.prefer_bpf(false);
+    program_test.add_program(
+        "spl_token_2022",
+        spl_token_2022::id(),
+        processor!(Processor::process),
+    );
+    let context = program_test.start_with_context().await;
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+    let mut context = TestContext {
+        context,
+        token_context: None,
+    };
+    let err = context
+        .init_token_with_mint_keypair_and_freeze_authority(
+            Keypair::new(),
+            vec![ExtensionInitializationParams::TransferHook {
+                authority: None,
+                program_id: None,
+            }],
+            None,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                1,
+                InstructionError::Custom(TokenError::InvalidInstruction as u32)
+            )
+        )))
+    );
+}
+
+#[tokio::test]
 async fn set_authority() {
     let authority = Keypair::new();
     let program_id = Pubkey::new_unique();
