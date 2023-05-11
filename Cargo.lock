@@ -6471,6 +6471,7 @@ dependencies = [
  "solana-zk-token-sdk",
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
+ "spl-transfer-hook-interface",
  "thiserror",
 ]
 
@@ -6487,6 +6488,8 @@ dependencies = [
  "spl-memo 3.0.1",
  "spl-token-2022 0.6.1",
  "spl-token-client",
+ "spl-transfer-hook-example",
+ "spl-transfer-hook-interface",
  "walkdir",
 ]
 
@@ -6529,6 +6532,7 @@ name = "spl-token-client"
 version = "0.5.0"
 dependencies = [
  "async-trait",
+ "futures 0.3.21",
  "solana-cli-output",
  "solana-client",
  "solana-program-test",
@@ -6537,6 +6541,7 @@ dependencies = [
  "spl-memo 3.0.1",
  "spl-token 3.5.0",
  "spl-token-2022 0.6.1",
+ "spl-transfer-hook-interface",
  "thiserror",
 ]
 
@@ -6673,7 +6678,6 @@ dependencies = [
  "num-traits",
  "num_enum 0.6.1",
  "solana-program",
- "solana-sdk",
  "spl-tlv-account-resolution",
  "spl-type-length-value",
  "thiserror",

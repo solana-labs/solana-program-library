@@ -42,7 +42,7 @@ impl TestContext {
         &mut self,
         extension_init_params: Vec<ExtensionInitializationParams>,
     ) -> TokenResult<()> {
-        self._init_token_with_mint(extension_init_params, None)
+        self.init_token_with_mint_and_freeze_authority(extension_init_params, None)
             .await
     }
 
@@ -51,12 +51,30 @@ impl TestContext {
         extension_init_params: Vec<ExtensionInitializationParams>,
     ) -> TokenResult<()> {
         let freeze_authority = Keypair::new();
-        self._init_token_with_mint(extension_init_params, Some(freeze_authority))
-            .await
+        self.init_token_with_mint_and_freeze_authority(
+            extension_init_params,
+            Some(freeze_authority),
+        )
+        .await
     }
 
-    pub async fn _init_token_with_mint(
+    pub async fn init_token_with_mint_and_freeze_authority(
         &mut self,
+        extension_init_params: Vec<ExtensionInitializationParams>,
+        freeze_authority: Option<Keypair>,
+    ) -> TokenResult<()> {
+        let mint_account = Keypair::new();
+        self.init_token_with_mint_keypair_and_freeze_authority(
+            mint_account,
+            extension_init_params,
+            freeze_authority,
+        )
+        .await
+    }
+
+    pub async fn init_token_with_mint_keypair_and_freeze_authority(
+        &mut self,
+        mint_account: Keypair,
         extension_init_params: Vec<ExtensionInitializationParams>,
         freeze_authority: Option<Keypair>,
     ) -> TokenResult<()> {
@@ -69,7 +87,6 @@ impl TestContext {
 
         let decimals: u8 = 9;
 
-        let mint_account = Keypair::new();
         let mint_authority = Keypair::new();
         let mint_authority_pubkey = mint_authority.pubkey();
         let freeze_authority_pubkey = freeze_authority

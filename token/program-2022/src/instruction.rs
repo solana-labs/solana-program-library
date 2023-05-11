@@ -630,6 +630,12 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
+    /// The common instruction prefix for transfer hook extension instructions.
+    ///
+    /// See `extension::transfer_hook::instruction::TransferHookInstruction`
+    /// for further details about the extended instructions that share this instruction
+    /// prefix
+    TransferHookExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -765,6 +771,7 @@ impl<'a> TokenInstruction<'a> {
                 let (delegate, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializePermanentDelegate { delegate }
             }
+            36 => Self::TransferHookExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -924,6 +931,9 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
             }
+            &Self::TransferHookExtension => {
+                buf.push(36);
+            }
         };
         buf
     }
@@ -1010,6 +1020,8 @@ pub enum AuthorityType {
     /// Authority to update confidential transfer mint and aprove accounts for confidential
     /// transfers
     ConfidentialTransferMint,
+    /// Authority to set the transfer hook program id
+    TransferHookProgramId,
 }
 
 impl AuthorityType {
@@ -1025,6 +1037,7 @@ impl AuthorityType {
             AuthorityType::InterestRate => 7,
             AuthorityType::PermanentDelegate => 8,
             AuthorityType::ConfidentialTransferMint => 9,
+            AuthorityType::TransferHookProgramId => 10,
         }
     }
 
@@ -1040,6 +1053,7 @@ impl AuthorityType {
             7 => Ok(AuthorityType::InterestRate),
             8 => Ok(AuthorityType::PermanentDelegate),
             9 => Ok(AuthorityType::ConfidentialTransferMint),
+            10 => Ok(AuthorityType::TransferHookProgramId),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

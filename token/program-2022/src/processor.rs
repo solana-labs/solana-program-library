@@ -16,6 +16,7 @@ use {
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
+            transfer_hook::{self, TransferHook, TransferHookAccount},
             BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
@@ -293,42 +294,57 @@ impl Processor {
         {
             return Err(TokenError::NonTransferable.into());
         }
-        let (fee, maybe_permanent_delegate) = if let Some((mint_info, expected_decimals)) =
-            expected_mint_info
-        {
-            if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
-                return Err(TokenError::MintMismatch.into());
-            }
+        let (fee, maybe_permanent_delegate, maybe_transfer_hook_program_id) =
+            if let Some((mint_info, expected_decimals)) = expected_mint_info {
+                if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
+                    return Err(TokenError::MintMismatch.into());
+                }
 
-            let mint_data = mint_info.try_borrow_data()?;
-            let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+                let mint_data = mint_info.try_borrow_data()?;
+                let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
 
-            if expected_decimals != mint.base.decimals {
-                return Err(TokenError::MintDecimalsMismatch.into());
-            }
+                if expected_decimals != mint.base.decimals {
+                    return Err(TokenError::MintDecimalsMismatch.into());
+                }
 
-            let fee = if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
-                transfer_fee_config
-                    .calculate_epoch_fee(Clock::get()?.epoch, amount)
-                    .ok_or(TokenError::Overflow)?
+                let fee = if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>()
+                {
+                    transfer_fee_config
+                        .calculate_epoch_fee(Clock::get()?.epoch, amount)
+                        .ok_or(TokenError::Overflow)?
+                } else {
+                    0
+                };
+
+                let maybe_permanent_delegate = get_permanent_delegate(&mint);
+                let maybe_transfer_hook_program_id = transfer_hook::get_program_id(&mint);
+
+                (
+                    fee,
+                    maybe_permanent_delegate,
+                    maybe_transfer_hook_program_id,
+                )
             } else {
-                0
+                // Transfer hook extension exists on the account, but no mint
+                // was provided to figure out required accounts, abort
+                if source_account
+                    .get_extension::<TransferHookAccount>()
+                    .is_ok()
+                {
+                    return Err(TokenError::MintRequiredForTransfer.into());
+                }
+
+                // Transfer fee amount extension exists on the account, but no mint
+                // was provided to calculate the fee, abort
+                if source_account
+                    .get_extension_mut::<TransferFeeAmount>()
+                    .is_ok()
+                {
+                    return Err(TokenError::MintRequiredForTransfer.into());
+                } else {
+                    (0, None, None)
+                }
             };
-
-            let maybe_permanent_delegate = get_permanent_delegate(&mint);
-            (fee, maybe_permanent_delegate)
-        } else {
-            // Transfer fee amount extension exists on the account, but no mint
-            // was provided to calculate the fee, abort
-            if source_account
-                .get_extension_mut::<TransferFeeAmount>()
-                .is_ok()
-            {
-                return Err(TokenError::MintRequiredForTransfer.into());
-            } else {
-                (0, None)
-            }
-        };
         if let Some(expected_fee) = expected_fee {
             if expected_fee != fee {
                 msg!("Calculated fee {}, received {}", fee, expected_fee);
@@ -459,6 +475,25 @@ impl Processor {
 
         source_account.pack_base();
         destination_account.pack_base();
+
+        if let Some(program_id) = maybe_transfer_hook_program_id {
+            if let Some((mint_info, _)) = expected_mint_info {
+                // must drop these to avoid the double-borrow during CPI
+                drop(source_account_data);
+                drop(destination_account_data);
+                spl_transfer_hook_interface::invoke::execute(
+                    &program_id,
+                    source_account_info.clone(),
+                    mint_info.clone(),
+                    destination_account_info.clone(),
+                    authority_info.clone(),
+                    account_info_iter.as_slice(),
+                    amount,
+                )?;
+            } else {
+                return Err(TokenError::MintRequiredForTransfer.into());
+            }
+        }
 
         Ok(())
     }
@@ -751,6 +786,19 @@ impl Processor {
                     Self::validate_owner(
                         program_id,
                         &confidential_transfer_mint_authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.authority = new_authority.try_into()?;
+                }
+                AuthorityType::TransferHookProgramId => {
+                    let extension = mint.get_extension_mut::<TransferHook>()?;
+                    let maybe_authority: Option<Pubkey> = extension.authority.into();
+                    let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &authority,
                         authority_info,
                         authority_info_data_len,
                         account_info_iter.as_slice(),
@@ -1458,6 +1506,9 @@ impl Processor {
             TokenInstruction::InitializePermanentDelegate { delegate } => {
                 msg!("Instruction: InitializePermanentDelegate");
                 Self::process_initialize_permanent_delegate(accounts, delegate)
+            }
+            TokenInstruction::TransferHookExtension => {
+                transfer_hook::processor::process_instruction(program_id, accounts, &input[1..])
             }
         }
     }
