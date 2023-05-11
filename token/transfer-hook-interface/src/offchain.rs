@@ -52,6 +52,8 @@ where
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
     ExtraAccountMetas::add_to_vec::<ExecuteInstruction>(account_metas, &validation_account_data)?;
+    // The onchain helpers pull out the required accounts from an opaque
+    // slice by pubkey, so the order doesn't matter here!
     account_metas.push(AccountMeta::new_readonly(
         *permissioned_transfer_program_id,
         false,

@@ -79,6 +79,8 @@ pub fn add_cpi_accounts_for_execute<'a>(
         &validation_info.try_borrow_data()?,
         additional_accounts,
     )?;
+    // The onchain helpers pull out the required accounts from an opaque
+    // slice by pubkey, so the order doesn't matter here!
     cpi_account_infos.push(validation_info.clone());
     cpi_account_infos.push(program_info.clone());
     cpi_instruction
