@@ -9,8 +9,8 @@
 
 pub mod error;
 pub mod instruction;
-pub mod invoke;
 pub mod offchain;
+pub mod onchain;
 
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;

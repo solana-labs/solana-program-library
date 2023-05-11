@@ -481,7 +481,7 @@ impl Processor {
                 // must drop these to avoid the double-borrow during CPI
                 drop(source_account_data);
                 drop(destination_account_data);
-                spl_transfer_hook_interface::invoke::execute(
+                spl_transfer_hook_interface::onchain::invoke_execute(
                     &program_id,
                     source_account_info.clone(),
                     mint_info.clone(),

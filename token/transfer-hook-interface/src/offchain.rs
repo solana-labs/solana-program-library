@@ -7,8 +7,11 @@ use {
     std::future::Future,
 };
 
-type AccountDataResult = Result<Option<Vec<u8>>, AccountFetchError>;
-type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
+/// Type representing the output of an account fetching function, for easy
+/// chaining between APIs
+pub type AccountDataResult = Result<Option<Vec<u8>>, AccountFetchError>;
+/// Generic error type that can come out of any client while fetching account data
+pub type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
 
 /// Offchain helper to get all additional required account metas for a mint
 ///
@@ -17,48 +20,45 @@ type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
 /// the given address. Can be called in the following way:
 ///
 /// ```rust,ignore
-/// use futures::future::TryFutureExt;
+/// use futures_util::TryFutureExt;
 /// use solana_client::nonblocking::rpc_client::RpcClient;
 /// use solana_program::pubkey::Pubkey;
 ///
 /// let program_id = Pubkey::new_unique();
 /// let mint = Pubkey::new_unique();
 /// let client = RpcClient::new_mock("succeeds".to_string());
+/// let mut account_metas = vec![];
 ///
-/// let extra_account_metas = get_extra_account_metas(
+/// get_extra_account_metas(
+///     &mut account_metas,
 ///     |address| self.client.get_account(&address).map_ok(|opt| opt.map(|acc| acc.data)),
-///     &program_id,
 ///     &mint,
+///     &program_id,
 /// ).await?;
 /// ```
 pub async fn get_extra_account_metas<F, Fut>(
+    account_metas: &mut Vec<AccountMeta>,
     get_account_data_fn: F,
-    permissioned_transfer_program_id: &Pubkey,
     mint: &Pubkey,
-) -> Result<Vec<AccountMeta>, AccountFetchError>
+    permissioned_transfer_program_id: &Pubkey,
+) -> Result<(), AccountFetchError>
 where
     F: Fn(Pubkey) -> Fut,
     Fut: Future<Output = AccountDataResult>,
 {
-    let mut instruction_metas = vec![];
     let validation_address =
         get_extra_account_metas_address(mint, permissioned_transfer_program_id);
     let validation_account_data = get_account_data_fn(validation_address)
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
-    ExtraAccountMetas::add_to_vec::<ExecuteInstruction>(
-        &mut instruction_metas,
-        &validation_account_data,
-    )?;
-    instruction_metas.push(AccountMeta {
-        pubkey: *permissioned_transfer_program_id,
-        is_signer: false,
-        is_writable: false,
-    });
-    instruction_metas.push(AccountMeta {
-        pubkey: validation_address,
-        is_signer: false,
-        is_writable: false,
-    });
-    Ok(instruction_metas)
+    ExtraAccountMetas::add_to_vec::<ExecuteInstruction>(account_metas, &validation_account_data)?;
+    // The onchain helpers pull out the required accounts from an opaque
+    // slice by pubkey, so the order doesn't matter here!
+    account_metas.push(AccountMeta::new_readonly(
+        *permissioned_transfer_program_id,
+        false,
+    ));
+    account_metas.push(AccountMeta::new_readonly(validation_address, false));
+
+    Ok(())
 }

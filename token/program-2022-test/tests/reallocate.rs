@@ -99,7 +99,7 @@ async fn reallocate() {
         )
         .await
         .unwrap();
-    let account = token.get_account(&alice_account).await.unwrap();
+    let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
         ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner])
@@ -116,7 +116,7 @@ async fn reallocate() {
         )
         .await
         .unwrap();
-    let account = token.get_account(&alice_account).await.unwrap();
+    let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
         ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner])
@@ -137,7 +137,7 @@ async fn reallocate() {
         )
         .await
         .unwrap();
-    let account = token.get_account(&alice_account).await.unwrap();
+    let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
         ExtensionType::get_account_len::<Account>(&[
@@ -179,7 +179,7 @@ async fn reallocate_without_current_extension_knowledge() {
         )
         .await
         .unwrap();
-    let account = token.get_account(&alice_account).await.unwrap();
+    let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
         ExtensionType::get_account_len::<Account>(&[

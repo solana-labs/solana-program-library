@@ -183,7 +183,7 @@ async fn success_close() {
         )
         .await
         .unwrap();
-    let destination = token.get_account(&destination).await.unwrap();
+    let destination = token.get_account(destination).await.unwrap();
     assert!(destination.lamports > 0);
 }
 
