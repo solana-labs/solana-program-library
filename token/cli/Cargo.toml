@@ -39,7 +39,7 @@ tokio = "1.14"
 [dev-dependencies]
 solana-test-validator = "=1.14.12"
 assert_cmd = "2.0.5"
-serial_test = "0.8.0"
+serial_test = "2.0.0"
 tempfile = "3.5.0"
 
 [[bin]]
