@@ -23,13 +23,9 @@ uint = "0.9"
 
 [dev-dependencies]
 assert_matches = "1.5.0"
-base64 = "0.21"
-log = "0.4.14"
 proptest = "1.1"
 solana-program-test = "1.14.12"
 solana-sdk = "1.14.12"
-serde = "1.0"
-serde_yaml = "0.8"
 
 [lib]
 crate-type = ["cdylib", "lib"]
