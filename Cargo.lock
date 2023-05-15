@@ -6501,7 +6501,6 @@ dependencies = [
  "assert_cmd",
  "clap 2.34.0",
  "console",
- "indicatif",
  "serde",
  "serde_derive",
  "serde_json",
