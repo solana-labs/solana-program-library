@@ -1,4 +1,4 @@
-import { publicKey, struct, u32, u64, u8, option, vec } from '@project-serum/borsh';
+import { publicKey, struct, u32, u64, u8, option, vec } from '@coral-xyz/borsh';
 import { Lockup, PublicKey } from '@solana/web3.js';
 import { AccountInfo } from '@solana/spl-token';
 import BN from 'bn.js';
