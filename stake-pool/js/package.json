@@ -70,7 +70,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "jest": "^27.5.1",
     "prettier": "^2.8.8",
-    "rimraf": "^3.0.2",
+    "rimraf": "^5.0.0",
     "rollup": "^2.66.1",
     "rollup-plugin-dts": "^4.2.3",
     "rollup-plugin-node-polyfills": "^0.2.1",
