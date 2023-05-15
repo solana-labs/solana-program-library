@@ -74,6 +74,6 @@
         "ts-jest": "^28.0.8",
         "ts-node": "^10.9.1",
         "typedoc": "^0.24.7",
-        "typescript": "^4.7.4"
+        "typescript": "^5.0.4"
     }
 }
