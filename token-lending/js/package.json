@@ -55,7 +55,7 @@
         "eslint-plugin-prettier": "^4.0.0",
         "gh-pages": "^5.0.0",
         "prettier": "^2.6.1",
-        "rollup": "^2.70.1",
+        "rollup": "^3.21.8",
         "ts-node": "^10.7.0",
         "tslib": "^2.3.0",
         "typedoc": "^0.24.7",
