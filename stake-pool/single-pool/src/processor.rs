@@ -3,8 +3,9 @@
 use {
     crate::{
         error::SinglePoolError, instruction::SinglePoolInstruction, MINT_DECIMALS,
-        POOL_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_STAKE_PREFIX, VOTE_STATE_END,
-        VOTE_STATE_START,
+        POOL_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_STAKE_PREFIX,
+        VOTE_STATE_AUTHORIZED_WITHDRAWER_END, VOTE_STATE_AUTHORIZED_WITHDRAWER_START,
+        VOTE_STATE_DISCRIMINATOR_END,
     },
     borsh::BorshDeserialize,
     mpl_token_metadata::{
@@ -158,7 +159,7 @@ fn check_vote_account(vote_account_info: &AccountInfo) -> Result<(), ProgramErro
 
     let vote_account_data = &vote_account_info.try_borrow_data()?;
     let state_variant = vote_account_data
-        .get(..VOTE_STATE_START)
+        .get(..VOTE_STATE_DISCRIMINATOR_END)
         .and_then(|s| s.try_into().ok())
         .ok_or(SinglePoolError::UnparseableVoteAccount)?;
 
@@ -936,7 +937,7 @@ impl Processor {
         // and validator-operators we spoke with indicated this would be their preference as well
         let vote_account_data = &vote_account_info.try_borrow_data()?;
         let vote_account_withdrawer = vote_account_data
-            .get(VOTE_STATE_START..VOTE_STATE_END)
+            .get(VOTE_STATE_AUTHORIZED_WITHDRAWER_START..VOTE_STATE_AUTHORIZED_WITHDRAWER_END)
             .map(Pubkey::new)
             .ok_or(SinglePoolError::UnparseableVoteAccount)?;
 

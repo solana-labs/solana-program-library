@@ -30,7 +30,7 @@ async fn success_update_pool_token_metadata() {
     let instruction = instruction::update_token_metadata(
         &id(),
         &accounts.vote_account.pubkey(),
-        &accounts.validator.pubkey(),
+        &accounts.withdrawer.pubkey(),
         updated_name.to_string(),
         updated_symbol.to_string(),
         updated_uri.to_string(),
@@ -39,7 +39,7 @@ async fn success_update_pool_token_metadata() {
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &accounts.validator],
+        &[&context.payer, &accounts.withdrawer],
         context.last_blockhash,
     );
 

@@ -35,6 +35,8 @@ async fn build_instructions(
             &context.payer,
             &context.last_blockhash,
             &accounts.validator,
+            &accounts.voter.pubkey(),
+            &accounts.withdrawer.pubkey(),
             &accounts.vote_account,
         )
         .await;

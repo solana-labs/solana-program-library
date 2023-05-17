@@ -49,6 +49,8 @@ pub fn program_test() -> ProgramTest {
 #[derive(Debug, PartialEq)]
 pub struct SinglePoolAccounts {
     pub validator: Keypair,
+    pub voter: Keypair,
+    pub withdrawer: Keypair,
     pub vote_account: Keypair,
     pub stake_account: Pubkey,
     pub authority: Pubkey,
@@ -214,6 +216,8 @@ impl SinglePoolAccounts {
             &context.payer,
             &context.last_blockhash,
             &self.validator,
+            &self.voter.pubkey(),
+            &self.withdrawer.pubkey(),
             &self.vote_account,
         )
         .await;
@@ -294,6 +298,8 @@ impl Default for SinglePoolAccounts {
 
         Self {
             validator: Keypair::new(),
+            voter: Keypair::new(),
+            withdrawer: Keypair::new(),
             authority: find_pool_authority_address(&id(), &vote_account.pubkey()),
             stake_account: find_pool_stake_address(&id(), &vote_account.pubkey()),
             mint,
@@ -336,7 +342,9 @@ pub async fn create_vote(
     payer: &Keypair,
     recent_blockhash: &Hash,
     validator: &Keypair,
-    vote: &Keypair,
+    voter: &Pubkey,
+    withdrawer: &Pubkey,
+    vote_account: &Keypair,
 ) {
     let rent = banks_client.get_rent().await.unwrap();
     let rent_voter = rent.minimum_balance(VoteState::size_of());
@@ -350,11 +358,11 @@ pub async fn create_vote(
     )];
     instructions.append(&mut vote_instruction::create_account(
         &payer.pubkey(),
-        &vote.pubkey(),
+        &vote_account.pubkey(),
         &VoteInit {
             node_pubkey: validator.pubkey(),
-            authorized_voter: validator.pubkey(),
-            authorized_withdrawer: validator.pubkey(),
+            authorized_voter: *voter,
+            authorized_withdrawer: *withdrawer,
             ..VoteInit::default()
         },
         rent_voter,
@@ -363,7 +371,7 @@ pub async fn create_vote(
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
         Some(&payer.pubkey()),
-        &[validator, vote, payer],
+        &[validator, vote_account, payer],
         *recent_blockhash,
     );
 
