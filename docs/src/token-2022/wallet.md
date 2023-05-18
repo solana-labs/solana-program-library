@@ -81,7 +81,7 @@ Finally, you can save all of these accounts in a directory to be re-used for tes
 
 ```console
 $ mkdir test-accounts
-$ solana -ul account --output-file test-accounts/token-account.json --output json mVpZiUb95APymCW9idyLZ9rZkjjWj2QbFVyBNZfT4ve
+$ solana -ul account --output-file test-accounts/token-account.json --output json 4L45ZpFS6dqTyLMofmQZ9yuTqYvQrfCJfWL2xAjd5WDW
 ... output truncated ...
 $ solana -ul account --output-file test-accounts/mint.json --output json E5SUrbnx7bMBp3bRdMWNCFS3FXp5VpvFDdNFp8rjrMLM
 ... output truncated ...
