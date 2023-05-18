@@ -22,7 +22,7 @@
         "lib"
     ],
     "scripts": {
-        "build": "rm -rf lib/* && tsc && rollup -c && rm lib/rollup.config.d.ts",
+        "build": "rm -rf lib/* && tsc && rollup --configPlugin @rollup/plugin-typescript -c && rm lib/rollup.config.d.ts",
         "deploy": "yarn docs && gh-pages -d docs -e token-lending",
         "docs": "rm -rf docs/* && typedoc",
         "lint": "eslint . --ext .ts --max-warnings 0 && prettier --check '**/*.{ts,js,json}'",
@@ -41,7 +41,7 @@
     "devDependencies": {
         "@rollup/plugin-commonjs": "^25.0.0",
         "@rollup/plugin-node-resolve": "^15.0.2",
-        "@rollup/plugin-typescript": "^11.1.0",
+        "@rollup/plugin-typescript": "^11.1.1",
         "@solana/spl-token": "^0.3.7",
         "@solana/web3.js": "^1.36.0",
         "@types/eslint": "^8.4.1",
