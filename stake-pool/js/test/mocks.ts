@@ -1,12 +1,11 @@
 import { AccountInfo, LAMPORTS_PER_SOL, PublicKey, StakeProgram } from '@solana/web3.js';
 import BN from 'bn.js';
 import { ValidatorStakeInfo } from '../src';
-import { AccountLayout, ValidatorListLayout, ValidatorStakeInfoStatus } from '../src/layouts';
+import { AccountLayout, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { ValidatorListLayout, ValidatorStakeInfoStatus } from '../src/layouts';
 
 export const CONSTANTS = {
-  poolTokenAccount: new PublicKey(
-    new BN('e4f53a3a11521b9171c942ff91183ec8db4e6f347bb9aa7d4a814b7874bfd15c', 'hex'),
-  ),
+  poolTokenAccount: new PublicKey('GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd'),
   validatorStakeAccountAddress: new PublicKey(
     new BN('69184b7f1bc836271c4ac0e29e53eb38a38ea0e7bcde693c45b30d1592a5a678', 'hex'),
   ),
@@ -114,28 +113,27 @@ export const validatorListMock = {
 };
 
 export function mockTokenAccount(amount = 0) {
-  const data = Buffer.alloc(1024);
+  const data = Buffer.alloc(165);
   AccountLayout.encode(
     {
-      state: 0,
       mint: stakePoolMock.poolMint,
       owner: new PublicKey(0),
-      amount: new BN(amount),
-      // address: new PublicKey(0),
-      // delegate: null,
-      // delegatedAmount: new BN(0),
-      // isInitialized: true,
-      // isFrozen: false,
-      // isNative: false,
-      // rentExemptReserve: null,
-      // closeAuthority: null,
+      amount: BigInt(amount),
+      delegateOption: 0,
+      delegate: new PublicKey(0),
+      delegatedAmount: BigInt(0),
+      state: 1,
+      isNativeOption: 0,
+      isNative: BigInt(0),
+      closeAuthorityOption: 0,
+      closeAuthority: new PublicKey(0),
     },
     data,
   );
 
   return <AccountInfo<any>>{
     executable: true,
-    owner: new PublicKey(0),
+    owner: TOKEN_PROGRAM_ID,
     lamports: amount,
     data,
   };

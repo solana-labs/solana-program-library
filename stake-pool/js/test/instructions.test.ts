@@ -15,7 +15,7 @@ import {
   AccountInfo,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, TokenAccountNotFoundError } from '@solana/spl-token';
 import { StakePoolLayout } from '../src/layouts';
 import {
   STAKE_POOL_INSTRUCTION_LAYOUTS,
@@ -129,7 +129,7 @@ describe('StakePoolProgram', () => {
 
     it('should call successfully', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey) => {
-        if (pubKey == stakePoolAddress) {
+        if (pubKey === stakePoolAddress) {
           return stakePoolAccount;
         }
         return <AccountInfo<any>>{
@@ -142,8 +142,8 @@ describe('StakePoolProgram', () => {
 
       const res = await depositSol(connection, stakePoolAddress, from, balance);
 
-      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(2);
-      expect(res.instructions).toHaveLength(2);
+      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(1);
+      expect(res.instructions).toHaveLength(3);
       expect(res.signers).toHaveLength(1);
     });
   });
@@ -172,12 +172,12 @@ describe('StakePoolProgram', () => {
 
       await expect(
         withdrawSol(connection, stakePoolAddress, tokenOwner, solReceiver, 1),
-      ).rejects.toThrow(Error('Invalid token account'));
+      ).rejects.toThrow(TokenAccountNotFoundError);
     });
 
     it('should throw an error with invalid token account balance', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolAddress) {
+        if (pubKey === stakePoolAddress) {
           return stakePoolAccount;
         }
         if (pubKey.equals(CONSTANTS.poolTokenAccount)) {
@@ -225,7 +225,7 @@ describe('StakePoolProgram', () => {
       });
 
       await expect(withdrawStake(connection, stakePoolAddress, tokenOwner, 1)).rejects.toThrow(
-        Error('Invalid token account'),
+        TokenAccountNotFoundError,
       );
     });
 

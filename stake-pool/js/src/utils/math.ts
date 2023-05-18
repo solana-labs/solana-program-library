@@ -6,9 +6,12 @@ export function solToLamports(amount: number): number {
   return Number(amount * LAMPORTS_PER_SOL);
 }
 
-export function lamportsToSol(lamports: number | BN): number {
+export function lamportsToSol(lamports: number | BN | bigint): number {
   if (typeof lamports === 'number') {
     return Math.abs(lamports) / LAMPORTS_PER_SOL;
+  }
+  if (typeof lamports === 'bigint') {
+    return Math.abs(Number(lamports)) / LAMPORTS_PER_SOL;
   }
 
   let signMultiplier = 1;
