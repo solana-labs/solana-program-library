@@ -169,12 +169,16 @@ const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
 const tokenAccounts = await connection.getTokenAccountsByOwner(
   walletPublicKey, { programId: TOKEN_PROGRAM_ID }
 );
-const accountsWithProgramId = tokenAccounts.value.map(({ account, pubkey }) =>
-  {
-    account,
-    pubkey,
-    programId: TOKEN_PROGRAM_ID,
-  },
+const token2022Accounts = await connection.getTokenAccountsByOwner(
+  walletPublicKey, { programId: TOKEN_2022_PROGRAM_ID }
+);
+const accountsWithProgramId = [...tokenAccounts.value, ...token2022Accounts.value].map(
+  ({ account, pubkey }) =>
+    {
+      account,
+      pubkey,
+      programId: account.data.program === 'spl-token' ? TOKEN_PROGRAM_ID : TOKEN_2022_PROGRAM_ID,
+    },
 );
 
 // later on...
