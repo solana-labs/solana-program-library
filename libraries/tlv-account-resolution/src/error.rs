@@ -37,6 +37,27 @@ pub enum AccountResolutionError {
     /// Provided byte buffer too large for expected type
     #[error("Provided byte buffer too large for expected type")]
     BufferTooLarge,
+    /// Provided list of seed configurations too large for expected type
+    #[error("Provided list of seed configurations too large for expected type")]
+    SeedConfigsTooLarge,
+    /// The byte value provided does not resolve to a valid seed configuration
+    #[error("The byte value provided does not resolve to a valid seed configuration")]
+    InvalidByteValueForSeed,
+    /// Attempted to deserialize an `AccountMeta` but the underlying type was `AccountMetaPda`
+    #[error(
+        "Attempted to deserialize an `AccountMeta` but the underlying type was `AccountMetaPda`"
+    )]
+    RequiredAccountNotAccountMeta,
+    /// Attempted to deserialize an `AccountMetaPda` but the underlying type was `AccountMeta`
+    #[error(
+        "Attempted to deserialize an `AccountMetaPda` but the underlying type was `AccountMeta`"
+    )]
+    RequiredAccountNotPda,
+    /// None of the provided seeds matched required seeds for stored required `AccountMetaPda`
+    #[error(
+        "None of the provided seeds matched required seeds for stored required `AccountMetaPda`"
+    )]
+    NoProvidedSeedsMatched,
 }
 impl From<AccountResolutionError> for ProgramError {
     fn from(e: AccountResolutionError) -> Self {
@@ -67,6 +88,17 @@ impl PrintProgramError for AccountResolutionError {
             Self::CalculationFailure => msg!("Error in checked math operation"),
             Self::TooManyPubkeys => msg!("Too many pubkeys provided"),
             Self::BufferTooLarge => msg!("Provided byte buffer too large for expected type"),
+            Self::SeedConfigsTooLarge => {
+                msg!("Provided list of seed configurations too large for expected type")
+            }
+            Self::InvalidByteValueForSeed => {
+                msg!("The byte value provided does not resolve to a valid seed configuration")
+            }
+            Self::RequiredAccountNotAccountMeta => {
+                msg!("Attempted to deserialize an `AccountMeta` but the underlying type was `AccountMetaPda`")
+            }
+            Self::RequiredAccountNotPda => msg!("Attempted to deserialize an `AccountMetaPda` but the underlying type was `AccountMeta`"),
+            Self::NoProvidedSeedsMatched => msg!("None of the provided seeds matched required seeds for stored required `AccountMetaPda`")
         }
     }
 }
