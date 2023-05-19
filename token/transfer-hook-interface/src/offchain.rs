@@ -1,11 +1,9 @@
 //! Offchain helper for fetching required accounts to build instructions
 
-use spl_tlv_account_resolution::seeds::SeedConfig;
-
 use {
     crate::{get_extra_account_metas_address, instruction::ExecuteInstruction},
     solana_program::{instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey},
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_tlv_account_resolution::{seeds::SeedConfig, state::ExtraAccountMetas},
     std::future::Future,
 };
 

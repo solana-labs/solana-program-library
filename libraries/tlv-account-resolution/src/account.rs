@@ -3,18 +3,19 @@
 //! `AccountMeta`s - which have fixed addresses - or PDAs -
 //! which have addresses derived from a collection of seeds
 
-use solana_program::{
-    account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
-    pubkey::Pubkey,
+use {
+    crate::{error::AccountResolutionError, seeds::Seed},
+    solana_program::{
+        account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
+        pubkey::Pubkey,
+    },
 };
-
-use crate::{error::AccountResolutionError, seeds::Seed};
 
 /// Struct designed to serve as an `AccountMeta` but for a PDA.
 ///
 /// Similar to `AccountMeta` in structure, but instead of a
 /// fixed address uses seed configurations for deriving the PDA
-#[derive(Clone)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AccountMetaPda {
     /// Seed configurations for the PDA
     pub seeds: [u8; 32],
@@ -37,7 +38,7 @@ impl AccountMetaPda {
 
 /// Enum that binds together the two types of required accounts
 /// possible in a TLV-based validation account.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum RequiredAccount {
     /// Mimics the `AccountMeta` type, which has a fixed address
     Account {

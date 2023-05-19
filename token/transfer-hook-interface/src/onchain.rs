@@ -1,7 +1,5 @@
 //! On-chain program invoke helper to perform on-chain `execute` with correct accounts
 
-use spl_tlv_account_resolution::seeds::SeedConfig;
-
 use {
     crate::{error::TransferHookError, get_extra_account_metas_address, instruction},
     solana_program::{
@@ -11,10 +9,11 @@ use {
         program::invoke,
         pubkey::Pubkey,
     },
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_tlv_account_resolution::{seeds::SeedConfig, state::ExtraAccountMetas},
 };
 /// Helper to CPI into a transfer-hook program on-chain, looking through the
 /// additional account infos to create the proper instruction
+#[allow(clippy::too_many_arguments)]
 pub fn invoke_execute<'a>(
     program_id: &Pubkey,
     source_info: AccountInfo<'a>,

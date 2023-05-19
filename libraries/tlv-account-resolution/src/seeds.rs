@@ -1,8 +1,9 @@
 //! Types for managing seed configurations in TLV Account Resolution
 
-use solana_program::{program_error::ProgramError, pubkey::Pubkey};
-
-use crate::error::AccountResolutionError;
+use {
+    crate::error::AccountResolutionError,
+    solana_program::{program_error::ProgramError, pubkey::Pubkey},
+};
 
 /// Enum to describe a required seed for a Program-Derived Address
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -14,7 +15,7 @@ pub enum Seed {
 }
 
 impl Seed {
-    /// Packs a vector of `Seed` configs into an array of 32 bytes
+    /// Packs a slice of `Seed` configs into an array of 32 bytes
     pub fn pack_slice(value: &[Seed]) -> Result<[u8; 32], ProgramError> {
         let len = value.len();
         if len > 32 {
@@ -28,7 +29,7 @@ impl Seed {
         Ok(data)
     }
 
-    /// Unpacks a vector of `Seed` configs from a slice
+    /// Unpacks a vector of `Seed` configs from a buffer
     pub fn unpack_to_vec(data: &[u8]) -> Result<Vec<Self>, ProgramError> {
         let len = data.len();
         // Length should be 32
@@ -151,6 +152,16 @@ impl SeedConfig {
 
 /// This trait allows you to provide varying sized tuples with
 /// varying Rust types to serve as seeds.
+///
+/// More specifically, this trait specifies tuples as valid
+/// arguments for initializing the `SeedConfig` instance.
+///
+/// Implementing on various tuple sizes with separate generic
+/// types allows us to do something like this:
+/// (&str, u8, u32, String, Pubkey)
+/// or
+/// (Pubkey, Pubkey, Pubkey)
+/// and still be able to initialize a `SeedConfig`
 ///
 /// As you can see from the implementations below, we are
 /// currently supporting up to 10 seeds - which is probably

@@ -48,12 +48,12 @@ impl From<PodBool> for bool {
     }
 }
 
-/// The standard `AccountMeta` is not a `Pod`, define a replacement that is
+/// `Pod` type for a required account stored in TLV validation data
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct PodAccountMeta {
     /// Discriminator to tell whether this represents a standard
-    /// `AccountMeta` or `AccountMetaPda`
+    /// `AccountMeta` or an `AccountMetaPda`
     pub discriminator: u8,
     /// This `address_config` field can either be the pubkey of the account
     /// or the seeds used to derive the pubkey from provided inputs
@@ -113,6 +113,22 @@ impl TryFrom<&PodAccountMeta> for AccountMeta {
     }
 }
 
+impl TryFrom<&PodAccountMeta> for AccountMetaPda {
+    type Error = ProgramError;
+
+    fn try_from(pod: &PodAccountMeta) -> Result<Self, Self::Error> {
+        if pod.discriminator == 1 {
+            Ok(AccountMetaPda {
+                seeds: pod.address_config,
+                is_signer: pod.is_signer.into(),
+                is_writable: pod.is_writable.into(),
+            })
+        } else {
+            Err(AccountResolutionError::RequiredAccountNotPda.into())
+        }
+    }
+}
+
 impl TryFrom<&PodAccountMeta> for RequiredAccount {
     type Error = ProgramError;
 
@@ -160,6 +176,17 @@ impl TryFromAccountType<&AccountMeta> for PodAccountMeta {
             address_config: meta.pubkey.to_bytes(),
             is_signer: meta.is_signer.into(),
             is_writable: meta.is_writable.into(),
+        })
+    }
+}
+
+impl TryFromAccountType<&AccountMetaPda> for PodAccountMeta {
+    fn try_from_account(pda: &AccountMetaPda) -> Result<Self, ProgramError> {
+        Ok(PodAccountMeta {
+            discriminator: 1,
+            address_config: pda.seeds,
+            is_signer: pda.is_signer.into(),
+            is_writable: pda.is_writable.into(),
         })
     }
 }

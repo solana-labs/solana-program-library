@@ -198,8 +198,8 @@ impl ExtraAccountMetas {
                     is_writable,
                 } => {
                     let res = match &required_seeds {
-                        Some(seed_config_opt) => {
-                            let pubkey = match seed_config_opt.get(seeds_index) {
+                        Some(seed_config_vec) => {
+                            let pubkey = match seed_config_vec.get(seeds_index) {
                                 Some(seed_config) => seed_config.evaluate(program_id, seeds)?,
                                 None => {
                                     return Err(
@@ -271,8 +271,8 @@ impl ExtraAccountMetas {
                     is_writable,
                 } => {
                     let res = match &required_seeds {
-                        Some(seed_config_opt) => {
-                            let pubkey = match seed_config_opt.get(seeds_index) {
+                        Some(seed_config_vec) => {
+                            let pubkey = match seed_config_vec.get(seeds_index) {
                                 Some(seed_config) => seed_config.evaluate(program_id, seeds)?,
                                 None => {
                                     return Err(
