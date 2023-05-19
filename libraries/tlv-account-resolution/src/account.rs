@@ -14,6 +14,7 @@ use crate::{error::AccountResolutionError, seeds::Seed};
 ///
 /// Similar to `AccountMeta` in structure, but instead of a
 /// fixed address uses seed configurations for deriving the PDA
+#[derive(Clone)]
 pub struct AccountMetaPda {
     /// Seed configurations for the PDA
     pub seeds: [u8; 32],
@@ -36,6 +37,7 @@ impl AccountMetaPda {
 
 /// Enum that binds together the two types of required accounts
 /// possible in a TLV-based validation account.
+#[derive(Clone)]
 pub enum RequiredAccount {
     /// Mimics the `AccountMeta` type, which has a fixed address
     Account {

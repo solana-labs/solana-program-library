@@ -1,5 +1,7 @@
 //! Offchain helper for fetching required accounts to build instructions
 
+use spl_tlv_account_resolution::seeds::SeedConfig;
+
 use {
     crate::{get_extra_account_metas_address, instruction::ExecuteInstruction},
     solana_program::{instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey},
@@ -41,6 +43,7 @@ pub async fn get_extra_account_metas<F, Fut>(
     get_account_data_fn: F,
     mint: &Pubkey,
     permissioned_transfer_program_id: &Pubkey,
+    required_seeds: Option<Vec<SeedConfig>>,
 ) -> Result<(), AccountFetchError>
 where
     F: Fn(Pubkey) -> Fut,
@@ -51,7 +54,12 @@ where
     let validation_account_data = get_account_data_fn(validation_address)
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
-    ExtraAccountMetas::add_to_vec::<ExecuteInstruction>(account_metas, &validation_account_data)?;
+    ExtraAccountMetas::add_to_vec::<ExecuteInstruction>(
+        permissioned_transfer_program_id,
+        account_metas,
+        &validation_account_data,
+        required_seeds,
+    )?;
     // The onchain helpers pull out the required accounts from an opaque
     // slice by pubkey, so the order doesn't matter here!
     account_metas.push(AccountMeta::new_readonly(

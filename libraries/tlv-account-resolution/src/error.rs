@@ -53,11 +53,15 @@ pub enum AccountResolutionError {
         "Attempted to deserialize an `AccountMetaPda` but the underlying type was `AccountMeta`"
     )]
     RequiredAccountNotPda,
-    /// None of the provided seeds matched required seeds for stored required `AccountMetaPda`
-    #[error(
-        "None of the provided seeds matched required seeds for stored required `AccountMetaPda`"
-    )]
-    NoProvidedSeedsMatched,
+    /// No seeds were provided but one or more PDAs are required by the program
+    #[error("No seeds were provided but one or more PDAs are required by the program")]
+    SeedsRequired,
+    /// Not enough seeds arguments were provided for all PDAs required by the program
+    #[error("Not enough seeds arguments were provided for all PDAs required by the program")]
+    NotEnoughSeedsProvided,
+    /// The provided seeds do not match the required seeds stated by the validation account
+    #[error("The provided seeds do not match the required seeds stated by the validation account")]
+    SeedsMismatch,
 }
 impl From<AccountResolutionError> for ProgramError {
     fn from(e: AccountResolutionError) -> Self {
@@ -98,7 +102,9 @@ impl PrintProgramError for AccountResolutionError {
                 msg!("Attempted to deserialize an `AccountMeta` but the underlying type was `AccountMetaPda`")
             }
             Self::RequiredAccountNotPda => msg!("Attempted to deserialize an `AccountMetaPda` but the underlying type was `AccountMeta`"),
-            Self::NoProvidedSeedsMatched => msg!("None of the provided seeds matched required seeds for stored required `AccountMetaPda`")
+            Self::SeedsRequired => msg!("No seeds were provided but one or more PDAs are required by the program"),
+            Self::NotEnoughSeedsProvided => msg!("Not enough seeds arguments were provided for all PDAs required by the program"),
+            Self::SeedsMismatch => msg!("The provided seeds do not match the required seeds stated by the validation account"),
         }
     }
 }

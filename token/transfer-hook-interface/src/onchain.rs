@@ -1,5 +1,7 @@
 //! On-chain program invoke helper to perform on-chain `execute` with correct accounts
 
+use spl_tlv_account_resolution::seeds::SeedConfig;
+
 use {
     crate::{error::TransferHookError, get_extra_account_metas_address, instruction},
     solana_program::{
@@ -20,6 +22,7 @@ pub fn invoke_execute<'a>(
     destination_info: AccountInfo<'a>,
     authority_info: AccountInfo<'a>,
     additional_accounts: &[AccountInfo<'a>],
+    required_seeds: Option<Vec<SeedConfig>>,
     amount: u64,
 ) -> ProgramResult {
     let validation_pubkey = get_extra_account_metas_address(mint_info.key, program_id);
@@ -45,10 +48,12 @@ pub fn invoke_execute<'a>(
         validation_info.clone(),
     ];
     ExtraAccountMetas::add_to_cpi_instruction::<instruction::ExecuteInstruction>(
+        program_id,
         &mut cpi_instruction,
         &mut cpi_account_infos,
         &validation_info.try_borrow_data()?,
         additional_accounts,
+        required_seeds,
     )?;
     invoke(&cpi_instruction, &cpi_account_infos)
 }
@@ -61,6 +66,7 @@ pub fn add_cpi_accounts_for_execute<'a>(
     mint_pubkey: &Pubkey,
     program_id: &Pubkey,
     additional_accounts: &[AccountInfo<'a>],
+    required_seeds: Option<Vec<SeedConfig>>,
 ) -> ProgramResult {
     let validation_pubkey = get_extra_account_metas_address(mint_pubkey, program_id);
     let validation_info = additional_accounts
@@ -74,10 +80,12 @@ pub fn add_cpi_accounts_for_execute<'a>(
         .ok_or(TransferHookError::IncorrectAccount)?;
 
     ExtraAccountMetas::add_to_cpi_instruction::<instruction::ExecuteInstruction>(
+        program_id,
         cpi_instruction,
         cpi_account_infos,
         &validation_info.try_borrow_data()?,
         additional_accounts,
+        required_seeds,
     )?;
     // The onchain helpers pull out the required accounts from an opaque
     // slice by pubkey, so the order doesn't matter here!

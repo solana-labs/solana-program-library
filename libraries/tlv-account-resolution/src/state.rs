@@ -1,19 +1,17 @@
 //! State transition types
 
-use solana_program::pubkey::Pubkey;
-
-use crate::seeds::ProvidedSeedType;
-
 use {
     crate::{
         account::RequiredAccount,
         error::AccountResolutionError,
         pod::{PodAccountMeta, PodSlice, PodSliceMut, TryFromAccountType},
+        seeds::SeedConfig,
     },
     solana_program::{
         account_info::AccountInfo,
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
+        pubkey::Pubkey,
     },
     spl_type_length_value::{
         discriminator::TlvDiscriminator,
@@ -64,17 +62,19 @@ use {
 /// // Off-chain, you can add the additional accounts directly from the account data
 /// let program_id = Pubkey::new_unique();
 /// let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
-/// ExtraAccountMetas::add_to_instruction::<MyInstruction>(&mut instruction, &buffer).unwrap();
+/// ExtraAccountMetas::add_to_instruction::<MyInstruction>(&program_id, &mut instruction, &buffer, None).unwrap();
 ///
 /// // On-chain, you can add the additional accounts *and* account infos
 /// let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
 /// let mut cpi_account_infos = vec![]; // assume the other required account infos are already included
 /// let remaining_account_infos: &[AccountInfo<'_>] = &[]; // these are the account infos provided to the instruction that are *not* part of any other known interface
 /// ExtraAccountMetas::add_to_cpi_instruction::<MyInstruction>(
+///     &program_id,
 ///     &mut cpi_instruction,
 ///     &mut cpi_account_infos,
 ///     &buffer,
 ///     &remaining_account_infos,
+///     None,
 /// );
 /// ```
 pub struct ExtraAccountMetas;
@@ -179,31 +179,44 @@ impl ExtraAccountMetas {
         program_id: &Pubkey,
         existing_account_metas: &mut Vec<AccountMeta>,
         data: &[u8],
-        seeds: Option<Vec<Vec<impl ProvidedSeedType>>>,
+        required_seeds: Option<Vec<SeedConfig>>,
     ) -> Result<(), ProgramError> {
         let state = TlvStateBorrowed::unpack(data)?;
         let bytes = state.get_bytes::<T>()?;
         let initial_instruction_length = existing_account_metas.len();
+
+        // Seeds should be passed in the same order as required accounts
+        let mut seeds_index = 0;
         let required_accounts_slice = PodSlice::<PodAccountMeta>::unpack(bytes)?;
         for required_account in required_accounts_slice.data().iter() {
             let account_type = RequiredAccount::try_from(required_account)?;
             let mut as_meta = match account_type {
                 RequiredAccount::Account { .. } => AccountMeta::try_from(&account_type)?,
                 RequiredAccount::Pda {
-                    seeds: _,
-                    is_signer: _,
-                    is_writable: _,
+                    seeds,
+                    is_signer,
+                    is_writable,
                 } => {
-                    // TODO:
-                    // Use the function's provided "seeds" input to turn
-                    // the underlying `[u8; 32]` into a `Pubkey`
-                    // Seed::evaluate(
-                    //     program_id: &Pubkey,
-                    //     address: &Pubkey,
-                    //     required_seeds: Vec<Seed>,
-                    //     provided_seeds: Vec<Vec<S>>,
-                    // )
-                    AccountMeta::try_from(&account_type)?
+                    let res = match &required_seeds {
+                        Some(seed_config_opt) => {
+                            let pubkey = match seed_config_opt.get(seeds_index) {
+                                Some(seed_config) => seed_config.evaluate(program_id, seeds)?,
+                                None => {
+                                    return Err(
+                                        AccountResolutionError::NotEnoughSeedsProvided.into()
+                                    )
+                                }
+                            };
+                            AccountMeta {
+                                pubkey,
+                                is_signer,
+                                is_writable,
+                            }
+                        }
+                        None => return Err(AccountResolutionError::SeedsRequired.into()),
+                    };
+                    seeds_index += 1;
+                    res
                 }
             };
             Self::de_escalate_account_meta(
@@ -221,9 +234,9 @@ impl ExtraAccountMetas {
         program_id: &Pubkey,
         instruction: &mut Instruction,
         data: &[u8],
-        seeds: Option<Vec<Vec<impl ProvidedSeedType>>>,
+        required_seeds: Option<Vec<SeedConfig>>,
     ) -> Result<(), ProgramError> {
-        Self::add_to_vec::<T>(program_id, &mut instruction.accounts, data, seeds)
+        Self::add_to_vec::<T>(program_id, &mut instruction.accounts, data, required_seeds)
     }
 
     /// Add the additional account metas and account infos for a CPI, while
@@ -238,43 +251,59 @@ impl ExtraAccountMetas {
         cpi_account_infos: &mut Vec<AccountInfo<'a>>,
         data: &[u8],
         account_infos: &[AccountInfo<'a>],
-        seeds: Option<Vec<Vec<impl ProvidedSeedType>>>,
+        required_seeds: Option<Vec<SeedConfig>>,
     ) -> Result<(), ProgramError> {
         let state = TlvStateBorrowed::unpack(data)?;
         let bytes = state.get_bytes::<T>()?;
 
         let initial_cpi_instruction_length = cpi_instruction.accounts.len();
 
+        // Seeds should be passed in the same order as required accounts
+        let mut seeds_index = 0;
         let required_accounts_slice = PodSlice::<PodAccountMeta>::unpack(bytes)?;
         for required_account in required_accounts_slice.data().iter() {
             let account_type = RequiredAccount::try_from(required_account)?;
-            match account_type {
-                RequiredAccount::Account { .. } => {
-                    let mut as_meta = AccountMeta::try_from(&account_type)?;
-                    let account_info = account_infos
-                        .iter()
-                        .find(|&x| *x.key == as_meta.pubkey)
-                        .ok_or(AccountResolutionError::IncorrectAccount)?
-                        .clone();
-                    Self::de_escalate_account_meta(
-                        &mut as_meta,
-                        &cpi_instruction.accounts,
-                        initial_cpi_instruction_length,
-                    );
-                    cpi_account_infos.push(account_info);
-                    cpi_instruction.accounts.push(as_meta);
-                }
+            let mut as_meta = match account_type {
+                RequiredAccount::Account { .. } => AccountMeta::try_from(&account_type)?,
                 RequiredAccount::Pda {
-                    seeds: _,
-                    is_signer: _,
-                    is_writable: _,
+                    seeds,
+                    is_signer,
+                    is_writable,
                 } => {
-                    // TODO:
-                    // Use the function's provided "seeds" input to turn
-                    // the underlying `[u8; 32]` into a `Pubkey`
-                    ()
+                    let res = match &required_seeds {
+                        Some(seed_config_opt) => {
+                            let pubkey = match seed_config_opt.get(seeds_index) {
+                                Some(seed_config) => seed_config.evaluate(program_id, seeds)?,
+                                None => {
+                                    return Err(
+                                        AccountResolutionError::NotEnoughSeedsProvided.into()
+                                    )
+                                }
+                            };
+                            AccountMeta {
+                                pubkey,
+                                is_signer,
+                                is_writable,
+                            }
+                        }
+                        None => return Err(AccountResolutionError::SeedsRequired.into()),
+                    };
+                    seeds_index += 1;
+                    res
                 }
-            }
+            };
+            let account_info = account_infos
+                .iter()
+                .find(|&x| *x.key == as_meta.pubkey)
+                .ok_or(AccountResolutionError::IncorrectAccount)?
+                .clone();
+            Self::de_escalate_account_meta(
+                &mut as_meta,
+                &cpi_instruction.accounts,
+                initial_cpi_instruction_length,
+            );
+            cpi_account_infos.push(account_info);
+            cpi_instruction.accounts.push(as_meta);
         }
         Ok(())
     }
@@ -316,6 +345,10 @@ mod tests {
         let mut buffer = vec![0; account_size];
 
         ExtraAccountMetas::init_with_account_metas::<TestInstruction>(&mut buffer, &metas).unwrap();
+
+        // At this point the buffer created above would be written to the validation account.
+        // Below demonstrates using this same buffer to add additional accounts to an instruction.
+        // The buffer would first be loaded from the validation account in order to use in an instruction.
 
         let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
         ExtraAccountMetas::add_to_instruction::<TestInstruction>(
@@ -388,21 +421,42 @@ mod tests {
         )
         .unwrap();
 
+        // At this point the buffer created above would be written to the validation account.
+        // Below demonstrates using this same buffer to add additional accounts to an instruction.
+        // The buffer would first be loaded from the validation account in order to use in an instruction.
+
+        // We have three PDAs in our required accounts, so we're going to need three seed inputs
+        // (Flexing how we can have varying sized tuples with varying types)
+        let provided_seeds = vec![
+            SeedConfig::new(("Joe", 1u8, String::from("Joe"))),
+            SeedConfig::new((1u8, 2u8, 2u32, Pubkey::new_unique())),
+            SeedConfig::new((
+                "Joe",
+                Pubkey::new_unique(),
+                Pubkey::new_unique(),
+                Pubkey::new_unique(),
+            )),
+        ];
+
         let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
         ExtraAccountMetas::add_to_instruction::<TestInstruction>(
             &program_id,
             &mut instruction,
             &buffer,
+            Some(provided_seeds),
         )
         .unwrap();
-        // assert_eq!(instruction.accounts.len(), required_accounts.len());
+        assert_eq!(instruction.accounts.len(), required_accounts.len());
         // assert_eq!(
         //     instruction
         //         .accounts
         //         .iter()
         //         .map(PodAccountMeta::from)
         //         .collect::<Vec<_>>(),
-        //     required_accounts.iter().map(PodAccountMeta::from).collect::<Vec<_>>()
+        //     required_accounts
+        //         .iter()
+        //         .map(PodAccountMeta::from)
+        //         .collect::<Vec<_>>()
         // );
     }
 
@@ -432,6 +486,7 @@ mod tests {
             &program_id,
             &mut instruction,
             &buffer,
+            None,
         )
         .unwrap();
         assert_eq!(
@@ -447,6 +502,7 @@ mod tests {
             &program_id,
             &mut instruction,
             &buffer,
+            None,
         )
         .unwrap();
         assert_eq!(
@@ -531,6 +587,7 @@ mod tests {
             &program_id,
             &mut instruction,
             &buffer,
+            None,
         )
         .unwrap();
         assert_eq!(
@@ -550,6 +607,7 @@ mod tests {
             &program_id,
             &mut instruction,
             &buffer,
+            None,
         )
         .unwrap();
         assert_eq!(
@@ -620,6 +678,7 @@ mod tests {
             &program_id,
             &mut instruction,
             &buffer,
+            None,
         )
         .unwrap();
 
@@ -662,6 +721,7 @@ mod tests {
             &mut cpi_account_infos,
             &buffer,
             &messed_account_infos,
+            None,
         )
         .unwrap();
 
