@@ -1,7 +1,6 @@
 //! Program state processor
 
 use {
-    crate::inline_spl_token,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -12,6 +11,12 @@ use {
         system_instruction,
     },
     spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_token_2022::{
+        extension::{
+            transfer_hook::TransferHookAccount, BaseStateWithExtensions, StateWithExtensions,
+        },
+        state::{Account, Mint},
+    },
     spl_transfer_hook_interface::{
         collect_extra_account_metas_signer_seeds,
         error::TransferHookError,
@@ -21,6 +26,17 @@ use {
     spl_type_length_value::state::TlvStateBorrowed,
 };
 
+fn check_token_account_is_transferring(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    let account_data = account_info.try_borrow_data()?;
+    let token_account = StateWithExtensions::<Account>::unpack(&account_data)?;
+    let extension = token_account.get_extension::<TransferHookAccount>()?;
+    if bool::from(extension.transferring) {
+        Ok(())
+    } else {
+        Err(TransferHookError::ProgramCalledOutsideOfTransfer.into())
+    }
+}
+
 /// Processes an [Execute](enum.TransferHookInstruction.html) instruction.
 pub fn process_execute(
     program_id: &Pubkey,
@@ -29,11 +45,15 @@ pub fn process_execute(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let _source_account_info = next_account_info(account_info_iter)?;
+    let source_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
-    let _destination_account_info = next_account_info(account_info_iter)?;
+    let destination_account_info = next_account_info(account_info_iter)?;
     let _authority_info = next_account_info(account_info_iter)?;
     let extra_account_metas_info = next_account_info(account_info_iter)?;
+
+    // Check that the accounts are properly in "transferring" mode
+    check_token_account_is_transferring(source_account_info)?;
+    check_token_account_is_transferring(destination_account_info)?;
 
     // For the example program, we just check that the correct pda and validation
     // pubkeys are provided
@@ -77,8 +97,12 @@ pub fn process_initialize_extra_account_metas(
     let _system_program_info = next_account_info(account_info_iter)?;
 
     // check that the mint authority is valid without fully deserializing
-    let mint_authority = inline_spl_token::get_mint_authority(&mint_info.try_borrow_data()?)?;
-    let mint_authority = mint_authority.ok_or(TransferHookError::MintHasNoMintAuthority)?;
+    let mint_data = mint_info.try_borrow_data()?;
+    let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+    let mint_authority = mint
+        .base
+        .mint_authority
+        .ok_or(TransferHookError::MintHasNoMintAuthority)?;
 
     // Check signers
     if !authority_info.is_signer {
