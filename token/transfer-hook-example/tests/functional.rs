@@ -2,11 +2,7 @@
 #![cfg(feature = "test-sbf")]
 
 use {
-    solana_program_test::{
-        processor,
-        tokio::{self, sync::Mutex},
-        ProgramTest, ProgramTestContext,
-    },
+    solana_program_test::{processor, tokio, ProgramTest},
     solana_sdk::{
         account::Account as SolanaAccount,
         account_info::AccountInfo,
@@ -30,7 +26,6 @@ use {
         instruction::{execute_with_extra_account_metas, initialize_extra_account_metas},
         onchain,
     },
-    std::sync::Arc,
 };
 
 fn setup(program_id: &Pubkey) -> ProgramTest {
@@ -51,13 +46,7 @@ fn setup(program_id: &Pubkey) -> ProgramTest {
     program_test
 }
 
-async fn start(program_test: ProgramTest) -> Arc<Mutex<ProgramTestContext>> {
-    let context = program_test.start_with_context().await;
-    let context = Arc::new(Mutex::new(context));
-
-    context
-}
-
+#[allow(clippy::too_many_arguments)]
 fn setup_token_accounts(
     program_test: &mut ProgramTest,
     program_id: &Pubkey,
@@ -160,8 +149,6 @@ async fn success_execute() {
         true,
     );
 
-    let context = start(program_test).await;
-
     let extra_account_metas = get_extra_account_metas_address(&mint_address, &program_id);
 
     let extra_account_pubkeys = [
@@ -169,7 +156,7 @@ async fn success_execute() {
         AccountMeta::new_readonly(mint_authority_pubkey, true),
         AccountMeta::new(extra_account_metas, false),
     ];
-    let mut context = context.lock().await;
+    let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
         rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
@@ -355,12 +342,10 @@ async fn fail_incorrect_derivation() {
         true,
     );
 
-    let context = start(program_test).await;
-
     // wrong derivation
     let extra_account_metas = get_extra_account_metas_address(&program_id, &mint_address);
 
-    let mut context = context.lock().await;
+    let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports = rent.minimum_balance(ExtraAccountMetas::size_of(0).unwrap());
 
@@ -444,8 +429,6 @@ async fn success_on_chain_invoke() {
         true,
     );
 
-    let context = start(program_test).await;
-
     let extra_account_metas = get_extra_account_metas_address(&mint_address, &hook_program_id);
 
     let writable_pubkey = Pubkey::new_unique();
@@ -454,7 +437,7 @@ async fn success_on_chain_invoke() {
         AccountMeta::new_readonly(mint_authority_pubkey, true),
         AccountMeta::new(writable_pubkey, false),
     ];
-    let mut context = context.lock().await;
+    let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
         rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
@@ -537,11 +520,9 @@ async fn fail_without_transferring_flag() {
         false,
     );
 
-    let context = start(program_test).await;
-
     let extra_account_metas = get_extra_account_metas_address(&mint_address, &program_id);
     let extra_account_pubkeys = [];
-    let mut context = context.lock().await;
+    let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
         rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
