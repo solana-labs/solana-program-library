@@ -1,8 +1,8 @@
 //! Tests that all macros compile
-use solana_program_error_derive::*;
+use spl_program_error::*;
 
 /// Example error
-#[solana_program_error]
+#[spl_program_error]
 pub enum ExampleError {
     /// Mint has no mint authority
     #[error("Mint has no mint authority")]

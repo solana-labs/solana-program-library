@@ -1,4 +1,4 @@
-//! Crate defining a procedural macro for building Solana progrem errors
+//! Crate defining a procedural macro for building Solana program errors
 
 #![allow(clippy::integer_arithmetic)]
 #![deny(missing_docs)]
@@ -12,6 +12,6 @@ use proc_macro::TokenStream;
 
 /// Proc macro attribute to turn your enum into a Solana Program Error
 #[proc_macro_attribute]
-pub fn solana_program_error(_: TokenStream, input: TokenStream) -> TokenStream {
+pub fn spl_program_error(_: TokenStream, input: TokenStream) -> TokenStream {
     program_error::program_error(input)
 }

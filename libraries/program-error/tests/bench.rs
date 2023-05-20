@@ -1,5 +1,5 @@
 //! Tests that all macros compile
-use solana_program_error_derive::*;
+use spl_program_error::*;
 
 /// Example error
 #[derive(Clone, Debug, Eq, thiserror::Error, num_derive::FromPrimitive, PartialEq)]

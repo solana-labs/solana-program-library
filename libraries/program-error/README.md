@@ -1,4 +1,4 @@
-# Solana Program Error Derive
+# SPL Program Error Derive
 
 Procedural macro for creating Solana Program error enums.
 
@@ -7,21 +7,24 @@ in an enum - implement the required traits and will print to the program's logs 
 invoked.
 
 This procedureal macro will give you all of the required implementations out of the box:
-* `Clone`
-* `Debug`
-* `Eq`
-* `thiserror::Error`
-* `num_derive::FromPrimitive`
-* `PartialEq`
+
+- `Clone`
+- `Debug`
+- `Eq`
+- `thiserror::Error`
+- `num_derive::FromPrimitive`
+- `PartialEq`
 
 It also imports the required crates so you don't have to in your program:
-* `num_derive`
-* `num_traits`
-* `thiserror`
+
+- `num_derive`
+- `num_traits`
+- `thiserror`
 
 ---
 
 Just annotate your enum...
+
 ```rust
 use solana_program_error_derive::*;
 
@@ -38,6 +41,7 @@ pub enum ExampleError {
 ```
 
 ...and get:
+
 ```rust
 /// Example error
 pub enum ExampleError {

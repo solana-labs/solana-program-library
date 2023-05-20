@@ -1,5 +1,5 @@
 [package]
-name = "solana-program-error-derive-impl"
+name = "spl-program-error-derive"
 version = "0.1.0"
 edition = "2021"
 
