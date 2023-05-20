@@ -1,4 +1,4 @@
-//! Tests that all macros compile
+//! Tests that all macros compil
 use spl_program_error::*;
 
 /// Example error
