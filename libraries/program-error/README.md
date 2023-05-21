@@ -2,6 +2,20 @@
 
 Macros for implementing error-based traits on enums.
 
+- `#[derive(IntoProgramError)]`: automatically derives the trait `From<Self> for solana_program::program_error::ProgramError`.
+- `#[derive(DecodeError)]`: automatically derives the trait `solana_program::decode_error::DecodeError<T>`.
+- `#[derive(PrintProgramError)]`: automatically derives the trait `solana_program::program_error::PrintProgramError`.
+- `#[spl_program_error]`: Automatically derives all below traits:
+  - `Clone`
+  - `Debug`
+  - `Eq`
+  - `DecodeError`
+  - `IntoProgramError`
+  - `PrintProgramError`
+  - `thiserror::Error`
+  - `num_derive::FromPrimitive`
+  - `PartialEq`
+
 ### `#[derive(IntoProgramError)]`
 
 This derive macro automatically derives the trait `From<Self> for solana_program::program_error::ProgramError`.
