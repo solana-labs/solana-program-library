@@ -1,6 +1,115 @@
-# SPL Program Error Derive
+# SPL Program Error
 
-Procedural macro for creating Solana Program error enums.
+Macros for implementing error-based traits on enums.
+
+### `#[derive(IntoProgramError)]`
+
+This derive macro automatically derives the trait `From<Self> for solana_program::program_error::ProgramError`.
+
+Your enum must implement the following traits in order for this macro to work:
+
+- `Clone`
+- `Debug`
+- `Eq`
+- `thiserror::Error`
+- `num_derive::FromPrimitive`
+- `PartialEq`
+
+Sample code:
+
+```rust
+/// Example error
+#[derive(
+    Clone, Debug, Eq, IntoProgramError, thiserror::Error, num_derive::FromPrimitive, PartialEq,
+)]
+pub enum ExampleError {
+    /// Mint has no mint authority
+    #[error("Mint has no mint authority")]
+    MintHasNoMintAuthority,
+    /// Incorrect mint authority has signed the instruction
+    #[error("Incorrect mint authority has signed the instruction")]
+    IncorrectMintAuthority,
+}
+```
+
+### `#[derive(DecodeError)]`
+
+This derive macro automatically derives the trait `solana_program::decode_error::DecodeError<T>`.
+
+Your enum must implement the following traits in order for this macro to work:
+
+- `Clone`
+- `Debug`
+- `Eq`
+- `IntoProgramError` (above)
+- `thiserror::Error`
+- `num_derive::FromPrimitive`
+- `PartialEq`
+
+Sample code:
+
+```rust
+/// Example error
+#[derive(
+    Clone,
+    Debug,
+    DecodeError,
+    Eq,
+    IntoProgramError,
+    thiserror::Error,
+    num_derive::FromPrimitive,
+    PartialEq,
+)]
+pub enum ExampleError {
+    /// Mint has no mint authority
+    #[error("Mint has no mint authority")]
+    MintHasNoMintAuthority,
+    /// Incorrect mint authority has signed the instruction
+    #[error("Incorrect mint authority has signed the instruction")]
+    IncorrectMintAuthority,
+}
+```
+
+### `#[derive(PrintProgramError)]`
+
+This derive macro automatically derives the trait `solana_program::program_error::PrintProgramError`.
+
+Your enum must implement the following traits in order for this macro to work:
+
+- `Clone`
+- `Debug`
+- `DecodeError<T>` (above)
+- `Eq`
+- `IntoProgramError` (above)
+- `thiserror::Error`
+- `num_derive::FromPrimitive`
+- `PartialEq`
+
+Sample code:
+
+```rust
+/// Example error
+#[derive(
+    Clone,
+    Debug,
+    DecodeError,
+    Eq,
+    IntoProgramError,
+    thiserror::Error,
+    num_derive::FromPrimitive,
+    PartialEq,
+)]
+pub enum ExampleError {
+    /// Mint has no mint authority
+    #[error("Mint has no mint authority")]
+    MintHasNoMintAuthority,
+    /// Incorrect mint authority has signed the instruction
+    #[error("Incorrect mint authority has signed the instruction")]
+    IncorrectMintAuthority,
+}
+```
+
+### `#[spl_program_error]`
 
 It can be cumbersome to ensure your program's defined errors - typically represented
 in an enum - implement the required traits and will print to the program's logs when they're

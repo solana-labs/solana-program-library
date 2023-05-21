@@ -1,9 +1,11 @@
-//! Tests `#[spl_program_error]`
+//! Tests `#[derive(IntoProgramError)]`
 //!
 use spl_program_error::*;
 
 /// Example error
-#[spl_program_error]
+#[derive(
+    Clone, Debug, Eq, IntoProgramError, thiserror::Error, num_derive::FromPrimitive, PartialEq,
+)]
 pub enum ExampleError {
     /// Mint has no mint authority
     #[error("Mint has no mint authority")]
