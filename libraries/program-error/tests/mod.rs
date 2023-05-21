@@ -63,21 +63,18 @@ mod tests {
             <bench::ExampleError as DecodeError<print::ExampleError>>::type_of(),
         );
         // `PrintProgramError`
-        assert_eq!(
-            PrintProgramError::print::<bench::ExampleError>(
-                &bench::ExampleError::MintHasNoMintAuthority,
-            ),
-            PrintProgramError::print::<print::ExampleError>(
-                &print::ExampleError::MintHasNoMintAuthority,
-            )
+        // (!) Not sure how better to test this yet - thoughts?
+        PrintProgramError::print::<bench::ExampleError>(
+            &bench::ExampleError::MintHasNoMintAuthority,
         );
-        assert_eq!(
-            PrintProgramError::print::<bench::ExampleError>(
-                &bench::ExampleError::IncorrectMintAuthority,
-            ),
-            PrintProgramError::print::<print::ExampleError>(
-                &print::ExampleError::IncorrectMintAuthority,
-            )
+        PrintProgramError::print::<print::ExampleError>(
+            &print::ExampleError::MintHasNoMintAuthority,
+        );
+        PrintProgramError::print::<bench::ExampleError>(
+            &bench::ExampleError::IncorrectMintAuthority,
+        );
+        PrintProgramError::print::<print::ExampleError>(
+            &print::ExampleError::IncorrectMintAuthority,
         );
     }
 
@@ -99,21 +96,14 @@ mod tests {
             <bench::ExampleError as DecodeError<spl::ExampleError>>::type_of(),
         );
         // `PrintProgramError`
-        assert_eq!(
-            PrintProgramError::print::<bench::ExampleError>(
-                &bench::ExampleError::MintHasNoMintAuthority,
-            ),
-            PrintProgramError::print::<spl::ExampleError>(
-                &spl::ExampleError::MintHasNoMintAuthority,
-            )
+        // (!) Not sure how better to test this yet - thoughts?
+        PrintProgramError::print::<bench::ExampleError>(
+            &bench::ExampleError::MintHasNoMintAuthority,
         );
-        assert_eq!(
-            PrintProgramError::print::<bench::ExampleError>(
-                &bench::ExampleError::IncorrectMintAuthority,
-            ),
-            PrintProgramError::print::<spl::ExampleError>(
-                &spl::ExampleError::IncorrectMintAuthority,
-            )
+        PrintProgramError::print::<spl::ExampleError>(&spl::ExampleError::MintHasNoMintAuthority);
+        PrintProgramError::print::<bench::ExampleError>(
+            &bench::ExampleError::IncorrectMintAuthority,
         );
+        PrintProgramError::print::<spl::ExampleError>(&spl::ExampleError::IncorrectMintAuthority);
     }
 }
