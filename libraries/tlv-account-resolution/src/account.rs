@@ -1,4 +1,4 @@
-//! Structs for managing "required account state", ie. defining
+//! Structs/enums for managing "required account state", ie. defining
 //! accounts required for your interface program, which can be
 //! `AccountMeta`s - which have fixed addresses - or PDAs -
 //! which have addresses derived from a collection of seeds
@@ -164,5 +164,39 @@ impl TryFrom<AccountMetaPda> for RequiredAccount {
             is_signer: pda.is_signer,
             is_writable: pda.is_writable,
         })
+    }
+}
+
+impl PartialEq<AccountMeta> for RequiredAccount {
+    fn eq(&self, other: &AccountMeta) -> bool {
+        match *self {
+            Self::Account {
+                pubkey,
+                is_signer,
+                is_writable,
+            } => {
+                pubkey == other.pubkey
+                    && is_signer == other.is_signer
+                    && is_writable == other.is_writable
+            }
+            Self::Pda { .. } => false,
+        }
+    }
+}
+
+impl PartialEq<AccountInfo<'_>> for RequiredAccount {
+    fn eq(&self, other: &AccountInfo<'_>) -> bool {
+        match *self {
+            Self::Account {
+                pubkey,
+                is_signer,
+                is_writable,
+            } => {
+                pubkey == *other.key
+                    && is_signer == other.is_signer
+                    && is_writable == other.is_writable
+            }
+            Self::Pda { .. } => false,
+        }
     }
 }

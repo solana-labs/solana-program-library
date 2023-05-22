@@ -36,6 +36,7 @@ use {
         system_instruction, system_program,
         sysvar::{rent::Rent, Sysvar},
     },
+    spl_transfer_hook_interface::{ProvidedSeeds, SeedConfig},
     std::convert::{TryFrom, TryInto},
 };
 
@@ -258,13 +259,17 @@ impl Processor {
     }
 
     /// Processes a [Transfer](enum.TokenInstruction.html) instruction.
-    pub fn process_transfer(
+    pub fn process_transfer<S>(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         amount: u64,
         expected_decimals: Option<u8>,
         expected_fee: Option<u64>,
-    ) -> ProgramResult {
+        required_seeds: Option<Vec<S>>,
+    ) -> ProgramResult
+    where
+        S: ProvidedSeeds,
+    {
         let account_info_iter = &mut accounts.iter();
 
         let source_account_info = next_account_info(account_info_iter)?;
@@ -481,6 +486,8 @@ impl Processor {
                 // must drop these to avoid the double-borrow during CPI
                 drop(source_account_data);
                 drop(destination_account_data);
+                let req_seeds_config =
+                    required_seeds.map(|s| s.into_iter().map(SeedConfig::new).collect());
                 spl_transfer_hook_interface::onchain::invoke_execute(
                     &program_id,
                     source_account_info.clone(),
@@ -488,6 +495,7 @@ impl Processor {
                     destination_account_info.clone(),
                     authority_info.clone(),
                     account_info_iter.as_slice(),
+                    req_seeds_config,
                     amount,
                 )?;
             } else {
@@ -1384,7 +1392,8 @@ impl Processor {
             #[allow(deprecated)]
             TokenInstruction::Transfer { amount } => {
                 msg!("Instruction: Transfer");
-                Self::process_transfer(program_id, accounts, amount, None, None)
+                let s: Option<Vec<(Pubkey,)>> = None; // Hack for generic
+                Self::process_transfer(program_id, accounts, amount, None, None, s)
             }
             TokenInstruction::Approve { amount } => {
                 msg!("Instruction: Approve");
@@ -1423,7 +1432,8 @@ impl Processor {
             }
             TokenInstruction::TransferChecked { amount, decimals } => {
                 msg!("Instruction: TransferChecked");
-                Self::process_transfer(program_id, accounts, amount, Some(decimals), None)
+                let s: Option<Vec<(Pubkey,)>> = None; // Hack for generic
+                Self::process_transfer(program_id, accounts, amount, Some(decimals), None, s)
             }
             TokenInstruction::ApproveChecked { amount, decimals } => {
                 msg!("Instruction: ApproveChecked");

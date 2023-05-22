@@ -114,14 +114,15 @@ impl From<&Seed> for u8 {
 /// attempt to add required accounts to an instruction.
 ///
 /// Contains the seeds themselves and the types used to build them
+#[derive(Clone, Debug, PartialEq)]
 pub struct SeedConfig {
     /// The `Seed` types used to create the seeds, so we can
     /// compare them against the validation account's stated seed
     /// configurations
-    seed_types: Vec<Seed>,
+    pub seed_types: Vec<Seed>,
     /// The seeds as vectors of `Vec<u8>` so we can use them
     /// in `Pubkey::find_program_address`
-    byte_vectors: Vec<Vec<u8>>,
+    pub byte_vectors: Vec<Vec<u8>>,
 }
 impl SeedConfig {
     /// Creates a new `SeedConfig` instance from any tuple of supported
@@ -145,8 +146,14 @@ impl SeedConfig {
         if self.seed_types != required_seeds {
             return Err(AccountResolutionError::SeedsMismatch.into());
         }
+        Ok(self.pda(program_id).0)
+    }
+
+    /// Returns the address and bump as a `(Pubkey, u8)` for this
+    /// particular seed configuration
+    pub fn pda(&self, program_id: &Pubkey) -> (Pubkey, u8) {
         let seeds_bytes: Vec<&[u8]> = self.byte_vectors.iter().map(AsRef::as_ref).collect();
-        Ok(Pubkey::find_program_address(&seeds_bytes, program_id).0)
+        Pubkey::find_program_address(&seeds_bytes, program_id)
     }
 }
 

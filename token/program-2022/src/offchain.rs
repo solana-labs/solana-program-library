@@ -7,7 +7,7 @@ use {
         state::Mint,
     },
     solana_program::{instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey},
-    spl_transfer_hook_interface::offchain::get_extra_account_metas,
+    spl_transfer_hook_interface::{offchain::get_extra_account_metas, ProvidedSeeds, SeedConfig},
     std::future::Future,
 };
 
@@ -32,25 +32,29 @@ use {
 ///     &mint,
 /// ).await?;
 /// ```
-pub async fn get_extra_transfer_account_metas<F, Fut>(
+pub async fn get_extra_transfer_account_metas<F, Fut, S>(
     account_metas: &mut Vec<AccountMeta>,
     get_account_data_fn: F,
     mint_address: &Pubkey,
+    required_seeds: Option<Vec<S>>,
 ) -> Result<(), AccountFetchError>
 where
     F: Fn(Pubkey) -> Fut,
     Fut: Future<Output = AccountDataResult>,
+    S: ProvidedSeeds,
 {
     let mint_data = get_account_data_fn(*mint_address)
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
     let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+    let req_seeds_config = required_seeds.map(|s| s.into_iter().map(SeedConfig::new).collect());
     if let Some(program_id) = transfer_hook::get_program_id(&mint) {
         get_extra_account_metas(
             account_metas,
             get_account_data_fn,
             mint_address,
             &program_id,
+            req_seeds_config,
         )
         .await?;
     }

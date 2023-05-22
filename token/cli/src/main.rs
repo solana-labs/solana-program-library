@@ -1239,6 +1239,7 @@ async fn command_transfer(
             )
             .await?
     } else {
+        let s: Option<Vec<(Pubkey,)>> = None; // Hack for generic
         token
             .transfer(
                 &sender,
@@ -1246,6 +1247,7 @@ async fn command_transfer(
                 &sender_owner,
                 transfer_balance,
                 &bulk_signers,
+                s,
             )
             .await?
     };
@@ -2009,17 +2011,21 @@ async fn command_gc(
                         .await,
                 ),
                 // separate authority, auxiliary, nonempty -> transfer
-                (false, false, false) => Some(
-                    token
-                        .transfer(
-                            &address,
-                            &associated_token_account,
-                            &owner,
-                            amount,
-                            &bulk_signers,
-                        )
-                        .await,
-                ),
+                (false, false, false) => {
+                    let s: Option<Vec<(Pubkey,)>> = None; // Hack for generic
+                    Some(
+                        token
+                            .transfer(
+                                &address,
+                                &associated_token_account,
+                                &owner,
+                                amount,
+                                &bulk_signers,
+                                s,
+                            )
+                            .await,
+                    )
+                }
                 // separate authority, associated or auxiliary, empty -> print warning
                 (false, _, true) => {
                     println_display(

@@ -16,6 +16,9 @@ pub mod onchain;
 pub use solana_program;
 use solana_program::pubkey::Pubkey;
 
+// Must make these available for program code
+pub use spl_tlv_account_resolution::seeds::{ProvidedSeeds, SeedConfig};
+
 /// Namespace for all programs implementing transfer-hook
 pub const NAMESPACE: &str = "spl-transfer-hook-interface";
 

@@ -39,21 +39,112 @@ ExtraAccountMetas::init_with_account_metas::<MyInstruction>(&mut buffer, &extra_
 // Off-chain, you can add the additional accounts directly from the account data
 let program_id = Pubkey::new_unique();
 let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
-ExtraAccountMetas::add_to_instruction::<MyInstruction>(&mut instruction, &buffer).unwrap();
+ExtraAccountMetas::add_to_instruction::<MyInstruction>(&program_id, &mut instruction, &buffer, None).unwrap();
 
 // On-chain, you can add the additional accounts *and* account infos
 let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
 
 // Include all of the well-known required account infos here first
-let mut cpi_account_infos = vec![]; 
+let mut cpi_account_infos = vec![];
 
 // Provide all "remaining_account_infos" that are *not* part of any other known interface
-let remaining_account_infos = &[]; 
+let remaining_account_infos = &[];
 ExtraAccountMetas::add_to_cpi_instruction::<MyInstruction>(
     &mut cpi_instruction,
     &mut cpi_account_infos,
     &buffer,
     &remaining_account_infos,
+    None,
+).unwrap();
+```
+
+If you want to store information about required additional accounts that have a Program-Derived Address (PDA), thus their address may not be known at the time of packing the account data, you can do so by modifying the above example to look like this:
+
+```rust
+use {
+    solana_program::{account_info::AccountInfo, instruction::{AccountMeta, Instruction}, pubkey::Pubkey},
+    spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator},
+    spl_tlv_account_resolution::state::ExtraAccountMetas,
+};
+
+struct MyInstruction;
+impl TlvDiscriminator for MyInstruction {
+    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+}
+
+// Notice the use of `into()` for the type `AccountMeta`, and we're building this array of `RequiredAccount`
+let required_accounts = [
+    AccountMeta::new(Pubkey::new_unique(), false).into(),
+    AccountMeta::new(Pubkey::new_unique(), true).into(),
+    AccountMeta::new_readonly(Pubkey::new_unique(), true).into(),
+    AccountMeta::new_readonly(Pubkey::new_unique(), false).into(),
+    RequiredAccount::Pda {
+        seeds: vec![
+            Seed::Lit,
+            Seed::Arg(SeedArgType::U8),
+            Seed::Arg(SeedArgType::String),
+        ],
+        is_signer: false,
+        is_writable: true,
+    },
+    RequiredAccount::Pda {
+        seeds: vec![
+            Seed::Lit,
+            Seed::Arg(SeedArgType::Pubkey),
+            Seed::Arg(SeedArgType::Pubkey),
+            Seed::Arg(SeedArgType::Pubkey),
+        ],
+        is_signer: false,
+        is_writable: true,
+    },
+];
+
+let account_size = ExtraAccountMetas::size_of(extra_metas.len()).unwrap();
+let mut buffer = vec![0; account_size];
+
+// Initialize with "required accounts" instead of `AccountMeta` or `AccountInfo`
+ExtraAccountMetas::init_with_required_accounts::<MyInstruction>(
+    &mut buffer,
+    &required_accounts,
+)
+.unwrap();
+
+// On the execution side of things, we have to provide the seeds we used to build the Program-Derived Addresses that correspond to each stored required PDA account in the TLV structure
+let provided_seeds = vec![
+    SeedConfig::new(("SomeSeed", 1u8, String::from("SomeSeed"))),
+    SeedConfig::new((
+        "SomeSeed",
+        Pubkey::new_unique(),
+        Pubkey::new_unique(),
+        Pubkey::new_unique(),
+    )),
+];
+
+// Then you provide the seeds as you add accounts to the instruction (off-chain)
+let program_id = Pubkey::new_unique();
+let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+ExtraAccountMetas::add_to_instruction::<MyInstruction>(&program_id, &mut instruction, &buffer, Some(provided_seeds)).unwrap();
+
+// Same with on-chain
+let provided_seeds_cpi = vec![
+    SeedConfig::new(("SomeSeed", 1u8, String::from("SomeSeed"))),
+    SeedConfig::new((
+        "SomeSeed",
+        Pubkey::new_unique(),
+        Pubkey::new_unique(),
+        Pubkey::new_unique(),
+    )),
+];
+let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+let mut cpi_account_infos = vec![];
+let remaining_account_infos = &[];
+ExtraAccountMetas::add_to_cpi_instruction::<MyInstruction>(
+    &program_id,
+    &mut cpi_instruction,
+    &mut cpi_account_infos,
+    &buffer,
+    &remaining_account_infos,
+    Some(provided_seeds_cpi),
 ).unwrap();
 ```
 

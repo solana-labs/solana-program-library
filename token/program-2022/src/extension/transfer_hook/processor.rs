@@ -45,7 +45,7 @@ fn process_initialize(
         }
     } else if Option::<Pubkey>::from(*authority).is_none() {
         msg!("The transfer hook extension requires at least an authority or a program id for initialization, neither was provided");
-        return Err(TokenError::InvalidInstruction)?;
+        return Err(TokenError::InvalidInstruction.into());
     }
     extension.program_id = *transfer_hook_program_id;
     Ok(())

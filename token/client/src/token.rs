@@ -1,3 +1,5 @@
+use spl_transfer_hook_interface::ProvidedSeeds;
+
 use {
     crate::client::{ProgramClient, ProgramClientError, SendTransaction},
     futures_util::TryFutureExt,
@@ -796,13 +798,14 @@ where
 
     /// Transfer tokens to another account
     #[allow(clippy::too_many_arguments)]
-    pub async fn transfer<S: Signers>(
+    pub async fn transfer<S: Signers, U: ProvidedSeeds>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
         authority: &Pubkey,
         amount: u64,
         signing_keypairs: &S,
+        required_seeds: Option<Vec<U>>,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
@@ -843,6 +846,7 @@ where
                         .map_ok(|opt| opt.map(|acc| acc.data))
                 },
                 self.get_address(),
+                required_seeds,
             )
             .await
             .map_err(|_| TokenError::AccountNotFound)?;

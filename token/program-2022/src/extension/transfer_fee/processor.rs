@@ -302,7 +302,8 @@ pub(crate) fn process_instruction(
             fee,
         } => {
             msg!("TransferFeeInstruction: TransferCheckedWithFee");
-            Processor::process_transfer(program_id, accounts, amount, Some(decimals), Some(fee))
+            let s: Option<Vec<(Pubkey,)>> = None; // Hack for generic
+            Processor::process_transfer(program_id, accounts, amount, Some(decimals), Some(fee), s)
         }
         TransferFeeInstruction::WithdrawWithheldTokensFromMint => {
             msg!("TransferFeeInstruction: WithdrawWithheldTokensFromMint");

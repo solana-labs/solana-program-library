@@ -11,13 +11,15 @@ use {
         account_info::AccountInfo, entrypoint::ProgramResult, instruction::AccountMeta,
         program::invoke_signed, pubkey::Pubkey,
     },
-    spl_transfer_hook_interface::onchain::add_cpi_accounts_for_execute,
+    spl_transfer_hook_interface::{
+        onchain::add_cpi_accounts_for_execute, ProvidedSeeds, SeedConfig,
+    },
 };
 
 /// Helper to CPI into token-2022 on-chain, looking through the additional account
 /// infos to create the proper instruction with the proper account infos
 #[allow(clippy::too_many_arguments)]
-pub fn invoke_transfer_checked<'a>(
+pub fn invoke_transfer_checked<'a, S>(
     token_program_id: &Pubkey,
     source_info: AccountInfo<'a>,
     mint_info: AccountInfo<'a>,
@@ -26,8 +28,12 @@ pub fn invoke_transfer_checked<'a>(
     additional_accounts: &[AccountInfo<'a>],
     amount: u64,
     decimals: u8,
-    seeds: &[&[&[u8]]],
-) -> ProgramResult {
+    required_seeds: Option<Vec<S>>,
+    signers_seeds: &[&[&[u8]]],
+) -> ProgramResult
+where
+    S: ProvidedSeeds,
+{
     let mut cpi_instruction = instruction::transfer_checked(
         token_program_id,
         source_info.key,
@@ -61,6 +67,7 @@ pub fn invoke_transfer_checked<'a>(
     {
         let mint_data = mint_info.try_borrow_data()?;
         let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+        let req_seeds_config = required_seeds.map(|s| s.into_iter().map(SeedConfig::new).collect());
         if let Some(program_id) = transfer_hook::get_program_id(&mint) {
             add_cpi_accounts_for_execute(
                 &mut cpi_instruction,
@@ -68,9 +75,10 @@ pub fn invoke_transfer_checked<'a>(
                 mint_info.key,
                 &program_id,
                 additional_accounts,
+                req_seeds_config,
             )?;
         }
     }
 
-    invoke_signed(&cpi_instruction, &cpi_account_infos, seeds)
+    invoke_signed(&cpi_instruction, &cpi_account_infos, signers_seeds)
 }
