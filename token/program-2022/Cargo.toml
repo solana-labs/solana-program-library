@@ -34,7 +34,7 @@ serde_with = { version = "2.0.0", optional = true }
 
 [dev-dependencies]
 lazy_static = "1.4.0"
-proptest = "1.1"
+proptest = "1.2"
 serial_test = "2.0.0"
 solana-program-test = "1.14.12"
 solana-sdk = "1.14.12"

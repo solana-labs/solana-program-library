@@ -26,7 +26,7 @@ arbitrary = { version = "1.0", features = ["derive"], optional = true }
 roots = { version = "0.0.8", optional = true }
 
 [dev-dependencies]
-proptest = "1.1"
+proptest = "1.2"
 roots = "0.0.8"
 solana-sdk = "1.14.12"
 test-case = "3.1"
