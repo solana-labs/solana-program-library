@@ -141,7 +141,7 @@ export async function getStakePoolAccounts(
 ): Promise<(StakePoolAccount | ValidatorListAccount)[] | undefined> {
   const response = await connection.getProgramAccounts(stakePoolProgramAddress);
 
-  return response.map((a) => {
+  return response.value.map((a) => {
     let decodedData;
 
     if (a.account.data.readUInt8() === 1) {
