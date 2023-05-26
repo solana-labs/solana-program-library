@@ -1,5 +1,2 @@
 [workspace]
-members = [
-    "programs/account-compression",
-    "programs/noop"
-]
+members = ["programs/account-compression", "programs/noop"]

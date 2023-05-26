@@ -26,8 +26,8 @@ use anchor_lang::{
     prelude::*,
     solana_program::sysvar::{clock::Clock, rent::Rent},
 };
+use arrayref::array_ref;
 use borsh::{BorshDeserialize, BorshSerialize};
-
 pub mod canopy;
 pub mod error;
 pub mod events;
@@ -68,6 +68,32 @@ pub struct Initialize<'info> {
 
     /// Program used to emit changelogs as cpi instruction data.
     pub noop: Program<'info, Noop>,
+}
+
+/// Context for filling a proof buffer
+#[derive(Accounts)]
+pub struct FillProofBuffer<'info> {
+    /// Proof Buffer
+    pub proof_buffer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+/// Context for initializing a new SPL ConcurrentMerkleTree
+#[derive(Accounts)]
+pub struct InitializeWithRoot<'info> {
+    #[account(zero)]
+    /// CHECK: This account will be zeroed out, and the size will be validated
+    pub merkle_tree: UncheckedAccount<'info>,
+
+    /// Authority that controls write-access to the tree
+    /// Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs.
+    pub authority: Signer<'info>,
+
+    /// Program used to emit changelogs as cpi instruction data.
+    pub noop: Program<'info, Noop>,
+
+    /// Proof Buffer - Optional
+    pub proof_buffer: Option<UncheckedAccount<'info>>,
 }
 
 /// Context for inserting, appending, or replacing a leaf in the tree
@@ -125,6 +151,14 @@ pub struct CloseTree<'info> {
 
 #[program]
 pub mod spl_account_compression {
+    use std::borrow::BorrowMut;
+
+    use anchor_lang::solana_program::{
+        program::invoke,
+        system_instruction::{allocate, assign},
+        system_program,
+    };
+
     use super::*;
 
     /// Creates a new merkle tree with maximum leaf capacity of `power(2, max_depth)`
@@ -173,69 +207,120 @@ pub mod spl_account_compression {
         update_canopy(canopy_bytes, header.get_max_depth(), None)
     }
 
-    /// Note:
-    /// Supporting this instruction open a security vulnerability for indexers.
-    /// This instruction has been deemed unusable for publicly indexed compressed NFTs.
-    /// Indexing batched data in this way requires indexers to read in the `uri`s onto physical storage
-    /// and then into their database. This opens up a DOS attack vector, whereby this instruction is
-    /// repeatedly invoked, causing indexers to fail.
-    ///
-    /// Because this instruction was deemed insecure, this instruction has been removed
-    /// until secure usage is available on-chain.
-    // pub fn init_merkle_tree_with_root(
-    //     ctx: Context<Initialize>,
-    //     max_depth: u32,
-    //     max_buffer_size: u32,
-    //     root: [u8; 32],
-    //     leaf: [u8; 32],
-    //     index: u32,
-    //     _changelog_db_uri: String,
-    //     _metadata_db_uri: String,
-    // ) -> Result<()> {
-    //     require_eq!(
-    //         *ctx.accounts.merkle_tree.owner,
-    //         crate::id(),
-    //         AccountCompressionError::IncorrectAccountOwner
-    //     );
-    //     let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
+    /// For extremley large trees that cannot be initialized with root in a single transaction,
+    /// this allows a user to fill a buffer of proofs that can be used to initialize the tree with roots.
+    pub fn fill_proof_buffer(
+        ctx: Context<FillProofBuffer>,
+        max_depth: u32,
+        partial_proof: Vec<[u8; 32]>,
+        index: u32,
+    ) -> Result<()> {
+        let buffer: &mut [u8] = &mut *ctx.accounts.proof_buffer.try_borrow_mut_data()?;
+        let len = buffer.len();
+        let owner = ctx.accounts.proof_buffer.owner;
+        let (max, remaining) = if len == 0 {
+            if index != 0 {
+                return Err(AccountCompressionError::ProofIndexOutOfBounds.into());
+            }
+            if owner != &system_program::id() {
+                return Err(AccountCompressionError::IncorrectAccountOwner.into());
+            }
+            invoke(
+                &assign(&ctx.accounts.proof_buffer.key(), &crate::id()),
+                &[
+                    ctx.accounts.proof_buffer.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                ],
+            )?;
+            invoke(
+                &allocate(
+                    &ctx.accounts.proof_buffer.key(),
+                    ((max_depth * 32) + 4) as u64,
+                ),
+                &[
+                    ctx.accounts.proof_buffer.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                ],
+            )?;
+            buffer[0..4].copy_from_slice(&max_depth.to_le_bytes());
+            buffer[4..8].copy_from_slice(&max_depth.to_le_bytes());
+            (max_depth, max_depth)
+        } else {
+            (
+                u32::from_le_bytes(*array_ref![buffer[0..4], 0, 4]),
+                u32::from_le_bytes(*array_ref![buffer[4..8], 0, 4]),
+            )
+        };
+        if max != max_depth {
+            return Err(AccountCompressionError::ProofIndexOutOfBounds.into());
+        }
+        let offset = 8 + (index * 32) as usize;
+        for (i, proof) in partial_proof.iter().enumerate() {
+            buffer[offset..8 + ((offset + 1) * 32)].copy_from_slice(proof);
+        }
+        let new_remaining = remaining - index;
+        //set remaining
+        buffer[4..8].copy_from_slice(&(remaining - 1).to_le_bytes());
+        Ok(())
+    }
 
-    //     let (mut header_bytes, rest) =
-    //         merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
+    // Creates a new merkle tree with an existing root in the buffer.
+    // The indexers for the specific tree use case are in charge of handling the indexing or shadow indexing of the tree.
+    // Shadow indexing is a technique that allows for the indexing of a tree incrementally with update operations.
+    pub fn init_merkle_tree_with_root(
+        ctx: Context<InitializeWithRoot>,
+        max_depth: u32,
+        max_buffer_size: u32,
+        root: [u8; 32],
+        index: u32,
+    ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
+        let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
 
-    //     let mut header = ConcurrentMerkleTreeHeader::try_from_slice(&header_bytes)?;
-    //     header.initialize(
-    //         max_depth,
-    //         max_buffer_size,
-    //         &ctx.accounts.authority.key(),
-    //         Clock::get()?.slot,
-    //     );
-    //     header.serialize(&mut header_bytes)?;
-    //     let merkle_tree_size = merkle_tree_get_size(&header)?;
-    //     let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
+        let (mut header_bytes, rest) =
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
 
-    //     // Get rightmost proof from accounts
-    //     let mut proof = vec![];
-    //     for node in ctx.remaining_accounts.iter() {
-    //         proof.push(node.key().to_bytes());
-    //     }
-    //     fill_in_proof_from_canopy(canopy_bytes, header.max_depth, index, &mut proof)?;
-    //     assert_eq!(proof.len(), max_depth as usize);
+        let mut header = ConcurrentMerkleTreeHeader::try_from_slice(&header_bytes)?;
+        header.initialize(
+            max_depth,
+            max_buffer_size,
+            &ctx.accounts.authority.key(),
+            Clock::get()?.slot,
+        );
+        header.serialize(&mut header_bytes)?;
+        let merkle_tree_size = merkle_tree_get_size(&header)?;
+        let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
 
-    //     let id = ctx.accounts.merkle_tree.key();
-    //     // A call is made to ConcurrentMerkleTree::initialize_with_root(root, leaf, proof, index)
-    //     let change_log = merkle_tree_apply_fn!(
-    //         header,
-    //         id,
-    //         tree_bytes,
-    //         initialize_with_root,
-    //         root,
-    //         leaf,
-    //         &proof,
-    //         index
-    //     )?;
-    //     wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
-    //     update_canopy(canopy_bytes, header.max_depth, Some(change_log))
-    // }
+        // Get rightmost proof from accounts
+        let mut proof = vec![];
+        for node in ctx.remaining_accounts.iter() {
+            proof.push(node.key().to_bytes());
+        }
+        fill_in_proof_from_canopy(canopy_bytes, header.max_depth, index, &mut proof)?;
+        assert_eq!(proof.len(), max_depth as usize);
+
+        let id = ctx.accounts.merkle_tree.key();
+        // A call is made to ConcurrentMerkleTree::initialize_with_root(root, leaf, proof, index)
+        let change_log_event = merkle_tree_apply_fn!(
+            header,
+            id,
+            tree_bytes,
+            initialize_with_root,
+            root,
+            leaf,
+            &proof,
+            index
+        )?;
+        wrap_event(
+            &AccountCompressionEvent::ChangeLog(*change_log_event),
+            &ctx.accounts.noop,
+        )?;
+        update_canopy(canopy_bytes, header.get_max_depth(), None)
+    }
 
     /// Executes an instruction that overwrites a leaf node.
     /// Composing programs should check that the data hashed into previous_leaf
