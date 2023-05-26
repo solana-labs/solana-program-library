@@ -280,6 +280,18 @@ pub mod spl_account_compression {
             AccountCompressionError::IncorrectAccountOwner
         );
         let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
+        let proof = if let Some(proof_buffer) = ctx.accounts.proof_buffer {
+            let mut proof_buffer = proof_buffer.try_borrow_mut_data()?;
+            let (header, proof_bytes) = merkle_tree_bytes.split_at_mut(8);
+            // this could blow up compute for huge proofs, need to find a way to get view into the silcie as &[]
+            proof_bytes.chunks_exact(32).collect::<Vec<_>>()
+        } else {
+            let mut proof = vec![];
+            for node in ctx.remaining_accounts.iter() {
+                proof.push(node.key().to_bytes().as_ref());
+            }
+            proof
+        };
 
         let (mut header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
@@ -300,11 +312,12 @@ pub mod spl_account_compression {
         for node in ctx.remaining_accounts.iter() {
             proof.push(node.key().to_bytes());
         }
-        fill_in_proof_from_canopy(canopy_bytes, header.max_depth, index, &mut proof)?;
+        fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         assert_eq!(proof.len(), max_depth as usize);
 
         let id = ctx.accounts.merkle_tree.key();
         // A call is made to ConcurrentMerkleTree::initialize_with_root(root, leaf, proof, index)
+        //broken need to fix leaf
         let change_log_event = merkle_tree_apply_fn!(
             header,
             id,
