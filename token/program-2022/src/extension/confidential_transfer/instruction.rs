@@ -16,7 +16,6 @@ use {
         sysvar,
     },
     solana_zk_token_sdk::zk_token_elgamal::pod,
-    std::convert::TryFrom,
 };
 
 /// Confidential Transfer extension instructions
@@ -32,9 +31,6 @@ pub enum ConfidentialTransferInstruction {
     /// The instruction fails if the `TokenInstruction::InitializeMint` instruction has already
     /// executed for the mint.
     ///
-    /// Note that the `withdraw_withheld_authority_encryption_pubkey` cannot be updated after it is
-    /// initialized.
-    ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The SPL Token mint.
@@ -47,9 +43,6 @@ pub enum ConfidentialTransferInstruction {
     /// Updates the confidential transfer mint configuration for a mint.
     ///
     /// Use `TokenInstruction::SetAuthority` to update the confidential transfer mint authority.
-    ///
-    /// The `withdraw_withheld_authority_encryption_pubkey` and `withheld_amount` ciphertext are
-    /// not updatable.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -345,8 +338,6 @@ pub struct InitializeMintData {
     pub auto_approve_new_accounts: PodBool,
     /// New authority to decode any transfer amount in a confidential transfer.
     pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
-    /// Authority to withdraw withheld fees that are associated with accounts.
-    pub withdraw_withheld_authority_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::UpdateMint`
@@ -419,6 +410,17 @@ pub struct TransferInstructionData {
     pub proof_instruction_offset: i8,
 }
 
+/// Data expected by `ConfidentialTransferInstruction::ApplyPendingBalance`
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[repr(C)]
+pub struct ApplyPendingBalanceData {
+    /// The expected number of pending balance credits since the last successful
+    /// `ApplyPendingBalance` instruction
+    pub expected_pending_balance_credit_counter: PodU64,
+    /// The new decryptable balance if the pending balance is applied successfully
+    pub new_decryptable_available_balance: pod::AeCiphertext,
+}
+
 /// Create a `InitializeMint` instruction
 #[cfg(not(target_os = "solana"))]
 pub fn initialize_mint(
@@ -427,7 +429,6 @@ pub fn initialize_mint(
     authority: Option<Pubkey>,
     auto_approve_new_accounts: bool,
     auditor_encryption_pubkey: Option<EncryptionPubkey>,
-    withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -441,8 +442,6 @@ pub fn initialize_mint(
             authority: authority.try_into()?,
             auto_approve_new_accounts: auto_approve_new_accounts.into(),
             auditor_encryption_pubkey: auditor_encryption_pubkey.try_into()?,
-            withdraw_withheld_authority_encryption_pubkey:
-                withdraw_withheld_authority_encryption_pubkey.try_into()?,
         },
     ))
 }

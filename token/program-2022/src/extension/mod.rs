@@ -806,9 +806,6 @@ impl ExtensionType {
                 ExtensionType::TransferHook => {
                     account_extension_types.push(ExtensionType::TransferHookAccount);
                 }
-                ExtensionType::ConfidentialTransferFeeConfig => {
-                    account_extension_types.push(ExtensionType::ConfidentialTransferFeeAmount);
-                }
                 #[cfg(test)]
                 ExtensionType::MintPaddingTest => {
                     account_extension_types.push(ExtensionType::AccountPaddingTest);

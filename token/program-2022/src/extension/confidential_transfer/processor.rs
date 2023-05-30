@@ -21,13 +21,20 @@ use {
 // Remove feature once zk ops syscalls are enabled on all networks
 #[cfg(feature = "zk-ops")]
 use {
-    crate::extension::{non_transferable::NonTransferable, transfer_fee::TransferFeeConfig},
+    crate::extension::non_transferable::NonTransferable,
     solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
 };
 
 #[cfg(feature = "proof-program")]
 use {
-    crate::extension::memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
+    crate::extension::{
+        confidential_transfer_fee::{
+            ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig, EncryptedFee,
+            EncryptedWithheldAmount,
+        },
+        memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
+        transfer_fee::TransferFeeConfig,
+    },
     solana_program::instruction::Instruction,
     solana_program::sysvar::instructions::get_instruction_relative,
     solana_program::{clock::Clock, sysvar::Sysvar},
@@ -60,7 +67,6 @@ fn process_initialize_mint(
     authority: &OptionalNonZeroPubkey,
     auto_approve_new_account: PodBool,
     auditor_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
-    withdraw_withheld_authority_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -73,9 +79,6 @@ fn process_initialize_mint(
     confidential_transfer_mint.authority = *authority;
     confidential_transfer_mint.auto_approve_new_accounts = auto_approve_new_account;
     confidential_transfer_mint.auditor_encryption_pubkey = *auditor_encryption_pubkey;
-    confidential_transfer_mint.withdraw_withheld_authority_encryption_pubkey =
-        *withdraw_withheld_authority_encryption_pubkey;
-    confidential_transfer_mint.withheld_amount = EncryptedWithheldAmount::zeroed();
 
     Ok(())
 }
@@ -177,7 +180,6 @@ fn process_configure_account(
     confidential_transfer_account.expected_pending_balance_credit_counter = 0.into();
     confidential_transfer_account.actual_pending_balance_credit_counter = 0.into();
     confidential_transfer_account.allow_non_confidential_credits = true.into();
-    confidential_transfer_account.withheld_amount = EncryptedWithheldAmount::zeroed();
 
     Ok(())
 }
@@ -245,7 +247,7 @@ fn process_empty_account(
     // must be an encryption of zero:
     //   1. The pending balance
     //   2. The available balance
-    //   3. The withheld balance
+    //   3. The withheld balance (in `ConfidentialTransferFeeAmount`)
     //
     // For the pending and withheld balance ciphertexts, it suffices to check that they are
     // all-zero ciphertexts (i.e. [0; 64]). If any of these ciphertexts are valid encryption of
@@ -572,24 +574,25 @@ fn process_transfer(
             ProofInstruction::VerifyTransferWithFee,
             &zkp_instruction,
         )?;
-        // Check that the encryption public keys associated with the confidential extension mint
-        // are consistent with the keys that were used to generate the zkp.
+        // Check that the encryption public keys associated with the mint confidential transfer and
+        // confidential transfer fee extensions are consistent with the keys that were used to
+        // generate the zkp.
         if !confidential_transfer_mint
             .auditor_encryption_pubkey
             .equals(&proof_data.transfer_with_fee_pubkeys.auditor_pubkey)
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
-        if !confidential_transfer_mint
-            .withdraw_withheld_authority_encryption_pubkey
-            .equals(
-                &proof_data
-                    .transfer_with_fee_pubkeys
-                    .withdraw_withheld_authority_pubkey,
-            )
+        let confidential_transfer_fee_config =
+            mint.get_extension::<ConfidentialTransferFeeConfig>()?;
+        if proof_data
+            .transfer_with_fee_pubkeys
+            .withdraw_withheld_authority_pubkey
+            != confidential_transfer_fee_config.withdraw_withheld_authority_encryption_pubkey
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
+
         // Check that the fee parameters in the mint are consistent with what were used to generate
         // the zkp.
         let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
@@ -625,7 +628,7 @@ fn process_transfer(
             new_source_decryptable_available_balance,
         )?;
 
-        // From the proof datay, decode lo and hi transfer amounts encrypted under the destination
+        // From the proof data decode lo and hi transfer amounts encrypted under the destination
         // encryption public key
         let destination_transfer_amount_lo = EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
@@ -802,9 +805,12 @@ fn process_destination_for_transfer(
         )
             .into();
 
+        let mut destination_confidential_transfer_fee_amount =
+            destination_token_account.get_extension_mut::<ConfidentialTransferFeeAmount>()?;
+
         // Add the fee amount to the destination withheld fee
-        destination_confidential_transfer_account.withheld_amount = syscall::add_with_lo_hi(
-            &destination_confidential_transfer_account.withheld_amount,
+        destination_confidential_transfer_fee_amount.withheld_amount = syscall::add_with_lo_hi(
+            &destination_confidential_transfer_fee_amount.withheld_amount,
             &withdraw_withheld_authority_fee_lo,
             &withdraw_withheld_authority_fee_hi,
         )
@@ -942,7 +948,6 @@ pub(crate) fn process_instruction(
                 &data.authority,
                 data.auto_approve_new_accounts,
                 &data.auditor_encryption_pubkey,
-                &data.withdraw_withheld_authority_encryption_pubkey,
             )
         }
         ConfidentialTransferInstruction::UpdateMint => {

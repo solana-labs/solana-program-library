@@ -147,18 +147,7 @@ pub struct InitializeConfidentialTransferFeeConfigData {
     pub withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
 }
 
-/// Data expected by `ConfidentialTransferInstruction::ApplyPendingBalance`
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-#[repr(C)]
-pub struct ApplyPendingBalanceData {
-    /// The expected number of pending balance credits since the last successful
-    /// `ApplyPendingBalance` instruction
-    pub expected_pending_balance_credit_counter: PodU64,
-    /// The new decryptable balance if the pending balance is applied successfully
-    pub new_decryptable_available_balance: pod::AeCiphertext,
-}
-
-/// Data expected by `ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint`
+/// Data expected by `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint`
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromMintData {
@@ -167,7 +156,7 @@ pub struct WithdrawWithheldTokensFromMintData {
     pub proof_instruction_offset: i8,
 }
 
-/// Data expected by `ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts`
+/// Data expected by `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts`
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromAccountsData {
@@ -200,7 +189,7 @@ pub fn initialize_confidential_transfer_fee_config(
     ))
 }
 
-/// Create a inner `WithdrawWithheldTokensFromMint` instruction
+/// Create an inner `WithdrawWithheldTokensFromMint` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 pub fn inner_withdraw_withheld_tokens_from_mint(
@@ -227,14 +216,14 @@ pub fn inner_withdraw_withheld_tokens_from_mint(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
-        ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint,
+        ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint,
         &WithdrawWithheldTokensFromMintData {
             proof_instruction_offset,
         },
     ))
 }
 
-/// Create a `WithdrawWithheldTokensFromMint` instruction
+/// Create an `WithdrawWithheldTokensFromMint` instruction
 #[cfg(feature = "proof-program")]
 pub fn withdraw_withheld_tokens_from_mint(
     token_program_id: &Pubkey,
@@ -258,7 +247,7 @@ pub fn withdraw_withheld_tokens_from_mint(
     ])
 }
 
-/// Create a inner `WithdrawWithheldTokensFromMint` instruction
+/// Create an inner `WithdrawWithheldTokensFromMint` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 pub fn inner_withdraw_withheld_tokens_from_accounts(
@@ -292,7 +281,7 @@ pub fn inner_withdraw_withheld_tokens_from_accounts(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
-        ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts,
+        ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts,
         &WithdrawWithheldTokensFromAccountsData {
             proof_instruction_offset,
             num_token_accounts,
@@ -343,7 +332,7 @@ pub fn harvest_withheld_tokens_to_mint(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
-        ConfidentialTransferInstruction::HarvestWithheldTokensToMint,
+        ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint,
         &(),
     ))
 }

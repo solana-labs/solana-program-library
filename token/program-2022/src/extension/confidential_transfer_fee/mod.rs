@@ -6,7 +6,7 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext,
+    solana_zk_token_sdk::zk_token_elgamal::pod::{ElGamalCiphertext, FeeEncryption},
 };
 
 /// Confidential transfer fee extension instructions
@@ -15,7 +15,9 @@ pub mod instruction;
 /// Confidential transfer fee extension processor
 pub mod processor;
 
-/// ElGamal ciphertext containing a withheld fee
+/// ElGamal ciphertext containing a transfer fee
+pub type EncryptedFee = FeeEncryption;
+/// ElGamal ciphertext containing a withheld fee in an account
 pub type EncryptedWithheldAmount = ElGamalCiphertext;
 
 /// Confidential transfer fee extension data for mints
