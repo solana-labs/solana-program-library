@@ -5,6 +5,9 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            confidential_transfer_fee::{
+                ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig,
+            },
             cpi_guard::CpiGuard,
             default_account_state::DefaultAccountState,
             immutable_owner::ImmutableOwner,
@@ -36,6 +39,8 @@ use serde::{Deserialize, Serialize};
 
 /// Confidential Transfer extension
 pub mod confidential_transfer;
+/// Confidential Transfer Fee extension
+pub mod confidential_transfer_fee;
 /// CPI Guard extension
 pub mod cpi_guard;
 /// Default Account State extension
@@ -656,6 +661,10 @@ pub enum ExtensionType {
     TransferHook,
     /// Indicates that the tokens in this account belong to a mint with a transfer hook
     TransferHookAccount,
+    /// Includes encrypted withheld fees and the encryption public that they are encrypted under
+    ConfidentialTransferFeeConfig,
+    /// Includes confidential withheld transfer fees
+    ConfidentialTransferFeeAmount,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -701,6 +710,12 @@ impl ExtensionType {
             ExtensionType::NonTransferableAccount => pod_get_packed_len::<NonTransferableAccount>(),
             ExtensionType::TransferHook => pod_get_packed_len::<TransferHook>(),
             ExtensionType::TransferHookAccount => pod_get_packed_len::<TransferHookAccount>(),
+            ExtensionType::ConfidentialTransferFeeConfig => {
+                pod_get_packed_len::<ConfidentialTransferFeeConfig>()
+            }
+            ExtensionType::ConfidentialTransferFeeAmount => {
+                pod_get_packed_len::<ConfidentialTransferFeeAmount>()
+            }
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -759,14 +774,16 @@ impl ExtensionType {
             | ExtensionType::NonTransferable
             | ExtensionType::InterestBearingConfig
             | ExtensionType::PermanentDelegate
-            | ExtensionType::TransferHook => AccountType::Mint,
+            | ExtensionType::TransferHook
+            | ExtensionType::ConfidentialTransferFeeConfig => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
             | ExtensionType::MemoTransfer
             | ExtensionType::NonTransferableAccount
             | ExtensionType::TransferHookAccount
-            | ExtensionType::CpiGuard => AccountType::Account,
+            | ExtensionType::CpiGuard
+            | ExtensionType::ConfidentialTransferFeeAmount => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
@@ -788,6 +805,9 @@ impl ExtensionType {
                 }
                 ExtensionType::TransferHook => {
                     account_extension_types.push(ExtensionType::TransferHookAccount);
+                }
+                ExtensionType::ConfidentialTransferFeeConfig => {
+                    account_extension_types.push(ExtensionType::ConfidentialTransferFeeAmount);
                 }
                 #[cfg(test)]
                 ExtensionType::MintPaddingTest => {
