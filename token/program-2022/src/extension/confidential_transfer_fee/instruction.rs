@@ -49,4 +49,29 @@ pub enum ConfidentialTransferFeeInstruction {
 pub struct InitializeConfidentialTransferFeeConfigData {
     /// confidential transfer fee authority
     pub authority: OptionalNonZeroPubkey,
+
+    /// ElGamal public key used to encrypt withheld fees.
+    pub withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
+}
+
+/// Create a `InitializeConfidentialTransferFeeConfig` instruction
+pub fn initialize_confidential_transfer_fee_config(
+    token_program_id: &Pubkey,
+    mint: &Pubkey,
+    authority: Option<Pubkey>,
+    withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let accounts = vec![AccountMeta::new(*mint, false)];
+
+    Ok(encode_instruction(
+        token_program_id,
+        accounts,
+        TokenInstruction::ConfidentialTransferFeeExtension,
+        ConfidentialTransferFeeInstruction::InitializeConfidentialTransferFeeConfig,
+        &InitializeConfidentialTransferFeeConfigData {
+            authority: authority.try_into()?,
+            withdraw_withheld_authority_encryption_pubkey,
+        },
+    ))
 }

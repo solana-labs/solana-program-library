@@ -39,6 +39,7 @@ use {
                 ProofInstruction, WithdrawWithheldTokensData,
                 WithdrawWithheldTokensFromAccountsData, WithdrawWithheldTokensFromMintData,
             },
+            processor::decode_proof_instruction,
             ConfidentialTransferAccount, ConfidentialTransferMint,
         },
         processor::Processor,
@@ -52,7 +53,18 @@ fn process_initialize_confidential_transfer_fee_config(
     authority: &OptionalNonZeroPubkey,
     withdraw_withheld_authority_encryption_pubkey: &EncryptionPubkey,
 ) -> ProgramResult {
-    unimplemented!()
+    let account_info_iter = &mut accounts.iter();
+    let mint_account_info = next_account_info(account_info_iter)?;
+
+    let mut mint_data = mint_account_info.data.borrow_mut();
+    let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+    let extension = mint.init_extension::<ConfidentialTransferFeeConfig>(true)?;
+    extension.authority = *authority;
+    extension.withdraw_withheld_authority_encryption_pubkey =
+        *withdraw_withheld_authority_encryption_pubkey;
+    extension.withheld_amount = EncryptedWithheldAmount::zeroed();
+
+    Ok(())
 }
 
 #[allow(dead_code)]
@@ -66,7 +78,13 @@ pub(crate) fn process_instruction(
     match decode_instruction_type(input)? {
         ConfidentialTransferFeeInstruction::InitializeConfidentialTransferFeeConfig => {
             msg!("ConfidentialTransferInstruction::InitializeConfidentialTransferFeeConfig");
-            unimplemented!()
+            let data =
+                decode_instruction_data::<InitializeConfidentialTransferFeeConfigData>(input)?;
+            process_initialize_confidential_transfer_fee_config(
+                accounts,
+                &data.authority,
+                &data.withdraw_withheld_authority_encryption_pubkey,
+            )
         }
     }
 }

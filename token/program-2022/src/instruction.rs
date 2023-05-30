@@ -636,6 +636,11 @@ pub enum TokenInstruction<'a> {
     /// for further details about the extended instructions that share this instruction
     /// prefix
     TransferHookExtension,
+    /// The common instruction prefix for the confidential transfer fee extension instructions.
+    ///
+    /// See `extension::confidential_transfer_fee::instruction::ConfidentialTransferFeeInstruction`
+    /// for further details about the extended instructions that share this instruction prefix
+    ConfidentialTransferFeeExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -772,6 +777,7 @@ impl<'a> TokenInstruction<'a> {
                 Self::InitializePermanentDelegate { delegate }
             }
             36 => Self::TransferHookExtension,
+            37 => Self::ConfidentialTransferFeeExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -934,6 +940,9 @@ impl<'a> TokenInstruction<'a> {
             &Self::TransferHookExtension => {
                 buf.push(36);
             }
+            &Self::ConfidentialTransferFeeExtension => {
+                buf.push(37);
+            }
         };
         buf
     }
@@ -1022,6 +1031,8 @@ pub enum AuthorityType {
     ConfidentialTransferMint,
     /// Authority to set the transfer hook program id
     TransferHookProgramId,
+    /// Authority to set the withdraw withheld authority encryption key
+    ConfidentialTransferFeeConfig,
 }
 
 impl AuthorityType {
@@ -1038,6 +1049,7 @@ impl AuthorityType {
             AuthorityType::PermanentDelegate => 8,
             AuthorityType::ConfidentialTransferMint => 9,
             AuthorityType::TransferHookProgramId => 10,
+            AuthorityType::ConfidentialTransferFeeConfig => 11,
         }
     }
 
@@ -1054,6 +1066,7 @@ impl AuthorityType {
             8 => Ok(AuthorityType::PermanentDelegate),
             9 => Ok(AuthorityType::ConfidentialTransferMint),
             10 => Ok(AuthorityType::TransferHookProgramId),
+            11 => Ok(AuthorityType::ConfidentialTransferFeeConfig),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

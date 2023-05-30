@@ -6,6 +6,9 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{self, ConfidentialTransferAccount, ConfidentialTransferMint},
+            confidential_transfer_fee::{
+                self, ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig,
+            },
             cpi_guard::{self, in_cpi, CpiGuard},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
@@ -805,6 +808,19 @@ impl Processor {
                     )?;
                     extension.authority = new_authority.try_into()?;
                 }
+                AuthorityType::ConfidentialTransferFeeConfig => {
+                    let extension = mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
+                    let maybe_authority: Option<Pubkey> = extension.authority.into();
+                    let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.authority = new_authority.try_into()?;
+                }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
@@ -1064,6 +1080,12 @@ impl Processor {
                 source_account.get_extension::<ConfidentialTransferAccount>()
             {
                 confidential_transfer_state.closable()?
+            }
+
+            if let Ok(confidential_transfer_fee_state) =
+                source_account.get_extension::<ConfidentialTransferFeeAmount>()
+            {
+                confidential_transfer_fee_state.closable()?
             }
 
             if let Ok(transfer_fee_state) = source_account.get_extension::<TransferFeeAmount>() {
@@ -1509,6 +1531,13 @@ impl Processor {
             }
             TokenInstruction::TransferHookExtension => {
                 transfer_hook::processor::process_instruction(program_id, accounts, &input[1..])
+            }
+            TokenInstruction::ConfidentialTransferFeeExtension => {
+                confidential_transfer_fee::processor::process_instruction(
+                    program_id,
+                    accounts,
+                    &input[1..],
+                )
             }
         }
     }

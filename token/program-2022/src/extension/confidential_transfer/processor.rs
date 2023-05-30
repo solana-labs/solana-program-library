@@ -40,7 +40,7 @@ use {
 /// and `WithdrawWithheldTokensFromAccounts` instructions require corresponding zero-knowledge
 /// proof instructions.
 #[cfg(feature = "proof-program")]
-fn decode_proof_instruction<T: Pod>(
+pub(crate) fn decode_proof_instruction<T: Pod>(
     expected: ProofInstruction,
     instruction: &Instruction,
 ) -> Result<&T, ProgramError> {

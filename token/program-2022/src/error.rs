@@ -193,6 +193,11 @@ pub enum TokenError {
     /// Account does not accept non-confidential transfers
     #[error("Non-confidential transfers disabled")]
     NonConfidentialTransfersDisabled,
+
+    // 50
+    /// An account can only be closed if the confidential withheld fee is zero
+    #[error("An account can only be closed if the confidential withheld fee is zero")]
+    ConfidentialTransferFeeAccountHasWithheldFee,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -334,6 +339,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::NonConfidentialTransfersDisabled => {
                 msg!("Non-confidential transfers disabled")
+            }
+            TokenError::ConfidentialTransferFeeAccountHasWithheldFee => {
+                msg!("Account has non-zero confidential withheld fee")
             }
         }
     }
