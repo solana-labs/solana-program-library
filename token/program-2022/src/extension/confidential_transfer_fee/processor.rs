@@ -406,7 +406,7 @@ pub(crate) fn process_instruction(
             msg!("ConfidentialTransferInstruction::HarvestWithheldTokensToMint");
             #[cfg(feature = "zk-ops")]
             {
-                return process_harvest_withheld_tokens_to_mint(accounts);
+                process_harvest_withheld_tokens_to_mint(accounts)
             }
             #[cfg(not(feature = "zk-ops"))]
             {

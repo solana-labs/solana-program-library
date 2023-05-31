@@ -6840,7 +6840,6 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn confidential_transfer() {
-        use spl_token_2022::extension::confidential_transfer::EncryptedWithheldAmount;
         use spl_token_2022::pod::EncryptionPubkey;
 
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6890,16 +6889,6 @@ mod tests {
         assert_eq!(
             Option::<EncryptionPubkey>::from(extension.auditor_encryption_pubkey),
             None,
-        );
-        assert_eq!(
-            Option::<EncryptionPubkey>::from(
-                extension.withdraw_withheld_authority_encryption_pubkey
-            ),
-            None,
-        );
-        assert_eq!(
-            Option::<EncryptedWithheldAmount>::from(extension.withheld_amount),
-            Some(EncryptedWithheldAmount::default()),
         );
 
         process_test_command(
