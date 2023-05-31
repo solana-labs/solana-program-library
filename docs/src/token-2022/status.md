@@ -12,9 +12,9 @@ Here is the general program timeline and rough ETAs:
 
 | Issue | ETA |
 | --- | --- |
-| Finish program | end of May |
-| Final audit | end of June |
-| Mainnet recommendation | middle of July |
+| Finish program | end of June |
+| Final audit | end of July |
+| Mainnet recommendation | middle of August |
 | Freeze program | Q1 2024 |
 
 More information: https://github.com/orgs/solana-labs/projects/34
