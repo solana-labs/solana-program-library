@@ -322,10 +322,7 @@ pub fn create_and_delegate_user_stake(
         user_wallet,
         &deposit_seed,
         vote_account,
-        &stake::state::Authorized {
-            staker: *user_wallet,
-            withdrawer: *user_wallet,
-        },
+        &stake::state::Authorized::auto(user_wallet),
         &stake::state::Lockup::default(),
         lamports,
     )

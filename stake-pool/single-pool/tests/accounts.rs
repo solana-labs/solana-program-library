@@ -7,12 +7,8 @@ use {
     helpers::*,
     solana_program_test::*,
     solana_sdk::{
-        instruction::Instruction,
-        message::Message,
-        program_error::ProgramError,
-        signature::{Keypair, Signer},
-        stake, system_program,
-        transaction::Transaction,
+        instruction::Instruction, program_error::ProgramError, pubkey::Pubkey, signature::Signer,
+        stake, system_program, transaction::Transaction,
     },
     spl_single_validator_pool::{error::SinglePoolError, id, instruction},
     test_case::test_case,
@@ -86,8 +82,12 @@ async fn build_instructions(
     );
 
     let withdraw_instructions = if test_mode == TestMode::Withdraw {
-        let message = Message::new(&deposit_instructions, Some(&accounts.alice.pubkey()));
-        let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+        let transaction = Transaction::new_signed_with_payer(
+            &deposit_instructions,
+            Some(&accounts.alice.pubkey()),
+            &[&accounts.alice],
+            context.last_blockhash,
+        );
 
         context
             .banks_client
@@ -97,6 +97,7 @@ async fn build_instructions(
 
         create_blank_stake_account(
             &mut context.banks_client,
+            &context.payer,
             &accounts.alice,
             &context.last_blockhash,
             &accounts.alice_stake,
@@ -147,10 +148,14 @@ async fn fail_account_checks(test_mode: TestMode) {
         }
 
         let prev_pubkey = instruction_account.pubkey;
-        instruction_account.pubkey = Keypair::new().pubkey();
+        instruction_account.pubkey = Pubkey::new_unique();
 
-        let message = Message::new(&instructions, Some(&accounts.alice.pubkey()));
-        let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&accounts.alice.pubkey()),
+            &[&accounts.alice],
+            context.last_blockhash,
+        );
 
         // random addresses should error always otherwise
         let e = context
@@ -171,7 +176,5 @@ async fn fail_account_checks(test_mode: TestMode) {
         {
             check_error(e, ProgramError::IncorrectProgramId)
         }
-
-        // TODO explicitly check clock/rent/stake history/stake config? we just let the stake program do it
     }
 }

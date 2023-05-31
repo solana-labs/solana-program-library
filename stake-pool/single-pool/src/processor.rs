@@ -1042,7 +1042,6 @@ mod tests {
             seq::{IteratorRandom, SliceRandom},
             Rng, SeedableRng,
         },
-        solana_sdk::{signature::Signer, signer::keypair::Keypair},
         std::collections::BTreeMap,
         test_case::test_case,
     };
@@ -1129,9 +1128,9 @@ mod tests {
     #[test]
     fn simple_deposit_withdraw() {
         let mut pool = PoolState::default();
-        let alice = Keypair::new().pubkey();
-        let bob = Keypair::new().pubkey();
-        let chad = Keypair::new().pubkey();
+        let alice = Pubkey::new_unique();
+        let bob = Pubkey::new_unique();
+        let chad = Pubkey::new_unique();
 
         // first deposit. alice now has 250
         pool.deposit(&alice, 250).unwrap();
@@ -1215,7 +1214,7 @@ mod tests {
             let mut users = vec![];
             let user_count: usize = prng.gen_range(1..=100);
             for _ in 0..user_count {
-                let user = Keypair::new().pubkey();
+                let user = Pubkey::new_unique();
 
                 if prng.gen_bool(0.5) {
                     pool.deposit(&user, deposit_amount(&mut prng)).unwrap();
@@ -1244,7 +1243,6 @@ mod tests {
                         assert_eq!(pool.total_stake - prev_total_stake, stake_deposited);
 
                         // calculated stake fraction is within 2 lamps of deposit amount
-                        // XXX note to jon: off-by-ones to determine are benign
                         assert!(
                             (pool.stake(user) as i64 - prev_stake as i64 - stake_deposited as i64)
                                 .abs()
@@ -1256,13 +1254,11 @@ mod tests {
 
                         // tokens per supply increased with stake per total
                         if prev_total_stake > 0 {
-                            assert_eq!(
-                                format!("{:.6}", pool.share(user) - prev_share),
-                                format!(
-                                    "{:.6}",
-                                    pool.stake(user) as f64 / pool.total_stake as f64
-                                        - prev_stake as f64 / prev_total_stake as f64
-                                )
+                            assert_relative_eq!(
+                                pool.share(user) - prev_share,
+                                pool.stake(user) as f64 / pool.total_stake as f64
+                                    - prev_stake as f64 / prev_total_stake as f64,
+                                epsilon = 1e-6
                             );
                         }
                     }
@@ -1292,7 +1288,6 @@ mod tests {
                             assert_eq!(prev_total_stake - pool.total_stake, stake_received);
 
                             // calculated stake fraction is within 2 lamps of withdraw amount
-                            // XXX note to jon: off-by-ones to determine are benign
                             assert!(
                                 (prev_stake as i64
                                     - pool.stake(user) as i64
@@ -1306,13 +1301,11 @@ mod tests {
 
                             // tokens per supply decreased with stake per total
                             if pool.total_stake > 0 {
-                                assert_eq!(
-                                    format!("{:.6}", prev_share - pool.share(user)),
-                                    format!(
-                                        "{:.6}",
-                                        prev_stake as f64 / prev_total_stake as f64
-                                            - pool.stake(user) as f64 / pool.total_stake as f64
-                                    )
+                                assert_relative_eq!(
+                                    prev_share - pool.share(user),
+                                    prev_stake as f64 / prev_total_stake as f64
+                                        - pool.stake(user) as f64 / pool.total_stake as f64,
+                                    epsilon = 1e-6
                                 );
                             }
                         };
@@ -1340,7 +1333,6 @@ mod tests {
                             let stake_diff = (curr_stake - prev_stake) as f64;
 
                             // stake increase is within 2 lamps when calculated as a difference or a percentage
-                            // XXX note to jon: off-by-ones to determine are benign
                             assert!((stake_share - stake_diff).abs() <= 2.0);
                         }
                     }

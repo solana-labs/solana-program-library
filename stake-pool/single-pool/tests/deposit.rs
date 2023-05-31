@@ -8,7 +8,6 @@ use {
     solana_program_test::*,
     solana_sdk::{
         instruction::InstructionError,
-        message::Message,
         signature::Signer,
         signer::keypair::Keypair,
         stake::{
@@ -59,8 +58,12 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
             &accounts.bob.pubkey(),
             &accounts.bob.pubkey(),
         );
-        let message = Message::new(&instructions, Some(&accounts.bob.pubkey()));
-        let transaction = Transaction::new(&[&accounts.bob], message, context.last_blockhash);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &accounts.bob],
+            context.last_blockhash,
+        );
 
         context
             .banks_client
@@ -68,11 +71,6 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
             .await
             .unwrap();
     }
-
-    let wallet_lamports_after_stake =
-        get_account(&mut context.banks_client, &accounts.alice.pubkey())
-            .await
-            .lamports;
 
     let (_, alice_stake_before_deposit, stake_lamports) =
         get_stake_account(&mut context.banks_client, &accounts.alice_stake.pubkey()).await;
@@ -93,8 +91,6 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
         .await;
     }
 
-    let mut fees = USER_STARTING_LAMPORTS - wallet_lamports_after_stake - stake_lamports;
-
     let instructions = instruction::deposit(
         &id(),
         &accounts.vote_account.pubkey(),
@@ -103,9 +99,12 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
         &accounts.alice.pubkey(),
         &accounts.alice.pubkey(),
     );
-    let message = Message::new(&instructions, Some(&accounts.alice.pubkey()));
-    fees += get_fee_for_message(&mut context.banks_client, &message).await;
-    let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &accounts.alice],
+        context.last_blockhash,
+    );
 
     context
         .banks_client
@@ -148,11 +147,11 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
         pool_stake_before + expected_deposit + pool_meta_after.rent_exempt_reserve,
     );
 
-    // alice got her rent back if active, or only paid fees otherwise
+    // alice got her rent back if active, or everything otherwise
     // and if someone sent lamports to the stake account, the next depositor gets them
     assert_eq!(
         wallet_lamports_after_deposit,
-        USER_STARTING_LAMPORTS - expected_deposit - fees + extra_lamports,
+        USER_STARTING_LAMPORTS - expected_deposit + extra_lamports,
     );
 
     // alice got tokens. no rewards have been paid so tokens correspond to stake 1:1
@@ -181,8 +180,12 @@ async fn success_with_seed(activate: bool) {
         &rent,
         minimum_stake,
     );
-    let message = Message::new(&instructions, Some(&accounts.alice.pubkey()));
-    let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &accounts.alice],
+        context.last_blockhash,
+    );
 
     context
         .banks_client
@@ -194,16 +197,9 @@ async fn success_with_seed(activate: bool) {
         advance_epoch(&mut context).await;
     }
 
-    let wallet_lamports_after_stake =
-        get_account(&mut context.banks_client, &accounts.alice.pubkey())
-            .await
-            .lamports;
-
     let (_, alice_stake_before_deposit, stake_lamports) =
         get_stake_account(&mut context.banks_client, &alice_default_stake).await;
     let alice_stake_before_deposit = alice_stake_before_deposit.unwrap().delegation.stake;
-
-    let mut fees = USER_STARTING_LAMPORTS - wallet_lamports_after_stake - stake_lamports;
 
     let instructions = instruction::deposit(
         &id(),
@@ -213,9 +209,12 @@ async fn success_with_seed(activate: bool) {
         &accounts.alice.pubkey(),
         &accounts.alice.pubkey(),
     );
-    let message = Message::new(&instructions, Some(&accounts.alice.pubkey()));
-    fees += get_fee_for_message(&mut context.banks_client, &message).await;
-    let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &accounts.alice],
+        context.last_blockhash,
+    );
 
     context
         .banks_client
@@ -249,10 +248,10 @@ async fn success_with_seed(activate: bool) {
     // stake moved to pool
     assert_eq!(minimum_stake + expected_deposit, pool_stake_after);
 
-    // alice got her rent back if active, or only paid fees otherwise
+    // alice got her rent back if active, or everything otherwise
     assert_eq!(
         wallet_lamports_after_deposit,
-        USER_STARTING_LAMPORTS - expected_deposit - fees
+        USER_STARTING_LAMPORTS - expected_deposit
     );
 
     // alice got tokens. no rewards have been paid so tokens correspond to stake 1:1
@@ -288,12 +287,10 @@ async fn fail_uninitialized(activate: bool) {
     create_independent_stake_account(
         &mut context.banks_client,
         &context.payer,
+        &context.payer,
         &context.last_blockhash,
         &stake_account,
-        &Authorized {
-            staker: context.payer.pubkey(),
-            withdrawer: context.payer.pubkey(),
-        },
+        &Authorized::auto(&context.payer.pubkey()),
         &Lockup::default(),
         TEST_STAKE_AMOUNT,
     )
@@ -321,8 +318,12 @@ async fn fail_uninitialized(activate: bool) {
         &context.payer.pubkey(),
         &context.payer.pubkey(),
     );
-    let message = Message::new(&instructions, Some(&context.payer.pubkey()));
-    let transaction = Transaction::new(&[&context.payer], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
 
     // this gives a random borsh error upon attempting to deserialize the mint
     // TODO perhaps in a separate pr, wrap this for all processors with a more helpful error
@@ -356,8 +357,12 @@ async fn fail_bad_account(activate: bool, automorph: bool) {
         &accounts.alice_token,
         &accounts.alice.pubkey(),
     );
-    let message = Message::new(&[instruction], Some(&accounts.alice.pubkey()));
-    let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&accounts.alice.pubkey()),
+        &[&accounts.alice],
+        context.last_blockhash,
+    );
 
     if activate {
         advance_epoch(&mut context).await;
@@ -407,12 +412,10 @@ async fn fail_activation_mismatch(pool_first: bool) {
     create_independent_stake_account(
         &mut context.banks_client,
         &context.payer,
+        &context.payer,
         &context.last_blockhash,
         &accounts.alice_stake,
-        &Authorized {
-            staker: accounts.alice.pubkey(),
-            withdrawer: accounts.alice.pubkey(),
-        },
+        &Authorized::auto(&accounts.alice.pubkey()),
         &Lockup::default(),
         minimum_delegation,
     )
@@ -441,8 +444,12 @@ async fn fail_activation_mismatch(pool_first: bool) {
         &accounts.alice.pubkey(),
         &accounts.alice.pubkey(),
     );
-    let message = Message::new(&instructions, Some(&accounts.alice.pubkey()));
-    let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&accounts.alice.pubkey()),
+        &[&accounts.alice],
+        context.last_blockhash,
+    );
 
     let e = context
         .banks_client

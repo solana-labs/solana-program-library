@@ -6,7 +6,6 @@ use {
     solana_sdk::{
         borsh::try_from_slice_unchecked,
         hash::Hash,
-        message::Message,
         program_pack::Pack,
         pubkey::Pubkey,
         signature::{Keypair, Signer},
@@ -23,10 +22,18 @@ pub async fn create_ata(
     recent_blockhash: &Hash,
     pool_mint: &Pubkey,
 ) {
-    #[allow(deprecated)]
-    let instruction = atoken::create_associated_token_account(&payer.pubkey(), owner, pool_mint);
-    let message = Message::new(&[instruction], Some(&payer.pubkey()));
-    let transaction = Transaction::new(&[payer], message, *recent_blockhash);
+    let instruction = atoken::instruction::create_associated_token_account(
+        &payer.pubkey(),
+        owner,
+        pool_mint,
+        &spl_token::id(),
+    );
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&payer.pubkey()),
+        &[payer],
+        *recent_blockhash,
+    );
 
     banks_client.process_transaction(transaction).await.unwrap();
 }

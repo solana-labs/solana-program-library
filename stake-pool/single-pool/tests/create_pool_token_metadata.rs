@@ -11,7 +11,10 @@ use {
         utils::puffed_out_string,
     },
     solana_program_test::*,
-    solana_sdk::{message::Message, pubkey::Pubkey, signature::Signer, transaction::Transaction},
+    solana_sdk::{
+        instruction::InstructionError, pubkey::Pubkey, signature::Signer,
+        system_instruction::SystemError, transaction::Transaction,
+    },
     spl_single_validator_pool::{id, instruction},
 };
 
@@ -48,12 +51,17 @@ async fn fail_double_init() {
         &accounts.vote_account.pubkey(),
         &context.payer.pubkey(),
     );
-    let message = Message::new(&[instruction], Some(&context.payer.pubkey()));
-    let transaction = Transaction::new(&[&context.payer], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
 
-    context
+    let e = context
         .banks_client
         .process_transaction(transaction)
         .await
         .unwrap_err();
+    check_error::<InstructionError>(e, SystemError::AccountAlreadyInUse.into());
 }

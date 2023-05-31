@@ -6,7 +6,7 @@ mod helpers;
 use {
     helpers::*,
     solana_program_test::*,
-    solana_sdk::{message::Message, signature::Signer, transaction::Transaction},
+    solana_sdk::{signature::Signer, transaction::Transaction},
     spl_single_validator_pool::{error::SinglePoolError, id, instruction},
     test_case::test_case,
 };
@@ -61,9 +61,12 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
         &accounts.alice.pubkey(),
         get_token_balance(&mut context.banks_client, &accounts.alice_token).await,
     );
-    let message = Message::new(&instructions, Some(&accounts.alice.pubkey()));
-    let fees = get_fee_for_message(&mut context.banks_client, &message).await;
-    let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &accounts.alice],
+        context.last_blockhash,
+    );
 
     context
         .banks_client
@@ -103,9 +106,9 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
     // alice received her stake back
     assert_eq!(alice_stake_after, expected_deposit);
 
-    // alice paid chain fee for withdraw and nothing else
+    // alice nothing to withdraw
     // (we create the blank account before getting wallet_lamports_before)
-    assert_eq!(wallet_lamports_after, wallet_lamports_before - fees);
+    assert_eq!(wallet_lamports_after, wallet_lamports_before);
 
     // pool retains minstake
     assert_eq!(pool_stake_after, prior_deposits + minimum_delegation);
@@ -164,8 +167,12 @@ async fn success_with_rewards() {
         &accounts.alice.pubkey(),
         alice_tokens,
     );
-    let message = Message::new(&instructions, Some(&accounts.alice.pubkey()));
-    let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&accounts.alice.pubkey()),
+        &[&accounts.alice],
+        context.last_blockhash,
+    );
 
     context
         .banks_client
@@ -218,8 +225,12 @@ async fn fail_automorphic(activate: bool) {
         &accounts.alice.pubkey(),
         TEST_STAKE_AMOUNT,
     );
-    let message = Message::new(&instructions, Some(&accounts.alice.pubkey()));
-    let transaction = Transaction::new(&[&accounts.alice], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&accounts.alice.pubkey()),
+        &[&accounts.alice],
+        context.last_blockhash,
+    );
 
     let e = context
         .banks_client

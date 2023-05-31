@@ -5,7 +5,6 @@ use {
     solana_sdk::{
         account::Account as SolanaAccount,
         hash::Hash,
-        message::Message,
         program_error::ProgramError,
         pubkey::Pubkey,
         signature::{Keypair, Signer},
@@ -88,8 +87,12 @@ impl SinglePoolAccounts {
             &self.alice.pubkey(),
             &self.alice.pubkey(),
         );
-        let message = Message::new(&instructions, Some(&self.alice.pubkey()));
-        let transaction = Transaction::new(&[&self.alice], message, context.last_blockhash);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &self.alice],
+            context.last_blockhash,
+        );
 
         context
             .banks_client
@@ -99,6 +102,7 @@ impl SinglePoolAccounts {
 
         create_blank_stake_account(
             &mut context.banks_client,
+            &context.payer,
             &self.alice,
             &context.last_blockhash,
             &self.alice_stake,
@@ -114,8 +118,12 @@ impl SinglePoolAccounts {
                 &self.bob.pubkey(),
                 &self.bob.pubkey(),
             );
-            let message = Message::new(&instructions, Some(&self.bob.pubkey()));
-            let transaction = Transaction::new(&[&self.bob], message, context.last_blockhash);
+            let transaction = Transaction::new_signed_with_payer(
+                &instructions,
+                Some(&context.payer.pubkey()),
+                &[&context.payer, &self.bob],
+                context.last_blockhash,
+            );
 
             context
                 .banks_client
@@ -125,6 +133,7 @@ impl SinglePoolAccounts {
 
             create_blank_stake_account(
                 &mut context.banks_client,
+                &context.payer,
                 &self.bob,
                 &context.last_blockhash,
                 &self.bob_stake,
@@ -147,13 +156,11 @@ impl SinglePoolAccounts {
 
         create_independent_stake_account(
             &mut context.banks_client,
+            &context.payer,
             &self.alice,
             &context.last_blockhash,
             &self.alice_stake,
-            &Authorized {
-                staker: self.alice.pubkey(),
-                withdrawer: self.alice.pubkey(),
-            },
+            &Authorized::auto(&self.alice.pubkey()),
             &Lockup::default(),
             alice_amount,
         )
@@ -161,7 +168,7 @@ impl SinglePoolAccounts {
 
         delegate_stake_account(
             &mut context.banks_client,
-            &self.alice,
+            &context.payer,
             &context.last_blockhash,
             &self.alice_stake.pubkey(),
             &self.alice,
@@ -172,13 +179,11 @@ impl SinglePoolAccounts {
         if let Some(bob_amount) = maybe_bob_amount {
             create_independent_stake_account(
                 &mut context.banks_client,
+                &context.payer,
                 &self.bob,
                 &context.last_blockhash,
                 &self.bob_stake,
-                &Authorized {
-                    staker: self.bob.pubkey(),
-                    withdrawer: self.bob.pubkey(),
-                },
+                &Authorized::auto(&self.bob.pubkey()),
                 &Lockup::default(),
                 bob_amount,
             )
@@ -186,7 +191,7 @@ impl SinglePoolAccounts {
 
             delegate_stake_account(
                 &mut context.banks_client,
-                &self.bob,
+                &context.payer,
                 &context.last_blockhash,
                 &self.bob_stake.pubkey(),
                 &self.bob,
@@ -228,8 +233,12 @@ impl SinglePoolAccounts {
             &rent,
             minimum_delegation,
         );
-        let message = Message::new(&instructions, Some(&context.payer.pubkey()));
-        let transaction = Transaction::new(&[&context.payer], message, context.last_blockhash);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&context.payer.pubkey()),
+            &[&context.payer],
+            context.last_blockhash,
+        );
 
         context
             .banks_client
@@ -320,13 +329,6 @@ pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Sol
         .await
         .expect("client error")
         .expect("account not found")
-}
-
-// XXX using this unless i figure out how tf to get tarpc::context::Context
-#[allow(deprecated)]
-pub async fn get_fee_for_message(banks_client: &mut BanksClient, message: &Message) -> u64 {
-    let (fee_calculator, _, _) = banks_client.get_fees().await.unwrap();
-    fee_calculator.calculate_fee(message)
 }
 
 pub async fn create_vote(

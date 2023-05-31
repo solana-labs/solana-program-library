@@ -62,9 +62,11 @@ pub async fn get_minimum_delegation(
     data.try_into().map(u64::from_le_bytes).unwrap()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_independent_stake_account(
     banks_client: &mut BanksClient,
-    payer: &Keypair,
+    fee_payer: &Keypair,
+    rent_payer: &Keypair,
     recent_blockhash: &Hash,
     stake: &Keypair,
     authorized: &stake::state::Authorized,
@@ -74,14 +76,14 @@ pub async fn create_independent_stake_account(
     let lamports = get_stake_account_rent(banks_client).await + stake_amount;
     let transaction = Transaction::new_signed_with_payer(
         &stake::instruction::create_account(
-            &payer.pubkey(),
+            &rent_payer.pubkey(),
             &stake.pubkey(),
             authorized,
             lockup,
             lamports,
         ),
-        Some(&payer.pubkey()),
-        &[payer, stake],
+        Some(&fee_payer.pubkey()),
+        &[fee_payer, rent_payer, stake],
         *recent_blockhash,
     );
     banks_client.process_transaction(transaction).await.unwrap();
@@ -91,21 +93,22 @@ pub async fn create_independent_stake_account(
 
 pub async fn create_blank_stake_account(
     banks_client: &mut BanksClient,
-    payer: &Keypair,
+    fee_payer: &Keypair,
+    rent_payer: &Keypair,
     recent_blockhash: &Hash,
     stake: &Keypair,
 ) -> u64 {
     let lamports = get_stake_account_rent(banks_client).await;
     let transaction = Transaction::new_signed_with_payer(
         &[system_instruction::create_account(
-            &payer.pubkey(),
+            &rent_payer.pubkey(),
             &stake.pubkey(),
             lamports,
             std::mem::size_of::<stake::state::StakeState>() as u64,
             &stake::program::id(),
         )],
-        Some(&payer.pubkey()),
-        &[payer, stake],
+        Some(&fee_payer.pubkey()),
+        &[fee_payer, rent_payer, stake],
         *recent_blockhash,
     );
     banks_client.process_transaction(transaction).await.unwrap();

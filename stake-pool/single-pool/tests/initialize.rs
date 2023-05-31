@@ -7,7 +7,8 @@ use {
     helpers::*,
     solana_program_test::*,
     solana_sdk::{
-        message::Message, program_pack::Pack, signature::Signer, stake, transaction::Transaction,
+        instruction::InstructionError, program_pack::Pack, signature::Signer, stake,
+        system_instruction::SystemError, transaction::Transaction,
     },
     spl_single_validator_pool::{id, instruction},
     spl_token::state::Mint,
@@ -43,12 +44,17 @@ async fn fail_double_init() {
         &rent,
         minimum_delegation,
     );
-    let message = Message::new(&instructions, Some(&context.payer.pubkey()));
-    let transaction = Transaction::new(&[&context.payer], message, context.last_blockhash);
+    let transaction = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
 
-    context
+    let e = context
         .banks_client
         .process_transaction(transaction)
         .await
         .unwrap_err();
+    check_error::<InstructionError>(e, SystemError::AccountAlreadyInUse.into());
 }
