@@ -12,18 +12,17 @@ Here is the general program timeline and rough ETAs:
 
 | Issue | ETA |
 | --- | --- |
-| Finish program | end of May |
-| Final audit | end of June |
-| Mainnet recommendation | middle of July |
-| Freeze program | Q1 2024 |
+| Code-complete & final audit | Summer 2023 |
+| Mainnet recommendation | Fall 2023 (depends on v1.16) |
+| Freeze program | 2024 |
 
 More information: https://github.com/orgs/solana-labs/projects/34
 
 ## Remaining items
 
-### v1.14 with curve syscalls
+### v1.16 with curve syscalls
 
-In order to use confidential tokens, the cluster must run at least version 1.14
+In order to use confidential tokens, the cluster must run at least version 1.16
 with the elliptic curve operations syscalls enabled.
 
 More information: https://github.com/solana-labs/solana/issues/29612
@@ -39,17 +38,6 @@ After splitting the proofs in the zero-knowledge token SDK, the token-2022 progr
 must properly consume the new proof format.
 
 More information: https://github.com/solana-labs/solana/pull/30816
-
-### Permissioned-transfer extension
-
-There are many mutually exclusive solutions for restricting transfer of tokens,
-that all require different sets of accounts to validate a transfer.
-
-The permissioned-transfer extension allows a mint creator to specify a program
-that must be called to validate transfers. The program must conform to the
-permissioned-transfer program interface.
-
-More information: https://github.com/solana-labs/solana-program-library/pull/4105
 
 ## Future work
 
