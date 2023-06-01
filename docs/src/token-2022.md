@@ -6,7 +6,11 @@ A token program on the Solana blockchain, defining a common implementation for
 fungible and non-fungible tokens.
 
 The Token-2022 Program is a superset of the functionality provided by the
-[Token Program](token.mdx), deployed to all networks.
+[Token Program](token.mdx).
+
+The program is still under audit and not meant for full production use. In the
+meantime, all clusters have the latest program deployed **for testing and development
+purposes ONLY**.
 
 | Information | Account Address |
 | --- | --- |
