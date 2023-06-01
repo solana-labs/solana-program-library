@@ -15,6 +15,6 @@ pub enum ExampleError {
 
 /// Tests that all macros compile
 #[test]
-fn _test() {
+fn test_macros_compile() {
     let _ = ExampleError::MintHasNoMintAuthority;
 }

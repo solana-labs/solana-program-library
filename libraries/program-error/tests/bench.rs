@@ -45,6 +45,6 @@ impl solana_program::program_error::PrintProgramError for ExampleError {
 
 /// Tests that all macros compile
 #[test]
-fn _test() {
+fn test_macros_compile() {
     let _ = ExampleError::MintHasNoMintAuthority;
 }
