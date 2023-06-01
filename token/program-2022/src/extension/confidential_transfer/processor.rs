@@ -181,6 +181,13 @@ fn process_configure_account(
     confidential_transfer_account.actual_pending_balance_credit_counter = 0.into();
     confidential_transfer_account.allow_non_confidential_credits = true.into();
 
+    // if the mint is extended for fees, then initialize account for confidential transfer fees
+    if mint.get_extension::<TransferFeeConfig>()? {
+        let mut confidential_transfer_fee_amount =
+            token_account.init_extension::<ConfidentialTransferFeeAmount>(false)?;
+        confidential_transfer_fee_amount.withheld_amount = EncryptedWithheldAmount::zeroed();
+    }
+
     Ok(())
 }
 
