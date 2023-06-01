@@ -239,12 +239,19 @@ pub enum TokenInstruction<'a> {
     /// Accounts with the `TransferFeeAmount` extension may only be closed if the withheld
     /// amount is zero.
     ///
+    /// Accounts with the `ConfidentialTransfer` extension may only be closed if the pending and
+    /// available balance ciphertexts are empty. Use
+    /// `ConfidentialTransferInstruction::ApplyPendingBalance` and
+    /// `ConfidentialTransferInstruction::EmptyAccount` to empty these ciphertexts.
+    ///
+    /// Accounts with the `ConfidentialTransferFee` extension may only be closed if the withheld
+    /// amount ciphertext is empty. Use
+    /// `ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint` to empty this ciphertext.
+    ///
     /// Mints may be closed if they have the `MintCloseAuthority` extension and their token
     /// supply is zero
     ///
-    /// Note that if the account to close has a `ConfidentialTransferExtension`, the
-    /// `ConfidentialTransferInstruction::EmptyAccount` instruction must precede this
-    /// instruction.
+    /// Accounts
     ///
     /// Accounts expected by this instruction:
     ///

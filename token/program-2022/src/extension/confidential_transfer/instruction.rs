@@ -106,10 +106,13 @@ pub enum ConfidentialTransferInstruction {
     ///
     ApproveAccount,
 
-    /// Prepare a token account for closing.  The account must not hold any confidential tokens in
-    /// its pending or available balances. Use
-    /// `ConfidentialTransferInstruction::DisableConfidentialCredits` to block balance credit
-    /// changes first if necessary.
+    /// Empty the available balance in a confidential token account.
+    ///
+    /// A token account that is extended for confidential transfers can only be closed if the
+    /// pending and available balance ciphertexts are emptied. The pending balance can be emptied
+    /// via the `ConfidentialTransferInstruction::ApplyPendingBalance` instruction. Use the
+    /// `ConfidentialTransferInstruction::EmptyAccount` instruction to empty the available balance
+    /// ciphertext.
     ///
     /// Note that a newly configured account is always empty, so this instruction is not required
     /// prior to account closing if no instructions beyond

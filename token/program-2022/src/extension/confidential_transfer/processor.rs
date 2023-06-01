@@ -242,21 +242,8 @@ fn process_empty_account(
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
-    // An account can be closed only if the remaining balance is zero. This means that for the
-    // confidential extension account, the ciphertexts associated with the following components
-    // must be an encryption of zero:
-    //   1. The pending balance
-    //   2. The available balance
-    //   3. The withheld balance (in `ConfidentialTransferFeeAmount`)
-    //
-    // For the pending and withheld balance ciphertexts, it suffices to check that they are
-    // all-zero ciphertexts (i.e. [0; 64]). If any of these ciphertexts are valid encryption of
-    // zero but not an all-zero ciphertext, then an `ApplyPendingBalance` or
-    // `HarvestWithheldTokensToMint` instructions can be used to flush-out these balances first.
-    //
-    // For the available balance, it is not possible to deduce whether the ciphertext encrypts zero
-    // or not by simply inspecting the ciphertext bytes (otherwise, this would violate
-    // confidentiality). The available balance is verified using a zero-knowledge proof.
+    // An `EmptyAccount` instruction must be accompanied by a zero-knowledge proof instruction that
+    // certifies that the available balance ciphertext holds the balance of 0.
     let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
     let proof_data = decode_proof_instruction::<CloseAccountData>(
