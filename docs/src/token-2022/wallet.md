@@ -191,7 +191,6 @@ const instruction = createTransferInstruction(
   [],                             // multisigners
   accountWithProgramId.programId, // token program id
 );
-
 ```
 
 ### Option 2: Fetch the program owner before transfer / burn
@@ -235,6 +234,28 @@ function associatedTokenAccountAddress(
     ASSOCIATED_TOKEN_PROGRAM_ID
   )[0];
 }
+```
+
+If you're creating associated token accounts, you'll also need to pass the
+token program id, which currently defaults to `TOKEN_PROGRAM_ID`:
+
+```typescript
+import { Connection, PublicKey } from '@solana/web3.js';
+import { createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+
+const tokenProgramId = new PublicKey(
+  'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'
+); // either `Tokenz...` or `Tokenkeg...`
+const wallet = new PublicKey('11111111111111111111111111111111'); // insert your key
+const mint = new PublicKey('11111111111111111111111111111111'); // insert mint key
+const associatedTokenAccount = associatedTokenAccountAddress(mint, wallet, tokenProgramId);
+
+const instruction = createAssociatedTokenAccountInstruction(
+  wallet,                 // payer
+  associatedTokenAccount, // associated token account
+  wallet,                 // owner
+  tokenProgramId,         // token program id
+);
 ```
 
 With these three parts done, your wallet will provide basic support for Token-2022!
