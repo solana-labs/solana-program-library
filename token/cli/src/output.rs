@@ -561,7 +561,7 @@ fn display_ui_extension(
         }) => {
             writeln!(f, "  {}", style("Transfer fees:").bold())?;
 
-            if newer_transfer_fee.epoch >= epoch {
+            if epoch >= newer_transfer_fee.epoch {
                 writeln!(
                     f,
                     "    {} {}bps",
