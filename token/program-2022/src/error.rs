@@ -198,6 +198,9 @@ pub enum TokenError {
     /// An account can only be closed if the confidential withheld fee is zero
     #[error("An account can only be closed if the confidential withheld fee is zero")]
     ConfidentialTransferFeeAccountHasWithheldFee,
+    /// A mint or an account is initialized to an invalid combination of extensions
+    #[error("A mint or an account is initialized to an invalid combination of extensions")]
+    InvalidExtensionCombination,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -342,6 +345,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::ConfidentialTransferFeeAccountHasWithheldFee => {
                 msg!("Account has non-zero confidential withheld fee")
+            }
+            TokenError::InvalidExtensionCombination => {
+                msg!("Mint or account is initialized to an invalid combination of extensions")
             }
         }
     }

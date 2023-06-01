@@ -71,6 +71,7 @@ impl Processor {
         if ExtensionType::get_account_len::<Mint>(&extension_types) != mint_data_len {
             return Err(ProgramError::InvalidAccountData);
         }
+        ExtensionType::check_for_invalid_mint_extension_combinations(&extension_types)?;
 
         if let Ok(default_account_state) = mint.get_extension_mut::<DefaultAccountState>() {
             let default_account_state = AccountState::try_from(default_account_state.state)

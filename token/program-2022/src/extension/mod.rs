@@ -815,6 +815,37 @@ impl ExtensionType {
         }
         account_extension_types
     }
+
+    /// Check for invalid combination of mint extensions
+    pub fn check_for_invalid_mint_extension_combinations(
+        mint_extension_types: &[Self],
+    ) -> Result<(), TokenError> {
+        let mut transfer_fee_config = false;
+        let mut confidential_transfer_mint = false;
+        let mut confidential_transfer_fee_config = false;
+
+        for extension_type in mint_extension_types {
+            match extension_type {
+                ExtensionType::TransferFeeConfig => transfer_fee_config = true,
+                ExtensionType::ConfidentialTransferMint => confidential_transfer_mint = true,
+                ExtensionType::ConfidentialTransferFeeConfig => {
+                    confidential_transfer_fee_config = true
+                }
+                _ => (),
+            }
+        }
+
+        if confidential_transfer_fee_config && !(transfer_fee_config && confidential_transfer_mint)
+        {
+            return Err(TokenError::InvalidExtensionCombination);
+        }
+
+        if transfer_fee_config && confidential_transfer_mint && !confidential_transfer_fee_config {
+            return Err(TokenError::InvalidExtensionCombination);
+        }
+
+        Ok(())
+    }
 }
 
 /// Trait for base states, specifying the associated enum

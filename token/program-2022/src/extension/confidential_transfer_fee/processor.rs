@@ -101,12 +101,11 @@ fn process_withdraw_withheld_tokens_from_mint(
             authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
-    } // free `transfer_fee_config` to borrow `confidential_transfer_mint` as mutable
+    } // free `transfer_fee_config` to borrow `confidential_transfer_fee_config` as mutable
 
-    // mint must be extended for confidential transfers
-    mint.get_extension::<ConfidentialTransferMint>()?;
+    // mint must also be extended for confidential transfers, but forgo an explicit check since it
+    // is not possible to initialize a confidential transfer mint without it
 
-    // mint must be extended for confidential transfer fees
     let confidential_transfer_fee_config =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
 
