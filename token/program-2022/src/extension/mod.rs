@@ -5,6 +5,9 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            confidential_transfer_fee::{
+                ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig,
+            },
             cpi_guard::CpiGuard,
             default_account_state::DefaultAccountState,
             immutable_owner::ImmutableOwner,
@@ -36,6 +39,8 @@ use serde::{Deserialize, Serialize};
 
 /// Confidential Transfer extension
 pub mod confidential_transfer;
+/// Confidential Transfer Fee extension
+pub mod confidential_transfer_fee;
 /// CPI Guard extension
 pub mod cpi_guard;
 /// Default Account State extension
@@ -656,6 +661,10 @@ pub enum ExtensionType {
     TransferHook,
     /// Indicates that the tokens in this account belong to a mint with a transfer hook
     TransferHookAccount,
+    /// Includes encrypted withheld fees and the encryption public that they are encrypted under
+    ConfidentialTransferFeeConfig,
+    /// Includes confidential withheld transfer fees
+    ConfidentialTransferFeeAmount,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -701,6 +710,12 @@ impl ExtensionType {
             ExtensionType::NonTransferableAccount => pod_get_packed_len::<NonTransferableAccount>(),
             ExtensionType::TransferHook => pod_get_packed_len::<TransferHook>(),
             ExtensionType::TransferHookAccount => pod_get_packed_len::<TransferHookAccount>(),
+            ExtensionType::ConfidentialTransferFeeConfig => {
+                pod_get_packed_len::<ConfidentialTransferFeeConfig>()
+            }
+            ExtensionType::ConfidentialTransferFeeAmount => {
+                pod_get_packed_len::<ConfidentialTransferFeeAmount>()
+            }
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -759,14 +774,16 @@ impl ExtensionType {
             | ExtensionType::NonTransferable
             | ExtensionType::InterestBearingConfig
             | ExtensionType::PermanentDelegate
-            | ExtensionType::TransferHook => AccountType::Mint,
+            | ExtensionType::TransferHook
+            | ExtensionType::ConfidentialTransferFeeConfig => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
             | ExtensionType::MemoTransfer
             | ExtensionType::NonTransferableAccount
             | ExtensionType::TransferHookAccount
-            | ExtensionType::CpiGuard => AccountType::Account,
+            | ExtensionType::CpiGuard
+            | ExtensionType::ConfidentialTransferFeeAmount => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
@@ -797,6 +814,37 @@ impl ExtensionType {
             }
         }
         account_extension_types
+    }
+
+    /// Check for invalid combination of mint extensions
+    pub fn check_for_invalid_mint_extension_combinations(
+        mint_extension_types: &[Self],
+    ) -> Result<(), TokenError> {
+        let mut transfer_fee_config = false;
+        let mut confidential_transfer_mint = false;
+        let mut confidential_transfer_fee_config = false;
+
+        for extension_type in mint_extension_types {
+            match extension_type {
+                ExtensionType::TransferFeeConfig => transfer_fee_config = true,
+                ExtensionType::ConfidentialTransferMint => confidential_transfer_mint = true,
+                ExtensionType::ConfidentialTransferFeeConfig => {
+                    confidential_transfer_fee_config = true
+                }
+                _ => (),
+            }
+        }
+
+        if confidential_transfer_fee_config && !(transfer_fee_config && confidential_transfer_mint)
+        {
+            return Err(TokenError::InvalidExtensionCombination);
+        }
+
+        if transfer_fee_config && confidential_transfer_mint && !confidential_transfer_fee_config {
+            return Err(TokenError::InvalidExtensionCombination);
+        }
+
+        Ok(())
     }
 }
 

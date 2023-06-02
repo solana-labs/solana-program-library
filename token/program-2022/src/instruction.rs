@@ -239,12 +239,19 @@ pub enum TokenInstruction<'a> {
     /// Accounts with the `TransferFeeAmount` extension may only be closed if the withheld
     /// amount is zero.
     ///
+    /// Accounts with the `ConfidentialTransfer` extension may only be closed if the pending and
+    /// available balance ciphertexts are empty. Use
+    /// `ConfidentialTransferInstruction::ApplyPendingBalance` and
+    /// `ConfidentialTransferInstruction::EmptyAccount` to empty these ciphertexts.
+    ///
+    /// Accounts with the `ConfidentialTransferFee` extension may only be closed if the withheld
+    /// amount ciphertext is empty. Use
+    /// `ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint` to empty this ciphertext.
+    ///
     /// Mints may be closed if they have the `MintCloseAuthority` extension and their token
     /// supply is zero
     ///
-    /// Note that if the account to close has a `ConfidentialTransferExtension`, the
-    /// `ConfidentialTransferInstruction::EmptyAccount` instruction must precede this
-    /// instruction.
+    /// Accounts
     ///
     /// Accounts expected by this instruction:
     ///
@@ -636,6 +643,11 @@ pub enum TokenInstruction<'a> {
     /// for further details about the extended instructions that share this instruction
     /// prefix
     TransferHookExtension,
+    /// The common instruction prefix for the confidential transfer fee extension instructions.
+    ///
+    /// See `extension::confidential_transfer_fee::instruction::ConfidentialTransferFeeInstruction`
+    /// for further details about the extended instructions that share this instruction prefix
+    ConfidentialTransferFeeExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -772,6 +784,7 @@ impl<'a> TokenInstruction<'a> {
                 Self::InitializePermanentDelegate { delegate }
             }
             36 => Self::TransferHookExtension,
+            37 => Self::ConfidentialTransferFeeExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -934,6 +947,9 @@ impl<'a> TokenInstruction<'a> {
             &Self::TransferHookExtension => {
                 buf.push(36);
             }
+            &Self::ConfidentialTransferFeeExtension => {
+                buf.push(37);
+            }
         };
         buf
     }
@@ -1022,6 +1038,8 @@ pub enum AuthorityType {
     ConfidentialTransferMint,
     /// Authority to set the transfer hook program id
     TransferHookProgramId,
+    /// Authority to set the withdraw withheld authority encryption key
+    ConfidentialTransferFeeConfig,
 }
 
 impl AuthorityType {
@@ -1038,6 +1056,7 @@ impl AuthorityType {
             AuthorityType::PermanentDelegate => 8,
             AuthorityType::ConfidentialTransferMint => 9,
             AuthorityType::TransferHookProgramId => 10,
+            AuthorityType::ConfidentialTransferFeeConfig => 11,
         }
     }
 
@@ -1054,6 +1073,7 @@ impl AuthorityType {
             8 => Ok(AuthorityType::PermanentDelegate),
             9 => Ok(AuthorityType::ConfidentialTransferMint),
             10 => Ok(AuthorityType::TransferHookProgramId),
+            11 => Ok(AuthorityType::ConfidentialTransferFeeConfig),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

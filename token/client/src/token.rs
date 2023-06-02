@@ -112,7 +112,6 @@ pub enum ExtensionInitializationParams {
         authority: Option<Pubkey>,
         auto_approve_new_accounts: bool,
         auditor_encryption_pubkey: Option<EncryptionPubkey>,
-        withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey>,
     },
     DefaultAccountState {
         state: AccountState,
@@ -164,14 +163,12 @@ impl ExtensionInitializationParams {
                 authority,
                 auto_approve_new_accounts,
                 auditor_encryption_pubkey,
-                withdraw_withheld_authority_encryption_pubkey,
             } => confidential_transfer::instruction::initialize_mint(
                 token_program_id,
                 mint,
                 authority,
                 auto_approve_new_accounts,
                 auditor_encryption_pubkey,
-                withdraw_withheld_authority_encryption_pubkey,
             ),
             Self::DefaultAccountState { state } => {
                 default_account_state::instruction::initialize_default_account_state(
