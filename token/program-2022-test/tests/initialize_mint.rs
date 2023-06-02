@@ -17,10 +17,12 @@ use {
     spl_token_2022::{
         error::TokenError,
         extension::{
+            confidential_transfer, confidential_transfer_fee,
             mint_close_authority::MintCloseAuthority, transfer_fee, BaseStateWithExtensions,
             ExtensionType,
         },
         instruction, native_mint,
+        pod::EncryptionPubkey,
         state::Mint,
     },
     spl_token_client::token::ExtensionInitializationParams,
@@ -476,4 +478,163 @@ async fn create_native_mint() {
     assert_eq!(mint.base.supply, 0);
     assert!(mint.base.is_initialized);
     assert_eq!(mint.base.freeze_authority, COption::None);
+}
+
+#[tokio::test]
+async fn fail_invalid_extensions_combination() {
+    let context = TestContext::new().await;
+    let mut ctx = context.context.lock().await;
+    let rent = ctx.banks_client.get_rent().await.unwrap();
+    let mint_account = Keypair::new();
+    let mint_authority_pubkey = Pubkey::new_unique();
+
+    let transfer_fee_config_init_instruction =
+        transfer_fee::instruction::initialize_transfer_fee_config(
+            &spl_token_2022::id(),
+            &mint_account.pubkey(),
+            Some(&Pubkey::new_unique()),
+            Some(&Pubkey::new_unique()),
+            10,
+            100,
+        )
+        .unwrap();
+
+    let confidential_transfer_mint_init_instruction =
+        confidential_transfer::instruction::initialize_mint(
+            &spl_token_2022::id(),
+            &mint_account.pubkey(),
+            Some(Pubkey::new_unique()),
+            true,
+            None,
+        )
+        .unwrap();
+
+    let confidential_transfer_fee_config_init_instruction =
+        confidential_transfer_fee::instruction::initialize_confidential_transfer_fee_config(
+            &spl_token_2022::id(),
+            &mint_account.pubkey(),
+            Some(Pubkey::new_unique()),
+            EncryptionPubkey::default(),
+        )
+        .unwrap();
+
+    let initialize_mint_instruction = instruction::initialize_mint(
+        &spl_token_2022::id(),
+        &mint_account.pubkey(),
+        &mint_authority_pubkey,
+        None,
+        9,
+    )
+    .unwrap();
+
+    // initialize transfer fee and confidential transfers, but no confidential transfer fee
+    let mint_space = ExtensionType::get_account_len::<Mint>(&[
+        ExtensionType::TransferFeeConfig,
+        ExtensionType::ConfidentialTransferMint,
+    ]);
+    let create_account_instruction = system_instruction::create_account(
+        &ctx.payer.pubkey(),
+        &mint_account.pubkey(),
+        rent.minimum_balance(mint_space),
+        mint_space as u64,
+        &spl_token_2022::id(),
+    );
+
+    let instructions = vec![
+        create_account_instruction.clone(),
+        transfer_fee_config_init_instruction.clone(),
+        confidential_transfer_mint_init_instruction.clone(),
+        initialize_mint_instruction.clone(),
+    ];
+
+    let tx = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&ctx.payer.pubkey()),
+        &[&ctx.payer, &mint_account],
+        ctx.last_blockhash,
+    );
+    let err = ctx
+        .banks_client
+        .process_transaction(tx)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert_eq!(
+        err,
+        TransactionError::InstructionError(
+            3,
+            InstructionError::Custom(TokenError::InvalidExtensionCombination as u32)
+        )
+    );
+
+    // initialize transfer fee and confidential transfer fees, but no confidential transfers
+    let mint_space = ExtensionType::get_account_len::<Mint>(&[
+        ExtensionType::TransferFeeConfig,
+        ExtensionType::ConfidentialTransferFeeConfig,
+    ]);
+    let create_account_instruction = system_instruction::create_account(
+        &ctx.payer.pubkey(),
+        &mint_account.pubkey(),
+        rent.minimum_balance(mint_space),
+        mint_space as u64,
+        &spl_token_2022::id(),
+    );
+
+    let instructions = vec![
+        create_account_instruction.clone(),
+        transfer_fee_config_init_instruction.clone(),
+        confidential_transfer_fee_config_init_instruction.clone(),
+        initialize_mint_instruction.clone(),
+    ];
+
+    let tx = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&ctx.payer.pubkey()),
+        &[&ctx.payer, &mint_account],
+        ctx.last_blockhash,
+    );
+    let err = ctx
+        .banks_client
+        .process_transaction(tx)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert_eq!(
+        err,
+        TransactionError::InstructionError(
+            3,
+            InstructionError::Custom(TokenError::InvalidExtensionCombination as u32)
+        )
+    );
+
+    // initialize all of transfer fee, confidential transfers, and confidential transfer fees
+    // (success case)
+    let mint_space = ExtensionType::get_account_len::<Mint>(&[
+        ExtensionType::TransferFeeConfig,
+        ExtensionType::ConfidentialTransferMint,
+        ExtensionType::ConfidentialTransferFeeConfig,
+    ]);
+    let create_account_instruction = system_instruction::create_account(
+        &ctx.payer.pubkey(),
+        &mint_account.pubkey(),
+        rent.minimum_balance(mint_space),
+        mint_space as u64,
+        &spl_token_2022::id(),
+    );
+
+    let instructions = vec![
+        create_account_instruction.clone(),
+        transfer_fee_config_init_instruction.clone(),
+        confidential_transfer_mint_init_instruction.clone(),
+        confidential_transfer_fee_config_init_instruction.clone(),
+        initialize_mint_instruction.clone(),
+    ];
+
+    let tx = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&ctx.payer.pubkey()),
+        &[&ctx.payer, &mint_account],
+        ctx.last_blockhash,
+    );
+    ctx.banks_client.process_transaction(tx).await.unwrap();
 }
