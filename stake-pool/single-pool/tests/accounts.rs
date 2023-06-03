@@ -169,13 +169,12 @@ async fn fail_account_checks(test_mode: TestMode) {
         // these ones we can also make sure we hit the explicit check, before we use it
         if prev_pubkey == accounts.stake_account {
             check_error(e, SinglePoolError::InvalidPoolStakeAccount)
-        // TODO distinct errors
         } else if prev_pubkey == accounts.stake_authority {
-            check_error(e, SinglePoolError::InvalidPoolAuthority)
+            check_error(e, SinglePoolError::InvalidPoolStakeAuthority)
         } else if prev_pubkey == accounts.mint_authority {
-            check_error(e, SinglePoolError::InvalidPoolAuthority)
+            check_error(e, SinglePoolError::InvalidPoolMintAuthority)
         } else if prev_pubkey == accounts.mpl_authority {
-            check_error(e, SinglePoolError::InvalidPoolAuthority)
+            check_error(e, SinglePoolError::InvalidPoolMplAuthority)
         } else if prev_pubkey == accounts.mint {
             check_error(e, SinglePoolError::InvalidPoolMint)
         } else if [system_program::id(), spl_token::id(), stake::program::id()]

@@ -16,20 +16,26 @@ pub enum SinglePoolError {
     /// Provided pool stake account does not match stake account derived for validator vote account.
     #[error("InvalidPoolStakeAccount")]
     InvalidPoolStakeAccount,
-    /// Provided pool authority does not match authority derived for validator vote account.
-    #[error("InvalidPoolAuthority")]
-    InvalidPoolAuthority,
     /// Provided pool mint does not match mint derived for validator vote account.
     #[error("InvalidPoolMint")]
     InvalidPoolMint,
+    /// Provided pool stake authority does not match authority derived for validator vote account.
+    #[error("InvalidPoolStakeAuthority")]
+    InvalidPoolStakeAuthority,
+    /// Provided pool mint authority does not match authority derived for validator vote account.
+    #[error("InvalidPoolMintAuthority")]
+    InvalidPoolMintAuthority,
+    /// Provided pool MPL authority does not match authority derived for validator vote account.
+    #[error("InvalidPoolMplAuthority")]
+    InvalidPoolMplAuthority,
+
+    // 5.
     /// Provided metadata account does not match metadata account derived for pool mint.
     #[error("InvalidMetadataAccount")]
     InvalidMetadataAccount,
     /// Authorized withdrawer provided for metadata update does not match the vote account.
     #[error("InvalidMetadataSigner")]
     InvalidMetadataSigner,
-
-    // 5.
     /// Not enough lamports provided for deposit to result in one pool token.
     #[error("DepositTooSmall")]
     DepositTooSmall,
@@ -40,14 +46,14 @@ pub enum SinglePoolError {
     /// (Generally this should not happen absent user error, but may if the minimum delegation increases.)
     #[error("WithdrawalTooLarge")]
     WithdrawalTooLarge,
+
+    // 10
     /// Required signature is missing.
     #[error("SignatureMissing")]
     SignatureMissing,
     /// Stake account is not in the state expected by the program.
     #[error("WrongStakeState")]
     WrongStakeState,
-
-    // 10.
     /// Unsigned subtraction crossed the zero.
     #[error("ArithmeticOverflow")]
     ArithmeticOverflow,
@@ -58,14 +64,14 @@ pub enum SinglePoolError {
     /// The V0_23_5 vote account type is unsupported and should be upgraded via `convert_to_current()`.
     #[error("LegacyVoteAccount")]
     LegacyVoteAccount,
+
+    // 15
     /// Failed to parse vote account.
     #[error("UnparseableVoteAccount")]
     UnparseableVoteAccount,
     /// Incorrect number of lamports provided for rent-exemption when initializing.
     #[error("WrongRentAmount")]
     WrongRentAmount,
-
-    // 15.
     /// Attempted to deposit from or withdraw to pool stake account.
     #[error("InvalidPoolAccountUsage")]
     InvalidPoolAccountUsage,
@@ -92,10 +98,14 @@ impl PrintProgramError for SinglePoolError {
         match self {
             SinglePoolError::InvalidPoolStakeAccount =>
                 msg!("Error: Provided pool stake account does not match stake account derived for validator vote account."),
-            SinglePoolError::InvalidPoolAuthority =>
-                msg!("Error: Provided pool authority does not match authority derived for validator vote account."),
             SinglePoolError::InvalidPoolMint =>
                 msg!("Error: Provided pool mint does not match mint derived for validator vote account."),
+            SinglePoolError::InvalidPoolStakeAuthority =>
+                msg!("Error: Provided pool stake authority does not match authority derived for validator vote account."),
+            SinglePoolError::InvalidPoolMintAuthority =>
+                msg!("Error: Provided pool mint authority does not match authority derived for validator vote account."),
+            SinglePoolError::InvalidPoolMplAuthority =>
+                msg!("Error: Provided pool MPL authority does not match authority derived for validator vote account."),
             SinglePoolError::InvalidMetadataAccount =>
                 msg!("Error: Provided metadata account does not match metadata account derived for pool mint."),
             SinglePoolError::InvalidMetadataSigner =>

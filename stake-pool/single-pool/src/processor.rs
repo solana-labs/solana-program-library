@@ -132,68 +132,73 @@ fn check_pool_mint_address(
     }
 }
 
-// XXX TODO FIXME refactor all this shit down to check_pool_address(pid, vote, addr, str, err) once we compile again
-/// Check pool authority address for the validator vote account
-fn check_pool_mint_authority_address(
-    program_id: &Pubkey,
-    vote_account_address: &Pubkey,
-    address: &Pubkey,
-) -> Result<u8, ProgramError> {
-    let (pool_authority_address, bump_seed) =
-        crate::find_pool_mint_authority_address_and_bump(program_id, vote_account_address);
-    if *address != pool_authority_address {
-        msg!(
-            "Incorrect pool mint authority address for vote {}, expected {}, received {}",
-            vote_account_address,
-            pool_authority_address,
-            address
-        );
-        // TODO separate errors
-        Err(SinglePoolError::InvalidPoolAuthority.into())
-    } else {
-        Ok(bump_seed)
-    }
-}
-
-/// Check pool authority address for the validator vote account
+/// Check pool stake authority address for the validator vote account
 fn check_pool_stake_authority_address(
     program_id: &Pubkey,
     vote_account_address: &Pubkey,
     address: &Pubkey,
 ) -> Result<u8, ProgramError> {
-    let (pool_authority_address, bump_seed) =
-        crate::find_pool_stake_authority_address_and_bump(program_id, vote_account_address);
-    if *address != pool_authority_address {
-        msg!(
-            "Incorrect pool stake authority address for vote {}, expected {}, received {}",
-            vote_account_address,
-            pool_authority_address,
-            address
-        );
-        // TODO separate errors
-        Err(SinglePoolError::InvalidPoolAuthority.into())
-    } else {
-        Ok(bump_seed)
-    }
+    check_pool_authority_address(
+        program_id,
+        vote_account_address,
+        address,
+        &crate::find_pool_stake_authority_address_and_bump,
+        "stake",
+        SinglePoolError::InvalidPoolStakeAuthority,
+    )
 }
 
-/// Check pool authority address for the validator vote account
+/// Check pool mint authority address for the validator vote account
+fn check_pool_mint_authority_address(
+    program_id: &Pubkey,
+    vote_account_address: &Pubkey,
+    address: &Pubkey,
+) -> Result<u8, ProgramError> {
+    check_pool_authority_address(
+        program_id,
+        vote_account_address,
+        address,
+        &crate::find_pool_mint_authority_address_and_bump,
+        "mint",
+        SinglePoolError::InvalidPoolMintAuthority,
+    )
+}
+
+/// Check pool MPL authority address for the validator vote account
 fn check_pool_mpl_authority_address(
     program_id: &Pubkey,
     vote_account_address: &Pubkey,
     address: &Pubkey,
 ) -> Result<u8, ProgramError> {
+    check_pool_authority_address(
+        program_id,
+        vote_account_address,
+        address,
+        &crate::find_pool_mpl_authority_address_and_bump,
+        "MPL",
+        SinglePoolError::InvalidPoolMplAuthority,
+    )
+}
+
+fn check_pool_authority_address(
+    program_id: &Pubkey,
+    vote_account_address: &Pubkey,
+    address: &Pubkey,
+    pool_authority_lookup: &dyn Fn(&Pubkey, &Pubkey) -> (Pubkey, u8),
+    pool_authority_name: &str,
+    pool_error: SinglePoolError,
+) -> Result<u8, ProgramError> {
     let (pool_authority_address, bump_seed) =
-        crate::find_pool_mpl_authority_address_and_bump(program_id, vote_account_address);
+        pool_authority_lookup(program_id, vote_account_address);
     if *address != pool_authority_address {
         msg!(
-            "Incorrect pool mpl authority address for vote {}, expected {}, received {}",
+            "Incorrect pool {} authority address for vote {}, expected {}, received {}",
+            pool_authority_name,
             vote_account_address,
             pool_authority_address,
             address
         );
-        // TODO separate errors
-        Err(SinglePoolError::InvalidPoolAuthority.into())
+        Err(pool_error.into())
     } else {
         Ok(bump_seed)
     }
