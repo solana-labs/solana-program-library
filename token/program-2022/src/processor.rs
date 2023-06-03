@@ -482,6 +482,10 @@ impl Processor {
 
         if let Some(program_id) = maybe_transfer_hook_program_id {
             if let Some((mint_info, _)) = expected_mint_info {
+                // set transferring flags
+                transfer_hook::set_transferring(&mut source_account)?;
+                transfer_hook::set_transferring(&mut destination_account)?;
+
                 // must drop these to avoid the double-borrow during CPI
                 drop(source_account_data);
                 drop(destination_account_data);
@@ -494,6 +498,10 @@ impl Processor {
                     account_info_iter.as_slice(),
                     amount,
                 )?;
+
+                // unset transferring flag
+                transfer_hook::unset_transferring(source_account_info)?;
+                transfer_hook::unset_transferring(destination_account_info)?;
             } else {
                 return Err(TokenError::MintRequiredForTransfer.into());
             }
