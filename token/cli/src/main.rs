@@ -3634,6 +3634,7 @@ fn app<'a, 'b>(
                     )
                 )
                 .arg(mint_decimals_arg())
+                .offline_args_config(&SignOnlyNeedsMintDecimals{})
         )
 }
 
