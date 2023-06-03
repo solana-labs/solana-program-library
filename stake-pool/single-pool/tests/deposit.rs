@@ -277,6 +277,8 @@ async fn fail_uninitialized(activate: bool) {
         &context.payer,
         &context.last_blockhash,
         &accounts.validator,
+        &accounts.voter.pubkey(),
+        &accounts.withdrawer.pubkey(),
         &accounts.vote_account,
     )
     .await;
@@ -400,6 +402,8 @@ async fn fail_activation_mismatch(pool_first: bool) {
         &context.payer,
         &context.last_blockhash,
         &accounts.validator,
+        &accounts.voter.pubkey(),
+        &accounts.withdrawer.pubkey(),
         &accounts.vote_account,
     )
     .await;

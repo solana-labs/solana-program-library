@@ -23,9 +23,9 @@ const POOL_MINT_PREFIX: &[u8] = b"mint";
 
 const MINT_DECIMALS: u8 = 9;
 
-// authorized withdrawer starts immediately after the enum tag
-const VOTE_STATE_START: usize = 4;
-const VOTE_STATE_END: usize = 36;
+const VOTE_STATE_DISCRIMINATOR_END: usize = 4;
+const VOTE_STATE_AUTHORIZED_WITHDRAWER_START: usize = 36;
+const VOTE_STATE_AUTHORIZED_WITHDRAWER_END: usize = 68;
 
 fn find_address_and_bump(
     program_id: &Pubkey,

@@ -10,8 +10,13 @@ use {
     },
     solana_program_test::*,
     solana_sdk::{signature::Signer, transaction::Transaction},
-    spl_single_validator_pool::{id, instruction},
+    spl_single_validator_pool::{error::SinglePoolError, id, instruction},
+    test_case::test_case,
 };
+
+const UPDATED_NAME: &str = "updated_name";
+const UPDATED_SYMBOL: &str = "USYM";
+const UPDATED_URI: &str = "updated_uri";
 
 #[tokio::test]
 async fn success_update_pool_token_metadata() {
@@ -19,27 +24,23 @@ async fn success_update_pool_token_metadata() {
     let accounts = SinglePoolAccounts::default();
     accounts.initialize(&mut context).await;
 
-    let updated_name = "updated_name";
-    let updated_symbol = "USYM";
-    let updated_uri = "updated_uri";
-
-    let puffed_name = puffed_out_string(updated_name, MAX_NAME_LENGTH);
-    let puffed_symbol = puffed_out_string(updated_symbol, MAX_SYMBOL_LENGTH);
-    let puffed_uri = puffed_out_string(updated_uri, MAX_URI_LENGTH);
+    let puffed_name = puffed_out_string(UPDATED_NAME, MAX_NAME_LENGTH);
+    let puffed_symbol = puffed_out_string(UPDATED_SYMBOL, MAX_SYMBOL_LENGTH);
+    let puffed_uri = puffed_out_string(UPDATED_URI, MAX_URI_LENGTH);
 
     let instruction = instruction::update_token_metadata(
         &id(),
         &accounts.vote_account.pubkey(),
-        &accounts.validator.pubkey(),
-        updated_name.to_string(),
-        updated_symbol.to_string(),
-        updated_uri.to_string(),
+        &accounts.withdrawer.pubkey(),
+        UPDATED_NAME.to_string(),
+        UPDATED_SYMBOL.to_string(),
+        UPDATED_URI.to_string(),
     );
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &accounts.validator],
+        &[&context.payer, &accounts.withdrawer],
         context.last_blockhash,
     );
 
@@ -56,5 +57,79 @@ async fn success_update_pool_token_metadata() {
     assert_eq!(metadata.data.uri, puffed_uri);
 }
 
-// TODO test bad withdrawer, test bad vote account (edit the ixn by hand to have the correct authority)
-// doing these in a different pr pending a program change, to avoid merge conflicts
+#[tokio::test]
+async fn fail_no_signature() {
+    let mut context = program_test().start_with_context().await;
+    let accounts = SinglePoolAccounts::default();
+    accounts.initialize(&mut context).await;
+
+    let mut instruction = instruction::update_token_metadata(
+        &id(),
+        &accounts.vote_account.pubkey(),
+        &accounts.withdrawer.pubkey(),
+        UPDATED_NAME.to_string(),
+        UPDATED_SYMBOL.to_string(),
+        UPDATED_URI.to_string(),
+    );
+    assert_eq!(instruction.accounts[2].pubkey, accounts.withdrawer.pubkey());
+    instruction.accounts[2].is_signer = false;
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+
+    let e = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err();
+    check_error(e, SinglePoolError::SignatureMissing);
+}
+
+enum BadWithdrawer {
+    Validator,
+    Voter,
+    VoteAccount,
+}
+
+#[test_case(BadWithdrawer::Validator; "validator")]
+#[test_case(BadWithdrawer::Voter; "voter")]
+#[test_case(BadWithdrawer::VoteAccount; "vote_account")]
+#[tokio::test]
+async fn fail_bad_withdrawer(withdrawer_type: BadWithdrawer) {
+    let mut context = program_test().start_with_context().await;
+    let accounts = SinglePoolAccounts::default();
+    accounts.initialize(&mut context).await;
+
+    let withdrawer = match withdrawer_type {
+        BadWithdrawer::Validator => &accounts.validator,
+        BadWithdrawer::Voter => &accounts.voter,
+        BadWithdrawer::VoteAccount => &accounts.vote_account,
+    };
+
+    let instruction = instruction::update_token_metadata(
+        &id(),
+        &accounts.vote_account.pubkey(),
+        &withdrawer.pubkey(),
+        UPDATED_NAME.to_string(),
+        UPDATED_SYMBOL.to_string(),
+        UPDATED_URI.to_string(),
+    );
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, withdrawer],
+        context.last_blockhash,
+    );
+
+    let e = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err();
+    check_error(e, SinglePoolError::InvalidMetadataSigner);
+}
