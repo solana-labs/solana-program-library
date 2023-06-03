@@ -3,9 +3,9 @@
 use {
     crate::{
         error::SinglePoolError, instruction::SinglePoolInstruction, MINT_DECIMALS,
-        POOL_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_STAKE_PREFIX,
-        VOTE_STATE_AUTHORIZED_WITHDRAWER_END, VOTE_STATE_AUTHORIZED_WITHDRAWER_START,
-        VOTE_STATE_DISCRIMINATOR_END,
+        POOL_MINT_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_MPL_AUTHORITY_PREFIX,
+        POOL_STAKE_AUTHORITY_PREFIX, POOL_STAKE_PREFIX, VOTE_STATE_AUTHORIZED_WITHDRAWER_END,
+        VOTE_STATE_AUTHORIZED_WITHDRAWER_START, VOTE_STATE_DISCRIMINATOR_END,
     },
     borsh::BorshDeserialize,
     mpl_token_metadata::{
@@ -111,27 +111,6 @@ fn check_pool_stake_address(
     }
 }
 
-/// Check pool authority address for the validator vote account
-fn check_pool_authority_address(
-    program_id: &Pubkey,
-    vote_account_address: &Pubkey,
-    address: &Pubkey,
-) -> Result<u8, ProgramError> {
-    let (pool_authority_address, bump_seed) =
-        crate::find_pool_authority_address_and_bump(program_id, vote_account_address);
-    if *address != pool_authority_address {
-        msg!(
-            "Incorrect pool authority address for vote {}, expected {}, received {}",
-            vote_account_address,
-            pool_authority_address,
-            address
-        );
-        Err(SinglePoolError::InvalidPoolAuthority.into())
-    } else {
-        Ok(bump_seed)
-    }
-}
-
 /// Check pool mint address for the validator vote account
 fn check_pool_mint_address(
     program_id: &Pubkey,
@@ -148,6 +127,73 @@ fn check_pool_mint_address(
             address
         );
         Err(SinglePoolError::InvalidPoolMint.into())
+    } else {
+        Ok(bump_seed)
+    }
+}
+
+// XXX TODO FIXME refactor all this shit down to check_pool_address(pid, vote, addr, str, err) once we compile again
+/// Check pool authority address for the validator vote account
+fn check_pool_mint_authority_address(
+    program_id: &Pubkey,
+    vote_account_address: &Pubkey,
+    address: &Pubkey,
+) -> Result<u8, ProgramError> {
+    let (pool_authority_address, bump_seed) =
+        crate::find_pool_mint_authority_address_and_bump(program_id, vote_account_address);
+    if *address != pool_authority_address {
+        msg!(
+            "Incorrect pool mint authority address for vote {}, expected {}, received {}",
+            vote_account_address,
+            pool_authority_address,
+            address
+        );
+        // TODO separate errors
+        Err(SinglePoolError::InvalidPoolAuthority.into())
+    } else {
+        Ok(bump_seed)
+    }
+}
+
+/// Check pool authority address for the validator vote account
+fn check_pool_stake_authority_address(
+    program_id: &Pubkey,
+    vote_account_address: &Pubkey,
+    address: &Pubkey,
+) -> Result<u8, ProgramError> {
+    let (pool_authority_address, bump_seed) =
+        crate::find_pool_stake_authority_address_and_bump(program_id, vote_account_address);
+    if *address != pool_authority_address {
+        msg!(
+            "Incorrect pool stake authority address for vote {}, expected {}, received {}",
+            vote_account_address,
+            pool_authority_address,
+            address
+        );
+        // TODO separate errors
+        Err(SinglePoolError::InvalidPoolAuthority.into())
+    } else {
+        Ok(bump_seed)
+    }
+}
+
+/// Check pool authority address for the validator vote account
+fn check_pool_mpl_authority_address(
+    program_id: &Pubkey,
+    vote_account_address: &Pubkey,
+    address: &Pubkey,
+) -> Result<u8, ProgramError> {
+    let (pool_authority_address, bump_seed) =
+        crate::find_pool_mpl_authority_address_and_bump(program_id, vote_account_address);
+    if *address != pool_authority_address {
+        msg!(
+            "Incorrect pool mpl authority address for vote {}, expected {}, received {}",
+            vote_account_address,
+            pool_authority_address,
+            address
+        );
+        // TODO separate errors
+        Err(SinglePoolError::InvalidPoolAuthority.into())
     } else {
         Ok(bump_seed)
     }
@@ -279,7 +325,7 @@ impl Processor {
         stake_history: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
-            POOL_AUTHORITY_PREFIX,
+            POOL_STAKE_AUTHORITY_PREFIX,
             vote_account_key.as_ref(),
             &[bump_seed],
         ];
@@ -308,7 +354,7 @@ impl Processor {
         split_stake: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
-            POOL_AUTHORITY_PREFIX,
+            POOL_STAKE_AUTHORITY_PREFIX,
             vote_account_key.as_ref(),
             &[bump_seed],
         ];
@@ -334,7 +380,7 @@ impl Processor {
         clock: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
-            POOL_AUTHORITY_PREFIX,
+            POOL_STAKE_AUTHORITY_PREFIX,
             vote_account_key.as_ref(),
             &[bump_seed],
         ];
@@ -384,7 +430,7 @@ impl Processor {
         lamports: u64,
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
-            POOL_AUTHORITY_PREFIX,
+            POOL_STAKE_AUTHORITY_PREFIX,
             vote_account_key.as_ref(),
             &[bump_seed],
         ];
@@ -422,7 +468,7 @@ impl Processor {
         amount: u64,
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
-            POOL_AUTHORITY_PREFIX,
+            POOL_MINT_AUTHORITY_PREFIX,
             vote_account_key.as_ref(),
             &[bump_seed],
         ];
@@ -451,7 +497,7 @@ impl Processor {
         amount: u64,
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
-            POOL_AUTHORITY_PREFIX,
+            POOL_MINT_AUTHORITY_PREFIX,
             vote_account_key.as_ref(),
             &[bump_seed],
         ];
@@ -473,8 +519,9 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let vote_account_info = next_account_info(account_info_iter)?;
         let pool_stake_info = next_account_info(account_info_iter)?;
-        let pool_authority_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
+        let pool_stake_authority_info = next_account_info(account_info_iter)?;
+        let pool_mint_authority_info = next_account_info(account_info_iter)?;
         let rent_info = next_account_info(account_info_iter)?;
         let rent = &Rent::from_account_info(rent_info)?;
         let clock_info = next_account_info(account_info_iter)?;
@@ -487,13 +534,18 @@ impl Processor {
         check_vote_account(vote_account_info)?;
         let stake_bump_seed =
             check_pool_stake_address(program_id, vote_account_info.key, pool_stake_info.key)?;
-        let authority_bump_seed = check_pool_authority_address(
-            program_id,
-            vote_account_info.key,
-            pool_authority_info.key,
-        )?;
         let mint_bump_seed =
             check_pool_mint_address(program_id, vote_account_info.key, pool_mint_info.key)?;
+        let stake_authority_bump_seed = check_pool_stake_authority_address(
+            program_id,
+            vote_account_info.key,
+            pool_stake_authority_info.key,
+        )?;
+        let mint_authority_bump_seed = check_pool_mint_authority_address(
+            program_id,
+            vote_account_info.key,
+            pool_mint_authority_info.key,
+        )?;
         check_system_program(system_program_info.key)?;
         check_token_program(token_program_info.key)?;
         check_stake_program(stake_program_info.key)?;
@@ -505,19 +557,26 @@ impl Processor {
         ];
         let stake_signers = &[&stake_seeds[..]];
 
-        let authority_seeds = &[
-            POOL_AUTHORITY_PREFIX,
-            vote_account_info.key.as_ref(),
-            &[authority_bump_seed],
-        ];
-        let authority_signers = &[&authority_seeds[..]];
-
         let mint_seeds = &[
             POOL_MINT_PREFIX,
             vote_account_info.key.as_ref(),
             &[mint_bump_seed],
         ];
         let mint_signers = &[&mint_seeds[..]];
+
+        let stake_authority_seeds = &[
+            POOL_STAKE_AUTHORITY_PREFIX,
+            vote_account_info.key.as_ref(),
+            &[stake_authority_bump_seed],
+        ];
+        let stake_authority_signers = &[&stake_authority_seeds[..]];
+
+        let mint_authority_seeds = &[
+            POOL_MINT_AUTHORITY_PREFIX,
+            vote_account_info.key.as_ref(),
+            &[mint_authority_bump_seed],
+        ];
+        let mint_authority_signers = &[&mint_authority_seeds[..]];
 
         // create the pool mint. user has already transferred in rent
         let mint_space = spl_token::state::Mint::LEN;
@@ -538,12 +597,12 @@ impl Processor {
             &spl_token::instruction::initialize_mint2(
                 token_program_info.key,
                 pool_mint_info.key,
-                pool_authority_info.key,
+                pool_mint_authority_info.key,
                 None,
                 MINT_DECIMALS,
             )?,
             &[pool_mint_info.clone()],
-            authority_signers,
+            mint_authority_signers,
         )?;
 
         // create the pool stake account. user has already transferred in rent plus at least the minimum
@@ -557,7 +616,7 @@ impl Processor {
             return Err(SinglePoolError::WrongRentAmount.into());
         }
 
-        let authorized = stake::state::Authorized::auto(pool_authority_info.key);
+        let authorized = stake::state::Authorized::auto(pool_stake_authority_info.key);
 
         invoke_signed(
             &system_instruction::allocate(pool_stake_info.key, stake_space as u64),
@@ -576,17 +635,17 @@ impl Processor {
             &[
                 pool_stake_info.clone(),
                 rent_info.clone(),
-                pool_authority_info.clone(),
-                pool_authority_info.clone(),
+                pool_stake_authority_info.clone(),
+                pool_stake_authority_info.clone(),
             ],
-            authority_signers,
+            stake_authority_signers,
         )?;
 
         // delegate stake so it activates
         invoke_signed(
             &stake::instruction::delegate_stake(
                 pool_stake_info.key,
-                pool_authority_info.key,
+                pool_stake_authority_info.key,
                 vote_account_info.key,
             ),
             &[
@@ -595,9 +654,9 @@ impl Processor {
                 clock_info.clone(),
                 stake_history_info.clone(),
                 stake_config_info.clone(),
-                pool_authority_info.clone(),
+                pool_stake_authority_info.clone(),
             ],
-            authority_signers,
+            stake_authority_signers,
         )?;
 
         Ok(())
@@ -610,8 +669,9 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let pool_stake_info = next_account_info(account_info_iter)?;
-        let pool_authority_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
+        let pool_stake_authority_info = next_account_info(account_info_iter)?;
+        let pool_mint_authority_info = next_account_info(account_info_iter)?;
         let user_stake_info = next_account_info(account_info_iter)?;
         let user_token_account_info = next_account_info(account_info_iter)?;
         let user_lamport_account_info = next_account_info(account_info_iter)?;
@@ -622,10 +682,15 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
 
         check_pool_stake_address(program_id, vote_account_address, pool_stake_info.key)?;
-        let bump_seed = check_pool_authority_address(
+        let stake_authority_bump_seed = check_pool_stake_authority_address(
             program_id,
             vote_account_address,
-            pool_authority_info.key,
+            pool_stake_authority_info.key,
+        )?;
+        let mint_authority_bump_seed = check_pool_mint_authority_address(
+            program_id,
+            vote_account_address,
+            pool_mint_authority_info.key,
         )?;
         check_pool_mint_address(program_id, vote_account_address, pool_mint_info.key)?;
         check_token_program(token_program_info.key)?;
@@ -657,8 +722,8 @@ impl Processor {
         Self::stake_merge(
             vote_account_address,
             user_stake_info.clone(),
-            pool_authority_info.clone(),
-            bump_seed,
+            pool_stake_authority_info.clone(),
+            stake_authority_bump_seed,
             pool_stake_info.clone(),
             clock_info.clone(),
             stake_history_info.clone(),
@@ -713,8 +778,8 @@ impl Processor {
             token_program_info.clone(),
             pool_mint_info.clone(),
             user_token_account_info.clone(),
-            pool_authority_info.clone(),
-            bump_seed,
+            pool_mint_authority_info.clone(),
+            mint_authority_bump_seed,
             new_pool_tokens,
         )?;
 
@@ -723,8 +788,8 @@ impl Processor {
             Self::stake_withdraw(
                 vote_account_address,
                 pool_stake_info.clone(),
-                pool_authority_info.clone(),
-                bump_seed,
+                pool_stake_authority_info.clone(),
+                stake_authority_bump_seed,
                 user_lamport_account_info.clone(),
                 clock_info.clone(),
                 stake_history_info.clone(),
@@ -744,8 +809,9 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let pool_stake_info = next_account_info(account_info_iter)?;
-        let pool_authority_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
+        let pool_stake_authority_info = next_account_info(account_info_iter)?;
+        let pool_mint_authority_info = next_account_info(account_info_iter)?;
         let user_stake_info = next_account_info(account_info_iter)?;
         let user_token_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
@@ -753,10 +819,15 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
 
         check_pool_stake_address(program_id, vote_account_address, pool_stake_info.key)?;
-        let bump_seed = check_pool_authority_address(
+        let stake_authority_bump_seed = check_pool_stake_authority_address(
             program_id,
             vote_account_address,
-            pool_authority_info.key,
+            pool_stake_authority_info.key,
+        )?;
+        let mint_authority_bump_seed = check_pool_mint_authority_address(
+            program_id,
+            vote_account_address,
+            pool_mint_authority_info.key,
         )?;
         check_pool_mint_address(program_id, vote_account_address, pool_mint_info.key)?;
         check_token_program(token_program_info.key)?;
@@ -796,8 +867,8 @@ impl Processor {
             token_program_info.clone(),
             user_token_account_info.clone(),
             pool_mint_info.clone(),
-            pool_authority_info.clone(),
-            bump_seed,
+            pool_mint_authority_info.clone(),
+            mint_authority_bump_seed,
             token_amount,
         )?;
 
@@ -805,8 +876,8 @@ impl Processor {
         Self::stake_split(
             vote_account_address,
             pool_stake_info.clone(),
-            pool_authority_info.clone(),
-            bump_seed,
+            pool_stake_authority_info.clone(),
+            stake_authority_bump_seed,
             withdraw_stake,
             user_stake_info.clone(),
         )?;
@@ -815,8 +886,8 @@ impl Processor {
         Self::stake_authorize(
             vote_account_address,
             user_stake_info.clone(),
-            pool_authority_info.clone(),
-            bump_seed,
+            pool_stake_authority_info.clone(),
+            stake_authority_bump_seed,
             user_stake_authority,
             clock_info.clone(),
         )?;
@@ -833,17 +904,23 @@ impl Processor {
         vote_account_address: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let pool_authority_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
+        let pool_mint_authority_info = next_account_info(account_info_iter)?;
+        let pool_mpl_authority_info = next_account_info(account_info_iter)?;
         let payer_info = next_account_info(account_info_iter)?;
         let metadata_info = next_account_info(account_info_iter)?;
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
         let system_program_info = next_account_info(account_info_iter)?;
 
-        let bump_seed = check_pool_authority_address(
+        let mint_authority_bump_seed = check_pool_mint_authority_address(
             program_id,
             vote_account_address,
-            pool_authority_info.key,
+            pool_mint_authority_info.key,
+        )?;
+        let mpl_authority_bump_seed = check_pool_mpl_authority_address(
+            program_id,
+            vote_account_address,
+            pool_mpl_authority_info.key,
         )?;
         check_pool_mint_address(program_id, vote_account_address, pool_mint_info.key)?;
         check_system_program(system_program_info.key)?;
@@ -870,9 +947,9 @@ impl Processor {
             *mpl_token_metadata_program_info.key,
             *metadata_info.key,
             *pool_mint_info.key,
-            *pool_authority_info.key,
+            *pool_mint_authority_info.key,
             *payer_info.key,
-            *pool_authority_info.key,
+            *pool_mpl_authority_info.key,
             token_name,
             token_symbol,
             "".to_string(),
@@ -885,21 +962,26 @@ impl Processor {
             None,
         );
 
-        let authority_seeds = &[
-            POOL_AUTHORITY_PREFIX,
+        let mint_authority_seeds = &[
+            POOL_MINT_AUTHORITY_PREFIX,
             vote_account_address.as_ref(),
-            &[bump_seed],
+            &[mint_authority_bump_seed],
         ];
-        let signers = &[&authority_seeds[..]];
+        let mpl_authority_seeds = &[
+            POOL_MPL_AUTHORITY_PREFIX,
+            vote_account_address.as_ref(),
+            &[mpl_authority_bump_seed],
+        ];
+        let signers = &[&mint_authority_seeds[..], &mpl_authority_seeds[..]];
 
         invoke_signed(
             &new_metadata_instruction,
             &[
                 metadata_info.clone(),
                 pool_mint_info.clone(),
-                pool_authority_info.clone(),
+                pool_mint_authority_info.clone(),
                 payer_info.clone(),
-                pool_authority_info.clone(),
+                pool_mpl_authority_info.clone(),
                 system_program_info.clone(),
             ],
             signers,
@@ -917,16 +999,16 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let vote_account_info = next_account_info(account_info_iter)?;
-        let pool_authority_info = next_account_info(account_info_iter)?;
+        let pool_mpl_authority_info = next_account_info(account_info_iter)?;
         let authorized_withdrawer_info = next_account_info(account_info_iter)?;
         let metadata_info = next_account_info(account_info_iter)?;
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
 
         check_vote_account(vote_account_info)?;
-        let bump_seed = check_pool_authority_address(
+        let mpl_authority_bump_seed = check_pool_mpl_authority_address(
             program_id,
             vote_account_info.key,
-            pool_authority_info.key,
+            pool_mpl_authority_info.key,
         )?;
         let pool_mint_address = crate::find_pool_mint_address(program_id, vote_account_info.key);
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
@@ -954,7 +1036,7 @@ impl Processor {
         let update_metadata_accounts_instruction = update_metadata_accounts_v2(
             *mpl_token_metadata_program_info.key,
             *metadata_info.key,
-            *pool_authority_info.key,
+            *pool_mpl_authority_info.key,
             None,
             Some(DataV2 {
                 name,
@@ -969,16 +1051,16 @@ impl Processor {
             Some(true),
         );
 
-        let authority_seeds = &[
-            POOL_AUTHORITY_PREFIX,
+        let mpl_authority_seeds = &[
+            POOL_MPL_AUTHORITY_PREFIX,
             vote_account_info.key.as_ref(),
-            &[bump_seed],
+            &[mpl_authority_bump_seed],
         ];
-        let signers = &[&authority_seeds[..]];
+        let signers = &[&mpl_authority_seeds[..]];
 
         invoke_signed(
             &update_metadata_accounts_instruction,
-            &[metadata_info.clone(), pool_authority_info.clone()],
+            &[metadata_info.clone(), pool_mpl_authority_info.clone()],
             signers,
         )?;
 

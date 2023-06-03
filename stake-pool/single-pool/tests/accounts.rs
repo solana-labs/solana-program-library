@@ -169,7 +169,12 @@ async fn fail_account_checks(test_mode: TestMode) {
         // these ones we can also make sure we hit the explicit check, before we use it
         if prev_pubkey == accounts.stake_account {
             check_error(e, SinglePoolError::InvalidPoolStakeAccount)
-        } else if prev_pubkey == accounts.authority {
+        // TODO distinct errors
+        } else if prev_pubkey == accounts.stake_authority {
+            check_error(e, SinglePoolError::InvalidPoolAuthority)
+        } else if prev_pubkey == accounts.mint_authority {
+            check_error(e, SinglePoolError::InvalidPoolAuthority)
+        } else if prev_pubkey == accounts.mpl_authority {
             check_error(e, SinglePoolError::InvalidPoolAuthority)
         } else if prev_pubkey == accounts.mint {
             check_error(e, SinglePoolError::InvalidPoolMint)
@@ -180,3 +185,5 @@ async fn fail_account_checks(test_mode: TestMode) {
         }
     }
 }
+
+// TODO check accounts go in consistent order: state, stake, mint, stake auth, mint auth, mpl auth

@@ -220,7 +220,7 @@ async fn fail_automorphic(activate: bool) {
         &id(),
         &accounts.vote_account.pubkey(),
         &accounts.stake_account,
-        &accounts.authority,
+        &accounts.stake_authority,
         &accounts.alice_token,
         &accounts.alice.pubkey(),
         TEST_STAKE_AMOUNT,
