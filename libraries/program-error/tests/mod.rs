@@ -7,6 +7,7 @@ pub mod spl;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use solana_program::{
         decode_error::DecodeError,
         program_error::{PrintProgramError, ProgramError},
@@ -32,6 +33,7 @@ mod tests {
 
     // `#[derive(IntoProgramError)]`
     #[test]
+    #[serial]
     fn test_derive_into_program_error() {
         // `Into<ProgramError>`
         assert_eq!(
@@ -46,6 +48,7 @@ mod tests {
 
     // `#[derive(DecodeError)]`
     #[test]
+    #[serial]
     fn test_derive_decode_error() {
         // `Into<ProgramError>`
         assert_eq!(
@@ -64,6 +67,7 @@ mod tests {
     }
     // `#[derive(PrintProgramError)]`
     #[test]
+    #[serial]
     fn test_derive_print_program_error() {
         use std::sync::Once;
         static ONCE: Once = Once::new();
@@ -102,6 +106,7 @@ mod tests {
 
     // `#[spl_program_error]`
     #[test]
+    #[serial]
     fn test_spl_program_error() {
         use std::sync::Once;
         static ONCE: Once = Once::new();
@@ -131,5 +136,6 @@ mod tests {
                 .as_bytes()
                 .to_vec(),
         );
+        PrintProgramError::print::<spl::ExampleError>(&spl::ExampleError::IncorrectMintAuthority);
     }
 }
