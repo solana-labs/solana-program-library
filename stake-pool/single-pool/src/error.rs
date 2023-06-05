@@ -13,23 +13,26 @@ use {
 #[derive(Clone, Debug, Eq, Error, num_derive::FromPrimitive, PartialEq)]
 pub enum SinglePoolError {
     // 0.
-    /// Provided pool stake account does not match stake account derived for validator vote account.
+    /// Provided pool account does not match address derived from the validator vote account.
+    #[error("InvalidPoolAccount")]
+    InvalidPoolAccount,
+    /// Provided pool stake account does not match address derived from the pool account.
     #[error("InvalidPoolStakeAccount")]
     InvalidPoolStakeAccount,
-    /// Provided pool mint does not match mint derived for validator vote account.
+    /// Provided pool mint does not match address derived from the pool account.
     #[error("InvalidPoolMint")]
     InvalidPoolMint,
-    /// Provided pool stake authority does not match authority derived for validator vote account.
+    /// Provided pool stake authority does not match address derived from the pool account.
     #[error("InvalidPoolStakeAuthority")]
     InvalidPoolStakeAuthority,
-    /// Provided pool mint authority does not match authority derived for validator vote account.
+    /// Provided pool mint authority does not match address derived from the pool account.
     #[error("InvalidPoolMintAuthority")]
     InvalidPoolMintAuthority,
-    /// Provided pool MPL authority does not match authority derived for validator vote account.
-    #[error("InvalidPoolMplAuthority")]
-    InvalidPoolMplAuthority,
 
     // 5.
+    /// Provided pool MPL authority does not match address derived from the pool account.
+    #[error("InvalidPoolMplAuthority")]
+    InvalidPoolMplAuthority,
     /// Provided metadata account does not match metadata account derived for pool mint.
     #[error("InvalidMetadataAccount")]
     InvalidMetadataAccount,
@@ -42,12 +45,12 @@ pub enum SinglePoolError {
     /// Not enough pool tokens provided to withdraw stake worth one lamport.
     #[error("WithdrawalTooSmall")]
     WithdrawalTooSmall,
+
+    // 10
     /// Not enough stake to cover the provided quantity of pool tokens.
     /// (Generally this should not happen absent user error, but may if the minimum delegation increases.)
     #[error("WithdrawalTooLarge")]
     WithdrawalTooLarge,
-
-    // 10
     /// Required signature is missing.
     #[error("SignatureMissing")]
     SignatureMissing,
@@ -61,11 +64,11 @@ pub enum SinglePoolError {
     /// (This error should never be surfaced; it stands in for failure conditions that should never be reached.)
     #[error("UnexpectedMathError")]
     UnexpectedMathError,
+
+    // 15
     /// The V0_23_5 vote account type is unsupported and should be upgraded via `convert_to_current()`.
     #[error("LegacyVoteAccount")]
     LegacyVoteAccount,
-
-    // 15
     /// Failed to parse vote account.
     #[error("UnparseableVoteAccount")]
     UnparseableVoteAccount,
@@ -96,16 +99,18 @@ impl PrintProgramError for SinglePoolError {
             + num_traits::FromPrimitive,
     {
         match self {
+            SinglePoolError::InvalidPoolAccount =>
+                msg!("Error: Provided pool account does not match address derived from the validator vote account."),
             SinglePoolError::InvalidPoolStakeAccount =>
-                msg!("Error: Provided pool stake account does not match stake account derived for validator vote account."),
+                msg!("Error: Provided pool stake account does not match address derived from the pool account."),
             SinglePoolError::InvalidPoolMint =>
-                msg!("Error: Provided pool mint does not match mint derived for validator vote account."),
+                msg!("Error: Provided pool mint does not match address derived from the pool account."),
             SinglePoolError::InvalidPoolStakeAuthority =>
-                msg!("Error: Provided pool stake authority does not match authority derived for validator vote account."),
+                msg!("Error: Provided pool stake authority does not match address derived from the pool account."),
             SinglePoolError::InvalidPoolMintAuthority =>
-                msg!("Error: Provided pool mint authority does not match authority derived for validator vote account."),
+                msg!("Error: Provided pool mint authority does not match address derived from the pool account."),
             SinglePoolError::InvalidPoolMplAuthority =>
-                msg!("Error: Provided pool MPL authority does not match authority derived for validator vote account."),
+                msg!("Error: Provided pool MPL authority does not match address derived from the pool account."),
             SinglePoolError::InvalidMetadataAccount =>
                 msg!("Error: Provided metadata account does not match metadata account derived for pool mint."),
             SinglePoolError::InvalidMetadataSigner =>

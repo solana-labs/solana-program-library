@@ -4,7 +4,7 @@
 
 use {
     crate::{
-        find_default_deposit_account_address_and_seed, find_pool_mint_address,
+        find_default_deposit_account_address_and_seed, find_pool_address, find_pool_mint_address,
         find_pool_mint_authority_address, find_pool_mpl_authority_address, find_pool_stake_address,
         find_pool_stake_authority_address,
     },
@@ -28,19 +28,21 @@ pub enum SinglePoolInstruction {
     ///   No tokens will be minted: to deposit more, use `Deposit` after `InitializeStake`.
     ///
     ///   0. `[]` Validator vote account
-    ///   1. `[w]` Pool stake account
-    ///   2. `[w]` Pool token mint
-    ///   3. `[]` Pool stake authority
-    ///   4. `[]` Pool mint authority
-    ///   5. `[]` Rent sysvar
-    ///   6. `[]` Clock sysvar
-    ///   7. `[]` Stake history sysvar
-    ///   8. `[]` Stake config sysvar
-    ///   9. `[]` System program
-    ///  10. `[]` Token program
-    ///  11. `[]` Stake program
+    ///   1. `[w]` Pool account
+    ///   2. `[w]` Pool stake account
+    ///   3. `[w]` Pool token mint
+    ///   4. `[]` Pool stake authority
+    ///   5. `[]` Pool mint authority
+    ///   6. `[]` Rent sysvar
+    ///   7. `[]` Clock sysvar
+    ///   8. `[]` Stake history sysvar
+    ///   9. `[]` Stake config sysvar
+    ///  10. `[]` System program
+    ///  11. `[]` Token program
+    ///  12. `[]` Stake program
     InitializePool,
 
+    // TODO all other ixns
     ///   Deposit stake into the pool.  The output is a "pool" token representing fractional
     ///   ownership of the pool stake. Inputs are converted to the current ratio.
     ///
@@ -56,6 +58,7 @@ pub enum SinglePoolInstruction {
     ///   9. `[]` Token program
     ///  10. `[]` Stake program
     DepositStake {
+        // TODO remove
         /// Validator vote account address
         vote_account_address: Pubkey,
     },
@@ -72,6 +75,7 @@ pub enum SinglePoolInstruction {
     ///   7. `[]` Token program
     ///   8. `[]` Stake program
     WithdrawStake {
+        // TODO remove
         /// Validator vote account address
         vote_account_address: Pubkey,
         /// User authority for the new stake account
@@ -93,11 +97,11 @@ pub enum SinglePoolInstruction {
     ///   5. `[]` Metadata program id
     ///   6. `[]` System program id
     CreateTokenMetadata {
+        // TODO remove
         /// Validator vote account address
         vote_account_address: Pubkey,
     },
 
-    // TODO get the withdrawer off the validator on init instead?
     ///   Update token metadata for the stake-pool token in the metaplex-token program.
     ///
     ///   0. `[]` Validator vote account
@@ -115,46 +119,58 @@ pub enum SinglePoolInstruction {
     },
 }
 
+// XXX TODO FIXME initialize takes vote account
+// all other fuctions take pool account. all instructions take pool account and drop vote from structs
+// process_initialize needs to alloc the struct and store the vote account
+// process_deposit/withdraw need to deserialize and get vote account (do they? is that true?)
+// use it for check_ functions. also check_ functions must be updated
+// process_update needs vote account for confirming the validator one is right
+// uhhh then i need to refactor tests kms
+
 /// Creates all necessary instructions to initialize the stake pool.
 pub fn initialize(
     program_id: &Pubkey,
-    vote_account: &Pubkey,
+    vote_account_address: &Pubkey,
     payer: &Pubkey,
     rent: &Rent,
     minimum_delegation: u64,
 ) -> Vec<Instruction> {
-    let stake_address = find_pool_stake_address(program_id, vote_account);
+    let pool_address = find_pool_address(program_id, vote_account_address);
+    let stake_address = find_pool_stake_address(program_id, &pool_address);
     let stake_space = std::mem::size_of::<stake::state::StakeState>();
     let stake_rent_plus_minimum = rent
         .minimum_balance(stake_space)
         .saturating_add(minimum_delegation);
 
-    let mint_address = find_pool_mint_address(program_id, vote_account);
+    let mint_address = find_pool_mint_address(program_id, &pool_address);
     let mint_rent = rent.minimum_balance(spl_token::state::Mint::LEN);
 
     vec![
         system_instruction::transfer(payer, &stake_address, stake_rent_plus_minimum),
         system_instruction::transfer(payer, &mint_address, mint_rent),
-        initialize_pool(program_id, vote_account),
-        create_token_metadata(program_id, vote_account, payer),
+        initialize_pool(program_id, vote_account_address),
+        // TODO pool?
+        create_token_metadata(program_id, vote_account_address, payer),
     ]
 }
 
 /// Creates an `InitializePool` instruction.
-pub fn initialize_pool(program_id: &Pubkey, vote_account: &Pubkey) -> Instruction {
-    let mint_address = find_pool_mint_address(program_id, vote_account);
+pub fn initialize_pool(program_id: &Pubkey, vote_account_address: &Pubkey) -> Instruction {
+    let pool_address = find_pool_address(program_id, vote_account_address);
+    let mint_address = find_pool_mint_address(program_id, &pool_address);
 
     let data = SinglePoolInstruction::InitializePool.try_to_vec().unwrap();
     let accounts = vec![
-        AccountMeta::new_readonly(*vote_account, false),
-        AccountMeta::new(find_pool_stake_address(program_id, vote_account), false),
+        AccountMeta::new_readonly(*vote_account_address, false),
+        AccountMeta::new(pool_address, false),
+        AccountMeta::new(find_pool_stake_address(program_id, &pool_address), false),
         AccountMeta::new(mint_address, false),
         AccountMeta::new_readonly(
-            find_pool_stake_authority_address(program_id, vote_account),
+            find_pool_stake_authority_address(program_id, &pool_address),
             false,
         ),
         AccountMeta::new_readonly(
-            find_pool_mint_authority_address(program_id, vote_account),
+            find_pool_mint_authority_address(program_id, &pool_address),
             false,
         ),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -173,16 +189,18 @@ pub fn initialize_pool(program_id: &Pubkey, vote_account: &Pubkey) -> Instructio
     }
 }
 
+// TODO everything below
+
 /// Creates all necessary instructions to deposit stake.
 pub fn deposit(
     program_id: &Pubkey,
-    vote_account: &Pubkey,
+    vote_account_address: &Pubkey,
     user_stake_account: &Pubkey,
     user_token_account: &Pubkey,
     user_lamport_account: &Pubkey,
     user_withdraw_authority: &Pubkey,
 ) -> Vec<Instruction> {
-    let pool_stake_authority = find_pool_stake_authority_address(program_id, vote_account);
+    let pool_stake_authority = find_pool_stake_authority_address(program_id, vote_account_address);
 
     vec![
         stake::instruction::authorize(
@@ -201,7 +219,7 @@ pub fn deposit(
         ),
         deposit_stake(
             program_id,
-            vote_account,
+            vote_account_address,
             user_stake_account,
             user_token_account,
             user_lamport_account,
@@ -212,26 +230,32 @@ pub fn deposit(
 /// Creates a `DepositStake` instruction.
 pub fn deposit_stake(
     program_id: &Pubkey,
-    vote_account: &Pubkey,
+    vote_account_address: &Pubkey,
     user_stake_account: &Pubkey,
     user_token_account: &Pubkey,
     user_lamport_account: &Pubkey,
 ) -> Instruction {
     let data = SinglePoolInstruction::DepositStake {
-        vote_account_address: *vote_account,
+        vote_account_address: *vote_account_address,
     }
     .try_to_vec()
     .unwrap();
 
     let accounts = vec![
-        AccountMeta::new(find_pool_stake_address(program_id, vote_account), false),
-        AccountMeta::new(find_pool_mint_address(program_id, vote_account), false),
-        AccountMeta::new_readonly(
-            find_pool_stake_authority_address(program_id, vote_account),
+        AccountMeta::new(
+            find_pool_stake_address(program_id, vote_account_address),
+            false,
+        ),
+        AccountMeta::new(
+            find_pool_mint_address(program_id, vote_account_address),
             false,
         ),
         AccountMeta::new_readonly(
-            find_pool_mint_authority_address(program_id, vote_account),
+            find_pool_stake_authority_address(program_id, vote_account_address),
+            false,
+        ),
+        AccountMeta::new_readonly(
+            find_pool_mint_authority_address(program_id, vote_account_address),
             false,
         ),
         AccountMeta::new(*user_stake_account, false),
@@ -255,7 +279,7 @@ pub fn deposit_stake(
 /// with account size `std::mem::size_of::<stake::state::StakeState>()` and owner `stake::program::id()`.
 pub fn withdraw(
     program_id: &Pubkey,
-    vote_account: &Pubkey,
+    vote_account_address: &Pubkey,
     user_stake_account: &Pubkey,
     user_stake_authority: &Pubkey,
     user_token_account: &Pubkey,
@@ -266,7 +290,7 @@ pub fn withdraw(
         spl_token::instruction::approve(
             &spl_token::id(),
             user_token_account,
-            &find_pool_mint_authority_address(program_id, vote_account),
+            &find_pool_mint_authority_address(program_id, vote_account_address),
             user_token_authority,
             &[],
             token_amount,
@@ -274,7 +298,7 @@ pub fn withdraw(
         .unwrap(),
         withdraw_stake(
             program_id,
-            vote_account,
+            vote_account_address,
             user_stake_account,
             user_stake_authority,
             user_token_account,
@@ -286,14 +310,14 @@ pub fn withdraw(
 /// Creates a `WithdrawStake` instruction.
 pub fn withdraw_stake(
     program_id: &Pubkey,
-    vote_account: &Pubkey,
+    vote_account_address: &Pubkey,
     user_stake_account: &Pubkey,
     user_stake_authority: &Pubkey,
     user_token_account: &Pubkey,
     token_amount: u64,
 ) -> Instruction {
     let data = SinglePoolInstruction::WithdrawStake {
-        vote_account_address: *vote_account,
+        vote_account_address: *vote_account_address,
         user_stake_authority: *user_stake_authority,
         token_amount,
     }
@@ -301,14 +325,20 @@ pub fn withdraw_stake(
     .unwrap();
 
     let accounts = vec![
-        AccountMeta::new(find_pool_stake_address(program_id, vote_account), false),
-        AccountMeta::new(find_pool_mint_address(program_id, vote_account), false),
-        AccountMeta::new_readonly(
-            find_pool_stake_authority_address(program_id, vote_account),
+        AccountMeta::new(
+            find_pool_stake_address(program_id, vote_account_address),
+            false,
+        ),
+        AccountMeta::new(
+            find_pool_mint_address(program_id, vote_account_address),
             false,
         ),
         AccountMeta::new_readonly(
-            find_pool_mint_authority_address(program_id, vote_account),
+            find_pool_stake_authority_address(program_id, vote_account_address),
+            false,
+        ),
+        AccountMeta::new_readonly(
+            find_pool_mint_authority_address(program_id, vote_account_address),
             false,
         ),
         AccountMeta::new(*user_stake_account, false),
@@ -329,7 +359,7 @@ pub fn withdraw_stake(
 /// Uses a fixed address for each wallet and vote account combination to make it easier to find for deposits.
 /// This is an optional helper function; deposits can come from any owned stake account without lockup.
 pub fn create_and_delegate_user_stake(
-    vote_account: &Pubkey,
+    vote_account_address: &Pubkey,
     user_wallet: &Pubkey,
     rent: &Rent,
     stake_amount: u64,
@@ -339,14 +369,14 @@ pub fn create_and_delegate_user_stake(
         .minimum_balance(stake_space)
         .saturating_add(stake_amount);
     let (deposit_address, deposit_seed) =
-        find_default_deposit_account_address_and_seed(vote_account, user_wallet);
+        find_default_deposit_account_address_and_seed(vote_account_address, user_wallet);
 
     stake::instruction::create_account_with_seed_and_delegate_stake(
         user_wallet,
         &deposit_address,
         user_wallet,
         &deposit_seed,
-        vote_account,
+        vote_account_address,
         &stake::state::Authorized::auto(user_wallet),
         &stake::state::Lockup::default(),
         lamports,
@@ -356,13 +386,13 @@ pub fn create_and_delegate_user_stake(
 /// Creates a `CreateTokenMetadata` instruction.
 pub fn create_token_metadata(
     program_id: &Pubkey,
-    vote_account: &Pubkey,
+    vote_account_address: &Pubkey,
     payer: &Pubkey,
 ) -> Instruction {
-    let pool_mint = find_pool_mint_address(program_id, vote_account);
+    let pool_mint = find_pool_mint_address(program_id, vote_account_address);
     let (token_metadata, _) = find_metadata_account(&pool_mint);
     let data = SinglePoolInstruction::CreateTokenMetadata {
-        vote_account_address: *vote_account,
+        vote_account_address: *vote_account_address,
     }
     .try_to_vec()
     .unwrap();
@@ -370,11 +400,11 @@ pub fn create_token_metadata(
     let accounts = vec![
         AccountMeta::new_readonly(pool_mint, false),
         AccountMeta::new_readonly(
-            find_pool_mint_authority_address(program_id, vote_account),
+            find_pool_mint_authority_address(program_id, vote_account_address),
             false,
         ),
         AccountMeta::new_readonly(
-            find_pool_mpl_authority_address(program_id, vote_account),
+            find_pool_mpl_authority_address(program_id, vote_account_address),
             false,
         ),
         AccountMeta::new(*payer, true),
@@ -393,22 +423,22 @@ pub fn create_token_metadata(
 /// Creates an `UpdateTokenMetadata` instruction.
 pub fn update_token_metadata(
     program_id: &Pubkey,
-    vote_account: &Pubkey,
+    vote_account_address: &Pubkey,
     authorized_withdrawer: &Pubkey,
     name: String,
     symbol: String,
     uri: String,
 ) -> Instruction {
-    let pool_mint = find_pool_mint_address(program_id, vote_account);
+    let pool_mint = find_pool_mint_address(program_id, vote_account_address);
     let (token_metadata, _) = find_metadata_account(&pool_mint);
     let data = SinglePoolInstruction::UpdateTokenMetadata { name, symbol, uri }
         .try_to_vec()
         .unwrap();
 
     let accounts = vec![
-        AccountMeta::new_readonly(*vote_account, false),
+        AccountMeta::new_readonly(*vote_account_address, false),
         AccountMeta::new_readonly(
-            find_pool_mpl_authority_address(program_id, vote_account),
+            find_pool_mpl_authority_address(program_id, vote_account_address),
             false,
         ),
         AccountMeta::new_readonly(*authorized_withdrawer, true),

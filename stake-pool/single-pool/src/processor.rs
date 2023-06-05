@@ -3,7 +3,7 @@
 use {
     crate::{
         error::SinglePoolError, instruction::SinglePoolInstruction, MINT_DECIMALS,
-        POOL_MINT_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_MPL_AUTHORITY_PREFIX,
+        POOL_MINT_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_MPL_AUTHORITY_PREFIX, POOL_PREFIX,
         POOL_STAKE_AUTHORITY_PREFIX, POOL_STAKE_PREFIX, VOTE_STATE_AUTHORIZED_WITHDRAWER_END,
         VOTE_STATE_AUTHORIZED_WITHDRAWER_START, VOTE_STATE_DISCRIMINATOR_END,
     },
@@ -90,113 +90,118 @@ fn is_stake_active_without_history(stake: &Stake, current_epoch: Epoch) -> bool 
         && stake.delegation.deactivation_epoch == Epoch::MAX
 }
 
-/// Check pool stake account address for the validator vote account
-fn check_pool_stake_address(
+/// Check pool account address for the validator vote account
+fn check_pool_address(
     program_id: &Pubkey,
     vote_account_address: &Pubkey,
-    address: &Pubkey,
+    check_address: &Pubkey,
 ) -> Result<u8, ProgramError> {
-    let (pool_stake_address, bump_seed) =
-        crate::find_pool_stake_address_and_bump(program_id, vote_account_address);
-    if *address != pool_stake_address {
-        msg!(
-            "Incorrect pool stake address for vote {}, expected {}, received {}",
-            vote_account_address,
-            pool_stake_address,
-            address
-        );
-        Err(SinglePoolError::InvalidPoolStakeAccount.into())
-    } else {
-        Ok(bump_seed)
-    }
-}
-
-/// Check pool mint address for the validator vote account
-fn check_pool_mint_address(
-    program_id: &Pubkey,
-    vote_account_address: &Pubkey,
-    address: &Pubkey,
-) -> Result<u8, ProgramError> {
-    let (pool_mint_address, bump_seed) =
-        crate::find_pool_mint_address_and_bump(program_id, vote_account_address);
-    if *address != pool_mint_address {
-        msg!(
-            "Incorrect pool mint address for vote {}, expected {}, received {}",
-            vote_account_address,
-            pool_mint_address,
-            address
-        );
-        Err(SinglePoolError::InvalidPoolMint.into())
-    } else {
-        Ok(bump_seed)
-    }
-}
-
-/// Check pool stake authority address for the validator vote account
-fn check_pool_stake_authority_address(
-    program_id: &Pubkey,
-    vote_account_address: &Pubkey,
-    address: &Pubkey,
-) -> Result<u8, ProgramError> {
-    check_pool_authority_address(
+    check_pool_pda(
         program_id,
         vote_account_address,
-        address,
+        check_address,
+        &crate::find_pool_address_and_bump,
+        "pool",
+        SinglePoolError::InvalidPoolAccount,
+    )
+}
+
+/// Check pool stake account address for the pool account
+fn check_pool_stake_address(
+    program_id: &Pubkey,
+    pool_address: &Pubkey,
+    check_address: &Pubkey,
+) -> Result<u8, ProgramError> {
+    check_pool_pda(
+        program_id,
+        pool_address,
+        check_address,
+        &crate::find_pool_stake_address_and_bump,
+        "stake account",
+        SinglePoolError::InvalidPoolStakeAccount,
+    )
+}
+
+/// Check pool mint address for the pool account
+fn check_pool_mint_address(
+    program_id: &Pubkey,
+    pool_address: &Pubkey,
+    check_address: &Pubkey,
+) -> Result<u8, ProgramError> {
+    check_pool_pda(
+        program_id,
+        pool_address,
+        check_address,
+        &crate::find_pool_mint_address_and_bump,
+        "mint",
+        SinglePoolError::InvalidPoolMint,
+    )
+}
+
+/// Check pool stake authority address for the pool account
+fn check_pool_stake_authority_address(
+    program_id: &Pubkey,
+    pool_address: &Pubkey,
+    check_address: &Pubkey,
+) -> Result<u8, ProgramError> {
+    check_pool_pda(
+        program_id,
+        pool_address,
+        check_address,
         &crate::find_pool_stake_authority_address_and_bump,
-        "stake",
+        "stake authority",
         SinglePoolError::InvalidPoolStakeAuthority,
     )
 }
 
-/// Check pool mint authority address for the validator vote account
+/// Check pool mint authority address for the pool account
 fn check_pool_mint_authority_address(
     program_id: &Pubkey,
-    vote_account_address: &Pubkey,
-    address: &Pubkey,
+    pool_address: &Pubkey,
+    check_address: &Pubkey,
 ) -> Result<u8, ProgramError> {
-    check_pool_authority_address(
+    check_pool_pda(
         program_id,
-        vote_account_address,
-        address,
+        pool_address,
+        check_address,
         &crate::find_pool_mint_authority_address_and_bump,
-        "mint",
+        "mint authority",
         SinglePoolError::InvalidPoolMintAuthority,
     )
 }
 
-/// Check pool MPL authority address for the validator vote account
+/// Check pool MPL authority address for the pool account
 fn check_pool_mpl_authority_address(
     program_id: &Pubkey,
-    vote_account_address: &Pubkey,
-    address: &Pubkey,
+    pool_address: &Pubkey,
+    check_address: &Pubkey,
 ) -> Result<u8, ProgramError> {
-    check_pool_authority_address(
+    check_pool_pda(
         program_id,
-        vote_account_address,
-        address,
+        pool_address,
+        check_address,
         &crate::find_pool_mpl_authority_address_and_bump,
-        "MPL",
+        "MPL authority",
         SinglePoolError::InvalidPoolMplAuthority,
     )
 }
 
-fn check_pool_authority_address(
+fn check_pool_pda(
     program_id: &Pubkey,
-    vote_account_address: &Pubkey,
-    address: &Pubkey,
-    pool_authority_lookup: &dyn Fn(&Pubkey, &Pubkey) -> (Pubkey, u8),
-    pool_authority_name: &str,
+    base_address: &Pubkey,
+    check_address: &Pubkey,
+    pda_lookup_fn: &dyn Fn(&Pubkey, &Pubkey) -> (Pubkey, u8),
+    pda_name: &str,
     pool_error: SinglePoolError,
 ) -> Result<u8, ProgramError> {
-    let (pool_authority_address, bump_seed) =
-        pool_authority_lookup(program_id, vote_account_address);
-    if *address != pool_authority_address {
+    let (derived_address, bump_seed) = pda_lookup_fn(program_id, base_address);
+    if *check_address != derived_address {
         msg!(
-            "Incorrect pool {} authority address for vote {}, expected {}, received {}",
-            pool_authority_name,
-            vote_account_address,
-            pool_authority_address,
-            address
+            "Incorrect {} address for base {}: expected {}, received {}",
+            pda_name,
+            base_address,
+            derived_address,
+            check_address,
         );
         Err(pool_error.into())
     } else {
@@ -221,7 +226,7 @@ fn check_vote_account(vote_account_info: &AccountInfo) -> Result<(), ProgramErro
     }
 }
 
-/// Check mpl metadata account address for the pool mint
+/// Check MPL metadata account address for the pool mint
 fn check_mpl_metadata_account_address(
     metadata_address: &Pubkey,
     pool_mint: &Pubkey,
@@ -276,11 +281,11 @@ fn check_stake_program(program_id: &Pubkey) -> Result<(), ProgramError> {
     }
 }
 
-/// Check mpl metadata program
+/// Check MPL metadata program
 fn check_mpl_metadata_program(program_id: &Pubkey) -> Result<(), ProgramError> {
     if *program_id != mpl_token_metadata::id() {
         msg!(
-            "Expected mpl metadata program {}, received {}",
+            "Expected MPL metadata program {}, received {}",
             mpl_token_metadata::id(),
             program_id
         );
@@ -523,6 +528,7 @@ impl Processor {
     fn process_initialize_pool(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let vote_account_info = next_account_info(account_info_iter)?;
+        let pool_info = next_account_info(account_info_iter)?;
         let pool_stake_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_stake_authority_info = next_account_info(account_info_iter)?;
@@ -537,48 +543,52 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
 
         check_vote_account(vote_account_info)?;
+        let pool_bump_seed = check_pool_address(program_id, vote_account_info.key, pool_info.key)?;
         let stake_bump_seed =
-            check_pool_stake_address(program_id, vote_account_info.key, pool_stake_info.key)?;
+            check_pool_stake_address(program_id, pool_info.key, pool_stake_info.key)?;
         let mint_bump_seed =
-            check_pool_mint_address(program_id, vote_account_info.key, pool_mint_info.key)?;
+            check_pool_mint_address(program_id, pool_info.key, pool_mint_info.key)?;
         let stake_authority_bump_seed = check_pool_stake_authority_address(
             program_id,
-            vote_account_info.key,
+            pool_info.key,
             pool_stake_authority_info.key,
         )?;
         let mint_authority_bump_seed = check_pool_mint_authority_address(
             program_id,
-            vote_account_info.key,
+            pool_info.key,
             pool_mint_authority_info.key,
         )?;
         check_system_program(system_program_info.key)?;
         check_token_program(token_program_info.key)?;
         check_stake_program(stake_program_info.key)?;
 
+        let pool_seeds = &[
+            POOL_PREFIX,
+            vote_account_info.key.as_ref(),
+            &[pool_bump_seed],
+        ];
+        let _pool_signers = &[&pool_seeds[..]];
+
         let stake_seeds = &[
             POOL_STAKE_PREFIX,
-            vote_account_info.key.as_ref(),
+            pool_info.key.as_ref(),
             &[stake_bump_seed],
         ];
         let stake_signers = &[&stake_seeds[..]];
 
-        let mint_seeds = &[
-            POOL_MINT_PREFIX,
-            vote_account_info.key.as_ref(),
-            &[mint_bump_seed],
-        ];
+        let mint_seeds = &[POOL_MINT_PREFIX, pool_info.key.as_ref(), &[mint_bump_seed]];
         let mint_signers = &[&mint_seeds[..]];
 
         let stake_authority_seeds = &[
             POOL_STAKE_AUTHORITY_PREFIX,
-            vote_account_info.key.as_ref(),
+            pool_info.key.as_ref(),
             &[stake_authority_bump_seed],
         ];
         let stake_authority_signers = &[&stake_authority_seeds[..]];
 
         let mint_authority_seeds = &[
             POOL_MINT_AUTHORITY_PREFIX,
-            vote_account_info.key.as_ref(),
+            pool_info.key.as_ref(),
             &[mint_authority_bump_seed],
         ];
         let mint_authority_signers = &[&mint_authority_seeds[..]];
