@@ -395,7 +395,7 @@ name = "binary-option"
 version = "0.1.0"
 dependencies = [
  "arrayref",
- "borsh",
+ "borsh 0.11.0",
  "solana-program",
  "spl-token 3.5.0",
  "thiserror",
@@ -526,8 +526,18 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15bf3650200d8bffa99015595e10f1fbd17de07abbc25bb067da79e769939bfa"
 dependencies = [
- "borsh-derive",
+ "borsh-derive 0.9.3",
  "hashbrown 0.11.2",
+]
+
+[[package]]
+name = "borsh"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "300ca295b46d7c8a955a4b07436b5d308c9b2842885642ed17d91f22215e5f44"
+dependencies = [
+ "borsh-derive 0.11.0",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -536,8 +546,21 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6441c552f230375d18e3cc377677914d2ca2b0d36e52129fe15450a2dce46775"
 dependencies = [
- "borsh-derive-internal",
- "borsh-schema-derive-internal",
+ "borsh-derive-internal 0.9.3",
+ "borsh-schema-derive-internal 0.9.3",
+ "proc-macro-crate 0.1.5",
+ "proc-macro2 1.0.56",
+ "syn 1.0.107",
+]
+
+[[package]]
+name = "borsh-derive"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d249fd10f635502b30ef6fa2b5f6407d37a3f8657ab3e8143ef7a8ff78849695"
+dependencies = [
+ "borsh-derive-internal 0.11.0",
+ "borsh-schema-derive-internal 0.11.0",
  "proc-macro-crate 0.1.5",
  "proc-macro2 1.0.56",
  "syn 1.0.107",
@@ -555,10 +578,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "borsh-derive-internal"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4019c962c2526569c6bda1657094a43434b0eed196b3f3af27b9f6811de12417"
+dependencies = [
+ "proc-macro2 1.0.56",
+ "quote 1.0.26",
+ "syn 1.0.107",
+]
+
+[[package]]
 name = "borsh-schema-derive-internal"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdbd5696d8bfa21d53d9fe39a714a18538bad11492a42d066dbbc395fb1951c0"
+dependencies = [
+ "proc-macro2 1.0.56",
+ "quote 1.0.26",
+ "syn 1.0.107",
+]
+
+[[package]]
+name = "borsh-schema-derive-internal"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a89ac467d675ff862c2aea7e2eb103e170f649692de6ffa40250b0031f801bfc"
 dependencies = [
  "proc-macro2 1.0.56",
  "quote 1.0.26",
@@ -2651,7 +2696,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abcc939f0afdc6db054b9998a1292d0a016244b382462e61cfc7c570624982cb"
 dependencies = [
  "arrayref",
- "borsh",
+ "borsh 0.9.3",
  "metaplex-token-vault",
  "num-derive",
  "num-traits",
@@ -2666,7 +2711,7 @@ version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5211991ba3273df89cd5e0f6f558bc8d7453c87c0546f915b4a319e1541df33"
 dependencies = [
- "borsh",
+ "borsh 0.9.3",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -2750,7 +2795,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a14e1ac5350734fd07f17d7eab733d27b7b45ca963642c565ec34ab015d9ceda"
 dependencies = [
- "borsh",
+ "borsh 0.9.3",
  "mpl-token-metadata-context-derive",
  "num-derive",
  "num-traits",
@@ -2769,7 +2814,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5accdfde5c18465c65bd664169845a185f8a00d973d5c15396fef858dd2e52d9"
 dependencies = [
  "arrayref",
- "borsh",
+ "borsh 0.9.3",
  "mpl-token-auth-rules",
  "mpl-token-metadata-context-derive",
  "mpl-utils",
@@ -2799,7 +2844,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6195ce98b92f1d0ea06d0cc9b2392d81673e02b8fb063589926fa73ee6b071a"
 dependencies = [
  "arrayref",
- "borsh",
+ "borsh 0.9.3",
  "solana-program",
  "spl-token 3.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -4681,7 +4726,7 @@ version = "1.14.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "868036cbf78756ac3fcdcdcd68d44e37e562ef9a7e8780ba7d14f3274b0e8823"
 dependencies = [
- "borsh",
+ "borsh 0.9.3",
  "futures 0.3.21",
  "solana-banks-interface",
  "solana-program",
@@ -5350,8 +5395,8 @@ dependencies = [
  "bincode",
  "bitflags",
  "blake3",
- "borsh",
- "borsh-derive",
+ "borsh 0.9.3",
+ "borsh-derive 0.9.3",
  "bs58",
  "bv",
  "bytemuck",
@@ -5595,7 +5640,7 @@ dependencies = [
  "base64 0.13.0",
  "bincode",
  "bitflags",
- "borsh",
+ "borsh 0.9.3",
  "bs58",
  "bytemuck",
  "byteorder",
@@ -5819,7 +5864,7 @@ dependencies = [
  "Inflector",
  "base64 0.13.0",
  "bincode",
- "borsh",
+ "borsh 0.9.3",
  "bs58",
  "lazy_static",
  "log",
@@ -5969,7 +6014,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbc000f0fdf1f12f99d77d398137c1751345b18c88258ce0f99b7872cf6c9bd6"
 dependencies = [
  "assert_matches",
- "borsh",
+ "borsh 0.9.3",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -5983,7 +6028,7 @@ name = "spl-associated-token-account"
 version = "1.1.3"
 dependencies = [
  "assert_matches",
- "borsh",
+ "borsh 0.11.0",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -6008,7 +6053,7 @@ dependencies = [
 name = "spl-binary-oracle-pair"
 version = "0.1.0"
 dependencies = [
- "borsh",
+ "borsh 0.11.0",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -6091,7 +6136,7 @@ dependencies = [
 name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
- "borsh",
+ "borsh 0.11.0",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -6120,7 +6165,7 @@ dependencies = [
  "assert_matches",
  "base64 0.21.2",
  "bincode",
- "borsh",
+ "borsh 0.11.0",
  "num-derive",
  "num-traits",
  "proptest",
@@ -6141,7 +6186,7 @@ dependencies = [
 name = "spl-governance-addin-api"
 version = "0.1.3"
 dependencies = [
- "borsh",
+ "borsh 0.11.0",
  "solana-program",
  "spl-governance-tools",
 ]
@@ -6153,7 +6198,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "bincode",
- "borsh",
+ "borsh 0.11.0",
  "num-derive",
  "num-traits",
  "proptest",
@@ -6176,7 +6221,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "bincode",
- "borsh",
+ "borsh 0.11.0",
  "num-derive",
  "num-traits",
  "proptest",
@@ -6200,7 +6245,7 @@ version = "0.1.3"
 dependencies = [
  "arrayref",
  "bincode",
- "borsh",
+ "borsh 0.11.0",
  "lazy_static",
  "num-derive",
  "num-traits",
@@ -6219,7 +6264,7 @@ version = "0.1.3"
 dependencies = [
  "arrayref",
  "bincode",
- "borsh",
+ "borsh 0.11.0",
  "num-derive",
  "num-traits",
  "serde",
@@ -6243,7 +6288,7 @@ dependencies = [
 name = "spl-managed-token"
 version = "0.1.0"
 dependencies = [
- "borsh",
+ "borsh 0.11.0",
  "shank 0.0.5",
  "solana-program",
  "solana-program-test",
@@ -6257,8 +6302,8 @@ dependencies = [
 name = "spl-math"
 version = "0.1.0"
 dependencies = [
- "borsh",
- "borsh-derive",
+ "borsh 0.11.0",
+ "borsh-derive 0.9.3",
  "libm",
  "num-derive",
  "num-traits",
@@ -6300,7 +6345,7 @@ dependencies = [
 name = "spl-name-service"
 version = "0.2.0"
 dependencies = [
- "borsh",
+ "borsh 0.11.0",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -6313,8 +6358,8 @@ dependencies = [
 name = "spl-record"
 version = "0.1.0"
 dependencies = [
- "borsh",
- "borsh-derive",
+ "borsh 0.11.0",
+ "borsh-derive 0.9.3",
  "num-derive",
  "num-traits",
  "solana-program",
@@ -6340,7 +6385,7 @@ dependencies = [
  "approx",
  "arrayref",
  "bincode",
- "borsh",
+ "borsh 0.11.0",
  "mpl-token-metadata",
  "num-derive",
  "num-traits",
@@ -6362,7 +6407,7 @@ version = "0.7.0"
 dependencies = [
  "arrayref",
  "bincode",
- "borsh",
+ "borsh 0.11.0",
  "mpl-token-metadata",
  "num-derive",
  "num-traits",
@@ -6386,7 +6431,7 @@ name = "spl-stake-pool-cli"
 version = "0.7.0"
 dependencies = [
  "bincode",
- "borsh",
+ "borsh 0.11.0",
  "bs58",
  "clap 2.34.0",
  "serde",
@@ -6705,7 +6750,7 @@ name = "spl-type-length-value"
 version = "0.1.0"
 dependencies = [
  "arrayref",
- "borsh",
+ "borsh 0.11.0",
  "bytemuck",
  "num-derive",
  "num-traits",
@@ -6718,7 +6763,7 @@ dependencies = [
 name = "stateless-asks"
 version = "0.1.0"
 dependencies = [
- "borsh",
+ "borsh 0.11.0",
  "metaplex-token-metadata",
  "solana-program",
  "solana-program-test",
