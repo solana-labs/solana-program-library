@@ -526,7 +526,7 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15bf3650200d8bffa99015595e10f1fbd17de07abbc25bb067da79e769939bfa"
 dependencies = [
- "borsh-derive",
+ "borsh-derive 0.9.3",
  "hashbrown 0.11.2",
 ]
 
@@ -536,8 +536,21 @@ version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6441c552f230375d18e3cc377677914d2ca2b0d36e52129fe15450a2dce46775"
 dependencies = [
- "borsh-derive-internal",
- "borsh-schema-derive-internal",
+ "borsh-derive-internal 0.9.3",
+ "borsh-schema-derive-internal 0.9.3",
+ "proc-macro-crate 0.1.5",
+ "proc-macro2 1.0.56",
+ "syn 1.0.107",
+]
+
+[[package]]
+name = "borsh-derive"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d249fd10f635502b30ef6fa2b5f6407d37a3f8657ab3e8143ef7a8ff78849695"
+dependencies = [
+ "borsh-derive-internal 0.11.0",
+ "borsh-schema-derive-internal 0.11.0",
  "proc-macro-crate 0.1.5",
  "proc-macro2 1.0.56",
  "syn 1.0.107",
@@ -555,10 +568,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "borsh-derive-internal"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4019c962c2526569c6bda1657094a43434b0eed196b3f3af27b9f6811de12417"
+dependencies = [
+ "proc-macro2 1.0.56",
+ "quote 1.0.26",
+ "syn 1.0.107",
+]
+
+[[package]]
 name = "borsh-schema-derive-internal"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdbd5696d8bfa21d53d9fe39a714a18538bad11492a42d066dbbc395fb1951c0"
+dependencies = [
+ "proc-macro2 1.0.56",
+ "quote 1.0.26",
+ "syn 1.0.107",
+]
+
+[[package]]
+name = "borsh-schema-derive-internal"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a89ac467d675ff862c2aea7e2eb103e170f649692de6ffa40250b0031f801bfc"
 dependencies = [
  "proc-macro2 1.0.56",
  "quote 1.0.26",
@@ -5351,7 +5386,7 @@ dependencies = [
  "bitflags",
  "blake3",
  "borsh",
- "borsh-derive",
+ "borsh-derive 0.9.3",
  "bs58",
  "bv",
  "bytemuck",
@@ -6258,7 +6293,7 @@ name = "spl-math"
 version = "0.1.0"
 dependencies = [
  "borsh",
- "borsh-derive",
+ "borsh-derive 0.11.0",
  "libm",
  "num-derive",
  "num-traits",
@@ -6314,7 +6349,7 @@ name = "spl-record"
 version = "0.1.0"
 dependencies = [
  "borsh",
- "borsh-derive",
+ "borsh-derive 0.11.0",
  "num-derive",
  "num-traits",
  "solana-program",
