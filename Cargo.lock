@@ -6313,9 +6313,11 @@ dependencies = [
 name = "spl-program-error"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
  "num-derive",
  "num-traits",
  "solana-program",
+ "solana-sdk",
  "spl-program-error-derive",
  "thiserror",
 ]

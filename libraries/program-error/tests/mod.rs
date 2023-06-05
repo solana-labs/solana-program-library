@@ -11,6 +11,24 @@ mod tests {
         decode_error::DecodeError,
         program_error::{PrintProgramError, ProgramError},
     };
+    use std::sync::{Arc, RwLock};
+
+    // Used to capture output for `PrintProgramError` for testing
+    lazy_static::lazy_static! {
+        static ref EXPECTED_DATA: Arc<RwLock<Vec<u8>>> = Arc::new(RwLock::new(Vec::new()));
+    }
+    fn set_expected_data(expected_data: Vec<u8>) {
+        *EXPECTED_DATA.write().unwrap() = expected_data;
+    }
+    pub struct SyscallStubs {}
+    impl solana_sdk::program_stubs::SyscallStubs for SyscallStubs {
+        fn sol_log(&self, message: &str) {
+            assert_eq!(
+                message,
+                String::from_utf8_lossy(&*EXPECTED_DATA.read().unwrap())
+            );
+        }
+    }
 
     // `#[derive(IntoProgramError)]`
     #[test]
@@ -44,10 +62,15 @@ mod tests {
             <bench::ExampleError as DecodeError<decode::ExampleError>>::type_of(),
         );
     }
-
     // `#[derive(PrintProgramError)]`
     #[test]
     fn test_derive_print_program_error() {
+        use std::sync::Once;
+        static ONCE: Once = Once::new();
+
+        ONCE.call_once(|| {
+            solana_sdk::program_stubs::set_syscall_stubs(Box::new(SyscallStubs {}));
+        });
         // `Into<ProgramError>`
         assert_eq!(
             Into::<ProgramError>::into(bench::ExampleError::MintHasNoMintAuthority),
@@ -63,15 +86,14 @@ mod tests {
             <bench::ExampleError as DecodeError<print::ExampleError>>::type_of(),
         );
         // `PrintProgramError`
-        // (!) Not sure how better to test this yet - thoughts?
-        PrintProgramError::print::<bench::ExampleError>(
-            &bench::ExampleError::MintHasNoMintAuthority,
-        );
+        set_expected_data("Mint has no mint authority".as_bytes().to_vec());
         PrintProgramError::print::<print::ExampleError>(
             &print::ExampleError::MintHasNoMintAuthority,
         );
-        PrintProgramError::print::<bench::ExampleError>(
-            &bench::ExampleError::IncorrectMintAuthority,
+        set_expected_data(
+            "Incorrect mint authority has signed the instruction"
+                .as_bytes()
+                .to_vec(),
         );
         PrintProgramError::print::<print::ExampleError>(
             &print::ExampleError::IncorrectMintAuthority,
@@ -81,6 +103,12 @@ mod tests {
     // `#[spl_program_error]`
     #[test]
     fn test_spl_program_error() {
+        use std::sync::Once;
+        static ONCE: Once = Once::new();
+
+        ONCE.call_once(|| {
+            solana_sdk::program_stubs::set_syscall_stubs(Box::new(SyscallStubs {}));
+        });
         // `Into<ProgramError>`
         assert_eq!(
             Into::<ProgramError>::into(bench::ExampleError::MintHasNoMintAuthority),
@@ -96,14 +124,12 @@ mod tests {
             <bench::ExampleError as DecodeError<spl::ExampleError>>::type_of(),
         );
         // `PrintProgramError`
-        // (!) Not sure how better to test this yet - thoughts?
-        PrintProgramError::print::<bench::ExampleError>(
-            &bench::ExampleError::MintHasNoMintAuthority,
-        );
+        set_expected_data("Mint has no mint authority".as_bytes().to_vec());
         PrintProgramError::print::<spl::ExampleError>(&spl::ExampleError::MintHasNoMintAuthority);
-        PrintProgramError::print::<bench::ExampleError>(
-            &bench::ExampleError::IncorrectMintAuthority,
+        set_expected_data(
+            "Incorrect mint authority has signed the instruction"
+                .as_bytes()
+                .to_vec(),
         );
-        PrintProgramError::print::<spl::ExampleError>(&spl::ExampleError::IncorrectMintAuthority);
     }
 }

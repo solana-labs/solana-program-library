@@ -14,6 +14,10 @@ solana-program = "1.14.12"
 spl-program-error-derive = { version = "0.1.0", path = "./derive" }
 thiserror = "1.0.32"
 
+[dev-dependencies]
+lazy_static = "1.4.0"
+solana-sdk = "1.14.12"
+
 [lib]
 crate-type = ["cdylib", "lib"]
 
