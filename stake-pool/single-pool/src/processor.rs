@@ -708,12 +708,9 @@ impl Processor {
         Ok(())
     }
 
-    fn process_deposit_stake(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        vote_account_address: &Pubkey,
-    ) -> ProgramResult {
+    fn process_deposit_stake(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+        let pool_info = next_account_info(account_info_iter)?;
         let pool_stake_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_stake_authority_info = next_account_info(account_info_iter)?;
@@ -727,18 +724,21 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        check_pool_stake_address(program_id, vote_account_address, pool_stake_info.key)?;
+        let pool = SinglePool::from_account_info(program_id, pool_info)?;
+        check_pool_address(program_id, &pool.vote_account_address, pool_info.key)?;
+
+        check_pool_stake_address(program_id, pool_info.key, pool_stake_info.key)?;
         let stake_authority_bump_seed = check_pool_stake_authority_address(
             program_id,
-            vote_account_address,
+            pool_info.key,
             pool_stake_authority_info.key,
         )?;
         let mint_authority_bump_seed = check_pool_mint_authority_address(
             program_id,
-            vote_account_address,
+            pool_info.key,
             pool_mint_authority_info.key,
         )?;
-        check_pool_mint_address(program_id, vote_account_address, pool_mint_info.key)?;
+        check_pool_mint_address(program_id, pool_info.key, pool_mint_info.key)?;
         check_token_program(token_program_info.key)?;
         check_stake_program(stake_program_info.key)?;
 
@@ -766,7 +766,7 @@ impl Processor {
         // merge the user stake account, which is preauthed to us, into the pool stake account
         // this merge succeeding implicitly validates authority/lockup of the user stake account
         Self::stake_merge(
-            vote_account_address,
+            pool_info.key,
             user_stake_info.clone(),
             pool_stake_authority_info.clone(),
             stake_authority_bump_seed,
@@ -820,7 +820,7 @@ impl Processor {
 
         // mint tokens to the user corresponding to their stake deposit
         Self::token_mint_to(
-            vote_account_address,
+            pool_info.key,
             token_program_info.clone(),
             pool_mint_info.clone(),
             user_token_account_info.clone(),
@@ -832,7 +832,7 @@ impl Processor {
         // return the lamports their stake account previously held for rent-exemption
         if excess_lamports > 0 {
             Self::stake_withdraw(
-                vote_account_address,
+                pool_info.key,
                 pool_stake_info.clone(),
                 pool_stake_authority_info.clone(),
                 stake_authority_bump_seed,
@@ -849,11 +849,11 @@ impl Processor {
     fn process_withdraw_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        vote_account_address: &Pubkey,
         user_stake_authority: &Pubkey,
         token_amount: u64,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+        let pool_info = next_account_info(account_info_iter)?;
         let pool_stake_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_stake_authority_info = next_account_info(account_info_iter)?;
@@ -864,18 +864,21 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        check_pool_stake_address(program_id, vote_account_address, pool_stake_info.key)?;
+        let pool = SinglePool::from_account_info(program_id, pool_info)?;
+        check_pool_address(program_id, &pool.vote_account_address, pool_info.key)?;
+
+        check_pool_stake_address(program_id, pool_info.key, pool_stake_info.key)?;
         let stake_authority_bump_seed = check_pool_stake_authority_address(
             program_id,
-            vote_account_address,
+            pool_info.key,
             pool_stake_authority_info.key,
         )?;
         let mint_authority_bump_seed = check_pool_mint_authority_address(
             program_id,
-            vote_account_address,
+            pool_info.key,
             pool_mint_authority_info.key,
         )?;
-        check_pool_mint_address(program_id, vote_account_address, pool_mint_info.key)?;
+        check_pool_mint_address(program_id, pool_info.key, pool_mint_info.key)?;
         check_token_program(token_program_info.key)?;
         check_stake_program(stake_program_info.key)?;
 
@@ -909,7 +912,7 @@ impl Processor {
 
         // burn user tokens corresponding to the amount of stake they wish to withdraw
         Self::token_burn(
-            vote_account_address,
+            pool_info.key,
             token_program_info.clone(),
             user_token_account_info.clone(),
             pool_mint_info.clone(),
@@ -920,7 +923,7 @@ impl Processor {
 
         // split stake into a blank stake account the user has created for this purpose
         Self::stake_split(
-            vote_account_address,
+            pool_info.key,
             pool_stake_info.clone(),
             pool_stake_authority_info.clone(),
             stake_authority_bump_seed,
@@ -930,7 +933,7 @@ impl Processor {
 
         // assign both authorities on the new stake account to the user
         Self::stake_authorize(
-            vote_account_address,
+            pool_info.key,
             user_stake_info.clone(),
             pool_stake_authority_info.clone(),
             stake_authority_bump_seed,
@@ -982,6 +985,7 @@ impl Processor {
             return Err(SinglePoolError::SignatureMissing.into());
         }
 
+        // XXX TODO FIXME use the pool or the vote???
         let vote_address_str = pool.vote_account_address.to_string();
         let token_name = format!("SPL Single Pool {}", &vote_address_str[0..15]);
         let token_symbol = format!("st{}", &vote_address_str[0..7]);
@@ -1126,14 +1130,11 @@ impl Processor {
                 msg!("Instruction: InitializePool");
                 Self::process_initialize_pool(program_id, accounts)
             }
-            SinglePoolInstruction::DepositStake {
-                vote_account_address,
-            } => {
+            SinglePoolInstruction::DepositStake => {
                 msg!("Instruction: DepositStake");
-                Self::process_deposit_stake(program_id, accounts, &vote_account_address)
+                Self::process_deposit_stake(program_id, accounts)
             }
             SinglePoolInstruction::WithdrawStake {
-                vote_account_address,
                 user_stake_authority,
                 token_amount,
             } => {
@@ -1141,7 +1142,6 @@ impl Processor {
                 Self::process_withdraw_stake(
                     program_id,
                     accounts,
-                    &vote_account_address,
                     &user_stake_authority,
                     token_amount,
                 )

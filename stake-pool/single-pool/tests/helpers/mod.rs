@@ -68,8 +68,6 @@ pub struct SinglePoolAccounts {
     pub token_program_id: Pubkey,
 }
 impl SinglePoolAccounts {
-    // TODO replace vote with pool in deposit/withdraw
-
     // does everything in initialize_for_deposit plus performs the deposit(s) and creates blank account(s)
     // optionally advances to activation before the deposit
     pub async fn initialize_for_withdraw(
@@ -89,7 +87,7 @@ impl SinglePoolAccounts {
 
         let instructions = instruction::deposit(
             &id(),
-            &self.vote_account.pubkey(),
+            &self.pool,
             &self.alice_stake.pubkey(),
             &self.alice_token,
             &self.alice.pubkey(),
@@ -120,7 +118,7 @@ impl SinglePoolAccounts {
         if maybe_bob_amount.is_some() {
             let instructions = instruction::deposit(
                 &id(),
-                &self.vote_account.pubkey(),
+                &self.pool,
                 &self.bob_stake.pubkey(),
                 &self.bob_token,
                 &self.bob.pubkey(),

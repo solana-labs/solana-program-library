@@ -76,7 +76,7 @@ async fn build_instructions(
 
     let deposit_instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice_stake.pubkey(),
         &accounts.alice_token,
         &accounts.alice.pubkey(),
@@ -108,7 +108,7 @@ async fn build_instructions(
 
         instruction::withdraw(
             &id(),
-            &accounts.vote_account.pubkey(),
+            &accounts.pool,
             &accounts.alice_stake.pubkey(),
             &accounts.alice.pubkey(),
             &accounts.alice_token,
@@ -120,7 +120,7 @@ async fn build_instructions(
     };
 
     let (instructions, i) = match test_mode {
-        TestMode::Initialize => (initialize_instructions, 2),
+        TestMode::Initialize => (initialize_instructions, 3),
         TestMode::Deposit => (deposit_instructions, 2),
         TestMode::Withdraw => (withdraw_instructions, 1),
     };

@@ -54,7 +54,7 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
 
     let instructions = instruction::withdraw(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice_stake.pubkey(),
         &accounts.alice.pubkey(),
         &accounts.alice_token,
@@ -160,7 +160,7 @@ async fn success_with_rewards() {
 
     let instructions = instruction::withdraw(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice_stake.pubkey(),
         &accounts.alice.pubkey(),
         &accounts.alice_token,
@@ -218,7 +218,7 @@ async fn fail_automorphic(activate: bool) {
 
     let instructions = instruction::withdraw(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.stake_account,
         &accounts.stake_authority,
         &accounts.alice_token,

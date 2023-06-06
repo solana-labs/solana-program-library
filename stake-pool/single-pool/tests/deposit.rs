@@ -52,7 +52,7 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
     if prior_deposit {
         let instructions = instruction::deposit(
             &id(),
-            &accounts.vote_account.pubkey(),
+            &accounts.pool,
             &accounts.bob_stake.pubkey(),
             &accounts.bob_token,
             &accounts.bob.pubkey(),
@@ -93,7 +93,7 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
 
     let instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice_stake.pubkey(),
         &accounts.alice_token,
         &accounts.alice.pubkey(),
@@ -203,7 +203,7 @@ async fn success_with_seed(activate: bool) {
 
     let instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &alice_default_stake,
         &accounts.alice_token,
         &accounts.alice.pubkey(),
@@ -314,7 +314,7 @@ async fn fail_uninitialized(activate: bool) {
 
     let instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &stake_account.pubkey(),
         &token_account,
         &context.payer.pubkey(),
@@ -350,7 +350,7 @@ async fn fail_bad_account(activate: bool, automorph: bool) {
 
     let instruction = instruction::deposit_stake(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &if automorph {
             accounts.stake_account
         } else {
@@ -442,7 +442,7 @@ async fn fail_activation_mismatch(pool_first: bool) {
 
     let instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice_stake.pubkey(),
         &accounts.alice_token,
         &accounts.alice.pubkey(),

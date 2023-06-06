@@ -76,8 +76,8 @@ fn find_default_deposit_account_address_and_seed(
     pool_address: &Pubkey,
     user_wallet_address: &Pubkey,
 ) -> (Pubkey, String) {
-    let vote_address_str = pool_address.to_string();
-    let seed = format!("svsp{}", &vote_address_str[0..28]);
+    let pool_address_str = pool_address.to_string();
+    let seed = format!("svsp{}", &pool_address_str[0..28]);
     let address =
         Pubkey::create_with_seed(user_wallet_address, &seed, &stake::program::id()).unwrap();
 
