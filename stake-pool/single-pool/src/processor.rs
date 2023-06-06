@@ -597,7 +597,6 @@ impl Processor {
         let mint_authority_signers = &[&mint_authority_seeds[..]];
 
         // create the pool. user has already transferred in rent
-        // FIXME do other rent checks like this? or do this like the others??
         let pool_space = get_packed_len::<SinglePool>();
         if !rent.is_exempt(pool_info.lamports(), pool_space) {
             return Err(SinglePoolError::WrongRentAmount.into());
@@ -618,7 +617,6 @@ impl Processor {
             pool_signers,
         )?;
 
-        // XXX why unchecked?? check (lol) this
         let mut pool = try_from_slice_unchecked::<SinglePool>(&pool_info.data.borrow())?;
         pool.account_type = SinglePoolAccountType::Pool;
         pool.vote_account_address = *vote_account_info.key;
@@ -985,10 +983,9 @@ impl Processor {
             return Err(SinglePoolError::SignatureMissing.into());
         }
 
-        // XXX TODO FIXME use the pool or the vote???
-        let vote_address_str = pool.vote_account_address.to_string();
-        let token_name = format!("SPL Single Pool {}", &vote_address_str[0..15]);
-        let token_symbol = format!("st{}", &vote_address_str[0..7]);
+        let pool_address_str = pool_info.key.to_string();
+        let token_name = format!("SPL Single Pool {}", &pool_address_str[0..15]);
+        let token_symbol = format!("st{}", &pool_address_str[0..7]);
 
         let new_metadata_instruction = create_metadata_accounts_v3(
             *mpl_token_metadata_program_info.key,

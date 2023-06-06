@@ -42,7 +42,6 @@ impl SinglePool {
             return Err(SinglePoolError::InvalidPoolAccount.into());
         }
 
-        // FIXME why unchecked????
         let pool = try_from_slice_unchecked::<SinglePool>(&account_info.data.borrow())?;
         if pool.account_type != SinglePoolAccountType::Pool {
             return Err(SinglePoolError::InvalidPoolAccount.into());
