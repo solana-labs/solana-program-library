@@ -237,5 +237,5 @@ async fn fail_automorphic(activate: bool) {
         .process_transaction(transaction)
         .await
         .unwrap_err();
-    check_error(e, SinglePoolError::InvalidPoolAccountUsage);
+    check_error(e, SinglePoolError::InvalidPoolStakeAccountUsage);
 }

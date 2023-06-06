@@ -75,10 +75,9 @@ pub enum SinglePoolError {
     /// Incorrect number of lamports provided for rent-exemption when initializing.
     #[error("WrongRentAmount")]
     WrongRentAmount,
-    // FIXME rename this error
     /// Attempted to deposit from or withdraw to pool stake account.
-    #[error("InvalidPoolAccountUsage")]
-    InvalidPoolAccountUsage,
+    #[error("InvalidPoolStakeAccountUsage")]
+    InvalidPoolStakeAccountUsage,
     /// Attempted to initialize a pool that is already initialized.
     #[error("PoolAlreadyInitialized")]
     PoolAlreadyInitialized,
@@ -138,7 +137,7 @@ impl PrintProgramError for SinglePoolError {
                 msg!("Error: The V0_23_5 vote account type is unsupported and should be upgraded via `convert_to_current()`."),
             SinglePoolError::WrongRentAmount =>
                 msg!("Error: Incorrect number of lamports provided for rent-exemption when initializing."),
-            SinglePoolError::InvalidPoolAccountUsage =>
+            SinglePoolError::InvalidPoolStakeAccountUsage =>
                 msg!("Error: Attempted to deposit from or withdraw to pool stake account."),
             SinglePoolError::PoolAlreadyInitialized =>
                 msg!("Error: Attempted to initialize a pool that is already initialized."),

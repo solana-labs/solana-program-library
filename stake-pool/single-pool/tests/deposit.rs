@@ -327,13 +327,12 @@ async fn fail_uninitialized(activate: bool) {
         context.last_blockhash,
     );
 
-    // this gives a random borsh error upon attempting to deserialize the mint
-    // TODO perhaps in a separate pr, wrap this for all processors with a more helpful error
-    context
+    let e = context
         .banks_client
         .process_transaction(transaction)
         .await
         .unwrap_err();
+    check_error(e, SinglePoolError::InvalidPoolAccount);
 }
 
 #[test_case(true, true; "activated_automorph")]
@@ -377,7 +376,7 @@ async fn fail_bad_account(activate: bool, automorph: bool) {
         .unwrap_err();
 
     if automorph {
-        check_error(e, SinglePoolError::InvalidPoolAccountUsage);
+        check_error(e, SinglePoolError::InvalidPoolStakeAccountUsage);
     } else {
         check_error::<InstructionError>(e, StakeError::MergeMismatch.into());
     }

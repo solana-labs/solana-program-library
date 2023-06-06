@@ -111,14 +111,6 @@ pub enum SinglePoolInstruction {
     },
 }
 
-// XXX TODO FIXME initialize takes vote account
-// all other fuctions take pool account. all instructions take pool account and drop vote from structs
-// process_initialize needs to alloc the struct and store the vote account
-// process_deposit/withdraw need to deserialize and get vote account (do they? is that true?)
-// use it for check_ functions. also check_ functions must be updated
-// process_update needs vote account for confirming the validator one is right
-// uhhh then i need to refactor tests kms
-
 /// Creates all necessary instructions to initialize the stake pool.
 pub fn initialize(
     program_id: &Pubkey,

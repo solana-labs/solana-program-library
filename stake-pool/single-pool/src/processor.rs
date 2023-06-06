@@ -743,7 +743,7 @@ impl Processor {
         check_stake_program(stake_program_info.key)?;
 
         if pool_stake_info.key == user_stake_info.key {
-            return Err(SinglePoolError::InvalidPoolAccountUsage.into());
+            return Err(SinglePoolError::InvalidPoolStakeAccountUsage.into());
         }
 
         let minimum_delegation = minimum_delegation()?;
@@ -883,7 +883,7 @@ impl Processor {
         check_stake_program(stake_program_info.key)?;
 
         if pool_stake_info.key == user_stake_info.key {
-            return Err(SinglePoolError::InvalidPoolAccountUsage.into());
+            return Err(SinglePoolError::InvalidPoolStakeAccountUsage.into());
         }
 
         let minimum_delegation = minimum_delegation()?;

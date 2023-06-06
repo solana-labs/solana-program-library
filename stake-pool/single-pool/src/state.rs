@@ -33,7 +33,7 @@ pub struct SinglePool {
     pub vote_account_address: Pubkey,
 }
 impl SinglePool {
-    /// XXX do this
+    /// Create a SinglePool struct from its account info
     pub fn from_account_info(
         program_id: &Pubkey,
         account_info: &AccountInfo,
