@@ -2,10 +2,11 @@
 
 use {
     crate::{
-        error::SinglePoolError, instruction::SinglePoolInstruction, MINT_DECIMALS,
-        POOL_MINT_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_MPL_AUTHORITY_PREFIX, POOL_PREFIX,
-        POOL_STAKE_AUTHORITY_PREFIX, POOL_STAKE_PREFIX, VOTE_STATE_AUTHORIZED_WITHDRAWER_END,
-        VOTE_STATE_AUTHORIZED_WITHDRAWER_START, VOTE_STATE_DISCRIMINATOR_END,
+        error::SinglePoolError, instruction::SinglePoolInstruction, state::SinglePool,
+        MINT_DECIMALS, POOL_MINT_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_MPL_AUTHORITY_PREFIX,
+        POOL_PREFIX, POOL_STAKE_AUTHORITY_PREFIX, POOL_STAKE_PREFIX,
+        VOTE_STATE_AUTHORIZED_WITHDRAWER_END, VOTE_STATE_AUTHORIZED_WITHDRAWER_START,
+        VOTE_STATE_DISCRIMINATOR_END,
     },
     borsh::BorshDeserialize,
     mpl_token_metadata::{
@@ -15,7 +16,7 @@ use {
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
-        borsh::try_from_slice_unchecked,
+        borsh::{get_packed_len, try_from_slice_unchecked},
         entrypoint::ProgramResult,
         msg,
         native_token::LAMPORTS_PER_SOL,
@@ -567,7 +568,7 @@ impl Processor {
             vote_account_info.key.as_ref(),
             &[pool_bump_seed],
         ];
-        let _pool_signers = &[&pool_seeds[..]];
+        let pool_signers = &[&pool_seeds[..]];
 
         let stake_seeds = &[
             POOL_STAKE_PREFIX,
@@ -592,6 +593,31 @@ impl Processor {
             &[mint_authority_bump_seed],
         ];
         let mint_authority_signers = &[&mint_authority_seeds[..]];
+
+        // create the pool. user has already transferred in rent
+        let pool_space = get_packed_len::<SinglePool>();
+        if !rent.is_exempt(pool_info.lamports(), pool_space) {
+            return Err(SinglePoolError::WrongRentAmount.into());
+        }
+        if pool_info.data_len() != 0 {
+            return Err(SinglePoolError::PoolAlreadyInitialized.into());
+        }
+
+        invoke_signed(
+            &system_instruction::allocate(pool_info.key, pool_space as u64),
+            &[pool_info.clone()],
+            pool_signers,
+        )?;
+
+        invoke_signed(
+            &system_instruction::assign(pool_info.key, program_id),
+            &[pool_info.clone()],
+            pool_signers,
+        )?;
+
+        let mut pool = try_from_slice_unchecked::<SinglePool>(&pool_info.data.borrow())?;
+        pool.vote_account_address = *vote_account_info.key;
+        borsh::to_writer(&mut pool_info.data.borrow_mut()[..], &pool)?;
 
         // create the pool mint. user has already transferred in rent
         let mint_space = spl_token::state::Mint::LEN;

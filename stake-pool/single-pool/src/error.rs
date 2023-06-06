@@ -78,6 +78,14 @@ pub enum SinglePoolError {
     /// Attempted to deposit from or withdraw to pool stake account.
     #[error("InvalidPoolAccountUsage")]
     InvalidPoolAccountUsage,
+    /// Attempted to initialize a pool that is already initialized.
+    #[error("PoolAlreadyInitialized")]
+    PoolAlreadyInitialized,
+
+    // 20
+    /// Attempted to interact with an uninitialized pool.
+    #[error("PoolNotInitialized")]
+    PoolNotInitialized,
 }
 impl From<SinglePoolError> for ProgramError {
     fn from(e: SinglePoolError) -> Self {
@@ -135,6 +143,10 @@ impl PrintProgramError for SinglePoolError {
                 msg!("Error: Incorrect number of lamports provided for rent-exemption when initializing."),
             SinglePoolError::InvalidPoolAccountUsage =>
                 msg!("Error: Attempted to deposit from or withdraw to pool stake account."),
+            SinglePoolError::PoolAlreadyInitialized =>
+                msg!("Error: Attempted to initialize a pool that is already initialized."),
+            SinglePoolError::PoolNotInitialized =>
+                msg!("Error: Attempted to interact with an uninitialized pool."),
         }
     }
 }

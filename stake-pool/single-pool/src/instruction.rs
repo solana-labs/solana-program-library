@@ -6,7 +6,7 @@ use {
     crate::{
         find_default_deposit_account_address_and_seed, find_pool_address, find_pool_mint_address,
         find_pool_mint_authority_address, find_pool_mpl_authority_address, find_pool_stake_address,
-        find_pool_stake_authority_address,
+        find_pool_stake_authority_address, state::SinglePool,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     mpl_token_metadata::pda::find_metadata_account,
@@ -136,6 +136,8 @@ pub fn initialize(
     minimum_delegation: u64,
 ) -> Vec<Instruction> {
     let pool_address = find_pool_address(program_id, vote_account_address);
+    let pool_rent = rent.minimum_balance(std::mem::size_of::<SinglePool>());
+
     let stake_address = find_pool_stake_address(program_id, &pool_address);
     let stake_space = std::mem::size_of::<stake::state::StakeState>();
     let stake_rent_plus_minimum = rent
@@ -146,11 +148,12 @@ pub fn initialize(
     let mint_rent = rent.minimum_balance(spl_token::state::Mint::LEN);
 
     vec![
+        system_instruction::transfer(payer, &pool_address, pool_rent),
         system_instruction::transfer(payer, &stake_address, stake_rent_plus_minimum),
         system_instruction::transfer(payer, &mint_address, mint_rent),
         initialize_pool(program_id, vote_account_address),
         // TODO pool?
-        create_token_metadata(program_id, vote_account_address, payer),
+        //create_token_metadata(program_id, vote_account_address, payer),
     ]
 }
 
