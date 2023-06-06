@@ -71,8 +71,8 @@ async fn fail_no_signature() {
         UPDATED_SYMBOL.to_string(),
         UPDATED_URI.to_string(),
     );
-    assert_eq!(instruction.accounts[2].pubkey, accounts.withdrawer.pubkey());
-    instruction.accounts[2].is_signer = false;
+    assert_eq!(instruction.accounts[3].pubkey, accounts.withdrawer.pubkey());
+    instruction.accounts[3].is_signer = false;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],

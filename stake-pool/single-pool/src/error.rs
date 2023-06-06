@@ -13,7 +13,7 @@ use {
 #[derive(Clone, Debug, Eq, Error, num_derive::FromPrimitive, PartialEq)]
 pub enum SinglePoolError {
     // 0.
-    /// Provided pool account does not match address derived from the validator vote account.
+    /// Provided pool account has the wrong address for its vote account, is uninitialized, or otherwise invalid.
     #[error("InvalidPoolAccount")]
     InvalidPoolAccount,
     /// Provided pool stake account does not match address derived from the pool account.
@@ -75,17 +75,13 @@ pub enum SinglePoolError {
     /// Incorrect number of lamports provided for rent-exemption when initializing.
     #[error("WrongRentAmount")]
     WrongRentAmount,
+    // FIXME rename this error
     /// Attempted to deposit from or withdraw to pool stake account.
     #[error("InvalidPoolAccountUsage")]
     InvalidPoolAccountUsage,
     /// Attempted to initialize a pool that is already initialized.
     #[error("PoolAlreadyInitialized")]
     PoolAlreadyInitialized,
-
-    // 20
-    /// Attempted to interact with an uninitialized pool.
-    #[error("PoolNotInitialized")]
-    PoolNotInitialized,
 }
 impl From<SinglePoolError> for ProgramError {
     fn from(e: SinglePoolError) -> Self {
@@ -108,7 +104,8 @@ impl PrintProgramError for SinglePoolError {
     {
         match self {
             SinglePoolError::InvalidPoolAccount =>
-                msg!("Error: Provided pool account does not match address derived from the validator vote account."),
+                msg!("Error: Provided pool account has the wrong address for its vote account, is uninitialized, \
+                     or is otherwise invalid."),
             SinglePoolError::InvalidPoolStakeAccount =>
                 msg!("Error: Provided pool stake account does not match address derived from the pool account."),
             SinglePoolError::InvalidPoolMint =>
@@ -145,8 +142,6 @@ impl PrintProgramError for SinglePoolError {
                 msg!("Error: Attempted to deposit from or withdraw to pool stake account."),
             SinglePoolError::PoolAlreadyInitialized =>
                 msg!("Error: Attempted to initialize a pool that is already initialized."),
-            SinglePoolError::PoolNotInitialized =>
-                msg!("Error: Attempted to interact with an uninitialized pool."),
         }
     }
 }

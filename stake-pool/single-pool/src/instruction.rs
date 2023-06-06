@@ -42,21 +42,21 @@ pub enum SinglePoolInstruction {
     ///  12. `[]` Stake program
     InitializePool,
 
-    // TODO all other ixns
     ///   Deposit stake into the pool.  The output is a "pool" token representing fractional
     ///   ownership of the pool stake. Inputs are converted to the current ratio.
     ///
-    ///   0. `[w]` Pool stake account
-    ///   1. `[w]` Pool token mint
-    ///   2. `[]` Pool stake authority
-    ///   3. `[]` Pool mint authority
-    ///   4. `[w]` User stake account to join to the pool
-    ///   5. `[w]` User account to receive pool tokens
-    ///   6. `[w]` User account to receive lamports
-    ///   7. `[]` Clock sysvar
-    ///   8. `[]` Stake history sysvar
-    ///   9. `[]` Token program
-    ///  10. `[]` Stake program
+    ///   0. `[]` Pool account
+    ///   1. `[w]` Pool stake account
+    ///   2. `[w]` Pool token mint
+    ///   3. `[]` Pool stake authority
+    ///   4. `[]` Pool mint authority
+    ///   5. `[w]` User stake account to join to the pool
+    ///   6. `[w]` User account to receive pool tokens
+    ///   7. `[w]` User account to receive lamports
+    ///   8. `[]` Clock sysvar
+    ///   9. `[]` Stake history sysvar
+    ///  10. `[]` Token program
+    ///  11. `[]` Stake program
     DepositStake {
         // TODO remove
         /// Validator vote account address
@@ -65,15 +65,16 @@ pub enum SinglePoolInstruction {
 
     ///   Redeem tokens issued by this pool for stake at the current ratio.
     ///
-    ///   0. `[w]` Pool stake account
-    ///   1. `[w]` Pool token mint
-    ///   2. `[]` Pool stake authority
-    ///   3. `[]` Pool mint authority
-    ///   4. `[w]` User stake account to receive stake at
-    ///   5. `[w]` User account to take pool tokens from
-    ///   6. `[]` Clock sysvar
-    ///   7. `[]` Token program
-    ///   8. `[]` Stake program
+    ///   0. `[]` Pool account
+    ///   1. `[w]` Pool stake account
+    ///   2. `[w]` Pool token mint
+    ///   3. `[]` Pool stake authority
+    ///   4. `[]` Pool mint authority
+    ///   5. `[w]` User stake account to receive stake at
+    ///   6. `[w]` User account to take pool tokens from
+    ///   7. `[]` Clock sysvar
+    ///   8. `[]` Token program
+    ///   9. `[]` Stake program
     WithdrawStake {
         // TODO remove
         /// Validator vote account address
@@ -89,26 +90,24 @@ pub enum SinglePoolInstruction {
     ///   Note this instruction is not necessary for the pool to operate, to ensure we cannot
     ///   be broken by upstream.
     ///
-    ///   0. `[]` Pool token mint
-    ///   1. `[]` Pool mint authority
-    ///   2. `[]` Pool MPL authority
-    ///   3. `[s, w]` Payer for creation of token metadata account
-    ///   4. `[w]` Token metadata account
-    ///   5. `[]` Metadata program id
-    ///   6. `[]` System program id
-    CreateTokenMetadata {
-        // TODO remove
-        /// Validator vote account address
-        vote_account_address: Pubkey,
-    },
+    ///   0. `[]` Pool account
+    ///   1. `[]` Pool token mint
+    ///   2. `[]` Pool mint authority
+    ///   3. `[]` Pool MPL authority
+    ///   4. `[s, w]` Payer for creation of token metadata account
+    ///   5. `[w]` Token metadata account
+    ///   6. `[]` Metadata program id
+    ///   7. `[]` System program id
+    CreateTokenMetadata,
 
     ///   Update token metadata for the stake-pool token in the metaplex-token program.
     ///
     ///   0. `[]` Validator vote account
-    ///   1. `[]` Pool MPL authority
-    ///   2. `[s]` Vote account authorized withdrawer
-    ///   3. `[w]` Token metadata account
-    ///   4. `[]` Metadata program id
+    ///   1. `[]` Pool account
+    ///   2. `[]` Pool MPL authority
+    ///   3. `[s]` Vote account authorized withdrawer
+    ///   4. `[w]` Token metadata account
+    ///   5. `[]` Metadata program id
     UpdateTokenMetadata {
         /// Token name
         name: String,
@@ -152,8 +151,7 @@ pub fn initialize(
         system_instruction::transfer(payer, &stake_address, stake_rent_plus_minimum),
         system_instruction::transfer(payer, &mint_address, mint_rent),
         initialize_pool(program_id, vote_account_address),
-        // TODO pool?
-        //create_token_metadata(program_id, vote_account_address, payer),
+        create_token_metadata(program_id, &pool_address, payer),
     ]
 }
 
@@ -192,7 +190,7 @@ pub fn initialize_pool(program_id: &Pubkey, vote_account_address: &Pubkey) -> In
     }
 }
 
-// TODO everything below
+// TODO deposit/withdraw
 
 /// Creates all necessary instructions to deposit stake.
 pub fn deposit(
@@ -389,25 +387,24 @@ pub fn create_and_delegate_user_stake(
 /// Creates a `CreateTokenMetadata` instruction.
 pub fn create_token_metadata(
     program_id: &Pubkey,
-    vote_account_address: &Pubkey,
+    pool_address: &Pubkey,
     payer: &Pubkey,
 ) -> Instruction {
-    let pool_mint = find_pool_mint_address(program_id, vote_account_address);
+    let pool_mint = find_pool_mint_address(program_id, pool_address);
     let (token_metadata, _) = find_metadata_account(&pool_mint);
-    let data = SinglePoolInstruction::CreateTokenMetadata {
-        vote_account_address: *vote_account_address,
-    }
-    .try_to_vec()
-    .unwrap();
+    let data = SinglePoolInstruction::CreateTokenMetadata
+        .try_to_vec()
+        .unwrap();
 
     let accounts = vec![
+        AccountMeta::new_readonly(*pool_address, false),
         AccountMeta::new_readonly(pool_mint, false),
         AccountMeta::new_readonly(
-            find_pool_mint_authority_address(program_id, vote_account_address),
+            find_pool_mint_authority_address(program_id, pool_address),
             false,
         ),
         AccountMeta::new_readonly(
-            find_pool_mpl_authority_address(program_id, vote_account_address),
+            find_pool_mpl_authority_address(program_id, pool_address),
             false,
         ),
         AccountMeta::new(*payer, true),
@@ -432,7 +429,8 @@ pub fn update_token_metadata(
     symbol: String,
     uri: String,
 ) -> Instruction {
-    let pool_mint = find_pool_mint_address(program_id, vote_account_address);
+    let pool_address = find_pool_address(program_id, vote_account_address);
+    let pool_mint = find_pool_mint_address(program_id, &pool_address);
     let (token_metadata, _) = find_metadata_account(&pool_mint);
     let data = SinglePoolInstruction::UpdateTokenMetadata { name, symbol, uri }
         .try_to_vec()
@@ -440,8 +438,9 @@ pub fn update_token_metadata(
 
     let accounts = vec![
         AccountMeta::new_readonly(*vote_account_address, false),
+        AccountMeta::new_readonly(pool_address, false),
         AccountMeta::new_readonly(
-            find_pool_mpl_authority_address(program_id, vote_account_address),
+            find_pool_mpl_authority_address(program_id, &pool_address),
             false,
         ),
         AccountMeta::new_readonly(*authorized_withdrawer, true),

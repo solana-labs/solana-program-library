@@ -2,7 +2,9 @@
 
 use {
     crate::{
-        error::SinglePoolError, instruction::SinglePoolInstruction, state::SinglePool,
+        error::SinglePoolError,
+        instruction::SinglePoolInstruction,
+        state::{SinglePool, SinglePoolAccountType},
         MINT_DECIMALS, POOL_MINT_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_MPL_AUTHORITY_PREFIX,
         POOL_PREFIX, POOL_STAKE_AUTHORITY_PREFIX, POOL_STAKE_PREFIX,
         VOTE_STATE_AUTHORIZED_WITHDRAWER_END, VOTE_STATE_AUTHORIZED_WITHDRAWER_START,
@@ -327,7 +329,7 @@ pub struct Processor {}
 impl Processor {
     #[allow(clippy::too_many_arguments)]
     fn stake_merge<'a>(
-        vote_account_key: &Pubkey,
+        pool_account_key: &Pubkey,
         source_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
         bump_seed: u8,
@@ -337,7 +339,7 @@ impl Processor {
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
             POOL_STAKE_AUTHORITY_PREFIX,
-            vote_account_key.as_ref(),
+            pool_account_key.as_ref(),
             &[bump_seed],
         ];
         let signers = &[&authority_seeds[..]];
@@ -357,7 +359,7 @@ impl Processor {
     }
 
     fn stake_split<'a>(
-        vote_account_key: &Pubkey,
+        pool_account_key: &Pubkey,
         stake_account: AccountInfo<'a>,
         authority: AccountInfo<'a>,
         bump_seed: u8,
@@ -366,7 +368,7 @@ impl Processor {
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
             POOL_STAKE_AUTHORITY_PREFIX,
-            vote_account_key.as_ref(),
+            pool_account_key.as_ref(),
             &[bump_seed],
         ];
         let signers = &[&authority_seeds[..]];
@@ -383,7 +385,7 @@ impl Processor {
 
     #[allow(clippy::too_many_arguments)]
     fn stake_authorize<'a>(
-        vote_account_key: &Pubkey,
+        pool_account_key: &Pubkey,
         stake_account: AccountInfo<'a>,
         stake_authority: AccountInfo<'a>,
         bump_seed: u8,
@@ -392,7 +394,7 @@ impl Processor {
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
             POOL_STAKE_AUTHORITY_PREFIX,
-            vote_account_key.as_ref(),
+            pool_account_key.as_ref(),
             &[bump_seed],
         ];
         let signers = &[&authority_seeds[..]];
@@ -431,7 +433,7 @@ impl Processor {
 
     #[allow(clippy::too_many_arguments)]
     fn stake_withdraw<'a>(
-        vote_account_key: &Pubkey,
+        pool_account_key: &Pubkey,
         stake_account: AccountInfo<'a>,
         stake_authority: AccountInfo<'a>,
         bump_seed: u8,
@@ -442,7 +444,7 @@ impl Processor {
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
             POOL_STAKE_AUTHORITY_PREFIX,
-            vote_account_key.as_ref(),
+            pool_account_key.as_ref(),
             &[bump_seed],
         ];
         let signers = &[&authority_seeds[..]];
@@ -470,7 +472,7 @@ impl Processor {
 
     #[allow(clippy::too_many_arguments)]
     fn token_mint_to<'a>(
-        vote_account_key: &Pubkey,
+        pool_account_key: &Pubkey,
         token_program: AccountInfo<'a>,
         mint: AccountInfo<'a>,
         destination: AccountInfo<'a>,
@@ -480,7 +482,7 @@ impl Processor {
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
             POOL_MINT_AUTHORITY_PREFIX,
-            vote_account_key.as_ref(),
+            pool_account_key.as_ref(),
             &[bump_seed],
         ];
         let signers = &[&authority_seeds[..]];
@@ -499,7 +501,7 @@ impl Processor {
 
     #[allow(clippy::too_many_arguments)]
     fn token_burn<'a>(
-        vote_account_key: &Pubkey,
+        pool_account_key: &Pubkey,
         token_program: AccountInfo<'a>,
         burn_account: AccountInfo<'a>,
         mint: AccountInfo<'a>,
@@ -509,7 +511,7 @@ impl Processor {
     ) -> Result<(), ProgramError> {
         let authority_seeds = &[
             POOL_MINT_AUTHORITY_PREFIX,
-            vote_account_key.as_ref(),
+            pool_account_key.as_ref(),
             &[bump_seed],
         ];
         let signers = &[&authority_seeds[..]];
@@ -595,6 +597,7 @@ impl Processor {
         let mint_authority_signers = &[&mint_authority_seeds[..]];
 
         // create the pool. user has already transferred in rent
+        // FIXME do other rent checks like this? or do this like the others??
         let pool_space = get_packed_len::<SinglePool>();
         if !rent.is_exempt(pool_info.lamports(), pool_space) {
             return Err(SinglePoolError::WrongRentAmount.into());
@@ -615,7 +618,9 @@ impl Processor {
             pool_signers,
         )?;
 
+        // XXX why unchecked?? check (lol) this
         let mut pool = try_from_slice_unchecked::<SinglePool>(&pool_info.data.borrow())?;
+        pool.account_type = SinglePoolAccountType::Pool;
         pool.vote_account_address = *vote_account_info.key;
         borsh::to_writer(&mut pool_info.data.borrow_mut()[..], &pool)?;
 
@@ -942,9 +947,9 @@ impl Processor {
     fn process_create_pool_token_metadata(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        vote_account_address: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+        let pool_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_mint_authority_info = next_account_info(account_info_iter)?;
         let pool_mpl_authority_info = next_account_info(account_info_iter)?;
@@ -953,17 +958,20 @@ impl Processor {
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
         let system_program_info = next_account_info(account_info_iter)?;
 
+        let pool = SinglePool::from_account_info(program_id, pool_info)?;
+        check_pool_address(program_id, &pool.vote_account_address, pool_info.key)?;
+
         let mint_authority_bump_seed = check_pool_mint_authority_address(
             program_id,
-            vote_account_address,
+            pool_info.key,
             pool_mint_authority_info.key,
         )?;
         let mpl_authority_bump_seed = check_pool_mpl_authority_address(
             program_id,
-            vote_account_address,
+            pool_info.key,
             pool_mpl_authority_info.key,
         )?;
-        check_pool_mint_address(program_id, vote_account_address, pool_mint_info.key)?;
+        check_pool_mint_address(program_id, pool_info.key, pool_mint_info.key)?;
         check_system_program(system_program_info.key)?;
         check_account_owner(payer_info, &system_program::id())?;
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
@@ -974,13 +982,7 @@ impl Processor {
             return Err(SinglePoolError::SignatureMissing.into());
         }
 
-        // checking the mint exists confirms pool is initialized
-        {
-            let pool_mint_data = pool_mint_info.try_borrow_data()?;
-            let _ = Mint::unpack_from_slice(&pool_mint_data)?;
-        }
-
-        let vote_address_str = vote_account_address.to_string();
+        let vote_address_str = pool.vote_account_address.to_string();
         let token_name = format!("SPL Single Pool {}", &vote_address_str[0..15]);
         let token_symbol = format!("st{}", &vote_address_str[0..7]);
 
@@ -1005,12 +1007,12 @@ impl Processor {
 
         let mint_authority_seeds = &[
             POOL_MINT_AUTHORITY_PREFIX,
-            vote_account_address.as_ref(),
+            pool_info.key.as_ref(),
             &[mint_authority_bump_seed],
         ];
         let mpl_authority_seeds = &[
             POOL_MPL_AUTHORITY_PREFIX,
-            vote_account_address.as_ref(),
+            pool_info.key.as_ref(),
             &[mpl_authority_bump_seed],
         ];
         let signers = &[&mint_authority_seeds[..], &mpl_authority_seeds[..]];
@@ -1040,18 +1042,26 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let vote_account_info = next_account_info(account_info_iter)?;
+        let pool_info = next_account_info(account_info_iter)?;
         let pool_mpl_authority_info = next_account_info(account_info_iter)?;
         let authorized_withdrawer_info = next_account_info(account_info_iter)?;
         let metadata_info = next_account_info(account_info_iter)?;
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
 
         check_vote_account(vote_account_info)?;
+        check_pool_address(program_id, vote_account_info.key, pool_info.key)?;
+
+        let pool = SinglePool::from_account_info(program_id, pool_info)?;
+        if pool.vote_account_address != *vote_account_info.key {
+            return Err(SinglePoolError::InvalidPoolAccount.into());
+        }
+
         let mpl_authority_bump_seed = check_pool_mpl_authority_address(
             program_id,
-            vote_account_info.key,
+            pool_info.key,
             pool_mpl_authority_info.key,
         )?;
-        let pool_mint_address = crate::find_pool_mint_address(program_id, vote_account_info.key);
+        let pool_mint_address = crate::find_pool_mint_address(program_id, pool_info.key);
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
         check_mpl_metadata_account_address(metadata_info.key, &pool_mint_address)?;
 
@@ -1094,7 +1104,7 @@ impl Processor {
 
         let mpl_authority_seeds = &[
             POOL_MPL_AUTHORITY_PREFIX,
-            vote_account_info.key.as_ref(),
+            pool_info.key.as_ref(),
             &[mpl_authority_bump_seed],
         ];
         let signers = &[&mpl_authority_seeds[..]];
@@ -1136,15 +1146,9 @@ impl Processor {
                     token_amount,
                 )
             }
-            SinglePoolInstruction::CreateTokenMetadata {
-                vote_account_address,
-            } => {
+            SinglePoolInstruction::CreateTokenMetadata => {
                 msg!("Instruction: CreateTokenMetadata");
-                Self::process_create_pool_token_metadata(
-                    program_id,
-                    accounts,
-                    &vote_account_address,
-                )
+                Self::process_create_pool_token_metadata(program_id, accounts)
             }
             SinglePoolInstruction::UpdateTokenMetadata { name, symbol, uri } => {
                 msg!("Instruction: UpdateTokenMetadata");

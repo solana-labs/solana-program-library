@@ -46,11 +46,8 @@ async fn fail_double_init() {
     accounts.initialize(&mut context).await;
     refresh_blockhash(&mut context).await;
 
-    let instruction = instruction::create_token_metadata(
-        &id(),
-        &accounts.vote_account.pubkey(),
-        &context.payer.pubkey(),
-    );
+    let instruction =
+        instruction::create_token_metadata(&id(), &accounts.pool, &context.payer.pubkey());
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
         Some(&context.payer.pubkey()),
