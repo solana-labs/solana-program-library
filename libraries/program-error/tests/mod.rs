@@ -33,7 +33,6 @@ mod tests {
 
     // `#[derive(IntoProgramError)]`
     #[test]
-    #[serial]
     fn test_derive_into_program_error() {
         // `Into<ProgramError>`
         assert_eq!(
@@ -48,7 +47,6 @@ mod tests {
 
     // `#[derive(DecodeError)]`
     #[test]
-    #[serial]
     fn test_derive_decode_error() {
         // `Into<ProgramError>`
         assert_eq!(

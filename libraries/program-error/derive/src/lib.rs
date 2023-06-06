@@ -6,7 +6,7 @@
 // trigger the lint upstream through `quote_token_with_context` within the
 // `quote` crate
 //
-// Culprate is `macro_impl.rs:66`
+// Culprit is `macro_impl.rs:66`
 #![allow(clippy::integer_arithmetic)]
 #![deny(missing_docs)]
 #![cfg_attr(not(test), forbid(unsafe_code))]
