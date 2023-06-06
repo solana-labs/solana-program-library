@@ -6310,6 +6310,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-program-error"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "num-derive",
+ "num-traits",
+ "serial_test",
+ "solana-program",
+ "solana-sdk",
+ "spl-program-error-derive",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-program-error-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2 1.0.56",
+ "quote 1.0.26",
+ "syn 1.0.107",
+]
+
+[[package]]
 name = "spl-record"
 version = "0.1.0"
 dependencies = [
