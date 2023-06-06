@@ -85,7 +85,7 @@ pub fn print_program_error(
 fn get_error_message(variant: &Variant) -> Option<String> {
     let attrs = &variant.attrs;
     for attr in attrs {
-        if attr.path.is_ident("error") {
+        if attr.path().is_ident("error") {
             if let Ok(lit_str) = attr.parse_args::<LitStr>() {
                 return Some(lit_str.value());
             }
