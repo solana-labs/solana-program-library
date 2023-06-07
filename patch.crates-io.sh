@@ -40,9 +40,7 @@ if echo "$solana_dir" | grep "^$project_root" > /dev/null; then
     if grep -q "exclude.*$solana_dir" "$crate"; then
       echo "$crate is already patched"
     else
-      cat >> $crate << EXCLUDE
-exclude = ["$solana_dir"]
-EXCLUDE
+      sed -i'' "$crate" -e "/exclude/a \ \ \"$solana_dir\","
     fi
   done
 fi
