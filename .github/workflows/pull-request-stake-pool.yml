@@ -22,11 +22,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Clear dirs for more space
-        run: |
-          sudo rm -rf "/usr/share/dotnet"
-          sudo rm -rf "/opt/ghc"
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        run: bash ./ci/warning/purge-ubuntu-runner.sh
 
       - name: Set env vars
         run: |
