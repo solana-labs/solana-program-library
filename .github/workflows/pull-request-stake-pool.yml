@@ -21,8 +21,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Check disk space
+        run: df -h
+
       - name: Remove unneeded packages for more space
         run: bash ./ci/warning/purge-ubuntu-runner.sh
+
+      - name: Check disk space again
+        run: df -h
 
       - name: Set env vars
         run: |
