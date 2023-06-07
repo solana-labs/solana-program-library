@@ -6,18 +6,27 @@ on:
     - 'stake-pool/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - '.github/workflows/pull-request-stake-pool.yml'
   push:
     branches: [master]
     paths:
     - 'stake-pool/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - '.github/workflows/pull-request-stake-pool.yml'
 
 jobs:
   cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Clear dirs for more space
+        run: |
+          sudo rm -rf "/usr/share/dotnet"
+          sudo rm -rf "/opt/ghc"
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
       - name: Set env vars
         run: |
