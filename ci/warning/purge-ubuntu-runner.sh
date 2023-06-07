@@ -36,7 +36,7 @@ if [[ -n "$CI" ]]; then
     snmp pollinate \
     libpq-dev postgresql-client \
     powershell ruby-full \
-    sphinxsearch subversion mongodb-org -yq >/dev/null 2>&1
-  sudo apt-get autopurge -y >/dev/null 2>&1
-  sudo apt-get autoclean -y >/dev/null 2>&1
+    sphinxsearch subversion mongodb-org -yq
+  sudo apt-get autopurge -y
+  sudo apt-get autoclean -y
 fi
