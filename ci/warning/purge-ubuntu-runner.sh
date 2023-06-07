@@ -6,8 +6,12 @@
 # ONLY RUNS IN CI.
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 if [[ -n "$CI" ]]; then
-  sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-  sudo apt purge aria2 ansible azure-cli shellcheck rpm xorriso zsync \
+  sudo apt purge aria2 \
+    ansible \
+    azure-cli \
+    rpm \
+    xorriso \
+    zsync \
     clang-6.0 lldb-6.0 lld-6.0 clang-format-6.0 \
     clang-8 lldb-8 lld-8 clang-format-8 \
     clang-9 lldb-9 lld-9 clangd-9 clang-format-9 \
