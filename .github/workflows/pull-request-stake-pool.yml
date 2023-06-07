@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Clear dirs for more space
+      - name: Remove unneeded packages for more space
         run: bash ./ci/warning/purge-ubuntu-runner.sh
 
       - name: Set env vars
