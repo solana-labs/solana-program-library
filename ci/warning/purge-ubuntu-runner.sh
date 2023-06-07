@@ -24,6 +24,8 @@ if [[ -n "$CI" ]]; then
     mysql-client libmysqlclient-dev mysql-server \
     mssql-tools unixodbc-dev yarn chrpath libssl-dev libxft-dev \
     libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
+    nginx \
+    shim-signed \
     php* \
     snmp pollinate \
     libpq-dev postgresql-client \
