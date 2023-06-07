@@ -7,7 +7,7 @@
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 if [[ -n "$CI" ]]; then
   sudo docker rmi $(docker image ls -aq)
-  sudo apt install grub2-common # for shim-signed
+  sudo apt install shim-signed grub2-common # for shim-signed
   sudo apt purge aria2 \
     ansible \
     azure-cli \
