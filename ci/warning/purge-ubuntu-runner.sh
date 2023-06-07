@@ -7,11 +7,12 @@
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 if [[ -n "$CI" ]]; then
   sudo docker rmi $(docker image ls -aq)
+  sudo apt install grub2-common # for shim-signed
   sudo apt purge aria2 \
     ansible \
     azure-cli \
-    rpm \
     xorriso \
+    rpm \
     zsync \
     dotnet-sdk-* \
     firefox \
@@ -25,12 +26,11 @@ if [[ -n "$CI" ]]; then
     mssql-tools unixodbc-dev yarn chrpath libssl-dev libxft-dev \
     libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
     nginx \
-    shim-signed \
     php* \
     snmp pollinate \
     libpq-dev postgresql-client \
     powershell ruby-full \
     sphinxsearch subversion -yq
-  sudo apt-get autopurge -y
-  sudo apt-get autoclean -y
+  sudo apt autopurge -y
+  sudo apt autoclean -y
 fi
