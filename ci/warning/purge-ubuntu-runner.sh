@@ -6,6 +6,7 @@
 # ONLY RUNS IN CI.
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 if [[ -n "$CI" ]]; then
+  sudo docker rmi $(docker image ls -aq)
   sudo apt purge aria2 \
     ansible \
     azure-cli \
