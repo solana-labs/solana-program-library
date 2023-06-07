@@ -129,7 +129,7 @@ async fn success() {
     let stake = get_account(&mut banks_client, &validator_stake.stake_account).await;
     let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
     match stake_state {
-        stake::state::StakeState::Stake(meta, _) => {
+        stake::state::StakeState::Stake(meta, _, _) => {
             assert_eq!(
                 &meta.authorized.staker,
                 &stake_pool_accounts.withdraw_authority
@@ -595,7 +595,7 @@ async fn success_with_lamports_in_account() {
     let stake = get_account(&mut banks_client, &validator_stake.stake_account).await;
     let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
     match stake_state {
-        stake::state::StakeState::Stake(meta, _) => {
+        stake::state::StakeState::Stake(meta, _, _) => {
             assert_eq!(
                 &meta.authorized.staker,
                 &stake_pool_accounts.withdraw_authority
