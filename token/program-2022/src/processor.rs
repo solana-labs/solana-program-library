@@ -7692,7 +7692,7 @@ mod tests {
         let program_id = crate::id();
 
         let mut lamports = 0;
-        let mut mock_data = vec![];
+        let mut destination_data = vec![];
         let system_program_id = system_program::id();
         let destination_key = Pubkey::new_unique();
         let destination_info = AccountInfo::new(
@@ -7700,7 +7700,7 @@ mod tests {
             true,
             false,
             &mut lamports,
-            &mut mock_data,
+            &mut destination_data,
             &system_program_id,
             false,
             Epoch::default(),
@@ -7708,7 +7708,8 @@ mod tests {
 
         let multisig_key = Pubkey::new_unique();
         let mut multisig_account = SolanaAccount::new(0, Multisig::get_packed_len(), &program_id);
-        multisig_account.lamports = 4_000_000_000_000 + multisig_minimum_balance();
+        let excess_lamports = 4_000_000_000_000;
+        multisig_account.lamports = excess_lamports + multisig_minimum_balance();
         let mut signer_keys = [Pubkey::default(); MAX_SIGNERS];
 
         for signer_key in signer_keys.iter_mut().take(MAX_SIGNERS) {
@@ -7762,5 +7763,163 @@ mod tests {
             signers_infos,
         )
         .unwrap();
+
+        assert_eq!(destination_info.lamports(), excess_lamports);
+    }
+
+    #[test]
+    #[serial]
+    fn test_withdraw_excess_lamports_from_account() {
+        let excess_lamports = 4_000_000_000_000;
+
+        let program_id = crate::id();
+        let account_key = Pubkey::new_unique();
+        let mut account_account = SolanaAccount::new(
+            excess_lamports + account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+
+        let system_program_id = system_program::id();
+        let mut owner_lamports = 0;
+        let mut owner_data = vec![];
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::new(0, 0, &system_program::id());
+        let owner_info = AccountInfo::new(
+            &owner_key,
+            true,
+            false,
+            &mut owner_lamports,
+            &mut owner_data,
+            &system_program_id,
+            false,
+            Epoch::default(),
+        );
+
+        let mut destination_lamports = 0;
+        let mut destination_data = vec![];
+        let destination_key = Pubkey::new_unique();
+        let destination_info = AccountInfo::new(
+            &destination_key,
+            true,
+            false,
+            &mut destination_lamports,
+            &mut destination_data,
+            &system_program_id,
+            false,
+            Epoch::default(),
+        );
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut rent_sysvar = rent_sysvar();
+
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        do_process_instruction(
+            initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+            vec![
+                &mut account_account,
+                &mut mint_account,
+                &mut owner_account,
+                &mut rent_sysvar,
+            ],
+        )
+        .unwrap();
+
+        let account_info: AccountInfo = (&account_key, true, &mut account_account).into();
+
+        do_process_instruction_dups(
+            withdraw_excess_lamports(
+                &program_id,
+                &account_key,
+                &destination_key,
+                &owner_key,
+                &[&owner_key],
+            )
+            .unwrap(),
+            vec![
+                account_info.clone(),
+                destination_info.clone(),
+                owner_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(destination_info.lamports(), excess_lamports);
+    }
+
+    #[test]
+    #[serial]
+    fn test_withdraw_excess_lamports_from_mint() {
+        let excess_lamports = 4_000_000_000_000;
+
+        let program_id = crate::id();
+        let mut owner_lamports = 0;
+        let mut owner_data = vec![];
+        let system_program_id = system_program::id();
+        let owner_key = Pubkey::new_unique();
+        let owner_info = AccountInfo::new(
+            &owner_key,
+            true,
+            false,
+            &mut owner_lamports,
+            &mut owner_data,
+            &system_program_id,
+            false,
+            Epoch::default(),
+        );
+
+        let mut destination_lamports = 0;
+        let mut destination_data = vec![];
+        let destination_key = Pubkey::new_unique();
+        let destination_info = AccountInfo::new(
+            &destination_key,
+            true,
+            false,
+            &mut destination_lamports,
+            &mut destination_data,
+            &system_program_id,
+            false,
+            Epoch::default(),
+        );
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account = SolanaAccount::new(
+            excess_lamports + mint_minimum_balance(),
+            Mint::get_packed_len(),
+            &program_id,
+        );
+        let mut rent_sysvar = rent_sysvar();
+
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        let account_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
+
+        do_process_instruction_dups(
+            withdraw_excess_lamports(
+                &program_id,
+                &mint_key,
+                &destination_key,
+                &owner_key,
+                &[&owner_key],
+            )
+            .unwrap(),
+            vec![
+                account_info.clone(),
+                destination_info.clone(),
+                owner_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(destination_info.lamports(), excess_lamports);
     }
 }
