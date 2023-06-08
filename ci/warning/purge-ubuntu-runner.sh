@@ -29,12 +29,14 @@ if [[ -n "$CI" ]]; then
     mssql-tools unixodbc-dev libxft-dev \
     libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
     nginx \
+    shim-signed \
     php* \
     libpq-dev postgresql-client \
     powershell \
     ruby-full \
     sphinxsearch \
-    subversion -yq
+    subversion \
+    -yq --allow-remove-essential
   sudo apt autopurge -y
   sudo apt autoclean -y
 fi
