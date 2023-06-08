@@ -6,27 +6,35 @@
 # ONLY RUNS IN CI.
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 if [[ -n "$CI" ]]; then
+  # Clears 4GB
   sudo docker rmi $(docker image ls -aq)
+  # Clears 12GB
+  sudo rm -rf /usr/local/lib/android
+  # Clears ?
+  sudo apt update
+  sudo apt install -y shim-signed shim grub2-common grub-efi-amd64-signed
   sudo apt purge aria2 \
     ansible \
     azure-cli \
     xorriso \
     dotnet-sdk-* \
     firefox \
-    g++-8 g++-9 \
+    g++-9 \
     gfortran-9 \
     google-chrome-stable google-cloud-sdk \
-    imagemagick libmagickcore-dev libmagickwand-dev libmagic-dev \
     ant ant-optional \
-    mercurial mono-complete \
+    mercurial \
+    mono-complete \
     mysql-client libmysqlclient-dev mysql-server \
     mssql-tools unixodbc-dev libxft-dev \
     libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
     nginx \
     php* \
     libpq-dev postgresql-client \
-    powershell ruby-full \
-    sphinxsearch subversion -yq
+    powershell \
+    ruby-full \
+    sphinxsearch \
+    subversion -yq
   sudo apt autopurge -y
   sudo apt autoclean -y
 fi
