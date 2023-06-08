@@ -1,6 +1,6 @@
 import React from 'react'
 import Logo from './Logo'
-import { Input, InputLeftElement, InputGroup, InputRightElement, Avatar,Text } from '@chakra-ui/react'
+import { Input, InputLeftElement, InputGroup, InputRightElement, Avatar, Text } from '@chakra-ui/react'
 import { BellIcon, SearchIcon, ChevronDownIcon } from '@chakra-ui/icons'
 import Button from './Button'
 
@@ -44,11 +44,11 @@ export default function NavBar() {
                     <BellIcon color="gray.300" boxSize={8} />
                     <Text className='absolute top-0 right-0 p-1 text-white bg-red-600 rounded-full' fontSize='3xs'>9+</Text>
                 </div>
-                <p className='flex items-center'>
+                <div className='flex items-center'>
                     <Avatar name="John Doe" size={'sm'} className='mr-1' />
                     @buckybuddyy...
                     <ChevronDownIcon />
-                </p>
+                </div>
             </div>
         </header>
     )
