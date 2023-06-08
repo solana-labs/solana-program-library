@@ -239,12 +239,19 @@ pub enum TokenInstruction<'a> {
     /// Accounts with the `TransferFeeAmount` extension may only be closed if the withheld
     /// amount is zero.
     ///
+    /// Accounts with the `ConfidentialTransfer` extension may only be closed if the pending and
+    /// available balance ciphertexts are empty. Use
+    /// `ConfidentialTransferInstruction::ApplyPendingBalance` and
+    /// `ConfidentialTransferInstruction::EmptyAccount` to empty these ciphertexts.
+    ///
+    /// Accounts with the `ConfidentialTransferFee` extension may only be closed if the withheld
+    /// amount ciphertext is empty. Use
+    /// `ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint` to empty this ciphertext.
+    ///
     /// Mints may be closed if they have the `MintCloseAuthority` extension and their token
     /// supply is zero
     ///
-    /// Note that if the account to close has a `ConfidentialTransferExtension`, the
-    /// `ConfidentialTransferInstruction::EmptyAccount` instruction must precede this
-    /// instruction.
+    /// Accounts
     ///
     /// Accounts expected by this instruction:
     ///
@@ -630,6 +637,17 @@ pub enum TokenInstruction<'a> {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         delegate: Pubkey,
     },
+    /// The common instruction prefix for transfer hook extension instructions.
+    ///
+    /// See `extension::transfer_hook::instruction::TransferHookInstruction`
+    /// for further details about the extended instructions that share this instruction
+    /// prefix
+    TransferHookExtension,
+    /// The common instruction prefix for the confidential transfer fee extension instructions.
+    ///
+    /// See `extension::confidential_transfer_fee::instruction::ConfidentialTransferFeeInstruction`
+    /// for further details about the extended instructions that share this instruction prefix
+    ConfidentialTransferFeeExtension,
     /// This instruction is to be used to rescue SOLs sent to any TokenProgram
     /// owned account with system_instruction::transfer by sending them to a
     /// WrappedSol token account leaving behind only lamports for rent exemption.
@@ -774,7 +792,9 @@ impl<'a> TokenInstruction<'a> {
                 let (delegate, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializePermanentDelegate { delegate }
             }
-            36 => Self::WithdrawExcessLamports,
+            36 => Self::TransferHookExtension,
+            37 => Self::ConfidentialTransferFeeExtension,
+            38 => Self::WithdrawExcessLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -934,8 +954,14 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
             }
-            &Self::WithdrawExcessLamports => {
+            &Self::TransferHookExtension => {
                 buf.push(36);
+            }
+            &Self::ConfidentialTransferFeeExtension => {
+                buf.push(37);
+            }
+            &Self::WithdrawExcessLamports => {
+                buf.push(38);
             }
         };
         buf
@@ -1023,6 +1049,10 @@ pub enum AuthorityType {
     /// Authority to update confidential transfer mint and aprove accounts for confidential
     /// transfers
     ConfidentialTransferMint,
+    /// Authority to set the transfer hook program id
+    TransferHookProgramId,
+    /// Authority to set the withdraw withheld authority encryption key
+    ConfidentialTransferFeeConfig,
 }
 
 impl AuthorityType {
@@ -1038,6 +1068,8 @@ impl AuthorityType {
             AuthorityType::InterestRate => 7,
             AuthorityType::PermanentDelegate => 8,
             AuthorityType::ConfidentialTransferMint => 9,
+            AuthorityType::TransferHookProgramId => 10,
+            AuthorityType::ConfidentialTransferFeeConfig => 11,
         }
     }
 
@@ -1053,6 +1085,8 @@ impl AuthorityType {
             7 => Ok(AuthorityType::InterestRate),
             8 => Ok(AuthorityType::PermanentDelegate),
             9 => Ok(AuthorityType::ConfidentialTransferMint),
+            10 => Ok(AuthorityType::TransferHookProgramId),
+            11 => Ok(AuthorityType::ConfidentialTransferFeeConfig),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

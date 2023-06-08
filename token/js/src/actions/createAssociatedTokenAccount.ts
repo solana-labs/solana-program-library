@@ -2,7 +2,7 @@ import type { ConfirmOptions, Connection, PublicKey, Signer } from '@solana/web3
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
 import { createAssociatedTokenAccountInstruction } from '../instructions/associatedTokenAccount.js';
-import { getAssociatedTokenAddress } from '../state/mint.js';
+import { getAssociatedTokenAddressSync } from '../state/mint.js';
 
 /**
  * Create and initialize a new associated token account
@@ -26,7 +26,7 @@ export async function createAssociatedTokenAccount(
     programId = TOKEN_PROGRAM_ID,
     associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
-    const associatedToken = await getAssociatedTokenAddress(mint, owner, false, programId, associatedTokenProgramId);
+    const associatedToken = getAssociatedTokenAddressSync(mint, owner, false, programId, associatedTokenProgramId);
 
     const transaction = new Transaction().add(
         createAssociatedTokenAccountInstruction(

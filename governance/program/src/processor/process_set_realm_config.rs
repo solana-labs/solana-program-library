@@ -1,6 +1,5 @@
 //! Program state processor
 
-use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -112,7 +111,10 @@ pub fn process_set_realm_config(
             0,
         )?;
     } else {
-        realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
+        borsh::to_writer(
+            &mut realm_config_info.data.borrow_mut()[..],
+            &realm_config_data,
+        )?;
     }
 
     // Update RealmConfig (Realm.config field)
@@ -125,7 +127,7 @@ pub fn process_set_realm_config(
     realm_data.config.legacy1 = 0;
     realm_data.config.legacy2 = 0;
 
-    realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
+    realm_data.serialize(&mut realm_info.data.borrow_mut()[..])?;
 
     Ok(())
 }

@@ -357,7 +357,7 @@ impl ProgramTestBench {
         account: &T,
     ) {
         let mut account_data = vec![];
-        account.serialize(&mut account_data).unwrap();
+        borsh::to_writer(&mut account_data, &account).unwrap();
 
         let data = AccountSharedData::create(
             self.rent.minimum_balance(account_data.len()),

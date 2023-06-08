@@ -18,26 +18,27 @@ zk-ops = []
 proof-program = []
 
 [dependencies]
-arrayref = "0.3.6"
-bytemuck = { version = "1.13.0", features = ["derive"] }
+arrayref = "0.3.7"
+bytemuck = { version = "1.13.1", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"
-num_enum = "0.5.9"
+num_enum = "0.6.1"
 solana-program = "1.14.12"
 solana-zk-token-sdk = "1.14.12"
 spl-memo = { version = "3.0.1", path = "../../memo/program", features = [ "no-entrypoint" ] }
+spl-transfer-hook-interface = { version = "0.1.0", path = "../transfer-hook-interface" }
 spl-token = { version = "3.5",  path = "../program", features = ["no-entrypoint"] }
 thiserror = "1.0"
-serde = { version = "1.0.136", optional = true }
-serde_with = { version = "1.14.0", optional = true }
+serde = { version = "1.0.163", optional = true }
+serde_with = { version = "2.0.0", optional = true }
 
 [dev-dependencies]
 lazy_static = "1.4.0"
-proptest = "1.0"
-serial_test = "0.5.1"
+proptest = "1.2"
+serial_test = "2.0.0"
 solana-program-test = "1.14.12"
 solana-sdk = "1.14.12"
-serde_json = "1.0.81"
+serde_json = "1.0.96"
 
 [lib]
 crate-type = ["cdylib", "lib"]

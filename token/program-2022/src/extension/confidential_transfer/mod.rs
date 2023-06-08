@@ -29,10 +29,6 @@ pub mod processor;
 pub type EncryptedBalance = pod::ElGamalCiphertext;
 /// Authenticated encryption containing an account balance
 pub type DecryptableBalance = pod::AeCiphertext;
-/// (aggregated) ElGamal ciphertext containing a transfer fee
-pub type EncryptedFee = pod::FeeEncryption;
-/// ElGamal ciphertext containing a withheld amount
-pub type EncryptedWithheldAmount = pod::ElGamalCiphertext;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
@@ -54,24 +50,6 @@ pub struct ConfidentialTransferMint {
 
     /// Authority to decode any transfer amount in a confidential transafer.
     pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
-
-    /// Authority to withraw withheld fees that are associated with accounts. It must be set to
-    /// `None` if the mint is not extended for fees.
-    ///
-    /// Note that the withdraw withheld authority has the ability to decode any withheld fee
-    /// amount that are associated with accounts. When combined with the fee parameters, the
-    /// withheld fee amounts can reveal information about transfer amounts.
-    ///
-    /// * If not `None`, transfers must include ElGamal cyphertext of the transfer fee with this
-    /// public key. If this is the case, but the base mint is not extended for fees, then any
-    /// transfer will fail.
-    /// * If `None`, transfer fee is disabled. If this is the case, but the base mint is extended
-    /// for fees, then any transfer will fail.
-    pub withdraw_withheld_authority_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
-
-    /// Withheld transfer fee confidential tokens that have been moved to the mint for withdrawal.
-    /// This will always be zero if fees are never enabled.
-    pub withheld_amount: EncryptedWithheldAmount,
 }
 
 impl Extension for ConfidentialTransferMint {
@@ -122,9 +100,6 @@ pub struct ConfidentialTransferAccount {
     /// The actual `pending_balance_credit_counter` when the last `ApplyPendingBalance` instruction
     /// was executed
     pub actual_pending_balance_credit_counter: PodU64,
-
-    /// The withheld amount of fees. This will always be zero if fees are never enabled.
-    pub withheld_amount: EncryptedWithheldAmount,
 }
 
 impl Extension for ConfidentialTransferAccount {
@@ -146,7 +121,6 @@ impl ConfidentialTransferAccount {
         if self.pending_balance_lo == EncryptedBalance::zeroed()
             && self.pending_balance_hi == EncryptedBalance::zeroed()
             && self.available_balance == EncryptedBalance::zeroed()
-            && self.withheld_amount == EncryptedWithheldAmount::zeroed()
         {
             Ok(())
         } else {

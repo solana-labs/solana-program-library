@@ -1,4 +1,4 @@
-import { createMemoInstruction } from '../../src';
+import { createMemoInstruction } from '../../src/index';
 import { Connection, Keypair, Transaction, LAMPORTS_PER_SOL, sendAndConfirmTransaction } from '@solana/web3.js';
 
 test('transaction: live', async () => {

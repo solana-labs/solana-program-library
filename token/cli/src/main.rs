@@ -38,6 +38,7 @@ use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
         confidential_transfer::ConfidentialTransferMint,
+        confidential_transfer_fee::ConfidentialTransferFeeConfig,
         cpi_guard::CpiGuard,
         default_account_state::DefaultAccountState,
         interest_bearing_mint::InterestBearingConfig,
@@ -45,6 +46,7 @@ use spl_token_2022::{
         mint_close_authority::MintCloseAuthority,
         permanent_delegate::PermanentDelegate,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig},
+        transfer_hook::TransferHook,
         BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
@@ -179,8 +181,6 @@ pub fn mint_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .takes_value(true)
         .value_name("MINT_ADDRESS")
         .validator(is_valid_pubkey)
-        .requires(SIGN_ONLY_ARG.name)
-        .requires(BLOCKHASH_ARG.name)
         .help(MINT_ADDRESS_ARG.help)
 }
 
@@ -194,8 +194,6 @@ pub fn mint_decimals_arg<'a, 'b>() -> Arg<'a, 'b> {
         .takes_value(true)
         .value_name("MINT_DECIMALS")
         .validator(is_mint_decimals)
-        .requires(SIGN_ONLY_ARG.name)
-        .requires(BLOCKHASH_ARG.name)
         .help(MINT_DECIMALS_ARG.help)
 }
 
@@ -216,8 +214,6 @@ pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .takes_value(true)
         .value_name("DELEGATE_ADDRESS")
         .validator(is_valid_pubkey)
-        .requires(SIGN_ONLY_ARG.name)
-        .requires(BLOCKHASH_ARG.name)
         .help(DELEGATE_ADDRESS_ARG.help)
 }
 
@@ -368,10 +364,16 @@ fn token_client_from_config(
         config.fee_payer()?.clone(),
     );
 
-    if let (Some(nonce_account), Some(nonce_authority)) =
-        (config.nonce_account, &config.nonce_authority)
-    {
-        Ok(token.with_nonce(&nonce_account, Arc::clone(nonce_authority)))
+    if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
+        config.nonce_account,
+        &config.nonce_authority,
+        config.nonce_blockhash,
+    ) {
+        Ok(token.with_nonce(
+            &nonce_account,
+            Arc::clone(nonce_authority),
+            &nonce_blockhash,
+        ))
     } else {
         Ok(token)
     }
@@ -386,10 +388,16 @@ fn native_token_client_from_config(
         config.fee_payer()?.clone(),
     );
 
-    if let (Some(nonce_account), Some(nonce_authority)) =
-        (config.nonce_account, &config.nonce_authority)
-    {
-        Ok(token.with_nonce(&nonce_account, Arc::clone(nonce_authority)))
+    if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
+        config.nonce_account,
+        &config.nonce_authority,
+        config.nonce_blockhash,
+    ) {
+        Ok(token.with_nonce(
+            &nonce_account,
+            Arc::clone(nonce_authority),
+            &nonce_blockhash,
+        ))
     } else {
         Ok(token)
     }
@@ -471,7 +479,6 @@ async fn command_create_token(
             authority: Some(authority),
             auto_approve_new_accounts: auto_approve,
             auditor_encryption_pubkey: None,
-            withdraw_withheld_authority_encryption_pubkey: None,
         });
     }
 
@@ -772,6 +779,10 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
         AuthorityType::PermanentDelegate => "permanent delegate",
         AuthorityType::ConfidentialTransferMint => "confidential transfer mint authority",
+        AuthorityType::TransferHookProgramId => "transfer hook program id authority",
+        AuthorityType::ConfidentialTransferFeeConfig => {
+            "confidential transfer fee config authority"
+        }
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -849,6 +860,30 @@ async fn command_authorize(
                         ))
                     }
                 }
+                AuthorityType::TransferHookProgramId => {
+                    if let Ok(transfer_hook) = mint.get_extension::<TransferHook>() {
+                        Ok(COption::<Pubkey>::from(transfer_hook.authority))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support a transfer hook",
+                            account
+                        ))
+                    }
+                }
+                AuthorityType::ConfidentialTransferFeeConfig => {
+                    if let Ok(confidential_transfer_fee_config) =
+                        mint.get_extension::<ConfidentialTransferFeeConfig>()
+                    {
+                        Ok(COption::<Pubkey>::from(
+                            confidential_transfer_fee_config.authority,
+                        ))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support confidential transfer fees",
+                            account
+                        ))
+                    }
+                }
             }?;
 
             Ok((account, previous_authority))
@@ -883,7 +918,9 @@ async fn command_authorize(
                 | AuthorityType::WithheldWithdraw
                 | AuthorityType::InterestRate
                 | AuthorityType::PermanentDelegate
-                | AuthorityType::ConfidentialTransferMint => Err(format!(
+                | AuthorityType::ConfidentialTransferMint
+                | AuthorityType::TransferHookProgramId
+                | AuthorityType::ConfidentialTransferFeeConfig => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
@@ -2384,11 +2421,17 @@ impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
     }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
+    }
 }
 
 struct SignOnlyNeedsMintDecimals {}
 impl offline::ArgsConfig for SignOnlyNeedsMintDecimals {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[MINT_DECIMALS_ARG.name])
+    }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[MINT_DECIMALS_ARG.name])
     }
 }
@@ -2398,11 +2441,17 @@ impl offline::ArgsConfig for SignOnlyNeedsMintAddress {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name])
     }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[MINT_ADDRESS_ARG.name])
+    }
 }
 
 struct SignOnlyNeedsDelegateAddress {}
 impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
+    }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
     }
 }
@@ -3623,6 +3672,7 @@ fn app<'a, 'b>(
                     )
                 )
                 .arg(mint_decimals_arg())
+                .offline_args_config(&SignOnlyNeedsMintDecimals{})
         )
         .subcommand(
             SubCommand::with_name(CommandName::RecoverLamports.into())
@@ -3837,6 +3887,7 @@ async fn process_command<'a>(
                 "interest-rate" => AuthorityType::InterestRate,
                 "permanent-delegate" => AuthorityType::PermanentDelegate,
                 "confidential-transfer-mint" => AuthorityType::ConfidentialTransferMint,
+                "transfer-hook-program-id" => AuthorityType::TransferHookProgramId,
                 _ => unreachable!(),
             };
 
@@ -4499,6 +4550,7 @@ mod tests {
             default_signer: Some(Arc::new(clone_keypair(payer))),
             nonce_account: None,
             nonce_authority: None,
+            nonce_blockhash: None,
             sign_only: false,
             dump_transaction_message: false,
             multisigner_pubkeys: vec![],
@@ -4525,6 +4577,7 @@ mod tests {
             default_signer: None,
             nonce_account: None,
             nonce_authority: None,
+            nonce_blockhash: None,
             sign_only: false,
             dump_transaction_message: false,
             multisigner_pubkeys: vec![],
@@ -6870,7 +6923,6 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn confidential_transfer() {
-        use spl_token_2022::extension::confidential_transfer::EncryptedWithheldAmount;
         use spl_token_2022::pod::EncryptionPubkey;
 
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6920,16 +6972,6 @@ mod tests {
         assert_eq!(
             Option::<EncryptionPubkey>::from(extension.auditor_encryption_pubkey),
             None,
-        );
-        assert_eq!(
-            Option::<EncryptionPubkey>::from(
-                extension.withdraw_withheld_authority_encryption_pubkey
-            ),
-            None,
-        );
-        assert_eq!(
-            Option::<EncryptedWithheldAmount>::from(extension.withheld_amount),
-            Some(EncryptedWithheldAmount::default()),
         );
 
         process_test_command(

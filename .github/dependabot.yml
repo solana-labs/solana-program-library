@@ -1,16 +1,18 @@
 version: 2
 updates:
-- package-ecosystem: npm
-  directory: "/token/js"
+- package-ecosystem: cargo
+  directory: "/"
   schedule:
     interval: daily
     time: "01:00"
     timezone: America/Los_Angeles
-  open-pull-requests-limit: 3
   labels:
     - "automerge"
+  open-pull-requests-limit: 6
+  ignore:
+    - dependency-name: "cbindgen"
 - package-ecosystem: npm
-  directory: "/token-lending/js"
+  directory: "/token/js"
   schedule:
     interval: daily
     time: "02:00"
@@ -19,7 +21,7 @@ updates:
   labels:
     - "automerge"
 - package-ecosystem: npm
-  directory: "/token-swap/js"
+  directory: "/token-lending/js"
   schedule:
     interval: daily
     time: "03:00"
@@ -27,14 +29,39 @@ updates:
   open-pull-requests-limit: 3
   labels:
     - "automerge"
-- package-ecosystem: cargo
-  directory: "/"
+- package-ecosystem: npm
+  directory: "/token-swap/js"
   schedule:
     interval: daily
     time: "04:00"
     timezone: America/Los_Angeles
+  open-pull-requests-limit: 3
   labels:
     - "automerge"
+- package-ecosystem: npm
+  directory: "/stake-pool/js"
+  schedule:
+    interval: daily
+    time: "05:00"
+    timezone: America/Los_Angeles
   open-pull-requests-limit: 3
-  ignore:
-    - dependency-name: "cbindgen"
+  labels:
+    - "automerge"
+- package-ecosystem: npm
+  directory: "/name-service/js"
+  schedule:
+    interval: daily
+    time: "06:00"
+    timezone: America/Los_Angeles
+  open-pull-requests-limit: 3
+  labels:
+    - "automerge"
+- package-ecosystem: npm
+  directory: "/memo/js"
+  schedule:
+    interval: daily
+    time: "07:00"
+    timezone: America/Los_Angeles
+  open-pull-requests-limit: 3
+  labels:
+    - "automerge"

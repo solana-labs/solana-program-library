@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 pub mod flash_loan_receiver;
-pub mod genesis;
 
 use assert_matches::*;
 use solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey};

@@ -355,9 +355,9 @@ pub enum GovernanceError {
     #[error("Proposal is not not executable")]
     ProposalIsNotExecutable, // 584
 
-    /// Invalid vote
-    #[error("Invalid vote")]
-    InvalidVote, // 585
+    /// Deny vote is not allowed
+    #[error("Deny vote is not allowed")]
+    DenyVoteIsNotAllowed, // 585
 
     /// Cannot execute defeated option
     #[error("Cannot execute defeated option")]
@@ -466,6 +466,38 @@ pub enum GovernanceError {
     /// Invalid State: Proposal is not in final state
     #[error("Invalid State: Proposal is not in final state")]
     InvalidStateNotFinal, // 612
+
+    ///Invalid state for proposal state transition to Completed
+    #[error("Invalid state for proposal state transition to Completed")]
+    InvalidStateToCompleteProposal, // 613
+
+    /// Invalid number of vote choices
+    #[error("Invalid number of vote choices")]
+    InvalidNumberOfVoteChoices, // 614
+
+    /// Ranked vote is not supported
+    #[error("Ranked vote is not supported")]
+    RankedVoteIsNotSupported, // 615
+
+    /// Choice weight must be 100%
+    #[error("Choice weight must be 100%")]
+    ChoiceWeightMustBe100Percent, // 616
+
+    /// Single choice only is allowed
+    #[error("Single choice only is allowed")]
+    SingleChoiceOnlyIsAllowed, // 617
+
+    /// At least single choice is required
+    #[error("At least single choice is required")]
+    AtLeastSingleChoiceIsRequired, // 618
+
+    /// Total vote weight must be 100%
+    #[error("Total vote weight must be 100%")]
+    TotalVoteWeightMustBe100Percent, // 619
+
+    /// Invalid multi choice proposal parameters
+    #[error("Invalid multi choice proposal parameters")]
+    InvalidMultiChoiceProposalParameters, // 620
 }
 
 impl PrintProgramError for GovernanceError {

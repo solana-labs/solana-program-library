@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-arrayref = "0.3.6"
+arrayref = "0.3.7"
 solana-program = "1.14.12"
 spl-token = { version = "3.5", path = "../../token/program", features=["no-entrypoint"] }
 

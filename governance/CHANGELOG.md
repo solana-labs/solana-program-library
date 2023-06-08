@@ -1,9 +1,25 @@
 # SPL Governance Changelog
 
-## v3.0.0 - development
+## v3.1.1 - 25 Apr 2022
 
-- Support separate vote threshold for `Council`
-- `Council` Veto vote
+- Weighted multi choice voting
+- Revoking own membership
+
+## v3.1.0 - 13 Dec 2022
+
+- Council governance plugins
+- Non transferable and revokable membership
+- Veto vote
+- Council wallet rules
+  - approval quorum
+  - vote tipping
+  - veto threshold
+- Explicitly disabled options
+  - community/council vote
+  - community/council proposals
+- Absolute max supply
+- Proposal cool off time
+- Proposal deposit
 
 ## v2.2.4 - 24 Mar 2022
 

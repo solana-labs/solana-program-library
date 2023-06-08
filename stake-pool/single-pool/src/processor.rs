@@ -3,8 +3,9 @@
 use {
     crate::{
         error::SinglePoolError, instruction::SinglePoolInstruction, MINT_DECIMALS,
-        POOL_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_STAKE_PREFIX, VOTE_STATE_END,
-        VOTE_STATE_START,
+        POOL_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_STAKE_PREFIX,
+        VOTE_STATE_AUTHORIZED_WITHDRAWER_END, VOTE_STATE_AUTHORIZED_WITHDRAWER_START,
+        VOTE_STATE_DISCRIMINATOR_END,
     },
     borsh::BorshDeserialize,
     mpl_token_metadata::{
@@ -158,7 +159,7 @@ fn check_vote_account(vote_account_info: &AccountInfo) -> Result<(), ProgramErro
 
     let vote_account_data = &vote_account_info.try_borrow_data()?;
     let state_variant = vote_account_data
-        .get(..VOTE_STATE_START)
+        .get(..VOTE_STATE_DISCRIMINATOR_END)
         .and_then(|s| s.try_into().ok())
         .ok_or(SinglePoolError::UnparseableVoteAccount)?;
 
@@ -936,7 +937,7 @@ impl Processor {
         // and validator-operators we spoke with indicated this would be their preference as well
         let vote_account_data = &vote_account_info.try_borrow_data()?;
         let vote_account_withdrawer = vote_account_data
-            .get(VOTE_STATE_START..VOTE_STATE_END)
+            .get(VOTE_STATE_AUTHORIZED_WITHDRAWER_START..VOTE_STATE_AUTHORIZED_WITHDRAWER_END)
             .map(Pubkey::new)
             .ok_or(SinglePoolError::UnparseableVoteAccount)?;
 
@@ -1025,6 +1026,318 @@ impl Processor {
             SinglePoolInstruction::UpdateTokenMetadata { name, symbol, uri } => {
                 msg!("Instruction: UpdateTokenMetadata");
                 Self::process_update_pool_token_metadata(program_id, accounts, name, symbol, uri)
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::integer_arithmetic)]
+mod tests {
+    use {
+        super::*,
+        approx::assert_relative_eq,
+        rand::{
+            distributions::{Distribution, Uniform},
+            rngs::StdRng,
+            seq::{IteratorRandom, SliceRandom},
+            Rng, SeedableRng,
+        },
+        std::collections::BTreeMap,
+        test_case::test_case,
+    };
+
+    // approximately 6%/yr assuking 146 epochs
+    const INFLATION_BASE_RATE: f64 = 0.0004;
+
+    #[derive(Clone, Debug, Default)]
+    struct PoolState {
+        pub token_supply: u64,
+        pub total_stake: u64,
+        pub user_token_balances: BTreeMap<Pubkey, u64>,
+    }
+    impl PoolState {
+        // deposits a given amount of stake and returns the equivalent tokens on success
+        // note this is written as unsugared do-notation, so *any* failure returns None
+        // otherwise returns the value produced by its respective calculate function
+        #[rustfmt::skip]
+        pub fn deposit(&mut self, user_pubkey: &Pubkey, stake_to_deposit: u64) -> Option<u64> {
+            calculate_deposit_amount(self.token_supply, self.total_stake, stake_to_deposit)
+                .and_then(|tokens_to_mint| self.token_supply.checked_add(tokens_to_mint)
+                .and_then(|new_token_supply| self.total_stake.checked_add(stake_to_deposit)
+                .and_then(|new_total_stake| self.user_token_balances.remove(user_pubkey).or(Some(0))
+                .and_then(|old_user_token_balance| old_user_token_balance.checked_add(tokens_to_mint)
+                .map(|new_user_token_balance| {
+                    self.token_supply = new_token_supply;
+                    self.total_stake = new_total_stake;
+                    let _ = self.user_token_balances.insert(*user_pubkey, new_user_token_balance);
+                    tokens_to_mint
+            })))))
+        }
+
+        // burns a given amount of tokens and returns the equivalent stake on success
+        // note this is written as unsugared do-notation, so *any* failure returns None
+        // otherwise returns the value produced by its respective calculate function
+        #[rustfmt::skip]
+        pub fn withdraw(&mut self, user_pubkey: &Pubkey, tokens_to_burn: u64) -> Option<u64> {
+            calculate_withdraw_amount(self.token_supply, self.total_stake, tokens_to_burn)
+                .and_then(|stake_to_withdraw| self.token_supply.checked_sub(tokens_to_burn)
+                .and_then(|new_token_supply| self.total_stake.checked_sub(stake_to_withdraw)
+                .and_then(|new_total_stake| self.user_token_balances.remove(user_pubkey)
+                .and_then(|old_user_token_balance| old_user_token_balance.checked_sub(tokens_to_burn)
+                .map(|new_user_token_balance| {
+                    self.token_supply = new_token_supply;
+                    self.total_stake = new_total_stake;
+                    let _ = self.user_token_balances.insert(*user_pubkey, new_user_token_balance);
+                    stake_to_withdraw
+            })))))
+        }
+
+        // adds an arbitrary amount of stake, as if inflation rewards were granted
+        pub fn reward(&mut self, reward_amount: u64) {
+            self.total_stake = self.total_stake.checked_add(reward_amount).unwrap();
+        }
+
+        // get the token balance for a user
+        pub fn tokens(&self, user_pubkey: &Pubkey) -> u64 {
+            *self.user_token_balances.get(user_pubkey).unwrap_or(&0)
+        }
+
+        // get the amount of stake that belongs to a user
+        pub fn stake(&self, user_pubkey: &Pubkey) -> u64 {
+            let tokens = self.tokens(user_pubkey);
+            if tokens > 0 {
+                u64::try_from(tokens as u128 * self.total_stake as u128 / self.token_supply as u128)
+                    .unwrap()
+            } else {
+                0
+            }
+        }
+
+        // get the share of the pool that belongs to a user, as a float between 0 and 1
+        pub fn share(&self, user_pubkey: &Pubkey) -> f64 {
+            let tokens = self.tokens(user_pubkey);
+            if tokens > 0 {
+                tokens as f64 / self.token_supply as f64
+            } else {
+                0.0
+            }
+        }
+    }
+
+    // this deterministically tests basic behavior of calculate_deposit_amount and calculate_withdraw_amount
+    #[test]
+    fn simple_deposit_withdraw() {
+        let mut pool = PoolState::default();
+        let alice = Pubkey::new_unique();
+        let bob = Pubkey::new_unique();
+        let chad = Pubkey::new_unique();
+
+        // first deposit. alice now has 250
+        pool.deposit(&alice, 250).unwrap();
+        assert_eq!(pool.tokens(&alice), 250);
+        assert_eq!(pool.token_supply, 250);
+        assert_eq!(pool.total_stake, 250);
+
+        // second deposit. bob now has 750
+        pool.deposit(&bob, 750).unwrap();
+        assert_eq!(pool.tokens(&bob), 750);
+        assert_eq!(pool.token_supply, 1000);
+        assert_eq!(pool.total_stake, 1000);
+
+        // alice controls 25% of the pool and bob controls 75%. rewards should accrue likewise
+        // use nice even numbers, we can test fiddly stuff in the stochastic cases
+        assert_relative_eq!(pool.share(&alice), 0.25);
+        assert_relative_eq!(pool.share(&bob), 0.75);
+        pool.reward(1000);
+        assert_eq!(pool.stake(&alice), pool.tokens(&alice) * 2);
+        assert_eq!(pool.stake(&bob), pool.tokens(&bob) * 2);
+        assert_relative_eq!(pool.share(&alice), 0.25);
+        assert_relative_eq!(pool.share(&bob), 0.75);
+
+        // alice harvests rewards, reducing her share of the *previous* pool size to 12.5%
+        // but because the pool itself has shrunk to 87.5%, its actually more like 14.3%
+        // luckily chad deposits immediately after to make our math easier
+        let stake_removed = pool.withdraw(&alice, 125).unwrap();
+        pool.deposit(&chad, 250).unwrap();
+        assert_eq!(stake_removed, 250);
+        assert_relative_eq!(pool.share(&alice), 0.125);
+        assert_relative_eq!(pool.share(&bob), 0.75);
+
+        // bob and chad exit the pool
+        let stake_removed = pool.withdraw(&bob, 750).unwrap();
+        assert_eq!(stake_removed, 1500);
+        assert_relative_eq!(pool.share(&bob), 0.0);
+        pool.withdraw(&chad, 125).unwrap();
+        assert_relative_eq!(pool.share(&alice), 1.0);
+    }
+
+    // this stochastically tests calculate_deposit_amount and calculate_withdraw_amount
+    // the objective is specifically to ensure that the math does not fail on any combination of state changes
+    // the no_minimum case is to account for a future where small deposits are possible through multistake
+    #[test_case(rand::random(), false, false; "no_rewards")]
+    #[test_case(rand::random(), true, false; "with_rewards")]
+    #[test_case(rand::random(), true, true; "no_minimum")]
+    fn random_deposit_withdraw(seed: u64, with_rewards: bool, no_minimum: bool) {
+        println!(
+            "TEST SEED: {}. edit the test case to pass this value if needed to debug failures",
+            seed
+        );
+        let mut prng = rand::rngs::StdRng::seed_from_u64(seed);
+
+        // deposit_range is the range of typical deposits within minimum_delegation
+        // minnow_range is under the minimum for cases where we test that
+        // op_range is how we roll whether to deposit, withdraw, or reward
+        // std_range is a standard probability
+        let deposit_range = Uniform::from(LAMPORTS_PER_SOL..LAMPORTS_PER_SOL * 1000);
+        let minnow_range = Uniform::from(1..LAMPORTS_PER_SOL);
+        let op_range = Uniform::from(if with_rewards { 0.0..1.0 } else { 0.0..0.65 });
+        let std_range = Uniform::from(0.0..1.0);
+
+        let deposit_amount = |prng: &mut StdRng| {
+            if no_minimum && prng.gen_bool(0.2) {
+                minnow_range.sample(prng)
+            } else {
+                deposit_range.sample(prng)
+            }
+        };
+
+        // run everything a number of times to get a good sample
+        for _ in 0..100 {
+            // PoolState tracks all outstanding tokens and the total combined stake
+            // there is no reasonable way to track "deposited stake" because reward accrual makes this concept incoherent
+            // a token corresponds to a percentage, not a stake value
+            let mut pool = PoolState::default();
+
+            // generate between 1 and 100 users and have ~half of them deposit
+            // note for most of these tests we adhere to the minimum delegation
+            // one of the thing we want to see is deposit size being many ooms larger than reward size
+            let mut users = vec![];
+            let user_count: usize = prng.gen_range(1..=100);
+            for _ in 0..user_count {
+                let user = Pubkey::new_unique();
+
+                if prng.gen_bool(0.5) {
+                    pool.deposit(&user, deposit_amount(&mut prng)).unwrap();
+                }
+
+                users.push(user);
+            }
+
+            // now we do a set of arbitrary operations and confirm invariants hold
+            // we underweight withdraw a little bit to lessen the chances we random walk to an empty pool
+            for _ in 0..1000 {
+                match op_range.sample(&mut prng) {
+                    // deposit a random amount of stake for tokens with a random user
+                    // check their stake, tokens, and share increase by the expected amount
+                    n if n <= 0.35 => {
+                        let user = users.choose(&mut prng).unwrap();
+                        let prev_share = pool.share(user);
+                        let prev_stake = pool.stake(user);
+                        let prev_token_supply = pool.token_supply;
+                        let prev_total_stake = pool.total_stake;
+
+                        let stake_deposited = deposit_amount(&mut prng);
+                        let tokens_minted = pool.deposit(user, stake_deposited).unwrap();
+
+                        // stake increased by exactly the deposit amount
+                        assert_eq!(pool.total_stake - prev_total_stake, stake_deposited);
+
+                        // calculated stake fraction is within 2 lamps of deposit amount
+                        assert!(
+                            (pool.stake(user) as i64 - prev_stake as i64 - stake_deposited as i64)
+                                .abs()
+                                <= 2
+                        );
+
+                        // tokens increased by exactly the mint amount
+                        assert_eq!(pool.token_supply - prev_token_supply, tokens_minted);
+
+                        // tokens per supply increased with stake per total
+                        if prev_total_stake > 0 {
+                            assert_relative_eq!(
+                                pool.share(user) - prev_share,
+                                pool.stake(user) as f64 / pool.total_stake as f64
+                                    - prev_stake as f64 / prev_total_stake as f64,
+                                epsilon = 1e-6
+                            );
+                        }
+                    }
+
+                    // burn a random amount of tokens from a random user with outstanding deposits
+                    // check their stake, tokens, and share decrease by the expected amount
+                    n if n > 0.35 && n <= 0.65 => {
+                        if let Some(user) = users
+                            .iter()
+                            .filter(|user| pool.tokens(user) > 0)
+                            .choose(&mut prng)
+                        {
+                            let prev_tokens = pool.tokens(user);
+                            let prev_share = pool.share(user);
+                            let prev_stake = pool.stake(user);
+                            let prev_token_supply = pool.token_supply;
+                            let prev_total_stake = pool.total_stake;
+
+                            let tokens_burned = if std_range.sample(&mut prng) <= 0.1 {
+                                prev_tokens
+                            } else {
+                                prng.gen_range(0..prev_tokens)
+                            };
+                            let stake_received = pool.withdraw(user, tokens_burned).unwrap();
+
+                            // stake decreased by exactly the withdraw amount
+                            assert_eq!(prev_total_stake - pool.total_stake, stake_received);
+
+                            // calculated stake fraction is within 2 lamps of withdraw amount
+                            assert!(
+                                (prev_stake as i64
+                                    - pool.stake(user) as i64
+                                    - stake_received as i64)
+                                    .abs()
+                                    <= 2
+                            );
+
+                            // tokens decreased by the burn amount
+                            assert_eq!(prev_token_supply - pool.token_supply, tokens_burned);
+
+                            // tokens per supply decreased with stake per total
+                            if pool.total_stake > 0 {
+                                assert_relative_eq!(
+                                    prev_share - pool.share(user),
+                                    prev_stake as f64 / prev_total_stake as f64
+                                        - pool.stake(user) as f64 / pool.total_stake as f64,
+                                    epsilon = 1e-6
+                                );
+                            }
+                        };
+                    }
+
+                    // run a single epoch worth of rewards
+                    // check all user shares stay the same and stakes increase by the expected amount
+                    _ => {
+                        assert!(with_rewards);
+
+                        let prev_shares_stakes = users
+                            .iter()
+                            .map(|user| (user, pool.share(user), pool.stake(user)))
+                            .filter(|(_, _, stake)| stake > &0)
+                            .collect::<Vec<_>>();
+
+                        pool.reward((pool.total_stake as f64 * INFLATION_BASE_RATE) as u64);
+
+                        for (user, prev_share, prev_stake) in prev_shares_stakes {
+                            // shares are the same before and after
+                            assert_eq!(pool.share(user), prev_share);
+
+                            let curr_stake = pool.stake(user);
+                            let stake_share = prev_stake as f64 * INFLATION_BASE_RATE;
+                            let stake_diff = (curr_stake - prev_stake) as f64;
+
+                            // stake increase is within 2 lamps when calculated as a difference or a percentage
+                            assert!((stake_share - stake_diff).abs() <= 2.0);
+                        }
+                    }
+                }
             }
         }
     }

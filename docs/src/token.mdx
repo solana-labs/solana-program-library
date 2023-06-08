@@ -1819,11 +1819,14 @@ The sender's wallet must not require that the recipient's main wallet address
 hold a balance before allowing the transfer.
 
 ### Registry for token details
-At the moment there exist two solutions for Token Mint registries:
 
-* hard coded addresses in the wallet or dapp
-* [spl-token-registry](https://www.npmjs.com/package/@solana/spl-token-registry)
-package, maintained at [https://github.com/solana-labs/token-list](https://github.com/solana-labs/token-list)
+At the moment there exist a few solutions for Token Mint registries:
+
+* Hard coded addresses in the wallet or dapp
+* Metaplex Token Metadata. Learn more at the
+[Token Metadata Documentation](https://docs.metaplex.com/programs/token-metadata/)
+* The deprecated token-list repo has
+[instructions for creating your own metadata](https://github.com/solana-labs/token-list#this-repository-is-eol-)
 
 **A decentralized solution is in progress.**
 

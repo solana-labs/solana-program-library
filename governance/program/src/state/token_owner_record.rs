@@ -254,9 +254,9 @@ impl TokenOwnerRecordV2 {
     }
 
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::TokenOwnerRecordV2 {
-            BorshSerialize::serialize(&self, writer)?
+            borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::TokenOwnerRecordV1 {
             // V1 account can't be resized and we have to translate it back to the original format
 
@@ -278,7 +278,7 @@ impl TokenOwnerRecordV2 {
                 governance_delegate: self.governance_delegate,
             };
 
-            BorshSerialize::serialize(&token_owner_record_data_v1, writer)?;
+            borsh::to_writer(writer, &token_owner_record_data_v1)?
         }
 
         Ok(())
@@ -528,9 +528,7 @@ mod test {
         };
 
         let mut legacy_data = vec![];
-        legacy_token_owner_record
-            .serialize(&mut legacy_data)
-            .unwrap();
+        borsh::to_writer(&mut legacy_data, &legacy_token_owner_record).unwrap();
 
         let program_id = Pubkey::new_unique();
 

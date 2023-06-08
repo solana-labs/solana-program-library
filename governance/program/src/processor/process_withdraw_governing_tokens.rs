@@ -77,7 +77,7 @@ pub fn process_withdraw_governing_tokens(
     )?;
 
     token_owner_record_data.governing_token_deposit_amount = 0;
-    token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;
+    token_owner_record_data.serialize(&mut token_owner_record_info.data.borrow_mut()[..])?;
 
     Ok(())
 }

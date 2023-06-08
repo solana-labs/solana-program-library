@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Patch in a Solana v1.12 monorepo that supports 2x transactions for testing the
+# Patch in a Solana monorepo that supports 2x transactions for testing the
 # SPL Token 2022 Confidential Transfer extension
 #
 
@@ -25,11 +25,5 @@ if [[ ! -f twoxtx-solana/.twoxtx-patched ]]; then
 fi
 
 ../patch.crates-io.sh twoxtx-solana
-repo="token/twoxtx-solana"
-if sed -n '/exclude = \[/,/\]/p' ../Cargo.toml | grep -q "$repo"; then
-  echo "$repo is already excluded"
-else
-  sed -i'' ../Cargo.toml -e "/exclude/a \ \ \"$repo\","
-fi
 
 exit 0

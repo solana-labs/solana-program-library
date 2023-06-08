@@ -1,3 +1,6 @@
+[profile.dev]
+split-debuginfo = "unpacked"
+
 [workspace]
 members = [
   "associated-token-account/program",
@@ -22,6 +25,9 @@ members = [
   "libraries/math",
   "libraries/concurrent-merkle-tree",
   "libraries/merkle-tree-reference",
+  "libraries/program-error",
+  "libraries/tlv-account-resolution",
+  "libraries/type-length-value",
   "memo/program",
   "name-service/program",
   "managed-token/program",
@@ -41,23 +47,18 @@ members = [
   "token/program",
   "token/program-2022",
   "token/program-2022-test",
+  "token/transfer-hook-example",
+  "token/transfer-hook-interface",
   "token/client",
   "utils/cgen",
   "utils/test-client",
   "token-lending/flash_loan_receiver",
 ]
+
 exclude = [
-  "farms/farm-client",
-  "farms/farm-ctrl",
-  "farms/farm-rpc",
-  "farms/farm-sdk",
-  "farms/fund",
-  "farms/router-main",
-  "farms/router-raydium",
-  "farms/router-saber",
-  "farms/router-orca",
-  "farms/vaults",
 ]
 
-[profile.dev]
-split-debuginfo = "unpacked"
+[patch.crates-io]
+# Rust 1.69+ broke ntapi v0.3.x, which doesn't contain proper fix:
+#   https://github.com/MSxDOS/ntapi/pull/12
+ntapi = { git = "https://github.com/solana-labs/ntapi", rev = "97ede981a1777883ff86d142b75024b023f04fad" }

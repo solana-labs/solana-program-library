@@ -397,7 +397,7 @@ pub enum TokenInstruction<'a> {
         /// account.
         m: u8,
     },
-    /// Like InitializeMint, but does not require the Rent sysvar to be provided
+    /// Like [`InitializeMint`], but does not require the Rent sysvar to be provided
     ///
     /// Accounts expected by this instruction:
     ///

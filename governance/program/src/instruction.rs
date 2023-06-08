@@ -523,6 +523,17 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` ProposalDeposit account. PDA seeds: ['proposal-deposit', proposal, deposit payer]
     ///   2. `[writable]` Proposal deposit payer (beneficiary) account
     RefundProposalDeposit {},
+
+    /// Transitions an off-chain or manually executable Proposal from Succeeded into Completed state
+    ///
+    /// Upon a successful vote on an off-chain or manually executable proposal it remains in Succeeded state
+    /// Once the external actions are executed the Proposal owner can use the instruction to manually transition it to Completed state
+    ///
+    ///
+    ///   0. `[writable]` Proposal account
+    ///   1. `[]` TokenOwnerRecord account of the Proposal owner
+    ///   2. `[signer]` CompleteProposal authority (Token Owner or Delegate)
+    CompleteProposal {},
 }
 
 /// Creates CreateRealm instruction
@@ -1653,6 +1664,29 @@ pub fn refund_proposal_deposit(
     ];
 
     let instruction = GovernanceInstruction::RefundProposalDeposit {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CompleteProposal instruction to move proposal from Succeeded to Completed
+pub fn complete_proposal(
+    program_id: &Pubkey,
+    // Accounts
+    proposal: &Pubkey,
+    token_owner_record: &Pubkey,
+    complete_proposal_authority: &Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*complete_proposal_authority, true),
+    ];
+
+    let instruction = GovernanceInstruction::CompleteProposal {};
 
     Instruction {
         program_id: *program_id,

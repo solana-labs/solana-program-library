@@ -2,12 +2,12 @@
   "extends": "./tsconfig.base.json",
   "include": ["src"],
   "compilerOptions": {
-    "outDir": "dist/esm/",
+    "outDir": "dist/cjs/",
     "declarationDir": "dist/types",
-    "module": "es2020",
-    "target": "es2020",
     "sourceMap": true,
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "target": "ES2016",
+    "module": "CommonJS"
   }
 }

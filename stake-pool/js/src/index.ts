@@ -9,16 +9,19 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, Token } from '@solana/spl-token';
+import {
+  createApproveInstruction,
+  createAssociatedTokenAccountIdempotentInstruction,
+  getAccount,
+  getAssociatedTokenAddressSync,
+} from '@solana/spl-token';
 import {
   ValidatorAccount,
-  addAssociatedTokenAccount,
   arrayChunk,
   calcLamportsWithdrawAmount,
   findStakeProgramAddress,
   findTransientStakeProgramAddress,
   findWithdrawAuthorityProgramAddress,
-  getTokenAccount,
   getValidatorListAccount,
   newStakeAccount,
   prepareWithdrawAccounts,
@@ -203,18 +206,18 @@ export async function depositStake(
 
   const poolMint = stakePool.account.data.poolMint;
 
-  let rentFee = 0;
-
   // Create token account if not specified
   if (!poolTokenReceiverAccount) {
-    const { associatedAddress, rentFee: fee } = await addAssociatedTokenAccount(
-      connection,
-      authorizedPubkey,
-      poolMint,
-      instructions,
+    const associatedAddress = getAssociatedTokenAddressSync(poolMint, authorizedPubkey);
+    instructions.push(
+      createAssociatedTokenAccountIdempotentInstruction(
+        authorizedPubkey,
+        associatedAddress,
+        authorizedPubkey,
+        poolMint,
+      ),
     );
     poolTokenReceiverAccount = associatedAddress;
-    rentFee += fee;
   }
 
   instructions.push(
@@ -254,7 +257,6 @@ export async function depositStake(
   return {
     instructions,
     signers,
-    rentFee,
   };
 }
 
@@ -287,8 +289,6 @@ export async function depositSol(
   const signers: Signer[] = [userSolTransfer];
   const instructions: TransactionInstruction[] = [];
 
-  let rentFee = 0;
-
   // Create the ephemeral SOL account
   instructions.push(
     SystemProgram.transfer({
@@ -300,14 +300,16 @@ export async function depositSol(
 
   // Create token account if not specified
   if (!destinationTokenAccount) {
-    const { associatedAddress, rentFee: fee } = await addAssociatedTokenAccount(
-      connection,
-      from,
-      stakePool.poolMint,
-      instructions,
+    const associatedAddress = getAssociatedTokenAddressSync(stakePool.poolMint, from);
+    instructions.push(
+      createAssociatedTokenAccountIdempotentInstruction(
+        from,
+        associatedAddress,
+        from,
+        stakePool.poolMint,
+      ),
     );
     destinationTokenAccount = associatedAddress;
-    rentFee += fee;
   }
 
   const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
@@ -333,7 +335,6 @@ export async function depositSol(
   return {
     instructions,
     signers,
-    rentFee,
   };
 }
 
@@ -355,29 +356,16 @@ export async function withdrawStake(
   const poolAmount = solToLamports(amount);
 
   if (!poolTokenAccount) {
-    poolTokenAccount = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
-      stakePool.account.data.poolMint,
-      tokenOwner,
-    );
+    poolTokenAccount = getAssociatedTokenAddressSync(stakePool.account.data.poolMint, tokenOwner);
   }
 
-  const tokenAccount = await getTokenAccount(
-    connection,
-    poolTokenAccount,
-    stakePool.account.data.poolMint,
-  );
-
-  if (!tokenAccount) {
-    throw new Error('Invalid token account');
-  }
+  const tokenAccount = await getAccount(connection, poolTokenAccount);
 
   // Check withdrawFrom balance
-  if (tokenAccount.amount.toNumber() < poolAmount) {
+  if (tokenAccount.amount < poolAmount) {
     throw new Error(
       `Not enough token balance to withdraw ${lamportsToSol(poolAmount)} pool tokens.
-        Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount.toNumber())} pool tokens.`,
+        Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount)} pool tokens.`,
     );
   }
 
@@ -499,12 +487,10 @@ export async function withdrawStake(
   const signers: Signer[] = [userTransferAuthority];
 
   instructions.push(
-    Token.createApproveInstruction(
-      TOKEN_PROGRAM_ID,
+    createApproveInstruction(
       poolTokenAccount,
       userTransferAuthority.publicKey,
       tokenOwner,
-      [],
       poolAmount,
     ),
   );
@@ -595,27 +581,18 @@ export async function withdrawSol(
   const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
   const poolAmount = solToLamports(amount);
 
-  const poolTokenAccount = await Token.getAssociatedTokenAddress(
-    ASSOCIATED_TOKEN_PROGRAM_ID,
-    TOKEN_PROGRAM_ID,
+  const poolTokenAccount = getAssociatedTokenAddressSync(
     stakePool.account.data.poolMint,
     tokenOwner,
   );
 
-  const tokenAccount = await getTokenAccount(
-    connection,
-    poolTokenAccount,
-    stakePool.account.data.poolMint,
-  );
-  if (!tokenAccount) {
-    throw new Error('Invalid token account');
-  }
+  const tokenAccount = await getAccount(connection, poolTokenAccount);
 
   // Check withdrawFrom balance
-  if (tokenAccount.amount.toNumber() < poolAmount) {
+  if (tokenAccount.amount < poolAmount) {
     throw new Error(
       `Not enough token balance to withdraw ${lamportsToSol(poolAmount)} pool tokens.
-          Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount.toNumber())} pool tokens.`,
+          Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount)} pool tokens.`,
     );
   }
 
@@ -625,12 +602,10 @@ export async function withdrawSol(
   const signers: Signer[] = [userTransferAuthority];
 
   instructions.push(
-    Token.createApproveInstruction(
-      TOKEN_PROGRAM_ID,
+    createApproveInstruction(
       poolTokenAccount,
       userTransferAuthority.publicKey,
       tokenOwner,
-      [],
       poolAmount,
     ),
   );
