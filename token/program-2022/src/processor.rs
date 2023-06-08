@@ -7681,23 +7681,50 @@ mod tests {
     #[test]
     #[serial]
     fn test_withdraw_excess_lamports_from_multisig() {
+        {
+            use std::sync::Once;
+            static ONCE: Once = Once::new();
+
+            ONCE.call_once(|| {
+                solana_sdk::program_stubs::set_syscall_stubs(Box::new(SyscallStubs {}));
+            });
+        }
         let program_id = crate::id();
+
+        let mut lamports = 0;
+        let mut mock_data = vec![];
+        let system_program_id = system_program::id();
+        let destination_key = Pubkey::new_unique();
+        let destination_info = AccountInfo::new(
+            &destination_key,
+            true,
+            false,
+            &mut lamports,
+            &mut mock_data,
+            &system_program_id,
+            false,
+            Epoch::default(),
+        );
+
         let multisig_key = Pubkey::new_unique();
+        let mut multisig_account = SolanaAccount::new(0, Multisig::get_packed_len(), &program_id);
+        multisig_account.lamports = 4_000_000_000_000 + multisig_minimum_balance();
         let mut signer_keys = [Pubkey::default(); MAX_SIGNERS];
+
         for signer_key in signer_keys.iter_mut().take(MAX_SIGNERS) {
             *signer_key = Pubkey::new_unique();
         }
-        let default_pubkey = Pubkey::default();
+        let signer_refs: Vec<&Pubkey> = signer_keys.iter().collect();
         let mut signer_lamports = 0;
         let mut signer_data = vec![];
-        let mut signers = vec![
+        let mut signers: Vec<AccountInfo<'_>> = vec![
             AccountInfo::new(
-                &multisig_key,
+                &destination_key,
                 true,
                 false,
                 &mut signer_lamports,
                 &mut signer_data,
-                &default_pubkey,
+                &program_id,
                 false,
                 Epoch::default(),
             );
@@ -7706,98 +7733,34 @@ mod tests {
         for (signer, key) in signers.iter_mut().zip(&signer_keys) {
             signer.key = key;
         }
-        let mut lamports = 4_000_000_000_000;
-        let mut multisig_data: Vec<u8> = vec![0; Multisig::get_packed_len()];
-        let mut multisig = Multisig::unpack_unchecked(&multisig_data).unwrap();
+
+        let mut multisig =
+            Multisig::unpack_unchecked(&vec![0; Multisig::get_packed_len()]).unwrap();
         multisig.m = MAX_SIGNERS as u8;
         multisig.n = MAX_SIGNERS as u8;
         multisig.signers = signer_keys;
         multisig.is_initialized = true;
-        Multisig::pack(multisig, &mut multisig_data).unwrap();
+        Multisig::pack(multisig, &mut multisig_account.data).unwrap();
 
-        let multisig_account_info = AccountInfo::new(
-            &multisig_key,
-            true,
-            false,
-            &mut lamports,
-            &mut multisig_data,
-            &program_id,
-            false,
-            Epoch::default(),
-        );
+        let multisig_info: AccountInfo = (&multisig_key, true, &mut multisig_account).into();
 
-        let receiver_key = Pubkey::new_unique();
-
-        // let mut receiver_lamports = 0;
-        // let mut receiver_data = vec![];
-        let mut receiver_account = SolanaAccount::new(
-            account_minimum_balance(),
-            Account::get_packed_len(),
-            &default_pubkey,
-        );
-
-        let mut multisig_account =
-            SolanaAccount::new(lamports, Multisig::get_packed_len(), &program_id);
-        multisig_account.data = multisig_data;
-
-        // let receiver_account_info = AccountInfo::new(
-        //     &receiver_key,
-        //     false,
-        //     false,
-        //     &mut receiver_lamports,
-        //     &mut receiver_data,
-        //     &default_pubkey,
-        //     false,
-        //     Epoch::default(),
-        // );
-
-        // let receiver_account_info: AccountInfo =
-        //     (&receiver_key, true, &mut receiver_account).into();
-
-        // let mut account_infos = vec![
-        //     multisig_account_info.clone(),
-        //     receiver_account_info.clone(),
-        //     multisig_account_info.clone(),
-        // ];
-        // account_infos.extend_from_slice(&signers);
-
-        // 1. Create multisig with exceess lamports
-        // 2. Create receiver account
-        // 3. invoke withdraw_excess_lamports
-
-        // let source_info = next_account_info(account_info_iter)?;
-        // let destination_info = next_account_info(account_info_iter)?;
-        // let authority_info = next_account_info(account_info_iter)?;
-        // do_process_instruction_dups(
-        //     withdraw_excess_lamports(
-        //         &program_id,
-        //         &multisig_key,
-        //         &receiver_key,
-        //         &multisig_key,
-        //         &signer_keys
-        //             .iter()
-        //             .map(|k| k as &Pubkey)
-        //             .collect::<Vec<&Pubkey>>(),
-        //     )
-        //     .unwrap(),
-        //     account_infos,
-        // )
-        // .unwrap();
-
-        // do_process_instruction(
-        //     withdraw_excess_lamports(
-        //         &program_id,
-        //         &multisig_key,
-        //         &receiver_key,
-        //         &multisig_key,
-        //         &signer_keys
-        //             .iter()
-        //             .map(|k| k as &Pubkey)
-        //             .collect::<Vec<&Pubkey>>(),
-        //     )
-        //     .unwrap(),
-        //     accounts,
-        // )
-        // .unwrap();
+        let mut signers_infos = vec![
+            multisig_info.clone(),
+            destination_info.clone(),
+            multisig_info.clone(),
+        ];
+        signers_infos.extend(signers);
+        do_process_instruction_dups(
+            withdraw_excess_lamports(
+                &program_id,
+                &multisig_key,
+                &destination_key,
+                &multisig_key,
+                &signer_refs,
+            )
+            .unwrap(),
+            signers_infos,
+        )
+        .unwrap();
     }
 }
