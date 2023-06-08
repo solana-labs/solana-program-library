@@ -5,7 +5,7 @@ import { recoverNestedInstruction } from '../instructions/associatedTokenAccount
 import { getAssociatedTokenAddressSync } from '../state/mint.js';
 
 /**
- * Create and initialize a new associated token account
+ * Recover funds funds in an associated token account which is owned by an associated token account
  *
  * @param connection               Connection to use
  * @param payer                    Payer of the transaction and initialization fees
