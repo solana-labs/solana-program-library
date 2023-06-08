@@ -103,7 +103,7 @@ function buildAssociatedTokenAccountInstruction(
  *
  * @return Instruction to add to a transaction
  */
-export function recoverNestedInstruction(
+export function createRecoverNestedInstruction(
     nestedAssociatedToken: PublicKey,
     nestedMint: PublicKey,
     destinationAssociatedToken: PublicKey,
