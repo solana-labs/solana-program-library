@@ -1420,6 +1420,8 @@ impl Processor {
                 authority_info.data_len(),
                 account_info_iter.as_slice(),
             )?;
+        } else {
+            return Err(TokenError::InvalidState.into());
         }
 
         let source_rent_exempt_reserve = Rent::get()?.minimum_balance(source_info.data_len());
