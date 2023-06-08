@@ -7780,20 +7780,20 @@ mod tests {
         );
 
         let system_program_id = system_program::id();
-        let mut owner_lamports = 0;
-        let mut owner_data = vec![];
+        // let mut owner_lamports = 0;
+        // let mut owner_data = vec![];
         let owner_key = Pubkey::new_unique();
-        let mut owner_account = SolanaAccount::new(0, 0, &system_program::id());
-        let owner_info = AccountInfo::new(
-            &owner_key,
-            true,
-            false,
-            &mut owner_lamports,
-            &mut owner_data,
-            &system_program_id,
-            false,
-            Epoch::default(),
-        );
+        // let mut owner_account = SolanaAccount::new(0, 0, &system_program::id());
+        // let owner_info = AccountInfo::new(
+        //     &owner_key,
+        //     true,
+        //     false,
+        //     &mut owner_lamports,
+        //     &mut owner_data,
+        //     &system_program_id,
+        //     false,
+        //     Epoch::default(),
+        // );
 
         let mut destination_lamports = 0;
         let mut destination_data = vec![];
@@ -7811,34 +7811,46 @@ mod tests {
         let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
-        let mut rent_sysvar = rent_sysvar();
 
+        let mut rent_sysvar = rent_sysvar();
         do_process_instruction(
             initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
             vec![&mut mint_account, &mut rent_sysvar],
         )
         .unwrap();
 
-        do_process_instruction(
-            initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
-            vec![
-                &mut account_account,
-                &mut mint_account,
-                &mut owner_account,
-                &mut rent_sysvar,
-            ],
-        )
-        .unwrap();
+        let mint_info = AccountInfo::new(
+            &mint_key,
+            true,
+            false,
+            &mut mint_account.lamports,
+            &mut mint_account.data,
+            &program_id,
+            false,
+            Epoch::default(),
+        );
 
         let account_info: AccountInfo = (&account_key, true, &mut account_account).into();
 
         do_process_instruction_dups(
-            withdraw_excess_lamports(&program_id, &account_key, &destination_key, &owner_key, &[])
-                .unwrap(),
+            initialize_account3(&program_id, &account_key, &mint_key, &account_key).unwrap(),
+            vec![account_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
+
+        do_process_instruction_dups(
+            withdraw_excess_lamports(
+                &program_id,
+                &account_key,
+                &destination_key,
+                &account_key,
+                &[],
+            )
+            .unwrap(),
             vec![
                 account_info.clone(),
                 destination_info.clone(),
-                owner_info.clone(),
+                account_info.clone(),
             ],
         )
         .unwrap();
@@ -7897,7 +7909,7 @@ mod tests {
         let account_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
 
         do_process_instruction_dups(
-            withdraw_excess_lamports(&program_id, &mint_key, &destination_key, &owner_key, &[])
+            withdraw_excess_lamports(&program_id, &mint_key, &destination_key, &program_id, &[])
                 .unwrap(),
             vec![
                 account_info.clone(),
