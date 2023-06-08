@@ -1398,9 +1398,6 @@ impl Processor {
                 account_info_iter.as_slice(),
             )?;
         } else if let Ok(mint) = StateWithExtensions::<Mint>::unpack(&source_data) {
-            if &mint.base.mint_authority.expect("No mint authority") != authority_info.key {
-                return Err(TokenError::AuthorityTypeNotSupported.into());
-            }
             if let COption::Some(mint_authority) = mint.base.mint_authority {
                 Self::validate_owner(
                     program_id,
@@ -7836,14 +7833,8 @@ mod tests {
         let account_info: AccountInfo = (&account_key, true, &mut account_account).into();
 
         do_process_instruction_dups(
-            withdraw_excess_lamports(
-                &program_id,
-                &account_key,
-                &destination_key,
-                &owner_key,
-                &[],
-            )
-            .unwrap(),
+            withdraw_excess_lamports(&program_id, &account_key, &destination_key, &owner_key, &[])
+                .unwrap(),
             vec![
                 account_info.clone(),
                 destination_info.clone(),
@@ -7906,14 +7897,8 @@ mod tests {
         let account_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
 
         do_process_instruction_dups(
-            withdraw_excess_lamports(
-                &program_id,
-                &mint_key,
-                &destination_key,
-                &owner_key,
-                &[],
-            )
-            .unwrap(),
+            withdraw_excess_lamports(&program_id, &mint_key, &destination_key, &owner_key, &[])
+                .unwrap(),
             vec![
                 account_info.clone(),
                 destination_info.clone(),
