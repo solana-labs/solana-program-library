@@ -7911,7 +7911,7 @@ mod tests {
                 &mint_key,
                 &destination_key,
                 &owner_key,
-                &[&owner_key],
+                &[],
             )
             .unwrap(),
             vec![
