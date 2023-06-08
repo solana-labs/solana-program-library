@@ -16,7 +16,7 @@ import { getAssociatedTokenAddressSync } from '../state/mint.js';
  * @param programId                SPL Token program account
  * @param associatedTokenProgramId SPL Associated Token program account
  *
- * @return Address of the new associated token account
+ * @return Signature of the confirmed transaction
  */
 export async function recoverNested(
     connection: Connection,
