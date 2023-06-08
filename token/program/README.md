@@ -7,8 +7,6 @@ utilize to create and use their tokens.
 
 Full documentation is available at https://spl.solana.com/token
 
-JavaScript bindings are available in the `./js` directory.
-
 ## Audit
 
 The repository [README](https://github.com/solana-labs/solana-program-library#audits)

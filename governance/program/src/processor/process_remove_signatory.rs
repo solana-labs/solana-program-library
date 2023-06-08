@@ -48,7 +48,7 @@ pub fn process_remove_signatory(
 
     proposal_data.signatories_count = proposal_data.signatories_count.checked_sub(1).unwrap();
 
-    proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
+    proposal_data.serialize(&mut proposal_info.data.borrow_mut()[..])?;
 
     dispose_account(signatory_record_info, beneficiary_info)?;
 

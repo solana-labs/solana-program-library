@@ -1,0 +1,25 @@
+[package]
+name = "spl-transfer-hook-interface"
+version = "0.1.0"
+description = "Solana Program Library Transfer Hook Interface"
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2021"
+
+[dependencies]
+arrayref = "0.3.7"
+bytemuck = { version = "1.13.1", features = ["derive"] }
+num-derive = "0.3"
+num-traits = "0.2"
+num_enum = "0.6.1"
+solana-program = "1.14.12"
+spl-tlv-account-resolution = { version = "0.1.0" , path = "../../libraries/tlv-account-resolution" }
+spl-type-length-value = { version = "0.1.0" , path = "../../libraries/type-length-value" }
+thiserror = "1.0"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]

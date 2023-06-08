@@ -55,6 +55,10 @@ the Solana Mainnet Beta. Currently, this includes:
 If you discover a critical security issue in an out-of-scope program, your finding
 may still be valuable.
 
+[token-2022](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022)
+is still under audit and not meant for full production use. In the meantime, all
+clusters have the latest program deployed **for testing and development purposes ONLY**.
+
 Many programs, including
 [token-swap](https://github.com/solana-labs/solana-program-library/tree/master/token-swap/program)
 and [token-lending](https://github.com/solana-labs/solana-program-library/tree/master/token-lending/program),

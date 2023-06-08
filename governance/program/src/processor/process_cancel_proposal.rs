@@ -45,16 +45,16 @@ pub fn process_cancel_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
     proposal_owner_record_data.decrease_outstanding_proposal_count();
-    proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
+    proposal_owner_record_data.serialize(&mut proposal_owner_record_info.data.borrow_mut()[..])?;
 
     proposal_data.state = ProposalState::Cancelled;
     proposal_data.closed_at = Some(clock.unix_timestamp);
 
-    proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
+    proposal_data.serialize(&mut proposal_info.data.borrow_mut()[..])?;
 
     // Update  Governance active_proposal_count
     governance_data.active_proposal_count = governance_data.active_proposal_count.saturating_sub(1);
-    governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
+    governance_data.serialize(&mut governance_info.data.borrow_mut()[..])?;
 
     Ok(())
 }

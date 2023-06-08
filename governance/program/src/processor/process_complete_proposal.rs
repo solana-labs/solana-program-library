@@ -36,6 +36,6 @@ pub fn process_complete_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
     proposal_data.closed_at = Some(clock.unix_timestamp);
     proposal_data.state = ProposalState::Completed;
 
-    proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
+    proposal_data.serialize(&mut proposal_info.data.borrow_mut()[..])?;
     Ok(())
 }

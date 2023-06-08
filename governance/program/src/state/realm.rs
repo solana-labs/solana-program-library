@@ -303,9 +303,9 @@ impl RealmV2 {
     }
 
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::RealmV2 {
-            BorshSerialize::serialize(&self, writer)?
+            borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::RealmV1 {
             // V1 account can't be resized and we have to translate it back to the original format
 
@@ -324,7 +324,7 @@ impl RealmV2 {
                 name: self.name,
             };
 
-            BorshSerialize::serialize(&realm_data_v1, writer)?;
+            borsh::to_writer(writer, &realm_data_v1)?
         }
 
         Ok(())
@@ -512,7 +512,7 @@ mod test {
             name: String,
 
             #[allow(dead_code)]
-            /// Realm config args     
+            /// Realm config args
             config_args: RealmConfigArgsV1,
         },
 

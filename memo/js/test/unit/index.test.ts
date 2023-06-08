@@ -1,4 +1,4 @@
-import { createMemoInstruction, MEMO_PROGRAM_ID } from '../../src';
+import { createMemoInstruction, MEMO_PROGRAM_ID } from '../../src/index';
 import { expect } from 'chai';
 import { Keypair } from '@solana/web3.js';
 

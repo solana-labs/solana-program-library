@@ -38,6 +38,7 @@ use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
         confidential_transfer::ConfidentialTransferMint,
+        confidential_transfer_fee::ConfidentialTransferFeeConfig,
         cpi_guard::CpiGuard,
         default_account_state::DefaultAccountState,
         interest_bearing_mint::InterestBearingConfig,
@@ -45,6 +46,7 @@ use spl_token_2022::{
         mint_close_authority::MintCloseAuthority,
         permanent_delegate::PermanentDelegate,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig},
+        transfer_hook::TransferHook,
         BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
@@ -477,7 +479,6 @@ async fn command_create_token(
             authority: Some(authority),
             auto_approve_new_accounts: auto_approve,
             auditor_encryption_pubkey: None,
-            withdraw_withheld_authority_encryption_pubkey: None,
         });
     }
 
@@ -778,6 +779,10 @@ async fn command_authorize(
         AuthorityType::InterestRate => "interest rate authority",
         AuthorityType::PermanentDelegate => "permanent delegate",
         AuthorityType::ConfidentialTransferMint => "confidential transfer mint authority",
+        AuthorityType::TransferHookProgramId => "transfer hook program id authority",
+        AuthorityType::ConfidentialTransferFeeConfig => {
+            "confidential transfer fee config authority"
+        }
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -855,6 +860,30 @@ async fn command_authorize(
                         ))
                     }
                 }
+                AuthorityType::TransferHookProgramId => {
+                    if let Ok(transfer_hook) = mint.get_extension::<TransferHook>() {
+                        Ok(COption::<Pubkey>::from(transfer_hook.authority))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support a transfer hook",
+                            account
+                        ))
+                    }
+                }
+                AuthorityType::ConfidentialTransferFeeConfig => {
+                    if let Ok(confidential_transfer_fee_config) =
+                        mint.get_extension::<ConfidentialTransferFeeConfig>()
+                    {
+                        Ok(COption::<Pubkey>::from(
+                            confidential_transfer_fee_config.authority,
+                        ))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support confidential transfer fees",
+                            account
+                        ))
+                    }
+                }
             }?;
 
             Ok((account, previous_authority))
@@ -889,7 +918,9 @@ async fn command_authorize(
                 | AuthorityType::WithheldWithdraw
                 | AuthorityType::InterestRate
                 | AuthorityType::PermanentDelegate
-                | AuthorityType::ConfidentialTransferMint => Err(format!(
+                | AuthorityType::ConfidentialTransferMint
+                | AuthorityType::TransferHookProgramId
+                | AuthorityType::ConfidentialTransferFeeConfig => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
@@ -3642,6 +3673,7 @@ fn app<'a, 'b>(
                     )
                 )
                 .arg(mint_decimals_arg())
+                .offline_args_config(&SignOnlyNeedsMintDecimals{})
         )
         .subcommand(
             SubCommand::with_name(CommandName::WithdrawExcessLamports.into())
@@ -3851,6 +3883,7 @@ async fn process_command<'a>(
                 "interest-rate" => AuthorityType::InterestRate,
                 "permanent-delegate" => AuthorityType::PermanentDelegate,
                 "confidential-transfer-mint" => AuthorityType::ConfidentialTransferMint,
+                "transfer-hook-program-id" => AuthorityType::TransferHookProgramId,
                 _ => unreachable!(),
             };
 
@@ -6883,7 +6916,6 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn confidential_transfer() {
-        use spl_token_2022::extension::confidential_transfer::EncryptedWithheldAmount;
         use spl_token_2022::pod::EncryptionPubkey;
 
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6933,16 +6965,6 @@ mod tests {
         assert_eq!(
             Option::<EncryptionPubkey>::from(extension.auditor_encryption_pubkey),
             None,
-        );
-        assert_eq!(
-            Option::<EncryptionPubkey>::from(
-                extension.withdraw_withheld_authority_encryption_pubkey
-            ),
-            None,
-        );
-        assert_eq!(
-            Option::<EncryptedWithheldAmount>::from(extension.withheld_amount),
-            Some(EncryptedWithheldAmount::default()),
         );
 
         process_test_command(

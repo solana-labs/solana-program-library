@@ -107,7 +107,7 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
             }
         }
 
-        proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
+        proposal_data.serialize(&mut proposal_info.data.borrow_mut()[..])?;
 
         dispose_account(vote_record_info, beneficiary_info)?;
     } else {
@@ -119,7 +119,7 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         }
 
         vote_record_data.is_relinquished = true;
-        vote_record_data.serialize(&mut *vote_record_info.data.borrow_mut())?;
+        vote_record_data.serialize(&mut vote_record_info.data.borrow_mut()[..])?;
     }
 
     // If the Proposal has been already voted on then we only have to decrease unrelinquished_votes_count
@@ -128,7 +128,7 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         .checked_sub(1)
         .unwrap();
 
-    token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;
+    token_owner_record_data.serialize(&mut token_owner_record_info.data.borrow_mut()[..])?;
 
     Ok(())
 }

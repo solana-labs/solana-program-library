@@ -13,6 +13,7 @@ pub fn program_test(token_mint_address: Pubkey, use_latest_spl_token: bool) -> P
     );
 
     if use_latest_spl_token {
+        pc.prefer_bpf(false);
         // TODO: Remove when spl-token is available by default in program-test
         pc.add_program(
             "spl_token",
@@ -52,6 +53,7 @@ pub fn program_test_2022(
     );
 
     if use_latest_spl_token_2022 {
+        pc.prefer_bpf(false);
         // TODO: Remove when spl-token-2022 is available by default in program-test
         pc.add_program(
             "spl_token_2022",

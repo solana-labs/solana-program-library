@@ -7,12 +7,14 @@ import {
   depositSingleTokenTypeExactAmountIn,
   withdrawSingleTokenTypeExactAmountOut,
 } from './token-swap-test';
-import {CurveType, Numberu64} from '../src';
+import {CurveType} from '../src';
 
 async function main() {
   // These test cases are designed to run sequentially and in the following order
   console.log('Run test: createTokenSwap (constant price)');
-  await createTokenSwap(CurveType.ConstantPrice, new Numberu64(1));
+  const constantPrice = new Uint8Array(8);
+  constantPrice[0] = 1;
+  await createTokenSwap(CurveType.ConstantPrice, constantPrice);
   console.log(
     'Run test: createTokenSwap (constant product, used further in tests)',
   );

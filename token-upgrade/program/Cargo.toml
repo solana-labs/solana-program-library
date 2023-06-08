@@ -14,7 +14,7 @@ test-sbf = []
 [dependencies]
 num-derive = "0.3"
 num-traits = "0.2"
-num_enum = "0.5.9"
+num_enum = "0.6.1"
 solana-program = "1.14.12"
 spl-token-2022 = { version = "0.6", path = "../../token/program-2022", features = ["no-entrypoint"] }
 thiserror = "1.0"
@@ -24,7 +24,7 @@ solana-program-test = "1.14.12"
 solana-sdk = "1.14.12"
 spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.5", path = "../../token/client" }
-test-case = "2.2"
+test-case = "3.1"
 
 [lib]
 crate-type = ["cdylib", "lib"]

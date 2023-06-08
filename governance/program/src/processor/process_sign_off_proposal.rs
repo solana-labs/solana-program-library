@@ -67,7 +67,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
         signatory_record_data.assert_can_sign_off(signatory_info)?;
 
         signatory_record_data.signed_off = true;
-        signatory_record_data.serialize(&mut *signatory_record_info.data.borrow_mut())?;
+        signatory_record_data.serialize(&mut signatory_record_info.data.borrow_mut()[..])?;
 
         if proposal_data.signatories_signed_off_count == 0 {
             proposal_data.signing_off_at = Some(clock.unix_timestamp);
@@ -87,7 +87,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
         proposal_data.state = ProposalState::Voting;
     }
 
-    proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
+    proposal_data.serialize(&mut proposal_info.data.borrow_mut()[..])?;
 
     Ok(())
 }

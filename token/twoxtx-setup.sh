@@ -25,11 +25,5 @@ if [[ ! -f twoxtx-solana/.twoxtx-patched ]]; then
 fi
 
 ../patch.crates-io.sh twoxtx-solana
-repo="token/twoxtx-solana"
-if sed -n '/exclude = \[/,/\]/p' ../Cargo.toml | grep -q "$repo"; then
-  echo "$repo is already excluded"
-else
-  sed -i'' ../Cargo.toml -e "/exclude/a \ \ \"$repo\","
-fi
 
 exit 0

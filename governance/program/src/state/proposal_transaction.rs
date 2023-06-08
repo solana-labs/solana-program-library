@@ -136,9 +136,9 @@ impl IsInitialized for ProposalTransactionV2 {
 
 impl ProposalTransactionV2 {
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::ProposalTransactionV2 {
-            BorshSerialize::serialize(&self, writer)?
+            borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::ProposalInstructionV1 {
             if self.instructions.len() != 1 {
                 panic!("Multiple instructions are not supported by ProposalInstructionV1")
@@ -161,7 +161,7 @@ impl ProposalTransactionV2 {
                 execution_status: self.execution_status,
             };
 
-            BorshSerialize::serialize(&proposal_transaction_data_v1, writer)?;
+            borsh::to_writer(writer, &proposal_transaction_data_v1)?
         }
 
         Ok(())
@@ -248,11 +248,12 @@ pub fn get_proposal_transaction_data_for_proposal(
 #[cfg(test)]
 mod test {
 
-    use std::str::FromStr;
-
-    use solana_program::{bpf_loader_upgradeable, clock::Epoch};
-
-    use super::*;
+    use {
+        super::*,
+        base64::{engine::general_purpose, Engine as _},
+        solana_program::{bpf_loader_upgradeable, clock::Epoch},
+        std::str::FromStr,
+    };
 
     fn create_test_account_meta_data() -> AccountMetaData {
         AccountMetaData {
@@ -341,7 +342,7 @@ mod test {
         instruction_data.serialize(&mut instruction_bytes).unwrap();
 
         // base64 encoded message is accepted as the input in the UI
-        let base64 = base64::encode(instruction_bytes.clone());
+        let encoded = general_purpose::STANDARD_NO_PAD.encode(&instruction_bytes);
 
         // Assert
         let instruction =
@@ -349,7 +350,7 @@ mod test {
 
         assert_eq!(upgrade_instruction, instruction);
 
-        assert_eq!(base64,"Aqj2kU6IobDiEBU+92OuKwDCuT0WwSTSwFN6EASAAAAHAAAAchkHXTU9jF+rKpILT6dzsVyNI9NsQy9cab+GGvdwNn0AAfh2HVruy2YibpgcQUmJf5att5YdPXSv1k2pRAKAfpSWAAFDVQuXWos2urmegSPblI813GlTm7CJ/8rv+9yzNE3yfwAB3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwAAQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAAAAAGp9UXGMd0yShWY5hpHV62i164o5tLbVxzVVshAAAAAAAA3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwBAAQAAAADAAAA");
+        assert_eq!(encoded,"Aqj2kU6IobDiEBU+92OuKwDCuT0WwSTSwFN6EASAAAAHAAAAchkHXTU9jF+rKpILT6dzsVyNI9NsQy9cab+GGvdwNn0AAfh2HVruy2YibpgcQUmJf5att5YdPXSv1k2pRAKAfpSWAAFDVQuXWos2urmegSPblI813GlTm7CJ/8rv+9yzNE3yfwAB3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwAAQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAAAAAGp9UXGMd0yShWY5hpHV62i164o5tLbVxzVVshAAAAAAAA3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwBAAQAAAADAAAA");
     }
 
     #[test]
@@ -393,7 +394,7 @@ mod test {
             get_proposal_transaction_data(&program_id, &account_info).unwrap();
 
         proposal_transaction_v2
-            .serialize(&mut &mut **account_info.data.borrow_mut())
+            .serialize(&mut account_info.data.borrow_mut()[..])
             .unwrap();
 
         // Assert

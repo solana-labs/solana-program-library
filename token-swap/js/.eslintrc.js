@@ -11,10 +11,11 @@ module.exports = {
     'plugin:import/errors',
     'plugin:import/warnings',
   ],
-  parserOptions: {
-    sourceType: 'module',
-    ecmaVersion: 8,
-  },
+  parser: '@typescript-eslint/parser',
+  parserOptions: { project: ['./tsconfig.json'] },
+  plugins: [
+    '@typescript-eslint'
+  ],
   rules: {
     'no-trailing-spaces': ['error'],
     'import/first': ['error'],
@@ -46,10 +47,5 @@ module.exports = {
     ],
     'require-await': ['error'],
     semi: ['error', 'always'],
-  },
-  settings: {
-    react: {
-      version: 'detect',
-    },
   },
 };
