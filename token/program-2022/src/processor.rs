@@ -7588,4 +7588,127 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    #[serial]
+    fn test_withdraw_excess_lamports_from_multisig() {
+        let program_id = crate::id();
+        let multisig_key = Pubkey::new_unique();
+        let mut signer_keys = [Pubkey::default(); MAX_SIGNERS];
+        for signer_key in signer_keys.iter_mut().take(MAX_SIGNERS) {
+            *signer_key = Pubkey::new_unique();
+        }
+        let default_pubkey = Pubkey::default();
+        let mut signer_lamports = 0;
+        let mut signer_data = vec![];
+        let mut signers = vec![
+            AccountInfo::new(
+                &multisig_key,
+                true,
+                false,
+                &mut signer_lamports,
+                &mut signer_data,
+                &default_pubkey,
+                false,
+                Epoch::default(),
+            );
+            MAX_SIGNERS + 1
+        ];
+        for (signer, key) in signers.iter_mut().zip(&signer_keys) {
+            signer.key = key;
+        }
+        let mut lamports = 4_000_000_000_000;
+        let mut multisig_data: Vec<u8> = vec![0; Multisig::get_packed_len()];
+        let mut multisig = Multisig::unpack_unchecked(&multisig_data).unwrap();
+        multisig.m = MAX_SIGNERS as u8;
+        multisig.n = MAX_SIGNERS as u8;
+        multisig.signers = signer_keys;
+        multisig.is_initialized = true;
+        Multisig::pack(multisig, &mut multisig_data).unwrap();
+
+        let multisig_account_info = AccountInfo::new(
+            &multisig_key,
+            true,
+            false,
+            &mut lamports,
+            &mut multisig_data,
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+
+        let receiver_key = Pubkey::new_unique();
+
+        // let mut receiver_lamports = 0;
+        // let mut receiver_data = vec![];
+        let mut receiver_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &default_pubkey,
+        );
+
+        let mut multisig_account =
+            SolanaAccount::new(lamports, Multisig::get_packed_len(), &program_id);
+        multisig_account.data = multisig_data;
+
+        // let receiver_account_info = AccountInfo::new(
+        //     &receiver_key,
+        //     false,
+        //     false,
+        //     &mut receiver_lamports,
+        //     &mut receiver_data,
+        //     &default_pubkey,
+        //     false,
+        //     Epoch::default(),
+        // );
+
+        // let receiver_account_info: AccountInfo =
+        //     (&receiver_key, true, &mut receiver_account).into();
+
+        // let mut account_infos = vec![
+        //     multisig_account_info.clone(),
+        //     receiver_account_info.clone(),
+        //     multisig_account_info.clone(),
+        // ];
+        // account_infos.extend_from_slice(&signers);
+
+        // 1. Create multisig with exceess lamports
+        // 2. Create receiver account
+        // 3. invoke withdraw_excess_lamports
+
+        // let source_info = next_account_info(account_info_iter)?;
+        // let destination_info = next_account_info(account_info_iter)?;
+        // let authority_info = next_account_info(account_info_iter)?;
+        // do_process_instruction_dups(
+        //     withdraw_excess_lamports(
+        //         &program_id,
+        //         &multisig_key,
+        //         &receiver_key,
+        //         &multisig_key,
+        //         &signer_keys
+        //             .iter()
+        //             .map(|k| k as &Pubkey)
+        //             .collect::<Vec<&Pubkey>>(),
+        //     )
+        //     .unwrap(),
+        //     account_infos,
+        // )
+        // .unwrap();
+
+        // do_process_instruction(
+        //     withdraw_excess_lamports(
+        //         &program_id,
+        //         &multisig_key,
+        //         &receiver_key,
+        //         &multisig_key,
+        //         &signer_keys
+        //             .iter()
+        //             .map(|k| k as &Pubkey)
+        //             .collect::<Vec<&Pubkey>>(),
+        //     )
+        //     .unwrap(),
+        //     accounts,
+        // )
+        // .unwrap();
+    }
 }
