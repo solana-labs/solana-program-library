@@ -648,6 +648,15 @@ pub enum TokenInstruction<'a> {
     /// See `extension::confidential_transfer_fee::instruction::ConfidentialTransferFeeInstruction`
     /// for further details about the extended instructions that share this instruction prefix
     ConfidentialTransferFeeExtension,
+    /// This instruction is to be used to rescue SOLs sent to any TokenProgram
+    /// owned account by sending them to any other account, leaving behind only
+    /// lamports for rent exemption.
+    ///
+    /// 0. `[writable]` Source Account owned by the token program
+    /// 1. `[writable]` Destination account
+    /// 2. `[signer]` Authority
+    /// 3. ..2+M `[signer]` M signer accounts.
+    WithdrawExcessLamports,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -785,6 +794,7 @@ impl<'a> TokenInstruction<'a> {
             }
             36 => Self::TransferHookExtension,
             37 => Self::ConfidentialTransferFeeExtension,
+            38 => Self::WithdrawExcessLamports,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -949,6 +959,9 @@ impl<'a> TokenInstruction<'a> {
             }
             &Self::ConfidentialTransferFeeExtension => {
                 buf.push(37);
+            }
+            &Self::WithdrawExcessLamports => {
+                buf.push(38);
             }
         };
         buf
@@ -1890,6 +1903,33 @@ pub(crate) fn encode_instruction<T: Into<u8>, D: Pod>(
         accounts,
         data,
     }
+}
+
+/// Creates a `WithdrawExcessLamports` Instruction
+pub fn withdraw_excess_lamports(
+    token_program_id: &Pubkey,
+    source_account: &Pubkey,
+    destination_account: &Pubkey,
+    authority: &Pubkey,
+    signers: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    let mut accounts = vec![
+        AccountMeta::new(*source_account, false),
+        AccountMeta::new(*destination_account, false),
+        AccountMeta::new_readonly(*authority, signers.is_empty()),
+    ];
+
+    for signer in signers {
+        accounts.push(AccountMeta::new_readonly(**signer, true))
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data: TokenInstruction::WithdrawExcessLamports.pack(),
+    })
 }
 
 #[cfg(test)]

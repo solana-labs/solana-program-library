@@ -1371,6 +1371,76 @@ impl Processor {
         Ok(())
     }
 
+    /// Withdraw Excess Lamports is used to recover Lamports transfered to any TokenProgram owned account
+    /// by moving them to another account
+    /// of the source account.
+    pub fn process_withdraw_excess_lamports(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+
+        let source_info = next_account_info(account_info_iter)?;
+        let destination_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+
+        let source_data = source_info.data.borrow();
+
+        if let Ok(account) = StateWithExtensions::<Account>::unpack(&source_data) {
+            if account.base.is_native() {
+                return Err(TokenError::NativeNotSupported.into());
+            }
+            Self::validate_owner(
+                program_id,
+                &account.base.owner,
+                authority_info,
+                authority_info.data_len(),
+                account_info_iter.as_slice(),
+            )?;
+        } else if let Ok(mint) = StateWithExtensions::<Mint>::unpack(&source_data) {
+            if let COption::Some(mint_authority) = mint.base.mint_authority {
+                Self::validate_owner(
+                    program_id,
+                    &mint_authority,
+                    authority_info,
+                    authority_info.data_len(),
+                    account_info_iter.as_slice(),
+                )?;
+            } else {
+                return Err(TokenError::AuthorityTypeNotSupported.into());
+            }
+        } else if source_data.len() == Multisig::LEN {
+            Self::validate_owner(
+                program_id,
+                source_info.key,
+                authority_info,
+                authority_info.data_len(),
+                account_info_iter.as_slice(),
+            )?;
+        } else {
+            return Err(TokenError::InvalidState.into());
+        }
+
+        let source_rent_exempt_reserve = Rent::get()?.minimum_balance(source_info.data_len());
+
+        let transfer_amount = source_info
+            .lamports()
+            .checked_sub(source_rent_exempt_reserve)
+            .ok_or(TokenError::NotRentExempt)?;
+
+        let source_starting_lamports = source_info.lamports();
+        **source_info.lamports.borrow_mut() = source_starting_lamports
+            .checked_sub(transfer_amount)
+            .ok_or(TokenError::Overflow)?;
+
+        let destination_starting_lamports = destination_info.lamports();
+        **destination_info.lamports.borrow_mut() = destination_starting_lamports
+            .checked_add(transfer_amount)
+            .ok_or(TokenError::Overflow)?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1547,6 +1617,10 @@ impl Processor {
                     accounts,
                     &input[1..],
                 )
+            }
+            TokenInstruction::WithdrawExcessLamports => {
+                msg!("Instruction: WithdrawExcessLamports");
+                Self::process_withdraw_excess_lamports(program_id, accounts)
             }
         }
     }
@@ -7601,5 +7675,224 @@ mod tests {
                 vec![&mut mint_account],
             )
         );
+    }
+
+    #[test]
+    #[serial]
+    fn test_withdraw_excess_lamports_from_multisig() {
+        {
+            use std::sync::Once;
+            static ONCE: Once = Once::new();
+
+            ONCE.call_once(|| {
+                solana_sdk::program_stubs::set_syscall_stubs(Box::new(SyscallStubs {}));
+            });
+        }
+        let program_id = crate::id();
+
+        let mut lamports = 0;
+        let mut destination_data = vec![];
+        let system_program_id = system_program::id();
+        let destination_key = Pubkey::new_unique();
+        let destination_info = AccountInfo::new(
+            &destination_key,
+            true,
+            false,
+            &mut lamports,
+            &mut destination_data,
+            &system_program_id,
+            false,
+            Epoch::default(),
+        );
+
+        let multisig_key = Pubkey::new_unique();
+        let mut multisig_account = SolanaAccount::new(0, Multisig::get_packed_len(), &program_id);
+        let excess_lamports = 4_000_000_000_000;
+        multisig_account.lamports = excess_lamports + multisig_minimum_balance();
+        let mut signer_keys = [Pubkey::default(); MAX_SIGNERS];
+
+        for signer_key in signer_keys.iter_mut().take(MAX_SIGNERS) {
+            *signer_key = Pubkey::new_unique();
+        }
+        let signer_refs: Vec<&Pubkey> = signer_keys.iter().collect();
+        let mut signer_lamports = 0;
+        let mut signer_data = vec![];
+        let mut signers: Vec<AccountInfo<'_>> = vec![
+            AccountInfo::new(
+                &destination_key,
+                true,
+                false,
+                &mut signer_lamports,
+                &mut signer_data,
+                &program_id,
+                false,
+                Epoch::default(),
+            );
+            MAX_SIGNERS + 1
+        ];
+        for (signer, key) in signers.iter_mut().zip(&signer_keys) {
+            signer.key = key;
+        }
+
+        let mut multisig =
+            Multisig::unpack_unchecked(&vec![0; Multisig::get_packed_len()]).unwrap();
+        multisig.m = MAX_SIGNERS as u8;
+        multisig.n = MAX_SIGNERS as u8;
+        multisig.signers = signer_keys;
+        multisig.is_initialized = true;
+        Multisig::pack(multisig, &mut multisig_account.data).unwrap();
+
+        let multisig_info: AccountInfo = (&multisig_key, true, &mut multisig_account).into();
+
+        let mut signers_infos = vec![
+            multisig_info.clone(),
+            destination_info.clone(),
+            multisig_info.clone(),
+        ];
+        signers_infos.extend(signers);
+        do_process_instruction_dups(
+            withdraw_excess_lamports(
+                &program_id,
+                &multisig_key,
+                &destination_key,
+                &multisig_key,
+                &signer_refs,
+            )
+            .unwrap(),
+            signers_infos,
+        )
+        .unwrap();
+
+        assert_eq!(destination_info.lamports(), excess_lamports);
+    }
+
+    #[test]
+    #[serial]
+    fn test_withdraw_excess_lamports_from_account() {
+        let excess_lamports = 4_000_000_000_000;
+
+        let program_id = crate::id();
+        let account_key = Pubkey::new_unique();
+        let mut account_account = SolanaAccount::new(
+            excess_lamports + account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+
+        let system_program_id = system_program::id();
+        let owner_key = Pubkey::new_unique();
+
+        let mut destination_lamports = 0;
+        let mut destination_data = vec![];
+        let destination_key = Pubkey::new_unique();
+        let destination_info = AccountInfo::new(
+            &destination_key,
+            true,
+            false,
+            &mut destination_lamports,
+            &mut destination_data,
+            &system_program_id,
+            false,
+            Epoch::default(),
+        );
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+
+        let mut rent_sysvar = rent_sysvar();
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        let mint_info = AccountInfo::new(
+            &mint_key,
+            true,
+            false,
+            &mut mint_account.lamports,
+            &mut mint_account.data,
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+
+        let account_info: AccountInfo = (&account_key, true, &mut account_account).into();
+
+        do_process_instruction_dups(
+            initialize_account3(&program_id, &account_key, &mint_key, &account_key).unwrap(),
+            vec![account_info.clone(), mint_info.clone()],
+        )
+        .unwrap();
+
+        do_process_instruction_dups(
+            withdraw_excess_lamports(
+                &program_id,
+                &account_key,
+                &destination_key,
+                &account_key,
+                &[],
+            )
+            .unwrap(),
+            vec![
+                account_info.clone(),
+                destination_info.clone(),
+                account_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(destination_info.lamports(), excess_lamports);
+    }
+
+    #[test]
+    #[serial]
+    fn test_withdraw_excess_lamports_from_mint() {
+        let excess_lamports = 4_000_000_000_000;
+
+        let program_id = crate::id();
+        let system_program_id = system_program::id();
+
+        let mut destination_lamports = 0;
+        let mut destination_data = vec![];
+        let destination_key = Pubkey::new_unique();
+        let destination_info = AccountInfo::new(
+            &destination_key,
+            true,
+            false,
+            &mut destination_lamports,
+            &mut destination_data,
+            &system_program_id,
+            false,
+            Epoch::default(),
+        );
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account = SolanaAccount::new(
+            excess_lamports + mint_minimum_balance(),
+            Mint::get_packed_len(),
+            &program_id,
+        );
+        let mut rent_sysvar = rent_sysvar();
+
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &mint_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        let mint_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
+
+        do_process_instruction_dups(
+            withdraw_excess_lamports(&program_id, &mint_key, &destination_key, &mint_key, &[])
+                .unwrap(),
+            vec![
+                mint_info.clone(),
+                destination_info.clone(),
+                mint_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(destination_info.lamports(), excess_lamports);
     }
 }

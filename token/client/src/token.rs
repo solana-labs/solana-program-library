@@ -2490,4 +2490,27 @@ where
         )
         .await
     }
+
+    pub async fn withdraw_excess_lamports<S: Signers>(
+        &self,
+        source: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[spl_token_2022::instruction::withdraw_excess_lamports(
+                &self.program_id,
+                source,
+                destination,
+                authority,
+                &multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
 }

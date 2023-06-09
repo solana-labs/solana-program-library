@@ -145,6 +145,7 @@ pub enum CommandName {
     UpdateDefaultAccountState,
     WithdrawWithheldTokens,
     SetTransferFee,
+    WithdrawExcessLamports,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2096,6 +2097,44 @@ async fn command_sync_native(config: &Config<'_>, native_account_address: Pubkey
     })
 }
 
+async fn command_withdraw_excess_lamports(
+    config: &Config<'_>,
+    source_account: Pubkey,
+    destination_account: Pubkey,
+    authority: Pubkey,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    // default is safe here because withdraw_excess_lamports doesn't use it
+    let token = token_client_from_config(config, &Pubkey::default(), None)?;
+    println_display(
+        config,
+        format!(
+            "Withdrawing excess lamports\n  Sender: {}\n  Destination: {}",
+            source_account, destination_account
+        ),
+    );
+
+    let res = token
+        .withdraw_excess_lamports(
+            &source_account,
+            &destination_account,
+            &authority,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 // both enables and disables required transfer memos, via enable_memos bool
 async fn command_required_transfer_memos(
     config: &Config<'_>,
@@ -3636,6 +3675,28 @@ fn app<'a, 'b>(
                 .arg(mint_decimals_arg())
                 .offline_args_config(&SignOnlyNeedsMintDecimals{})
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::WithdrawExcessLamports.into())
+                .about("Withdraw lamports from a Token Program owned account")
+                .arg(
+                    Arg::with_name("from")
+                        .validator(is_valid_pubkey)
+                        .value_name("SOURCE_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Specify the address of the account to recover lamports from"),
+                )
+                .arg(
+                    Arg::with_name("recipient")
+                        .validator(is_valid_pubkey)
+                        .value_name("REFUND_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Specify the address of the account to send lamports to"),
+                )
+                .arg(owner_address_arg())
+                .arg(multisig_signer_arg())
+        )
 }
 
 #[tokio::main]
@@ -4343,6 +4404,20 @@ async fn process_command<'a>(
                 bulk_signers,
             )
             .await
+        }
+        (CommandName::WithdrawExcessLamports, arg_matches) => {
+            let (signer, authority) =
+                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(signer, &mut bulk_signers);
+            }
+
+            let source = config.pubkey_or_default(arg_matches, "from", &mut wallet_manager)?;
+            let destination =
+                config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager)?;
+
+            command_withdraw_excess_lamports(config, source, destination, authority, bulk_signers)
+                .await
         }
     }
 }
@@ -7081,5 +7156,256 @@ mod tests {
             assert!(!absent_signers.contains(&destination.to_string()));
             assert!(!absent_signers.contains(&token.to_string()));
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn withdraw_excess_lamports_from_multisig() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let m = 3;
+        let n = 5u8;
+        // need to add "payer" to make the config provide the right signer
+        let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) =
+            std::iter::once(clone_keypair(&payer))
+                .chain(std::iter::repeat_with(Keypair::new).take((n - 2) as usize))
+                .map(|s| {
+                    let keypair_file = NamedTempFile::new().unwrap();
+                    write_keypair_file(&s, &keypair_file).unwrap();
+                    (s.pubkey(), keypair_file)
+                })
+                .unzip();
+
+        let fee_payer_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &fee_payer_keypair_file).unwrap();
+
+        let owner_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &owner_keypair_file).unwrap();
+
+        let program_id = &spl_token_2022::id();
+        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+
+        let multisig = Arc::new(Keypair::new());
+        let multisig_pubkey = multisig.pubkey();
+
+        // add the multisig as a member to itself, make it self-owned
+        let multisig_members = std::iter::once(multisig_pubkey)
+            .chain(multisig_members.iter().cloned())
+            .collect::<Vec<_>>();
+        let multisig_path = NamedTempFile::new().unwrap();
+        write_keypair_file(&multisig, &multisig_path).unwrap();
+        let multisig_paths = std::iter::once(&multisig_path)
+            .chain(multisig_paths.iter())
+            .collect::<Vec<_>>();
+
+        command_create_multisig(&config, multisig, m, multisig_members)
+            .await
+            .unwrap();
+
+        let account = config
+            .rpc_client
+            .get_account(&multisig_pubkey)
+            .await
+            .unwrap();
+        let multisig = Multisig::unpack(&account.data).unwrap();
+        assert_eq!(multisig.m, m);
+        assert_eq!(multisig.n, n);
+
+        let receiver = Keypair::new();
+        let excess_lamports = 4000 * 1_000_000_000;
+
+        config
+            .rpc_client
+            .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
+                &[system_instruction::transfer(
+                    &payer.pubkey(),
+                    &multisig_pubkey,
+                    excess_lamports,
+                )],
+                Some(&payer.pubkey()),
+                &[&payer],
+                config.rpc_client.get_latest_blockhash().await.unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::WithdrawExcessLamports.into(),
+                &multisig_pubkey.to_string(),
+                &receiver.pubkey().to_string(),
+                "--owner",
+                &multisig_pubkey.to_string(),
+                "--multisig-signer",
+                multisig_paths[0].path().to_str().unwrap(),
+                "--multisig-signer",
+                multisig_paths[1].path().to_str().unwrap(),
+                "--multisig-signer",
+                multisig_paths[2].path().to_str().unwrap(),
+                "--fee-payer",
+                fee_payer_keypair_file.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            excess_lamports,
+            config
+                .rpc_client
+                .get_balance(&receiver.pubkey())
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn withdraw_excess_lamports_from_mint() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = &spl_token_2022::id();
+        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let owner_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &owner_keypair_file).unwrap();
+
+        let receiver = Keypair::new();
+
+        let token_keypair = Keypair::new();
+        let token_path = NamedTempFile::new().unwrap();
+        write_keypair_file(&token_keypair, &token_path).unwrap();
+        let token_pubkey = token_keypair.pubkey();
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                token_path.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let excess_lamports = 4000 * 1_000_000_000;
+        config
+            .rpc_client
+            .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
+                &[system_instruction::transfer(
+                    &payer.pubkey(),
+                    &token_pubkey,
+                    excess_lamports,
+                )],
+                Some(&payer.pubkey()),
+                &[&payer],
+                config.rpc_client.get_latest_blockhash().await.unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::WithdrawExcessLamports.into(),
+                &token_pubkey.to_string(),
+                &receiver.pubkey().to_string(),
+                "--owner",
+                owner_keypair_file.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            excess_lamports,
+            config
+                .rpc_client
+                .get_balance(&receiver.pubkey())
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn withdraw_excess_lamports_from_account() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = &spl_token_2022::id();
+        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let owner_keypair_file = NamedTempFile::new().unwrap();
+        write_keypair_file(&payer, &owner_keypair_file).unwrap();
+
+        let receiver = Keypair::new();
+
+        let token_keypair = Keypair::new();
+        let token_path = NamedTempFile::new().unwrap();
+        write_keypair_file(&token_keypair, &token_path).unwrap();
+        let token_pubkey = token_keypair.pubkey();
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                token_path.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let excess_lamports = 4000 * 1_000_000_000;
+        let token_account =
+            create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
+
+        config
+            .rpc_client
+            .send_and_confirm_transaction(&Transaction::new_signed_with_payer(
+                &[system_instruction::transfer(
+                    &payer.pubkey(),
+                    &token_account,
+                    excess_lamports,
+                )],
+                Some(&payer.pubkey()),
+                &[&payer],
+                config.rpc_client.get_latest_blockhash().await.unwrap(),
+            ))
+            .await
+            .unwrap();
+
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::WithdrawExcessLamports.into(),
+                &token_account.to_string(),
+                &receiver.pubkey().to_string(),
+                "--owner",
+                owner_keypair_file.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            excess_lamports,
+            config
+                .rpc_client
+                .get_balance(&receiver.pubkey())
+                .await
+                .unwrap()
+        );
     }
 }
