@@ -7780,20 +7780,7 @@ mod tests {
         );
 
         let system_program_id = system_program::id();
-        // let mut owner_lamports = 0;
-        // let mut owner_data = vec![];
         let owner_key = Pubkey::new_unique();
-        // let mut owner_account = SolanaAccount::new(0, 0, &system_program::id());
-        // let owner_info = AccountInfo::new(
-        //     &owner_key,
-        //     true,
-        //     false,
-        //     &mut owner_lamports,
-        //     &mut owner_data,
-        //     &system_program_id,
-        //     false,
-        //     Epoch::default(),
-        // );
 
         let mut destination_lamports = 0;
         let mut destination_data = vec![];
@@ -7864,20 +7851,7 @@ mod tests {
         let excess_lamports = 4_000_000_000_000;
 
         let program_id = crate::id();
-        let mut owner_lamports = 0;
-        let mut owner_data = vec![];
         let system_program_id = system_program::id();
-        let owner_key = Pubkey::new_unique();
-        let owner_info = AccountInfo::new(
-            &owner_key,
-            true,
-            false,
-            &mut owner_lamports,
-            &mut owner_data,
-            &system_program_id,
-            false,
-            Epoch::default(),
-        );
 
         let mut destination_lamports = 0;
         let mut destination_data = vec![];
@@ -7901,20 +7875,20 @@ mod tests {
         let mut rent_sysvar = rent_sysvar();
 
         do_process_instruction(
-            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            initialize_mint(&program_id, &mint_key, &mint_key, None, 2).unwrap(),
             vec![&mut mint_account, &mut rent_sysvar],
         )
         .unwrap();
 
-        let account_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
+        let mint_info: AccountInfo = (&mint_key, true, &mut mint_account).into();
 
         do_process_instruction_dups(
-            withdraw_excess_lamports(&program_id, &mint_key, &destination_key, &program_id, &[])
+            withdraw_excess_lamports(&program_id, &mint_key, &destination_key, &mint_key, &[])
                 .unwrap(),
             vec![
-                account_info.clone(),
+                mint_info.clone(),
                 destination_info.clone(),
-                owner_info.clone(),
+                mint_info.clone(),
             ],
         )
         .unwrap();
