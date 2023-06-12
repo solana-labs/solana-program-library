@@ -6,11 +6,8 @@ mod helpers;
 use {
     helpers::*,
     solana_program_test::*,
-    solana_sdk::{
-        instruction::InstructionError, program_pack::Pack, signature::Signer, stake,
-        system_instruction::SystemError, transaction::Transaction,
-    },
-    spl_single_validator_pool::{id, instruction},
+    solana_sdk::{program_pack::Pack, signature::Signer, stake, transaction::Transaction},
+    spl_single_validator_pool::{error::SinglePoolError, id, instruction},
     spl_token::state::Mint,
 };
 
@@ -56,5 +53,5 @@ async fn fail_double_init() {
         .process_transaction(transaction)
         .await
         .unwrap_err();
-    check_error::<InstructionError>(e, SystemError::AccountAlreadyInUse.into());
+    check_error(e, SinglePoolError::PoolAlreadyInitialized);
 }

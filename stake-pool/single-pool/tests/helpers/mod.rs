@@ -18,8 +18,9 @@ use {
     },
     spl_associated_token_account as atoken,
     spl_single_validator_pool::{
-        find_pool_authority_address, find_pool_mint_address, find_pool_stake_address, id,
-        instruction, processor::Processor,
+        find_pool_address, find_pool_mint_address, find_pool_mint_authority_address,
+        find_pool_mpl_authority_address, find_pool_stake_address,
+        find_pool_stake_authority_address, id, instruction, processor::Processor,
     },
 };
 
@@ -52,9 +53,12 @@ pub struct SinglePoolAccounts {
     pub voter: Keypair,
     pub withdrawer: Keypair,
     pub vote_account: Keypair,
+    pub pool: Pubkey,
     pub stake_account: Pubkey,
-    pub authority: Pubkey,
     pub mint: Pubkey,
+    pub stake_authority: Pubkey,
+    pub mint_authority: Pubkey,
+    pub mpl_authority: Pubkey,
     pub alice: Keypair,
     pub bob: Keypair,
     pub alice_stake: Keypair,
@@ -83,7 +87,7 @@ impl SinglePoolAccounts {
 
         let instructions = instruction::deposit(
             &id(),
-            &self.vote_account.pubkey(),
+            &self.pool,
             &self.alice_stake.pubkey(),
             &self.alice_token,
             &self.alice.pubkey(),
@@ -114,7 +118,7 @@ impl SinglePoolAccounts {
         if maybe_bob_amount.is_some() {
             let instructions = instruction::deposit(
                 &id(),
-                &self.vote_account.pubkey(),
+                &self.pool,
                 &self.bob_stake.pubkey(),
                 &self.bob_token,
                 &self.bob.pubkey(),
@@ -294,15 +298,19 @@ impl Default for SinglePoolAccounts {
         let vote_account = Keypair::new();
         let alice = Keypair::new();
         let bob = Keypair::new();
-        let mint = find_pool_mint_address(&id(), &vote_account.pubkey());
+        let pool = find_pool_address(&id(), &vote_account.pubkey());
+        let mint = find_pool_mint_address(&id(), &pool);
 
         Self {
             validator: Keypair::new(),
             voter: Keypair::new(),
             withdrawer: Keypair::new(),
-            authority: find_pool_authority_address(&id(), &vote_account.pubkey()),
-            stake_account: find_pool_stake_address(&id(), &vote_account.pubkey()),
+            stake_account: find_pool_stake_address(&id(), &pool),
+            pool,
             mint,
+            stake_authority: find_pool_stake_authority_address(&id(), &pool),
+            mint_authority: find_pool_mint_authority_address(&id(), &pool),
+            mpl_authority: find_pool_mpl_authority_address(&id(), &pool),
             vote_account,
             alice_stake: Keypair::new(),
             bob_stake: Keypair::new(),
