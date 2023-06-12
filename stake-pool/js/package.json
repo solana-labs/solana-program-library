@@ -44,7 +44,7 @@
   ],
   "license": "ISC",
   "dependencies": {
-    "@coral-xyz/borsh": "^0.27.0",
+    "@coral-xyz/borsh": "^0.28.0",
     "@solana/buffer-layout": "^4.0.1",
     "@solana/spl-token": "^0.3.7",
     "@solana/web3.js": "^1.76.0",
