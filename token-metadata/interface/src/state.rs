@@ -60,7 +60,7 @@ pub struct TokenMetadata {
 impl TlvDiscriminator for TokenMetadata {
     /// Please use this discriminator in your program when matching
     const TLV_DISCRIMINATOR: Discriminator =
-        Discriminator::new([90, 206, 63, 159, 89, 230, 85, 173]);
+        Discriminator::new([112, 132, 90, 90, 11, 88, 157, 87]);
 }
 
 #[cfg(test)]
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn discriminator() {
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:token-metadata").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:token_metadata").as_bytes()]);
         let discriminator =
             Discriminator::try_from(&preimage.as_ref()[..Discriminator::LENGTH]).unwrap();
         assert_eq!(TokenMetadata::TLV_DISCRIMINATOR, discriminator);

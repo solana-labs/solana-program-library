@@ -12,4 +12,4 @@ pub mod state;
 pub use solana_program;
 
 /// Namespace for all programs implementing token-metadata
-pub const NAMESPACE: &str = "spl-token-metadata-interface";
+pub const NAMESPACE: &str = "spl_token_metadata_interface";

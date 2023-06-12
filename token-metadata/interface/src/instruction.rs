@@ -38,9 +38,8 @@ impl TlvDiscriminator for Initialize {
     /// Please use this discriminator in your program when matching
     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(INITIALIZE_DISCRIMINATOR);
 }
-/// First 8 bytes of `hash::hashv(&["spl-token-metadata-interface:metadata-initialize"])`
-const INITIALIZE_DISCRIMINATOR: [u8; Discriminator::LENGTH] =
-    [229, 250, 62, 140, 225, 241, 85, 223];
+/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:initialize_account"])`
+const INITIALIZE_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [210, 225, 30, 162, 88, 184, 77, 141];
 // annoying, but needed to perform a match on the value
 const INITIALIZE_DISCRIMINATOR_SLICE: &[u8] = &INITIALIZE_DISCRIMINATOR;
 
@@ -56,9 +55,9 @@ impl TlvDiscriminator for UpdateField {
     /// Please use this discriminator in your program when matching
     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(UPDATE_FIELD_DISCRIMINATOR);
 }
-/// First 8 bytes of `hash::hashv(&["spl-token-metadata-interface:update-field"])`
+/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:updating_field"])`
 const UPDATE_FIELD_DISCRIMINATOR: [u8; Discriminator::LENGTH] =
-    [235, 206, 155, 58, 119, 75, 144, 47];
+    [221, 233, 49, 45, 181, 202, 220, 200];
 // annoying, but needed to perform a match on the value
 const UPDATE_FIELD_DISCRIMINATOR_SLICE: &[u8] = &UPDATE_FIELD_DISCRIMINATOR;
 
@@ -72,8 +71,8 @@ impl TlvDiscriminator for RemoveKey {
     /// Please use this discriminator in your program when matching
     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(REMOVE_KEY_DISCRIMINATOR);
 }
-/// First 8 bytes of `hash::hashv(&["spl-token-metadata-interface:remove-a-key"])`
-const REMOVE_KEY_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [215, 0, 121, 250, 213, 141, 116, 69];
+/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:remove_key_ix"])`
+const REMOVE_KEY_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [234, 18, 32, 56, 89, 141, 37, 181];
 // annoying, but needed to perform a match on the value
 const REMOVE_KEY_DISCRIMINATOR_SLICE: &[u8] = &REMOVE_KEY_DISCRIMINATOR;
 
@@ -87,13 +86,13 @@ impl TlvDiscriminator for UpdateAuthority {
     /// Please use this discriminator in your program when matching
     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(UPDATE_AUTHORITY_DISCRIMINATOR);
 }
-/// First 8 bytes of `hash::hashv(&["spl-token-metadata-interface:update-authority"])`
+/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:update_the_authority"])`
 const UPDATE_AUTHORITY_DISCRIMINATOR: [u8; Discriminator::LENGTH] =
-    [250, 234, 22, 114, 44, 204, 71, 84];
+    [215, 228, 166, 228, 84, 100, 86, 123];
 // annoying, but needed to perform a match on the value
 const UPDATE_AUTHORITY_DISCRIMINATOR_SLICE: &[u8] = &UPDATE_AUTHORITY_DISCRIMINATOR;
 
-/// Emit instruction data
+/// Instruction data for Emit
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub struct Emit {
     /// Start of range of data to emit
@@ -105,8 +104,8 @@ impl TlvDiscriminator for Emit {
     /// Please use this discriminator in your program when matching
     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(EMIT_DISCRIMINATOR);
 }
-/// First 8 bytes of `hash::hashv(&["spl-token-metadata-interface:emitting"])`
-const EMIT_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [224, 75, 86, 175, 2, 32, 83, 198];
+/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:emitter"])`
+const EMIT_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [250, 166, 180, 250, 13, 12, 184, 70];
 // annoying, but needed to perform a match on the value
 const EMIT_DISCRIMINATOR_SLICE: &[u8] = &EMIT_DISCRIMINATOR;
 
@@ -178,14 +177,14 @@ pub enum TokenMetadataInstruction {
     /// Data: the new authority. Can be unset using a `None` value
     UpdateAuthority(UpdateAuthority),
 
-    /// Emits the token-metadata as an event
+    /// Emits the token-metadata as return data
     ///
     /// The format of the data emitted follows exactly the `TokenMetadata`
     /// struct, but it's possible
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[w]` Metadata account
+    ///   0. `[]` Metadata account
     Emit(Emit),
 }
 impl TokenMetadataInstruction {
@@ -329,6 +328,21 @@ pub fn update_authority(
     }
 }
 
+/// Creates an `Emit` instruction
+pub fn emit(
+    program_id: &Pubkey,
+    metadata: &Pubkey,
+    start: Option<u64>,
+    end: Option<u64>,
+) -> Instruction {
+    let data = TokenMetadataInstruction::Emit(Emit { start, end });
+    Instruction {
+        program_id: *program_id,
+        accounts: vec![AccountMeta::new_readonly(*metadata, false)],
+        data: data.pack(),
+    }
+}
+
 #[cfg(test)]
 mod test {
     use {super::*, crate::NAMESPACE, solana_program::hash};
@@ -358,7 +372,7 @@ mod test {
             uri: uri.to_string(),
         };
         let check = TokenMetadataInstruction::Initialize(data.clone());
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:metadata-initialize").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:initialize_account").as_bytes()]);
         let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
@@ -372,7 +386,7 @@ mod test {
             value: value.to_string(),
         };
         let check = TokenMetadataInstruction::UpdateField(data.clone());
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:update-field").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:updating_field").as_bytes()]);
         let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
@@ -383,7 +397,7 @@ mod test {
             key: "MyTestField".to_string(),
         };
         let check = TokenMetadataInstruction::RemoveKey(data.clone());
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:remove-a-key").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:remove_key_ix").as_bytes()]);
         let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
@@ -394,7 +408,7 @@ mod test {
             new_authority: OptionalNonZeroPubkey::default(),
         };
         let check = TokenMetadataInstruction::UpdateAuthority(data.clone());
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:update-authority").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:update_the_authority").as_bytes()]);
         let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
@@ -406,7 +420,7 @@ mod test {
             end: Some(10),
         };
         let check = TokenMetadataInstruction::Emit(data.clone());
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:emitting").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:emitter").as_bytes()]);
         let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
