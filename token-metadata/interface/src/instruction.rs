@@ -180,7 +180,12 @@ pub enum TokenMetadataInstruction {
     /// Emits the token-metadata as return data
     ///
     /// The format of the data emitted follows exactly the `TokenMetadata`
-    /// struct, but it's possible
+    /// struct, but it's possible that the account data is stored in another
+    /// format by the program.
+    ///
+    /// With this instruction, a program that implements the token-metadata
+    /// interface can return `TokenMetadata` without adhering to the specific
+    /// byte layout of the `TokenMetadata` struct in any accounts.
     ///
     /// Accounts expected by this instruction:
     ///
