@@ -1,7 +1,7 @@
 //! State transition types
 
 use {
-    crate::error::SinglePoolError,
+    crate::{error::SinglePoolError, find_pool_address},
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         account_info::AccountInfo, borsh::try_from_slice_unchecked, program_error::ProgramError,
@@ -35,15 +35,24 @@ pub struct SinglePool {
 impl SinglePool {
     /// Create a SinglePool struct from its account info
     pub fn from_account_info(
-        program_id: &Pubkey,
         account_info: &AccountInfo,
+        program_id: &Pubkey,
     ) -> Result<Self, ProgramError> {
+        // pool is allocated and owned by this program
         if account_info.data_len() == 0 || account_info.owner != program_id {
             return Err(SinglePoolError::InvalidPoolAccount.into());
         }
 
         let pool = try_from_slice_unchecked::<SinglePool>(&account_info.data.borrow())?;
+
+        // pool is well-typed
         if pool.account_type != SinglePoolAccountType::Pool {
+            return Err(SinglePoolError::InvalidPoolAccount.into());
+        }
+
+        // pool vote account address is properly configured. in practice this is irrefutable
+        // because the pool is initialized from the addresss that derives it, and never modified
+        if *account_info.key != find_pool_address(program_id, &pool.vote_account_address) {
             return Err(SinglePoolError::InvalidPoolAccount.into());
         }
 

@@ -722,8 +722,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        let pool = SinglePool::from_account_info(program_id, pool_info)?;
-        check_pool_address(program_id, &pool.vote_account_address, pool_info.key)?;
+        SinglePool::from_account_info(pool_info, program_id)?;
 
         check_pool_stake_address(program_id, pool_info.key, pool_stake_info.key)?;
         let stake_authority_bump_seed = check_pool_stake_authority_address(
@@ -862,8 +861,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        let pool = SinglePool::from_account_info(program_id, pool_info)?;
-        check_pool_address(program_id, &pool.vote_account_address, pool_info.key)?;
+        SinglePool::from_account_info(pool_info, program_id)?;
 
         check_pool_stake_address(program_id, pool_info.key, pool_stake_info.key)?;
         let stake_authority_bump_seed = check_pool_stake_authority_address(
@@ -959,8 +957,7 @@ impl Processor {
         let mpl_token_metadata_program_info = next_account_info(account_info_iter)?;
         let system_program_info = next_account_info(account_info_iter)?;
 
-        let pool = SinglePool::from_account_info(program_id, pool_info)?;
-        check_pool_address(program_id, &pool.vote_account_address, pool_info.key)?;
+        let pool = SinglePool::from_account_info(pool_info, program_id)?;
 
         let mint_authority_bump_seed = check_pool_mint_authority_address(
             program_id,
@@ -983,9 +980,9 @@ impl Processor {
             return Err(SinglePoolError::SignatureMissing.into());
         }
 
-        let pool_address_str = pool_info.key.to_string();
-        let token_name = format!("SPL Single Pool {}", &pool_address_str[0..15]);
-        let token_symbol = format!("st{}", &pool_address_str[0..7]);
+        let vote_address_str = pool.vote_account_address.to_string();
+        let token_name = format!("SPL Single Pool {}", &vote_address_str[0..15]);
+        let token_symbol = format!("st{}", &vote_address_str[0..7]);
 
         let new_metadata_instruction = create_metadata_accounts_v3(
             *mpl_token_metadata_program_info.key,
@@ -1052,7 +1049,7 @@ impl Processor {
         check_vote_account(vote_account_info)?;
         check_pool_address(program_id, vote_account_info.key, pool_info.key)?;
 
-        let pool = SinglePool::from_account_info(program_id, pool_info)?;
+        let pool = SinglePool::from_account_info(pool_info, program_id)?;
         if pool.vote_account_address != *vote_account_info.key {
             return Err(SinglePoolError::InvalidPoolAccount.into());
         }
