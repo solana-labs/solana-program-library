@@ -2,8 +2,9 @@
 
 use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    solana_program::{borsh::get_instance_packed_len, program_error::ProgramError, pubkey::Pubkey},
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
+    spl_type_length_value::state::{TlvState, TlvStateBorrowed},
     std::convert::TryFrom,
 };
 
@@ -62,6 +63,14 @@ impl SplDiscriminate for TokenMetadata {
     /// Please use this discriminator in your program when matching
     const SPL_DISCRIMINATOR: ArrayDiscriminator =
         ArrayDiscriminator::new([112, 132, 90, 90, 11, 88, 157, 87]);
+}
+impl TokenMetadata {
+    /// Gives the total size of this struct as a TLV entry in an account
+    pub fn tlv_size_of(&self) -> Result<usize, ProgramError> {
+        TlvStateBorrowed::get_base_len()
+            .checked_add(get_instance_packed_len(self)?)
+            .ok_or(ProgramError::InvalidAccountData)
+    }
 }
 
 #[cfg(test)]
