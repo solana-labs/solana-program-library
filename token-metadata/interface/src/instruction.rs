@@ -126,7 +126,6 @@ pub enum TokenMetadataInstruction {
     ///
     ///   0. `[w]` Metadata account
     ///   1. `[s]` Current update authority
-    ///   2. `[]` New update authority
     ///
     /// Data: the new authority. Can be unset using a `None` value
     UpdateAuthority(UpdateAuthority),

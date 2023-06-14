@@ -23,12 +23,12 @@ use {
 
 fn check_update_authority(
     update_authority_info: &AccountInfo,
-    token_metadata: &TokenMetadata,
+    expected_update_authority: &OptionalNonZeroPubkey,
 ) -> Result<(), ProgramError> {
     if !update_authority_info.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    let update_authority = Option::<Pubkey>::from(token_metadata.update_authority.clone())
+    let update_authority = Option::<Pubkey>::from(expected_update_authority.clone())
         .ok_or(TokenMetadataError::ImmutableMetadata)?;
     if update_authority != *update_authority_info.key {
         return Err(TokenMetadataError::IncorrectUpdateAuthority.into());
@@ -142,7 +142,7 @@ pub fn process_update_field(
         state.borsh_deserialize::<TokenMetadata>()?
     };
 
-    check_update_authority(update_authority_info, &token_metadata)?;
+    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
 
     // Update the field
     let previous_size = get_instance_packed_len(&token_metadata)?;
@@ -172,7 +172,7 @@ pub fn process_remove_key(
         state.borsh_deserialize::<TokenMetadata>()?
     };
 
-    check_update_authority(update_authority_info, &token_metadata)?;
+    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
 
     let previous_size = get_instance_packed_len(&token_metadata)?;
     if !token_metadata.remove_key(&data.key) && !data.idempotent {
@@ -187,10 +187,30 @@ pub fn process_remove_key(
 
 /// Processes a [UpdateAuthority](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_update_authority(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
     data: UpdateAuthority,
 ) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let metadata_info = next_account_info(account_info_iter)?;
+    let update_authority_info = next_account_info(account_info_iter)?;
+
+    // deserialize the metadata, but scope the data borrow since we'll probably
+    // realloc the account
+    let mut token_metadata = {
+        let buffer = metadata_info.try_borrow_data()?;
+        let state = TlvStateBorrowed::unpack(&buffer)?;
+        state.borsh_deserialize::<TokenMetadata>()?
+    };
+
+    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
+
+    let previous_size = get_instance_packed_len(&token_metadata)?;
+    token_metadata.update_authority = data.new_authority;
+
+    // Update the account, no realloc needed!
+    update_metadata_account(metadata_info, &token_metadata, previous_size)?;
+
     Ok(())
 }
 
