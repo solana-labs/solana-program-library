@@ -58,12 +58,7 @@ impl Parse for TlvBuilder {
                 ))
             }
         }
-        .map_err(|e| {
-            syn::Error::new(
-                input.span(),
-                format!("Failed to parse interface instructions: {}", e),
-            )
-        })
+        .map_err(|e| syn::Error::new(input.span(), format!("Failed to parse item: {}", e)))
     }
 }
 

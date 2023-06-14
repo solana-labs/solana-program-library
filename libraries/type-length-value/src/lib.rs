@@ -41,10 +41,11 @@ mod tests {
 
     #[allow(dead_code)]
     #[derive(SplTlv)]
-    #[tlv_namespace("token_program_instruction")]
+    #[tlv_namespace("enum_program_instruction")]
     pub enum MyInstruction3 {
-        MintTo,
-        Transfer,
+        One,
+        Two,
+        Three,
     }
 
     fn assert_discriminators<T: TlvDiscriminator>(
@@ -75,7 +76,7 @@ mod tests {
             MY_INSTRUCTION_2_DISCRIMINATOR_SLICE,
         );
         assert_discriminators::<MyInstruction3>(
-            "token_program_instruction",
+            "enum_program_instruction",
             MY_INSTRUCTION_3_DISCRIMINATOR,
             MY_INSTRUCTION_3_DISCRIMINATOR_SLICE,
         );
