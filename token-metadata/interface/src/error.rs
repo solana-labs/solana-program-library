@@ -14,4 +14,10 @@ pub enum TokenMetadataError {
     /// Incorrect mint authority has signed the instruction
     #[error("Incorrect mint authority has signed the instruction")]
     IncorrectMintAuthority,
+    /// Incorrect metadata update authority has signed the instruction
+    #[error("Incorrect metadata update authority has signed the instruction")]
+    IncorrectUpdateAuthority,
+    /// Token metadata has no update authority
+    #[error("Token metadata has no update authority")]
+    ImmutableMetadata,
 }

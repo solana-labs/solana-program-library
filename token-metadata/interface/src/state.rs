@@ -71,6 +71,57 @@ impl TokenMetadata {
             .checked_add(get_instance_packed_len(self)?)
             .ok_or(ProgramError::InvalidAccountData)
     }
+
+    /// Updates a field in the metadata struct
+    pub fn update(&mut self, field: Field, value: String) {
+        match field {
+            Field::Name => self.name = value,
+            Field::Symbol => self.symbol = value,
+            Field::Uri => self.uri = value,
+            Field::Key(key) => self.set_key_value(key, value),
+        }
+    }
+
+    /// Sets a key-value pair in the additional metadata
+    ///
+    /// If the key is already present, overwrites the existing entry. Otherwise,
+    /// adds it to the end.
+    pub fn set_key_value(&mut self, new_key: String, new_value: String) {
+        for (key, value) in self.additional_metadata.iter_mut() {
+            if *key == new_key {
+                value.replace_range(.., &new_value);
+                return;
+            }
+        }
+        self.additional_metadata.push((new_key, new_value));
+    }
+
+    /// Removes the key-value pair given by the provided key. Returns true if
+    /// the key was found.
+    pub fn remove_key(&mut self, key: String) -> bool {
+        let mut found_key = false;
+        self.additional_metadata.retain(|x| {
+            let should_retain = x.0 != key;
+            if !should_retain {
+                found_key = true;
+            }
+            should_retain
+        });
+        found_key
+    }
+}
+
+/// Fields in the metadata account, used for updating
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
+pub enum Field {
+    /// The name field, corresponding to `TokenMetadata.name`
+    Name,
+    /// The symbol field, corresponding to `TokenMetadata.symbol`
+    Symbol,
+    /// The uri field, corresponding to `TokenMetadata.uri`
+    Uri,
+    /// A user field, whose key is given by the associated string
+    Key(String),
 }
 
 #[cfg(test)]
@@ -83,5 +134,92 @@ mod tests {
         let discriminator =
             ArrayDiscriminator::try_from(&preimage.as_ref()[..ArrayDiscriminator::LENGTH]).unwrap();
         assert_eq!(TokenMetadata::SPL_DISCRIMINATOR, discriminator);
+    }
+
+    #[test]
+    fn update() {
+        let name = "name".to_string();
+        let symbol = "symbol".to_string();
+        let uri = "uri".to_string();
+        let mut token_metadata = TokenMetadata {
+            name,
+            symbol,
+            uri,
+            ..Default::default()
+        };
+
+        // updating base fields
+        let new_name = "new_name".to_string();
+        token_metadata.update(Field::Name, new_name.clone());
+        assert_eq!(token_metadata.name, new_name);
+
+        let new_symbol = "new_symbol".to_string();
+        token_metadata.update(Field::Symbol, new_symbol.clone());
+        assert_eq!(token_metadata.symbol, new_symbol);
+
+        let new_uri = "new_uri".to_string();
+        token_metadata.update(Field::Uri, new_uri.clone());
+        assert_eq!(token_metadata.uri, new_uri);
+
+        // add new key-value pairs
+        let key1 = "key1".to_string();
+        let value1 = "value1".to_string();
+        token_metadata.update(Field::Key(key1.clone()), value1.clone());
+        assert_eq!(token_metadata.additional_metadata.len(), 1);
+        assert_eq!(
+            token_metadata.additional_metadata[0],
+            (key1.clone(), value1.clone())
+        );
+
+        let key2 = "key2".to_string();
+        let value2 = "value2".to_string();
+        token_metadata.update(Field::Key(key2.clone()), value2.clone());
+        assert_eq!(token_metadata.additional_metadata.len(), 2);
+        assert_eq!(
+            token_metadata.additional_metadata[0],
+            (key1.clone(), value1)
+        );
+        assert_eq!(
+            token_metadata.additional_metadata[1],
+            (key2.clone(), value2.clone())
+        );
+
+        // update first key, see that order is preserved
+        let new_value1 = "new_value1".to_string();
+        token_metadata.update(Field::Key(key1.clone()), new_value1.clone());
+        assert_eq!(token_metadata.additional_metadata.len(), 2);
+        assert_eq!(token_metadata.additional_metadata[0], (key1, new_value1));
+        assert_eq!(token_metadata.additional_metadata[1], (key2, value2));
+    }
+
+    #[test]
+    fn remove_key() {
+        let name = "name".to_string();
+        let symbol = "symbol".to_string();
+        let uri = "uri".to_string();
+        let mut token_metadata = TokenMetadata {
+            name,
+            symbol,
+            uri,
+            ..Default::default()
+        };
+
+        // add new key-value pair
+        let key = "key".to_string();
+        let value = "value".to_string();
+        token_metadata.update(Field::Key(key.clone()), value.clone());
+        assert_eq!(token_metadata.additional_metadata.len(), 1);
+        assert_eq!(
+            token_metadata.additional_metadata[0],
+            (key.clone(), value)
+        );
+
+        // remove it
+        assert!(token_metadata.remove_key(key.clone()));
+        assert_eq!(token_metadata.additional_metadata.len(), 0);
+
+        // remove it again, returns false
+        assert!(!token_metadata.remove_key(key));
+        assert_eq!(token_metadata.additional_metadata.len(), 0);
     }
 }

@@ -1,7 +1,7 @@
 //! Instruction types
 
 use {
-    crate::state::OptionalNonZeroPubkey,
+    crate::state::{Field, OptionalNonZeroPubkey},
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -10,19 +10,6 @@ use {
     },
     spl_discriminator::{discriminator::ArrayDiscriminator, SplDiscriminate},
 };
-
-/// Fields in the metadata account
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
-pub enum Field {
-    /// The name field, corresponding to `TokenMetadata.name`
-    Name,
-    /// The symbol field, corresponding to `TokenMetadata.symbol`
-    Symbol,
-    /// The uri field, corresponding to `TokenMetadata.uri`
-    Uri,
-    /// A user field, whose key is given by the associated string
-    Key(String),
-}
 
 /// Initialization instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]

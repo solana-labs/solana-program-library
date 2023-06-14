@@ -6517,6 +6517,7 @@ dependencies = [
  "spl-token-client",
  "spl-token-metadata-interface",
  "spl-type-length-value",
+ "test-case",
 ]
 
 [[package]]
