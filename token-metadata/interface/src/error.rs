@@ -20,4 +20,7 @@ pub enum TokenMetadataError {
     /// Token metadata has no update authority
     #[error("Token metadata has no update authority")]
     ImmutableMetadata,
+    /// Key not found in metadata account
+    #[error("Key not found in metadata account")]
+    KeyNotFound,
 }

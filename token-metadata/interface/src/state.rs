@@ -98,7 +98,7 @@ impl TokenMetadata {
 
     /// Removes the key-value pair given by the provided key. Returns true if
     /// the key was found.
-    pub fn remove_key(&mut self, key: String) -> bool {
+    pub fn remove_key(&mut self, key: &str) -> bool {
         let mut found_key = false;
         self.additional_metadata.retain(|x| {
             let should_retain = x.0 != key;
@@ -209,17 +209,14 @@ mod tests {
         let value = "value".to_string();
         token_metadata.update(Field::Key(key.clone()), value.clone());
         assert_eq!(token_metadata.additional_metadata.len(), 1);
-        assert_eq!(
-            token_metadata.additional_metadata[0],
-            (key.clone(), value)
-        );
+        assert_eq!(token_metadata.additional_metadata[0], (key.clone(), value));
 
         // remove it
-        assert!(token_metadata.remove_key(key.clone()));
+        assert!(token_metadata.remove_key(&key));
         assert_eq!(token_metadata.additional_metadata.len(), 0);
 
         // remove it again, returns false
-        assert!(!token_metadata.remove_key(key));
+        assert!(!token_metadata.remove_key(&key));
         assert_eq!(token_metadata.additional_metadata.len(), 0);
     }
 }

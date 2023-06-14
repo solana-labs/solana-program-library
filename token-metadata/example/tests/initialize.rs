@@ -80,7 +80,7 @@ async fn success_initialize() {
         .unwrap();
     assert_eq!(fetched_metadata, token_metadata);
 
-    // fail doing it again
+    // fail doing it again, and reverse some params to ensure a new tx
     {
         let transaction = Transaction::new_signed_with_payer(
             &[initialize(
@@ -89,8 +89,8 @@ async fn success_initialize() {
                 &update_authority,
                 token.get_address(),
                 &mint_authority_pubkey,
+                token_metadata.symbol.clone(), // intentionally reversed!
                 token_metadata.name.clone(),
-                token_metadata.symbol.clone(),
                 token_metadata.uri.clone(),
             )],
             Some(&payer.pubkey()),

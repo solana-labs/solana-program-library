@@ -13,7 +13,10 @@ use {
         },
         token::Token,
     },
-    spl_token_metadata_interface::{instruction::initialize, state::TokenMetadata},
+    spl_token_metadata_interface::{
+        instruction::{initialize, update_field},
+        state::{Field, TokenMetadata},
+    },
     std::sync::Arc,
 };
 
@@ -108,6 +111,51 @@ pub async fn setup_metadata(
         ],
         Some(&context.payer.pubkey()),
         &[&context.payer, metadata_keypair, mint_authority],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+}
+
+#[allow(dead_code)]
+pub async fn setup_update_field(
+    context: &mut ProgramTestContext,
+    metadata_program_id: &Pubkey,
+    token_metadata: &mut TokenMetadata,
+    metadata: &Pubkey,
+    update_authority: &Keypair,
+    field: Field,
+    value: String,
+) {
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let old_space = token_metadata.tlv_size_of().unwrap();
+    let old_rent_lamports = rent.minimum_balance(old_space);
+
+    token_metadata.update(field.clone(), value.clone());
+
+    let new_space = token_metadata.tlv_size_of().unwrap();
+    let new_rent_lamports = rent.minimum_balance(new_space);
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                metadata,
+                new_rent_lamports.saturating_sub(old_rent_lamports),
+            ),
+            update_field(
+                metadata_program_id,
+                metadata,
+                &update_authority.pubkey(),
+                field,
+                value,
+            ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, update_authority],
         context.last_blockhash,
     );
 
