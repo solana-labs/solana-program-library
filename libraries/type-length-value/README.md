@@ -145,3 +145,59 @@ state.borsh_serialize(&my_borsh).unwrap();
 let deser = state.borsh_deserialize::<MyBorsh>().unwrap();
 assert_eq!(deser, my_borsh);
 ```
+
+## Derive Macro
+
+A derive macro is also available to automate much of the above steps.
+
+To implement `TlvDiscriminator` for your struct or enum, simply add the `#[tlv_namespace("...")]` attribute to tell the macro which namespace to use for the discriminator.
+
+Examples:
+
+```rust
+use super::*;
+use solana_program::hash;
+use spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator};
+
+#[derive(SplTlv)]
+#[tlv_namespace("some_particular_program_instruction")]
+pub struct MyInstruction1 {
+    arg1: String,
+    arg2: u8,
+}
+
+#[derive(SplTlv)]
+#[tlv_namespace("yet_another_program_instruction")]
+pub struct MyInstruction2 {
+    arg1: u64,
+}
+
+#[derive(SplTlv)]
+#[tlv_namespace("token_program_instruction")]
+pub enum MyInstruction3 {
+    MintTo,
+    Transfer,
+}
+```
+
+This will generate the following code:
+
+```rust
+impl TlvDiscriminator for MyInstruction1 {
+    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(MY_INSTRUCTION_1_DISCRIMINATOR);
+}
+const MY_INSTRUCTION_1_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [234, 18, 32, 56, 89, 141, 37, 181]; // Sample bytes
+const MY_INSTRUCTION_1_DISCRIMINATOR_SLICE: &[u8] = &MY_INSTRUCTION_1_DISCRIMINATOR;
+
+impl TlvDiscriminator for MyInstruction2 {
+    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(MY_INSTRUCTION_2_DISCRIMINATOR);
+}
+const MY_INSTRUCTION_2_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [234, 18, 32, 56, 89, 141, 37, 181]; // Sample bytes
+const MY_INSTRUCTION_2_DISCRIMINATOR_SLICE: &[u8] = &MY_INSTRUCTION_2_DISCRIMINATOR;
+
+impl TlvDiscriminator for MyInstruction3 {
+    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(MY_INSTRUCTION_3_DISCRIMINATOR);
+}
+const MY_INSTRUCTION_3_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [234, 18, 32, 56, 89, 141, 37, 181]; // Sample bytes
+const MY_INSTRUCTION_3_DISCRIMINATOR_SLICE: &[u8] = &MY_INSTRUCTION_3_DISCRIMINATOR;
+```

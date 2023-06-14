@@ -39,6 +39,14 @@ mod tests {
         arg1: u64,
     }
 
+    #[allow(dead_code)]
+    #[derive(SplTlv)]
+    #[tlv_namespace("token_program_instruction")]
+    pub enum MyInstruction3 {
+        MintTo,
+        Transfer,
+    }
+
     fn assert_discriminators<T: TlvDiscriminator>(
         namespace: &str,
         generated_bytes: [u8; 8],
@@ -65,6 +73,11 @@ mod tests {
             "yet_another_program_instruction",
             MY_INSTRUCTION_2_DISCRIMINATOR,
             MY_INSTRUCTION_2_DISCRIMINATOR_SLICE,
+        );
+        assert_discriminators::<MyInstruction3>(
+            "token_program_instruction",
+            MY_INSTRUCTION_3_DISCRIMINATOR,
+            MY_INSTRUCTION_3_DISCRIMINATOR_SLICE,
         );
     }
 }
