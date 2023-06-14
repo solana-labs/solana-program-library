@@ -19,7 +19,9 @@ use {
         },
         state::{OptionalNonZeroPubkey, TokenMetadata},
     },
-    spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
+    spl_type_length_value::state::{
+        realloc_and_borsh_serialize, TlvState, TlvStateBorrowed, TlvStateMut,
+    },
 };
 
 fn check_update_authority(
@@ -33,44 +35,6 @@ fn check_update_authority(
         .ok_or(TokenMetadataError::ImmutableMetadata)?;
     if update_authority != *update_authority_info.key {
         return Err(TokenMetadataError::IncorrectUpdateAuthority.into());
-    }
-    Ok(())
-}
-
-// Helper to update the metadata instance and realloc the account + TLV entries
-// as needed
-fn update_metadata_account(
-    metadata_info: &AccountInfo,
-    token_metadata: &TokenMetadata,
-    previous_size: usize,
-) -> Result<(), ProgramError> {
-    let new_size = get_instance_packed_len(&token_metadata)?;
-    let previous_account_size = metadata_info.try_data_len()?;
-    if previous_size < new_size {
-        // size increased, so realloc the account, then the TLV entry, then write data
-        let additional_bytes = new_size
-            .checked_sub(previous_size)
-            .ok_or(ProgramError::AccountDataTooSmall)?;
-        metadata_info.realloc(previous_account_size.saturating_add(additional_bytes), true)?;
-        let mut buffer = metadata_info.try_borrow_mut_data()?;
-        let mut state = TlvStateMut::unpack(&mut buffer)?;
-        state.realloc::<TokenMetadata>(new_size)?;
-        state.borsh_serialize(token_metadata)?;
-    } else {
-        // do it backwards otherwise, write the state, realloc TLV, then the account
-        let mut buffer = metadata_info.try_borrow_mut_data()?;
-        let mut state = TlvStateMut::unpack(&mut buffer)?;
-        state.borsh_serialize(token_metadata)?;
-        let removed_bytes = previous_size
-            .checked_sub(new_size)
-            .ok_or(ProgramError::AccountDataTooSmall)?;
-        if removed_bytes > 0 {
-            // we decreased the size, so need to realloc the TLV, then the account
-            state.realloc::<TokenMetadata>(new_size)?;
-            drop(state);
-            drop(buffer);
-            metadata_info.realloc(previous_account_size.saturating_sub(removed_bytes), false)?;
-        }
     }
     Ok(())
 }
@@ -146,11 +110,10 @@ pub fn process_update_field(
     check_update_authority(update_authority_info, &token_metadata.update_authority)?;
 
     // Update the field
-    let previous_size = get_instance_packed_len(&token_metadata)?;
     token_metadata.update(data.field, data.value);
 
     // Update / realloc the account
-    update_metadata_account(metadata_info, &token_metadata, previous_size)?;
+    realloc_and_borsh_serialize(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -174,14 +137,10 @@ pub fn process_remove_key(
     };
 
     check_update_authority(update_authority_info, &token_metadata.update_authority)?;
-
-    let previous_size = get_instance_packed_len(&token_metadata)?;
     if !token_metadata.remove_key(&data.key) && !data.idempotent {
         return Err(TokenMetadataError::KeyNotFound.into());
     }
-
-    // Update / realloc the account
-    update_metadata_account(metadata_info, &token_metadata, previous_size)?;
+    realloc_and_borsh_serialize(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -205,12 +164,9 @@ pub fn process_update_authority(
     };
 
     check_update_authority(update_authority_info, &token_metadata.update_authority)?;
-
-    let previous_size = get_instance_packed_len(&token_metadata)?;
     token_metadata.update_authority = data.new_authority;
-
     // Update the account, no realloc needed!
-    update_metadata_account(metadata_info, &token_metadata, previous_size)?;
+    realloc_and_borsh_serialize(metadata_info, &token_metadata)?;
 
     Ok(())
 }
