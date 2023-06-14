@@ -173,10 +173,11 @@ pub struct MyInstruction2 {
 }
 
 #[derive(SplTlv)]
-#[tlv_namespace("token_program_instruction")]
+#[tlv_namespace("enum_program_instruction")]
 pub enum MyInstruction3 {
-    MintTo,
-    Transfer,
+    One,
+    Two,
+    Three,
 }
 ```
 
