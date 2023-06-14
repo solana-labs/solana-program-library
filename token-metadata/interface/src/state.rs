@@ -109,6 +109,13 @@ impl TokenMetadata {
         });
         found_key
     }
+
+    /// Get the slice corresponding to the given start and end range
+    pub fn get_slice(data: &[u8], start: Option<u64>, end: Option<u64>) -> Option<&[u8]> {
+        let start = start.unwrap_or(0) as usize;
+        let end = end.map(|x| x as usize).unwrap_or(data.len());
+        data.get(start..end)
+    }
 }
 
 /// Fields in the metadata account, used for updating
