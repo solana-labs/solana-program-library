@@ -14,6 +14,7 @@ use {
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::{self, InterestBearingConfig},
             memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
+            metadata_pointer::{self, MetadataPointer},
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
@@ -830,6 +831,19 @@ impl Processor {
                     )?;
                     extension.authority = new_authority.try_into()?;
                 }
+                AuthorityType::MetadataPointer => {
+                    let extension = mint.get_extension_mut::<MetadataPointer>()?;
+                    let maybe_authority: Option<Pubkey> = extension.authority.into();
+                    let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.authority = new_authority.try_into()?;
+                }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
@@ -1621,6 +1635,9 @@ impl Processor {
             TokenInstruction::WithdrawExcessLamports => {
                 msg!("Instruction: WithdrawExcessLamports");
                 Self::process_withdraw_excess_lamports(program_id, accounts)
+            }
+            TokenInstruction::MetadataPointerExtension => {
+                metadata_pointer::processor::process_instruction(program_id, accounts, &input[1..])
             }
         }
     }
