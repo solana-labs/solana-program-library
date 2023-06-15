@@ -48,19 +48,18 @@ pub enum TransferHookInstruction {
 /// by this type.
 pub struct ExecuteInstruction;
 impl TlvDiscriminator for ExecuteInstruction {
-    /// Please use this discriminator in your program when matching
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(EXECUTE_DISCRIMINATOR);
+    /// First 8 bytes of `hash::hashv(&["spl-transfer-hook-interface:execute"])`
+    const TLV_DISCRIMINATOR: Discriminator =
+        Discriminator::new([105, 37, 101, 197, 75, 251, 102, 26]);
 }
-/// First 8 bytes of `hash::hashv(&["spl-transfer-hook-interface:execute"])`
-const EXECUTE_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [105, 37, 101, 197, 75, 251, 102, 26];
-// annoying, but needed to perform a match on the value
-const EXECUTE_DISCRIMINATOR_SLICE: &[u8] = &EXECUTE_DISCRIMINATOR;
+
 /// First 8 bytes of `hash::hashv(&["spl-transfer-hook-interface:initialize-extra-account-metas"])`
 const INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR: &[u8] = &[43, 34, 13, 49, 167, 88, 235, 235];
 
 impl TransferHookInstruction {
     /// Unpacks a byte buffer into a [TransferHookInstruction](enum.TransferHookInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+        const EXECUTE_DISCRIMINATOR_SLICE: &[u8] = ExecuteInstruction::TLV_DISCRIMINATOR.as_slice();
         if input.len() < Discriminator::LENGTH {
             return Err(ProgramError::InvalidInstructionData);
         }
@@ -84,7 +83,7 @@ impl TransferHookInstruction {
         let mut buf = vec![];
         match self {
             Self::Execute { amount } => {
-                buf.extend_from_slice(EXECUTE_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(ExecuteInstruction::TLV_DISCRIMINATOR.as_slice());
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
             Self::InitializeExtraAccountMetas => {

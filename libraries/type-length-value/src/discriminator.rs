@@ -28,6 +28,10 @@ impl Discriminator {
     pub const fn new(value: [u8; Self::LENGTH]) -> Self {
         Self(value)
     }
+    /// Get the array as a const slice
+    pub const fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
+    }
 }
 impl AsRef<[u8]> for Discriminator {
     fn as_ref(&self) -> &[u8] {
