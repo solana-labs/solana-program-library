@@ -15,13 +15,13 @@ bytemuck = { version = "1.13.1", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"
 num_enum = "0.6.1"
-solana-program = "1.14.12"
+solana-program = "1.16.1"
 spl-type-length-value = { version = "0.1", path = "../type-length-value" }
 thiserror = "1.0"
 
 [dev-dependencies]
-solana-program-test = "1.14.12"
-solana-sdk = "1.14.12"
+solana-program-test = "1.16.1"
+solana-sdk = "1.16.1"
 
 [lib]
 crate-type = ["cdylib", "lib"]
