@@ -104,6 +104,7 @@ pub fn spl_program_error(input: ItemEnum) -> proc_macro2::TokenStream {
     let print_program_error = print_program_error(ident, variants);
     quote! {
         #[derive(Clone, Debug, Eq, thiserror::Error, num_derive::FromPrimitive, PartialEq)]
+        #[num_traits = "num_traits"]
         #input
 
         #into_program_error
