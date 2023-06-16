@@ -232,17 +232,13 @@ mod tests {
     impl SplDiscriminator for TestInstruction {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
     }
-    impl TlvDiscriminator for TestInstruction {
-        const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
-    }
+    impl TlvDiscriminator for TestInstruction {}
 
     pub struct TestOtherInstruction;
     impl SplDiscriminator for TestOtherInstruction {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
     }
-    impl TlvDiscriminator for TestOtherInstruction {
-        const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
-    }
+    impl TlvDiscriminator for TestOtherInstruction {}
 
     #[test]
     fn init_with_metas() {

@@ -36,9 +36,7 @@ pub struct Initialize {
     /// URI pointing to more metadata (image, video, etc.)
     pub uri: String,
 }
-impl TlvDiscriminator for Initialize {
-    const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
-}
+impl TlvDiscriminator for Initialize {}
 
 /// Update field instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminator)]
@@ -49,9 +47,7 @@ pub struct UpdateField {
     /// Value to write for the field
     pub value: String,
 }
-impl TlvDiscriminator for UpdateField {
-    const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
-}
+impl TlvDiscriminator for UpdateField {}
 
 /// Remove key instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminator)]
@@ -60,9 +56,7 @@ pub struct RemoveKey {
     /// Key to remove in the additional metadata portion
     pub key: String,
 }
-impl TlvDiscriminator for RemoveKey {
-    const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
-}
+impl TlvDiscriminator for RemoveKey {}
 
 /// Update authority instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminator)]
@@ -71,9 +65,7 @@ pub struct UpdateAuthority {
     /// New authority for the token metadata, or unset if `None`
     pub new_authority: OptionalNonZeroPubkey,
 }
-impl TlvDiscriminator for UpdateAuthority {
-    const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
-}
+impl TlvDiscriminator for UpdateAuthority {}
 
 /// Instruction data for Emit
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminator)]
@@ -84,9 +76,7 @@ pub struct Emit {
     /// End of range of data to emit
     pub end: Option<u64>,
 }
-impl TlvDiscriminator for Emit {
-    const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
-}
+impl TlvDiscriminator for Emit {}
 
 /// All instructions that must be implemented in the token-metadata interface
 #[derive(Clone, Debug, PartialEq)]

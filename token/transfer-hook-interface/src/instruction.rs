@@ -87,7 +87,7 @@ impl TransferHookInstruction {
         let mut buf = vec![];
         match self {
             Self::Execute { amount } => {
-                buf.extend_from_slice(ExecuteInstruction::TLV_DISCRIMINATOR.as_slice());
+                buf.extend_from_slice(ExecuteInstruction::SPL_DISCRIMINATOR_SLICE);
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
             Self::InitializeExtraAccountMetas => {
