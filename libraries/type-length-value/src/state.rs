@@ -2,15 +2,24 @@
 
 use {
     crate::{
-        discriminator::{Discriminator, TlvDiscriminator},
         error::TlvError,
         length::Length,
         pod::{pod_from_bytes, pod_from_bytes_mut},
     },
     bytemuck::Pod,
     solana_program::program_error::ProgramError,
+    spl_discriminator::{Discriminator, SplDiscriminator},
     std::{cmp::Ordering, mem::size_of},
 };
+
+/// Trait to be implemented by all value types in the TLV structure, specifying
+/// just the discriminator
+pub trait TlvDiscriminator: SplDiscriminator {
+    /// Associated value type discriminator, checked at the start of TLV entries
+    const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
+    /// The TLV Discriminator as a slice
+    const TLV_DISCRIMINATOR_SLICE: &'static [u8] = Self::TLV_DISCRIMINATOR.as_slice();
+}
 
 /// Get the current TlvIndices from the current spot
 const fn get_indices_unchecked(type_start: usize) -> TlvIndices {
@@ -447,25 +456,28 @@ mod test {
     struct TestValue {
         data: [u8; 32],
     }
-    impl TlvDiscriminator for TestValue {
-        const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+    impl SplDiscriminator for TestValue {
+        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
     }
+    impl TlvDiscriminator for TestValue {}
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
     struct TestSmallValue {
         data: [u8; 3],
     }
-    impl TlvDiscriminator for TestSmallValue {
-        const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+    impl SplDiscriminator for TestSmallValue {
+        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
     }
+    impl TlvDiscriminator for TestSmallValue {}
 
     #[repr(transparent)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
     struct TestEmptyValue;
-    impl TlvDiscriminator for TestEmptyValue {
-        const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([3; Discriminator::LENGTH]);
+    impl SplDiscriminator for TestEmptyValue {
+        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([3; Discriminator::LENGTH]);
     }
+    impl TlvDiscriminator for TestEmptyValue {}
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -473,9 +485,10 @@ mod test {
         data: [u8; 5],
     }
     const TEST_NON_ZERO_DEFAULT_DATA: [u8; 5] = [4; 5];
-    impl TlvDiscriminator for TestNonZeroDefault {
-        const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([4; Discriminator::LENGTH]);
+    impl SplDiscriminator for TestNonZeroDefault {
+        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([4; Discriminator::LENGTH]);
     }
+    impl TlvDiscriminator for TestNonZeroDefault {}
     impl Default for TestNonZeroDefault {
         fn default() -> Self {
             Self {

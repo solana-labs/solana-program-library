@@ -10,10 +10,7 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
     },
-    spl_type_length_value::{
-        discriminator::TlvDiscriminator,
-        state::{TlvState, TlvStateBorrowed, TlvStateMut},
-    },
+    spl_type_length_value::state::{TlvDiscriminator, TlvState, TlvStateBorrowed, TlvStateMut},
 };
 
 /// Stateless helper for storing additional accounts required for an instruction.
@@ -228,17 +225,23 @@ mod tests {
     use {
         super::*,
         solana_program::{clock::Epoch, instruction::AccountMeta, pubkey::Pubkey},
-        spl_type_length_value::discriminator::Discriminator,
+        spl_discriminator::{Discriminator, SplDiscriminator},
     };
 
     pub struct TestInstruction;
+    impl SplDiscriminator for TestInstruction {
+        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+    }
     impl TlvDiscriminator for TestInstruction {
-        const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+        const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
     }
 
     pub struct TestOtherInstruction;
+    impl SplDiscriminator for TestOtherInstruction {
+        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+    }
     impl TlvDiscriminator for TestOtherInstruction {
-        const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+        const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
     }
 
     #[test]

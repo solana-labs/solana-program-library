@@ -1,0 +1,88 @@
+//! Token parsing and generating library for the `spl-discriminator` library
+
+#![deny(missing_docs)]
+#![cfg_attr(not(test), forbid(unsafe_code))]
+
+mod error;
+pub mod parser;
+
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, ToTokens};
+use solana_program::hash;
+use syn::{parse::Parse, Ident, Item, ItemEnum, ItemStruct, LitByteStr};
+
+use crate::error::SplDiscriminatorError;
+use crate::parser::parse_namespace;
+
+/// "Builder" struct to implement the `SplDiscriminator` trait
+/// on an enum or struct
+#[derive(Debug)]
+pub struct SplDiscriminatorBuilder {
+    /// The struct/enum identifier
+    pub ident: Ident,
+    /// The TLV namespace
+    pub namespace: String,
+}
+
+impl TryFrom<ItemEnum> for SplDiscriminatorBuilder {
+    type Error = SplDiscriminatorError;
+
+    fn try_from(item_enum: ItemEnum) -> Result<Self, Self::Error> {
+        let ident = item_enum.ident;
+        let namespace = parse_namespace(&item_enum.attrs)?;
+        Ok(Self { ident, namespace })
+    }
+}
+
+impl TryFrom<ItemStruct> for SplDiscriminatorBuilder {
+    type Error = SplDiscriminatorError;
+
+    fn try_from(item_struct: ItemStruct) -> Result<Self, Self::Error> {
+        let ident = item_struct.ident;
+        let namespace = parse_namespace(&item_struct.attrs)?;
+        Ok(Self { ident, namespace })
+    }
+}
+
+impl Parse for SplDiscriminatorBuilder {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let item = Item::parse(input)?;
+        match item {
+            Item::Enum(item_enum) => item_enum.try_into(),
+            Item::Struct(item_struct) => item_struct.try_into(),
+            _ => {
+                return Err(syn::Error::new(
+                    Span::call_site(),
+                    "Only enums and structs are supported",
+                ))
+            }
+        }
+        .map_err(|e| syn::Error::new(input.span(), format!("Failed to parse item: {}", e)))
+    }
+}
+
+impl ToTokens for SplDiscriminatorBuilder {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        tokens.extend::<TokenStream>(self.into());
+    }
+}
+
+impl From<&SplDiscriminatorBuilder> for TokenStream {
+    fn from(builder: &SplDiscriminatorBuilder) -> Self {
+        let ident = &builder.ident;
+        let bytes = get_discriminator_bytes(&builder.namespace);
+        quote! {
+            impl spl_discriminator::discriminator::SplDiscriminator for #ident {
+                const SPL_DISCRIMINATOR: spl_discriminator::discriminator::Discriminator = spl_discriminator::discriminator::Discriminator::new(*#bytes);
+            }
+        }
+    }
+}
+
+/// Returns the bytes for the TLV namespace discriminator
+fn get_discriminator_bytes(namespace: &str) -> LitByteStr {
+    LitByteStr::new(
+        &hash::hashv(&[namespace.as_bytes()]).to_bytes()[..8],
+        Span::call_site(),
+    )
+}

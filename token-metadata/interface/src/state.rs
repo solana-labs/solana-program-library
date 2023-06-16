@@ -1,8 +1,10 @@
 //! Token-metadata interface state types
+
 use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{program_error::ProgramError, pubkey::Pubkey},
-    spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator},
+    spl_discriminator::{Discriminator, SplDiscriminator},
+    spl_type_length_value::state::TlvDiscriminator,
     std::convert::TryFrom,
 };
 
@@ -57,11 +59,12 @@ pub struct TokenMetadata {
     /// must avoid storing the same key twice.
     pub additional_metadata: Vec<(String, String)>,
 }
-impl TlvDiscriminator for TokenMetadata {
+impl SplDiscriminator for TokenMetadata {
     /// Please use this discriminator in your program when matching
-    const TLV_DISCRIMINATOR: Discriminator =
+    const SPL_DISCRIMINATOR: Discriminator =
         Discriminator::new([112, 132, 90, 90, 11, 88, 157, 87]);
 }
+impl TlvDiscriminator for TokenMetadata {}
 
 #[cfg(test)]
 mod tests {

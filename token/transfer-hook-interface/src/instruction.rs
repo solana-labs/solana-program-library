@@ -7,7 +7,8 @@ use {
         pubkey::Pubkey,
         system_program,
     },
-    spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator},
+    spl_discriminator::{Discriminator, SplDiscriminator},
+    spl_type_length_value::state::TlvDiscriminator,
     std::convert::TryInto,
 };
 
@@ -46,26 +47,27 @@ pub enum TransferHookInstruction {
 /// TLV instruction type only used to define the discriminator. The actual data
 /// is entirely managed by `ExtraAccountMetas`, and it is the only data contained
 /// by this type.
+#[derive(SplDiscriminator)]
+#[discriminator_namespace("spl-transfer-hook-interface::execute")]
 pub struct ExecuteInstruction;
-impl TlvDiscriminator for ExecuteInstruction {
-    /// First 8 bytes of `hash::hashv(&["spl-transfer-hook-interface:execute"])`
-    const TLV_DISCRIMINATOR: Discriminator =
-        Discriminator::new([105, 37, 101, 197, 75, 251, 102, 26]);
-}
+impl TlvDiscriminator for ExecuteInstruction {}
 
-/// First 8 bytes of `hash::hashv(&["spl-transfer-hook-interface:initialize-extra-account-metas"])`
-const INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR: &[u8] = &[43, 34, 13, 49, 167, 88, 235, 235];
+/// TLV instruction type used to initialize extra account metas
+/// for the transfer hook
+#[derive(SplDiscriminator)]
+#[discriminator_namespace("spl-transfer-hook-interface:initialize-extra-account-metas")]
+pub struct InitializeExtraAccountMetasInstruction;
+impl TlvDiscriminator for InitializeExtraAccountMetasInstruction {}
 
 impl TransferHookInstruction {
     /// Unpacks a byte buffer into a [TransferHookInstruction](enum.TransferHookInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        const EXECUTE_DISCRIMINATOR_SLICE: &[u8] = ExecuteInstruction::TLV_DISCRIMINATOR.as_slice();
         if input.len() < Discriminator::LENGTH {
             return Err(ProgramError::InvalidInstructionData);
         }
         let (discriminator, rest) = input.split_at(Discriminator::LENGTH);
         Ok(match discriminator {
-            EXECUTE_DISCRIMINATOR_SLICE => {
+            ExecuteInstruction::SPL_DISCRIMINATOR_SLICE => {
                 let amount = rest
                     .get(..8)
                     .and_then(|slice| slice.try_into().ok())
@@ -73,7 +75,9 @@ impl TransferHookInstruction {
                     .ok_or(ProgramError::InvalidInstructionData)?;
                 Self::Execute { amount }
             }
-            INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR => Self::InitializeExtraAccountMetas,
+            InitializeExtraAccountMetasInstruction::SPL_DISCRIMINATOR_SLICE => {
+                Self::InitializeExtraAccountMetas
+            }
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }
@@ -87,7 +91,9 @@ impl TransferHookInstruction {
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
             Self::InitializeExtraAccountMetas => {
-                buf.extend_from_slice(INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR);
+                buf.extend_from_slice(
+                    InitializeExtraAccountMetasInstruction::SPL_DISCRIMINATOR_SLICE,
+                );
             }
         };
         buf

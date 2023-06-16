@@ -1,17 +1,14 @@
-//! Discriminator for differentiating account types, the "Type" in the
-//! Type-Length-Value structure. Since the word "type" is reserved in Rust,
-//! we use the term "Discriminator" and "Type" interchangeably.
+//! The traits and types used to create a discriminator for a type
 
-use {
-    bytemuck::{Pod, Zeroable},
-    solana_program::program_error::ProgramError,
-};
+use bytemuck::{Pod, Zeroable};
+use solana_program::program_error::ProgramError;
 
-/// Trait to be implemented by all value types in the TLV structure, specifying
-/// just the discriminator
-pub trait TlvDiscriminator {
-    /// Associated value type discriminator, checked at the start of TLV entries
-    const TLV_DISCRIMINATOR: Discriminator;
+/// A trait for managing 8-byte discriminators in a slab of bytes
+pub trait SplDiscriminator {
+    /// The 8-byte discriminator as a `[u8; 8]`
+    const SPL_DISCRIMINATOR: Discriminator;
+    /// The 8-byte discriminator as a slice (`&[u8]`)
+    const SPL_DISCRIMINATOR_SLICE: &'static [u8] = Self::SPL_DISCRIMINATOR.as_slice();
 }
 
 /// Discriminator used as the type in the TLV structure
