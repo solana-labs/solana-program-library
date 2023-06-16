@@ -24,13 +24,19 @@ import {
   Input,
   Select,
 } from "@chakra-ui/react";
+import { useRouter } from "next/router";
 
 export default function Proposal() {
   const [active, setActive] = useState(false);
+  const route = useRouter()
 
   const toggle = () => {
     setActive(!active);
   };
+
+  const send = () => {
+    route.push("/proposal-summary")
+  }
   const ActiveStyle = active
     ? " cursor-pointer bg-white text-blac focus-within:bg-primary"
     : "cursor-pointer bg-none rounded border-neutral-500 ";
@@ -177,7 +183,7 @@ export default function Proposal() {
       </div>
       <div className="flex justify-between my-4">
         <Button text="X Close" rounded={true} variant="link" type="button" />
-        <Button text="Continue &rarr;" variant="outline" type="button" />
+        <Button onClick={send} text="Continue &rarr;" variant="outline" type="button" />
       </div>
     </div>
   );
