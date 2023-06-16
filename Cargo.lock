@@ -6634,12 +6634,9 @@ name = "spl-token-metadata-interface"
 version = "0.1.0"
 dependencies = [
  "borsh",
- "num-derive",
- "num-traits",
  "solana-program",
  "spl-program-error",
  "spl-type-length-value",
- "thiserror",
 ]
 
 [[package]]

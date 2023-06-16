@@ -8,15 +8,15 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-num-derive = "0.3.3"
-num-traits = "0.2.15"
+num-derive = "0.3"
+num-traits = "0.2"
 solana-program = "1.14.12"
 spl-program-error-derive = { version = "0.1.0", path = "./derive" }
-thiserror = "1.0.32"
+thiserror = "1.0"
 
 [dev-dependencies]
-lazy_static = "1.4.0"
-serial_test = "2.0.0"
+lazy_static = "1.4"
+serial_test = "2.0"
 solana-sdk = "1.14.12"
 
 [lib]
