@@ -6,7 +6,7 @@ import Button from './Button'
 
 export default function NavBar() {
     return (
-        <header className='sticky top-0 left-0 right-0 bg-neutral-800 w-full p-4 text-neutral-400 flex justify-between'>
+        <header className='sticky top-0 z-10 left-0 right-0 bg-neutral-800 w-full p-4 text-neutral-400 flex justify-between'>
             <div className="flex gap-4 items-center">
                 <div className="flex gap-2 items-center">
                     <Logo />
@@ -20,6 +20,7 @@ export default function NavBar() {
                         <Input className='border border-neutral-500' placeholder='Organization' />
                         <InputRightElement
                             pointerEvents='none'
+                            // eslint-disable-next-line react/no-children-prop
                             children="/"
 
                         />

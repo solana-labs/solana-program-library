@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <main className=' w-full h-screen'>
       <NavBar />
-      <Steps/>
+      <Steps step={1} content={''}/>
       <Proposal/>
     </main>
   )

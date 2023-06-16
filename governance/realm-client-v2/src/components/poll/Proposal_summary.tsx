@@ -25,7 +25,7 @@ import {
   Select,
 } from "@chakra-ui/react";
 
-export default function Proposal() {
+export default function Index() {
   const [active, setActive] = useState(false);
 
   const toggle = () => {
@@ -37,10 +37,13 @@ export default function Proposal() {
   return (
     <div className="w-fit p-2 mx-auto my-2 text-white">
       <div className="flex items-center gap-2 text-sm mb-2 ">
-        <small className="bg-black p-2 text-white rounded">DAO Name</small>
+        <small className="bg-black p-2 text-white rounded">DAO Name Here</small>
         <small className="bg-neutral-800 text-neutral-500 p-2 rounded">
           Org type:{" "}
           <span className="text-neutral-50 ml-1">Community Token DAO</span>
+        </small>
+        <small className=" p-2 bg-neutral-800 text-white rounded">
+          <Icon as={BsWallet} /> {walletShortener()}
         </small>
       </div>
       <h1 className="text-4xl font-bold text-white">
@@ -73,23 +76,22 @@ export default function Proposal() {
               <ul className="flex text-black">
                 <AvatarGroup size="xs" max={3}>
                   <Avatar
-                    name="Segun Adebayo"
-                    src="https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=025"
-                  />
-                  <Avatar
                     name="Ryan Florence"
-                    src="https://cryptologos.cc/logos/solana-sol-logo.svg?v=025"
+                    src="https://bit.ly/ryan-florence"
                   />
-
                   <Avatar
-                    name="USDT"
-                    src="https://cryptologos.cc/logos/tether-usdt-logo.svg?v=025"
+                    name="Segun Adebayo"
+                    src="https://bit.ly/sage-adebayo"
+                  />
+                  <Avatar name="Kent Dodds" src="https://bit.ly/kent-c-dodds" />
+                  <Avatar
+                    name="Prosper Otemuyiwa"
+                    src="https://bit.ly/prosper-baba"
                   />
                   <Avatar
                     name="Christian Nwamba"
                     src="https://bit.ly/code-beast"
                   />
-                  <Avatar name="USDC" src="https://bit.ly/kent-c-dodds" />
                 </AvatarGroup>
               </ul>
               <Icon className="ml-2" as={BsChevronDown} />
