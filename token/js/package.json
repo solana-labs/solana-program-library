@@ -47,7 +47,7 @@
         "test:build-programs": "cargo build-sbf --manifest-path ../program/Cargo.toml && cargo build-sbf --manifest-path ../program-2022/Cargo.toml && cargo build-sbf --manifest-path ../../associated-token-account/program/Cargo.toml",
         "deploy": "npm run deploy:docs",
         "docs": "shx rm -rf docs && typedoc && shx cp .nojekyll docs/",
-        "deploy:docs": "npm run docs && gh-pages --dist token/js --dotfiles"
+        "deploy:docs": "npm run docs && gh-pages --dest token/js --dist docs --dotfiles"
     },
     "peerDependencies": {
         "@solana/web3.js": "^1.47.4"
