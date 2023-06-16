@@ -1,41 +1,43 @@
 //! Parser for the `syn` crate to parse the
-//! `#[discriminator_namespace("...")]` attribute
+//! `#[discriminator_hash_input("...")]` attribute
 
-use syn::{
-    parse::{Parse, ParseStream},
-    token::Comma,
-    Attribute, LitStr,
+use {
+    crate::error::SplDiscriminatorError,
+    syn::{
+        parse::{Parse, ParseStream},
+        token::Comma,
+        Attribute, LitStr,
+    },
 };
 
-use crate::error::SplDiscriminatorError;
-
-/// Struct used for `syn` parsing of the namespace attribute
-/// #[discriminator_namespace("...")]
-struct NamespaceValueParser {
+/// Struct used for `syn` parsing of the hash_input attribute
+/// #[discriminator_hash_input("...")]
+struct HashInputValueParser {
     value: LitStr,
     _comma: Option<Comma>,
 }
 
-impl Parse for NamespaceValueParser {
+impl Parse for HashInputValueParser {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let value: LitStr = input.parse()?;
         let _comma: Option<Comma> = input.parse().unwrap_or(None);
-        Ok(NamespaceValueParser { value, _comma })
+        Ok(HashInputValueParser { value, _comma })
     }
 }
 
-/// Parses the namespace from the `#[discriminator_namespace("...")]` attribute
-pub fn parse_namespace(attrs: &[Attribute]) -> Result<String, SplDiscriminatorError> {
+/// Parses the hash_input from the `#[discriminator_hash_input("...")]`
+/// attribute
+pub fn parse_hash_input(attrs: &[Attribute]) -> Result<String, SplDiscriminatorError> {
     match attrs
         .iter()
-        .find(|a| a.path().is_ident("discriminator_namespace"))
+        .find(|a| a.path().is_ident("discriminator_hash_input"))
     {
         Some(attr) => {
             let parsed_args = attr
-                .parse_args::<NamespaceValueParser>()
-                .map_err(|_| SplDiscriminatorError::NamespaceAttributeParseError)?;
+                .parse_args::<HashInputValueParser>()
+                .map_err(|_| SplDiscriminatorError::HashInputAttributeParseError)?;
             Ok(parsed_args.value.value())
         }
-        None => Err(SplDiscriminatorError::NamespaceAttributeNotProvided),
+        None => Err(SplDiscriminatorError::HashInputAttributeNotProvided),
     }
 }

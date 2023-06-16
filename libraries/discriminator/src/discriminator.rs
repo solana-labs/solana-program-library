@@ -1,7 +1,9 @@
 //! The traits and types used to create a discriminator for a type
 
-use bytemuck::{Pod, Zeroable};
-use solana_program::program_error::ProgramError;
+use {
+    bytemuck::{Pod, Zeroable},
+    solana_program::program_error::ProgramError,
+};
 
 /// A trait for managing 8-byte discriminators in a slab of bytes
 pub trait SplDiscriminator {
@@ -11,8 +13,7 @@ pub trait SplDiscriminator {
     const SPL_DISCRIMINATOR_SLICE: &'static [u8] = Self::SPL_DISCRIMINATOR.as_slice();
 }
 
-/// Discriminator used as the type in the TLV structure
-/// Type in TLV structure
+/// Discriminator type
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct Discriminator([u8; Discriminator::LENGTH]);

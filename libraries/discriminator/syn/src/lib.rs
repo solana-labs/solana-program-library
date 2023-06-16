@@ -6,13 +6,13 @@
 mod error;
 pub mod parser;
 
-use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
-use solana_program::hash;
-use syn::{parse::Parse, Ident, Item, ItemEnum, ItemStruct, LitByteStr};
-
-use crate::error::SplDiscriminatorError;
-use crate::parser::parse_namespace;
+use {
+    crate::{error::SplDiscriminatorError, parser::parse_hash_input},
+    proc_macro2::{Span, TokenStream},
+    quote::{quote, ToTokens},
+    solana_program::hash,
+    syn::{parse::Parse, Ident, Item, ItemEnum, ItemStruct, LitByteStr},
+};
 
 /// "Builder" struct to implement the `SplDiscriminator` trait
 /// on an enum or struct
@@ -20,8 +20,8 @@ use crate::parser::parse_namespace;
 pub struct SplDiscriminatorBuilder {
     /// The struct/enum identifier
     pub ident: Ident,
-    /// The TLV namespace
-    pub namespace: String,
+    /// The TLV hash_input
+    pub hash_input: String,
 }
 
 impl TryFrom<ItemEnum> for SplDiscriminatorBuilder {
@@ -29,8 +29,8 @@ impl TryFrom<ItemEnum> for SplDiscriminatorBuilder {
 
     fn try_from(item_enum: ItemEnum) -> Result<Self, Self::Error> {
         let ident = item_enum.ident;
-        let namespace = parse_namespace(&item_enum.attrs)?;
-        Ok(Self { ident, namespace })
+        let hash_input = parse_hash_input(&item_enum.attrs)?;
+        Ok(Self { ident, hash_input })
     }
 }
 
@@ -39,8 +39,8 @@ impl TryFrom<ItemStruct> for SplDiscriminatorBuilder {
 
     fn try_from(item_struct: ItemStruct) -> Result<Self, Self::Error> {
         let ident = item_struct.ident;
-        let namespace = parse_namespace(&item_struct.attrs)?;
-        Ok(Self { ident, namespace })
+        let hash_input = parse_hash_input(&item_struct.attrs)?;
+        Ok(Self { ident, hash_input })
     }
 }
 
@@ -70,7 +70,7 @@ impl ToTokens for SplDiscriminatorBuilder {
 impl From<&SplDiscriminatorBuilder> for TokenStream {
     fn from(builder: &SplDiscriminatorBuilder) -> Self {
         let ident = &builder.ident;
-        let bytes = get_discriminator_bytes(&builder.namespace);
+        let bytes = get_discriminator_bytes(&builder.hash_input);
         quote! {
             impl spl_discriminator::discriminator::SplDiscriminator for #ident {
                 const SPL_DISCRIMINATOR: spl_discriminator::discriminator::Discriminator = spl_discriminator::discriminator::Discriminator::new(*#bytes);
@@ -79,10 +79,10 @@ impl From<&SplDiscriminatorBuilder> for TokenStream {
     }
 }
 
-/// Returns the bytes for the TLV namespace discriminator
-fn get_discriminator_bytes(namespace: &str) -> LitByteStr {
+/// Returns the bytes for the TLV hash_input discriminator
+fn get_discriminator_bytes(hash_input: &str) -> LitByteStr {
     LitByteStr::new(
-        &hash::hashv(&[namespace.as_bytes()]).to_bytes()[..8],
+        &hash::hashv(&[hash_input.as_bytes()]).to_bytes()[..8],
         Span::call_site(),
     )
 }

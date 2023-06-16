@@ -1,12 +1,12 @@
-//! Error types for the namespace parser
+//! Error types for the `hash_input` parser
 
-/// Error types for the namespace parser
+/// Error types for the `hash_input` parser
 #[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]
 pub enum SplDiscriminatorError {
-    /// Discriminator namespace attribute not provided
-    #[error("Discriminator namespace attribute not provided")]
-    NamespaceAttributeNotProvided,
-    /// Error parsing discriminator namespace attribute
-    #[error("Error parsing discriminator namespace attribute")]
-    NamespaceAttributeParseError,
+    /// Discriminator hash_input attribute not provided
+    #[error("Discriminator `hash_input` attribute not provided")]
+    HashInputAttributeNotProvided,
+    /// Error parsing discriminator hash_input attribute
+    #[error("Error parsing discriminator `hash_input` attribute")]
+    HashInputAttributeParseError,
 }
