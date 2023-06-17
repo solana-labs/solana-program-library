@@ -210,7 +210,7 @@ const VoteDetails = () => {
           <div className="uppercase text-xs whitespace-nowrap  my-2 ">
             <Icon as={AiOutlineThunderbolt} /> My voting power
           </div>
-          <div className="uppercase text-xs whitespace-nowrap  my-2 ">
+          <div className="uppercase text-xs  my-2 flex gap-1 items-center">
             <div className=" text-sm text-neutral-600">
               <Icon as={BiTimer} /> Tvp
             </div>{" "}
