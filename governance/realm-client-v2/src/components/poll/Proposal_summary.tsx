@@ -64,7 +64,7 @@ export default function Index() {
         </small>
         <hr className="my-2  border-neutral-600" />
         <div className="mt-6 flex flex-col gap-3">
-          <FormControl >
+          <FormControl>
             <FormLabel>Proposal Title</FormLabel>
             <Input
               className="placeholde:text-neutral-300 bg-neutral-700"
@@ -164,7 +164,7 @@ interface DetailProps {
   small: string;
   content: string;
 }
-const Detail = (props: DetailProps) => {
+export const Detail = (props: DetailProps) => {
   return (
     <li className="border-l  border-neutral-500 pl-4">
       <div className="">

@@ -28,15 +28,15 @@ import { useRouter } from "next/router";
 
 export default function Proposal() {
   const [active, setActive] = useState(false);
-  const route = useRouter()
+  const route = useRouter();
 
   const toggle = () => {
     setActive(!active);
   };
 
   const send = () => {
-    route.push("/proposal-summary")
-  }
+    route.push("/proposal-summary");
+  };
   const ActiveStyle = active
     ? " cursor-pointer bg-white text-blac focus-within:bg-primary"
     : "cursor-pointer bg-none rounded border-neutral-500 ";
@@ -183,7 +183,12 @@ export default function Proposal() {
       </div>
       <div className="flex justify-between my-4">
         <Button text="X Close" rounded={true} variant="link" type="button" />
-        <Button onClick={send} text="Continue &rarr;" variant="outline" type="button" />
+        <Button
+          onClick={send}
+          text="Continue &rarr;"
+          variant="outline"
+          type="button"
+        />
       </div>
     </div>
   );
@@ -251,7 +256,10 @@ const Executable = () => {
 const VotingChoice = () => {
   return (
     <div className="bg-neutral-800 p-2 rounded-sm flex flex-col">
-      <h1 className="text-neutral-500">Choice 1</h1>
+      <div className="flex justify-between">
+        <h1 className="text-neutral-500">Choice 1</h1>
+        <Button   variant="link" type="button" text="x Remove" />
+      </div>
       <div className="">
         <p>
           <strong>Add a label</strong>
