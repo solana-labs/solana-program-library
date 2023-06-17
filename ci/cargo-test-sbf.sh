@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 source ./ci/rust-version.sh stable
 source ./ci/solana-version.sh
 
-export RUSTFLAGS="-D warnings"
+# export RUSTFLAGS="-D warnings" TODO: disable warnings once the deprecated `Pubkey::new` is removed from the repo
 export RUSTBACKTRACE=1
 
 usage() {
