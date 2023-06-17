@@ -10,6 +10,7 @@ import {
 import {
   Avatar,
   Icon,
+  IconButton,
   Input,
   InputGroup,
   InputLeftElement,
@@ -27,6 +28,7 @@ import { FiExternalLink, FiSettings, FiUsers } from "react-icons/fi";
 import Image from "next/image";
 import { walletShortener } from "@/utils/util";
 import { BsPlusCircle } from "react-icons/bs";
+import { useRouter } from "next/router";
 
 export default function Listing() {
   return (
@@ -91,6 +93,9 @@ const Listings = () => {
 };
 
 const ProposalList = () => {
+  const router = useRouter()
+
+  const toVoting = () => router.push("/voting")
   return (
     <div className="">
       <div className="flex gap-2">
@@ -194,7 +199,7 @@ const ProposalList = () => {
               <small className="text-primary text-xs p-2 rounded-full border border-primary">
                 Finalizing
               </small>
-              <ChevronRightIcon />
+              <IconButton  onClick={toVoting} aria-label='Back to voting' icon={<ChevronRightIcon />} />
             </div>
           </div>
           <ul className="flex flex-col">
