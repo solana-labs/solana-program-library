@@ -8,7 +8,6 @@ use {
         system_program,
     },
     spl_discriminator::{Discriminator, SplDiscriminator},
-    spl_type_length_value::state::TlvDiscriminator,
     std::convert::TryInto,
 };
 
@@ -48,16 +47,14 @@ pub enum TransferHookInstruction {
 /// is entirely managed by `ExtraAccountMetas`, and it is the only data contained
 /// by this type.
 #[derive(SplDiscriminator)]
-#[discriminator_namespace("spl-transfer-hook-interface::execute")]
+#[discriminator_hash_input("spl-transfer-hook-interface::execute")]
 pub struct ExecuteInstruction;
-impl TlvDiscriminator for ExecuteInstruction {}
 
 /// TLV instruction type used to initialize extra account metas
 /// for the transfer hook
 #[derive(SplDiscriminator)]
-#[discriminator_namespace("spl-transfer-hook-interface:initialize-extra-account-metas")]
+#[discriminator_hash_input("spl-transfer-hook-interface:initialize-extra-account-metas")]
 pub struct InitializeExtraAccountMetasInstruction;
-impl TlvDiscriminator for InitializeExtraAccountMetasInstruction {}
 
 impl TransferHookInstruction {
     /// Unpacks a byte buffer into a [TransferHookInstruction](enum.TransferHookInstruction.html).

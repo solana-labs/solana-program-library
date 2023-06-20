@@ -9,7 +9,6 @@ use {
         pubkey::Pubkey,
     },
     spl_discriminator::{discriminator::Discriminator, SplDiscriminator},
-    spl_type_length_value::state::TlvDiscriminator,
 };
 
 /// Fields in the metadata account
@@ -27,7 +26,7 @@ pub enum Field {
 
 /// Initialization instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminator)]
-#[discriminator_namespace("spl_token_metadata_interface:initialize_account")]
+#[discriminator_hash_input("spl_token_metadata_interface:initialize_account")]
 pub struct Initialize {
     /// Longer name of the token
     pub name: String,
@@ -36,47 +35,42 @@ pub struct Initialize {
     /// URI pointing to more metadata (image, video, etc.)
     pub uri: String,
 }
-impl TlvDiscriminator for Initialize {}
 
 /// Update field instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminator)]
-#[discriminator_namespace("spl_token_metadata_interface:updating_field")]
+#[discriminator_hash_input("spl_token_metadata_interface:updating_field")]
 pub struct UpdateField {
     /// Field to update in the metadata
     pub field: Field,
     /// Value to write for the field
     pub value: String,
 }
-impl TlvDiscriminator for UpdateField {}
 
 /// Remove key instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminator)]
-#[discriminator_namespace("spl_token_metadata_interface:remove_key_ix")]
+#[discriminator_hash_input("spl_token_metadata_interface:remove_key_ix")]
 pub struct RemoveKey {
     /// Key to remove in the additional metadata portion
     pub key: String,
 }
-impl TlvDiscriminator for RemoveKey {}
 
 /// Update authority instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminator)]
-#[discriminator_namespace("spl_token_metadata_interface:update_the_authority")]
+#[discriminator_hash_input("spl_token_metadata_interface:update_the_authority")]
 pub struct UpdateAuthority {
     /// New authority for the token metadata, or unset if `None`
     pub new_authority: OptionalNonZeroPubkey,
 }
-impl TlvDiscriminator for UpdateAuthority {}
 
 /// Instruction data for Emit
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminator)]
-#[discriminator_namespace("spl_token_metadata_interface:emitter")]
+#[discriminator_hash_input("spl_token_metadata_interface:emitter")]
 pub struct Emit {
     /// Start of range of data to emit
     pub start: Option<u64>,
     /// End of range of data to emit
     pub end: Option<u64>,
 }
-impl TlvDiscriminator for Emit {}
 
 /// All instructions that must be implemented in the token-metadata interface
 #[derive(Clone, Debug, PartialEq)]
@@ -169,23 +163,23 @@ impl TokenMetadataInstruction {
         }
         let (discriminator, rest) = input.split_at(Discriminator::LENGTH);
         Ok(match discriminator {
-            Initialize::TLV_DISCRIMINATOR_SLICE => {
+            Initialize::SPL_DISCRIMINATOR_SLICE => {
                 let data = Initialize::try_from_slice(rest)?;
                 Self::Initialize(data)
             }
-            UpdateField::TLV_DISCRIMINATOR_SLICE => {
+            UpdateField::SPL_DISCRIMINATOR_SLICE => {
                 let data = UpdateField::try_from_slice(rest)?;
                 Self::UpdateField(data)
             }
-            RemoveKey::TLV_DISCRIMINATOR_SLICE => {
+            RemoveKey::SPL_DISCRIMINATOR_SLICE => {
                 let data = RemoveKey::try_from_slice(rest)?;
                 Self::RemoveKey(data)
             }
-            UpdateAuthority::TLV_DISCRIMINATOR_SLICE => {
+            UpdateAuthority::SPL_DISCRIMINATOR_SLICE => {
                 let data = UpdateAuthority::try_from_slice(rest)?;
                 Self::UpdateAuthority(data)
             }
-            Emit::TLV_DISCRIMINATOR_SLICE => {
+            Emit::SPL_DISCRIMINATOR_SLICE => {
                 let data = Emit::try_from_slice(rest)?;
                 Self::Emit(data)
             }
@@ -198,23 +192,23 @@ impl TokenMetadataInstruction {
         let mut buf = vec![];
         match self {
             Self::Initialize(data) => {
-                buf.extend_from_slice(Initialize::TLV_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(Initialize::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
             Self::UpdateField(data) => {
-                buf.extend_from_slice(UpdateField::TLV_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(UpdateField::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
             Self::RemoveKey(data) => {
-                buf.extend_from_slice(RemoveKey::TLV_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(RemoveKey::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
             Self::UpdateAuthority(data) => {
-                buf.extend_from_slice(UpdateAuthority::TLV_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(UpdateAuthority::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
             Self::Emit(data) => {
-                buf.extend_from_slice(Emit::TLV_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(Emit::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
         };

@@ -12,15 +12,6 @@ use {
     std::{cmp::Ordering, mem::size_of},
 };
 
-/// Trait to be implemented by all value types in the TLV structure, specifying
-/// just the discriminator
-pub trait TlvDiscriminator: SplDiscriminator {
-    /// Associated value type discriminator, checked at the start of TLV entries
-    const TLV_DISCRIMINATOR: Discriminator = Self::SPL_DISCRIMINATOR;
-    /// The TLV Discriminator as a slice
-    const TLV_DISCRIMINATOR_SLICE: &'static [u8] = Self::TLV_DISCRIMINATOR.as_slice();
-}
-
 /// Get the current TlvIndices from the current spot
 const fn get_indices_unchecked(type_start: usize) -> TlvIndices {
     let length_start = type_start.saturating_add(size_of::<Discriminator>());
@@ -122,12 +113,12 @@ fn get_discriminators_and_end_index(
     Ok((discriminators, start_index))
 }
 
-fn get_bytes<V: TlvDiscriminator>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
+fn get_bytes<V: SplDiscriminator>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
     let TlvIndices {
         type_start: _,
         length_start,
         value_start,
-    } = get_indices(tlv_data, V::TLV_DISCRIMINATOR, false)?;
+    } = get_indices(tlv_data, V::SPL_DISCRIMINATOR, false)?;
     // get_indices has checked that tlv_data is long enough to include these indices
     let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::try_from(*length)?);
@@ -159,7 +150,7 @@ fn get_bytes<V: TlvDiscriminator>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 /// use {
 ///     bytemuck::{Pod, Zeroable},
 ///     spl_type_length_value::{
-///         discriminator::{Discriminator, TlvDiscriminator},
+///         discriminator::{Discriminator, SplDiscriminator},
 ///         state::{TlvState, TlvStateBorrowed, TlvStateMut}
 ///     },
 /// };
@@ -168,16 +159,16 @@ fn get_bytes<V: TlvDiscriminator>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 /// struct MyPodValue {
 ///     data: [u8; 8],
 /// }
-/// impl TlvDiscriminator for MyPodValue {
-///     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+/// impl SplDiscriminator for MyPodValue {
+///     const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
 /// }
 /// #[repr(C)]
 /// #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 /// struct MyOtherPodValue {
 ///     data: u8,
 /// }
-/// impl TlvDiscriminator for MyOtherPodValue {
-///     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+/// impl SplDiscriminator for MyOtherPodValue {
+///     const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
 /// }
 /// let buffer = [
 ///   1, 1, 1, 1, 1, 1, 1, 1, // first type's discriminator
@@ -200,14 +191,14 @@ pub trait TlvState {
     fn get_data(&self) -> &[u8];
 
     /// Unpack a portion of the TLV data as the desired Pod type
-    fn get_value<V: TlvDiscriminator + Pod>(&self) -> Result<&V, ProgramError> {
+    fn get_value<V: SplDiscriminator + Pod>(&self) -> Result<&V, ProgramError> {
         let data = get_bytes::<V>(self.get_data())?;
         pod_from_bytes::<V>(data)
     }
 
     /// Unpacks a portion of the TLV data as the desired Borsh type
     #[cfg(feature = "borsh")]
-    fn borsh_deserialize<V: TlvDiscriminator + borsh::BorshDeserialize>(
+    fn borsh_deserialize<V: SplDiscriminator + borsh::BorshDeserialize>(
         &self,
     ) -> Result<V, ProgramError> {
         let data = get_bytes::<V>(self.get_data())?;
@@ -215,7 +206,7 @@ pub trait TlvState {
     }
 
     /// Unpack a portion of the TLV data as bytes
-    fn get_bytes<V: TlvDiscriminator>(&self) -> Result<&[u8], ProgramError> {
+    fn get_bytes<V: SplDiscriminator>(&self) -> Result<&[u8], ProgramError> {
         get_bytes::<V>(self.get_data())
     }
 
@@ -288,18 +279,18 @@ impl<'data> TlvStateMut<'data> {
     }
 
     /// Unpack a portion of the TLV data as the desired type that allows modifying the type
-    pub fn get_value_mut<V: TlvDiscriminator + Pod>(&mut self) -> Result<&mut V, ProgramError> {
+    pub fn get_value_mut<V: SplDiscriminator + Pod>(&mut self) -> Result<&mut V, ProgramError> {
         let data = self.get_bytes_mut::<V>()?;
         pod_from_bytes_mut::<V>(data)
     }
 
     /// Unpack a portion of the TLV data as mutable bytes
-    pub fn get_bytes_mut<V: TlvDiscriminator>(&mut self) -> Result<&mut [u8], ProgramError> {
+    pub fn get_bytes_mut<V: SplDiscriminator>(&mut self) -> Result<&mut [u8], ProgramError> {
         let TlvIndices {
             type_start: _,
             length_start,
             value_start,
-        } = get_indices(self.data, V::TLV_DISCRIMINATOR, false)?;
+        } = get_indices(self.data, V::SPL_DISCRIMINATOR, false)?;
 
         let length = pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
         let value_end = value_start.saturating_add(usize::try_from(*length)?);
@@ -311,7 +302,7 @@ impl<'data> TlvStateMut<'data> {
 
     /// Packs the default TLV data into the first open slot in the data buffer.
     /// If extension is already found in the buffer, it returns an error.
-    pub fn init_value<V: TlvDiscriminator + Pod + Default>(
+    pub fn init_value<V: SplDiscriminator + Pod + Default>(
         &mut self,
     ) -> Result<&mut V, ProgramError> {
         let length = size_of::<V>();
@@ -324,7 +315,7 @@ impl<'data> TlvStateMut<'data> {
     /// Packs a borsh-serializable value into its appropriate data segment. Assumes
     /// that space has already been allocated for the given type
     #[cfg(feature = "borsh")]
-    pub fn borsh_serialize<V: TlvDiscriminator + borsh::BorshSerialize>(
+    pub fn borsh_serialize<V: SplDiscriminator + borsh::BorshSerialize>(
         &mut self,
         value: &V,
     ) -> Result<(), ProgramError> {
@@ -332,19 +323,19 @@ impl<'data> TlvStateMut<'data> {
         borsh::to_writer(&mut data[..], value).map_err(Into::into)
     }
 
-    /// Allocate the given number of bytes for the given TlvDiscriminator
-    pub fn alloc<V: TlvDiscriminator>(&mut self, length: usize) -> Result<&mut [u8], ProgramError> {
+    /// Allocate the given number of bytes for the given SplDiscriminator
+    pub fn alloc<V: SplDiscriminator>(&mut self, length: usize) -> Result<&mut [u8], ProgramError> {
         let TlvIndices {
             type_start,
             length_start,
             value_start,
-        } = get_indices(self.data, V::TLV_DISCRIMINATOR, true)?;
+        } = get_indices(self.data, V::SPL_DISCRIMINATOR, true)?;
 
         let discriminator = Discriminator::try_from(&self.data[type_start..length_start])?;
         if discriminator == Discriminator::UNINITIALIZED {
             // write type
             let discriminator_ref = &mut self.data[type_start..length_start];
-            discriminator_ref.copy_from_slice(V::TLV_DISCRIMINATOR.as_ref());
+            discriminator_ref.copy_from_slice(V::SPL_DISCRIMINATOR.as_ref());
             // write length
             let length_ref =
                 pod_from_bytes_mut::<Length>(&mut self.data[length_start..value_start])?;
@@ -360,11 +351,11 @@ impl<'data> TlvStateMut<'data> {
         }
     }
 
-    /// Reallocate the given number of bytes for the given TlvDiscriminator. If the new
+    /// Reallocate the given number of bytes for the given SplDiscriminator. If the new
     /// length is smaller, it will compact the rest of the buffer and zero out
     /// the difference at the end. If it's larger, it will move the rest of
     /// the buffer data and zero out the new data.
-    pub fn realloc<V: TlvDiscriminator>(
+    pub fn realloc<V: SplDiscriminator>(
         &mut self,
         length: usize,
     ) -> Result<&mut [u8], ProgramError> {
@@ -372,7 +363,7 @@ impl<'data> TlvStateMut<'data> {
             type_start: _,
             length_start,
             value_start,
-        } = get_indices(self.data, V::TLV_DISCRIMINATOR, false)?;
+        } = get_indices(self.data, V::SPL_DISCRIMINATOR, false)?;
         let (_, end_index) = get_discriminators_and_end_index(self.data)?;
         let data_len = self.data.len();
 
@@ -459,7 +450,7 @@ mod test {
     impl SplDiscriminator for TestValue {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
     }
-    impl TlvDiscriminator for TestValue {}
+    impl SplDiscriminator for TestValue {}
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -469,7 +460,7 @@ mod test {
     impl SplDiscriminator for TestSmallValue {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
     }
-    impl TlvDiscriminator for TestSmallValue {}
+    impl SplDiscriminator for TestSmallValue {}
 
     #[repr(transparent)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -477,7 +468,7 @@ mod test {
     impl SplDiscriminator for TestEmptyValue {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([3; Discriminator::LENGTH]);
     }
-    impl TlvDiscriminator for TestEmptyValue {}
+    impl SplDiscriminator for TestEmptyValue {}
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -488,7 +479,7 @@ mod test {
     impl SplDiscriminator for TestNonZeroDefault {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([4; Discriminator::LENGTH]);
     }
-    impl TlvDiscriminator for TestNonZeroDefault {}
+    impl SplDiscriminator for TestNonZeroDefault {}
     impl Default for TestNonZeroDefault {
         fn default() -> Self {
             Self {
@@ -600,7 +591,7 @@ mod test {
         value.data = data;
         assert_eq!(
             &state.get_discriminators().unwrap(),
-            &[TestValue::TLV_DISCRIMINATOR],
+            &[TestValue::SPL_DISCRIMINATOR],
         );
         assert_eq!(&state.get_value::<TestValue>().unwrap().data, &data,);
 
@@ -612,7 +603,7 @@ mod test {
 
         // check raw buffer
         let mut expect = vec![];
-        expect.extend_from_slice(TestValue::TLV_DISCRIMINATOR.as_ref());
+        expect.extend_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
         expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
         expect.extend_from_slice(&data);
         expect.extend_from_slice(&[0; size_of::<Discriminator>()]);
@@ -636,7 +627,7 @@ mod test {
 
         // check raw buffer
         let mut expect = vec![];
-        expect.extend_from_slice(TestValue::TLV_DISCRIMINATOR.as_ref());
+        expect.extend_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
         expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
         expect.extend_from_slice(&new_data);
         expect.extend_from_slice(&[0; size_of::<Discriminator>()]);
@@ -653,17 +644,17 @@ mod test {
         assert_eq!(
             &state.get_discriminators().unwrap(),
             &[
-                TestValue::TLV_DISCRIMINATOR,
-                TestSmallValue::TLV_DISCRIMINATOR
+                TestValue::SPL_DISCRIMINATOR,
+                TestSmallValue::SPL_DISCRIMINATOR
             ]
         );
 
         // check raw buffer
         let mut expect = vec![];
-        expect.extend_from_slice(TestValue::TLV_DISCRIMINATOR.as_ref());
+        expect.extend_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
         expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
         expect.extend_from_slice(&new_data);
-        expect.extend_from_slice(TestSmallValue::TLV_DISCRIMINATOR.as_ref());
+        expect.extend_from_slice(TestSmallValue::SPL_DISCRIMINATOR.as_ref());
         expect.extend_from_slice(
             &u32::try_from(size_of::<TestSmallValue>())
                 .unwrap()
@@ -700,8 +691,8 @@ mod test {
         assert_eq!(
             &state.get_discriminators().unwrap(),
             &[
-                TestValue::TLV_DISCRIMINATOR,
-                TestSmallValue::TLV_DISCRIMINATOR,
+                TestValue::SPL_DISCRIMINATOR,
+                TestSmallValue::SPL_DISCRIMINATOR,
             ]
         );
 
@@ -717,8 +708,8 @@ mod test {
         assert_eq!(
             &state.get_discriminators().unwrap(),
             &[
-                TestSmallValue::TLV_DISCRIMINATOR,
-                TestValue::TLV_DISCRIMINATOR,
+                TestSmallValue::SPL_DISCRIMINATOR,
+                TestValue::SPL_DISCRIMINATOR,
             ]
         );
 
@@ -757,7 +748,7 @@ mod test {
 
         // hack the buffer to look like it was initialized, still fails
         let discriminator_ref = &mut state.data[0..Discriminator::LENGTH];
-        discriminator_ref.copy_from_slice(TestValue::TLV_DISCRIMINATOR.as_ref());
+        discriminator_ref.copy_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
         state.data[Discriminator::LENGTH] = 32;
         let err = state.get_value::<TestValue>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
@@ -866,8 +857,8 @@ mod borsh_test {
     struct TestInnerBorsh {
         data: String,
     }
-    impl TlvDiscriminator for TestBorsh {
-        const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([5; Discriminator::LENGTH]);
+    impl SplDiscriminator for TestBorsh {
+        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([5; Discriminator::LENGTH]);
     }
     #[test]
     fn borsh_value() {

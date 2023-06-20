@@ -12,7 +12,7 @@ use syn::parse_macro_input;
 
 /// Derive macro library to implement the `SplDiscriminator` trait
 /// on an enum or struct
-#[proc_macro_derive(SplDiscriminator, attributes(discriminator_namespace))]
+#[proc_macro_derive(SplDiscriminator, attributes(discriminator_hash_input))]
 pub fn spl_discriminator(input: TokenStream) -> TokenStream {
     parse_macro_input!(input as SplDiscriminatorBuilder)
         .to_token_stream()

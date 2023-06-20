@@ -4,7 +4,6 @@ use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{program_error::ProgramError, pubkey::Pubkey},
     spl_discriminator::{Discriminator, SplDiscriminator},
-    spl_type_length_value::state::TlvDiscriminator,
     std::convert::TryFrom,
 };
 
@@ -64,7 +63,6 @@ impl SplDiscriminator for TokenMetadata {
     const SPL_DISCRIMINATOR: Discriminator =
         Discriminator::new([112, 132, 90, 90, 11, 88, 157, 87]);
 }
-impl TlvDiscriminator for TokenMetadata {}
 
 #[cfg(test)]
 mod tests {
