@@ -16,8 +16,8 @@ pub struct ChangeLog<const MAX_DEPTH: usize> {
     pub _padding: u32,
 }
 
-impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
-    pub fn default() -> Self {
+impl<const MAX_DEPTH: usize> Default for ChangeLog<MAX_DEPTH> {
+    fn default() -> Self {
         Self {
             root: EMPTY,
             path: [EMPTY; MAX_DEPTH],
@@ -25,7 +25,9 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
             _padding: 0,
         }
     }
+}
 
+impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
     pub fn new(root: Node, path: [Node; MAX_DEPTH], index: u32) -> Self {
         Self {
             root,

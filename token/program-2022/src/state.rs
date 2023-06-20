@@ -184,9 +184,10 @@ impl Pack for Account {
 
 /// Account state.
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, IntoPrimitive, TryFromPrimitive)]
 pub enum AccountState {
     /// Account is not yet initialized
+    #[default]
     Uninitialized,
     /// Account is initialized; the account owner and/or delegate may perform permitted operations
     /// on this account
@@ -194,12 +195,6 @@ pub enum AccountState {
     /// Account has been frozen by the mint freeze authority. Neither the account owner nor
     /// the delegate are able to perform operations on this account.
     Frozen,
-}
-
-impl Default for AccountState {
-    fn default() -> Self {
-        AccountState::Uninitialized
-    }
 }
 
 /// Multisignature data.

@@ -4384,7 +4384,6 @@ async fn process_command<'a>(
             let source_accounts = arg_matches
                 .values_of("source")
                 .unwrap_or_default()
-                .into_iter()
                 .map(|s| Pubkey::from_str(s).unwrap_or_else(print_error_and_exit))
                 .collect::<Vec<_>>();
             command_withdraw_withheld_tokens(

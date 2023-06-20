@@ -683,7 +683,7 @@ impl<'a> TokenInstruction<'a> {
             }
             1 => Self::InitializeAccount,
             2 => {
-                let &m = rest.get(0).ok_or(InvalidInstruction)?;
+                let &m = rest.first().ok_or(InvalidInstruction)?;
                 Self::InitializeMultisig { m }
             }
             3 | 4 | 7 | 8 => {
@@ -743,7 +743,7 @@ impl<'a> TokenInstruction<'a> {
                 Self::InitializeAccount3 { owner }
             }
             19 => {
-                let &m = rest.get(0).ok_or(InvalidInstruction)?;
+                let &m = rest.first().ok_or(InvalidInstruction)?;
                 Self::InitializeMultisig2 { m }
             }
             20 => {
@@ -899,8 +899,8 @@ impl<'a> TokenInstruction<'a> {
                 buf.extend_from_slice(mint_authority.as_ref());
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
-            &Self::GetAccountDataSize {
-                ref extension_types,
+            Self::GetAccountDataSize {
+                extension_types,
             } => {
                 buf.push(21);
                 for extension_type in extension_types {
@@ -918,13 +918,13 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(24);
                 buf.extend_from_slice(ui_amount.as_bytes());
             }
-            &Self::InitializeMintCloseAuthority {
-                ref close_authority,
+            Self::InitializeMintCloseAuthority {
+                close_authority,
             } => {
                 buf.push(25);
                 Self::pack_pubkey_option(close_authority, &mut buf);
             }
-            &Self::TransferFeeExtension(ref instruction) => {
+            Self::TransferFeeExtension(instruction) => {
                 buf.push(26);
                 TransferFeeInstruction::pack(instruction, &mut buf);
             }
@@ -934,8 +934,8 @@ impl<'a> TokenInstruction<'a> {
             &Self::DefaultAccountStateExtension => {
                 buf.push(28);
             }
-            &Self::Reallocate {
-                ref extension_types,
+            Self::Reallocate {
+                extension_types,
             } => {
                 buf.push(29);
                 for extension_type in extension_types {
@@ -957,7 +957,7 @@ impl<'a> TokenInstruction<'a> {
             &Self::CpiGuardExtension => {
                 buf.push(34);
             }
-            &Self::InitializePermanentDelegate { ref delegate } => {
+            Self::InitializePermanentDelegate { delegate } => {
                 buf.push(35);
                 buf.extend_from_slice(delegate.as_ref());
             }

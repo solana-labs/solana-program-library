@@ -487,7 +487,7 @@ impl<'a> TokenInstruction<'a> {
             }
             1 => Self::InitializeAccount,
             2 => {
-                let &m = rest.get(0).ok_or(InvalidInstruction)?;
+                let &m = rest.first().ok_or(InvalidInstruction)?;
                 Self::InitializeMultisig { m }
             }
             3 | 4 | 7 | 8 => {
@@ -546,7 +546,7 @@ impl<'a> TokenInstruction<'a> {
                 Self::InitializeAccount3 { owner }
             }
             19 => {
-                let &m = rest.get(0).ok_or(InvalidInstruction)?;
+                let &m = rest.first().ok_or(InvalidInstruction)?;
                 Self::InitializeMultisig2 { m }
             }
             20 => {

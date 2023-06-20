@@ -356,7 +356,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let payer = DefaultSigner::new(
             "payer",
             matches
-                .value_of(&"payer")
+                .value_of("payer")
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| cli_config.keypair_path.clone()),
         );

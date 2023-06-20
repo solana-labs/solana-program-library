@@ -26,7 +26,7 @@ mod tests {
         fn sol_log(&self, message: &str) {
             assert_eq!(
                 message,
-                String::from_utf8_lossy(&*EXPECTED_DATA.read().unwrap())
+                String::from_utf8_lossy(&EXPECTED_DATA.read().unwrap())
             );
         }
     }
