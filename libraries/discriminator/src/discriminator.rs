@@ -6,7 +6,7 @@ use {
 };
 
 /// A trait for managing 8-byte discriminators in a slab of bytes
-pub trait SplDiscriminator {
+pub trait HasDiscriminator {
     /// The 8-byte discriminator as a `[u8; 8]`
     const SPL_DISCRIMINATOR: Discriminator;
     /// The 8-byte discriminator as a slice (`&[u8]`)
