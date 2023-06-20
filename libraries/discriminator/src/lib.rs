@@ -64,9 +64,8 @@ mod tests {
         assert_discriminator::<MyInstruction1>("some_discriminator_hash_input");
         assert_discriminator::<MyInstruction2>("yet_another_discriminator_hash_input");
         assert_discriminator::<MyInstruction3>("global:my_instruction_3");
-        assert_eq!(
-            Discriminator::new_with_hash_input("my_new_hash_input"),
-            build_discriminator("my_new_hash_input"),
-        );
+        let runtime_discrim = Discriminator::new_with_hash_input("my_new_hash_input");
+        assert_eq!(runtime_discrim, build_discriminator("my_new_hash_input"),);
+        assert_eq!(runtime_discrim.len(), 8usize,);
     }
 }
