@@ -3,7 +3,7 @@ use {
         error::TokenError,
         extension::{
             set_account_type, AccountType, BaseStateWithExtensions, ExtensionType,
-            StateWithExtensions,
+            StateWithExtensions, StateWithExtensionsMut,
         },
         processor::Processor,
         state::Account,
@@ -13,6 +13,7 @@ use {
         entrypoint::ProgramResult,
         msg,
         program::invoke,
+        program_option::COption,
         pubkey::Pubkey,
         system_instruction,
         sysvar::{rent::Rent, Sysvar},
@@ -83,8 +84,23 @@ pub fn process_reallocate(
     )?;
 
     // unpack to set account_type, if needed
-    let mut token_account = token_account_info.data.borrow_mut();
-    set_account_type::<Account>(&mut token_account)?;
+    let mut token_account_data = token_account_info.data.borrow_mut();
+    set_account_type::<Account>(&mut token_account_data)?;
+
+    // sync the rent exempt reserve for native accounts
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)?;
+    if token_account.base.is_native.is_some() {
+        let new_amount = token_account_info
+            .lamports()
+            .checked_sub(new_minimum_balance)
+            .ok_or(TokenError::Overflow)?;
+        if new_amount < token_account.base.amount {
+            return Err(TokenError::InvalidState.into());
+        }
+        token_account.base.amount = new_amount;
+        token_account.base.is_native = COption::Some(new_minimum_balance);
+        token_account.pack_base();
+    }
 
     Ok(())
 }

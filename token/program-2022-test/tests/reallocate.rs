@@ -188,3 +188,52 @@ async fn reallocate_without_current_extension_knowledge() {
         ])
     );
 }
+
+#[tokio::test]
+async fn reallocate_syncs_native() {
+    let mut context = TestContext::new().await;
+    context.init_token_with_native_mint().await.unwrap();
+    let TokenContext { token, alice, .. } = context.token_context.unwrap();
+    let context = context.context.clone();
+
+    let alice_account = Keypair::new();
+    token
+        .create_auxiliary_token_account(&alice_account, &alice.pubkey())
+        .await
+        .unwrap();
+    let alice_account = alice_account.pubkey();
+
+    let token_account = token.get_account_info(&alice_account).await.unwrap();
+    let pre_amount = token_account.base.amount;
+    let pre_is_native = token_account.base.is_native.unwrap();
+
+    // reallocate resizes account to accommodate new extension
+    token
+        .reallocate(
+            &alice_account,
+            &alice.pubkey(),
+            &[ExtensionType::CpiGuard],
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
+    let account = token.get_account(alice_account).await.unwrap();
+    assert_eq!(
+        account.data.len(),
+        ExtensionType::get_account_len::<Account>(&[ExtensionType::CpiGuard])
+    );
+    let rent_exempt_reserve = {
+        let mut context = context.lock().await;
+        let rent = context.banks_client.get_rent().await.unwrap();
+        rent.minimum_balance(account.data.len())
+    };
+    let token_account = token.get_account_info(&alice_account).await.unwrap();
+    let post_amount = token_account.base.amount;
+    let post_is_native = token_account.base.is_native.unwrap();
+    // amount of lamports should be totally unchanged
+    assert_eq!(pre_amount, post_amount);
+    // but rent exempt reserve should change
+    assert_eq!(post_is_native, rent_exempt_reserve);
+    assert!(pre_is_native < post_is_native);
+}
