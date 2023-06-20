@@ -7,25 +7,25 @@ mod error;
 pub mod parser;
 
 use {
-    crate::{error::HasDiscriminatorError, parser::parse_hash_input},
+    crate::{error::SplDiscriminatesError, parser::parse_hash_input},
     proc_macro2::{Span, TokenStream},
     quote::{quote, ToTokens},
     solana_program::hash,
     syn::{parse::Parse, Ident, Item, ItemEnum, ItemStruct, LitByteStr},
 };
 
-/// "Builder" struct to implement the `HasDiscriminator` trait
+/// "Builder" struct to implement the `SplDiscriminates` trait
 /// on an enum or struct
 #[derive(Debug)]
-pub struct HasDiscriminatorBuilder {
+pub struct SplDiscriminatesBuilder {
     /// The struct/enum identifier
     pub ident: Ident,
     /// The TLV hash_input
     pub hash_input: String,
 }
 
-impl TryFrom<ItemEnum> for HasDiscriminatorBuilder {
-    type Error = HasDiscriminatorError;
+impl TryFrom<ItemEnum> for SplDiscriminatesBuilder {
+    type Error = SplDiscriminatesError;
 
     fn try_from(item_enum: ItemEnum) -> Result<Self, Self::Error> {
         let ident = item_enum.ident;
@@ -34,8 +34,8 @@ impl TryFrom<ItemEnum> for HasDiscriminatorBuilder {
     }
 }
 
-impl TryFrom<ItemStruct> for HasDiscriminatorBuilder {
-    type Error = HasDiscriminatorError;
+impl TryFrom<ItemStruct> for SplDiscriminatesBuilder {
+    type Error = SplDiscriminatesError;
 
     fn try_from(item_struct: ItemStruct) -> Result<Self, Self::Error> {
         let ident = item_struct.ident;
@@ -44,7 +44,7 @@ impl TryFrom<ItemStruct> for HasDiscriminatorBuilder {
     }
 }
 
-impl Parse for HasDiscriminatorBuilder {
+impl Parse for SplDiscriminatesBuilder {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let item = Item::parse(input)?;
         match item {
@@ -61,19 +61,20 @@ impl Parse for HasDiscriminatorBuilder {
     }
 }
 
-impl ToTokens for HasDiscriminatorBuilder {
+impl ToTokens for SplDiscriminatesBuilder {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         tokens.extend::<TokenStream>(self.into());
     }
 }
 
-impl From<&HasDiscriminatorBuilder> for TokenStream {
-    fn from(builder: &HasDiscriminatorBuilder) -> Self {
+impl From<&SplDiscriminatesBuilder> for TokenStream {
+    fn from(builder: &SplDiscriminatesBuilder) -> Self {
         let ident = &builder.ident;
         let bytes = get_discriminator_bytes(&builder.hash_input);
         quote! {
-            impl spl_discriminator::discriminator::HasDiscriminator for #ident {
-                const SPL_DISCRIMINATOR: spl_discriminator::discriminator::Discriminator = spl_discriminator::discriminator::Discriminator::new(*#bytes);
+            impl spl_discriminator::discriminator::SplDiscriminates for #ident {
+                const SPL_DISCRIMINATOR: spl_discriminator::discriminator::ArrayDiscriminator
+                    = spl_discriminator::discriminator::ArrayDiscriminator::new(*#bytes);
             }
         }
     }

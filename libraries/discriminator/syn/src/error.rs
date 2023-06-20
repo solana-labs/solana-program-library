@@ -2,7 +2,7 @@
 
 /// Error types for the `hash_input` parser
 #[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]
-pub enum HasDiscriminatorError {
+pub enum SplDiscriminatesError {
     /// Discriminator hash_input attribute not provided
     #[error("Discriminator `hash_input` attribute not provided")]
     HashInputAttributeNotProvided,

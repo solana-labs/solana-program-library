@@ -6,18 +6,18 @@ use {
 };
 
 /// A trait for managing 8-byte discriminators in a slab of bytes
-pub trait HasDiscriminator {
+pub trait SplDiscriminates {
     /// The 8-byte discriminator as a `[u8; 8]`
-    const SPL_DISCRIMINATOR: Discriminator;
+    const SPL_DISCRIMINATOR: ArrayDiscriminator;
     /// The 8-byte discriminator as a slice (`&[u8]`)
     const SPL_DISCRIMINATOR_SLICE: &'static [u8] = Self::SPL_DISCRIMINATOR.as_slice();
 }
 
-/// Discriminator type
+/// Array Discriminator type
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct Discriminator([u8; Discriminator::LENGTH]);
-impl Discriminator {
+pub struct ArrayDiscriminator([u8; ArrayDiscriminator::LENGTH]);
+impl ArrayDiscriminator {
     /// Size for discriminator in account data
     pub const LENGTH: usize = 8;
     /// Uninitialized variant of a discriminator
@@ -30,7 +30,7 @@ impl Discriminator {
     pub const fn as_slice(&self) -> &[u8] {
         self.0.as_slice()
     }
-    /// Creates a new `Discriminator` from some hash input string literal
+    /// Creates a new `ArrayDiscriminator` from some hash input string literal
     pub fn new_with_hash_input(hash_input: &str) -> Self {
         let hash_bytes = hash::hashv(&[hash_input.as_bytes()]).to_bytes();
         let mut discriminator_bytes = [0u8; 8];
@@ -42,27 +42,27 @@ impl Discriminator {
         Self::LENGTH
     }
 }
-impl AsRef<[u8]> for Discriminator {
+impl AsRef<[u8]> for ArrayDiscriminator {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]
     }
 }
-impl AsRef<[u8; Discriminator::LENGTH]> for Discriminator {
-    fn as_ref(&self) -> &[u8; Discriminator::LENGTH] {
+impl AsRef<[u8; ArrayDiscriminator::LENGTH]> for ArrayDiscriminator {
+    fn as_ref(&self) -> &[u8; ArrayDiscriminator::LENGTH] {
         &self.0
     }
 }
-impl From<u64> for Discriminator {
+impl From<u64> for ArrayDiscriminator {
     fn from(from: u64) -> Self {
         Self(from.to_le_bytes())
     }
 }
-impl From<[u8; Self::LENGTH]> for Discriminator {
+impl From<[u8; Self::LENGTH]> for ArrayDiscriminator {
     fn from(from: [u8; Self::LENGTH]) -> Self {
         Self(from)
     }
 }
-impl TryFrom<&[u8]> for Discriminator {
+impl TryFrom<&[u8]> for ArrayDiscriminator {
     type Error = ProgramError;
     fn try_from(a: &[u8]) -> Result<Self, Self::Error> {
         <[u8; Self::LENGTH]>::try_from(a)

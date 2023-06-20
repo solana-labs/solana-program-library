@@ -7,7 +7,7 @@ use {
         pubkey::Pubkey,
         system_program,
     },
-    spl_discriminator::{Discriminator, HasDiscriminator},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
     std::convert::TryInto,
 };
 
@@ -46,23 +46,23 @@ pub enum TransferHookInstruction {
 /// TLV instruction type only used to define the discriminator. The actual data
 /// is entirely managed by `ExtraAccountMetas`, and it is the only data contained
 /// by this type.
-#[derive(HasDiscriminator)]
+#[derive(SplDiscriminates)]
 #[discriminator_hash_input("spl-transfer-hook-interface::execute")]
 pub struct ExecuteInstruction;
 
 /// TLV instruction type used to initialize extra account metas
 /// for the transfer hook
-#[derive(HasDiscriminator)]
+#[derive(SplDiscriminates)]
 #[discriminator_hash_input("spl-transfer-hook-interface:initialize-extra-account-metas")]
 pub struct InitializeExtraAccountMetasInstruction;
 
 impl TransferHookInstruction {
     /// Unpacks a byte buffer into a [TransferHookInstruction](enum.TransferHookInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < Discriminator::LENGTH {
+        if input.len() < ArrayDiscriminator::LENGTH {
             return Err(ProgramError::InvalidInstructionData);
         }
-        let (discriminator, rest) = input.split_at(Discriminator::LENGTH);
+        let (discriminator, rest) = input.split_at(ArrayDiscriminator::LENGTH);
         Ok(match discriminator {
             ExecuteInstruction::SPL_DISCRIMINATOR_SLICE => {
                 let amount = rest

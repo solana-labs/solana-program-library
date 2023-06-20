@@ -8,13 +8,13 @@ use {
     },
     bytemuck::Pod,
     solana_program::program_error::ProgramError,
-    spl_discriminator::{Discriminator, HasDiscriminator},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
     std::{cmp::Ordering, mem::size_of},
 };
 
 /// Get the current TlvIndices from the current spot
 const fn get_indices_unchecked(type_start: usize) -> TlvIndices {
-    let length_start = type_start.saturating_add(size_of::<Discriminator>());
+    let length_start = type_start.saturating_add(size_of::<ArrayDiscriminator>());
     let value_start = length_start.saturating_add(size_of::<Length>());
     TlvIndices {
         type_start,
@@ -33,7 +33,7 @@ struct TlvIndices {
 }
 fn get_indices(
     tlv_data: &[u8],
-    value_discriminator: Discriminator,
+    value_discriminator: ArrayDiscriminator,
     init: bool,
 ) -> Result<TlvIndices, ProgramError> {
     let mut start_index = 0;
@@ -42,14 +42,15 @@ fn get_indices(
         if tlv_data.len() < tlv_indices.value_start {
             return Err(ProgramError::InvalidAccountData);
         }
-        let discriminator =
-            Discriminator::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
+        let discriminator = ArrayDiscriminator::try_from(
+            &tlv_data[tlv_indices.type_start..tlv_indices.length_start],
+        )?;
         if discriminator == value_discriminator {
             // found an instance of the extension that we're initializing, return!
             return Ok(tlv_indices);
         // got to an empty spot, init here, or error if we're searching, since
         // nothing is written after an Uninitialized spot
-        } else if discriminator == Discriminator::UNINITIALIZED {
+        } else if discriminator == ArrayDiscriminator::UNINITIALIZED {
             if init {
                 return Ok(tlv_indices);
             } else {
@@ -72,7 +73,7 @@ fn get_indices(
 // better served by some custom iterator, but let's leave that for another day.
 fn get_discriminators_and_end_index(
     tlv_data: &[u8],
-) -> Result<(Vec<Discriminator>, usize), ProgramError> {
+) -> Result<(Vec<ArrayDiscriminator>, usize), ProgramError> {
     let mut discriminators = vec![];
     let mut start_index = 0;
     while start_index < tlv_data.len() {
@@ -86,9 +87,10 @@ fn get_discriminators_and_end_index(
                 return Err(ProgramError::InvalidAccountData);
             }
         }
-        let discriminator =
-            Discriminator::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
-        if discriminator == Discriminator::UNINITIALIZED {
+        let discriminator = ArrayDiscriminator::try_from(
+            &tlv_data[tlv_indices.type_start..tlv_indices.length_start],
+        )?;
+        if discriminator == ArrayDiscriminator::UNINITIALIZED {
             return Ok((discriminators, tlv_indices.type_start));
         } else {
             if tlv_data.len() < tlv_indices.value_start {
@@ -113,7 +115,7 @@ fn get_discriminators_and_end_index(
     Ok((discriminators, start_index))
 }
 
-fn get_bytes<V: HasDiscriminator>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
+fn get_bytes<V: SplDiscriminates>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
     let TlvIndices {
         type_start: _,
         length_start,
@@ -150,7 +152,7 @@ fn get_bytes<V: HasDiscriminator>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 /// use {
 ///     bytemuck::{Pod, Zeroable},
 ///     spl_type_length_value::{
-///         discriminator::{Discriminator, HasDiscriminator},
+///         discriminator::{Discriminator, SplDiscriminates},
 ///         state::{TlvState, TlvStateBorrowed, TlvStateMut}
 ///     },
 /// };
@@ -159,7 +161,7 @@ fn get_bytes<V: HasDiscriminator>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 /// struct MyPodValue {
 ///     data: [u8; 8],
 /// }
-/// impl HasDiscriminator for MyPodValue {
+/// impl SplDiscriminates for MyPodValue {
 ///     const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
 /// }
 /// #[repr(C)]
@@ -167,7 +169,7 @@ fn get_bytes<V: HasDiscriminator>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 /// struct MyOtherPodValue {
 ///     data: u8,
 /// }
-/// impl HasDiscriminator for MyOtherPodValue {
+/// impl SplDiscriminates for MyOtherPodValue {
 ///     const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
 /// }
 /// let buffer = [
@@ -191,14 +193,14 @@ pub trait TlvState {
     fn get_data(&self) -> &[u8];
 
     /// Unpack a portion of the TLV data as the desired Pod type
-    fn get_value<V: HasDiscriminator + Pod>(&self) -> Result<&V, ProgramError> {
+    fn get_value<V: SplDiscriminates + Pod>(&self) -> Result<&V, ProgramError> {
         let data = get_bytes::<V>(self.get_data())?;
         pod_from_bytes::<V>(data)
     }
 
     /// Unpacks a portion of the TLV data as the desired Borsh type
     #[cfg(feature = "borsh")]
-    fn borsh_deserialize<V: HasDiscriminator + borsh::BorshDeserialize>(
+    fn borsh_deserialize<V: SplDiscriminates + borsh::BorshDeserialize>(
         &self,
     ) -> Result<V, ProgramError> {
         let data = get_bytes::<V>(self.get_data())?;
@@ -206,12 +208,12 @@ pub trait TlvState {
     }
 
     /// Unpack a portion of the TLV data as bytes
-    fn get_bytes<V: HasDiscriminator>(&self) -> Result<&[u8], ProgramError> {
+    fn get_bytes<V: SplDiscriminates>(&self) -> Result<&[u8], ProgramError> {
         get_bytes::<V>(self.get_data())
     }
 
     /// Iterates through the TLV entries, returning only the types
-    fn get_discriminators(&self) -> Result<Vec<Discriminator>, ProgramError> {
+    fn get_discriminators(&self) -> Result<Vec<ArrayDiscriminator>, ProgramError> {
         get_discriminators_and_end_index(self.get_data()).map(|v| v.0)
     }
 
@@ -279,13 +281,13 @@ impl<'data> TlvStateMut<'data> {
     }
 
     /// Unpack a portion of the TLV data as the desired type that allows modifying the type
-    pub fn get_value_mut<V: HasDiscriminator + Pod>(&mut self) -> Result<&mut V, ProgramError> {
+    pub fn get_value_mut<V: SplDiscriminates + Pod>(&mut self) -> Result<&mut V, ProgramError> {
         let data = self.get_bytes_mut::<V>()?;
         pod_from_bytes_mut::<V>(data)
     }
 
     /// Unpack a portion of the TLV data as mutable bytes
-    pub fn get_bytes_mut<V: HasDiscriminator>(&mut self) -> Result<&mut [u8], ProgramError> {
+    pub fn get_bytes_mut<V: SplDiscriminates>(&mut self) -> Result<&mut [u8], ProgramError> {
         let TlvIndices {
             type_start: _,
             length_start,
@@ -302,7 +304,7 @@ impl<'data> TlvStateMut<'data> {
 
     /// Packs the default TLV data into the first open slot in the data buffer.
     /// If extension is already found in the buffer, it returns an error.
-    pub fn init_value<V: HasDiscriminator + Pod + Default>(
+    pub fn init_value<V: SplDiscriminates + Pod + Default>(
         &mut self,
     ) -> Result<&mut V, ProgramError> {
         let length = size_of::<V>();
@@ -315,7 +317,7 @@ impl<'data> TlvStateMut<'data> {
     /// Packs a borsh-serializable value into its appropriate data segment. Assumes
     /// that space has already been allocated for the given type
     #[cfg(feature = "borsh")]
-    pub fn borsh_serialize<V: HasDiscriminator + borsh::BorshSerialize>(
+    pub fn borsh_serialize<V: SplDiscriminates + borsh::BorshSerialize>(
         &mut self,
         value: &V,
     ) -> Result<(), ProgramError> {
@@ -323,16 +325,16 @@ impl<'data> TlvStateMut<'data> {
         borsh::to_writer(&mut data[..], value).map_err(Into::into)
     }
 
-    /// Allocate the given number of bytes for the given HasDiscriminator
-    pub fn alloc<V: HasDiscriminator>(&mut self, length: usize) -> Result<&mut [u8], ProgramError> {
+    /// Allocate the given number of bytes for the given SplDiscriminates
+    pub fn alloc<V: SplDiscriminates>(&mut self, length: usize) -> Result<&mut [u8], ProgramError> {
         let TlvIndices {
             type_start,
             length_start,
             value_start,
         } = get_indices(self.data, V::SPL_DISCRIMINATOR, true)?;
 
-        let discriminator = Discriminator::try_from(&self.data[type_start..length_start])?;
-        if discriminator == Discriminator::UNINITIALIZED {
+        let discriminator = ArrayDiscriminator::try_from(&self.data[type_start..length_start])?;
+        if discriminator == ArrayDiscriminator::UNINITIALIZED {
             // write type
             let discriminator_ref = &mut self.data[type_start..length_start];
             discriminator_ref.copy_from_slice(V::SPL_DISCRIMINATOR.as_ref());
@@ -351,11 +353,11 @@ impl<'data> TlvStateMut<'data> {
         }
     }
 
-    /// Reallocate the given number of bytes for the given HasDiscriminator. If the new
+    /// Reallocate the given number of bytes for the given SplDiscriminates. If the new
     /// length is smaller, it will compact the rest of the buffer and zero out
     /// the difference at the end. If it's larger, it will move the rest of
     /// the buffer data and zero out the new data.
-    pub fn realloc<V: HasDiscriminator>(
+    pub fn realloc<V: SplDiscriminates>(
         &mut self,
         length: usize,
     ) -> Result<&mut [u8], ProgramError> {
@@ -447,28 +449,28 @@ mod test {
     struct TestValue {
         data: [u8; 32],
     }
-    impl HasDiscriminator for TestValue {
+    impl SplDiscriminates for TestValue {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
     }
-    impl HasDiscriminator for TestValue {}
+    impl SplDiscriminates for TestValue {}
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
     struct TestSmallValue {
         data: [u8; 3],
     }
-    impl HasDiscriminator for TestSmallValue {
+    impl SplDiscriminates for TestSmallValue {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
     }
-    impl HasDiscriminator for TestSmallValue {}
+    impl SplDiscriminates for TestSmallValue {}
 
     #[repr(transparent)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
     struct TestEmptyValue;
-    impl HasDiscriminator for TestEmptyValue {
+    impl SplDiscriminates for TestEmptyValue {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([3; Discriminator::LENGTH]);
     }
-    impl HasDiscriminator for TestEmptyValue {}
+    impl SplDiscriminates for TestEmptyValue {}
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -476,10 +478,10 @@ mod test {
         data: [u8; 5],
     }
     const TEST_NON_ZERO_DEFAULT_DATA: [u8; 5] = [4; 5];
-    impl HasDiscriminator for TestNonZeroDefault {
+    impl SplDiscriminates for TestNonZeroDefault {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([4; Discriminator::LENGTH]);
     }
-    impl HasDiscriminator for TestNonZeroDefault {}
+    impl SplDiscriminates for TestNonZeroDefault {}
     impl Default for TestNonZeroDefault {
         fn default() -> Self {
             Self {
@@ -535,7 +537,7 @@ mod test {
 
         // tweak the length, too big
         let mut buffer = TEST_BUFFER.to_vec();
-        buffer[Discriminator::LENGTH] += 10;
+        buffer[ArrayDiscriminator::LENGTH] += 10;
         assert_eq!(
             TlvStateMut::unpack(&mut buffer),
             Err(ProgramError::InvalidAccountData)
@@ -543,7 +545,7 @@ mod test {
 
         // tweak the length, too small
         let mut buffer = TEST_BIG_BUFFER.to_vec();
-        buffer[Discriminator::LENGTH] -= 1;
+        buffer[ArrayDiscriminator::LENGTH] -= 1;
         let state = TlvStateMut::unpack(&mut buffer).unwrap();
         assert_eq!(
             state.get_value::<TestValue>(),
@@ -568,7 +570,7 @@ mod test {
         // correct due to the good discriminator length and zero length
         assert_eq!(
             get_discriminators_and_end_index(&[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap(),
-            (vec![Discriminator::try_from(1).unwrap()], 12)
+            (vec![ArrayDiscriminator::try_from(1).unwrap()], 12)
         );
         // correct since it's just uninitialized data
         assert_eq!(
@@ -606,7 +608,7 @@ mod test {
         expect.extend_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
         expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
         expect.extend_from_slice(&data);
-        expect.extend_from_slice(&[0; size_of::<Discriminator>()]);
+        expect.extend_from_slice(&[0; size_of::<ArrayDiscriminator>()]);
         expect.extend_from_slice(&[0; size_of::<Length>()]);
         expect.extend_from_slice(&[0; size_of::<TestSmallValue>()]);
         assert_eq!(expect, buffer);
@@ -630,7 +632,7 @@ mod test {
         expect.extend_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
         expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
         expect.extend_from_slice(&new_data);
-        expect.extend_from_slice(&[0; size_of::<Discriminator>()]);
+        expect.extend_from_slice(&[0; size_of::<ArrayDiscriminator>()]);
         expect.extend_from_slice(&[0; size_of::<Length>()]);
         expect.extend_from_slice(&[0; size_of::<TestSmallValue>()]);
         assert_eq!(expect, buffer);
@@ -747,9 +749,9 @@ mod test {
         assert_eq!(err, ProgramError::InvalidAccountData);
 
         // hack the buffer to look like it was initialized, still fails
-        let discriminator_ref = &mut state.data[0..Discriminator::LENGTH];
+        let discriminator_ref = &mut state.data[0..ArrayDiscriminator::LENGTH];
         discriminator_ref.copy_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
-        state.data[Discriminator::LENGTH] = 32;
+        state.data[ArrayDiscriminator::LENGTH] = 32;
         let err = state.get_value::<TestValue>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
         assert_eq!(
@@ -857,7 +859,7 @@ mod borsh_test {
     struct TestInnerBorsh {
         data: String,
     }
-    impl HasDiscriminator for TestBorsh {
+    impl SplDiscriminates for TestBorsh {
         const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([5; Discriminator::LENGTH]);
     }
     #[test]
