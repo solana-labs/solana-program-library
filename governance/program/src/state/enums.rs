@@ -93,8 +93,6 @@ pub enum GovernanceAccountType {
     ProposalDeposit,
 }
 
-
-
 /// What state a Proposal is in
 #[derive(Clone, Debug, Default, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum ProposalState {
@@ -132,8 +130,6 @@ pub enum ProposalState {
     /// The Proposal was vetoed
     Vetoed,
 }
-
-
 
 /// The type of the vote threshold used to resolve a vote on a Proposal
 ///

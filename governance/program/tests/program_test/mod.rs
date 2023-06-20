@@ -228,8 +228,6 @@ impl GovernanceProgramTest {
                 .max_voter_weight_addin = self.max_voter_weight_addin_id;
         }
 
-        
-
         self.with_realm_using_args(&realm_setup_args).await
     }
 

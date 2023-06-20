@@ -899,9 +899,7 @@ impl<'a> TokenInstruction<'a> {
                 buf.extend_from_slice(mint_authority.as_ref());
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
-            Self::GetAccountDataSize {
-                extension_types,
-            } => {
+            Self::GetAccountDataSize { extension_types } => {
                 buf.push(21);
                 for extension_type in extension_types {
                     buf.extend_from_slice(&<[u8; 2]>::from(*extension_type));
@@ -918,9 +916,7 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(24);
                 buf.extend_from_slice(ui_amount.as_bytes());
             }
-            Self::InitializeMintCloseAuthority {
-                close_authority,
-            } => {
+            Self::InitializeMintCloseAuthority { close_authority } => {
                 buf.push(25);
                 Self::pack_pubkey_option(close_authority, &mut buf);
             }
@@ -934,9 +930,7 @@ impl<'a> TokenInstruction<'a> {
             &Self::DefaultAccountStateExtension => {
                 buf.push(28);
             }
-            Self::Reallocate {
-                extension_types,
-            } => {
+            Self::Reallocate { extension_types } => {
                 buf.push(29);
                 for extension_type in extension_types {
                     buf.extend_from_slice(&<[u8; 2]>::from(*extension_type));
