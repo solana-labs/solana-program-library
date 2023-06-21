@@ -296,7 +296,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
 }
 
 /// Encapsulates owned immutable base state data (mint or account) with possible extensions
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct StateWithExtensionsOwned<S: BaseState> {
     /// Unpacked base data
     pub base: S,
