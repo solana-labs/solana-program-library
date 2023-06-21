@@ -12,11 +12,11 @@ test-sbf = []
 
 [dependencies]
 arrayref = "0.3.7"
-solana-program = "=1.14.12"
+solana-program = "=1.16.1"
 
 [dev-dependencies]
-solana-program-test = "=1.14.12"
-solana-sdk = "=1.14.12"
+solana-program-test = "=1.16.1"
+solana-sdk = "=1.16.1"
 
 [lib]
 crate-type = ["cdylib", "lib"]
