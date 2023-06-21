@@ -15,5 +15,10 @@ cargo_audit_ignores=(
   # Exception is a stopgap to unblock CI
   # https://github.com/solana-labs/solana/issues/29586
   --ignore RUSTSEC-2023-0001
+
+  # openssl: `openssl` `X509VerifyParamRef::set_host` buffer over-read
+  #
+  # Remove once SPL upgrades to Solana v1.16.2 or greater
+  --ignore RUSTSEC-2023-0044
 )
 cargo +"$rust_stable" audit "${cargo_audit_ignores[@]}"
