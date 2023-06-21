@@ -20,7 +20,8 @@ use {
     spl_single_validator_pool::{
         find_pool_address, find_pool_mint_address, find_pool_mint_authority_address,
         find_pool_mpl_authority_address, find_pool_stake_address,
-        find_pool_stake_authority_address, id, instruction, processor::Processor,
+        find_pool_stake_authority_address, id, inline_mpl_token_metadata, instruction,
+        processor::Processor,
     },
 };
 
@@ -35,7 +36,7 @@ pub const USER_STARTING_LAMPORTS: u64 = 10_000_000_000_000; // 10k sol
 
 pub fn program_test() -> ProgramTest {
     let mut program_test = ProgramTest::default();
-    program_test.add_program("mpl_token_metadata", mpl_token_metadata::id(), None);
+    program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
 
     program_test.add_program(
         "spl_single_validator_pool",
