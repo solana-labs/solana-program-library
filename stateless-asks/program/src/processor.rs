@@ -1,10 +1,8 @@
 //! Program state processor
 
-use metaplex_token_metadata::state::Metadata;
 use solana_program::program_option::COption;
 use std::slice::Iter;
 
-use crate::error::UtilError;
 use crate::instruction::StatelessOfferInstruction;
 use crate::validation_utils::{assert_is_ata, assert_keys_equal};
 use {
@@ -21,6 +19,10 @@ use {
         system_instruction, system_program,
     },
 };
+
+pub(crate) mod inline_mpl_token_metadata {
+    solana_program::declare_id!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+}
 
 /// Program state handler.
 pub struct Processor {}
@@ -89,18 +91,18 @@ fn process_accept_offer(
         let (maker_metadata_key, _) = Pubkey::find_program_address(
             &[
                 b"metadata",
-                metaplex_token_metadata::id().as_ref(),
+                inline_mpl_token_metadata::id().as_ref(),
                 maker_src_mint.key.as_ref(),
             ],
-            &metaplex_token_metadata::id(),
+            &inline_mpl_token_metadata::id(),
         );
         let (taker_metadata_key, _) = Pubkey::find_program_address(
             &[
                 b"metadata",
-                metaplex_token_metadata::id().as_ref(),
+                inline_mpl_token_metadata::id().as_ref(),
                 taker_src_mint.key.as_ref(),
             ],
-            &metaplex_token_metadata::id(),
+            &inline_mpl_token_metadata::id(),
         );
         if *metadata_info.key == maker_metadata_key {
             msg!("Taker pays for fees");
@@ -233,6 +235,24 @@ fn process_accept_offer(
     Ok(())
 }
 
+#[cfg(not(feature = "metaplex"))]
+#[allow(clippy::too_many_arguments)]
+fn pay_creator_fees<'a>(
+    _account_info_iter: &mut Iter<AccountInfo<'a>>,
+    _metadata_info: &AccountInfo<'a>,
+    _src_account_info: &AccountInfo<'a>,
+    _src_authority_info: &AccountInfo<'a>,
+    _token_program_info: &AccountInfo<'a>,
+    _system_program_info: Option<&AccountInfo<'a>>,
+    _fee_mint: &AccountInfo<'a>,
+    _size: u64,
+    _is_native: bool,
+    _seeds: &[&[u8]],
+) -> Result<u64, ProgramError> {
+    Err(ProgramError::InvalidAccountData)
+}
+
+#[cfg(feature = "metaplex")]
 #[allow(clippy::too_many_arguments)]
 fn pay_creator_fees<'a>(
     account_info_iter: &mut Iter<AccountInfo<'a>>,
@@ -246,6 +266,8 @@ fn pay_creator_fees<'a>(
     is_native: bool,
     seeds: &[&[u8]],
 ) -> Result<u64, ProgramError> {
+    use metaplex_token_metadata::state::Metadata;
+    use crate::error::UtilError;
     let metadata = Metadata::from_account_info(metadata_info)?;
     let fees = metadata.data.seller_fee_basis_points;
     let total_fee = (fees as u64)
