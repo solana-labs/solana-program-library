@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 
 use {
-    borsh::BorshSerialize,
-    mpl_token_metadata::{pda::find_metadata_account, state::Metadata},
+    borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
@@ -28,7 +27,9 @@ use {
     spl_stake_pool::{
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
         find_stake_program_address, find_transient_stake_program_address,
-        find_withdraw_authority_program_address, id, instruction, minimum_delegation,
+        find_withdraw_authority_program_address, id,
+        inline_mpl_token_metadata::{self, pda::find_metadata_account},
+        instruction, minimum_delegation,
         processor::Processor,
         state::{self, FeeType, FutureEpoch, StakePool, ValidatorList},
         MINIMUM_RESERVE_LAMPORTS,
@@ -62,7 +63,7 @@ pub fn program_test() -> ProgramTest {
 pub fn program_test_with_metadata_program() -> ProgramTest {
     let mut program_test = ProgramTest::default();
     program_test.add_program("spl_stake_pool", id(), processor!(Processor::process));
-    program_test.add_program("mpl_token_metadata", mpl_token_metadata::id(), None);
+    program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
     program_test.prefer_bpf(false);
     program_test.add_program(
         "spl_token_2022",
@@ -428,6 +429,20 @@ pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -
     let token_account = banks_client.get_account(*token).await.unwrap().unwrap();
     let account_info = StateWithExtensionsOwned::<Account>::unpack(token_account.data).unwrap();
     account_info.base.amount
+}
+
+#[derive(Clone, BorshDeserialize, Debug, PartialEq, Eq)]
+pub struct Metadata {
+    pub key: u8,
+    pub update_authority: Pubkey,
+    pub mint: Pubkey,
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
+    pub seller_fee_basis_points: u16,
+    pub creators: Option<Vec<u8>>,
+    pub primary_sale_happened: bool,
+    pub is_mutable: bool,
 }
 
 pub async fn get_metadata_account(banks_client: &mut BanksClient, token_mint: &Pubkey) -> Metadata {

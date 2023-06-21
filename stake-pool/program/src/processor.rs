@@ -4,6 +4,12 @@ use {
     crate::{
         error::StakePoolError,
         find_deposit_authority_program_address,
+        inline_mpl_token_metadata::{
+            self,
+            instruction::{create_metadata_accounts_v3, update_metadata_accounts_v2},
+            pda::find_metadata_account,
+            state::DataV2,
+        },
         instruction::{FundingType, PreferredValidatorType, StakePoolInstruction},
         minimum_delegation, minimum_reserve_lamports, minimum_stake_lamports,
         state::{
@@ -15,11 +21,6 @@ use {
         TRANSIENT_STAKE_SEED_PREFIX,
     },
     borsh::BorshDeserialize,
-    mpl_token_metadata::{
-        instruction::{create_metadata_accounts_v3, update_metadata_accounts_v2},
-        pda::find_metadata_account,
-        state::DataV2,
-    },
     num_traits::FromPrimitive,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -161,10 +162,10 @@ fn check_stake_program(program_id: &Pubkey) -> Result<(), ProgramError> {
 
 /// Check mpl metadata program
 fn check_mpl_metadata_program(program_id: &Pubkey) -> Result<(), ProgramError> {
-    if *program_id != mpl_token_metadata::id() {
+    if *program_id != inline_mpl_token_metadata::id() {
         msg!(
             "Expected mpl metadata program {}, received {}",
-            mpl_token_metadata::id(),
+            inline_mpl_token_metadata::id(),
             program_id
         );
         Err(ProgramError::IncorrectProgramId)
@@ -3512,13 +3513,6 @@ impl Processor {
             name,
             symbol,
             uri,
-            None,
-            0,
-            true,
-            true,
-            None,
-            None,
-            None,
         );
 
         let (_, stake_withdraw_bump_seed) =
