@@ -9,7 +9,6 @@ edition = "2021"
 [features]
 no-entrypoint = []
 test-sbf = []
-metaplex = []
 
 [dependencies]
 borsh = "0.9.1"

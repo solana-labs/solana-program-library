@@ -1,27 +1,68 @@
 //! Program state processor
 
-use solana_program::program_option::COption;
-use std::slice::Iter;
 
-use crate::instruction::StatelessOfferInstruction;
-use crate::validation_utils::{assert_is_ata, assert_keys_equal};
 use {
+    crate::{
+        error::UtilError,
+        instruction::StatelessOfferInstruction,
+        validation_utils::{assert_is_ata, assert_keys_equal},
+    },
     borsh::BorshDeserialize,
     solana_program::{
         account_info::next_account_info,
         account_info::AccountInfo,
+        borsh::try_from_slice_unchecked,
         entrypoint::ProgramResult,
         msg,
         program::{invoke, invoke_signed},
         program_error::ProgramError,
+        program_option::COption,
         program_pack::Pack,
         pubkey::Pubkey,
         system_instruction, system_program,
     },
+    std::slice::Iter,
 };
 
 pub(crate) mod inline_mpl_token_metadata {
+    use {
+        borsh::BorshDeserialize,
+        solana_program::pubkey::Pubkey,
+    };
     solana_program::declare_id!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+
+    #[derive(Clone, BorshDeserialize, Debug, PartialEq, Eq)]
+    pub(crate) struct Metadata {
+        /// Account discriminator.
+        pub key: u8,
+        /// Address of the update authority.
+        pub update_authority: Pubkey,
+        /// Address of the mint.
+        pub mint: Pubkey,
+        /// Asset data.
+        pub data: Data,
+    }
+
+    #[derive(BorshDeserialize, Default, PartialEq, Eq, Debug, Clone)]
+    pub(crate) struct Data {
+        /// The name of the asset
+        pub name: String,
+        /// The symbol for the asset
+        pub symbol: String,
+        /// URI pointing to JSON representing the asset
+        pub uri: String,
+        /// Royalty basis points that goes to creators in secondary sales (0-10000)
+        pub seller_fee_basis_points: u16,
+        /// Array of creators, optional
+        pub creators: Option<Vec<Creator>>,
+    }
+
+    #[derive(BorshDeserialize, PartialEq, Debug, Clone, Eq, Hash)]
+    pub(crate) struct Creator {
+        pub address: Pubkey,
+        pub verified: bool,
+        pub share: u8,
+    }
 }
 
 /// Program state handler.
@@ -235,24 +276,6 @@ fn process_accept_offer(
     Ok(())
 }
 
-#[cfg(not(feature = "metaplex"))]
-#[allow(clippy::too_many_arguments)]
-fn pay_creator_fees<'a>(
-    _account_info_iter: &mut Iter<AccountInfo<'a>>,
-    _metadata_info: &AccountInfo<'a>,
-    _src_account_info: &AccountInfo<'a>,
-    _src_authority_info: &AccountInfo<'a>,
-    _token_program_info: &AccountInfo<'a>,
-    _system_program_info: Option<&AccountInfo<'a>>,
-    _fee_mint: &AccountInfo<'a>,
-    _size: u64,
-    _is_native: bool,
-    _seeds: &[&[u8]],
-) -> Result<u64, ProgramError> {
-    Err(ProgramError::InvalidAccountData)
-}
-
-#[cfg(feature = "metaplex")]
 #[allow(clippy::too_many_arguments)]
 fn pay_creator_fees<'a>(
     account_info_iter: &mut Iter<AccountInfo<'a>>,
@@ -266,9 +289,10 @@ fn pay_creator_fees<'a>(
     is_native: bool,
     seeds: &[&[u8]],
 ) -> Result<u64, ProgramError> {
-    use metaplex_token_metadata::state::Metadata;
-    use crate::error::UtilError;
-    let metadata = Metadata::from_account_info(metadata_info)?;
+    if *metadata_info.owner != inline_mpl_token_metadata::id() {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let metadata = try_from_slice_unchecked::<inline_mpl_token_metadata::Metadata>(&metadata_info.try_borrow_data()?)?;
     let fees = metadata.data.seller_fee_basis_points;
     let total_fee = (fees as u64)
         .checked_mul(size)
