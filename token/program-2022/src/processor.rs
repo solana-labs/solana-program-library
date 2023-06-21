@@ -1209,6 +1209,71 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [UnwrapNative](enum.TokenInstruction.html) instruction
+    pub fn process_unwrap_native(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        amount: u64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let source_account_info = next_account_info(account_info_iter)?;
+        let destination_account_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+        let authority_info_data_len = authority_info.data_len();
+
+        check_program_account(source_account_info.owner)?;
+        let mut source_account_data = source_account_info.data.borrow_mut();
+        let mut source_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+
+        if source_account.base.is_native.is_none() {
+            return Err(TokenError::NonNativeNotSupported.into());
+        }
+        if source_account.base.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+
+        // Prevent sending accidentally to a token account
+        if cmp_pubkeys(&destination_account_info.owner, &crate::id()) {
+            return Err(TokenError::InvalidState.into());
+        }
+
+        if source_account.base.amount < amount {
+            return Err(TokenError::InsufficientFunds.into());
+        }
+
+        Self::validate_owner(
+            program_id,
+            &source_account.base.owner,
+            authority_info,
+            authority_info_data_len,
+            account_info_iter.as_slice(),
+        )?;
+
+        if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
+            if cpi_guard.lock_cpi.into() && in_cpi() {
+                return Err(TokenError::CpiGuardTransferBlocked.into());
+            }
+        }
+
+        source_account
+            .base
+            .amount
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
+        **source_account_info.lamports.borrow_mut() = source_account_info
+            .lamports()
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
+        **destination_account_info.lamports.borrow_mut() = destination_account_info
+            .lamports()
+            .checked_add(amount)
+            .ok_or(TokenError::Overflow)?;
+
+        source_account.pack_base();
+        Ok(())
+    }
+
     /// Processes an [InitializeMintCloseAuthority](enum.TokenInstruction.html) instruction
     pub fn process_initialize_mint_close_authority(
         accounts: &[AccountInfo],
@@ -1621,6 +1686,10 @@ impl Processor {
             TokenInstruction::WithdrawExcessLamports => {
                 msg!("Instruction: WithdrawExcessLamports");
                 Self::process_withdraw_excess_lamports(program_id, accounts)
+            }
+            TokenInstruction::UnwrapNative { amount } => {
+                msg!("Instruction: UnwrapNative");
+                Self::process_unwrap_native(program_id, accounts, amount)
             }
         }
     }

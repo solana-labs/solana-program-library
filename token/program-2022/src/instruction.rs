@@ -657,6 +657,27 @@ pub enum TokenInstruction<'a> {
     /// 2. `[signer]` Authority
     /// 3. ..2+M `[signer]` M signer accounts.
     WithdrawExcessLamports,
+    /// Given a wrapped / native token account (a token account containing SOL)
+    /// send `amount` of native token as lamports to another account
+    /// This is useful to send lamports to an account
+    /// without having to close the entire token account
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The source account.
+    ///   1. `[writable]` The destination account.
+    ///   2. `[signer]` The source account's owner/delegate.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[writable]` The source account.
+    ///   1. `[writable]` The destination account.
+    ///   2. `[]` The source account's multisignature owner/delegate.
+    ///   3. ..4+M `[signer]` M signer accounts.
+    UnwrapNative {
+        /// The amount of native tokens to "convert" into lamports.
+        amount: u64,
+    },
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -795,6 +816,10 @@ impl<'a> TokenInstruction<'a> {
             36 => Self::TransferHookExtension,
             37 => Self::ConfidentialTransferFeeExtension,
             38 => Self::WithdrawExcessLamports,
+            39 => {
+                let (amount, _rest) = Self::unpack_u64(rest)?;
+                Self::UnwrapNative { amount }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -962,6 +987,10 @@ impl<'a> TokenInstruction<'a> {
             }
             &Self::WithdrawExcessLamports => {
                 buf.push(38);
+            }
+            &Self::UnwrapNative { amount } => {
+                buf.push(39);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
         };
         buf
