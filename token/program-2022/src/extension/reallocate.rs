@@ -34,7 +34,7 @@ pub fn process_reallocate(
     let authority_info_data_len = authority_info.data_len();
 
     // check that account is the right type and validate owner
-    let mut current_extension_types = {
+    let (mut current_extension_types, native_amount) = {
         let token_account = token_account_info.data.borrow();
         let account = StateWithExtensions::<Account>::unpack(&token_account)?;
         Processor::validate_owner(
@@ -44,7 +44,8 @@ pub fn process_reallocate(
             authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
-        account.get_extension_types()?
+        let native_amount = account.base.is_native().then(|| account.base.amount);
+        (account.get_extension_types()?, native_amount)
     };
 
     // check that all desired extensions are for the right account type
@@ -73,7 +74,11 @@ pub fn process_reallocate(
     // if additional lamports needed to remain rent-exempt, transfer them
     let rent = Rent::get()?;
     let new_minimum_balance = rent.minimum_balance(needed_account_len);
-    let lamports_diff = new_minimum_balance.saturating_sub(token_account_info.lamports());
+    let current_lamport_reserve = token_account_info
+        .lamports()
+        .checked_sub(native_amount.unwrap_or(0))
+        .ok_or(TokenError::Overflow)?;
+    let lamports_diff = new_minimum_balance.saturating_sub(current_lamport_reserve);
     invoke(
         &system_instruction::transfer(payer_info.key, token_account_info.key, lamports_diff),
         &[
@@ -89,14 +94,11 @@ pub fn process_reallocate(
 
     // sync the rent exempt reserve for native accounts
     let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)?;
-    if token_account.base.is_native.is_some() {
+    if token_account.base.is_native() {
         let new_amount = token_account_info
             .lamports()
             .checked_sub(new_minimum_balance)
             .ok_or(TokenError::Overflow)?;
-        if new_amount < token_account.base.amount {
-            return Err(TokenError::InvalidState.into());
-        }
         token_account.base.amount = new_amount;
         token_account.base.is_native = COption::Some(new_minimum_balance);
         token_account.pack_base();
