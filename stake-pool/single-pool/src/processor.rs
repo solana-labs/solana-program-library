@@ -3,6 +3,12 @@
 use {
     crate::{
         error::SinglePoolError,
+        inline_mpl_token_metadata::{
+            self,
+            instruction::{create_metadata_accounts_v3, update_metadata_accounts_v2},
+            pda::find_metadata_account,
+            state::DataV2,
+        },
         instruction::SinglePoolInstruction,
         state::{SinglePool, SinglePoolAccountType},
         MINT_DECIMALS, POOL_MINT_AUTHORITY_PREFIX, POOL_MINT_PREFIX, POOL_MPL_AUTHORITY_PREFIX,
@@ -11,11 +17,6 @@ use {
         VOTE_STATE_DISCRIMINATOR_END,
     },
     borsh::BorshDeserialize,
-    mpl_token_metadata::{
-        instruction::{create_metadata_accounts_v3, update_metadata_accounts_v2},
-        pda::find_metadata_account,
-        state::DataV2,
-    },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         borsh::{get_packed_len, try_from_slice_unchecked},
@@ -286,10 +287,10 @@ fn check_stake_program(program_id: &Pubkey) -> Result<(), ProgramError> {
 
 /// Check MPL metadata program
 fn check_mpl_metadata_program(program_id: &Pubkey) -> Result<(), ProgramError> {
-    if *program_id != mpl_token_metadata::id() {
+    if *program_id != inline_mpl_token_metadata::id() {
         msg!(
             "Expected MPL metadata program {}, received {}",
-            mpl_token_metadata::id(),
+            inline_mpl_token_metadata::id(),
             program_id
         );
         Err(ProgramError::IncorrectProgramId)
@@ -994,13 +995,6 @@ impl Processor {
             token_name,
             token_symbol,
             "".to_string(),
-            None,
-            0,
-            true,
-            true,
-            None,
-            None,
-            None,
         );
 
         let mint_authority_seeds = &[

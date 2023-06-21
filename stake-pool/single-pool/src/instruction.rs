@@ -6,10 +6,11 @@ use {
     crate::{
         find_default_deposit_account_address_and_seed, find_pool_address, find_pool_mint_address,
         find_pool_mint_authority_address, find_pool_mpl_authority_address, find_pool_stake_address,
-        find_pool_stake_authority_address, state::SinglePool,
+        find_pool_stake_authority_address,
+        inline_mpl_token_metadata::{self, pda::find_metadata_account},
+        state::SinglePool,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    mpl_token_metadata::pda::find_metadata_account,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_pack::Pack,
@@ -377,7 +378,7 @@ pub fn create_token_metadata(
         ),
         AccountMeta::new(*payer, true),
         AccountMeta::new(token_metadata, false),
-        AccountMeta::new_readonly(mpl_token_metadata::id(), false),
+        AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
@@ -413,7 +414,7 @@ pub fn update_token_metadata(
         ),
         AccountMeta::new_readonly(*authorized_withdrawer, true),
         AccountMeta::new(token_metadata, false),
-        AccountMeta::new_readonly(mpl_token_metadata::id(), false),
+        AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
     ];
 
     Instruction {

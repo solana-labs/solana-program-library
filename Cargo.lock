@@ -6370,7 +6370,6 @@ dependencies = [
  "arrayref",
  "bincode",
  "borsh",
- "mpl-token-metadata",
  "num-derive",
  "num-traits",
  "num_enum 0.6.1",
