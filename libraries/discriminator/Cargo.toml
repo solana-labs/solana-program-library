@@ -11,7 +11,6 @@ edition = "2021"
 bytemuck = { version = "1.13.1", features = ["derive"] }
 solana-program = "1.14.12"
 spl-discriminator-derive = { version = "0.1.0", path = "./derive" }
-spl-discriminator-syn = { version = "0.1.0", path = "./syn" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

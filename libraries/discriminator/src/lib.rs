@@ -13,7 +13,6 @@ pub mod discriminator;
 pub use {
     discriminator::{ArrayDiscriminator, SplDiscriminates},
     spl_discriminator_derive::SplDiscriminates,
-    spl_discriminator_syn::*,
 };
 
 #[cfg(test)]
