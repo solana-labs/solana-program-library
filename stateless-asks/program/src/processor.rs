@@ -1,6 +1,5 @@
 //! Program state processor
 
-
 use {
     crate::{
         error::UtilError,
@@ -25,10 +24,7 @@ use {
 };
 
 pub(crate) mod inline_mpl_token_metadata {
-    use {
-        borsh::BorshDeserialize,
-        solana_program::pubkey::Pubkey,
-    };
+    use {borsh::BorshDeserialize, solana_program::pubkey::Pubkey};
     solana_program::declare_id!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
     #[derive(Clone, BorshDeserialize, Debug, PartialEq, Eq)]
@@ -292,7 +288,9 @@ fn pay_creator_fees<'a>(
     if *metadata_info.owner != inline_mpl_token_metadata::id() {
         return Err(ProgramError::InvalidAccountData);
     }
-    let metadata = try_from_slice_unchecked::<inline_mpl_token_metadata::Metadata>(&metadata_info.try_borrow_data()?)?;
+    let metadata = try_from_slice_unchecked::<inline_mpl_token_metadata::Metadata>(
+        &metadata_info.try_borrow_data()?,
+    )?;
     let fees = metadata.data.seller_fee_basis_points;
     let total_fee = (fees as u64)
         .checked_mul(size)
