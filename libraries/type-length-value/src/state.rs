@@ -450,9 +450,9 @@ mod test {
         data: [u8; 32],
     }
     impl SplDiscriminates for TestValue {
-        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+        const SPL_DISCRIMINATOR: ArrayDiscriminator =
+            ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
     }
-    impl SplDiscriminates for TestValue {}
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -460,17 +460,17 @@ mod test {
         data: [u8; 3],
     }
     impl SplDiscriminates for TestSmallValue {
-        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+        const SPL_DISCRIMINATOR: ArrayDiscriminator =
+            ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
     }
-    impl SplDiscriminates for TestSmallValue {}
 
     #[repr(transparent)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
     struct TestEmptyValue;
     impl SplDiscriminates for TestEmptyValue {
-        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([3; Discriminator::LENGTH]);
+        const SPL_DISCRIMINATOR: ArrayDiscriminator =
+            ArrayDiscriminator::new([3; ArrayDiscriminator::LENGTH]);
     }
-    impl SplDiscriminates for TestEmptyValue {}
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -479,9 +479,9 @@ mod test {
     }
     const TEST_NON_ZERO_DEFAULT_DATA: [u8; 5] = [4; 5];
     impl SplDiscriminates for TestNonZeroDefault {
-        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([4; Discriminator::LENGTH]);
+        const SPL_DISCRIMINATOR: ArrayDiscriminator =
+            ArrayDiscriminator::new([4; ArrayDiscriminator::LENGTH]);
     }
-    impl SplDiscriminates for TestNonZeroDefault {}
     impl Default for TestNonZeroDefault {
         fn default() -> Self {
             Self {

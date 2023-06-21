@@ -17,8 +17,8 @@ use {
 /// Stateless helper for storing additional accounts required for an instruction.
 ///
 /// This struct works with any `SplDiscriminates`, and stores the extra accounts
-/// needed for that specific instruction, using the given `Discriminator` as the
-/// type-length-value `Discriminator`, and then storing all of the given
+/// needed for that specific instruction, using the given `ArrayDiscriminator` as the
+/// type-length-value `ArrayDiscriminator`, and then storing all of the given
 /// `AccountMeta`s as a zero-copy slice.
 ///
 /// Sample usage:
@@ -29,14 +29,14 @@ use {
 ///         account_info::AccountInfo, instruction::{AccountMeta, Instruction},
 ///         pubkey::Pubkey
 ///     },
-///     spl_type_length_value::discriminator::{Discriminator, SplDiscriminates},
+///     spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
 ///     spl_tlv_account_resolution::state::ExtraAccountMetas,
 /// };
 ///
 /// struct MyInstruction;
 /// impl SplDiscriminates for MyInstruction {
 ///     // Give it a unique discriminator, can also be generated using a hash function
-///     const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 /// }
 ///
 /// // actually put it in the additional required account keys and signer / writable
@@ -226,20 +226,20 @@ mod tests {
     use {
         super::*,
         solana_program::{clock::Epoch, instruction::AccountMeta, pubkey::Pubkey},
-        spl_discriminator::{Discriminator, SplDiscriminates},
+        spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
     };
 
     pub struct TestInstruction;
     impl SplDiscriminates for TestInstruction {
-        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+        const SPL_DISCRIMINATOR: ArrayDiscriminator =
+            ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
     }
-    impl SplDiscriminates for TestInstruction {}
 
     pub struct TestOtherInstruction;
     impl SplDiscriminates for TestOtherInstruction {
-        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+        const SPL_DISCRIMINATOR: ArrayDiscriminator =
+            ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
     }
-    impl SplDiscriminates for TestOtherInstruction {}
 
     #[test]
     fn init_with_metas() {
