@@ -196,11 +196,18 @@ async fn reallocate_without_current_extension_knowledge() {
     );
 }
 
-#[test_case(true, true ; "transfer lamports and sync")]
-#[test_case(true, false ; "transfer lamports only")]
-#[test_case(false, false ; "do not transfer")]
+#[test_case(&[ExtensionType::CpiGuard], true, true ; "transfer lamports and sync with extension")]
+#[test_case(&[ExtensionType::CpiGuard], true, false ; "transfer lamports only with extension")]
+#[test_case(&[ExtensionType::CpiGuard], false, false ; "do not transfer, with extension")]
+#[test_case(&[], true, true ; "transfer lamports and sync without extension")]
+#[test_case(&[], true, false ; "transfer lamports only without extension")]
+#[test_case(&[], false, false ; "do not transfer, without extension")]
 #[tokio::test]
-async fn reallocate_syncs_native(transfer_lamports: bool, sync_native: bool) {
+async fn reallocate_updates_native_rent_exemption(
+    extensions: &[ExtensionType],
+    transfer_lamports: bool,
+    sync_native: bool,
+) {
     let mut context = TestContext::new().await;
     context.init_token_with_native_mint().await.unwrap();
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
@@ -251,19 +258,14 @@ async fn reallocate_syncs_native(transfer_lamports: bool, sync_native: bool) {
 
     // reallocate resizes account to accommodate new extension
     token
-        .reallocate(
-            &alice_account,
-            &alice.pubkey(),
-            &[ExtensionType::CpiGuard],
-            &[&alice],
-        )
+        .reallocate(&alice_account, &alice.pubkey(), extensions, &[&alice])
         .await
         .unwrap();
 
     let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
-        ExtensionType::get_account_len::<Account>(&[ExtensionType::CpiGuard])
+        ExtensionType::get_account_len::<Account>(extensions)
     );
     let expected_rent_exempt_reserve = {
         let mut context = context.lock().await;
@@ -273,24 +275,13 @@ async fn reallocate_syncs_native(transfer_lamports: bool, sync_native: bool) {
     let token_account = token.get_account_info(&alice_account).await.unwrap();
     let post_amount = token_account.base.amount;
     let post_rent_exempt_reserve = token_account.base.is_native.unwrap();
-    if transfer_lamports && !sync_native {
-        let rent_diff = expected_rent_exempt_reserve
-            .checked_sub(pre_rent_exempt_reserve)
-            .unwrap();
-        // if we didn't sync and transferred lamports, the extra required rent
-        // exemption lamports are taken from the unsynced lamports
-        assert_eq!(
-            post_amount,
-            pre_amount
-                .checked_add(transfer_amount)
-                .and_then(|x| x.checked_sub(rent_diff))
-                .unwrap()
-        );
-    } else {
-        // amount of lamports should be totally unchanged otherwise
-        assert_eq!(pre_amount, post_amount);
-    }
+    // amount of lamports should be totally unchanged
+    assert_eq!(pre_amount, post_amount);
     // but rent exempt reserve should change
     assert_eq!(post_rent_exempt_reserve, expected_rent_exempt_reserve);
-    assert!(pre_rent_exempt_reserve < post_rent_exempt_reserve);
+    if extensions.is_empty() {
+        assert_eq!(pre_rent_exempt_reserve, post_rent_exempt_reserve);
+    } else {
+        assert!(pre_rent_exempt_reserve < post_rent_exempt_reserve);
+    }
 }
