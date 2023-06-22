@@ -44,7 +44,7 @@ pub fn process_reallocate(
             authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
-        let native_token_amount = account.base.is_native().then(|| account.base.amount);
+        let native_token_amount = account.base.is_native().then_some(account.base.amount);
         (account.get_extension_types()?, native_token_amount)
     };
 
