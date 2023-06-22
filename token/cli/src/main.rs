@@ -4493,7 +4493,7 @@ mod tests {
         super::*,
         serial_test::serial,
         solana_sdk::{
-            bpf_loader,
+            bpf_loader_upgradeable,
             hash::Hash,
             program_pack::Pack,
             signature::{write_keypair_file, Keypair, Signer},
@@ -4521,19 +4521,19 @@ mod tests {
         test_validator_genesis.add_upgradeable_programs_with_path(&[
             UpgradeableProgramInfo {
                 program_id: spl_token::id(),
-                loader: bpf_loader::id(),
+                loader: bpf_loader_upgradeable::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_token.so"),
                 upgrade_authority: Pubkey::new_unique(),
             },
             UpgradeableProgramInfo {
                 program_id: spl_associated_token_account::id(),
-                loader: bpf_loader::id(),
+                loader: bpf_loader_upgradeable::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_associated_token_account.so"),
                 upgrade_authority: Pubkey::new_unique(),
             },
             UpgradeableProgramInfo {
                 program_id: spl_token_2022::id(),
-                loader: bpf_loader::id(),
+                loader: bpf_loader_upgradeable::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_token_2022.so"),
                 upgrade_authority: Pubkey::new_unique(),
             },

@@ -495,7 +495,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 mod test {
     use {
         super::*,
-        solana_sdk::{bpf_loader, signer::keypair::Keypair},
+        solana_sdk::{bpf_loader_upgradeable, signer::keypair::Keypair},
         solana_test_validator::{TestValidator, TestValidatorGenesis, UpgradeableProgramInfo},
         spl_token_client::client::{ProgramClient, SendTransaction},
         std::path::PathBuf,
@@ -507,25 +507,25 @@ mod test {
         test_validator_genesis.add_upgradeable_programs_with_path(&[
             UpgradeableProgramInfo {
                 program_id: spl_token::id(),
-                loader: bpf_loader::id(),
+                loader: bpf_loader_upgradeable::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_token.so"),
                 upgrade_authority: Pubkey::new_unique(),
             },
             UpgradeableProgramInfo {
                 program_id: spl_associated_token_account::id(),
-                loader: bpf_loader::id(),
+                loader: bpf_loader_upgradeable::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_associated_token_account.so"),
                 upgrade_authority: Pubkey::new_unique(),
             },
             UpgradeableProgramInfo {
                 program_id: spl_token_2022::id(),
-                loader: bpf_loader::id(),
+                loader: bpf_loader_upgradeable::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_token_2022.so"),
                 upgrade_authority: Pubkey::new_unique(),
             },
             UpgradeableProgramInfo {
                 program_id: spl_token_upgrade::id(),
-                loader: bpf_loader::id(),
+                loader: bpf_loader_upgradeable::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_token_upgrade.so"),
                 upgrade_authority: Pubkey::new_unique(),
             },
