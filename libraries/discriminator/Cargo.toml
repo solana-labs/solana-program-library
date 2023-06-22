@@ -1,26 +1,16 @@
 [package]
-name = "spl-type-length-value"
+name = "spl-discriminator"
 version = "0.1.0"
-description = "Solana Program Library Type-Length-Value Management"
+description = "Solana Program Library 8-Byte Discriminator Management"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2021"
-exclude = ["js/**"]
-
-[features]
-borsh = ["dep:borsh"]
 
 [dependencies]
-arrayref = "0.3.7"
-borsh = { version = "0.9.1", optional = true }
 bytemuck = { version = "1.13.1", features = ["derive"] }
-num-derive = "0.3"
-num-traits = "0.2"
-num_enum = "0.6.1"
 solana-program = "1.14.12"
-spl-discriminator = { version = "0.1.0", path = "../discriminator" }
-thiserror = "1.0"
+spl-discriminator-derive = { version = "0.1.0", path = "./derive" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

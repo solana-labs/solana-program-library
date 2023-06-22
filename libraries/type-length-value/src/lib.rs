@@ -5,7 +5,6 @@
 #![deny(missing_docs)]
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
-pub mod discriminator;
 pub mod error;
 pub mod length;
 pub mod pod;

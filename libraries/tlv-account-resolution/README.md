@@ -11,14 +11,14 @@ into a TLV entry in an account, you can do the following:
 ```rust
 use {
     solana_program::{account_info::AccountInfo, instruction::{AccountMeta, Instruction}, pubkey::Pubkey},
-    spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_tlv_account_resolution::state::ExtraAccountMetas,
 };
 
 struct MyInstruction;
-impl TlvDiscriminator for MyInstruction {
+impl SplDiscriminate for MyInstruction {
     // For ease of use, give it the same discriminator as its instruction definition
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+    const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 }
 
 // Actually put it in the additional required account keys and signer / writable
@@ -105,12 +105,12 @@ This library uses `spl-type-length-value` to read and write required instruction
 accounts from account data.
 
 Interface instructions must have an 8-byte discriminator, so that the exposed
-`ExtraAccountMetas` type can use the instruction discriminator as a `TlvDiscriminator`.
+`ExtraAccountMetas` type can use the instruction discriminator as a `ArrayDiscriminator`.
 
-This can be confusing. Typically, a type implements `TlvDiscriminator`, so that
+This can be confusing. Typically, a type implements `SplDiscriminate`, so that
 the type can be written into TLV data. In this case, `ExtraAccountMetas` is
-generic over `TlvDiscriminator`, meaning that a program can write many different instances of
-`ExtraAccountMetas` into one account, using different `TlvDiscriminator`s.
+generic over `SplDiscriminate`, meaning that a program can write many different instances of
+`ExtraAccountMetas` into one account, using different `ArrayDiscriminator`s.
 
 Also, it's reusing an instruction discriminator as a TLV discriminator. For example,
 if the `transfer` instruction has a discriminator of `[1, 2, 3, 4, 5, 6, 7, 8]`,

@@ -10,8 +10,8 @@ This simple examples defines a zero-copy type with its discriminator.
 use {
     borsh::{BorshSerialize, BorshDeserialize},
     bytemuck::{Pod, Zeroable},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate}
     spl_type_length_value::{
-        discriminator::{Discriminator, TlvDiscriminator},
         state::{TlvState, TlvStateBorrowed, TlvStateMut}
     },
 };
@@ -21,9 +21,9 @@ use {
 struct MyPodValue {
     data: [u8; 32],
 }
-impl TlvDiscriminator for MyPodValue {
+impl SpleDiscriminates for MyPodValue {
     // Give it a unique discriminator, can also be generated using a hash function
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+    const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 }
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -38,9 +38,9 @@ impl Default for MyOtherPodValue {
         }
     }
 }
-impl TlvDiscriminator for MyOtherPodValue {
+impl SplDiscriminate for MyOtherPodValue {
     // Some other unique discriminator
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+    const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
 }
 
 // Account will have two sets of `get_base_len()` (8-byte discriminator and 4-byte length),
@@ -97,7 +97,7 @@ scheme facilitates this exact case.
 This library allows for holding multiple disparate types within the same account
 by encoding the type, then length, then value.
 
-The type is an 8-byte `Discriminator`, which can be set to anything.
+The type is an 8-byte `ArrayDiscriminator`, which can be set to anything.
 
 The length is a little-endian `u32`.
 
@@ -123,8 +123,8 @@ use {
 struct MyBorsh {
     data: String, // variable length type
 }
-impl TlvDiscriminator for MyBorsh {
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([5; Discriminator::LENGTH]);
+impl SplDiscriminate for MyBorsh {
+    const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([5; ArrayDiscriminator::LENGTH]);
 }
 let initial_data = "This is a pretty cool test!";
 // Allocate exactly the right size for the string, can go bigger if desired
