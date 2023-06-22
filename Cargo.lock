@@ -6388,6 +6388,7 @@ dependencies = [
  "spl-token-client",
  "spl-transfer-hook-example",
  "spl-transfer-hook-interface",
+ "test-case",
  "walkdir",
 ]
 
