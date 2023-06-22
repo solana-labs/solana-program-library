@@ -100,8 +100,8 @@ pub fn process_reallocate(
         let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)?;
         // sanity check that there are enough lamports to cover the token amount
         // and the rent exempt reserve
-        let lamports_in_account_data = native_token_amount.saturating_add(new_rent_exempt_reserve);
-        if token_account_info.lamports() < lamports_in_account_data {
+        let minimum_lamports = native_token_amount.saturating_add(new_rent_exempt_reserve);
+        if token_account_info.lamports() < minimum_lamports {
             return Err(TokenError::InvalidState.into());
         }
         token_account.base.is_native = COption::Some(new_rent_exempt_reserve);
