@@ -100,7 +100,9 @@ pub fn process_reallocate(
         let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)?;
         // sanity check that there are enough lamports to cover the token amount
         // and the rent exempt reserve
-        let minimum_lamports = native_token_amount.saturating_add(new_rent_exempt_reserve);
+        let minimum_lamports = new_rent_exempt_reserve
+            .checked_add(native_token_amount)
+            .ok_or(TokenError::Overflow)?;
         if token_account_info.lamports() < minimum_lamports {
             return Err(TokenError::InvalidState.into());
         }
