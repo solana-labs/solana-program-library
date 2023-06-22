@@ -974,7 +974,7 @@ impl<'a> TokenInstruction<'a> {
     pub(crate) fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
         let pk = input
             .get(..PUBKEY_BYTES)
-            .map(Pubkey::new)
+            .and_then(|x| Pubkey::try_from(x).ok())
             .ok_or(TokenError::InvalidInstruction)?;
         Ok((pk, &input[PUBKEY_BYTES..]))
     }
@@ -1948,7 +1948,7 @@ mod test {
     fn test_instruction_packing() {
         let check = TokenInstruction::InitializeMint {
             decimals: 2,
-            mint_authority: Pubkey::new(&[1u8; 32]),
+            mint_authority: Pubkey::new_from_array([1u8; 32]),
             freeze_authority: COption::None,
         };
         let packed = check.pack();
@@ -1961,8 +1961,8 @@ mod test {
 
         let check = TokenInstruction::InitializeMint {
             decimals: 2,
-            mint_authority: Pubkey::new(&[2u8; 32]),
-            freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
+            mint_authority: Pubkey::new_from_array([2u8; 32]),
+            freeze_authority: COption::Some(Pubkey::new_from_array([3u8; 32])),
         };
         let packed = check.pack();
         let mut expect = vec![0u8, 2];
@@ -2011,7 +2011,7 @@ mod test {
 
         let check = TokenInstruction::SetAuthority {
             authority_type: AuthorityType::FreezeAccount,
-            new_authority: COption::Some(Pubkey::new(&[4u8; 32])),
+            new_authority: COption::Some(Pubkey::new_from_array([4u8; 32])),
         };
         let packed = check.pack();
         let mut expect = Vec::from([6u8, 1]);
@@ -2097,7 +2097,7 @@ mod test {
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::InitializeAccount2 {
-            owner: Pubkey::new(&[2u8; 32]),
+            owner: Pubkey::new_from_array([2u8; 32]),
         };
         let packed = check.pack();
         let mut expect = vec![16u8];
@@ -2114,7 +2114,7 @@ mod test {
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::InitializeAccount3 {
-            owner: Pubkey::new(&[2u8; 32]),
+            owner: Pubkey::new_from_array([2u8; 32]),
         };
         let packed = check.pack();
         let mut expect = vec![18u8];
@@ -2132,7 +2132,7 @@ mod test {
 
         let check = TokenInstruction::InitializeMint2 {
             decimals: 2,
-            mint_authority: Pubkey::new(&[1u8; 32]),
+            mint_authority: Pubkey::new_from_array([1u8; 32]),
             freeze_authority: COption::None,
         };
         let packed = check.pack();
@@ -2145,8 +2145,8 @@ mod test {
 
         let check = TokenInstruction::InitializeMint2 {
             decimals: 2,
-            mint_authority: Pubkey::new(&[2u8; 32]),
-            freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
+            mint_authority: Pubkey::new_from_array([2u8; 32]),
+            freeze_authority: COption::Some(Pubkey::new_from_array([3u8; 32])),
         };
         let packed = check.pack();
         let mut expect = vec![20u8, 2];
@@ -2193,7 +2193,7 @@ mod test {
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::InitializeMintCloseAuthority {
-            close_authority: COption::Some(Pubkey::new(&[10u8; 32])),
+            close_authority: COption::Some(Pubkey::new_from_array([10u8; 32])),
         };
         let packed = check.pack();
         let mut expect = vec![25u8, 1];
@@ -2210,7 +2210,7 @@ mod test {
         assert_eq!(unpacked, check);
 
         let check = TokenInstruction::InitializePermanentDelegate {
-            delegate: Pubkey::new(&[11u8; 32]),
+            delegate: Pubkey::new_from_array([11u8; 32]),
         };
         let packed = check.pack();
         let mut expect = vec![35u8];

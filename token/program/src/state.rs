@@ -227,7 +227,7 @@ impl Pack for Multisig {
             signers: [Pubkey::new_from_array([0u8; 32]); MAX_SIGNERS],
         };
         for (src, dst) in signers_flat.chunks(32).zip(result.signers.iter_mut()) {
-            *dst = Pubkey::new(src);
+            *dst = Pubkey::try_from(src).map_err(|_| ProgramError::InvalidAccountData)?;
         }
         Ok(result)
     }

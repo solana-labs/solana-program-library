@@ -4500,7 +4500,7 @@ mod tests {
             system_instruction,
             transaction::Transaction,
         },
-        solana_test_validator::{ProgramInfo, TestValidator, TestValidatorGenesis},
+        solana_test_validator::{TestValidator, TestValidatorGenesis, UpgradeableProgramInfo},
         spl_token_2022::{extension::non_transferable::NonTransferable, state::Multisig},
         spl_token_client::client::{
             ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
@@ -4518,21 +4518,24 @@ mod tests {
     async fn new_validator_for_test() -> (TestValidator, Keypair) {
         solana_logger::setup();
         let mut test_validator_genesis = TestValidatorGenesis::default();
-        test_validator_genesis.add_programs_with_path(&[
-            ProgramInfo {
+        test_validator_genesis.add_upgradeable_programs_with_path(&[
+            UpgradeableProgramInfo {
                 program_id: spl_token::id(),
                 loader: bpf_loader::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_token.so"),
+                upgrade_authority: Pubkey::new_unique(),
             },
-            ProgramInfo {
+            UpgradeableProgramInfo {
                 program_id: spl_associated_token_account::id(),
                 loader: bpf_loader::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_associated_token_account.so"),
+                upgrade_authority: Pubkey::new_unique(),
             },
-            ProgramInfo {
+            UpgradeableProgramInfo {
                 program_id: spl_token_2022::id(),
                 loader: bpf_loader::id(),
                 program_path: PathBuf::from("../../target/deploy/spl_token_2022.so"),
+                upgrade_authority: Pubkey::new_unique(),
             },
         ]);
         test_validator_genesis.start_async().await

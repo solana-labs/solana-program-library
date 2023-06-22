@@ -615,7 +615,7 @@ pub async fn create_vote(
         0,
         &system_program::id(),
     )];
-    instructions.append(&mut vote_instruction::create_account(
+    instructions.append(&mut vote_instruction::create_account_with_config(
         &payer.pubkey(),
         &vote.pubkey(),
         &VoteInit {
@@ -624,6 +624,7 @@ pub async fn create_vote(
             ..VoteInit::default()
         },
         rent_voter,
+        vote_instruction::CreateVoteAccountConfig::default(),
     ));
 
     let transaction = Transaction::new_signed_with_payer(

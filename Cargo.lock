@@ -6472,7 +6472,7 @@ dependencies = [
  "assert_matches",
  "base64 0.21.2",
  "bincode",
- "borsh 0.9.3",
+ "borsh 0.10.3",
  "num-derive",
  "num-traits",
  "proptest",

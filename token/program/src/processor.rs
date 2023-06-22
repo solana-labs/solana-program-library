@@ -1166,11 +1166,11 @@ mod tests {
     fn test_pack_unpack() {
         // Mint
         let check = Mint {
-            mint_authority: COption::Some(Pubkey::new(&[1; 32])),
+            mint_authority: COption::Some(Pubkey::new_from_array([1; 32])),
             supply: 42,
             decimals: 7,
             is_initialized: true,
-            freeze_authority: COption::Some(Pubkey::new(&[2; 32])),
+            freeze_authority: COption::Some(Pubkey::new_from_array([2; 32])),
         };
         let mut packed = vec![0; Mint::get_packed_len() + 1];
         assert_eq!(
@@ -1195,14 +1195,14 @@ mod tests {
 
         // Account
         let check = Account {
-            mint: Pubkey::new(&[1; 32]),
-            owner: Pubkey::new(&[2; 32]),
+            mint: Pubkey::new_from_array([1; 32]),
+            owner: Pubkey::new_from_array([2; 32]),
             amount: 3,
-            delegate: COption::Some(Pubkey::new(&[4; 32])),
+            delegate: COption::Some(Pubkey::new_from_array([4; 32])),
             state: AccountState::Frozen,
             is_native: COption::Some(5),
             delegated_amount: 6,
-            close_authority: COption::Some(Pubkey::new(&[7; 32])),
+            close_authority: COption::Some(Pubkey::new_from_array([7; 32])),
         };
         let mut packed = vec![0; Account::get_packed_len() + 1];
         assert_eq!(
@@ -1233,7 +1233,7 @@ mod tests {
             m: 1,
             n: 2,
             is_initialized: true,
-            signers: [Pubkey::new(&[3; 32]); MAX_SIGNERS],
+            signers: [Pubkey::new_from_array([3; 32]); MAX_SIGNERS],
         };
         let mut packed = vec![0; Multisig::get_packed_len() + 1];
         assert_eq!(
