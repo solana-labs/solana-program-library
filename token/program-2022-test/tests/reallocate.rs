@@ -196,16 +196,18 @@ async fn reallocate_without_current_extension_knowledge() {
     );
 }
 
-#[test_case(&[ExtensionType::CpiGuard], true, true ; "transfer lamports and sync with extension")]
-#[test_case(&[ExtensionType::CpiGuard], true, false ; "transfer lamports only with extension")]
-#[test_case(&[ExtensionType::CpiGuard], false, false ; "do not transfer, with extension")]
-#[test_case(&[], true, true ; "transfer lamports and sync without extension")]
-#[test_case(&[], true, false ; "transfer lamports only without extension")]
-#[test_case(&[], false, false ; "do not transfer, without extension")]
+#[test_case(&[ExtensionType::CpiGuard], 1_000_000_000, true ; "transfer more than new rent and sync")]
+#[test_case(&[ExtensionType::CpiGuard], 1_000_000_000, false ; "transfer more than new rent")]
+#[test_case(&[ExtensionType::CpiGuard], 1, true ; "transfer less than new rent and sync")]
+#[test_case(&[ExtensionType::CpiGuard], 1, false ; "transfer less than new rent")]
+#[test_case(&[ExtensionType::CpiGuard], 0, false ; "no transfer with extension")]
+#[test_case(&[], 1_000_000_000, true ; "transfer lamports and sync without extension")]
+#[test_case(&[], 1_000_000_000, false ; "transfer lamports without extension")]
+#[test_case(&[], 0, false ; "no transfer without extension")]
 #[tokio::test]
 async fn reallocate_updates_native_rent_exemption(
     extensions: &[ExtensionType],
-    transfer_lamports: bool,
+    transfer_lamports: u64,
     sync_native: bool,
 ) {
     let mut context = TestContext::new().await;
@@ -221,13 +223,12 @@ async fn reallocate_updates_native_rent_exemption(
     let alice_account = alice_account.pubkey();
 
     // transfer more lamports
-    let transfer_amount = 1_000_000_000;
-    if transfer_lamports {
+    if transfer_lamports > 0 {
         let mut context = context.lock().await;
         let instructions = vec![system_instruction::transfer(
             &context.payer.pubkey(),
             &alice_account,
-            transfer_amount,
+            transfer_lamports,
         )];
         let tx = Transaction::new_signed_with_payer(
             &instructions,
@@ -245,11 +246,7 @@ async fn reallocate_updates_native_rent_exemption(
     if sync_native {
         token.sync_native(&alice_account).await.unwrap();
         let account_info = token.get_account_info(&alice_account).await.unwrap();
-        if transfer_lamports {
-            assert_eq!(account_info.base.amount, transfer_amount);
-        } else {
-            assert_eq!(account_info.base.amount, 0);
-        }
+        assert_eq!(account_info.base.amount, transfer_lamports);
     }
 
     let token_account = token.get_account_info(&alice_account).await.unwrap();

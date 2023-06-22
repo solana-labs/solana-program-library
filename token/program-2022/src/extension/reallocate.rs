@@ -97,10 +97,9 @@ pub fn process_reallocate(
 
     // sync the rent exempt reserve for native accounts
     let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)?;
-    if token_account.base.is_native() {
+    if let Some(native_amount) = native_amount {
         // sanity check that there are enough lamports to cover the token amount
         // and the rent exempt reserve
-        let native_amount = native_amount.ok_or(TokenError::InvalidState)?;
         let lamports_in_account_data = native_amount
             .checked_add(new_minimum_balance)
             .ok_or(TokenError::Overflow)?;
