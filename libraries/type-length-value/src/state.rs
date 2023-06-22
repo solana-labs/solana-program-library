@@ -8,7 +8,7 @@ use {
     },
     bytemuck::Pod,
     solana_program::program_error::ProgramError,
-    spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     std::{cmp::Ordering, mem::size_of},
 };
 
@@ -115,7 +115,7 @@ fn get_discriminators_and_end_index(
     Ok((discriminators, start_index))
 }
 
-fn get_bytes<V: SplDiscriminates>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
+fn get_bytes<V: SplDiscriminate>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
     let TlvIndices {
         type_start: _,
         length_start,
@@ -151,7 +151,7 @@ fn get_bytes<V: SplDiscriminates>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 /// ```
 /// use {
 ///     bytemuck::{Pod, Zeroable},
-///     spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
+///     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
 ///     spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
 /// };
 /// #[repr(C)]
@@ -159,7 +159,7 @@ fn get_bytes<V: SplDiscriminates>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 /// struct MyPodValue {
 ///     data: [u8; 8],
 /// }
-/// impl SplDiscriminates for MyPodValue {
+/// impl SplDiscriminate for MyPodValue {
 ///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 /// }
 /// #[repr(C)]
@@ -167,7 +167,7 @@ fn get_bytes<V: SplDiscriminates>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 /// struct MyOtherPodValue {
 ///     data: u8,
 /// }
-/// impl SplDiscriminates for MyOtherPodValue {
+/// impl SplDiscriminate for MyOtherPodValue {
 ///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
 /// }
 /// let buffer = [
@@ -191,14 +191,14 @@ pub trait TlvState {
     fn get_data(&self) -> &[u8];
 
     /// Unpack a portion of the TLV data as the desired Pod type
-    fn get_value<V: SplDiscriminates + Pod>(&self) -> Result<&V, ProgramError> {
+    fn get_value<V: SplDiscriminate + Pod>(&self) -> Result<&V, ProgramError> {
         let data = get_bytes::<V>(self.get_data())?;
         pod_from_bytes::<V>(data)
     }
 
     /// Unpacks a portion of the TLV data as the desired Borsh type
     #[cfg(feature = "borsh")]
-    fn borsh_deserialize<V: SplDiscriminates + borsh::BorshDeserialize>(
+    fn borsh_deserialize<V: SplDiscriminate + borsh::BorshDeserialize>(
         &self,
     ) -> Result<V, ProgramError> {
         let data = get_bytes::<V>(self.get_data())?;
@@ -206,7 +206,7 @@ pub trait TlvState {
     }
 
     /// Unpack a portion of the TLV data as bytes
-    fn get_bytes<V: SplDiscriminates>(&self) -> Result<&[u8], ProgramError> {
+    fn get_bytes<V: SplDiscriminate>(&self) -> Result<&[u8], ProgramError> {
         get_bytes::<V>(self.get_data())
     }
 
@@ -279,13 +279,13 @@ impl<'data> TlvStateMut<'data> {
     }
 
     /// Unpack a portion of the TLV data as the desired type that allows modifying the type
-    pub fn get_value_mut<V: SplDiscriminates + Pod>(&mut self) -> Result<&mut V, ProgramError> {
+    pub fn get_value_mut<V: SplDiscriminate + Pod>(&mut self) -> Result<&mut V, ProgramError> {
         let data = self.get_bytes_mut::<V>()?;
         pod_from_bytes_mut::<V>(data)
     }
 
     /// Unpack a portion of the TLV data as mutable bytes
-    pub fn get_bytes_mut<V: SplDiscriminates>(&mut self) -> Result<&mut [u8], ProgramError> {
+    pub fn get_bytes_mut<V: SplDiscriminate>(&mut self) -> Result<&mut [u8], ProgramError> {
         let TlvIndices {
             type_start: _,
             length_start,
@@ -302,7 +302,7 @@ impl<'data> TlvStateMut<'data> {
 
     /// Packs the default TLV data into the first open slot in the data buffer.
     /// If extension is already found in the buffer, it returns an error.
-    pub fn init_value<V: SplDiscriminates + Pod + Default>(
+    pub fn init_value<V: SplDiscriminate + Pod + Default>(
         &mut self,
     ) -> Result<&mut V, ProgramError> {
         let length = size_of::<V>();
@@ -315,7 +315,7 @@ impl<'data> TlvStateMut<'data> {
     /// Packs a borsh-serializable value into its appropriate data segment. Assumes
     /// that space has already been allocated for the given type
     #[cfg(feature = "borsh")]
-    pub fn borsh_serialize<V: SplDiscriminates + borsh::BorshSerialize>(
+    pub fn borsh_serialize<V: SplDiscriminate + borsh::BorshSerialize>(
         &mut self,
         value: &V,
     ) -> Result<(), ProgramError> {
@@ -323,8 +323,8 @@ impl<'data> TlvStateMut<'data> {
         borsh::to_writer(&mut data[..], value).map_err(Into::into)
     }
 
-    /// Allocate the given number of bytes for the given SplDiscriminates
-    pub fn alloc<V: SplDiscriminates>(&mut self, length: usize) -> Result<&mut [u8], ProgramError> {
+    /// Allocate the given number of bytes for the given SplDiscriminate
+    pub fn alloc<V: SplDiscriminate>(&mut self, length: usize) -> Result<&mut [u8], ProgramError> {
         let TlvIndices {
             type_start,
             length_start,
@@ -351,11 +351,11 @@ impl<'data> TlvStateMut<'data> {
         }
     }
 
-    /// Reallocate the given number of bytes for the given SplDiscriminates. If the new
+    /// Reallocate the given number of bytes for the given SplDiscriminate. If the new
     /// length is smaller, it will compact the rest of the buffer and zero out
     /// the difference at the end. If it's larger, it will move the rest of
     /// the buffer data and zero out the new data.
-    pub fn realloc<V: SplDiscriminates>(
+    pub fn realloc<V: SplDiscriminate>(
         &mut self,
         length: usize,
     ) -> Result<&mut [u8], ProgramError> {
@@ -447,7 +447,7 @@ mod test {
     struct TestValue {
         data: [u8; 32],
     }
-    impl SplDiscriminates for TestValue {
+    impl SplDiscriminate for TestValue {
         const SPL_DISCRIMINATOR: ArrayDiscriminator =
             ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
     }
@@ -457,7 +457,7 @@ mod test {
     struct TestSmallValue {
         data: [u8; 3],
     }
-    impl SplDiscriminates for TestSmallValue {
+    impl SplDiscriminate for TestSmallValue {
         const SPL_DISCRIMINATOR: ArrayDiscriminator =
             ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
     }
@@ -465,7 +465,7 @@ mod test {
     #[repr(transparent)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
     struct TestEmptyValue;
-    impl SplDiscriminates for TestEmptyValue {
+    impl SplDiscriminate for TestEmptyValue {
         const SPL_DISCRIMINATOR: ArrayDiscriminator =
             ArrayDiscriminator::new([3; ArrayDiscriminator::LENGTH]);
     }
@@ -476,7 +476,7 @@ mod test {
         data: [u8; 5],
     }
     const TEST_NON_ZERO_DEFAULT_DATA: [u8; 5] = [4; 5];
-    impl SplDiscriminates for TestNonZeroDefault {
+    impl SplDiscriminate for TestNonZeroDefault {
         const SPL_DISCRIMINATOR: ArrayDiscriminator =
             ArrayDiscriminator::new([4; ArrayDiscriminator::LENGTH]);
     }
@@ -857,7 +857,7 @@ mod borsh_test {
     struct TestInnerBorsh {
         data: String,
     }
-    impl SplDiscriminates for TestBorsh {
+    impl SplDiscriminate for TestBorsh {
         const SPL_DISCRIMINATOR: ArrayDiscriminator =
             ArrayDiscriminator::new([5; ArrayDiscriminator::LENGTH]);
     }

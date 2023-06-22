@@ -3,7 +3,7 @@
 use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{program_error::ProgramError, pubkey::Pubkey},
-    spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     std::convert::TryFrom,
 };
 
@@ -58,7 +58,7 @@ pub struct TokenMetadata {
     /// must avoid storing the same key twice.
     pub additional_metadata: Vec<(String, String)>,
 }
-impl SplDiscriminates for TokenMetadata {
+impl SplDiscriminate for TokenMetadata {
     /// Please use this discriminator in your program when matching
     const SPL_DISCRIMINATOR: ArrayDiscriminator =
         ArrayDiscriminator::new([112, 132, 90, 90, 11, 88, 157, 87]);

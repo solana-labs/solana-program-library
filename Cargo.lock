@@ -6045,14 +6045,12 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "spl-discriminator-derive",
- "spl-discriminator-syn",
 ]
 
 [[package]]
 name = "spl-discriminator-derive"
 version = "0.1.0"
 dependencies = [
- "proc-macro2 1.0.56",
  "quote 1.0.26",
  "spl-discriminator-syn",
  "syn 2.0.15",

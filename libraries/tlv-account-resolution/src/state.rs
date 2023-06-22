@@ -10,13 +10,13 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
     },
-    spl_discriminator::SplDiscriminates,
+    spl_discriminator::SplDiscriminate,
     spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
 };
 
 /// Stateless helper for storing additional accounts required for an instruction.
 ///
-/// This struct works with any `SplDiscriminates`, and stores the extra accounts
+/// This struct works with any `SplDiscriminate`, and stores the extra accounts
 /// needed for that specific instruction, using the given `ArrayDiscriminator` as the
 /// type-length-value `ArrayDiscriminator`, and then storing all of the given
 /// `AccountMeta`s as a zero-copy slice.
@@ -29,12 +29,12 @@ use {
 ///         account_info::AccountInfo, instruction::{AccountMeta, Instruction},
 ///         pubkey::Pubkey
 ///     },
-///     spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
+///     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
 ///     spl_tlv_account_resolution::state::ExtraAccountMetas,
 /// };
 ///
 /// struct MyInstruction;
-/// impl SplDiscriminates for MyInstruction {
+/// impl SplDiscriminate for MyInstruction {
 ///     // Give it a unique discriminator, can also be generated using a hash function
 ///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 /// }
@@ -74,7 +74,7 @@ pub struct ExtraAccountMetas;
 impl ExtraAccountMetas {
     /// Initialize pod slice data for the given instruction and any type
     /// convertible to account metas
-    pub fn init<'a, T: SplDiscriminates, M>(
+    pub fn init<'a, T: SplDiscriminate, M>(
         data: &mut [u8],
         convertible_account_metas: &'a [M],
     ) -> Result<(), ProgramError>
@@ -93,7 +93,7 @@ impl ExtraAccountMetas {
 
     /// Initialize a TLV entry for the given discriminator, populating the data
     /// with the given account infos
-    pub fn init_with_account_infos<T: SplDiscriminates>(
+    pub fn init_with_account_infos<T: SplDiscriminate>(
         data: &mut [u8],
         account_infos: &[AccountInfo<'_>],
     ) -> Result<(), ProgramError> {
@@ -105,7 +105,7 @@ impl ExtraAccountMetas {
     /// Due to lifetime annoyances, this function can't just take in the bytes,
     /// since then we would be returning a reference to a locally created
     /// `TlvStateBorrowed`. I hope there's a better way to do this!
-    pub fn unpack_with_tlv_state<'a, T: SplDiscriminates>(
+    pub fn unpack_with_tlv_state<'a, T: SplDiscriminate>(
         tlv_state: &'a TlvStateBorrowed,
     ) -> Result<PodSlice<'a, PodAccountMeta>, ProgramError> {
         let bytes = tlv_state.get_bytes::<T>()?;
@@ -114,7 +114,7 @@ impl ExtraAccountMetas {
 
     /// Initialize a TLV entry for the given discriminator, populating the data
     /// with the given account metas
-    pub fn init_with_account_metas<T: SplDiscriminates>(
+    pub fn init_with_account_metas<T: SplDiscriminate>(
         data: &mut [u8],
         account_metas: &[AccountMeta],
     ) -> Result<(), ProgramError> {
@@ -158,7 +158,7 @@ impl ExtraAccountMetas {
     }
 
     /// Add the additional account metas to an existing instruction
-    pub fn add_to_vec<T: SplDiscriminates>(
+    pub fn add_to_vec<T: SplDiscriminate>(
         account_metas: &mut Vec<AccountMeta>,
         data: &[u8],
     ) -> Result<(), ProgramError> {
@@ -178,7 +178,7 @@ impl ExtraAccountMetas {
     }
 
     /// Add the additional account metas to an existing instruction
-    pub fn add_to_instruction<T: SplDiscriminates>(
+    pub fn add_to_instruction<T: SplDiscriminate>(
         instruction: &mut Instruction,
         data: &[u8],
     ) -> Result<(), ProgramError> {
@@ -191,7 +191,7 @@ impl ExtraAccountMetas {
     /// If an added account already exists in the instruction with lower
     /// privileges, match it to the existing account. This prevents a lower
     /// program from gaining unexpected privileges.
-    pub fn add_to_cpi_instruction<'a, T: SplDiscriminates>(
+    pub fn add_to_cpi_instruction<'a, T: SplDiscriminate>(
         cpi_instruction: &mut Instruction,
         cpi_account_infos: &mut Vec<AccountInfo<'a>>,
         data: &[u8],
@@ -226,17 +226,17 @@ mod tests {
     use {
         super::*,
         solana_program::{clock::Epoch, instruction::AccountMeta, pubkey::Pubkey},
-        spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
+        spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     };
 
     pub struct TestInstruction;
-    impl SplDiscriminates for TestInstruction {
+    impl SplDiscriminate for TestInstruction {
         const SPL_DISCRIMINATOR: ArrayDiscriminator =
             ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
     }
 
     pub struct TestOtherInstruction;
-    impl SplDiscriminates for TestOtherInstruction {
+    impl SplDiscriminate for TestOtherInstruction {
         const SPL_DISCRIMINATOR: ArrayDiscriminator =
             ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
     }

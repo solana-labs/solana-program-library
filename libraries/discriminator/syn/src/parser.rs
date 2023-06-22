@@ -2,7 +2,7 @@
 //! `#[discriminator_hash_input("...")]` attribute
 
 use {
-    crate::error::SplDiscriminatesError,
+    crate::error::SplDiscriminateError,
     syn::{
         parse::{Parse, ParseStream},
         token::Comma,
@@ -27,7 +27,7 @@ impl Parse for HashInputValueParser {
 
 /// Parses the hash_input from the `#[discriminator_hash_input("...")]`
 /// attribute
-pub fn parse_hash_input(attrs: &[Attribute]) -> Result<String, SplDiscriminatesError> {
+pub fn parse_hash_input(attrs: &[Attribute]) -> Result<String, SplDiscriminateError> {
     match attrs
         .iter()
         .find(|a| a.path().is_ident("discriminator_hash_input"))
@@ -35,9 +35,9 @@ pub fn parse_hash_input(attrs: &[Attribute]) -> Result<String, SplDiscriminatesE
         Some(attr) => {
             let parsed_args = attr
                 .parse_args::<HashInputValueParser>()
-                .map_err(|_| SplDiscriminatesError::HashInputAttributeParseError)?;
+                .map_err(|_| SplDiscriminateError::HashInputAttributeParseError)?;
             Ok(parsed_args.value.value())
         }
-        None => Err(SplDiscriminatesError::HashInputAttributeNotProvided),
+        None => Err(SplDiscriminateError::HashInputAttributeNotProvided),
     }
 }

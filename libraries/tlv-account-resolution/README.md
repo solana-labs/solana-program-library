@@ -11,12 +11,12 @@ into a TLV entry in an account, you can do the following:
 ```rust
 use {
     solana_program::{account_info::AccountInfo, instruction::{AccountMeta, Instruction}, pubkey::Pubkey},
-    spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_tlv_account_resolution::state::ExtraAccountMetas,
 };
 
 struct MyInstruction;
-impl SplDiscriminates for MyInstruction {
+impl SplDiscriminate for MyInstruction {
     // For ease of use, give it the same discriminator as its instruction definition
     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 }
@@ -107,9 +107,9 @@ accounts from account data.
 Interface instructions must have an 8-byte discriminator, so that the exposed
 `ExtraAccountMetas` type can use the instruction discriminator as a `ArrayDiscriminator`.
 
-This can be confusing. Typically, a type implements `SplDiscriminates`, so that
+This can be confusing. Typically, a type implements `SplDiscriminate`, so that
 the type can be written into TLV data. In this case, `ExtraAccountMetas` is
-generic over `SplDiscriminates`, meaning that a program can write many different instances of
+generic over `SplDiscriminate`, meaning that a program can write many different instances of
 `ExtraAccountMetas` into one account, using different `ArrayDiscriminator`s.
 
 Also, it's reusing an instruction discriminator as a TLV discriminator. For example,

@@ -10,7 +10,7 @@ This simple examples defines a zero-copy type with its discriminator.
 use {
     borsh::{BorshSerialize, BorshDeserialize},
     bytemuck::{Pod, Zeroable},
-    spl_discriminator::{ArrayDiscriminator, SplDiscriminates}
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate}
     spl_type_length_value::{
         state::{TlvState, TlvStateBorrowed, TlvStateMut}
     },
@@ -38,7 +38,7 @@ impl Default for MyOtherPodValue {
         }
     }
 }
-impl SplDiscriminates for MyOtherPodValue {
+impl SplDiscriminate for MyOtherPodValue {
     // Some other unique discriminator
     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
 }
@@ -123,7 +123,7 @@ use {
 struct MyBorsh {
     data: String, // variable length type
 }
-impl SplDiscriminates for MyBorsh {
+impl SplDiscriminate for MyBorsh {
     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([5; ArrayDiscriminator::LENGTH]);
 }
 let initial_data = "This is a pretty cool test!";

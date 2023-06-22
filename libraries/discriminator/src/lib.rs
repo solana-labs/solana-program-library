@@ -11,8 +11,8 @@ pub mod discriminator;
 
 // Export for downstream
 pub use {
-    discriminator::{ArrayDiscriminator, SplDiscriminates},
-    spl_discriminator_derive::SplDiscriminates,
+    discriminator::{ArrayDiscriminator, SplDiscriminate},
+    spl_discriminator_derive::SplDiscriminate,
 };
 
 #[cfg(test)]
@@ -20,7 +20,7 @@ mod tests {
     use {super::*, crate::discriminator::ArrayDiscriminator};
 
     #[allow(dead_code)]
-    #[derive(SplDiscriminates)]
+    #[derive(SplDiscriminate)]
     #[discriminator_hash_input("some_discriminator_hash_input")]
     pub struct MyInstruction1 {
         arg1: String,
@@ -28,14 +28,14 @@ mod tests {
     }
 
     #[allow(dead_code)]
-    #[derive(SplDiscriminates)]
+    #[derive(SplDiscriminate)]
     #[discriminator_hash_input("yet_another_discriminator_hash_input")]
     pub struct MyInstruction2 {
         arg1: u64,
     }
 
     #[allow(dead_code)]
-    #[derive(SplDiscriminates)]
+    #[derive(SplDiscriminate)]
     #[discriminator_hash_input("global:my_instruction_3")]
     pub enum MyInstruction3 {
         One,
@@ -43,7 +43,7 @@ mod tests {
         Three,
     }
 
-    fn assert_discriminator<T: spl_discriminator::discriminator::SplDiscriminates>(
+    fn assert_discriminator<T: spl_discriminator::discriminator::SplDiscriminate>(
         hash_input: &str,
     ) {
         let discriminator = build_discriminator(hash_input);

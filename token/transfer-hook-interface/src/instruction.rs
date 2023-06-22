@@ -7,7 +7,7 @@ use {
         pubkey::Pubkey,
         system_program,
     },
-    spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     std::convert::TryInto,
 };
 
@@ -46,13 +46,13 @@ pub enum TransferHookInstruction {
 /// TLV instruction type only used to define the discriminator. The actual data
 /// is entirely managed by `ExtraAccountMetas`, and it is the only data contained
 /// by this type.
-#[derive(SplDiscriminates)]
+#[derive(SplDiscriminate)]
 #[discriminator_hash_input("spl-transfer-hook-interface:execute")]
 pub struct ExecuteInstruction;
 
 /// TLV instruction type used to initialize extra account metas
 /// for the transfer hook
-#[derive(SplDiscriminates)]
+#[derive(SplDiscriminate)]
 #[discriminator_hash_input("spl-transfer-hook-interface:initialize-extra-account-metas")]
 pub struct InitializeExtraAccountMetasInstruction;
 

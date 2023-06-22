@@ -8,7 +8,7 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
     },
-    spl_discriminator::{discriminator::ArrayDiscriminator, SplDiscriminates},
+    spl_discriminator::{discriminator::ArrayDiscriminator, SplDiscriminate},
 };
 
 /// Fields in the metadata account
@@ -25,7 +25,7 @@ pub enum Field {
 }
 
 /// Initialization instruction data
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminates)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:initialize_account")]
 pub struct Initialize {
     /// Longer name of the token
@@ -37,7 +37,7 @@ pub struct Initialize {
 }
 
 /// Update field instruction data
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminates)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:updating_field")]
 pub struct UpdateField {
     /// Field to update in the metadata
@@ -47,7 +47,7 @@ pub struct UpdateField {
 }
 
 /// Remove key instruction data
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminates)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:remove_key_ix")]
 pub struct RemoveKey {
     /// Key to remove in the additional metadata portion
@@ -55,7 +55,7 @@ pub struct RemoveKey {
 }
 
 /// Update authority instruction data
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminates)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:update_the_authority")]
 pub struct UpdateAuthority {
     /// New authority for the token metadata, or unset if `None`
@@ -63,7 +63,7 @@ pub struct UpdateAuthority {
 }
 
 /// Instruction data for Emit
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminates)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:emitter")]
 pub struct Emit {
     /// Start of range of data to emit

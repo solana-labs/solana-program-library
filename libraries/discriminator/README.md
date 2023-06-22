@@ -22,13 +22,13 @@ The `ArrayDiscriminator` struct also offers another constant function `as_slice(
 const MY_DISCRIMINATOR_SLICE: &[u8] = MY_DISCRIMINATOR.as_slice();
 ```
 
-### The `SplDiscriminates` Trait
+### The `SplDiscriminate` Trait
 
-A trait, `SplDiscriminates` is also available, which will give you the `ArrayDiscriminator` constant type and also a slice representation of the discriminator. This can be particularly handy with match statements.
+A trait, `SplDiscriminate` is also available, which will give you the `ArrayDiscriminator` constant type and also a slice representation of the discriminator. This can be particularly handy with match statements.
 
 ```rust
 /// A trait for managing 8-byte discriminators in a slab of bytes
-pub trait SplDiscriminates {
+pub trait SplDiscriminate {
     /// The 8-byte discriminator as a `[u8; 8]`
     const SPL_DISCRIMINATOR: ArrayDiscriminator;
     /// The 8-byte discriminator as a slice (`&[u8]`)
@@ -36,14 +36,14 @@ pub trait SplDiscriminates {
 }
 ```
 
-### The `SplDiscriminates` Derive Macro
+### The `SplDiscriminate` Derive Macro
 
-The `SplDiscriminates` derive macro is a particularly useful tool for those who wish to derive their 8-byte discriminator from a particular string literal. Typically, you would have to run a hash function against the string literal, then copy the first 8 bytes, and then hard-code those bytes into a statement like the one above.
+The `SplDiscriminate` derive macro is a particularly useful tool for those who wish to derive their 8-byte discriminator from a particular string literal. Typically, you would have to run a hash function against the string literal, then copy the first 8 bytes, and then hard-code those bytes into a statement like the one above.
 
-Instead, you can simply annotate a struct or enum with `SplDiscriminates` and provide a **namespace** via the `discriminator_namespace` attribute, and the macro will automatically derive the 8-byte discriminator for you!
+Instead, you can simply annotate a struct or enum with `SplDiscriminate` and provide a **namespace** via the `discriminator_namespace` attribute, and the macro will automatically derive the 8-byte discriminator for you!
 
 ```rust
-#[derive(SplDiscriminates)] // Implements `SplDiscriminates` for your struct/enum using your declared string literal namespace
+#[derive(SplDiscriminate)] // Implements `SplDiscriminate` for your struct/enum using your declared string literal namespace
 #[discriminator_namespace("some_discriminator_namespace")]
 pub struct MyInstruction1 {
     arg1: String,
