@@ -6377,7 +6377,7 @@ dependencies = [
 name = "spl-discriminator-syn"
 version = "0.1.0"
 dependencies = [
- "proc-macro2 1.0.56",
+ "proc-macro2 1.0.60",
  "quote 1.0.26",
  "solana-program",
  "syn 2.0.15",

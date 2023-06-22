@@ -21,17 +21,9 @@ spl-type-length-value = { version = "0.1", path = "../type-length-value" }
 thiserror = "1.0"
 
 [dev-dependencies]
-<<<<<<< HEAD
-solana-program-test = "1.14.12"
-solana-sdk = "1.14.12"
-spl-discriminator = { version = "0.1", path = "../discriminator" }
-||||||| parent of 33e83de0 (Update solana and borsh deps)
-solana-program-test = "1.14.12"
-solana-sdk = "1.14.12"
-=======
 solana-program-test = "1.16.1"
 solana-sdk = "1.16.1"
->>>>>>> 33e83de0 (Update solana and borsh deps)
+spl-discriminator = { version = "0.1", path = "../discriminator" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
