@@ -134,7 +134,7 @@ fn get_bytes<V: SplDiscriminates>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 ///
 /// Stores data as any number of type-length-value structures underneath, where:
 ///
-///   * the "type" is a `Discriminator`, 8 bytes
+///   * the "type" is an `ArrayDiscriminator`, 8 bytes
 ///   * the "length" is a `Length`, 4 bytes
 ///   * the "value" is a slab of "length" bytes
 ///
@@ -151,10 +151,8 @@ fn get_bytes<V: SplDiscriminates>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 /// ```
 /// use {
 ///     bytemuck::{Pod, Zeroable},
-///     spl_type_length_value::{
-///         discriminator::{Discriminator, SplDiscriminates},
-///         state::{TlvState, TlvStateBorrowed, TlvStateMut}
-///     },
+///     spl_discriminator::{ArrayDiscriminator, SplDiscriminates},
+///     spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
 /// };
 /// #[repr(C)]
 /// #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -162,7 +160,7 @@ fn get_bytes<V: SplDiscriminates>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 ///     data: [u8; 8],
 /// }
 /// impl SplDiscriminates for MyPodValue {
-///     const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 /// }
 /// #[repr(C)]
 /// #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -170,7 +168,7 @@ fn get_bytes<V: SplDiscriminates>(tlv_data: &[u8]) -> Result<&[u8], ProgramError
 ///     data: u8,
 /// }
 /// impl SplDiscriminates for MyOtherPodValue {
-///     const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
 /// }
 /// let buffer = [
 ///   1, 1, 1, 1, 1, 1, 1, 1, // first type's discriminator
@@ -860,7 +858,8 @@ mod borsh_test {
         data: String,
     }
     impl SplDiscriminates for TestBorsh {
-        const SPL_DISCRIMINATOR: Discriminator = Discriminator::new([5; Discriminator::LENGTH]);
+        const SPL_DISCRIMINATOR: ArrayDiscriminator =
+            ArrayDiscriminator::new([5; ArrayDiscriminator::LENGTH]);
     }
     #[test]
     fn borsh_value() {

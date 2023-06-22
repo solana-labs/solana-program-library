@@ -341,7 +341,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::Initialize(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:initialize_account").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 
@@ -355,7 +355,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::UpdateField(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:updating_field").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 
@@ -366,7 +366,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::RemoveKey(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:remove_key_ix").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 
@@ -377,7 +377,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::UpdateAuthority(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:update_the_authority").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 
@@ -389,7 +389,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::Emit(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:emitter").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 }

@@ -47,7 +47,7 @@ pub enum TransferHookInstruction {
 /// is entirely managed by `ExtraAccountMetas`, and it is the only data contained
 /// by this type.
 #[derive(SplDiscriminates)]
-#[discriminator_hash_input("spl-transfer-hook-interface::execute")]
+#[discriminator_hash_input("spl-transfer-hook-interface:execute")]
 pub struct ExecuteInstruction;
 
 /// TLV instruction type used to initialize extra account metas
@@ -183,10 +183,10 @@ mod test {
         let amount = 111_111_111;
         let check = TransferHookInstruction::Execute { amount };
         let packed = check.pack();
-        // Please use ExecuteInstruction::TLV_DISCRIMINATOR in your program, the
+        // Please use ExecuteInstruction::SPL_DISCRIMINATOR in your program, the
         // following is just for test purposes
         let preimage = hash::hashv(&[format!("{NAMESPACE}:execute").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         let mut expect = vec![];
         expect.extend_from_slice(discriminator.as_ref());
         expect.extend_from_slice(&amount.to_le_bytes());
@@ -203,7 +203,7 @@ mod test {
         // the following is just for test purposes
         let preimage =
             hash::hashv(&[format!("{NAMESPACE}:initialize-extra-account-metas").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         let mut expect = vec![];
         expect.extend_from_slice(discriminator.as_ref());
         assert_eq!(packed, expect);
