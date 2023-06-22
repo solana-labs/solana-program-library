@@ -624,7 +624,10 @@ pub async fn create_vote(
             ..VoteInit::default()
         },
         rent_voter,
-        vote_instruction::CreateVoteAccountConfig::default(),
+        vote_instruction::CreateVoteAccountConfig {
+            space: VoteStateVersions::vote_state_size_of(true) as u64,
+            ..Default::default()
+        },
     ));
 
     let transaction = Transaction::new_signed_with_payer(
