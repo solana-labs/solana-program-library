@@ -634,7 +634,7 @@ def add_validator_to_pool(params: AddValidatorToPoolParams) -> TransactionInstru
     """Creates instruction to add a validator to the pool."""
     return TransactionInstruction(
         keys=[
-            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
@@ -695,7 +695,7 @@ def remove_validator_from_pool(params: RemoveValidatorFromPoolParams) -> Transac
     """Creates instruction to remove a validator from the pool."""
     return TransactionInstruction(
         keys=[
-            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
