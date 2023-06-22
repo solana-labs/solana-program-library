@@ -34,7 +34,7 @@ pub fn process_reallocate(
     let authority_info_data_len = authority_info.data_len();
 
     // check that account is the right type and validate owner
-    let (mut current_extension_types, native_amount) = {
+    let (mut current_extension_types, native_token_amount) = {
         let token_account = token_account_info.data.borrow();
         let account = StateWithExtensions::<Account>::unpack(&token_account)?;
         Processor::validate_owner(
@@ -44,8 +44,8 @@ pub fn process_reallocate(
             authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
-        let native_amount = account.base.is_native().then(|| account.base.amount);
-        (account.get_extension_types()?, native_amount)
+        let native_token_amount = account.base.is_native().then(|| account.base.amount);
+        (account.get_extension_types()?, native_token_amount)
     };
 
     // check that all desired extensions are for the right account type
@@ -77,7 +77,7 @@ pub fn process_reallocate(
 
     let current_lamport_reserve = token_account_info
         .lamports()
-        .checked_sub(native_amount.unwrap_or(0))
+        .checked_sub(native_token_amount.unwrap_or(0))
         .ok_or(TokenError::Overflow)?;
     let lamports_diff = new_minimum_balance.saturating_sub(current_lamport_reserve);
     if lamports_diff > 0 {
@@ -91,18 +91,16 @@ pub fn process_reallocate(
         )?;
     }
 
-    // unpack to set account_type, if needed
+    // set account_type, if needed
     let mut token_account_data = token_account_info.data.borrow_mut();
     set_account_type::<Account>(&mut token_account_data)?;
 
     // sync the rent exempt reserve for native accounts
-    let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)?;
-    if let Some(native_amount) = native_amount {
+    if let Some(native_token_amount) = native_token_amount {
+        let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)?;
         // sanity check that there are enough lamports to cover the token amount
         // and the rent exempt reserve
-        let lamports_in_account_data = native_amount
-            .checked_add(new_minimum_balance)
-            .ok_or(TokenError::Overflow)?;
+        let lamports_in_account_data = native_token_amount.saturating_add(new_minimum_balance);
         if token_account_info.lamports() < lamports_in_account_data {
             return Err(TokenError::InvalidState.into());
         }
