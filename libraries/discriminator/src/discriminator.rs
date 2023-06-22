@@ -37,10 +37,6 @@ impl ArrayDiscriminator {
         discriminator_bytes.copy_from_slice(&hash_bytes[..8]);
         Self(discriminator_bytes)
     }
-    /// Returns the discriminator length using the common `len()` method
-    pub fn len(&self) -> usize {
-        Self::LENGTH
-    }
 }
 impl AsRef<[u8]> for ArrayDiscriminator {
     fn as_ref(&self) -> &[u8] {
