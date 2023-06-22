@@ -73,13 +73,13 @@ pub fn process_reallocate(
 
     // if additional lamports needed to remain rent-exempt, transfer them
     let rent = Rent::get()?;
-    let new_minimum_balance = rent.minimum_balance(needed_account_len);
+    let new_rent_exempt_reserve = rent.minimum_balance(needed_account_len);
 
     let current_lamport_reserve = token_account_info
         .lamports()
         .checked_sub(native_token_amount.unwrap_or(0))
         .ok_or(TokenError::Overflow)?;
-    let lamports_diff = new_minimum_balance.saturating_sub(current_lamport_reserve);
+    let lamports_diff = new_rent_exempt_reserve.saturating_sub(current_lamport_reserve);
     if lamports_diff > 0 {
         invoke(
             &system_instruction::transfer(payer_info.key, token_account_info.key, lamports_diff),
@@ -100,11 +100,11 @@ pub fn process_reallocate(
         let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)?;
         // sanity check that there are enough lamports to cover the token amount
         // and the rent exempt reserve
-        let lamports_in_account_data = native_token_amount.saturating_add(new_minimum_balance);
+        let lamports_in_account_data = native_token_amount.saturating_add(new_rent_exempt_reserve);
         if token_account_info.lamports() < lamports_in_account_data {
             return Err(TokenError::InvalidState.into());
         }
-        token_account.base.is_native = COption::Some(new_minimum_balance);
+        token_account.base.is_native = COption::Some(new_rent_exempt_reserve);
         token_account.pack_base();
     }
 
