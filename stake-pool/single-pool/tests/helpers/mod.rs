@@ -14,7 +14,7 @@ use {
     },
     solana_vote_program::{
         self, vote_instruction,
-        vote_state::{VoteInit, VoteState},
+        vote_state::{VoteInit, VoteState, VoteStateVersions},
     },
     spl_associated_token_account as atoken,
     spl_single_validator_pool::{
@@ -375,7 +375,10 @@ pub async fn create_vote(
             ..VoteInit::default()
         },
         rent_voter,
-        vote_instruction::CreateVoteAccountConfig::default(),
+        vote_instruction::CreateVoteAccountConfig {
+            space: VoteStateVersions::vote_state_size_of(true) as u64,
+            ..Default::default()
+        },
     ));
 
     let transaction = Transaction::new_signed_with_payer(
