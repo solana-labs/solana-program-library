@@ -41,6 +41,19 @@ export function transferFeeLayout(property?: string): Layout<TransferFee> {
     return struct<TransferFee>([u64('epoch'), u64('maximumFee'), u16('transferFeeBasisPoints')], property);
 }
 
+/** Calculate the transfer fee */
+export function calculateFee(transferFee: TransferFee, preFeeAmount: bigint): bigint {
+    const transferFeeBasisPoints = transferFee.transferFeeBasisPoints;
+    if (transferFeeBasisPoints === 0 || preFeeAmount === 0n) {
+        return 0n;
+    } else {
+        const numerator = preFeeAmount * BigInt(transferFeeBasisPoints);
+        const rawFee = numerator / ONE_IN_BASIS_POINTS;
+        const fee = rawFee > transferFee.maximumFee ? transferFee.maximumFee : rawFee;
+        return fee;
+    }
+}
+
 /** Buffer layout for de/serializing a transfer fee config extension */
 export const TransferFeeConfigLayout = struct<TransferFeeConfig>([
     publicKey('transferFeeConfigAuthority'),
@@ -51,6 +64,22 @@ export const TransferFeeConfigLayout = struct<TransferFeeConfig>([
 ]);
 
 export const TRANSFER_FEE_CONFIG_SIZE = TransferFeeConfigLayout.span;
+
+/** Get the fee for given epoch */
+export function getEpochFee(transferFeeConfig: TransferFeeConfig, epoch: bigint): TransferFee {
+    if (epoch >= transferFeeConfig.newerTransferFee.epoch) {
+        return transferFeeConfig.newerTransferFee;
+    } else {
+        return transferFeeConfig.olderTransferFee;
+    }
+}
+
+/** Calculate the fee for the given epoch and input amount */
+export function calculateEpochFee(transferFeeConfig: TransferFeeConfig, preFeeAmount: bigint): bigint {
+    const epoch = transferFeeConfig.newerTransferFee.epoch;
+    const transferFee = getEpochFee(transferFeeConfig, epoch);
+    return calculateFee(transferFee, preFeeAmount);
+}
 
 /** Transfer fee amount data for accounts. */
 export interface TransferFeeAmount {
