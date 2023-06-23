@@ -1,7 +1,7 @@
 //! Instruction types
 
 use {
-    crate::state::OptionalNonZeroPubkey,
+    crate::state::{Field, OptionalNonZeroPubkey},
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -10,19 +10,6 @@ use {
     },
     spl_discriminator::{discriminator::ArrayDiscriminator, SplDiscriminate},
 };
-
-/// Fields in the metadata account
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
-pub enum Field {
-    /// The name field, corresponding to `TokenMetadata.name`
-    Name,
-    /// The symbol field, corresponding to `TokenMetadata.symbol`
-    Symbol,
-    /// The uri field, corresponding to `TokenMetadata.uri`
-    Uri,
-    /// A user field, whose key is given by the associated string
-    Key(String),
-}
 
 /// Initialization instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
@@ -50,6 +37,9 @@ pub struct UpdateField {
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:remove_key_ix")]
 pub struct RemoveKey {
+    /// If the idempotent flag is set to true, then the instruction will not
+    /// error if the key does not exist
+    pub idempotent: bool,
     /// Key to remove in the additional metadata portion
     pub key: String,
 }
@@ -126,7 +116,8 @@ pub enum TokenMetadataInstruction {
     ///   0. `[w]` Metadata account
     ///   1. `[s]` Update authority
     ///
-    /// Data: the string key to remove. Errors if the key is not present
+    /// Data: the string key to remove. If the idempotent flag is set to false,
+    /// returns an error if the key is not present
     RemoveKey(RemoveKey),
 
     /// Updates the token-metadata authority
@@ -135,7 +126,6 @@ pub enum TokenMetadataInstruction {
     ///
     ///   0. `[w]` Metadata account
     ///   1. `[s]` Current update authority
-    ///   2. `[]` New update authority
     ///
     /// Data: the new authority. Can be unset using a `None` value
     UpdateAuthority(UpdateAuthority),
@@ -266,8 +256,9 @@ pub fn remove_key(
     metadata: &Pubkey,
     update_authority: &Pubkey,
     key: String,
+    idempotent: bool,
 ) -> Instruction {
-    let data = TokenMetadataInstruction::RemoveKey(RemoveKey { key });
+    let data = TokenMetadataInstruction::RemoveKey(RemoveKey { key, idempotent });
     Instruction {
         program_id: *program_id,
         accounts: vec![
@@ -363,6 +354,7 @@ mod test {
     fn remove_key_pack() {
         let data = RemoveKey {
             key: "MyTestField".to_string(),
+            idempotent: true,
         };
         let check = TokenMetadataInstruction::RemoveKey(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:remove_key_ix").as_bytes()]);
