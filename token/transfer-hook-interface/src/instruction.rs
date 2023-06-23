@@ -7,7 +7,7 @@ use {
         pubkey::Pubkey,
         system_program,
     },
-    spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     std::convert::TryInto,
 };
 
@@ -46,26 +46,25 @@ pub enum TransferHookInstruction {
 /// TLV instruction type only used to define the discriminator. The actual data
 /// is entirely managed by `ExtraAccountMetas`, and it is the only data contained
 /// by this type.
+#[derive(SplDiscriminate)]
+#[discriminator_hash_input("spl-transfer-hook-interface:execute")]
 pub struct ExecuteInstruction;
-impl TlvDiscriminator for ExecuteInstruction {
-    /// First 8 bytes of `hash::hashv(&["spl-transfer-hook-interface:execute"])`
-    const TLV_DISCRIMINATOR: Discriminator =
-        Discriminator::new([105, 37, 101, 197, 75, 251, 102, 26]);
-}
 
-/// First 8 bytes of `hash::hashv(&["spl-transfer-hook-interface:initialize-extra-account-metas"])`
-const INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR: &[u8] = &[43, 34, 13, 49, 167, 88, 235, 235];
+/// TLV instruction type used to initialize extra account metas
+/// for the transfer hook
+#[derive(SplDiscriminate)]
+#[discriminator_hash_input("spl-transfer-hook-interface:initialize-extra-account-metas")]
+pub struct InitializeExtraAccountMetasInstruction;
 
 impl TransferHookInstruction {
     /// Unpacks a byte buffer into a [TransferHookInstruction](enum.TransferHookInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        const EXECUTE_DISCRIMINATOR_SLICE: &[u8] = ExecuteInstruction::TLV_DISCRIMINATOR.as_slice();
-        if input.len() < Discriminator::LENGTH {
+        if input.len() < ArrayDiscriminator::LENGTH {
             return Err(ProgramError::InvalidInstructionData);
         }
-        let (discriminator, rest) = input.split_at(Discriminator::LENGTH);
+        let (discriminator, rest) = input.split_at(ArrayDiscriminator::LENGTH);
         Ok(match discriminator {
-            EXECUTE_DISCRIMINATOR_SLICE => {
+            ExecuteInstruction::SPL_DISCRIMINATOR_SLICE => {
                 let amount = rest
                     .get(..8)
                     .and_then(|slice| slice.try_into().ok())
@@ -73,7 +72,9 @@ impl TransferHookInstruction {
                     .ok_or(ProgramError::InvalidInstructionData)?;
                 Self::Execute { amount }
             }
-            INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR => Self::InitializeExtraAccountMetas,
+            InitializeExtraAccountMetasInstruction::SPL_DISCRIMINATOR_SLICE => {
+                Self::InitializeExtraAccountMetas
+            }
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }
@@ -83,11 +84,13 @@ impl TransferHookInstruction {
         let mut buf = vec![];
         match self {
             Self::Execute { amount } => {
-                buf.extend_from_slice(ExecuteInstruction::TLV_DISCRIMINATOR.as_slice());
+                buf.extend_from_slice(ExecuteInstruction::SPL_DISCRIMINATOR_SLICE);
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
             Self::InitializeExtraAccountMetas => {
-                buf.extend_from_slice(INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR);
+                buf.extend_from_slice(
+                    InitializeExtraAccountMetasInstruction::SPL_DISCRIMINATOR_SLICE,
+                );
             }
         };
         buf
@@ -180,10 +183,10 @@ mod test {
         let amount = 111_111_111;
         let check = TransferHookInstruction::Execute { amount };
         let packed = check.pack();
-        // Please use ExecuteInstruction::TLV_DISCRIMINATOR in your program, the
+        // Please use ExecuteInstruction::SPL_DISCRIMINATOR in your program, the
         // following is just for test purposes
         let preimage = hash::hashv(&[format!("{NAMESPACE}:execute").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         let mut expect = vec![];
         expect.extend_from_slice(discriminator.as_ref());
         expect.extend_from_slice(&amount.to_le_bytes());
@@ -200,7 +203,7 @@ mod test {
         // the following is just for test purposes
         let preimage =
             hash::hashv(&[format!("{NAMESPACE}:initialize-extra-account-metas").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         let mut expect = vec![];
         expect.extend_from_slice(discriminator.as_ref());
         assert_eq!(packed, expect);

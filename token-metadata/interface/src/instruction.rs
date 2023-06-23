@@ -8,7 +8,7 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
     },
-    spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator},
+    spl_discriminator::{discriminator::ArrayDiscriminator, SplDiscriminate},
 };
 
 /// Fields in the metadata account
@@ -25,7 +25,8 @@ pub enum Field {
 }
 
 /// Initialization instruction data
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
+#[discriminator_hash_input("spl_token_metadata_interface:initialize_account")]
 pub struct Initialize {
     /// Longer name of the token
     pub name: String,
@@ -34,80 +35,42 @@ pub struct Initialize {
     /// URI pointing to more metadata (image, video, etc.)
     pub uri: String,
 }
-impl TlvDiscriminator for Initialize {
-    /// Please use this discriminator in your program when matching
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(INITIALIZE_DISCRIMINATOR);
-}
-/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:initialize_account"])`
-const INITIALIZE_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [210, 225, 30, 162, 88, 184, 77, 141];
-// annoying, but needed to perform a match on the value
-const INITIALIZE_DISCRIMINATOR_SLICE: &[u8] = &INITIALIZE_DISCRIMINATOR;
 
 /// Update field instruction data
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
+#[discriminator_hash_input("spl_token_metadata_interface:updating_field")]
 pub struct UpdateField {
     /// Field to update in the metadata
     pub field: Field,
     /// Value to write for the field
     pub value: String,
 }
-impl TlvDiscriminator for UpdateField {
-    /// Please use this discriminator in your program when matching
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(UPDATE_FIELD_DISCRIMINATOR);
-}
-/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:updating_field"])`
-const UPDATE_FIELD_DISCRIMINATOR: [u8; Discriminator::LENGTH] =
-    [221, 233, 49, 45, 181, 202, 220, 200];
-// annoying, but needed to perform a match on the value
-const UPDATE_FIELD_DISCRIMINATOR_SLICE: &[u8] = &UPDATE_FIELD_DISCRIMINATOR;
 
 /// Remove key instruction data
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
+#[discriminator_hash_input("spl_token_metadata_interface:remove_key_ix")]
 pub struct RemoveKey {
     /// Key to remove in the additional metadata portion
     pub key: String,
 }
-impl TlvDiscriminator for RemoveKey {
-    /// Please use this discriminator in your program when matching
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(REMOVE_KEY_DISCRIMINATOR);
-}
-/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:remove_key_ix"])`
-const REMOVE_KEY_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [234, 18, 32, 56, 89, 141, 37, 181];
-// annoying, but needed to perform a match on the value
-const REMOVE_KEY_DISCRIMINATOR_SLICE: &[u8] = &REMOVE_KEY_DISCRIMINATOR;
 
 /// Update authority instruction data
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
+#[discriminator_hash_input("spl_token_metadata_interface:update_the_authority")]
 pub struct UpdateAuthority {
     /// New authority for the token metadata, or unset if `None`
     pub new_authority: OptionalNonZeroPubkey,
 }
-impl TlvDiscriminator for UpdateAuthority {
-    /// Please use this discriminator in your program when matching
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(UPDATE_AUTHORITY_DISCRIMINATOR);
-}
-/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:update_the_authority"])`
-const UPDATE_AUTHORITY_DISCRIMINATOR: [u8; Discriminator::LENGTH] =
-    [215, 228, 166, 228, 84, 100, 86, 123];
-// annoying, but needed to perform a match on the value
-const UPDATE_AUTHORITY_DISCRIMINATOR_SLICE: &[u8] = &UPDATE_AUTHORITY_DISCRIMINATOR;
 
 /// Instruction data for Emit
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
+#[discriminator_hash_input("spl_token_metadata_interface:emitter")]
 pub struct Emit {
     /// Start of range of data to emit
     pub start: Option<u64>,
     /// End of range of data to emit
     pub end: Option<u64>,
 }
-impl TlvDiscriminator for Emit {
-    /// Please use this discriminator in your program when matching
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new(EMIT_DISCRIMINATOR);
-}
-/// First 8 bytes of `hash::hashv(&["spl_token_metadata_interface:emitter"])`
-const EMIT_DISCRIMINATOR: [u8; Discriminator::LENGTH] = [250, 166, 180, 250, 13, 12, 184, 70];
-// annoying, but needed to perform a match on the value
-const EMIT_DISCRIMINATOR_SLICE: &[u8] = &EMIT_DISCRIMINATOR;
 
 /// All instructions that must be implemented in the token-metadata interface
 #[derive(Clone, Debug, PartialEq)]
@@ -195,28 +158,28 @@ pub enum TokenMetadataInstruction {
 impl TokenMetadataInstruction {
     /// Unpacks a byte buffer into a [TokenMetadataInstruction](enum.TokenMetadataInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() < Discriminator::LENGTH {
+        if input.len() < ArrayDiscriminator::LENGTH {
             return Err(ProgramError::InvalidInstructionData);
         }
-        let (discriminator, rest) = input.split_at(Discriminator::LENGTH);
+        let (discriminator, rest) = input.split_at(ArrayDiscriminator::LENGTH);
         Ok(match discriminator {
-            INITIALIZE_DISCRIMINATOR_SLICE => {
+            Initialize::SPL_DISCRIMINATOR_SLICE => {
                 let data = Initialize::try_from_slice(rest)?;
                 Self::Initialize(data)
             }
-            UPDATE_FIELD_DISCRIMINATOR_SLICE => {
+            UpdateField::SPL_DISCRIMINATOR_SLICE => {
                 let data = UpdateField::try_from_slice(rest)?;
                 Self::UpdateField(data)
             }
-            REMOVE_KEY_DISCRIMINATOR_SLICE => {
+            RemoveKey::SPL_DISCRIMINATOR_SLICE => {
                 let data = RemoveKey::try_from_slice(rest)?;
                 Self::RemoveKey(data)
             }
-            UPDATE_AUTHORITY_DISCRIMINATOR_SLICE => {
+            UpdateAuthority::SPL_DISCRIMINATOR_SLICE => {
                 let data = UpdateAuthority::try_from_slice(rest)?;
                 Self::UpdateAuthority(data)
             }
-            EMIT_DISCRIMINATOR_SLICE => {
+            Emit::SPL_DISCRIMINATOR_SLICE => {
                 let data = Emit::try_from_slice(rest)?;
                 Self::Emit(data)
             }
@@ -229,23 +192,23 @@ impl TokenMetadataInstruction {
         let mut buf = vec![];
         match self {
             Self::Initialize(data) => {
-                buf.extend_from_slice(INITIALIZE_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(Initialize::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
             Self::UpdateField(data) => {
-                buf.extend_from_slice(UPDATE_FIELD_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(UpdateField::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
             Self::RemoveKey(data) => {
-                buf.extend_from_slice(REMOVE_KEY_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(RemoveKey::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
             Self::UpdateAuthority(data) => {
-                buf.extend_from_slice(UPDATE_AUTHORITY_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(UpdateAuthority::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
             Self::Emit(data) => {
-                buf.extend_from_slice(EMIT_DISCRIMINATOR_SLICE);
+                buf.extend_from_slice(Emit::SPL_DISCRIMINATOR_SLICE);
                 buf.append(&mut data.try_to_vec().unwrap());
             }
         };
@@ -378,7 +341,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::Initialize(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:initialize_account").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 
@@ -392,7 +355,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::UpdateField(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:updating_field").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 
@@ -403,7 +366,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::RemoveKey(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:remove_key_ix").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 
@@ -414,7 +377,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::UpdateAuthority(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:update_the_authority").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 
@@ -426,7 +389,7 @@ mod test {
         };
         let check = TokenMetadataInstruction::Emit(data.clone());
         let preimage = hash::hashv(&[format!("{NAMESPACE}:emitter").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..Discriminator::LENGTH];
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
     }
 }
