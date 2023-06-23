@@ -411,7 +411,7 @@ impl<'a> TlvState for TlvStateMut<'a> {
 /// Packs a borsh-serializable value into an existing TLV space, reallocating
 /// the account and TLV as needed to accommodate for any change in space
 #[cfg(feature = "borsh")]
-pub fn realloc_and_borsh_serialize<V: TlvDiscriminator + borsh::BorshSerialize>(
+pub fn realloc_and_borsh_serialize<V: SplDiscriminate + borsh::BorshSerialize>(
     account_info: &solana_program::account_info::AccountInfo,
     value: &V,
 ) -> Result<(), ProgramError> {
@@ -421,7 +421,7 @@ pub fn realloc_and_borsh_serialize<V: TlvDiscriminator + borsh::BorshSerialize>(
             type_start: _,
             length_start,
             value_start,
-        } = get_indices(&data, V::TLV_DISCRIMINATOR, false)?;
+        } = get_indices(&data, V::SPL_DISCRIMINATOR, false)?;
         usize::try_from(*pod_from_bytes::<Length>(&data[length_start..value_start])?)?
     };
     let new_length = solana_program::borsh::get_instance_packed_len(&value)?;
