@@ -1,5 +1,7 @@
 //! The traits and types used to create a discriminator for a type
 
+use borsh::{BorshDeserialize, BorshSerialize};
+
 use {
     bytemuck::{Pod, Zeroable},
     solana_program::{hash, program_error::ProgramError},
@@ -14,7 +16,9 @@ pub trait SplDiscriminate {
 }
 
 /// Array Discriminator type
-#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, BorshSerialize, BorshDeserialize,
+)]
 #[repr(transparent)]
 pub struct ArrayDiscriminator([u8; ArrayDiscriminator::LENGTH]);
 impl ArrayDiscriminator {
@@ -64,5 +68,15 @@ impl TryFrom<&[u8]> for ArrayDiscriminator {
         <[u8; Self::LENGTH]>::try_from(a)
             .map(Self::from)
             .map_err(|_| ProgramError::InvalidAccountData)
+    }
+}
+impl From<ArrayDiscriminator> for [u8; 8] {
+    fn from(from: ArrayDiscriminator) -> Self {
+        from.0
+    }
+}
+impl From<ArrayDiscriminator> for u64 {
+    fn from(from: ArrayDiscriminator) -> Self {
+        u64::from_le_bytes(from.0)
     }
 }
