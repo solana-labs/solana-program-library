@@ -1,17 +1,17 @@
 //! State transition types
 
 use {
-    crate::{
-        error::AccountResolutionError,
-        pod::{PodAccountMeta, PodSlice, PodSliceMut},
-    },
+    crate::{error::AccountResolutionError, pod::PodAccountMeta},
     solana_program::{
         account_info::AccountInfo,
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
     },
     spl_discriminator::SplDiscriminate,
-    spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
+    spl_type_length_value::{
+        pod::{PodSlice, PodSliceMut},
+        state::{TlvState, TlvStateBorrowed, TlvStateMut},
+    },
 };
 
 /// Stateless helper for storing additional accounts required for an instruction.
