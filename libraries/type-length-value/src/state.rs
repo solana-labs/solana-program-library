@@ -448,7 +448,6 @@ pub fn realloc_and_borsh_serialize<V: SplDiscriminate + borsh::BorshSerialize>(
             // we decreased the size, so need to realloc the TLV, then the account
             state.realloc::<V>(new_length)?;
             // this is probably fine, but be safe and avoid invalidating references
-            drop(state);
             drop(buffer);
             account_info.realloc(previous_account_size.saturating_sub(removed_bytes), false)?;
         }
