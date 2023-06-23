@@ -43,6 +43,7 @@ use spl_token_2022::{
         default_account_state::DefaultAccountState,
         interest_bearing_mint::InterestBearingConfig,
         memo_transfer::MemoTransfer,
+        metadata_pointer::MetadataPointer,
         mint_close_authority::MintCloseAuthority,
         permanent_delegate::PermanentDelegate,
         transfer_fee::{TransferFeeAmount, TransferFeeConfig},
@@ -783,6 +784,7 @@ async fn command_authorize(
         AuthorityType::ConfidentialTransferFeeConfig => {
             "confidential transfer fee config authority"
         }
+        AuthorityType::MetadataPointer => "metadata pointer authority",
     };
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
@@ -884,6 +886,16 @@ async fn command_authorize(
                         ))
                     }
                 }
+                AuthorityType::MetadataPointer => {
+                    if let Ok(extension) = mint.get_extension::<MetadataPointer>() {
+                        Ok(COption::<Pubkey>::from(extension.authority))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support a metadata pointer",
+                            account
+                        ))
+                    }
+                }
             }?;
 
             Ok((account, previous_authority))
@@ -920,7 +932,8 @@ async fn command_authorize(
                 | AuthorityType::PermanentDelegate
                 | AuthorityType::ConfidentialTransferMint
                 | AuthorityType::TransferHookProgramId
-                | AuthorityType::ConfidentialTransferFeeConfig => Err(format!(
+                | AuthorityType::ConfidentialTransferFeeConfig
+                | AuthorityType::MetadataPointer => Err(format!(
                     "Authority type `{}` not supported for SPL Token accounts",
                     auth_str
                 )),
@@ -3884,6 +3897,8 @@ async fn process_command<'a>(
                 "permanent-delegate" => AuthorityType::PermanentDelegate,
                 "confidential-transfer-mint" => AuthorityType::ConfidentialTransferMint,
                 "transfer-hook-program-id" => AuthorityType::TransferHookProgramId,
+                "confidential-transfer-fee" => AuthorityType::ConfidentialTransferFeeConfig,
+                "metadata-pointer" => AuthorityType::MetadataPointer,
                 _ => unreachable!(),
             };
 

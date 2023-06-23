@@ -657,6 +657,12 @@ pub enum TokenInstruction<'a> {
     /// 2. `[signer]` Authority
     /// 3. ..2+M `[signer]` M signer accounts.
     WithdrawExcessLamports,
+    /// The common instruction prefix for metadata pointer extension instructions.
+    ///
+    /// See `extension::metadata_pointer::instruction::MetadataPointerInstruction`
+    /// for further details about the extended instructions that share this instruction
+    /// prefix
+    MetadataPointerExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -795,6 +801,7 @@ impl<'a> TokenInstruction<'a> {
             36 => Self::TransferHookExtension,
             37 => Self::ConfidentialTransferFeeExtension,
             38 => Self::WithdrawExcessLamports,
+            39 => Self::MetadataPointerExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -963,6 +970,9 @@ impl<'a> TokenInstruction<'a> {
             &Self::WithdrawExcessLamports => {
                 buf.push(38);
             }
+            &Self::MetadataPointerExtension => {
+                buf.push(39);
+            }
         };
         buf
     }
@@ -1053,6 +1063,8 @@ pub enum AuthorityType {
     TransferHookProgramId,
     /// Authority to set the withdraw withheld authority encryption key
     ConfidentialTransferFeeConfig,
+    /// Authority to set the metadata address
+    MetadataPointer,
 }
 
 impl AuthorityType {
@@ -1070,6 +1082,7 @@ impl AuthorityType {
             AuthorityType::ConfidentialTransferMint => 9,
             AuthorityType::TransferHookProgramId => 10,
             AuthorityType::ConfidentialTransferFeeConfig => 11,
+            AuthorityType::MetadataPointer => 12,
         }
     }
 
@@ -1087,6 +1100,7 @@ impl AuthorityType {
             9 => Ok(AuthorityType::ConfidentialTransferMint),
             10 => Ok(AuthorityType::TransferHookProgramId),
             11 => Ok(AuthorityType::ConfidentialTransferFeeConfig),
+            12 => Ok(AuthorityType::MetadataPointer),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

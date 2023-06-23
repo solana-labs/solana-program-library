@@ -13,6 +13,7 @@ use {
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::InterestBearingConfig,
             memo_transfer::MemoTransfer,
+            metadata_pointer::MetadataPointer,
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::PermanentDelegate,
@@ -51,6 +52,8 @@ pub mod immutable_owner;
 pub mod interest_bearing_mint;
 /// Memo Transfer extension
 pub mod memo_transfer;
+/// Metadata Pointer extension
+pub mod metadata_pointer;
 /// Mint Close Authority extension
 pub mod mint_close_authority;
 /// Non Transferable extension
@@ -665,6 +668,8 @@ pub enum ExtensionType {
     ConfidentialTransferFeeConfig,
     /// Includes confidential withheld transfer fees
     ConfidentialTransferFeeAmount,
+    /// Mint contains a pointer to another account (or the same account) that holds metadata
+    MetadataPointer,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -716,6 +721,7 @@ impl ExtensionType {
             ExtensionType::ConfidentialTransferFeeAmount => {
                 pod_get_packed_len::<ConfidentialTransferFeeAmount>()
             }
+            ExtensionType::MetadataPointer => pod_get_packed_len::<MetadataPointer>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -775,7 +781,8 @@ impl ExtensionType {
             | ExtensionType::InterestBearingConfig
             | ExtensionType::PermanentDelegate
             | ExtensionType::TransferHook
-            | ExtensionType::ConfidentialTransferFeeConfig => AccountType::Mint,
+            | ExtensionType::ConfidentialTransferFeeConfig
+            | ExtensionType::MetadataPointer => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
