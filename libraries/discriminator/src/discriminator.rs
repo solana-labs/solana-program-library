@@ -14,6 +14,10 @@ pub trait SplDiscriminate {
 }
 
 /// Array Discriminator type
+#[cfg_attr(
+    feature = "borsh",
+    derive(borsh::BorshSerialize, borsh::BorshDeserialize)
+)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct ArrayDiscriminator([u8; ArrayDiscriminator::LENGTH]);
@@ -64,5 +68,15 @@ impl TryFrom<&[u8]> for ArrayDiscriminator {
         <[u8; Self::LENGTH]>::try_from(a)
             .map(Self::from)
             .map_err(|_| ProgramError::InvalidAccountData)
+    }
+}
+impl From<ArrayDiscriminator> for [u8; 8] {
+    fn from(from: ArrayDiscriminator) -> Self {
+        from.0
+    }
+}
+impl From<ArrayDiscriminator> for u64 {
+    fn from(from: ArrayDiscriminator) -> Self {
+        u64::from_le_bytes(from.0)
     }
 }
