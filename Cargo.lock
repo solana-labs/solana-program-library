@@ -6782,15 +6782,12 @@ name = "spl-tlv-account-resolution"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "num-derive",
- "num-traits",
- "num_enum 0.6.1",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "spl-discriminator",
+ "spl-program-error",
  "spl-type-length-value",
- "thiserror",
 ]
 
 [[package]]
@@ -7103,15 +7100,11 @@ dependencies = [
 name = "spl-type-length-value"
 version = "0.1.0"
 dependencies = [
- "arrayref",
  "borsh 0.10.3",
  "bytemuck",
- "num-derive",
- "num-traits",
- "num_enum 0.6.1",
  "solana-program",
  "spl-discriminator",
- "thiserror",
+ "spl-program-error",
 ]
 
 [[package]]
