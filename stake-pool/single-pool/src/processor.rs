@@ -224,7 +224,7 @@ fn check_vote_account(vote_account_info: &AccountInfo) -> Result<(), ProgramErro
         .ok_or(SinglePoolError::UnparseableVoteAccount)?;
 
     match u32::from_le_bytes(state_variant) {
-        1 => Ok(()),
+        1 | 2 => Ok(()),
         0 => Err(SinglePoolError::LegacyVoteAccount.into()),
         _ => Err(SinglePoolError::UnparseableVoteAccount.into()),
     }
