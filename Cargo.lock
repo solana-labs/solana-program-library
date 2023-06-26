@@ -6662,7 +6662,7 @@ dependencies = [
 
 [[package]]
 name = "spl-program-error"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "lazy_static",
  "num-derive",
@@ -6676,7 +6676,7 @@ dependencies = [
 
 [[package]]
 name = "spl-program-error-derive"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro2 1.0.60",
  "quote 1.0.26",
