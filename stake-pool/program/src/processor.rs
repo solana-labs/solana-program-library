@@ -337,8 +337,8 @@ fn check_transient_stake_account(
 }
 
 /// Create a stake account on a PDA without transferring lamports
-fn create_stake_account<'a>(
-    stake_account_info: AccountInfo<'a>,
+fn create_stake_account(
+    stake_account_info: AccountInfo<'_>,
     stake_account_signer_seeds: &[&[u8]],
     stake_space: usize,
 ) -> Result<(), ProgramError> {

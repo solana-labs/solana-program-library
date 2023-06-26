@@ -420,9 +420,9 @@ where
         ))))
     }
 
-    fn get_multisig_signers<'a, 'b>(
+    fn get_multisig_signers<'a>(
         &self,
-        authority: &'b Pubkey,
+        authority: &Pubkey,
         signing_pubkeys: &'a [Pubkey],
     ) -> Vec<&'a Pubkey> {
         if signing_pubkeys == [*authority] {

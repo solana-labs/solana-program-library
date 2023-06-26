@@ -99,7 +99,7 @@ jobs:
         uses: actions-rs/install@v0.1
         with:
           crate: cargo-audit
-          version: 0.16.0 # TODO use latest once repo uses Rust v1.63+
+          version: 0.17.6
 
       - name: Run Cargo Audit
         run: ./ci/do-audit.sh

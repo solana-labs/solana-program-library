@@ -2,10 +2,7 @@
 
 set -e
 cd "$(dirname "$0")/.."
-
-# honggfuzz uses a newer version of arbitrary, which requires a newer version of Rust
-# Once SPL upgrades to Rust 1.63.0, look into removing version specification
-RUST_STABLE_VERSION=1.63.0 source ./ci/rust-version.sh stable
+source ./ci/rust-version.sh stable
 
 cargo +"$rust_stable" install honggfuzz --version=0.5.55 --force || true
 

@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 bytemuck = { version = "1.13.1", features = ["derive"] }
-solana-program = "1.14.12"
+solana-program = "1.16.1"
 spl-discriminator-derive = { version = "0.1.0", path = "./derive" }
 
 [lib]

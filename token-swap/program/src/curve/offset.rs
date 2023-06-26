@@ -474,9 +474,9 @@ mod tests {
                 (swap_source_amount * swap_destination_amount));
             check_curve_value_from_swap(
                 &curve,
-                source_token_amount as u128,
-                swap_source_amount as u128,
-                swap_destination_amount as u128,
+                source_token_amount,
+                swap_source_amount,
+                swap_destination_amount,
                 TradeDirection::AtoB
             );
         }
@@ -502,9 +502,9 @@ mod tests {
             prop_assume!(!(swap_source_amount + token_b_offset).overflowing_mul(swap_destination_amount).1);
             check_curve_value_from_swap(
                 &curve,
-                source_token_amount as u128,
-                swap_source_amount as u128,
-                swap_destination_amount as u128,
+                source_token_amount,
+                swap_source_amount,
+                swap_destination_amount,
                 TradeDirection::BtoA
             );
         }

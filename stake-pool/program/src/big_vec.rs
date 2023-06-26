@@ -267,7 +267,7 @@ mod tests {
         }
     }
 
-    fn from_slice<'data, 'other>(data: &'data mut [u8], vec: &'other [u64]) -> BigVec<'data> {
+    fn from_slice<'data>(data: &'data mut [u8], vec: &[u64]) -> BigVec<'data> {
         let mut big_vec = BigVec { data };
         for element in vec {
             big_vec.push(TestStruct::new(*element)).unwrap();

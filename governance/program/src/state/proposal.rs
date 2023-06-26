@@ -1365,7 +1365,7 @@ mod test {
             governing_token_supply in Just(governing_token_supply),
             vote_count in 0..=governing_token_supply,
         ) -> (u64, u64) {
-            (vote_count as u64, governing_token_supply as u64)
+            (vote_count, governing_token_supply)
         }
     }
 
@@ -1833,7 +1833,7 @@ mod test {
             no_votes_count in 0..=governing_token_supply,
 
         ) -> (u64, u64, u64, u8) {
-            (yes_votes_count as u64, no_votes_count as u64, governing_token_supply as u64,yes_vote_threshold as u8)
+            (yes_votes_count, no_votes_count, governing_token_supply, yes_vote_threshold as u8)
         }
     }
 
@@ -1865,11 +1865,9 @@ mod test {
             let vote_tipping = VoteTipping::Strict;
 
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,&vote_kind).unwrap();
-            let vote_threshold = yes_vote_threshold_percentage.clone();
-
 
             // Act
-            proposal.try_tip_vote(max_voter_weight, &vote_tipping, current_timestamp,&vote_threshold,&vote_kind).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &vote_tipping, current_timestamp,&yes_vote_threshold_percentage,&vote_kind).unwrap();
 
             // Assert
             let yes_vote_threshold_count = get_min_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
@@ -1914,10 +1912,9 @@ mod test {
             let vote_kind = VoteKind::Electorate;
 
             let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,&governing_token_mint,governing_token_supply,&vote_kind).unwrap();
-            let vote_threshold = yes_vote_threshold_percentage.clone();
 
             // Act
-            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp,&vote_threshold).unwrap();
+            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp, &yes_vote_threshold_percentage).unwrap();
 
             // Assert
             let no_vote_weight = proposal.deny_vote_weight.unwrap();

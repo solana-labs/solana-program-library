@@ -294,9 +294,9 @@ fn process_withdraw_withheld_tokens_from_accounts(
 }
 
 #[cfg(feature = "zk-ops")]
-fn harvest_from_account<'a, 'b>(
+fn harvest_from_account<'b>(
     mint_key: &'b Pubkey,
-    token_account_info: &'b AccountInfo<'a>,
+    token_account_info: &'b AccountInfo<'_>,
 ) -> Result<EncryptedWithheldAmount, TokenError> {
     let mut token_account_data = token_account_info.data.borrow_mut();
     let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)
