@@ -1,6 +1,6 @@
 [package]
 name = "spl-program-error-derive"
-version = "0.1.0"
+version = "0.2.0"
 description = "Proc-Macro Library for Solana Program error attributes and derive macro"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
