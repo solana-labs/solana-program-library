@@ -6,7 +6,7 @@ homepage = "https://spl.solana.com/token"
 license = "Apache-2.0"
 name = "spl-token-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "2.4.0"
+version = "3.4.0"
 
 [build-dependencies]
 walkdir = "2"
@@ -26,7 +26,7 @@ solana-logger = "=1.16.1"
 solana-remote-wallet = "=1.16.1"
 solana-sdk = "=1.16.1"
 solana-transaction-status = "=1.16.1"
-spl-token = { version = "3.5", path="../program", features = [ "no-entrypoint" ] }
+spl-token = { version = "4.0", path="../program", features = [ "no-entrypoint" ] }
 spl-token-2022 = { version = "0.6", path="../program-2022", features = [ "no-entrypoint" ] }
 spl-token-client = { version = "0.5", path="../client" }
 spl-associated-token-account = { version = "1.1", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
