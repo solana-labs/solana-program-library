@@ -25,7 +25,7 @@ test = []
 borsh = "0.10"
 shank = "^0.0.5"
 solana-program = "1.16.1"
-spl-associated-token-account = { version = "1.2", path = "../../associated-token-account/program", features = [ "no-entrypoint", ] }
+spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [ "no-entrypoint", ] }
 spl-token = { version = "4.0", path = "../../token/program", features = ["no-entrypoint"] }
 thiserror = "^1.0.40"
 
