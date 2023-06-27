@@ -247,6 +247,13 @@ pub enum GovernanceInstruction {
         signatory: Pubkey,
     },
 
+    /// Removes a required signatory from the Governance
+    /// 
+    ///  0. `[writable, signer]` The Governance account the config is for
+    ///  1. `[writable]` GovernanceRequiredSignatory Account
+    ///  2. `[writable]` Beneficiary Account which would receive lamports from the disposed GovernanceRequiredSignatory Account
+    RemoveRequiredSignatoryFromGovernance,
+
     /// Inserts Transaction with a set of instructions for the Proposal at the given index position
     /// New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index
     /// If a Transaction replaces an existing Transaction at a given index then the old one must be removed using RemoveTransaction first
@@ -1660,6 +1667,31 @@ pub fn add_required_signatory_to_governance(
     let instruction = GovernanceInstruction::AddRequiredSignatoryToGovernance {
         signatory: *signatory,
     };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates RemoveRequiredSignatoryFromGovernance instruction
+pub fn remove_required_signatory_from_governance(
+    program_id: &Pubkey,
+    // Accounts
+    governance: &Pubkey,
+    signatory: &Pubkey,
+    beneficiary: &Pubkey,
+) -> Instruction {
+    let governance_required_signatory_address = get_governance_required_signatory_address(program_id, governance, signatory);
+
+    let accounts = vec![
+        AccountMeta::new(*governance, true),
+        AccountMeta::new(governance_required_signatory_address, false),
+        AccountMeta::new(*beneficiary, false),
+    ];
+
+    let instruction = GovernanceInstruction::RemoveRequiredSignatoryFromGovernance;
 
     Instruction {
         program_id: *program_id,

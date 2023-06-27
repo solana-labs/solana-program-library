@@ -24,9 +24,10 @@ use spl_governance::{
         create_signatory_record_from_governance, create_token_governance,
         create_token_owner_record, deposit_governing_tokens, execute_transaction, finalize_vote,
         flag_transaction_error, insert_transaction, refund_proposal_deposit, relinquish_vote,
-        remove_signatory, remove_transaction, revoke_governing_tokens, set_governance_config,
-        set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
-        upgrade_program_metadata, withdraw_governing_tokens,
+        remove_required_signatory_from_governance, remove_signatory, remove_transaction,
+        revoke_governing_tokens, set_governance_config, set_governance_delegate,
+        set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
+        withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
@@ -2833,6 +2834,57 @@ impl GovernanceProgramTest {
             None,
         )
         .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_remove_governance_required_signatory_transaction(
+        &mut self,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance: &GovernanceCookie,
+        signatory: &Pubkey,
+        beneficiary: &Pubkey,
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
+        let mut ix = remove_required_signatory_from_governance(
+            &self.program_id,
+            &governance.address,
+            signatory,
+            beneficiary,
+        );
+
+        self.with_proposal_transaction(
+            proposal_cookie,
+            token_owner_record_cookie,
+            0,
+            None,
+            &mut ix,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn do_required_signoff(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governance_cookie: &GovernanceCookie,
+        proposal_cookie: &ProposalCookie,
+        signatory: &Keypair,
+    ) -> Result<(), ProgramError> {
+        let ix = sign_off_proposal(
+            &self.program_id,
+            &realm_cookie.address,
+            &governance_cookie.address,
+            &proposal_cookie.address,
+            &signatory.pubkey(),
+            None
+        );
+
+        self.bench
+            .process_transaction(&[ix], Some(&[&signatory]))
+            .await?;
+
+        Ok(())
     }
 
     #[allow(dead_code)]
