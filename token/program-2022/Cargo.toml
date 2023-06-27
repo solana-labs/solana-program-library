@@ -25,7 +25,7 @@ num-traits = "0.2"
 num_enum = "0.6.1"
 solana-program = "1.16.1"
 solana-zk-token-sdk = "1.16.1"
-spl-memo = { version = "3.0.1", path = "../../memo/program", features = [ "no-entrypoint" ] }
+spl-memo = { version = "4.0.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
 spl-transfer-hook-interface = { version = "0.1.0", path = "../transfer-hook-interface" }
 spl-token = { version = "4.0",  path = "../program", features = ["no-entrypoint"] }
 thiserror = "1.0"
