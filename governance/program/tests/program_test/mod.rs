@@ -2899,7 +2899,7 @@ impl GovernanceProgramTest {
             &governance.address,
             &proposal_cookie.address,
             &self.bench.payer.pubkey(),
-            &signatory,
+            signatory,
         );
 
         self.bench
@@ -2907,7 +2907,7 @@ impl GovernanceProgramTest {
             .await?;
 
         let signatory_record_address =
-            get_signatory_record_address(&self.program_id, &proposal_cookie.address, &signatory);
+            get_signatory_record_address(&self.program_id, &proposal_cookie.address, signatory);
 
         let signatory_record_data = SignatoryRecordV2 {
             account_type: GovernanceAccountType::SignatoryRecordV2,
