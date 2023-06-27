@@ -12,6 +12,7 @@ module.exports = {
         "token-2022/extensions",
         "token-2022/wallet",
         "token-2022/onchain",
+        "token-2022/presentation",
       ],
     },
     "token-swap",
