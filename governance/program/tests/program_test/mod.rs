@@ -2877,7 +2877,7 @@ impl GovernanceProgramTest {
             &governance_cookie.address,
             &proposal_cookie.address,
             &signatory.pubkey(),
-            None
+            None,
         );
 
         self.bench
