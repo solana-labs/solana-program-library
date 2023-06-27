@@ -2158,6 +2158,7 @@ mod tests {
                 ExtensionType::ImmutableOwner,
                 ExtensionType::TransferFeeAmount,
             ])
+            .unwrap()
         } else {
             Account::get_packed_len()
         };
@@ -2221,8 +2222,9 @@ mod tests {
                     ExtensionType::MintCloseAuthority,
                     ExtensionType::TransferFeeConfig,
                 ])
+                .unwrap()
             } else {
-                ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig])
+                ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]).unwrap()
             }
         } else {
             Mint::get_packed_len()

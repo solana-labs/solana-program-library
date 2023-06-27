@@ -531,7 +531,7 @@ where
             .iter()
             .map(|e| e.extension())
             .collect::<Vec<_>>();
-        let space = ExtensionType::get_account_len::<Mint>(&extension_types);
+        let space = ExtensionType::get_account_len::<Mint>(&extension_types)?;
 
         let mut instructions = vec![system_instruction::create_account(
             &self.payer.pubkey(),
@@ -653,7 +653,7 @@ where
                 required_extensions.push(extension_type);
             }
         }
-        let space = ExtensionType::get_account_len::<Account>(&required_extensions);
+        let space = ExtensionType::get_account_len::<Account>(&required_extensions)?;
         let mut instructions = vec![system_instruction::create_account(
             &self.payer.pubkey(),
             &account.pubkey(),
@@ -1259,7 +1259,7 @@ where
             } else {
                 vec![]
             };
-            let space = ExtensionType::get_account_len::<Account>(&extensions);
+            let space = ExtensionType::get_account_len::<Account>(&extensions)?;
 
             instructions.push(system_instruction::create_account(
                 &self.payer.pubkey(),

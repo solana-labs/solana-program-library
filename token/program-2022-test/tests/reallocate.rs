@@ -109,7 +109,7 @@ async fn reallocate() {
     let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
-        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner])
+        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap()
     );
 
     // reallocate succeeds with noop if account is already large enough
@@ -126,7 +126,7 @@ async fn reallocate() {
     let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
-        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner])
+        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap()
     );
 
     // reallocate only reallocates enough for new extension, and dedupes extensions
@@ -151,6 +151,7 @@ async fn reallocate() {
             ExtensionType::ImmutableOwner,
             ExtensionType::TransferFeeAmount
         ])
+        .unwrap()
     );
 }
 
@@ -193,6 +194,7 @@ async fn reallocate_without_current_extension_knowledge() {
             ExtensionType::TransferFeeAmount,
             ExtensionType::ImmutableOwner
         ])
+        .unwrap()
     );
 }
 
@@ -262,7 +264,7 @@ async fn reallocate_updates_native_rent_exemption(
     let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
-        ExtensionType::get_account_len::<Account>(extensions)
+        ExtensionType::get_account_len::<Account>(extensions).unwrap()
     );
     let expected_rent_exempt_reserve = {
         let mut context = context.lock().await;

@@ -2186,7 +2186,7 @@ async fn command_required_transfer_memos(
         }
     } else {
         existing_extensions.push(ExtensionType::MemoTransfer);
-        let needed_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions);
+        let needed_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions)?;
         if needed_account_len > current_account_len {
             token
                 .reallocate(
@@ -2258,7 +2258,7 @@ async fn command_cpi_guard(
         }
     } else {
         existing_extensions.push(ExtensionType::CpiGuard);
-        let required_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions);
+        let required_account_len = ExtensionType::get_account_len::<Account>(&existing_extensions)?;
         if required_account_len > current_account_len {
             token
                 .reallocate(

@@ -110,7 +110,8 @@ async fn fail_extension_after_mint_init() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+    let space =
+        ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -194,7 +195,8 @@ async fn fail_init_overallocated_mint() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+    let space =
+        ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -240,9 +242,9 @@ async fn fail_account_init_after_mint_extension() {
     let mint_authority_pubkey = Pubkey::new_unique();
     let token_account = Keypair::new();
 
-    let mint_space = ExtensionType::get_account_len::<Mint>(&[]);
+    let mint_space = ExtensionType::get_account_len::<Mint>(&[]).unwrap();
     let account_space =
-        ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+        ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -310,7 +312,7 @@ async fn fail_account_init_after_mint_init() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let mint_space = ExtensionType::get_account_len::<Mint>(&[]);
+    let mint_space = ExtensionType::get_account_len::<Mint>(&[]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -362,7 +364,8 @@ async fn fail_account_init_after_mint_init_with_extension() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let mint_space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+    let mint_space =
+        ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -420,7 +423,8 @@ async fn fail_fee_init_after_mint_init() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]);
+    let space =
+        ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -531,7 +535,8 @@ async fn fail_invalid_extensions_combination() {
     let mint_space = ExtensionType::get_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
-    ]);
+    ])
+    .unwrap();
     let create_account_instruction = system_instruction::create_account(
         &ctx.payer.pubkey(),
         &mint_account.pubkey(),
@@ -571,7 +576,8 @@ async fn fail_invalid_extensions_combination() {
     let mint_space = ExtensionType::get_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferFeeConfig,
-    ]);
+    ])
+    .unwrap();
     let create_account_instruction = system_instruction::create_account(
         &ctx.payer.pubkey(),
         &mint_account.pubkey(),
@@ -613,7 +619,8 @@ async fn fail_invalid_extensions_combination() {
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
         ExtensionType::ConfidentialTransferFeeConfig,
-    ]);
+    ])
+    .unwrap();
     let create_account_instruction = system_instruction::create_account(
         &ctx.payer.pubkey(),
         &mint_account.pubkey(),
