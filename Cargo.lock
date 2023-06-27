@@ -6600,8 +6600,8 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.1.3",
- "spl-token 3.5.0",
+ "spl-associated-token-account 1.2.0",
+ "spl-token 4.0.0",
  "thiserror",
 ]
 
