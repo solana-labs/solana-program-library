@@ -2622,8 +2622,8 @@ fn app<'a, 'b>(
                         ),
                 )
                 .arg(
-                    Arg::with_name("metadata-address")
-                        .long("metadata_address")
+                    Arg::with_name("metadata_address")
+                        .long("metadata-address")
                         .value_name("METADATA_ADDRESS")
                         .takes_value(true)
                         .help(
