@@ -69,7 +69,7 @@ impl Processor {
 
         let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
         let extension_types = mint.get_extension_types()?;
-        if ExtensionType::get_account_len::<Mint>(&extension_types)? != mint_data_len {
+        if ExtensionType::try_get_account_len::<Mint>(&extension_types)? != mint_data_len {
             return Err(ProgramError::InvalidAccountData);
         }
         ExtensionType::check_for_invalid_mint_extension_combinations(&extension_types)?;
@@ -154,7 +154,7 @@ impl Processor {
         }
         let required_extensions =
             Self::get_required_account_extensions_from_unpacked_mint(mint_info.owner, &mint)?;
-        if ExtensionType::get_account_len::<Account>(&required_extensions)?
+        if ExtensionType::try_get_account_len::<Account>(&required_extensions)?
             > new_account_info_data_len
         {
             return Err(ProgramError::InvalidAccountData);
@@ -1248,11 +1248,11 @@ impl Processor {
         let mint_account_info = next_account_info(account_info_iter)?;
 
         let mut account_extensions = Self::get_required_account_extensions(mint_account_info)?;
-        // ExtensionType::get_account_len() dedupes types, so just a dumb concatenation is fine
+        // ExtensionType::try_get_account_len() dedupes types, so just a dumb concatenation is fine
         // here
         account_extensions.extend_from_slice(&new_extension_types);
 
-        let account_len = ExtensionType::get_account_len::<Account>(&account_extensions)?;
+        let account_len = ExtensionType::try_get_account_len::<Account>(&account_extensions)?;
         set_return_data(&account_len.to_le_bytes());
 
         Ok(())
@@ -4503,7 +4503,8 @@ mod tests {
         let account_key = Pubkey::new_unique();
 
         let account_len =
-            ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap();
+            ExtensionType::try_get_account_len::<Account>(&[ExtensionType::ImmutableOwner])
+                .unwrap();
         let mut account_account = SolanaAccount::new(
             Rent::default().minimum_balance(account_len),
             account_len,
@@ -7383,7 +7384,7 @@ mod tests {
         .unwrap();
 
         set_expected_data(
-            ExtensionType::get_account_len::<Account>(&[])
+            ExtensionType::try_get_account_len::<Account>(&[])
                 .unwrap()
                 .to_le_bytes()
                 .to_vec(),
@@ -7395,7 +7396,7 @@ mod tests {
         .unwrap();
 
         set_expected_data(
-            ExtensionType::get_account_len::<Account>(&[ExtensionType::TransferFeeAmount])
+            ExtensionType::try_get_account_len::<Account>(&[ExtensionType::TransferFeeAmount])
                 .unwrap()
                 .to_le_bytes()
                 .to_vec(),
@@ -7417,7 +7418,7 @@ mod tests {
         // Native mint
         let mut mint_account = native_mint();
         set_expected_data(
-            ExtensionType::get_account_len::<Account>(&[])
+            ExtensionType::try_get_account_len::<Account>(&[])
                 .unwrap()
                 .to_le_bytes()
                 .to_vec(),
@@ -7430,7 +7431,8 @@ mod tests {
 
         // Extended mint
         let mint_len =
-            ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]).unwrap();
+            ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig])
+                .unwrap();
         let mut extended_mint_account = SolanaAccount::new(
             Rent::default().minimum_balance(mint_len),
             mint_len,
@@ -7450,7 +7452,7 @@ mod tests {
         .unwrap();
 
         set_expected_data(
-            ExtensionType::get_account_len::<Account>(&[ExtensionType::TransferFeeAmount])
+            ExtensionType::try_get_account_len::<Account>(&[ExtensionType::TransferFeeAmount])
                 .unwrap()
                 .to_le_bytes()
                 .to_vec(),

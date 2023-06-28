@@ -39,7 +39,7 @@ async fn test_associated_token_account_with_transfer_fees() {
     let token_mint_address = mint_account.pubkey();
     let mint_authority = Keypair::new();
     let space =
-        ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]).unwrap();
+        ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]).unwrap();
     let maximum_fee = 100;
     let mut transaction = Transaction::new_with_payer(
         &[
