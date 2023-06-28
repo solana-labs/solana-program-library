@@ -7467,6 +7467,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
+                CommandName::CreateToken.into(),
                 "--program-id",
                 &program_id.to_string(),
                 "--metadata-address",
