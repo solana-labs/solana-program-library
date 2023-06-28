@@ -2624,10 +2624,10 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("metadata_address")
                         .long("metadata-address")
-                        .value_name("METADATA_ADDRESS")
+                        .value_name("ADDRESS")
                         .takes_value(true)
                         .help(
-                            "Specify metadata address to use."
+                            "Specify address that stores token metadata."
                         ),
                 )
                 .arg(
@@ -7458,10 +7458,8 @@ mod tests {
     #[serial]
     async fn metadata_pointer() {
         let (test_validator, payer) = new_validator_for_test().await;
-        let config =
-            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
         let program_id = &spl_token_2022::id();
-        let token_path = NamedTempFile::new().unwrap();
+        let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
         let metadata_address = Pubkey::new_unique();
 
         let result = process_test_command(
@@ -7469,12 +7467,10 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                CommandName::CreateToken.into(),
-                token_path.path().to_str().unwrap(),
                 "--program-id",
                 &program_id.to_string(),
                 "--metadata-address",
-                metadata_address.to_string().as_str(),
+                &metadata_address.to_string(),
             ],
         )
         .await;
@@ -7485,8 +7481,7 @@ mod tests {
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
 
         let extension = mint_state.get_extension::<MetadataPointer>().unwrap();
-        assert!(mint_state.get_extension::<MetadataPointer>().is_ok());
-        
+
         assert_eq!(
             extension.metadata_address,
             Some(metadata_address).try_into().unwrap()
