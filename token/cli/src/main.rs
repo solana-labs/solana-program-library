@@ -415,6 +415,7 @@ async fn command_create_token(
     enable_non_transferable: bool,
     enable_permanent_delegate: bool,
     memo: Option<String>,
+    metadata_address: Option<Pubkey>,
     rate_bps: Option<i16>,
     default_account_state: Option<AccountState>,
     transfer_fee: Option<(u16, u64)>,
@@ -485,6 +486,13 @@ async fn command_create_token(
 
     if let Some(text) = memo {
         token.with_memo(text, vec![config.default_signer()?.pubkey()]);
+    }
+
+    if metadata_address.is_some() {
+        extensions.push(ExtensionInitializationParams::MetadataPointer {
+            authority: Some(authority),
+            metadata_address,
+        });
     }
 
     let res = token
@@ -2614,6 +2622,15 @@ fn app<'a, 'b>(
                         ),
                 )
                 .arg(
+                    Arg::with_name("metadata-address")
+                        .long("metadata_address")
+                        .value_name("METADATA_ADDRESS")
+                        .takes_value(true)
+                        .help(
+                            "Specify metadata address to use."
+                        ),
+                )
+                .arg(
                     Arg::with_name("enable_non_transferable")
                         .long("enable-non-transferable")
                         .alias("enable-nontransferable")
@@ -3770,6 +3787,7 @@ async fn process_command<'a>(
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager)?;
             let memo = value_t!(arg_matches, "memo", String).ok();
             let rate_bps = value_t!(arg_matches, "interest_rate", i16).ok();
+            let metadata_address = value_t!(arg_matches, "metadata_address", Pubkey).ok();
 
             let transfer_fee = arg_matches.values_of("transfer_fee").map(|mut v| {
                 (
@@ -3811,6 +3829,7 @@ async fn process_command<'a>(
                 arg_matches.is_present("enable_non_transferable"),
                 arg_matches.is_present("enable_permanent_delegate"),
                 memo,
+                metadata_address,
                 rate_bps,
                 default_account_state,
                 transfer_fee,
@@ -4666,6 +4685,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -4692,6 +4712,7 @@ mod tests {
             false,
             false,
             false,
+            None,
             None,
             Some(rate_bps),
             None,
@@ -6082,6 +6103,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -6128,6 +6150,7 @@ mod tests {
             false,
             false,
             true,
+            None,
             None,
             None,
             None,
@@ -6203,6 +6226,7 @@ mod tests {
             false,
             false,
             true,
+            None,
             None,
             None,
             None,
@@ -6564,6 +6588,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -6616,6 +6641,7 @@ mod tests {
             false,
             false,
             false,
+            None,
             None,
             None,
             Some(AccountState::Frozen),
@@ -6686,6 +6712,7 @@ mod tests {
             false,
             false,
             false,
+            None,
             None,
             None,
             None,
@@ -6955,6 +6982,7 @@ mod tests {
             false,
             false,
             false,
+            None,
             None,
             None,
             None,
@@ -7424,5 +7452,65 @@ mod tests {
                 .await
                 .unwrap()
         );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn metadata_pointer() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let config =
+            test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+        let program_id = &spl_token_2022::id();
+        let token_keypair = Keypair::new();
+        let token_path = NamedTempFile::new().unwrap();
+        let token_pubkey = token_keypair.pubkey();
+        let bulk_signers: Vec<Arc<dyn Signer>> =
+            vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
+        let metadata_address = Pubkey::new_unique();
+
+        command_create_token(
+            &config,
+            TEST_DECIMALS,
+            token_pubkey,
+            payer.pubkey(),
+            false,
+            true,
+            false,
+            false,
+            None,
+            Some(metadata_address),
+            None,
+            None,
+            None,
+            None,
+            bulk_signers,
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = test_mint.get_extension::<MetadataPointer>().unwrap();
+        assert!(test_mint.get_extension::<MetadataPointer>().is_ok());
+        assert_eq!(
+            extension.metadata_address,
+            Some(metadata_address).try_into().unwrap()
+        );
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                token_path.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+                "--metadata-address",
+                metadata_address.to_string().as_str()
+            ],
+        )
+        .await
+        .unwrap();
     }
 }
