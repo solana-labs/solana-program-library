@@ -7461,43 +7461,10 @@ mod tests {
         let config =
             test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
         let program_id = &spl_token_2022::id();
-        let token_keypair = Keypair::new();
         let token_path = NamedTempFile::new().unwrap();
-        let token_pubkey = token_keypair.pubkey();
-        let bulk_signers: Vec<Arc<dyn Signer>> =
-            vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
         let metadata_address = Pubkey::new_unique();
 
-        command_create_token(
-            &config,
-            TEST_DECIMALS,
-            token_pubkey,
-            payer.pubkey(),
-            false,
-            true,
-            false,
-            false,
-            None,
-            Some(metadata_address),
-            None,
-            None,
-            None,
-            None,
-            bulk_signers,
-        )
-        .await
-        .unwrap();
-
-        let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
-        let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
-        let extension = test_mint.get_extension::<MetadataPointer>().unwrap();
-        assert!(test_mint.get_extension::<MetadataPointer>().is_ok());
-        assert_eq!(
-            extension.metadata_address,
-            Some(metadata_address).try_into().unwrap()
-        );
-
-        process_test_command(
+        let result = process_test_command(
             &config,
             &payer,
             &[
@@ -7507,10 +7474,22 @@ mod tests {
                 "--program-id",
                 &program_id.to_string(),
                 "--metadata-address",
-                metadata_address.to_string().as_str()
+                metadata_address.to_string().as_str(),
             ],
         )
-        .await
-        .unwrap();
+        .await;
+
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+
+        let extension = mint_state.get_extension::<MetadataPointer>().unwrap();
+
+        assert!(mint_state.get_extension::<MetadataPointer>().is_ok());
+        assert_eq!(
+            extension.metadata_address,
+            Some(metadata_address).try_into().unwrap()
+        );
     }
 }
