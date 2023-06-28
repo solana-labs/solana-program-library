@@ -7485,8 +7485,8 @@ mod tests {
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
 
         let extension = mint_state.get_extension::<MetadataPointer>().unwrap();
-
         assert!(mint_state.get_extension::<MetadataPointer>().is_ok());
+        
         assert_eq!(
             extension.metadata_address,
             Some(metadata_address).try_into().unwrap()
