@@ -66,7 +66,7 @@ fn process_initialize_mint(
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
     auto_approve_new_account: PodBool,
-    auditor_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
+    auditor_encryption_pubkey: &OptionalNonZeroElGamalPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -78,7 +78,7 @@ fn process_initialize_mint(
 
     confidential_transfer_mint.authority = *authority;
     confidential_transfer_mint.auto_approve_new_accounts = auto_approve_new_account;
-    confidential_transfer_mint.auditor_encryption_pubkey = *auditor_encryption_pubkey;
+    confidential_transfer_mint.auditor_elgamal_pubkey = *auditor_encryption_pubkey;
 
     Ok(())
 }
@@ -87,7 +87,7 @@ fn process_initialize_mint(
 fn process_update_mint(
     accounts: &[AccountInfo],
     auto_approve_new_account: PodBool,
-    auditor_encryption_pubkey: &OptionalNonZeroEncryptionPubkey,
+    auditor_encryption_pubkey: &OptionalNonZeroElGamalPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -111,7 +111,7 @@ fn process_update_mint(
     }
 
     confidential_transfer_mint.auto_approve_new_accounts = auto_approve_new_account;
-    confidential_transfer_mint.auditor_encryption_pubkey = *auditor_encryption_pubkey;
+    confidential_transfer_mint.auditor_elgamal_pubkey = *auditor_encryption_pubkey;
     Ok(())
 }
 
@@ -941,7 +941,7 @@ pub(crate) fn process_instruction(
                 accounts,
                 &data.authority,
                 data.auto_approve_new_accounts,
-                &data.auditor_encryption_pubkey,
+                &data.auditor_elgamal_pubkey,
             )
         }
         ConfidentialTransferInstruction::UpdateMint => {
@@ -950,7 +950,7 @@ pub(crate) fn process_instruction(
             process_update_mint(
                 accounts,
                 data.auto_approve_new_accounts,
-                &data.auditor_encryption_pubkey,
+                &data.auditor_elgamal_pubkey,
             )
         }
         ConfidentialTransferInstruction::ConfigureAccount => {

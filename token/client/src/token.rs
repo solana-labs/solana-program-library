@@ -25,8 +25,7 @@ use {
             ExtensionType, StateWithExtensionsOwned,
         },
         instruction, offchain,
-        pod::EncryptionPubkey,
-        solana_zk_token_sdk::errors::ProofError,
+        solana_zk_token_sdk::{errors::ProofError, zk_token_elgamal::pod::ElGamalPubkey},
         state::{Account, AccountState, Mint, Multisig},
     },
     std::{
@@ -111,7 +110,7 @@ pub enum ExtensionInitializationParams {
     ConfidentialTransferMint {
         authority: Option<Pubkey>,
         auto_approve_new_accounts: bool,
-        auditor_encryption_pubkey: Option<EncryptionPubkey>,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
     },
     DefaultAccountState {
         state: AccountState,
@@ -167,13 +166,13 @@ impl ExtensionInitializationParams {
             Self::ConfidentialTransferMint {
                 authority,
                 auto_approve_new_accounts,
-                auditor_encryption_pubkey,
+                auditor_elgamal_pubkey,
             } => confidential_transfer::instruction::initialize_mint(
                 token_program_id,
                 mint,
                 authority,
                 auto_approve_new_accounts,
-                auditor_encryption_pubkey,
+                auditor_elgamal_pubkey,
             ),
             Self::DefaultAccountState { state } => {
                 default_account_state::instruction::initialize_default_account_state(
@@ -1601,7 +1600,7 @@ where
         &self,
         authority: &S,
         auto_approve_new_account: bool,
-        auditor_encryption_pubkey: Option<EncryptionPubkey>,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[confidential_transfer::instruction::update_mint(
@@ -1609,7 +1608,7 @@ where
                 &self.pubkey,
                 &authority.pubkey(),
                 auto_approve_new_account,
-                auditor_encryption_pubkey,
+                auditor_elgamal_pubkey,
             )?],
             &[authority],
         )
@@ -1884,36 +1883,35 @@ where
 
     /// Fetch the ElGamal public key associated with a confidential token account
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_encryption_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_elgamal_pubkey<S: Signer>(
         &self,
         token_account: &Pubkey,
     ) -> TokenResult<ElGamalPubkey> {
         let state = self.get_account_info(token_account).await.unwrap();
         let extension =
             state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
-        let encryption_pubkey = extension
-            .encryption_pubkey
+        let elgamal_pubkey = extension
+            .elgamal_pubkey
             .try_into()
             .map_err(TokenError::Proof)?;
 
-        Ok(encryption_pubkey)
+        Ok(elgamal_pubkey)
     }
 
     /// Fetch the ElGamal pubkey key of the auditor associated with a confidential token mint
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_auditor_encryption_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_auditor_elgamal_pubkey<S: Signer>(
         &self,
     ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let auditor_encryption_pubkey: Option<EncryptionPubkey> =
-            ct_mint.auditor_encryption_pubkey.into();
+        let auditor_elgamal_pubkey: Option<ElGamalPubkey> = ct_mint.auditor_elgamal_pubkey.into();
 
-        if let Some(encryption_pubkey) = auditor_encryption_pubkey {
-            let encryption_pubkey: ElGamalPubkey =
-                encryption_pubkey.try_into().map_err(TokenError::Proof)?;
-            Ok(Some(encryption_pubkey))
+        if let Some(elgamal_pubkey) = auditor_elgamal_pubkey {
+            let elgamal_pubkey: ElGamalPubkey =
+                elgamal_pubkey.try_into().map_err(TokenError::Proof)?;
+            Ok(Some(elgamal_pubkey))
         } else {
             Ok(None)
         }
@@ -1922,21 +1920,19 @@ where
     /// Fetch the ElGamal pubkey key of the withdraw withheld authority associated with a
     /// confidential token mint
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_withdraw_withheld_authority_encryption_pubkey<
-        S: Signer,
-    >(
+    pub async fn confidential_transfer_get_withdraw_withheld_authority_elgamal_pubkey<S: Signer>(
         &self,
     ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey> =
-            ct_mint.withdraw_withheld_authority_encryption_pubkey.into();
+        let withdraw_withheld_authority_elgamal_pubkey: Option<ElGamalPubkey> =
+            ct_mint.withdraw_withheld_authority_elgamal_pubkey.into();
 
-        if let Some(encryption_pubkey) = withdraw_withheld_authority_encryption_pubkey {
-            let encryption_pubkey: ElGamalPubkey =
-                encryption_pubkey.try_into().map_err(TokenError::Proof)?;
-            Ok(Some(encryption_pubkey))
+        if let Some(elgamal_pubkey) = withdraw_withheld_authority_elgamal_pubkey {
+            let elgamal_pubkey: ElGamalPubkey =
+                elgamal_pubkey.try_into().map_err(TokenError::Proof)?;
+            Ok(Some(elgamal_pubkey))
         } else {
             Ok(None)
         }

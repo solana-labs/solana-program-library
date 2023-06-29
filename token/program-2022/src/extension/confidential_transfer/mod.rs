@@ -6,7 +6,7 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod,
+    solana_zk_token_sdk::zk_token_elgamal::pod::{AeCiphertext, ElGamalCiphertext, ElGamalPubkey},
 };
 
 /// Maximum bit length of any deposit or transfer amount
@@ -26,9 +26,9 @@ pub mod instruction;
 pub mod processor;
 
 /// ElGamal ciphertext containing an account balance
-pub type EncryptedBalance = pod::ElGamalCiphertext;
+pub type EncryptedBalance = ElGamalCiphertext;
 /// Authenticated encryption containing an account balance
-pub type DecryptableBalance = pod::AeCiphertext;
+pub type DecryptableBalance = AeCiphertext;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
@@ -49,7 +49,7 @@ pub struct ConfidentialTransferMint {
     pub auto_approve_new_accounts: PodBool,
 
     /// Authority to decode any transfer amount in a confidential transafer.
-    pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
+    pub auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
 }
 
 impl Extension for ConfidentialTransferMint {
@@ -65,12 +65,12 @@ pub struct ConfidentialTransferAccount {
     pub approved: PodBool,
 
     /// The public key associated with ElGamal encryption
-    pub encryption_pubkey: EncryptionPubkey,
+    pub elgamal_pubkey: ElGamalPubkey,
 
-    /// The low 16 bits of the pending balance (encrypted by `encryption_pubkey`)
+    /// The low 16 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance_lo: EncryptedBalance,
 
-    /// The high 48 bits of the pending balance (encrypted by `encryption_pubkey`)
+    /// The high 48 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance_hi: EncryptedBalance,
 
     /// The available balance (encrypted by `encrypiton_pubkey`)
