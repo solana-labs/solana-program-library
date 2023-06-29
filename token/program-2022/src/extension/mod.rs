@@ -530,6 +530,18 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         Ok(extension_ref)
     }
 
+    /// Allocate the given number of bytes for the given unsized extension
+    ///
+    /// This can only be used for variable-sized types, such as `String` or `Vec`.
+    /// `Pod` types must use `init_extension`
+    pub fn alloc<V: UnsizedExtension>(
+        &mut self,
+        length: usize,
+        overwrite: bool,
+    ) -> Result<&mut [u8], ProgramError> {
+        self.alloc_internal::<V>(length, overwrite)
+    }
+
     fn alloc_internal<V: Extension>(
         &mut self,
         length: usize,
@@ -557,6 +569,13 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             // write length
             let length_ref =
                 pod_from_bytes_mut::<Length>(&mut self.tlv_data[length_start..value_start])?;
+
+            // check that the length is the same if we're doing an alloc
+            // with overwrite, otherwise a realloc should be done
+            if overwrite && extension_type == V::TYPE && usize::from(*length_ref) != length {
+                return Err(TokenError::InvalidLengthForAlloc.into());
+            }
+
             *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
@@ -936,6 +955,11 @@ pub trait Extension {
     const TYPE: ExtensionType;
 }
 
+/// Trait to be implemented by any unsized extension.
+///
+/// Prevents calling the raw `alloc` function for sized types.
+pub trait UnsizedExtension: Extension {}
+
 /// Padding a mint account to be exactly Multisig::LEN.
 /// We need to pad 185 bytes, since Multisig::LEN = 355, Account::LEN = 165,
 /// size_of AccountType = 1, size_of ExtensionType = 2, size_of Length = 2.
@@ -983,6 +1007,14 @@ mod test {
         solana_program::pubkey::Pubkey,
         transfer_fee::test::test_transfer_fee_config,
     };
+
+    /// Test unsized struct
+    #[derive(Clone, Debug, PartialEq)]
+    struct UnsizedMintTest;
+    impl Extension for UnsizedMintTest {
+        const TYPE: ExtensionType = ExtensionType::UnsizedMintTest;
+    }
+    impl UnsizedExtension for UnsizedMintTest {}
 
     const MINT_WITH_EXTENSION: &[u8] = &[
         1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1824,6 +1856,43 @@ mod test {
             ])
             .unwrap_err(),
             ProgramError::InvalidArgument
+        );
+    }
+
+    #[test]
+    fn alloc() {
+        let alloc_size = 1;
+        let account_size =
+            BASE_ACCOUNT_LENGTH + size_of::<AccountType>() + add_type_and_length_to_len(alloc_size);
+        let mut buffer = vec![0; account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        let _ = state.alloc::<UnsizedMintTest>(alloc_size, false).unwrap();
+
+        // can't double alloc
+        assert_eq!(
+            state
+                .alloc::<UnsizedMintTest>(alloc_size, false)
+                .unwrap_err(),
+            TokenError::ExtensionAlreadyInitialized.into()
+        );
+
+        // unless overwrite is set
+        state.alloc::<UnsizedMintTest>(alloc_size, true).unwrap();
+
+        // can't change the size during overwrite though
+        assert_eq!(
+            state
+                .alloc::<UnsizedMintTest>(alloc_size - 1, true)
+                .unwrap_err(),
+            TokenError::InvalidLengthForAlloc.into()
+        );
+
+        // try to write too far, fail earlier
+        assert_eq!(
+            state
+                .alloc::<UnsizedMintTest>(alloc_size + 1, true)
+                .unwrap_err(),
+            ProgramError::InvalidAccountData
         );
     }
 }
