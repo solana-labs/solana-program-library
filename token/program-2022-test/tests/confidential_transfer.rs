@@ -54,58 +54,6 @@ fn test_epoch_info() -> EpochInfo {
 }
 
 #[cfg(feature = "proof-program")]
-struct ConfidentialTransferMintWithKeypairs {
-    ct_mint: ConfidentialTransferMint,
-    ct_mint_authority: Keypair,
-    ct_mint_transfer_auditor_encryption_keypair: ElGamalKeypair,
-    ct_mint_withdraw_withheld_authority_encryption_keypair: ElGamalKeypair,
-}
-
-#[cfg(feature = "proof-program")]
-impl ConfidentialTransferMintWithKeypairs {
-    fn new() -> Self {
-        let ct_mint_authority = Keypair::new();
-        let ct_mint_transfer_auditor_encryption_keypair = ElGamalKeypair::new_rand();
-        let ct_mint_transfer_auditor_encryption_pubkey: EncryptionPubkey =
-            ct_mint_transfer_auditor_encryption_keypair
-                .public
-                .try_into()
-                .unwrap();
-        let ct_mint_withdraw_withheld_authority_encryption_keypair = ElGamalKeypair::new_rand();
-        let ct_mint_withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey =
-            ct_mint_withdraw_withheld_authority_encryption_keypair
-                .public
-                .try_into()
-                .unwrap();
-        let ct_mint = ConfidentialTransferMint {
-            authority: Some(ct_mint_authority.pubkey()).try_into().unwrap(),
-            auto_approve_new_accounts: true.into(),
-            auditor_encryption_pubkey: Some(ct_mint_transfer_auditor_encryption_pubkey)
-                .try_into()
-                .unwrap(),
-            withdraw_withheld_authority_encryption_pubkey: Some(
-                ct_mint_withdraw_withheld_authority_encryption_pubkey,
-            )
-            .try_into()
-            .unwrap(),
-            withheld_amount: EncryptedWithheldAmount::zeroed(),
-        };
-        Self {
-            ct_mint,
-            ct_mint_authority,
-            ct_mint_transfer_auditor_encryption_keypair,
-            ct_mint_withdraw_withheld_authority_encryption_keypair,
-        }
-    }
-
-    fn without_auto_approve() -> Self {
-        let mut x = Self::new();
-        x.ct_mint.auto_approve_new_accounts = false.into();
-        x
-    }
-}
-
-#[cfg(feature = "proof-program")]
 struct ConfidentialTokenAccountMeta {
     token_account: Pubkey,
     elgamal_keypair: ElGamalKeypair,
