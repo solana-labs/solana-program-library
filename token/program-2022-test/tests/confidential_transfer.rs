@@ -1,34 +1,35 @@
 #![cfg(all(feature = "test-sbf"))]
 
 mod program_test;
-#[cfg(feature = "proof-program")]
 use {
     program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
-        instruction::InstructionError, pubkey::Pubkey, signature::Signer, signer::keypair::Keypair,
+        instruction::InstructionError, signature::Signer, signer::keypair::Keypair,
         transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{
-            confidential_transfer::{
-                ConfidentialTransferAccount, ConfidentialTransferMint, EncryptedWithheldAmount,
-            },
-            BaseStateWithExtensions, ExtensionType,
-        },
+        extension::{confidential_transfer::ConfidentialTransferMint, BaseStateWithExtensions},
         instruction,
-        pod::EncryptionPubkey,
-        solana_zk_token_sdk::{
-            encryption::{auth_encryption::*, elgamal::*},
-            zk_token_elgamal::pod::Zeroable,
-        },
+        solana_zk_token_sdk::encryption::elgamal::*,
     },
-    spl_token_client::{
-        client::SendTransaction,
-        token::{ExtensionInitializationParams, Token, TokenError as TokenClientError},
-    },
+    spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
     std::convert::TryInto,
+};
+
+#[cfg(feature = "proof-program")]
+use {
+    solana_sdk::{pubkey::Pubkey, signature::Signer},
+    spl_token_2022::{
+        extension::{
+            confidential_transfer::{ConfidentialTransferAccount, EncryptedWithheldAmount},
+            ExtensionType,
+        },
+        pod::EncryptionPubkey,
+        solana_zk_token_sdk::{encryption::auth_encryption::*, zk_token_elgamal::pod::Zeroable},
+    },
+    spl_token_client::{client::SendTransaction, token::Token},
 };
 
 #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
@@ -239,24 +240,20 @@ async fn check_withheld_amount_in_mint<T>(
     assert_eq!(decrypted_amount, expected);
 }
 
-#[cfg(feature = "proof-program")]
 #[tokio::test]
-async fn ct_initialize_and_update_mint() {
-    let ConfidentialTransferMintWithKeypairs {
-        ct_mint,
-        ct_mint_authority,
-        ..
-    } = ConfidentialTransferMintWithKeypairs::new();
+async fn confidential_transfer_initialize_and_update_mint() {
+    let authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_encryption_keypair = ElGamalKeypair::new_rand();
+    let auditor_encryption_pubkey = auditor_encryption_keypair.public.into();
+
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: ct_mint.authority.into(),
-                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
-                auditor_encryption_pubkey: ct_mint.auditor_encryption_pubkey.into(),
-                withdraw_withheld_authority_encryption_pubkey: ct_mint
-                    .withdraw_withheld_authority_encryption_pubkey
-                    .into(),
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts: auto_approve_new_accounts,
+                auditor_encryption_pubkey: Some(auditor_encryption_pubkey),
             },
         ])
         .await
@@ -266,17 +263,29 @@ async fn ct_initialize_and_update_mint() {
 
     let state = token.get_mint_info().await.unwrap();
     let extension = state.get_extension::<ConfidentialTransferMint>().unwrap();
-    assert_eq!(*extension, ct_mint);
+
+    assert_eq!(
+        extension.authority,
+        Some(authority.pubkey()).try_into().unwrap()
+    );
+    assert_eq!(
+        extension.auto_approve_new_accounts,
+        auto_approve_new_accounts.into()
+    );
+    assert_eq!(
+        extension.auditor_encryption_pubkey,
+        Some(auditor_encryption_pubkey).try_into().unwrap()
+    );
 
     // Change the authority
-    let new_ct_mint_authority = Keypair::new();
+    let new_authority = Keypair::new();
     let wrong_keypair = Keypair::new();
 
     let err = token
         .set_authority(
             token.get_address(),
             &wrong_keypair.pubkey(),
-            Some(&new_ct_mint_authority.pubkey()),
+            Some(&new_authority.pubkey()),
             instruction::AuthorityType::ConfidentialTransferMint,
             &[&wrong_keypair],
         )
@@ -296,10 +305,10 @@ async fn ct_initialize_and_update_mint() {
     token
         .set_authority(
             token.get_address(),
-            &ct_mint_authority.pubkey(),
-            Some(&new_ct_mint_authority.pubkey()),
+            &authority.pubkey(),
+            Some(&new_authority.pubkey()),
             instruction::AuthorityType::ConfidentialTransferMint,
-            &[&ct_mint_authority],
+            &[&authority],
         )
         .await
         .unwrap();
@@ -310,7 +319,7 @@ async fn ct_initialize_and_update_mint() {
 
     let err = token
         .confidential_transfer_update_mint(
-            &ct_mint_authority,
+            &authority,
             new_auto_approve_new_accounts,
             new_auditor_encryption_pubkey,
         )
@@ -329,7 +338,7 @@ async fn ct_initialize_and_update_mint() {
 
     token
         .confidential_transfer_update_mint(
-            &new_ct_mint_authority,
+            &new_authority,
             new_auto_approve_new_accounts,
             new_auditor_encryption_pubkey,
         )
@@ -340,7 +349,7 @@ async fn ct_initialize_and_update_mint() {
     let extension = state.get_extension::<ConfidentialTransferMint>().unwrap();
     assert_eq!(
         extension.authority,
-        Some(new_ct_mint_authority.pubkey()).try_into().unwrap()
+        Some(new_authority.pubkey()).try_into().unwrap()
     );
     assert_eq!(
         extension.auto_approve_new_accounts,
@@ -355,10 +364,10 @@ async fn ct_initialize_and_update_mint() {
     token
         .set_authority(
             token.get_address(),
-            &new_ct_mint_authority.pubkey(),
+            &new_authority.pubkey(),
             None,
             instruction::AuthorityType::ConfidentialTransferMint,
-            &[&new_ct_mint_authority],
+            &[&new_authority],
         )
         .await
         .unwrap();
