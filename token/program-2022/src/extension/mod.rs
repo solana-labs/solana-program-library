@@ -106,6 +106,13 @@ const fn adjust_len_for_multisig(account_len: usize) -> usize {
     }
 }
 
+/// Helper function to calculate exactly how many bytes a value will take up
+const fn add_type_and_length_to_len(value_len: usize) -> usize {
+    value_len
+        .saturating_add(size_of::<ExtensionType>())
+        .saturating_add(pod_get_packed_len::<Length>())
+}
+
 /// Helper struct for returning the indices of the type, length, and value in
 /// a TLV entry
 #[derive(Debug)]
@@ -479,7 +486,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             value_start,
         } = get_extension_indices::<V>(self.tlv_data, false)?;
 
-        if self.tlv_data[type_start..].len() < V::TYPE.try_get_tlv_len()? {
+        if self.tlv_data[type_start..].len()
+            < add_type_and_length_to_len(V::TYPE.try_get_type_len()?)
+        {
             return Err(ProgramError::InvalidAccountData);
         }
         let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start])?;
@@ -509,7 +518,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             value_start,
         } = get_extension_indices::<V>(self.tlv_data, true)?;
 
-        if self.tlv_data[type_start..].len() < V::TYPE.try_get_tlv_len()? {
+        if self.tlv_data[type_start..].len()
+            < add_type_and_length_to_len(V::TYPE.try_get_type_len()?)
+        {
             return Err(ProgramError::InvalidAccountData);
         }
         let extension_type = ExtensionType::try_from(&self.tlv_data[type_start..length_start])?;
@@ -765,10 +776,7 @@ impl ExtensionType {
     ///
     /// Fails if the extension type is unsized
     fn try_get_tlv_len(&self) -> Result<usize, ProgramError> {
-        Ok(self
-            .try_get_type_len()?
-            .saturating_add(size_of::<ExtensionType>())
-            .saturating_add(pod_get_packed_len::<Length>()))
+        Ok(add_type_and_length_to_len(self.try_get_type_len()?))
     }
 
     /// Get the TLV length for a set of ExtensionTypes
