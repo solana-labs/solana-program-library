@@ -294,6 +294,26 @@ fn get_extension_bytes<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&[
     Ok(&tlv_data[value_start..value_end])
 }
 
+fn get_extension_bytes_mut<S: BaseState, V: Extension>(
+    tlv_data: &mut [u8],
+) -> Result<&mut [u8], ProgramError> {
+    if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let TlvIndices {
+        type_start,
+        length_start,
+        value_start,
+    } = get_extension_indices::<V>(tlv_data, false)?;
+
+    if tlv_data[type_start..].len() < add_type_and_length_to_len(V::TYPE.try_get_type_len()?) {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
+    let value_end = value_start.saturating_add(usize::from(*length));
+    Ok(&mut tlv_data[value_start..value_end])
+}
+
 /// Trait for base state with extension
 pub trait BaseStateWithExtensions<S: BaseState> {
     /// Get the buffer containing all extension data
@@ -480,25 +500,14 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
     }
 
+    /// Unpack a portion of the TLV data as the base mutable bytes
+    pub fn get_extension_bytes_mut<V: Extension>(&mut self) -> Result<&mut [u8], ProgramError> {
+        get_extension_bytes_mut::<S, V>(self.tlv_data)
+    }
+
     /// Unpack a portion of the TLV data as the desired type that allows modifying the type
     pub fn get_extension_mut<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
-        if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let TlvIndices {
-            type_start,
-            length_start,
-            value_start,
-        } = get_extension_indices::<V>(self.tlv_data, false)?;
-
-        if self.tlv_data[type_start..].len()
-            < add_type_and_length_to_len(V::TYPE.try_get_type_len()?)
-        {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start])?;
-        let value_end = value_start.saturating_add(usize::from(*length));
-        pod_from_bytes_mut::<V>(&mut self.tlv_data[value_start..value_end])
+        pod_from_bytes_mut::<V>(self.get_extension_bytes_mut::<V>()?)
     }
 
     /// Packs base state data into the base data portion
