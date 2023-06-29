@@ -163,7 +163,7 @@ pub struct PodI64([u8; 8]);
 impl_int_conversion!(PodI64, i64);
 
 /// On-chain size of a `Pod` type
-pub fn pod_get_packed_len<T: Pod>() -> usize {
+pub const fn pod_get_packed_len<T: Pod>() -> usize {
     std::mem::size_of::<T>()
 }
 
