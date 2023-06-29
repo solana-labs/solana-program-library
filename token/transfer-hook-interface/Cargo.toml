@@ -13,10 +13,10 @@ bytemuck = { version = "1.13.1", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"
 num_enum = "0.6.1"
-solana-program = "1.14.12"
+solana-program = "1.16.1"
 spl-discriminator = { version = "0.1.0" , path = "../../libraries/discriminator" }
-spl-tlv-account-resolution = { version = "0.1.0" , path = "../../libraries/tlv-account-resolution" }
-spl-type-length-value = { version = "0.1.0" , path = "../../libraries/type-length-value" }
+spl-tlv-account-resolution = { version = "0.2.0" , path = "../../libraries/tlv-account-resolution" }
+spl-type-length-value = { version = "0.2.0" , path = "../../libraries/type-length-value" }
 thiserror = "1.0"
 
 [lib]

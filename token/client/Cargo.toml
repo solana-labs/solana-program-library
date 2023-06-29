@@ -10,16 +10,16 @@ version = "0.5.0"
 [dependencies]
 async-trait = "0.1"
 futures-util = "0.3"
-solana-cli-output = { version = "=1.14.12", optional = true }
-solana-client = "=1.14.12"
-solana-program-test = "=1.14.12"
-solana-sdk = "=1.14.12"
+solana-cli-output = { version = "=1.16.1", optional = true }
+solana-client = "=1.16.1"
+solana-program-test = "=1.16.1"
+solana-sdk = "=1.16.1"
 # We never want the entrypoint for ATA, but we want the entrypoint for token when
 # testing token
-spl-associated-token-account = { version = "1.1", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
-spl-memo = { version = "3.0.1", path = "../../memo/program", features = ["no-entrypoint"] }
-spl-token = { version = "3.5", path="../program", features = [ "no-entrypoint" ] }
-spl-token-2022 = { version = "0.6", path="../program-2022" }
+spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
+spl-memo = { version = "4.0.0", path = "../../memo/program", features = ["no-entrypoint"] }
+spl-token = { version = "4.0", path="../program", features = [ "no-entrypoint" ] }
+spl-token-2022 = { version = "0.7", path="../program-2022" }
 spl-transfer-hook-interface = { version = "0.1", path="../transfer-hook-interface" }
 thiserror = "1.0"
 

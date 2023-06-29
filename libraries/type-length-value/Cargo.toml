@@ -1,6 +1,6 @@
 [package]
 name = "spl-type-length-value"
-version = "0.1.0"
+version = "0.2.0"
 description = "Solana Program Library Type-Length-Value Management"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -12,15 +12,11 @@ exclude = ["js/**"]
 borsh = ["dep:borsh"]
 
 [dependencies]
-arrayref = "0.3.7"
-borsh = { version = "0.9.1", optional = true }
+borsh = { version = "0.10", optional = true }
 bytemuck = { version = "1.13.1", features = ["derive"] }
-num-derive = "0.3"
-num-traits = "0.2"
-num_enum = "0.6.1"
-solana-program = "1.14.12"
+solana-program = "1.16.1"
 spl-discriminator = { version = "0.1.0", path = "../discriminator" }
-thiserror = "1.0"
+spl-program-error = { version = "0.2.0", path = "../program-error" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

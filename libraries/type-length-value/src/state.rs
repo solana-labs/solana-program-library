@@ -408,6 +408,53 @@ impl<'a> TlvState for TlvStateMut<'a> {
     }
 }
 
+/// Packs a borsh-serializable value into an existing TLV space, reallocating
+/// the account and TLV as needed to accommodate for any change in space
+#[cfg(feature = "borsh")]
+pub fn realloc_and_borsh_serialize<V: SplDiscriminate + borsh::BorshSerialize>(
+    account_info: &solana_program::account_info::AccountInfo,
+    value: &V,
+) -> Result<(), ProgramError> {
+    let previous_length = {
+        let data = account_info.try_borrow_data()?;
+        let TlvIndices {
+            type_start: _,
+            length_start,
+            value_start,
+        } = get_indices(&data, V::SPL_DISCRIMINATOR, false)?;
+        usize::try_from(*pod_from_bytes::<Length>(&data[length_start..value_start])?)?
+    };
+    let new_length = solana_program::borsh::get_instance_packed_len(&value)?;
+    let previous_account_size = account_info.try_data_len()?;
+    if previous_length < new_length {
+        // size increased, so realloc the account, then the TLV entry, then write data
+        let additional_bytes = new_length
+            .checked_sub(previous_length)
+            .ok_or(ProgramError::AccountDataTooSmall)?;
+        account_info.realloc(previous_account_size.saturating_add(additional_bytes), true)?;
+        let mut buffer = account_info.try_borrow_mut_data()?;
+        let mut state = TlvStateMut::unpack(&mut buffer)?;
+        state.realloc::<V>(new_length)?;
+        state.borsh_serialize(value)?;
+    } else {
+        // do it backwards otherwise, write the state, realloc TLV, then the account
+        let mut buffer = account_info.try_borrow_mut_data()?;
+        let mut state = TlvStateMut::unpack(&mut buffer)?;
+        state.borsh_serialize(value)?;
+        let removed_bytes = previous_length
+            .checked_sub(new_length)
+            .ok_or(ProgramError::AccountDataTooSmall)?;
+        if removed_bytes > 0 {
+            // we decreased the size, so need to realloc the TLV, then the account
+            state.realloc::<V>(new_length)?;
+            // this is probably fine, but be safe and avoid invalidating references
+            drop(buffer);
+            account_info.realloc(previous_account_size.saturating_sub(removed_bytes), false)?;
+        }
+    }
+    Ok(())
+}
+
 /// Get the base size required for TLV data
 const fn get_base_len() -> usize {
     let indices = get_indices_unchecked(0);

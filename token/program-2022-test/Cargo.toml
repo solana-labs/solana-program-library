@@ -19,12 +19,12 @@ walkdir = "2"
 [dev-dependencies]
 async-trait = "0.1"
 futures-util = "0.3"
-solana-program = "=1.14.12"
-solana-program-test = "=1.14.12"
-solana-sdk = "=1.14.12"
-spl-associated-token-account = { version = "1.1", path = "../../associated-token-account/program" }
-spl-memo = { version = "3.0.1", path = "../../memo/program", features = ["no-entrypoint"] }
-spl-token-2022 = { version = "0.6", path="../program-2022", features = ["no-entrypoint"] }
+solana-program = "=1.16.1"
+solana-program-test = "=1.16.1"
+solana-sdk = "=1.16.1"
+spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program" }
+spl-memo = { version = "4.0.0", path = "../../memo/program", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.7", path="../program-2022", features = ["no-entrypoint"] }
 spl-instruction-padding = { version = "0.1.0", path="../../instruction-padding/program", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.5", path = "../client" }
 spl-transfer-hook-example = { version = "0.1", path="../transfer-hook-example", features = ["no-entrypoint"] }

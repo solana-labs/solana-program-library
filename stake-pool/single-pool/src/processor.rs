@@ -224,7 +224,7 @@ fn check_vote_account(vote_account_info: &AccountInfo) -> Result<(), ProgramErro
         .ok_or(SinglePoolError::UnparseableVoteAccount)?;
 
     match u32::from_le_bytes(state_variant) {
-        1 => Ok(()),
+        1 | 2 => Ok(()),
         0 => Err(SinglePoolError::LegacyVoteAccount.into()),
         _ => Err(SinglePoolError::UnparseableVoteAccount.into()),
     }
@@ -1063,7 +1063,7 @@ impl Processor {
         let vote_account_data = &vote_account_info.try_borrow_data()?;
         let vote_account_withdrawer = vote_account_data
             .get(VOTE_STATE_AUTHORIZED_WITHDRAWER_START..VOTE_STATE_AUTHORIZED_WITHDRAWER_END)
-            .map(Pubkey::new)
+            .and_then(|x| Pubkey::try_from(x).ok())
             .ok_or(SinglePoolError::UnparseableVoteAccount)?;
 
         if *authorized_withdrawer_info.key != vote_account_withdrawer {

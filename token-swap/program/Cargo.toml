@@ -17,10 +17,10 @@ arrayref = "0.3.7"
 enum_dispatch = "0.3.11"
 num-derive = "0.3"
 num-traits = "0.2"
-solana-program = "1.14.12"
-spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-entrypoint" ] }
-spl-token = { version = "3.5", path = "../../token/program", features = [ "no-entrypoint" ] }
-spl-token-2022 = { version = "0.6", path = "../../token/program-2022", features = [ "no-entrypoint" ] }
+solana-program = "1.16.1"
+spl-math = { version = "0.2", path = "../../libraries/math", features = [ "no-entrypoint" ] }
+spl-token = { version = "4.0", path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-token-2022 = { version = "0.7", path = "../../token/program-2022", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 arbitrary = { version = "1.0", features = ["derive"], optional = true }
 roots = { version = "0.0.8", optional = true }
@@ -28,7 +28,7 @@ roots = { version = "0.0.8", optional = true }
 [dev-dependencies]
 proptest = "1.2"
 roots = "0.0.8"
-solana-sdk = "1.14.12"
+solana-sdk = "1.16.1"
 test-case = "3.1"
 
 [lib]

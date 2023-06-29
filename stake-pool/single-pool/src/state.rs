@@ -10,18 +10,13 @@ use {
 };
 
 /// Single-Validator Stake Pool account type
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum SinglePoolAccountType {
     /// Uninitialized account
+    #[default]
     Uninitialized,
     /// Main pool account
     Pool,
-}
-// TODO derive default when on a rust version where its stabilized
-impl Default for SinglePoolAccountType {
-    fn default() -> Self {
-        SinglePoolAccountType::Uninitialized
-    }
 }
 
 /// Single-Validator Stake Pool account, used to derive all PDAs

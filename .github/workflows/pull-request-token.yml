@@ -204,7 +204,7 @@ jobs:
 
       - name: Set env vars
         run: |
-          echo "RUST_STABLE_VERSION=1.66.1" >> $GITHUB_ENV
+          echo "RUST_STABLE_VERSION=1.69.0" >> $GITHUB_ENV
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
@@ -231,9 +231,9 @@ jobs:
 
       - name: Build and test token-2022 twoxtx (TEMPORARY)
         run: |
+          cargo build-sbf --manifest-path token/program-2022/Cargo.toml
+          cargo build-sbf --manifest-path instruction-padding/program/Cargo.toml
           ./token/twoxtx-setup.sh
-          ./token/twoxtx-solana/cargo-build-sbf --manifest-path token/program-2022/Cargo.toml
-          ./token/twoxtx-solana/cargo-build-sbf --manifest-path instruction-padding/program/Cargo.toml
           ./token/twoxtx-solana/cargo-test-sbf --manifest-path token/program-2022-test/Cargo.toml -- --nocapture
 
   js-test:

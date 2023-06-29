@@ -8,11 +8,11 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-borsh = "0.9"
-solana-program = "1.14.12"
+borsh = "0.10"
+solana-program = "1.16.1"
 spl-discriminator = { version = "0.1.0" , path = "../../libraries/discriminator" }
-spl-program-error = { version = "0.1.0" , path = "../../libraries/program-error" }
-spl-type-length-value = { version = "0.1.0" , path = "../../libraries/type-length-value" }
+spl-program-error = { version = "0.2.0" , path = "../../libraries/program-error" }
+spl-type-length-value = { version = "0.2.0", features = ["borsh"], path = "../../libraries/type-length-value" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

@@ -11,15 +11,18 @@ use {
     proc_macro2::{Span, TokenStream},
     quote::{quote, ToTokens},
     solana_program::hash,
-    syn::{parse::Parse, Ident, Item, ItemEnum, ItemStruct, LitByteStr},
+    syn::{parse::Parse, Generics, Ident, Item, ItemEnum, ItemStruct, LitByteStr, WhereClause},
 };
 
 /// "Builder" struct to implement the `SplDiscriminate` trait
 /// on an enum or struct
-#[derive(Debug)]
 pub struct SplDiscriminateBuilder {
     /// The struct/enum identifier
     pub ident: Ident,
+    /// The item's generic arguments (if any)
+    pub generics: Generics,
+    /// The item's where clause for generics (if any)
+    pub where_clause: Option<WhereClause>,
     /// The TLV hash_input
     pub hash_input: String,
 }
@@ -29,8 +32,15 @@ impl TryFrom<ItemEnum> for SplDiscriminateBuilder {
 
     fn try_from(item_enum: ItemEnum) -> Result<Self, Self::Error> {
         let ident = item_enum.ident;
+        let where_clause = item_enum.generics.where_clause.clone();
+        let generics = item_enum.generics;
         let hash_input = parse_hash_input(&item_enum.attrs)?;
-        Ok(Self { ident, hash_input })
+        Ok(Self {
+            ident,
+            generics,
+            where_clause,
+            hash_input,
+        })
     }
 }
 
@@ -39,8 +49,15 @@ impl TryFrom<ItemStruct> for SplDiscriminateBuilder {
 
     fn try_from(item_struct: ItemStruct) -> Result<Self, Self::Error> {
         let ident = item_struct.ident;
+        let where_clause = item_struct.generics.where_clause.clone();
+        let generics = item_struct.generics;
         let hash_input = parse_hash_input(&item_struct.attrs)?;
-        Ok(Self { ident, hash_input })
+        Ok(Self {
+            ident,
+            generics,
+            where_clause,
+            hash_input,
+        })
     }
 }
 
@@ -70,9 +87,11 @@ impl ToTokens for SplDiscriminateBuilder {
 impl From<&SplDiscriminateBuilder> for TokenStream {
     fn from(builder: &SplDiscriminateBuilder) -> Self {
         let ident = &builder.ident;
+        let generics = &builder.generics;
+        let where_clause = &builder.where_clause;
         let bytes = get_discriminator_bytes(&builder.hash_input);
         quote! {
-            impl spl_discriminator::discriminator::SplDiscriminate for #ident {
+            impl #generics spl_discriminator::discriminator::SplDiscriminate for #ident #generics #where_clause {
                 const SPL_DISCRIMINATOR: spl_discriminator::discriminator::ArrayDiscriminator
                     = spl_discriminator::discriminator::ArrayDiscriminator::new(*#bytes);
             }

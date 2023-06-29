@@ -62,6 +62,6 @@ fn main() {
         .parent()
         .unwrap();
 
-    token(&workspace_root.join("token/program"));
-    token_swap(&workspace_root.join("token-swap/program"));
+    token(workspace_root.join("token/program"));
+    token_swap(workspace_root.join("token-swap/program"));
 }

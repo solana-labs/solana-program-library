@@ -94,7 +94,7 @@ pub async fn create_mint(
 ) -> Result<(), TransportError> {
     assert!(extension_types.is_empty() || program_id != &spl_token::id());
     let rent = banks_client.get_rent().await.unwrap();
-    let space = ExtensionType::get_account_len::<Mint>(extension_types);
+    let space = ExtensionType::try_get_account_len::<Mint>(extension_types).unwrap();
     let mint_rent = rent.minimum_balance(space);
     let mint_pubkey = pool_mint.pubkey();
 
@@ -225,7 +225,7 @@ pub async fn create_token_account(
     extensions: &[ExtensionType],
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
-    let space = ExtensionType::get_account_len::<Account>(extensions);
+    let space = ExtensionType::try_get_account_len::<Account>(extensions).unwrap();
     let account_rent = rent.minimum_balance(space);
 
     let mut instructions = vec![system_instruction::create_account(
@@ -615,7 +615,7 @@ pub async fn create_vote(
         0,
         &system_program::id(),
     )];
-    instructions.append(&mut vote_instruction::create_account(
+    instructions.append(&mut vote_instruction::create_account_with_config(
         &payer.pubkey(),
         &vote.pubkey(),
         &VoteInit {
@@ -624,6 +624,10 @@ pub async fn create_vote(
             ..VoteInit::default()
         },
         rent_voter,
+        vote_instruction::CreateVoteAccountConfig {
+            space: VoteStateVersions::vote_state_size_of(true) as u64,
+            ..Default::default()
+        },
     ));
 
     let transaction = Transaction::new_signed_with_payer(

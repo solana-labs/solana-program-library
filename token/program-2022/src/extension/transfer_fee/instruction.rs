@@ -427,7 +427,7 @@ mod test {
     fn test_instruction_packing() {
         let check = TokenInstruction::TransferFeeExtension(
             TransferFeeInstruction::InitializeTransferFeeConfig {
-                transfer_fee_config_authority: COption::Some(Pubkey::new(&[11u8; 32])),
+                transfer_fee_config_authority: COption::Some(Pubkey::new_from_array([11u8; 32])),
                 withdraw_withheld_authority: COption::None,
                 transfer_fee_basis_points: 111,
                 maximum_fee: u64::MAX,

@@ -32,7 +32,7 @@ async fn no_extensions() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let space = ExtensionType::get_account_len::<Mint>(&[]);
+    let space = ExtensionType::try_get_account_len::<Mint>(&[]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -60,7 +60,7 @@ async fn no_extensions() {
 
     let account = Keypair::new();
     let account_owner_pubkey = Pubkey::new_unique();
-    let space = ExtensionType::get_account_len::<Account>(&[]);
+    let space = ExtensionType::try_get_account_len::<Account>(&[]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -102,7 +102,7 @@ async fn fail_on_invalid_mint() {
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
 
-    let space = ExtensionType::get_account_len::<Mint>(&[]);
+    let space = ExtensionType::try_get_account_len::<Mint>(&[]).unwrap();
     let instructions = vec![system_instruction::create_account(
         &ctx.payer.pubkey(),
         &mint_account.pubkey(),
@@ -120,7 +120,7 @@ async fn fail_on_invalid_mint() {
 
     let account = Keypair::new();
     let account_owner_pubkey = Pubkey::new_unique();
-    let space = ExtensionType::get_account_len::<Account>(&[]);
+    let space = ExtensionType::try_get_account_len::<Account>(&[]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -166,7 +166,8 @@ async fn single_extension() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]);
+    let space =
+        ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -203,7 +204,8 @@ async fn single_extension() {
 
     let account = Keypair::new();
     let account_owner_pubkey = Pubkey::new_unique();
-    let space = ExtensionType::get_account_len::<Account>(&[ExtensionType::TransferFeeAmount]);
+    let space =
+        ExtensionType::try_get_account_len::<Account>(&[ExtensionType::TransferFeeAmount]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -235,7 +237,7 @@ async fn single_extension() {
         .expect("account not none");
     assert_eq!(
         account_info.data.len(),
-        ExtensionType::get_account_len::<Account>(&[ExtensionType::TransferFeeAmount]),
+        ExtensionType::try_get_account_len::<Account>(&[ExtensionType::TransferFeeAmount]).unwrap(),
     );
     assert_eq!(account_info.owner, spl_token_2022::id());
     assert_eq!(account_info.lamports, rent.minimum_balance(space));

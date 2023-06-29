@@ -24,7 +24,7 @@ async fn create_mint(context: &mut ProgramTestContext, program_id: &Pubkey) -> (
     let mint_account = Keypair::new();
     let token_mint_address = mint_account.pubkey();
     let mint_authority = Keypair::new();
-    let space = ExtensionType::get_account_len::<Mint>(&[]);
+    let space = ExtensionType::try_get_account_len::<Mint>(&[]).unwrap();
     let rent = context.banks_client.get_rent().await.unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[

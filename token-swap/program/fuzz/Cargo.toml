@@ -11,9 +11,9 @@ publish = false
 [dependencies]
 honggfuzz = { version = "0.5.55" }
 arbitrary = { version = "1.0", features = ["derive"] }
-solana-program = "1.14.12"
-spl-math = { version = "0.1", path = "../../../libraries/math", features = [ "no-entrypoint" ] }
-spl-token = { version = "3.5", path = "../../../token/program", features = [ "no-entrypoint" ] }
+solana-program = "1.16.1"
+spl-math = { version = "0.2", path = "../../../libraries/math", features = [ "no-entrypoint" ] }
+spl-token = { version = "4.0", path = "../../../token/program", features = [ "no-entrypoint" ] }
 spl-token-swap = { path = "..", features = ["fuzz", "no-entrypoint"] }
 
 [[bin]]

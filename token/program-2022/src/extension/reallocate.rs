@@ -44,7 +44,7 @@ pub fn process_reallocate(
             authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
-        let native_token_amount = account.base.is_native().then(|| account.base.amount);
+        let native_token_amount = account.base.is_native().then_some(account.base.amount);
         (account.get_extension_types()?, native_token_amount)
     };
 
@@ -55,9 +55,10 @@ pub fn process_reallocate(
     {
         return Err(TokenError::InvalidState.into());
     }
-    // ExtensionType::get_account_len() dedupes types, so just a dumb concatenation is fine here
+    // ExtensionType::try_get_account_len() dedupes types, so just a dumb concatenation is fine here
     current_extension_types.extend_from_slice(&new_extension_types);
-    let needed_account_len = ExtensionType::get_account_len::<Account>(&current_extension_types);
+    let needed_account_len =
+        ExtensionType::try_get_account_len::<Account>(&current_extension_types)?;
 
     // if account is already large enough, return early
     if token_account_info.data_len() >= needed_account_len {

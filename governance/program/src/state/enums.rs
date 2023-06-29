@@ -3,9 +3,10 @@
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 /// Defines all Governance accounts types
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GovernanceAccountType {
     /// Default uninitialized account state
+    #[default]
     Uninitialized,
 
     /// Top level aggregation for governances with Community Token (and optional Council Token)
@@ -92,16 +93,11 @@ pub enum GovernanceAccountType {
     ProposalDeposit,
 }
 
-impl Default for GovernanceAccountType {
-    fn default() -> Self {
-        GovernanceAccountType::Uninitialized
-    }
-}
-
 /// What state a Proposal is in
-#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum ProposalState {
     /// Draft - Proposal enters Draft state when it's created
+    #[default]
     Draft,
 
     /// SigningOff - The Proposal is being signed off by Signatories
@@ -133,12 +129,6 @@ pub enum ProposalState {
 
     /// The Proposal was vetoed
     Vetoed,
-}
-
-impl Default for ProposalState {
-    fn default() -> Self {
-        ProposalState::Draft
-    }
 }
 
 /// The type of the vote threshold used to resolve a vote on a Proposal

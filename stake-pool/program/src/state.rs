@@ -26,20 +26,15 @@ use {
 };
 
 /// Enum representing the account type managed by the program
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum AccountType {
     /// If the account has not been initialized, the enum will be 0
+    #[default]
     Uninitialized,
     /// Stake pool
     StakePool,
     /// Validator stake list
     ValidatorList,
-}
-
-impl Default for AccountType {
-    fn default() -> Self {
-        AccountType::Uninitialized
-    }
 }
 
 /// Initialized program details.
@@ -1042,8 +1037,8 @@ mod test {
         let size = get_instance_packed_len(&ValidatorList::new(max_validators)).unwrap();
         let stake_list = uninitialized_validator_list();
         let mut byte_vec = vec![0u8; size];
-        let mut bytes = byte_vec.as_mut_slice();
-        borsh::to_writer(&mut bytes, &stake_list).unwrap();
+        let bytes = byte_vec.as_mut_slice();
+        borsh::to_writer(bytes, &stake_list).unwrap();
         let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
 
@@ -1056,16 +1051,16 @@ mod test {
             validators: vec![],
         };
         let mut byte_vec = vec![0u8; size];
-        let mut bytes = byte_vec.as_mut_slice();
-        borsh::to_writer(&mut bytes, &stake_list).unwrap();
+        let bytes = byte_vec.as_mut_slice();
+        borsh::to_writer(bytes, &stake_list).unwrap();
         let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
 
         // With several accounts
         let stake_list = test_validator_list(max_validators);
         let mut byte_vec = vec![0u8; size];
-        let mut bytes = byte_vec.as_mut_slice();
-        borsh::to_writer(&mut bytes, &stake_list).unwrap();
+        let bytes = byte_vec.as_mut_slice();
+        borsh::to_writer(bytes, &stake_list).unwrap();
         let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
     }

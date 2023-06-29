@@ -1,0 +1,30 @@
+[package]
+name = "spl-token-metadata-example"
+version = "0.1.0"
+description = "Solana Program Library Token Metadata Example Program"
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2021"
+
+[features]
+no-entrypoint = []
+test-sbf = []
+
+[dependencies]
+solana-program = "1.16.1"
+spl-token-2022 = { version = "0.7", path = "../../token/program-2022" }
+spl-token-metadata-interface = { version = "0.1.0", path = "../interface" }
+spl-type-length-value = { version = "0.2.0" , path = "../../libraries/type-length-value", features = ["borsh"] }
+
+[dev-dependencies]
+solana-program-test = "1.16.1"
+solana-sdk = "1.16.1"
+spl-token-client = { version = "0.5", path = "../../token/client" }
+test-case = "3.1"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]

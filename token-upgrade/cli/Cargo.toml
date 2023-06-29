@@ -13,21 +13,21 @@ walkdir = "2"
 [dependencies]
 clap = { version = "3", features = ["cargo"] }
 futures-util = "0.3.28"
-solana-clap-v3-utils = "1.14.12"
-solana-cli-config = "1.14.12"
-solana-client = "1.14.12"
-solana-logger = "1.14.12"
-solana-remote-wallet = "1.14.12"
-solana-sdk = "1.14.12"
-spl-associated-token-account = { version = "1.1", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
-spl-token = { version = "3.5", path = "../../token/program", features = ["no-entrypoint"] }
-spl-token-2022 = { version = "0.6", path = "../../token/program-2022", features = ["no-entrypoint"] }
+solana-clap-v3-utils = "1.16.1"
+solana-cli-config = "1.16.1"
+solana-client = "1.16.1"
+solana-logger = "1.16.1"
+solana-remote-wallet = "1.16.1"
+solana-sdk = "1.16.1"
+spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
+spl-token = { version = "4.0", path = "../../token/program", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.7", path = "../../token/program-2022", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.5", path = "../../token/client" }
 spl-token-upgrade = { version = "0.1", path = "../program", features = ["no-entrypoint"] }
 tokio = { version = "1", features = ["full"] }
 
 [dev-dependencies]
-solana-test-validator = "1.14.12"
+solana-test-validator = "1.16.1"
 
 [[bin]]
 name = "spl-token-upgrade"
