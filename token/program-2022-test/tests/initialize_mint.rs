@@ -22,7 +22,7 @@ use {
             ExtensionType,
         },
         instruction, native_mint,
-        pod::EncryptionPubkey,
+        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
         state::Mint,
     },
     spl_token_client::token::ExtensionInitializationParams,
@@ -518,7 +518,7 @@ async fn fail_invalid_extensions_combination() {
             &spl_token_2022::id(),
             &mint_account.pubkey(),
             Some(Pubkey::new_unique()),
-            EncryptionPubkey::default(),
+            ElGamalPubkey::default(),
         )
         .unwrap();
 

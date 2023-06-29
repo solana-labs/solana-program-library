@@ -339,7 +339,7 @@ pub struct InitializeMintData {
     /// be used by the user.
     pub auto_approve_new_accounts: PodBool,
     /// New authority to decode any transfer amount in a confidential transfer.
-    pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
+    pub auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::UpdateMint`
@@ -350,7 +350,7 @@ pub struct UpdateMintData {
     /// be used by the user.
     pub auto_approve_new_accounts: PodBool,
     /// New authority to decode any transfer amount in a confidential transfer.
-    pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
+    pub auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::ConfigureAccount`
@@ -430,7 +430,7 @@ pub fn initialize_mint(
     mint: &Pubkey,
     authority: Option<Pubkey>,
     auto_approve_new_accounts: bool,
-    auditor_encryption_pubkey: Option<EncryptionPubkey>,
+    auditor_elgamal_pubkey: Option<ElGamalPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -443,7 +443,7 @@ pub fn initialize_mint(
         &InitializeMintData {
             authority: authority.try_into()?,
             auto_approve_new_accounts: auto_approve_new_accounts.into(),
-            auditor_encryption_pubkey: auditor_encryption_pubkey.try_into()?,
+            auditor_elgamal_pubkey: auditor_elgamal_pubkey.try_into()?,
         },
     ))
 }
@@ -455,7 +455,7 @@ pub fn update_mint(
     mint: &Pubkey,
     authority: &Pubkey,
     auto_approve_new_accounts: bool,
-    auditor_encryption_pubkey: Option<EncryptionPubkey>,
+    auditor_elgamal_pubkey: Option<ElGamalPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
 
@@ -471,7 +471,7 @@ pub fn update_mint(
         ConfidentialTransferInstruction::UpdateMint,
         &UpdateMintData {
             auto_approve_new_accounts: auto_approve_new_accounts.into(),
-            auditor_encryption_pubkey: auditor_encryption_pubkey.try_into()?,
+            auditor_elgamal_pubkey: auditor_elgamal_pubkey.try_into()?,
         },
     ))
 }

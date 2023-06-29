@@ -479,7 +479,7 @@ async fn command_create_token(
         extensions.push(ExtensionInitializationParams::ConfidentialTransferMint {
             authority: Some(authority),
             auto_approve_new_accounts: auto_approve,
-            auditor_encryption_pubkey: None,
+            auditor_elgamal_pubkey: None,
         });
     }
 
@@ -6935,7 +6935,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn confidential_transfer() {
-        use spl_token_2022::pod::EncryptionPubkey;
+        use spl_token_2022::solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey;
 
         let (test_validator, payer) = new_validator_for_test().await;
         let config =
@@ -6982,7 +6982,7 @@ mod tests {
             auto_approve,
         );
         assert_eq!(
-            Option::<EncryptionPubkey>::from(extension.auditor_encryption_pubkey),
+            Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
             None,
         );
 
