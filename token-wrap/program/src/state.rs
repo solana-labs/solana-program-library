@@ -2,7 +2,7 @@
 
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::pubkey::Pubkey
+    solana_program::pubkey::Pubkey,
 };
 
 /// Backpointer

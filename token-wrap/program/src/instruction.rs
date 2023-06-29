@@ -1,12 +1,6 @@
 //! Program instructions
 
-use {
-    num_enum::{IntoPrimitive, TryFromPrimitive},
-    solana_program::{
-        instruction::{AccountMeta, Instruction},
-        pubkey::Pubkey,
-    },
-};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 /// Instructions supported by the Token Wrap program
 #[derive(Clone, Debug, PartialEq, TryFromPrimitive, IntoPrimitive)]
