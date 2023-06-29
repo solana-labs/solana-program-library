@@ -159,7 +159,12 @@ fn get_extension_indices<V: Extension>(
     Err(ProgramError::InvalidAccountData)
 }
 
-fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramError> {
+/// Fetches the extension types written to the buffer, along with the total
+/// number of bytes used by the TLV entries, including the type and length of
+/// each extension.
+fn get_extension_types_and_len(
+    tlv_data: &[u8],
+) -> Result<(Vec<ExtensionType>, usize), ProgramError> {
     let mut extension_types = vec![];
     let mut start_index = 0;
     while start_index < tlv_data.len() {
@@ -171,7 +176,7 @@ fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramErr
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         if extension_type == ExtensionType::Uninitialized {
-            return Ok(extension_types);
+            return Ok((extension_types, tlv_indices.type_start));
         } else {
             if tlv_data.len() < tlv_indices.value_start {
                 // not enough bytes to store the length, malformed
@@ -190,7 +195,7 @@ fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramErr
             start_index = value_end_index;
         }
     }
-    Ok(extension_types)
+    Ok((extension_types, start_index))
 }
 
 fn get_first_extension_type(tlv_data: &[u8]) -> Result<Option<ExtensionType>, ProgramError> {
@@ -331,7 +336,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
 
     /// Iterates through the TLV entries, returning only the types
     fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(self.get_tlv_data())
+        get_extension_types_and_len(self.get_tlv_data()).map(|x| x.0)
     }
 
     /// Get just the first extension type, useful to track mixed initializations
@@ -1138,21 +1143,21 @@ mod test {
     fn get_extension_types_with_opaque_buffer() {
         // incorrect due to the length
         assert_eq!(
-            get_extension_types(&[1, 0, 1, 1]).unwrap_err(),
+            get_extension_types_and_len(&[1, 0, 1, 1]).unwrap_err(),
             ProgramError::InvalidAccountData,
         );
         // incorrect due to the huge enum number
         assert_eq!(
-            get_extension_types(&[0, 1, 0, 0]).unwrap_err(),
+            get_extension_types_and_len(&[0, 1, 0, 0]).unwrap_err(),
             ProgramError::InvalidAccountData,
         );
         // correct due to the good enum number and zero length
         assert_eq!(
-            get_extension_types(&[1, 0, 0, 0]).unwrap(),
-            vec![ExtensionType::try_from(1).unwrap()]
+            get_extension_types_and_len(&[1, 0, 0, 0]).unwrap(),
+            (vec![ExtensionType::try_from(1).unwrap()], 4)
         );
         // correct since it's just uninitialized data at the end
-        assert_eq!(get_extension_types(&[0, 0]).unwrap(), vec![]);
+        assert_eq!(get_extension_types_and_len(&[0, 0]).unwrap(), (vec![], 0));
     }
 
     #[test]
@@ -1841,8 +1846,11 @@ mod test {
             Some(ExtensionType::ImmutableOwner)
         );
         assert_eq!(
-            get_extension_types(state.tlv_data).unwrap(),
-            vec![ExtensionType::ImmutableOwner]
+            get_extension_types_and_len(state.tlv_data).unwrap(),
+            (
+                vec![ExtensionType::ImmutableOwner],
+                add_type_and_length_to_len(0)
+            )
         );
     }
 
