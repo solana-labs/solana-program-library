@@ -325,7 +325,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     }
 
     /// Unpack a portion of the TLV data as the desired type
-    fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
+    fn get_extension<V: Extension + Pod>(&self) -> Result<&V, ProgramError> {
         pod_from_bytes::<V>(self.get_extension_bytes::<V>()?)
     }
 
@@ -506,7 +506,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     }
 
     /// Unpack a portion of the TLV data as the desired type that allows modifying the type
-    pub fn get_extension_mut<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
+    pub fn get_extension_mut<V: Extension + Pod>(&mut self) -> Result<&mut V, ProgramError> {
         pod_from_bytes_mut::<V>(self.get_extension_bytes_mut::<V>()?)
     }
 
@@ -519,7 +519,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// data buffer. If extension is already found in the buffer, it overwrites the existing
     /// extension with the default state if `overwrite` is set. If extension found, but
     /// `overwrite` is not set, it returns error.
-    pub fn init_extension<V: Extension>(
+    pub fn init_extension<V: Extension + Pod + Default>(
         &mut self,
         overwrite: bool,
     ) -> Result<&mut V, ProgramError> {
@@ -931,7 +931,7 @@ impl BaseState for Mint {
 
 /// Trait to be implemented by all extension states, specifying which extension
 /// and account type they are associated with
-pub trait Extension: Pod + Default {
+pub trait Extension {
     /// Associated extension type enum, checked at the start of TLV entries
     const TYPE: ExtensionType;
 }
