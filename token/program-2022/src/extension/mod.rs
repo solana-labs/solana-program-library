@@ -96,6 +96,16 @@ fn get_tlv_indices(type_start: usize) -> TlvIndices {
     }
 }
 
+/// Helper function to tack on the size of an extension bytes if an account with
+/// extensions is exactly the size of a multisig
+const fn adjust_len_for_multisig(account_len: usize) -> usize {
+    if account_len == Multisig::LEN {
+        account_len.saturating_add(size_of::<ExtensionType>())
+    } else {
+        account_len
+    }
+}
+
 /// Helper struct for returning the indices of the type, length, and value in
 /// a TLV entry
 #[derive(Debug)]
@@ -772,18 +782,7 @@ impl ExtensionType {
                 extensions.push(extension_type);
             }
         }
-        let tlv_len: Result<usize, _> = extensions.iter().map(|e| e.try_get_tlv_len()).sum();
-        let tlv_len = tlv_len?;
-        let tlv_len = if tlv_len
-            == Multisig::LEN
-                .saturating_sub(BASE_ACCOUNT_LENGTH)
-                .saturating_sub(size_of::<AccountType>())
-        {
-            tlv_len.saturating_add(size_of::<ExtensionType>())
-        } else {
-            tlv_len
-        };
-        Ok(tlv_len)
+        extensions.iter().map(|e| e.try_get_tlv_len()).sum()
     }
 
     /// Get the required account data length for the given ExtensionTypes
@@ -796,9 +795,10 @@ impl ExtensionType {
             Ok(S::LEN)
         } else {
             let extension_size = Self::try_get_total_tlv_len(extension_types)?;
-            Ok(extension_size
+            let total_len = extension_size
                 .saturating_add(BASE_ACCOUNT_LENGTH)
-                .saturating_add(size_of::<AccountType>()))
+                .saturating_add(size_of::<AccountType>());
+            Ok(adjust_len_for_multisig(total_len))
         }
     }
 
