@@ -30,6 +30,7 @@ use {
         program_pack::{IsInitialized, Pack},
     },
     std::{
+        cmp::Ordering,
         convert::{TryFrom, TryInto},
         mem::size_of,
     },
@@ -533,6 +534,62 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         let extension_ref = pod_from_bytes_mut::<V>(buffer)?;
         *extension_ref = V::default();
         Ok(extension_ref)
+    }
+
+    /// Reallocate the TLV entry for the given extension to the given number of bytes.
+    ///
+    /// If the new length is smaller, it will compact the rest of the buffer and zero out
+    /// the difference at the end. If it's larger, it will move the rest of
+    /// the buffer data and zero out the new data.
+    ///
+    /// Returns an error if the extension is not present, or if this is not enough
+    /// space in the buffer.
+    pub fn realloc<V: UnsizedExtension>(
+        &mut self,
+        length: usize,
+    ) -> Result<&mut [u8], ProgramError> {
+        let TlvIndices {
+            type_start: _,
+            length_start,
+            value_start,
+        } = get_extension_indices::<V>(self.tlv_data, false)?;
+        let (_, tlv_len) = get_extension_types_and_len(self.tlv_data)?;
+        let data_len = self.tlv_data.len();
+
+        let length_ref =
+            pod_from_bytes_mut::<Length>(&mut self.tlv_data[length_start..value_start])?;
+        let old_length = usize::from(*length_ref);
+
+        // Length check to avoid a panic later in `copy_within`
+        if old_length < length {
+            let new_tlv_len = tlv_len.saturating_add(length.saturating_sub(old_length));
+            if new_tlv_len > data_len {
+                return Err(ProgramError::InvalidAccountData);
+            }
+        }
+
+        // write new length after the check, to avoid getting into a bad situation
+        // if trying to recover from an error
+        *length_ref = Length::try_from(length)?;
+
+        let old_value_end = value_start.saturating_add(old_length);
+        let new_value_end = value_start.saturating_add(length);
+        self.tlv_data
+            .copy_within(old_value_end..tlv_len, new_value_end);
+        match old_length.cmp(&length) {
+            Ordering::Greater => {
+                // realloc to smaller, zero out the end
+                let new_tlv_len = tlv_len.saturating_sub(old_length.saturating_sub(length));
+                self.tlv_data[new_tlv_len..tlv_len].fill(0);
+            }
+            Ordering::Less => {
+                // realloc to bigger, zero out the new bytes
+                self.tlv_data[old_value_end..new_value_end].fill(0);
+            }
+            Ordering::Equal => {} // nothing needed!
+        }
+
+        Ok(&mut self.tlv_data[value_start..new_value_end])
     }
 
     /// Allocate the given number of bytes for the given unsized extension
@@ -1901,6 +1958,50 @@ mod test {
                 .alloc::<UnsizedMintTest>(alloc_size + 1, true)
                 .unwrap_err(),
             ProgramError::InvalidAccountData
+        );
+    }
+
+    #[test]
+    fn realloc() {
+        const ALLOC_SIZE: usize = 5;
+        const BIG_SIZE: usize = 10;
+        const SMALL_SIZE: usize = 2;
+        let account_size =
+            ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MetadataPointer]).unwrap()
+                + add_type_and_length_to_len(BIG_SIZE);
+        let mut buffer = vec![0; account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+
+        // alloc both types
+        let _ = state.alloc::<UnsizedMintTest>(ALLOC_SIZE, false).unwrap();
+        let max_pubkey =
+            OptionalNonZeroPubkey::try_from(Some(Pubkey::new_from_array([255; 32]))).unwrap();
+        let extension = state.init_extension::<MetadataPointer>(false).unwrap();
+        extension.authority = max_pubkey;
+        extension.metadata_address = max_pubkey;
+
+        // realloc first entry to larger, new bytes are all 0
+        let data = state.realloc::<UnsizedMintTest>(BIG_SIZE).unwrap();
+        assert_eq!(data, [0; BIG_SIZE]);
+        let extension = state.get_extension::<MetadataPointer>().unwrap();
+        assert_eq!(extension.authority, max_pubkey);
+        assert_eq!(extension.metadata_address, max_pubkey);
+
+        // realloc to smaller, removed bytes are all 0
+        let data = state.realloc::<UnsizedMintTest>(SMALL_SIZE).unwrap();
+        assert_eq!(data, [0; SMALL_SIZE]);
+        let extension = state.get_extension::<MetadataPointer>().unwrap();
+        assert_eq!(extension.authority, max_pubkey);
+        assert_eq!(extension.metadata_address, max_pubkey);
+        const DIFF: usize = BIG_SIZE - SMALL_SIZE;
+        assert_eq!(&buffer[account_size - DIFF..account_size], [0; DIFF]);
+
+        // unpack again since we dropped the last `state`
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        // realloc too much, fails
+        assert_eq!(
+            state.realloc::<UnsizedMintTest>(BIG_SIZE + 1).unwrap_err(),
+            ProgramError::InvalidAccountData,
         );
     }
 }
