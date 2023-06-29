@@ -15,7 +15,6 @@ use {
         pubkey::Pubkey,
         sysvar,
     },
-    solana_zk_token_sdk::zk_token_elgamal::pod,
 };
 
 /// Confidential Transfer extension instructions
@@ -421,7 +420,7 @@ pub struct ApplyPendingBalanceData {
     /// `ApplyPendingBalance` instruction
     pub expected_pending_balance_credit_counter: PodU64,
     /// The new decryptable balance if the pending balance is applied successfully
-    pub new_decryptable_available_balance: pod::AeCiphertext,
+    pub new_decryptable_available_balance: DecryptableBalance,
 }
 
 /// Create a `InitializeMint` instruction

@@ -2,7 +2,7 @@
 use {
     bytemuck::{Pod, Zeroable},
     solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
-    solana_zk_token_sdk::zk_token_elgamal::pod,
+    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
     std::convert::TryFrom,
 };
 
@@ -61,7 +61,7 @@ impl From<OptionalNonZeroPubkey> for COption<Pubkey> {
 }
 
 /// ElGamal public key used for encryption
-pub type EncryptionPubkey = pod::ElGamalPubkey;
+pub type EncryptionPubkey = ElGamalPubkey;
 /// An EncryptionPubkey that encodes `None` as all `0`, meant to be usable as a Pod type.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]

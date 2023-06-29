@@ -6,7 +6,7 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod,
+    solana_zk_token_sdk::zk_token_elgamal::pod::{AeCiphertext, ElGamalCiphertext},
 };
 
 /// Maximum bit length of any deposit or transfer amount
@@ -26,9 +26,9 @@ pub mod instruction;
 pub mod processor;
 
 /// ElGamal ciphertext containing an account balance
-pub type EncryptedBalance = pod::ElGamalCiphertext;
+pub type EncryptedBalance = ElGamalCiphertext;
 /// Authenticated encryption containing an account balance
-pub type DecryptableBalance = pod::AeCiphertext;
+pub type DecryptableBalance = AeCiphertext;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
