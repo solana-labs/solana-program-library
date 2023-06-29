@@ -2154,10 +2154,11 @@ mod tests {
     ) -> (Pubkey, SolanaAccount) {
         let account_key = Pubkey::new_unique();
         let space = if *program_id == spl_token_2022::id() {
-            ExtensionType::get_account_len::<Account>(&[
+            ExtensionType::try_get_account_len::<Account>(&[
                 ExtensionType::ImmutableOwner,
                 ExtensionType::TransferFeeAmount,
             ])
+            .unwrap()
         } else {
             Account::get_packed_len()
         };
@@ -2217,12 +2218,14 @@ mod tests {
         let mint_key = Pubkey::new_unique();
         let space = if *program_id == spl_token_2022::id() {
             if close_authority.is_some() {
-                ExtensionType::get_account_len::<Mint>(&[
+                ExtensionType::try_get_account_len::<Mint>(&[
                     ExtensionType::MintCloseAuthority,
                     ExtensionType::TransferFeeConfig,
                 ])
+                .unwrap()
             } else {
-                ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig])
+                ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig])
+                    .unwrap()
             }
         } else {
             Mint::get_packed_len()

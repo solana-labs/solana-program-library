@@ -43,7 +43,7 @@ async fn success_account_exists() {
         program_test_2022(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_len =
-        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
+        ExtensionType::try_get_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap();
     let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     let instruction = create_associated_token_account_idempotent(
@@ -189,7 +189,7 @@ async fn fail_non_ata() {
 
     let rent = banks_client.get_rent().await.unwrap();
     let token_account_len =
-        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
+        ExtensionType::try_get_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap();
     let token_account_balance = rent.minimum_balance(token_account_len);
 
     let wallet_address = Pubkey::new_unique();

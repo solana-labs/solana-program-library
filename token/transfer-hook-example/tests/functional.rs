@@ -60,7 +60,7 @@ fn setup_token_accounts(
 ) {
     // add mint, source, and destination accounts by hand to always force
     // the "transferring" flag to true
-    let mint_size = ExtensionType::get_account_len::<Mint>(&[]);
+    let mint_size = ExtensionType::try_get_account_len::<Mint>(&[]).unwrap();
     let mut mint_data = vec![0; mint_size];
     let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data).unwrap();
     let token_amount = 1_000_000_000_000;
@@ -83,7 +83,8 @@ fn setup_token_accounts(
     );
 
     let account_size =
-        ExtensionType::get_account_len::<Account>(&[ExtensionType::TransferHookAccount]);
+        ExtensionType::try_get_account_len::<Account>(&[ExtensionType::TransferHookAccount])
+            .unwrap();
     let mut account_data = vec![0; account_size];
     let mut state =
         StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut account_data).unwrap();
