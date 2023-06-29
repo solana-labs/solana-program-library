@@ -7458,7 +7458,7 @@ mod tests {
     #[serial]
     async fn metadata_pointer() {
         let (test_validator, payer) = new_validator_for_test().await;
-        let program_id = &spl_token_2022::id();
+        let program_id = spl_token_2022::id();
         let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
         let metadata_address = Pubkey::new_unique();
 
