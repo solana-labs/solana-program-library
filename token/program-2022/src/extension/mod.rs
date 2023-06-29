@@ -736,7 +736,7 @@ impl ExtensionType {
     /// Get the data length of the type associated with the enum
     ///
     /// Fails if the extension type is unsized
-    pub fn try_get_type_len(&self) -> Result<usize, ProgramError> {
+    fn try_get_type_len(&self) -> Result<usize, ProgramError> {
         if !self.sized() {
             return Err(ProgramError::InvalidArgument);
         }
