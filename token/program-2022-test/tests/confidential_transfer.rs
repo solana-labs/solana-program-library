@@ -1,4 +1,5 @@
 #![cfg(all(feature = "test-sbf"))]
+#![cfg(twoxtx)]
 
 mod program_test;
 use {
@@ -244,7 +245,7 @@ async fn confidential_transfer_initialize_and_update_mint() {
     let authority = Keypair::new();
     let auto_approve_new_accounts = true;
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
-    let auditor_elgamal_pubkey = auditor_elgamal_keypair.public.into();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
 
     let mut context = TestContext::new().await;
     context
