@@ -6,8 +6,8 @@ import type { Account } from '../../state/account.js';
 import type { Mint } from '../../state/mint.js';
 import { ExtensionType, getExtensionData } from '../extensionType.js';
 
-export const MAX_FEE_BASIS_POINTS = 10_000;
-export const ONE_IN_BASIS_POINTS: bigint = MAX_FEE_BASIS_POINTS as unknown as bigint;
+export const MAX_FEE_BASIS_POINTS = 10000;
+export const ONE_IN_BASIS_POINTS = BigInt(MAX_FEE_BASIS_POINTS);
 
 /** TransferFeeConfig as stored by the program */
 export interface TransferFee {
@@ -44,13 +44,13 @@ export function transferFeeLayout(property?: string): Layout<TransferFee> {
 /** Calculate the transfer fee */
 export function calculateFee(transferFee: TransferFee, preFeeAmount: bigint): bigint {
     const transferFeeBasisPoints = transferFee.transferFeeBasisPoints;
-    if (transferFeeBasisPoints === 0 || preFeeAmount === 0n) {
-        return 0n;
+    if (transferFeeBasisPoints === 0 || preFeeAmount === BigInt(0)) {
+        return BigInt(0);
     } else {
         const numerator = preFeeAmount * BigInt(transferFeeBasisPoints);
         const rawFee = numerator / ONE_IN_BASIS_POINTS;
         const fee = rawFee > transferFee.maximumFee ? transferFee.maximumFee : rawFee;
-        return fee;
+        return BigInt(fee);
     }
 }
 
@@ -75,8 +75,7 @@ export function getEpochFee(transferFeeConfig: TransferFeeConfig, epoch: bigint)
 }
 
 /** Calculate the fee for the given epoch and input amount */
-export function calculateEpochFee(transferFeeConfig: TransferFeeConfig, preFeeAmount: bigint): bigint {
-    const epoch = transferFeeConfig.newerTransferFee.epoch;
+export function calculateEpochFee(transferFeeConfig: TransferFeeConfig, preFeeAmount: bigint, epoch: bigint): bigint {
     const transferFee = getEpochFee(transferFeeConfig, epoch);
     return calculateFee(transferFee, preFeeAmount);
 }
