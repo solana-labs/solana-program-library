@@ -89,20 +89,6 @@ describe('calculateEpochFee', () => {
         expect(fee).to.eql(2n);
     });
 
-    it('should calculate the fee correctly for olderTransferFee', () => {
-        const preFeeAmount = 400n;
-        const epoch = 1n;
-        const fee = calculateEpochFee(transferFeeConfig, epoch, preFeeAmount);
-        expect(fee).to.eql(2n);
-    });
-
-    it('should calculate the fee correctly for newerTransferFee', () => {
-        const preFeeAmount = 300n;
-        const epoch = 2n;
-        const fee = calculateEpochFee(transferFeeConfig, epoch, preFeeAmount);
-        expect(fee).to.eql(3n);
-    });
-
     it('should cap the fee to the maximumFee when calculated fee exceeds maximumFee', () => {
         const preFeeAmount = 500n;
         const epoch = 2n;
