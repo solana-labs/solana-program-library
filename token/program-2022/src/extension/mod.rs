@@ -276,7 +276,7 @@ fn is_initialized_account(input: &[u8]) -> Result<bool, ProgramError> {
     Ok(input[ACCOUNT_INITIALIZED_INDEX] != 0)
 }
 
-fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, ProgramError> {
+fn get_extension_bytes<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
     if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
         return Err(ProgramError::InvalidAccountData);
     }
@@ -291,7 +291,7 @@ fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, Prog
     if tlv_data.len() < value_end {
         return Err(ProgramError::InvalidAccountData);
     }
-    pod_from_bytes::<V>(&tlv_data[value_start..value_end])
+    Ok(&tlv_data[value_start..value_end])
 }
 
 /// Trait for base state with extension
@@ -299,9 +299,14 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     /// Get the buffer containing all extension data
     fn get_tlv_data(&self) -> &[u8];
 
+    /// Fetch the bytes for a TLV entry
+    fn get_extension_bytes<V: Extension>(&self) -> Result<&[u8], ProgramError> {
+        get_extension_bytes::<S, V>(self.get_tlv_data())
+    }
+
     /// Unpack a portion of the TLV data as the desired type
     fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        get_extension::<S, V>(self.get_tlv_data())
+        pod_from_bytes::<V>(self.get_extension_bytes::<V>()?)
     }
 
     /// Iterates through the TLV entries, returning only the types
