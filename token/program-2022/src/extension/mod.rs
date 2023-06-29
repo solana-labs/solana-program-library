@@ -523,6 +523,18 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         &mut self,
         overwrite: bool,
     ) -> Result<&mut V, ProgramError> {
+        let length = pod_get_packed_len::<V>();
+        let buffer = self.alloc_internal::<V>(length, overwrite)?;
+        let extension_ref = pod_from_bytes_mut::<V>(buffer)?;
+        *extension_ref = V::default();
+        Ok(extension_ref)
+    }
+
+    fn alloc_internal<V: Extension>(
+        &mut self,
+        length: usize,
+        overwrite: bool,
+    ) -> Result<&mut [u8], ProgramError> {
         if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -532,9 +544,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             value_start,
         } = get_extension_indices::<V>(self.tlv_data, true)?;
 
-        if self.tlv_data[type_start..].len()
-            < add_type_and_length_to_len(V::TYPE.try_get_type_len()?)
-        {
+        if self.tlv_data[type_start..].len() < add_type_and_length_to_len(length) {
             return Err(ProgramError::InvalidAccountData);
         }
         let extension_type = ExtensionType::try_from(&self.tlv_data[type_start..length_start])?;
@@ -547,15 +557,10 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             // write length
             let length_ref =
                 pod_from_bytes_mut::<Length>(&mut self.tlv_data[length_start..value_start])?;
-            // maybe this becomes smarter later for dynamically sized extensions
-            let length = pod_get_packed_len::<V>();
             *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
-            let extension_ref =
-                pod_from_bytes_mut::<V>(&mut self.tlv_data[value_start..value_end])?;
-            *extension_ref = V::default();
-            Ok(extension_ref)
+            Ok(&mut self.tlv_data[value_start..value_end])
         } else {
             // extension is already initialized, but no overwrite permission
             Err(TokenError::ExtensionAlreadyInitialized.into())
