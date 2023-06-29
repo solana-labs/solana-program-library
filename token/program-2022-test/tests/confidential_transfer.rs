@@ -251,7 +251,7 @@ async fn confidential_transfer_initialize_and_update_mint() {
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
                 authority: Some(authority.pubkey()),
-                auto_approve_new_accounts: auto_approve_new_accounts,
+                auto_approve_new_accounts,
                 auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
             },
         ])
