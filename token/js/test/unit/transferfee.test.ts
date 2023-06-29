@@ -33,7 +33,7 @@ describe('calculateFee', () => {
         };
         const preFeeAmount = 500n;
         const fee = calculateFee(transferFee, preFeeAmount);
-        expect(fee).to.eql(2n);
+        expect(fee).to.eql(3n);
     });
 
     it('fee should be equal to maximum fee', () => {
@@ -78,35 +78,35 @@ describe('calculateEpochFee', () => {
     it('should return olderTransferFee when epoch is less than newerTransferFee.epoch', () => {
         const preFeeAmount = 200n;
         const epoch = 1n;
-        const fee = calculateEpochFee(transferFeeConfig, preFeeAmount, epoch);
+        const fee = calculateEpochFee(transferFeeConfig, epoch, preFeeAmount);
         expect(fee).to.eql(1n);
     });
 
     it('should return newerTransferFee when epoch is greater than or equal to newerTransferFee.epoch', () => {
         const preFeeAmount = 200n;
         const epoch = 2n;
-        const fee = calculateEpochFee(transferFeeConfig, preFeeAmount, epoch);
-        expect(fee).to.eql(1n);
+        const fee = calculateEpochFee(transferFeeConfig, epoch, preFeeAmount);
+        expect(fee).to.eql(2n);
     });
 
     it('should calculate the fee correctly for olderTransferFee', () => {
         const preFeeAmount = 400n;
         const epoch = 1n;
-        const fee = calculateEpochFee(transferFeeConfig, preFeeAmount, epoch);
+        const fee = calculateEpochFee(transferFeeConfig, epoch, preFeeAmount);
         expect(fee).to.eql(2n);
     });
 
     it('should calculate the fee correctly for newerTransferFee', () => {
         const preFeeAmount = 300n;
         const epoch = 2n;
-        const fee = calculateEpochFee(transferFeeConfig, preFeeAmount, epoch);
-        expect(fee).to.eql(2n);
+        const fee = calculateEpochFee(transferFeeConfig, epoch, preFeeAmount);
+        expect(fee).to.eql(3n);
     });
 
     it('should cap the fee to the maximumFee when calculated fee exceeds maximumFee', () => {
         const preFeeAmount = 500n;
         const epoch = 2n;
-        const fee = calculateEpochFee(transferFeeConfig, preFeeAmount, epoch);
-        expect(fee).to.eql(3n);
+        const fee = calculateEpochFee(transferFeeConfig, epoch, preFeeAmount);
+        expect(fee).to.eql(4n);
     });
 });

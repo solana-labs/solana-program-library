@@ -48,7 +48,7 @@ export function calculateFee(transferFee: TransferFee, preFeeAmount: bigint): bi
         return BigInt(0);
     } else {
         const numerator = preFeeAmount * BigInt(transferFeeBasisPoints);
-        const rawFee = numerator / ONE_IN_BASIS_POINTS;
+        const rawFee = (numerator + ONE_IN_BASIS_POINTS - BigInt(1)) / ONE_IN_BASIS_POINTS;
         const fee = rawFee > transferFee.maximumFee ? transferFee.maximumFee : rawFee;
         return BigInt(fee);
     }
@@ -75,7 +75,7 @@ export function getEpochFee(transferFeeConfig: TransferFeeConfig, epoch: bigint)
 }
 
 /** Calculate the fee for the given epoch and input amount */
-export function calculateEpochFee(transferFeeConfig: TransferFeeConfig, preFeeAmount: bigint, epoch: bigint): bigint {
+export function calculateEpochFee(transferFeeConfig: TransferFeeConfig, epoch: bigint, preFeeAmount: bigint): bigint {
     const transferFee = getEpochFee(transferFeeConfig, epoch);
     return calculateFee(transferFee, preFeeAmount);
 }
