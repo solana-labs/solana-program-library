@@ -376,6 +376,39 @@ pub trait BaseStateWithExtensions<S: BaseState> {
             Ok(adjust_len_for_multisig(total_len))
         }
     }
+
+    /// Calculate the new expected size if the state allocates the given number
+    /// of bytes for the given extension type.
+    ///
+    /// Provides the correct answer regardless if the extension is already present
+    /// in the TLV data.
+    fn get_new_account_len<V: UnsizedExtension>(
+        &self,
+        new_extension_len: usize,
+    ) -> Result<usize, ProgramError> {
+        // get the new length used by the extension
+        let new_extension_len = add_type_and_length_to_len(new_extension_len);
+        let tlv_info = get_tlv_data_info(self.get_tlv_data())?;
+        // If we're adding an extension, then we must have at least BASE_ACCOUNT_LENGTH
+        // and account type
+        let current_len = tlv_info
+            .used_len
+            .saturating_add(BASE_ACCOUNT_LENGTH)
+            .saturating_add(size_of::<AccountType>());
+        let new_len = if tlv_info.extension_types.is_empty() {
+            current_len.saturating_add(new_extension_len)
+        } else {
+            // get the current length used by the extension
+            let current_extension_len = self
+                .get_extension_bytes::<V>()
+                .map(|x| add_type_and_length_to_len(x.len()))
+                .unwrap_or(0);
+            current_len
+                .saturating_sub(current_extension_len)
+                .saturating_add(new_extension_len)
+        };
+        Ok(adjust_len_for_multisig(new_len))
+    }
 }
 
 /// Encapsulates owned immutable base state data (mint or account) with possible extensions
