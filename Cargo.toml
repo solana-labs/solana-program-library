@@ -46,6 +46,7 @@ members = [
   "token-swap/program/fuzz",
   "token-upgrade/cli",
   "token-upgrade/program",
+  "token-wrap/program",
   "token/cli",
   "token/program",
   "token/program-2022",
