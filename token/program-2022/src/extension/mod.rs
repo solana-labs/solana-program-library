@@ -107,7 +107,8 @@ const fn adjust_len_for_multisig(account_len: usize) -> usize {
     }
 }
 
-/// Helper function to calculate exactly how many bytes a value will take up
+/// Helper function to calculate exactly how many bytes a value will take up,
+///
 const fn add_type_and_length_to_len(value_len: usize) -> usize {
     value_len
         .saturating_add(size_of::<ExtensionType>())
@@ -160,12 +161,21 @@ fn get_extension_indices<V: Extension>(
     Err(ProgramError::InvalidAccountData)
 }
 
-/// Fetches the extension types written to the buffer, along with the total
-/// number of bytes used by the TLV entries, including the type and length of
-/// each extension.
-fn get_extension_types_and_len(
-    tlv_data: &[u8],
-) -> Result<(Vec<ExtensionType>, usize), ProgramError> {
+/// Basic information about the TLV buffer, collected from iterating through all entries
+#[derive(Debug, PartialEq)]
+struct TlvDataInfo {
+    /// The extension types written in the TLV buffer
+    extension_types: Vec<ExtensionType>,
+    /// The total number bytes allocated for the TLV entries.
+    ///
+    /// Each TLV entry's allocated bytes comprises two bytes for the `type`, two
+    /// bytes for the `length`, and `length` number of bytes for the `value`.
+    used_len: usize,
+}
+
+/// Fetches the basic information about the TLV buffer by iterating through all
+/// TLV entries.
+fn get_tlv_data_info(tlv_data: &[u8]) -> Result<TlvDataInfo, ProgramError> {
     let mut extension_types = vec![];
     let mut start_index = 0;
     while start_index < tlv_data.len() {
@@ -177,7 +187,10 @@ fn get_extension_types_and_len(
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         if extension_type == ExtensionType::Uninitialized {
-            return Ok((extension_types, tlv_indices.type_start));
+            return Ok(TlvDataInfo {
+                extension_types,
+                used_len: tlv_indices.type_start,
+            });
         } else {
             if tlv_data.len() < tlv_indices.value_start {
                 // not enough bytes to store the length, malformed
@@ -196,7 +209,10 @@ fn get_extension_types_and_len(
             start_index = value_end_index;
         }
     }
-    Ok((extension_types, start_index))
+    Ok(TlvDataInfo {
+        extension_types,
+        used_len: start_index,
+    })
 }
 
 fn get_first_extension_type(tlv_data: &[u8]) -> Result<Option<ExtensionType>, ProgramError> {
@@ -337,7 +353,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
 
     /// Iterates through the TLV entries, returning only the types
     fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types_and_len(self.get_tlv_data()).map(|x| x.0)
+        get_tlv_data_info(self.get_tlv_data()).map(|x| x.extension_types)
     }
 
     /// Get just the first extension type, useful to track mixed initializations
@@ -553,7 +569,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             length_start,
             value_start,
         } = get_extension_indices::<V>(self.tlv_data, false)?;
-        let (_, tlv_len) = get_extension_types_and_len(self.tlv_data)?;
+        let tlv_len = get_tlv_data_info(self.tlv_data).map(|x| x.used_len)?;
         let data_len = self.tlv_data.len();
 
         let length_ref =
@@ -1200,21 +1216,30 @@ mod test {
     fn get_extension_types_with_opaque_buffer() {
         // incorrect due to the length
         assert_eq!(
-            get_extension_types_and_len(&[1, 0, 1, 1]).unwrap_err(),
+            get_tlv_data_info(&[1, 0, 1, 1]).unwrap_err(),
             ProgramError::InvalidAccountData,
         );
         // incorrect due to the huge enum number
         assert_eq!(
-            get_extension_types_and_len(&[0, 1, 0, 0]).unwrap_err(),
+            get_tlv_data_info(&[0, 1, 0, 0]).unwrap_err(),
             ProgramError::InvalidAccountData,
         );
         // correct due to the good enum number and zero length
         assert_eq!(
-            get_extension_types_and_len(&[1, 0, 0, 0]).unwrap(),
-            (vec![ExtensionType::try_from(1).unwrap()], 4)
+            get_tlv_data_info(&[1, 0, 0, 0]).unwrap(),
+            TlvDataInfo {
+                extension_types: vec![ExtensionType::try_from(1).unwrap()],
+                used_len: add_type_and_length_to_len(0),
+            }
         );
         // correct since it's just uninitialized data at the end
-        assert_eq!(get_extension_types_and_len(&[0, 0]).unwrap(), (vec![], 0));
+        assert_eq!(
+            get_tlv_data_info(&[0, 0]).unwrap(),
+            TlvDataInfo {
+                extension_types: vec![],
+                used_len: 0
+            }
+        );
     }
 
     #[test]
@@ -1903,11 +1928,11 @@ mod test {
             Some(ExtensionType::ImmutableOwner)
         );
         assert_eq!(
-            get_extension_types_and_len(state.tlv_data).unwrap(),
-            (
-                vec![ExtensionType::ImmutableOwner],
-                add_type_and_length_to_len(0)
-            )
+            get_tlv_data_info(state.tlv_data).unwrap(),
+            TlvDataInfo {
+                extension_types: vec![ExtensionType::ImmutableOwner],
+                used_len: add_type_and_length_to_len(0)
+            }
         );
     }
 
