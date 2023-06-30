@@ -1185,7 +1185,7 @@ pub fn realloc_and_serialize<S: BaseState, V: UnsizedExtension>(
 
     if previous_account_len < new_account_len {
         // account size increased, so realloc the account, then the TLV entry, then write data
-        account_info.realloc(new_account_len, true)?;
+        account_info.realloc(new_account_len, false)?;
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
         let data = state.realloc::<V>(new_value_len)?;
@@ -1195,7 +1195,12 @@ pub fn realloc_and_serialize<S: BaseState, V: UnsizedExtension>(
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
         let data = state.get_extension_bytes_mut::<V>()?;
-        data.copy_from_slice(new_value_bytes);
+
+        // This check avoids a panic in the next line, but it shouldn't ever happen
+        if data.len() < new_value_len {
+            return Err(ProgramError::AccountDataTooSmall);
+        }
+        data[..new_value_len].copy_from_slice(new_value_bytes);
 
         let removed_bytes = previous_account_len
             .checked_sub(new_account_len)
@@ -2298,5 +2303,69 @@ mod test {
             alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap_err(),
             TokenError::ExtensionAlreadyInitialized.into()
         );
+    }
+
+    #[test]
+    fn realloc_tlv_in_account_info() {
+        const ALLOC_SIZE: usize = 5;
+        const BIG_SIZE: usize = 10;
+        const SMALL_SIZE: usize = 2;
+        let account_size =
+            ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MetadataPointer]).unwrap()
+                + add_type_and_length_to_len(ALLOC_SIZE);
+        let mut buffer = vec![0; account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+
+        // alloc both types
+        let _ = state.alloc::<UnsizedMintTest>(ALLOC_SIZE, false).unwrap();
+        let max_pubkey =
+            OptionalNonZeroPubkey::try_from(Some(Pubkey::new_from_array([255; 32]))).unwrap();
+        let extension = state.init_extension::<MetadataPointer>(false).unwrap();
+        extension.authority = max_pubkey;
+        extension.metadata_address = max_pubkey;
+
+        // reallocate to smaller, make sure existing extension is fine
+        let mut data = SolanaAccountData::new(&buffer);
+        let key = Pubkey::new_unique();
+        let account_info = (&key, &mut data).into_account_info();
+        let value_bytes = [1; SMALL_SIZE];
+        realloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+
+        let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
+        let extension = state.get_extension::<MetadataPointer>().unwrap();
+        assert_eq!(extension.authority, max_pubkey);
+        assert_eq!(extension.metadata_address, max_pubkey);
+        let extension_bytes = state.get_extension_bytes::<UnsizedMintTest>().unwrap();
+        assert_eq!(extension_bytes, value_bytes);
+        assert_eq!(data.len(), state.get_account_len().unwrap());
+
+        // reallocate to larger
+        let account_info = (&key, &mut data).into_account_info();
+        let value_bytes = [2; BIG_SIZE];
+        realloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+
+        let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
+        let extension = state.get_extension::<MetadataPointer>().unwrap();
+        assert_eq!(extension.authority, max_pubkey);
+        assert_eq!(extension.metadata_address, max_pubkey);
+        let extension_bytes = state.get_extension_bytes::<UnsizedMintTest>().unwrap();
+        assert_eq!(extension_bytes, value_bytes);
+        assert_eq!(data.len(), state.get_account_len().unwrap());
+
+        // reallocate to same
+        let account_info = (&key, &mut data).into_account_info();
+        let value_bytes = [3; BIG_SIZE];
+        realloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+
+        let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
+        let extension = state.get_extension::<MetadataPointer>().unwrap();
+        assert_eq!(extension.authority, max_pubkey);
+        assert_eq!(extension.metadata_address, max_pubkey);
+        let extension_bytes = state.get_extension_bytes::<UnsizedMintTest>().unwrap();
+        assert_eq!(extension_bytes, value_bytes);
+        assert_eq!(data.len(), state.get_account_len().unwrap());
     }
 }
