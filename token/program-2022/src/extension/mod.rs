@@ -326,16 +326,16 @@ fn get_extension_bytes_mut<S: BaseState, V: Extension>(
         return Err(ProgramError::InvalidAccountData);
     }
     let TlvIndices {
-        type_start,
+        type_start: _,
         length_start,
         value_start,
     } = get_extension_indices::<V>(tlv_data, false)?;
-
-    if tlv_data[type_start..].len() < add_type_and_length_to_len(V::TYPE.try_get_type_len()?) {
-        return Err(ProgramError::InvalidAccountData);
-    }
+    // get_extension_indices has checked that tlv_data is long enough to include these indices
     let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::from(*length));
+    if tlv_data.len() < value_end {
+        return Err(ProgramError::InvalidAccountData);
+    }
     Ok(&mut tlv_data[value_start..value_end])
 }
 
