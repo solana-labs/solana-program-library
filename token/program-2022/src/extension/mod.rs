@@ -1166,6 +1166,51 @@ pub fn alloc_and_serialize<S: BaseState, V: UnsizedExtension>(
     Ok(())
 }
 
+/// Packs an unsized extension into an existing TLV space
+///
+/// This function reallocates the account as needed to accommodate for the
+/// change in space, then reallocates in the TLV buffer, and finally writes the
+/// bytes.
+pub fn realloc_and_serialize<S: BaseState, V: UnsizedExtension>(
+    account_info: &AccountInfo,
+    new_value_bytes: &[u8],
+) -> Result<(), ProgramError> {
+    let previous_account_len = account_info.try_data_len()?;
+    let new_value_len = new_value_bytes.len();
+    let new_account_len = {
+        let data = account_info.try_borrow_data()?;
+        let state = StateWithExtensions::<S>::unpack(&data)?;
+        state.get_new_account_len::<V>(new_value_bytes.len())?
+    };
+
+    if previous_account_len < new_account_len {
+        // account size increased, so realloc the account, then the TLV entry, then write data
+        account_info.realloc(new_account_len, true)?;
+        let mut buffer = account_info.try_borrow_mut_data()?;
+        let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
+        let data = state.realloc::<V>(new_value_len)?;
+        data.copy_from_slice(new_value_bytes);
+    } else {
+        // do it backwards otherwise, write the state, realloc TLV, then the account
+        let mut buffer = account_info.try_borrow_mut_data()?;
+        let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
+        let data = state.get_extension_bytes_mut::<V>()?;
+        data.copy_from_slice(new_value_bytes);
+
+        let removed_bytes = previous_account_len
+            .checked_sub(new_account_len)
+            .ok_or(ProgramError::AccountDataTooSmall)?;
+        if removed_bytes > 0 {
+            // we decreased the size, so need to realloc the TLV, then the account
+            state.realloc::<V>(new_value_len)?;
+            // this is probably fine, but be safe and avoid invalidating references
+            drop(buffer);
+            account_info.realloc(new_account_len, false)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use {
