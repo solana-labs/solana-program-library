@@ -1596,21 +1596,26 @@ where
     }
 
     /// Update confidential transfer mint
-    pub async fn confidential_transfer_update_mint<S: Signer>(
+    pub async fn confidential_transfer_update_mint<S: Signers>(
         &self,
-        authority: &S,
+        authority: &Pubkey,
         auto_approve_new_account: bool,
         auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[confidential_transfer::instruction::update_mint(
                 &self.program_id,
                 &self.pubkey,
-                &authority.pubkey(),
+                authority,
+                &multisig_signers,
                 auto_approve_new_account,
                 auditor_elgamal_pubkey,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
