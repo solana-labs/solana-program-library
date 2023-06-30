@@ -20,7 +20,7 @@ test-sbf = []
 solana-program = "1.16.1"
 num-traits = "0.2"
 borsh = "0.10"
-num-derive = "0.3.3"
+num-derive = "0.4.0"
 thiserror = "1.0.40"
 
 [dev-dependencies]

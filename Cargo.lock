@@ -695,7 +695,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4114279215a005bc675e386011e594e1d9b800918cea18fcadadcce864a2046b"
 dependencies = [
  "borsh-derive 0.10.3",
- "hashbrown 0.12.3",
+ "hashbrown 0.13.2",
 ]
 
 [[package]]
@@ -3064,6 +3064,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-derive"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e6a0fd4f737c707bd9086cc16c925f294943eb62eb71499e9fd4cf71f8b9f4e"
+dependencies = [
+ "proc-macro2 1.0.60",
+ "quote 1.0.26",
+ "syn 2.0.15",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4774,7 +4785,7 @@ dependencies = [
  "bincode",
  "bytemuck",
  "log",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "rustc_version",
  "serde",
@@ -5508,7 +5519,7 @@ dependencies = [
  "log",
  "memoffset 0.9.0",
  "num-bigint 0.4.3",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "parking_lot 0.12.0",
  "rand 0.7.3",
@@ -5543,7 +5554,7 @@ dependencies = [
  "itertools",
  "libc",
  "log",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "percentage",
  "rand 0.7.3",
@@ -5658,7 +5669,7 @@ dependencies = [
  "dialoguer",
  "hidapi",
  "log",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "parking_lot 0.12.0",
  "qstring",
@@ -5811,7 +5822,7 @@ dependencies = [
  "lz4",
  "memmap2",
  "modular-bitfield",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "num_cpus",
  "num_enum 0.6.1",
@@ -5880,7 +5891,7 @@ dependencies = [
  "libsecp256k1",
  "log",
  "memmap2",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "num_enum 0.6.1",
  "pbkdf2 0.11.0",
@@ -6184,7 +6195,7 @@ checksum = "c27089add49014dc9a917ddb95d5af0ab31bd15308adb4bdce78fd72b52d787b"
 dependencies = [
  "bincode",
  "log",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "rustc_version",
  "serde",
@@ -6206,7 +6217,7 @@ checksum = "569689360796644baad94ffa37e12f5e757e2600115b8f27b72a687ec047a435"
 dependencies = [
  "bytemuck",
  "getrandom 0.1.16",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "solana-program-runtime",
  "solana-sdk",
@@ -6230,7 +6241,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "merlin",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "rand 0.7.3",
  "serde",
@@ -6292,7 +6303,7 @@ checksum = "978dba3bcbe88d0c2c58366c254d9ea41c5f73357e72fc0bdee4d6b5fc99c8f4"
 dependencies = [
  "assert_matches",
  "borsh 0.9.3",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "solana-program",
  "spl-token 3.5.0",
@@ -6306,7 +6317,7 @@ version = "2.0.0"
 dependencies = [
  "assert_matches",
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "solana-program",
  "spl-token 4.0.0",
@@ -6331,7 +6342,7 @@ name = "spl-binary-oracle-pair"
 version = "0.1.0"
 dependencies = [
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "solana-program",
  "solana-program-test",
@@ -6473,7 +6484,7 @@ dependencies = [
  "base64 0.21.2",
  "bincode",
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "proptest",
  "serde",
@@ -6506,7 +6517,7 @@ dependencies = [
  "assert_matches",
  "bincode",
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "proptest",
  "serde",
@@ -6529,7 +6540,7 @@ dependencies = [
  "assert_matches",
  "bincode",
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "proptest",
  "serde",
@@ -6554,7 +6565,7 @@ dependencies = [
  "bincode",
  "borsh 0.10.3",
  "lazy_static",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "serde",
  "serde_derive",
@@ -6572,7 +6583,7 @@ dependencies = [
  "arrayref",
  "bincode",
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "serde",
  "serde_derive",
@@ -6611,7 +6622,7 @@ version = "0.2.0"
 dependencies = [
  "borsh 0.10.3",
  "libm",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "proptest",
  "solana-program",
@@ -6652,7 +6663,7 @@ name = "spl-name-service"
 version = "0.2.0"
 dependencies = [
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "solana-program",
  "solana-program-test",
@@ -6665,7 +6676,7 @@ name = "spl-program-error"
 version = "0.2.0"
 dependencies = [
  "lazy_static",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "serial_test",
  "solana-program",
@@ -6688,7 +6699,7 @@ name = "spl-record"
 version = "0.1.0"
 dependencies = [
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "solana-program",
  "solana-program-test",
@@ -6714,7 +6725,7 @@ dependencies = [
  "arrayref",
  "bincode",
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "num_enum 0.6.1",
  "rand 0.8.5",
@@ -6735,7 +6746,7 @@ dependencies = [
  "arrayref",
  "bincode",
  "borsh 0.10.3",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "num_enum 0.6.1",
  "proptest",
@@ -6798,7 +6809,7 @@ checksum = "8e85e168a785e82564160dcb87b2a8e04cee9bfd1f4d488c729d53d6a4bd300d"
 dependencies = [
  "arrayref",
  "bytemuck",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "num_enum 0.5.11",
  "solana-program",
@@ -6812,7 +6823,7 @@ dependencies = [
  "arrayref",
  "bytemuck",
  "lazy_static",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "num_enum 0.6.1",
  "proptest",
@@ -6831,7 +6842,7 @@ checksum = "0043b590232c400bad5ee9eb983ced003d15163c4c5d56b090ac6d9a57457b47"
 dependencies = [
  "arrayref",
  "bytemuck",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "num_enum 0.5.11",
  "solana-program",
@@ -6848,7 +6859,7 @@ dependencies = [
  "arrayref",
  "bytemuck",
  "lazy_static",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "num_enum 0.6.1",
  "proptest",
@@ -6944,7 +6955,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "bytemuck",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "proptest",
  "solana-program",
@@ -7002,7 +7013,7 @@ dependencies = [
  "arbitrary",
  "arrayref",
  "enum_dispatch",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "proptest",
  "roots",
@@ -7031,7 +7042,7 @@ dependencies = [
 name = "spl-token-upgrade"
 version = "0.1.1"
 dependencies = [
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "num_enum 0.6.1",
  "solana-program",
@@ -7086,7 +7097,7 @@ version = "0.1.0"
 dependencies = [
  "arrayref",
  "bytemuck",
- "num-derive",
+ "num-derive 0.4.0",
  "num-traits",
  "num_enum 0.6.1",
  "solana-program",
