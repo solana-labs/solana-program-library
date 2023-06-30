@@ -26,6 +26,7 @@ use {
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
+        account_info::AccountInfo,
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack},
     },
@@ -1131,12 +1132,51 @@ impl Extension for AccountPaddingTest {
     const TYPE: ExtensionType = ExtensionType::AccountPaddingTest;
 }
 
+/// Packs an unsized extension into a new TLV space
+///
+/// This function reallocates the account as needed to accommodate for the
+/// change in space, then allocates in the TLV buffer, and finally writes the
+/// bytes.
+pub fn alloc_and_serialize<S: BaseState, V: UnsizedExtension>(
+    account_info: &AccountInfo,
+    value_bytes: &[u8],
+) -> Result<(), ProgramError> {
+    let previous_account_len = account_info.try_data_len()?;
+    let new_account_len = {
+        let data = account_info.try_borrow_data()?;
+        let state = StateWithExtensions::<S>::unpack(&data)?;
+        state.get_new_account_len::<V>(value_bytes.len())?
+    };
+
+    if previous_account_len < new_account_len {
+        // size increased, so realloc the account first
+        account_info.realloc(new_account_len, false)?;
+    }
+
+    let mut buffer = account_info.try_borrow_mut_data()?;
+    // write the account type if needed, so that the next unpack works
+    if previous_account_len <= BASE_ACCOUNT_LENGTH {
+        buffer[BASE_ACCOUNT_LENGTH] = S::ACCOUNT_TYPE.into();
+    }
+
+    // now alloc in the TLV buffer and write the data
+    let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
+    let data = state.alloc::<V>(value_bytes.len(), false)?;
+    data.copy_from_slice(value_bytes);
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use {
         super::*,
         crate::state::test::{TEST_ACCOUNT, TEST_ACCOUNT_SLICE, TEST_MINT, TEST_MINT_SLICE},
-        solana_program::pubkey::Pubkey,
+        solana_program::{
+            account_info::{Account as GetAccount, IntoAccountInfo},
+            clock::Epoch,
+            entrypoint::MAX_PERMITTED_DATA_INCREASE,
+            pubkey::Pubkey,
+        },
         transfer_fee::test::test_transfer_fee_config,
     };
 
@@ -2128,5 +2168,90 @@ mod test {
             .get_new_account_len::<UnsizedMintTest>(value_len)
             .unwrap();
         assert_eq!(new_len, current_len);
+    }
+
+    /// Test helper for mimicking the data layout an on-chain `AccountInfo`,
+    /// which permits "reallocs" as the Solana runtime does it
+    struct SolanaAccountData {
+        data: Vec<u8>,
+        lamports: u64,
+        owner: Pubkey,
+    }
+    impl SolanaAccountData {
+        /// Create a new fake solana account data. The underlying vector is
+        /// overallocated to mimic the runtime
+        fn new(account_data: &[u8]) -> Self {
+            let mut data = vec![];
+            data.extend_from_slice(&(account_data.len() as u64).to_le_bytes());
+            data.extend_from_slice(account_data);
+            data.extend_from_slice(&[0; MAX_PERMITTED_DATA_INCREASE]);
+            Self {
+                data,
+                lamports: 10,
+                owner: Pubkey::new_unique(),
+            }
+        }
+
+        /// Data lops off the first 8 bytes, since those store the size of the
+        /// account for the Solana runtime
+        fn data(&self) -> &[u8] {
+            let start = size_of::<u64>();
+            let len = self.len();
+            &self.data[start..start + len]
+        }
+
+        /// Gets the runtime length of the account data
+        fn len(&self) -> usize {
+            self.data
+                .get(..size_of::<u64>())
+                .and_then(|slice| slice.try_into().ok())
+                .map(u64::from_le_bytes)
+                .unwrap() as usize
+        }
+    }
+    impl GetAccount for SolanaAccountData {
+        fn get(&mut self) -> (&mut u64, &mut [u8], &Pubkey, bool, Epoch) {
+            // need to pull out the data here to avoid a double-mutable borrow
+            let start = size_of::<u64>();
+            let len = self.len();
+            (
+                &mut self.lamports,
+                &mut self.data[start..start + len],
+                &self.owner,
+                false,
+                Epoch::default(),
+            )
+        }
+    }
+    #[test]
+    fn alloc_new_tlv_in_account_info() {
+        const VALUE_LEN: usize = 10;
+        let base_account_size = Mint::LEN;
+        let mut buffer = vec![0; base_account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+
+        let mut data = SolanaAccountData::new(&buffer);
+        let key = Pubkey::new_unique();
+        let account_info = (&key, &mut data).into_account_info();
+        let value_bytes = [255; VALUE_LEN];
+
+        alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+        let new_account_len =
+            BASE_ACCOUNT_LENGTH + size_of::<AccountType>() + add_type_and_length_to_len(VALUE_LEN);
+        assert_eq!(data.len(), new_account_len);
+        let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
+        assert_eq!(
+            state.get_extension_bytes::<UnsizedMintTest>().unwrap(),
+            value_bytes
+        );
+
+        // alloc again fails
+        let account_info = (&key, &mut data).into_account_info();
+        assert_eq!(
+            alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap_err(),
+            TokenError::ExtensionAlreadyInitialized.into()
+        );
     }
 }
