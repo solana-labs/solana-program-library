@@ -4,10 +4,13 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
+            confidential_transfer_fee::{ConfidentialTransferFeeAmount, EncryptedWithheldAmount},
+            transfer_fee::TransferFeeConfig,
             BaseStateWithExtensions, StateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
         processor::Processor,
+        proof::decode_proof_instruction_context,
         state::{Account, Mint},
     },
     solana_program::{
@@ -16,6 +19,7 @@ use {
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
+        sysvar::instructions::get_instruction_relative,
     },
 };
 // Remove feature once zk ops syscalls are enabled on all networks
@@ -28,15 +32,10 @@ use {
 #[cfg(feature = "proof-program")]
 use {
     crate::extension::{
-        confidential_transfer_fee::{
-            ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig, EncryptedFee,
-            EncryptedWithheldAmount,
-        },
+        confidential_transfer_fee::{ConfidentialTransferFeeConfig, EncryptedFee},
         memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
-        transfer_fee::TransferFeeConfig,
     },
     solana_program::instruction::Instruction,
-    solana_program::sysvar::instructions::get_instruction_relative,
     solana_program::{clock::Clock, sysvar::Sysvar},
     solana_zk_token_sdk::zk_token_proof_program,
 };
@@ -116,7 +115,6 @@ fn process_update_mint(
 }
 
 /// Processes a [ConfigureAccount] instruction.
-#[cfg(feature = "proof-program")]
 fn process_configure_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -152,20 +150,20 @@ fn process_configure_account(
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
-    // zero-knowledge proof certifies that the supplied encryption (ElGamal) public key is valid
+    // zero-knowledge proof certifies that the supplied ElGamal public key is valid
     let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-    let proof_data = decode_proof_instruction::<PubkeyValidityData>(
-        ProofInstruction::VerifyPubkeyValidity,
-        &zkp_instruction,
-    )?;
+    let proof_context = decode_proof_instruction_context::<
+        PubkeyValidityData,
+        PubkeyValidityProofContext,
+    >(ProofInstruction::VerifyPubkeyValidity, &zkp_instruction)?;
 
     // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
     let mut confidential_transfer_account =
         token_account.init_extension::<ConfidentialTransferAccount>(false)?;
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
-    confidential_transfer_account.encryption_pubkey = proof_data.pubkey;
+    confidential_transfer_account.elgamal_pubkey = proof_context.pubkey;
     confidential_transfer_account.maximum_pending_balance_credit_counter =
         *maximum_pending_balance_credit_counter;
 
@@ -182,7 +180,7 @@ fn process_configure_account(
     confidential_transfer_account.allow_non_confidential_credits = true.into();
 
     // if the mint is extended for fees, then initialize account for confidential transfer fees
-    if mint.get_extension::<TransferFeeConfig>()? {
+    if mint.get_extension::<TransferFeeConfig>().is_ok() {
         let mut confidential_transfer_fee_amount =
             token_account.init_extension::<ConfidentialTransferFeeAmount>(false)?;
         confidential_transfer_fee_amount.withheld_amount = EncryptedWithheldAmount::zeroed();
@@ -955,19 +953,14 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::ConfigureAccount => {
             msg!("ConfidentialTransferInstruction::ConfigureAccount");
-            #[cfg(feature = "proof-program")]
-            {
-                let data = decode_instruction_data::<ConfigureAccountInstructionData>(input)?;
-                process_configure_account(
-                    program_id,
-                    accounts,
-                    &data.decryptable_zero_balance,
-                    &data.maximum_pending_balance_credit_counter,
-                    data.proof_instruction_offset as i64,
-                )
-            }
-            #[cfg(not(feature = "proof-program"))]
-            Err(ProgramError::InvalidInstructionData)
+            let data = decode_instruction_data::<ConfigureAccountInstructionData>(input)?;
+            process_configure_account(
+                program_id,
+                accounts,
+                &data.decryptable_zero_balance,
+                &data.maximum_pending_balance_credit_counter,
+                data.proof_instruction_offset as i64,
+            )
         }
         ConfidentialTransferInstruction::ApproveAccount => {
             msg!("ConfidentialTransferInstruction::ApproveAccount");

@@ -521,7 +521,6 @@ pub fn inner_configure_account(
 /// Create a `ConfigureAccount` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
-#[cfg(feature = "proof-program")]
 pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -543,8 +542,7 @@ pub fn configure_account(
             multisig_signers,
             1,
         )?,
-        #[cfg(feature = "proof-program")]
-        verify_pubkey_validity(proof_data),
+        verify_pubkey_validity(None, proof_data),
     ])
 }
 
