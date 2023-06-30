@@ -201,6 +201,9 @@ pub enum TokenError {
     /// A mint or an account is initialized to an invalid combination of extensions
     #[error("A mint or an account is initialized to an invalid combination of extensions")]
     InvalidExtensionCombination,
+    /// Extension allocation with overwrite must use the same length
+    #[error("Extension allocation with overwrite must use the same length")]
+    InvalidLengthForAlloc,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -348,6 +351,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::InvalidExtensionCombination => {
                 msg!("Mint or account is initialized to an invalid combination of extensions")
+            }
+            TokenError::InvalidLengthForAlloc => {
+                msg!("Extension allocation with overwrite must use the same length")
             }
         }
     }

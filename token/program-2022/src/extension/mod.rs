@@ -30,6 +30,7 @@ use {
         program_pack::{IsInitialized, Pack},
     },
     std::{
+        cmp::Ordering,
         convert::{TryFrom, TryInto},
         mem::size_of,
     },
@@ -96,6 +97,24 @@ fn get_tlv_indices(type_start: usize) -> TlvIndices {
     }
 }
 
+/// Helper function to tack on the size of an extension bytes if an account with
+/// extensions is exactly the size of a multisig
+const fn adjust_len_for_multisig(account_len: usize) -> usize {
+    if account_len == Multisig::LEN {
+        account_len.saturating_add(size_of::<ExtensionType>())
+    } else {
+        account_len
+    }
+}
+
+/// Helper function to calculate exactly how many bytes a value will take up,
+/// given the value's length
+const fn add_type_and_length_to_len(value_len: usize) -> usize {
+    value_len
+        .saturating_add(size_of::<ExtensionType>())
+        .saturating_add(pod_get_packed_len::<Length>())
+}
+
 /// Helper struct for returning the indices of the type, length, and value in
 /// a TLV entry
 #[derive(Debug)]
@@ -142,7 +161,21 @@ fn get_extension_indices<V: Extension>(
     Err(ProgramError::InvalidAccountData)
 }
 
-fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramError> {
+/// Basic information about the TLV buffer, collected from iterating through all entries
+#[derive(Debug, PartialEq)]
+struct TlvDataInfo {
+    /// The extension types written in the TLV buffer
+    extension_types: Vec<ExtensionType>,
+    /// The total number bytes allocated for all TLV entries.
+    ///
+    /// Each TLV entry's allocated bytes comprises two bytes for the `type`, two
+    /// bytes for the `length`, and `length` number of bytes for the `value`.
+    used_len: usize,
+}
+
+/// Fetches basic information about the TLV buffer by iterating through all
+/// TLV entries.
+fn get_tlv_data_info(tlv_data: &[u8]) -> Result<TlvDataInfo, ProgramError> {
     let mut extension_types = vec![];
     let mut start_index = 0;
     while start_index < tlv_data.len() {
@@ -154,7 +187,10 @@ fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramErr
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         if extension_type == ExtensionType::Uninitialized {
-            return Ok(extension_types);
+            return Ok(TlvDataInfo {
+                extension_types,
+                used_len: tlv_indices.type_start,
+            });
         } else {
             if tlv_data.len() < tlv_indices.value_start {
                 // not enough bytes to store the length, malformed
@@ -173,7 +209,10 @@ fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramErr
             start_index = value_end_index;
         }
     }
-    Ok(extension_types)
+    Ok(TlvDataInfo {
+        extension_types,
+        used_len: start_index,
+    })
 }
 
 fn get_first_extension_type(tlv_data: &[u8]) -> Result<Option<ExtensionType>, ProgramError> {
@@ -259,7 +298,7 @@ fn is_initialized_account(input: &[u8]) -> Result<bool, ProgramError> {
     Ok(input[ACCOUNT_INITIALIZED_INDEX] != 0)
 }
 
-fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, ProgramError> {
+fn get_extension_bytes<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
     if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
         return Err(ProgramError::InvalidAccountData);
     }
@@ -274,7 +313,27 @@ fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, Prog
     if tlv_data.len() < value_end {
         return Err(ProgramError::InvalidAccountData);
     }
-    pod_from_bytes::<V>(&tlv_data[value_start..value_end])
+    Ok(&tlv_data[value_start..value_end])
+}
+
+fn get_extension_bytes_mut<S: BaseState, V: Extension>(
+    tlv_data: &mut [u8],
+) -> Result<&mut [u8], ProgramError> {
+    if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let TlvIndices {
+        type_start,
+        length_start,
+        value_start,
+    } = get_extension_indices::<V>(tlv_data, false)?;
+
+    if tlv_data[type_start..].len() < add_type_and_length_to_len(V::TYPE.try_get_type_len()?) {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
+    let value_end = value_start.saturating_add(usize::from(*length));
+    Ok(&mut tlv_data[value_start..value_end])
 }
 
 /// Trait for base state with extension
@@ -282,14 +341,19 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     /// Get the buffer containing all extension data
     fn get_tlv_data(&self) -> &[u8];
 
+    /// Fetch the bytes for a TLV entry
+    fn get_extension_bytes<V: Extension>(&self) -> Result<&[u8], ProgramError> {
+        get_extension_bytes::<S, V>(self.get_tlv_data())
+    }
+
     /// Unpack a portion of the TLV data as the desired type
-    fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        get_extension::<S, V>(self.get_tlv_data())
+    fn get_extension<V: Extension + Pod>(&self) -> Result<&V, ProgramError> {
+        pod_from_bytes::<V>(self.get_extension_bytes::<V>()?)
     }
 
     /// Iterates through the TLV entries, returning only the types
     fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
-        get_extension_types(self.get_tlv_data())
+        get_tlv_data_info(self.get_tlv_data()).map(|x| x.extension_types)
     }
 
     /// Get just the first extension type, useful to track mixed initializations
@@ -458,23 +522,14 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
     }
 
-    /// Unpack a portion of the TLV data as the desired type that allows modifying the type
-    pub fn get_extension_mut<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
-        if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let TlvIndices {
-            type_start,
-            length_start,
-            value_start,
-        } = get_extension_indices::<V>(self.tlv_data, false)?;
+    /// Unpack a portion of the TLV data as the base mutable bytes
+    pub fn get_extension_bytes_mut<V: Extension>(&mut self) -> Result<&mut [u8], ProgramError> {
+        get_extension_bytes_mut::<S, V>(self.tlv_data)
+    }
 
-        if self.tlv_data[type_start..].len() < V::TYPE.try_get_tlv_len()? {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start])?;
-        let value_end = value_start.saturating_add(usize::from(*length));
-        pod_from_bytes_mut::<V>(&mut self.tlv_data[value_start..value_end])
+    /// Unpack a portion of the TLV data as the desired type that allows modifying the type
+    pub fn get_extension_mut<V: Extension + Pod>(&mut self) -> Result<&mut V, ProgramError> {
+        pod_from_bytes_mut::<V>(self.get_extension_bytes_mut::<V>()?)
     }
 
     /// Packs base state data into the base data portion
@@ -486,10 +541,90 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// data buffer. If extension is already found in the buffer, it overwrites the existing
     /// extension with the default state if `overwrite` is set. If extension found, but
     /// `overwrite` is not set, it returns error.
-    pub fn init_extension<V: Extension>(
+    pub fn init_extension<V: Extension + Pod + Default>(
         &mut self,
         overwrite: bool,
     ) -> Result<&mut V, ProgramError> {
+        let length = pod_get_packed_len::<V>();
+        let buffer = self.alloc_internal::<V>(length, overwrite)?;
+        let extension_ref = pod_from_bytes_mut::<V>(buffer)?;
+        *extension_ref = V::default();
+        Ok(extension_ref)
+    }
+
+    /// Reallocate the TLV entry for the given extension to the given number of bytes.
+    ///
+    /// If the new length is smaller, it will compact the rest of the buffer and zero out
+    /// the difference at the end. If it's larger, it will move the rest of
+    /// the buffer data and zero out the new data.
+    ///
+    /// Returns an error if the extension is not present, or if this is not enough
+    /// space in the buffer.
+    pub fn realloc<V: UnsizedExtension>(
+        &mut self,
+        length: usize,
+    ) -> Result<&mut [u8], ProgramError> {
+        let TlvIndices {
+            type_start: _,
+            length_start,
+            value_start,
+        } = get_extension_indices::<V>(self.tlv_data, false)?;
+        let tlv_len = get_tlv_data_info(self.tlv_data).map(|x| x.used_len)?;
+        let data_len = self.tlv_data.len();
+
+        let length_ref =
+            pod_from_bytes_mut::<Length>(&mut self.tlv_data[length_start..value_start])?;
+        let old_length = usize::from(*length_ref);
+
+        // Length check to avoid a panic later in `copy_within`
+        if old_length < length {
+            let new_tlv_len = tlv_len.saturating_add(length.saturating_sub(old_length));
+            if new_tlv_len > data_len {
+                return Err(ProgramError::InvalidAccountData);
+            }
+        }
+
+        // write new length after the check, to avoid getting into a bad situation
+        // if trying to recover from an error
+        *length_ref = Length::try_from(length)?;
+
+        let old_value_end = value_start.saturating_add(old_length);
+        let new_value_end = value_start.saturating_add(length);
+        self.tlv_data
+            .copy_within(old_value_end..tlv_len, new_value_end);
+        match old_length.cmp(&length) {
+            Ordering::Greater => {
+                // realloc to smaller, zero out the end
+                let new_tlv_len = tlv_len.saturating_sub(old_length.saturating_sub(length));
+                self.tlv_data[new_tlv_len..tlv_len].fill(0);
+            }
+            Ordering::Less => {
+                // realloc to bigger, zero out the new bytes
+                self.tlv_data[old_value_end..new_value_end].fill(0);
+            }
+            Ordering::Equal => {} // nothing needed!
+        }
+
+        Ok(&mut self.tlv_data[value_start..new_value_end])
+    }
+
+    /// Allocate the given number of bytes for the given unsized extension
+    ///
+    /// This can only be used for variable-sized types, such as `String` or `Vec`.
+    /// `Pod` types must use `init_extension`
+    pub fn alloc<V: UnsizedExtension>(
+        &mut self,
+        length: usize,
+        overwrite: bool,
+    ) -> Result<&mut [u8], ProgramError> {
+        self.alloc_internal::<V>(length, overwrite)
+    }
+
+    fn alloc_internal<V: Extension>(
+        &mut self,
+        length: usize,
+        overwrite: bool,
+    ) -> Result<&mut [u8], ProgramError> {
         if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -499,7 +634,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             value_start,
         } = get_extension_indices::<V>(self.tlv_data, true)?;
 
-        if self.tlv_data[type_start..].len() < V::TYPE.try_get_tlv_len()? {
+        if self.tlv_data[type_start..].len() < add_type_and_length_to_len(length) {
             return Err(ProgramError::InvalidAccountData);
         }
         let extension_type = ExtensionType::try_from(&self.tlv_data[type_start..length_start])?;
@@ -512,15 +647,17 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             // write length
             let length_ref =
                 pod_from_bytes_mut::<Length>(&mut self.tlv_data[length_start..value_start])?;
-            // maybe this becomes smarter later for dynamically sized extensions
-            let length = pod_get_packed_len::<V>();
+
+            // check that the length is the same if we're doing an alloc
+            // with overwrite, otherwise a realloc should be done
+            if overwrite && extension_type == V::TYPE && usize::from(*length_ref) != length {
+                return Err(TokenError::InvalidLengthForAlloc.into());
+            }
+
             *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
-            let extension_ref =
-                pod_from_bytes_mut::<V>(&mut self.tlv_data[value_start..value_end])?;
-            *extension_ref = V::default();
-            Ok(extension_ref)
+            Ok(&mut self.tlv_data[value_start..value_end])
         } else {
             // extension is already initialized, but no overwrite permission
             Err(TokenError::ExtensionAlreadyInitialized.into())
@@ -710,7 +847,7 @@ impl ExtensionType {
     /// Get the data length of the type associated with the enum
     ///
     /// Fails if the extension type is unsized
-    pub fn try_get_type_len(&self) -> Result<usize, ProgramError> {
+    fn try_get_type_len(&self) -> Result<usize, ProgramError> {
         if !self.sized() {
             return Err(ProgramError::InvalidArgument);
         }
@@ -755,10 +892,7 @@ impl ExtensionType {
     ///
     /// Fails if the extension type is unsized
     fn try_get_tlv_len(&self) -> Result<usize, ProgramError> {
-        Ok(self
-            .try_get_type_len()?
-            .saturating_add(size_of::<ExtensionType>())
-            .saturating_add(pod_get_packed_len::<Length>()))
+        Ok(add_type_and_length_to_len(self.try_get_type_len()?))
     }
 
     /// Get the TLV length for a set of ExtensionTypes
@@ -772,18 +906,7 @@ impl ExtensionType {
                 extensions.push(extension_type);
             }
         }
-        let tlv_len: Result<usize, _> = extensions.iter().map(|e| e.try_get_tlv_len()).sum();
-        let tlv_len = tlv_len?;
-        let tlv_len = if tlv_len
-            == Multisig::LEN
-                .saturating_sub(BASE_ACCOUNT_LENGTH)
-                .saturating_sub(size_of::<AccountType>())
-        {
-            tlv_len.saturating_add(size_of::<ExtensionType>())
-        } else {
-            tlv_len
-        };
-        Ok(tlv_len)
+        extensions.iter().map(|e| e.try_get_tlv_len()).sum()
     }
 
     /// Get the required account data length for the given ExtensionTypes
@@ -796,9 +919,10 @@ impl ExtensionType {
             Ok(S::LEN)
         } else {
             let extension_size = Self::try_get_total_tlv_len(extension_types)?;
-            Ok(extension_size
+            let total_len = extension_size
                 .saturating_add(BASE_ACCOUNT_LENGTH)
-                .saturating_add(size_of::<AccountType>()))
+                .saturating_add(size_of::<AccountType>());
+            Ok(adjust_len_for_multisig(total_len))
         }
     }
 
@@ -904,10 +1028,15 @@ impl BaseState for Mint {
 
 /// Trait to be implemented by all extension states, specifying which extension
 /// and account type they are associated with
-pub trait Extension: Pod + Default {
+pub trait Extension {
     /// Associated extension type enum, checked at the start of TLV entries
     const TYPE: ExtensionType;
 }
+
+/// Trait to be implemented by any unsized extension.
+///
+/// Prevents calling the raw `alloc` function for sized types.
+pub trait UnsizedExtension: Extension {}
 
 /// Padding a mint account to be exactly Multisig::LEN.
 /// We need to pad 185 bytes, since Multisig::LEN = 355, Account::LEN = 165,
@@ -956,6 +1085,14 @@ mod test {
         solana_program::pubkey::Pubkey,
         transfer_fee::test::test_transfer_fee_config,
     };
+
+    /// Test unsized struct
+    #[derive(Clone, Debug, PartialEq)]
+    struct UnsizedMintTest;
+    impl Extension for UnsizedMintTest {
+        const TYPE: ExtensionType = ExtensionType::UnsizedMintTest;
+    }
+    impl UnsizedExtension for UnsizedMintTest {}
 
     const MINT_WITH_EXTENSION: &[u8] = &[
         1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1079,21 +1216,30 @@ mod test {
     fn get_extension_types_with_opaque_buffer() {
         // incorrect due to the length
         assert_eq!(
-            get_extension_types(&[1, 0, 1, 1]).unwrap_err(),
+            get_tlv_data_info(&[1, 0, 1, 1]).unwrap_err(),
             ProgramError::InvalidAccountData,
         );
         // incorrect due to the huge enum number
         assert_eq!(
-            get_extension_types(&[0, 1, 0, 0]).unwrap_err(),
+            get_tlv_data_info(&[0, 1, 0, 0]).unwrap_err(),
             ProgramError::InvalidAccountData,
         );
         // correct due to the good enum number and zero length
         assert_eq!(
-            get_extension_types(&[1, 0, 0, 0]).unwrap(),
-            vec![ExtensionType::try_from(1).unwrap()]
+            get_tlv_data_info(&[1, 0, 0, 0]).unwrap(),
+            TlvDataInfo {
+                extension_types: vec![ExtensionType::try_from(1).unwrap()],
+                used_len: add_type_and_length_to_len(0),
+            }
         );
         // correct since it's just uninitialized data at the end
-        assert_eq!(get_extension_types(&[0, 0]).unwrap(), vec![]);
+        assert_eq!(
+            get_tlv_data_info(&[0, 0]).unwrap(),
+            TlvDataInfo {
+                extension_types: vec![],
+                used_len: 0
+            }
+        );
     }
 
     #[test]
@@ -1782,8 +1928,11 @@ mod test {
             Some(ExtensionType::ImmutableOwner)
         );
         assert_eq!(
-            get_extension_types(state.tlv_data).unwrap(),
-            vec![ExtensionType::ImmutableOwner]
+            get_tlv_data_info(state.tlv_data).unwrap(),
+            TlvDataInfo {
+                extension_types: vec![ExtensionType::ImmutableOwner],
+                used_len: add_type_and_length_to_len(0)
+            }
         );
     }
 
@@ -1797,6 +1946,87 @@ mod test {
             ])
             .unwrap_err(),
             ProgramError::InvalidArgument
+        );
+    }
+
+    #[test]
+    fn alloc() {
+        let alloc_size = 1;
+        let account_size =
+            BASE_ACCOUNT_LENGTH + size_of::<AccountType>() + add_type_and_length_to_len(alloc_size);
+        let mut buffer = vec![0; account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        let _ = state.alloc::<UnsizedMintTest>(alloc_size, false).unwrap();
+
+        // can't double alloc
+        assert_eq!(
+            state
+                .alloc::<UnsizedMintTest>(alloc_size, false)
+                .unwrap_err(),
+            TokenError::ExtensionAlreadyInitialized.into()
+        );
+
+        // unless overwrite is set
+        state.alloc::<UnsizedMintTest>(alloc_size, true).unwrap();
+
+        // can't change the size during overwrite though
+        assert_eq!(
+            state
+                .alloc::<UnsizedMintTest>(alloc_size - 1, true)
+                .unwrap_err(),
+            TokenError::InvalidLengthForAlloc.into()
+        );
+
+        // try to write too far, fail earlier
+        assert_eq!(
+            state
+                .alloc::<UnsizedMintTest>(alloc_size + 1, true)
+                .unwrap_err(),
+            ProgramError::InvalidAccountData
+        );
+    }
+
+    #[test]
+    fn realloc() {
+        const ALLOC_SIZE: usize = 5;
+        const BIG_SIZE: usize = 10;
+        const SMALL_SIZE: usize = 2;
+        let account_size =
+            ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MetadataPointer]).unwrap()
+                + add_type_and_length_to_len(BIG_SIZE);
+        let mut buffer = vec![0; account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+
+        // alloc both types
+        let _ = state.alloc::<UnsizedMintTest>(ALLOC_SIZE, false).unwrap();
+        let max_pubkey =
+            OptionalNonZeroPubkey::try_from(Some(Pubkey::new_from_array([255; 32]))).unwrap();
+        let extension = state.init_extension::<MetadataPointer>(false).unwrap();
+        extension.authority = max_pubkey;
+        extension.metadata_address = max_pubkey;
+
+        // realloc first entry to larger, new bytes are all 0
+        let data = state.realloc::<UnsizedMintTest>(BIG_SIZE).unwrap();
+        assert_eq!(data, [0; BIG_SIZE]);
+        let extension = state.get_extension::<MetadataPointer>().unwrap();
+        assert_eq!(extension.authority, max_pubkey);
+        assert_eq!(extension.metadata_address, max_pubkey);
+
+        // realloc to smaller, removed bytes are all 0
+        let data = state.realloc::<UnsizedMintTest>(SMALL_SIZE).unwrap();
+        assert_eq!(data, [0; SMALL_SIZE]);
+        let extension = state.get_extension::<MetadataPointer>().unwrap();
+        assert_eq!(extension.authority, max_pubkey);
+        assert_eq!(extension.metadata_address, max_pubkey);
+        const DIFF: usize = BIG_SIZE - SMALL_SIZE;
+        assert_eq!(&buffer[account_size - DIFF..account_size], [0; DIFF]);
+
+        // unpack again since we dropped the last `state`
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        // realloc too much, fails
+        assert_eq!(
+            state.realloc::<UnsizedMintTest>(BIG_SIZE + 1).unwrap_err(),
+            ProgramError::InvalidAccountData,
         );
     }
 }
