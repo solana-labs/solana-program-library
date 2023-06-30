@@ -360,6 +360,20 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     fn get_first_extension_type(&self) -> Result<Option<ExtensionType>, ProgramError> {
         get_first_extension_type(self.get_tlv_data())
     }
+
+    /// Get the total number of bytes used by TLV entries and the base type
+    fn get_account_len(&self) -> Result<usize, ProgramError> {
+        let info = get_tlv_data_info(self.get_tlv_data())?;
+        if info.extension_types.is_empty() {
+            Ok(S::LEN)
+        } else {
+            let total_len = info
+                .used_len
+                .saturating_add(BASE_ACCOUNT_LENGTH)
+                .saturating_add(size_of::<AccountType>());
+            Ok(adjust_len_for_multisig(total_len))
+        }
+    }
 }
 
 /// Encapsulates owned immutable base state data (mint or account) with possible extensions
