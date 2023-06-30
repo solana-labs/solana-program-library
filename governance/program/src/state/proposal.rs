@@ -222,7 +222,10 @@ pub struct ProposalV2 {
     pub vote_threshold: Option<VoteThreshold>,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 64],
+    pub reserved: [u8; 60],
+    
+    /// Used to determine whether required signatories have changed since the Proposal was created
+    pub signature_nonce_at_creation: u32,
 
     /// Proposal name
     pub name: String,
@@ -1095,7 +1098,8 @@ pub fn get_proposal_data(
             vote_threshold: proposal_data_v1.vote_threshold,
             name: proposal_data_v1.name,
             description_link: proposal_data_v1.description_link,
-            reserved: [0; 64],
+            reserved: [0; 60],
+            signature_nonce_at_creation: 0,
             reserved1: 0,
         });
     }
@@ -1253,7 +1257,8 @@ mod test {
             max_voting_time: Some(0),
             vote_threshold: Some(VoteThreshold::YesVotePercentage(100)),
 
-            reserved: [0; 64],
+            reserved: [0; 60],
+            signature_nonce_at_creation: 0,
             reserved1: 0,
         }
     }

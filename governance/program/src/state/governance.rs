@@ -9,7 +9,7 @@ use crate::{
         realm::{assert_is_valid_realm, RealmV2},
         vote_record::VoteKind,
     },
-    tools::structs::Reserved119,
+    tools::structs::Reserved115,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -125,10 +125,13 @@ pub struct GovernanceV2 {
     /// Reserved space for versions v2 and onwards
     /// Note 1: V1 accounts must be resized before using this space
     /// Note 2: The reserved space should be used from the end to also allow the config to grow if needed
-    pub reserved_v2: Reserved119,
+    pub reserved_v2: Reserved115,
 
     /// The number of required signatories for proposals in the Governance
     pub signatories_count: u8,
+
+    /// Required to track whether required signatories have changed since a proposal's creation
+    pub signatories_nonce: u32,
 
     /// The number of active proposals where active means Draft, SigningOff or Voting state
     ///
@@ -270,7 +273,7 @@ impl GovernanceV2 {
             // V1 account can't be resized and we have to translate it back to the original format
 
             // If reserved_v2 is used it must be individually assessed for GovernanceV1 account backward compatibility impact
-            if self.reserved_v2 != Reserved119::default() {
+            if self.reserved_v2 != Reserved115::default() {
                 panic!("Extended data not supported by GovernanceV1")
             }
 
@@ -415,8 +418,9 @@ pub fn get_governance_data(
             governed_account: governance_data_v1.governed_account,
             reserved1: 0,
             config: governance_data_v1.config,
-            reserved_v2: Reserved119::default(),
+            reserved_v2: Reserved115::default(),
             signatories_count: 0,
+            signatories_nonce: 0,
             // GovernanceV1 layout doesn't support active_proposal_count
             // For any legacy GovernanceV1 account it's not preserved until the account layout is migrated to GovernanceV2 in CreateProposal
             active_proposal_count: 0,
@@ -719,9 +723,10 @@ mod test {
             governed_account: Pubkey::new_unique(),
             reserved1: 0,
             config: create_test_governance_config(),
-            reserved_v2: Reserved119::default(),
+            reserved_v2: Reserved115::default(),
             active_proposal_count: 10,
             signatories_count: 0,
+            signatories_nonce: 0,
         }
     }
 

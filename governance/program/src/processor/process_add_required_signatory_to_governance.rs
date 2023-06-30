@@ -44,6 +44,7 @@ pub fn process_add_required_signatory_to_governance(
 
     let mut governance_data = get_governance_data(program_id, governance_info)?;
     governance_data.signatories_count = governance_data.signatories_count.checked_add(1).unwrap();
+    governance_data.signatories_nonce = governance_data.signatories_nonce.checked_add(1).unwrap();
     governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
 
     let signatory_record_data = GovernanceRequiredSignatory {

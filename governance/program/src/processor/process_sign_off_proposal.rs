@@ -29,10 +29,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
     assert_is_valid_realm(program_id, realm_info)?;
 
-    // Governance account data is no longer used in the current version but we still have to load it to validate Realm -> Governance -> Proposal relationship
-    // It could be replaced with PDA check but the account is going to be needed in future versions once we support mandatory signatories
-    // and hence keeping it as it is
-    let _governance_data =
+    let governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let mut proposal_data =
@@ -79,9 +76,15 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
             .checked_add(1)
             .unwrap();
     }
+    
+    // If the governance's required signatories were changed after the proposal was created,
+    // then the proposal could be in an invalid state and should be cancelled
+    if proposal_data.signature_nonce_at_creation != governance_data.signatories_nonce {
+        proposal_data.state = ProposalState::Cancelled;
+    }
 
     // If all Signatories signed off we can start voting
-    if proposal_data.signatories_signed_off_count == proposal_data.signatories_count {
+    else if proposal_data.signatories_signed_off_count == proposal_data.signatories_count {
         proposal_data.voting_at = Some(clock.unix_timestamp);
         proposal_data.voting_at_slot = Some(clock.slot);
         proposal_data.state = ProposalState::Voting;

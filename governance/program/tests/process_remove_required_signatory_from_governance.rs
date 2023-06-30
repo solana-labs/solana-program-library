@@ -162,6 +162,7 @@ async fn test_remove_required_signatory_from_governance() {
         .await;
 
     assert_eq!(0, governance_account.signatories_count);
+    assert_eq!(2, governance_account.signatories_nonce);
 }
 
 #[tokio::test]

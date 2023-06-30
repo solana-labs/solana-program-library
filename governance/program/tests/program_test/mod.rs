@@ -60,7 +60,7 @@ use spl_governance::{
     },
     tools::{
         bpf_loader_upgradeable::get_program_data_address,
-        structs::{Reserved110, Reserved119},
+        structs::{Reserved110, Reserved115},
     },
 };
 use spl_governance_addin_api::{
@@ -1504,9 +1504,10 @@ impl GovernanceProgramTest {
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
             reserved1: 0,
-            reserved_v2: Reserved119::default(),
+            reserved_v2: Reserved115::default(),
             signatories_count: 0,
             active_proposal_count: 0,
+            signatories_nonce: 0,
         };
 
         let default_signers = &[create_authority];
@@ -1675,9 +1676,10 @@ impl GovernanceProgramTest {
             governed_account: governed_program_cookie.address,
             config,
             reserved1: 0,
-            reserved_v2: Reserved119::default(),
+            reserved_v2: Reserved115::default(),
             signatories_count: 0,
             active_proposal_count: 0,
+            signatories_nonce: 0,
         };
 
         let program_governance_address = get_program_governance_address(
@@ -1797,9 +1799,10 @@ impl GovernanceProgramTest {
             governed_account: governed_mint_cookie.address,
             config: governance_config.clone(),
             reserved1: 0,
-            reserved_v2: Reserved119::default(),
+            reserved_v2: Reserved115::default(),
             signatories_count: 0,
             active_proposal_count: 0,
+            signatories_nonce: 0,
         };
 
         let mint_governance_address = get_mint_governance_address(
@@ -1879,9 +1882,10 @@ impl GovernanceProgramTest {
             governed_account: governed_token_cookie.address,
             config,
             reserved1: 0,
-            reserved_v2: Reserved119::default(),
+            reserved_v2: Reserved115::default(),
             signatories_count: 0,
             active_proposal_count: 0,
+            signatories_nonce: 0,
         };
 
         let token_governance_address = get_token_governance_address(
@@ -2073,7 +2077,10 @@ impl GovernanceProgramTest {
             max_voting_time: None,
             vote_threshold: None,
 
-            reserved: [0; 64],
+            reserved: [0; 60],
+            
+            signature_nonce_at_creation: governance_cookie.account.signatories_nonce,
+            
             reserved1: 0,
         };
 

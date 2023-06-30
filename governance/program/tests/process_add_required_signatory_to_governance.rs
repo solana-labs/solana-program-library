@@ -78,6 +78,7 @@ async fn test_add_signatory_to_governance() {
         .await;
 
     assert_eq!(1, governance_account.signatories_count);
+    assert_eq!(1, governance_account.signatories_nonce);
 }
 
 #[tokio::test]
