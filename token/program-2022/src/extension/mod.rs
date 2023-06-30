@@ -108,7 +108,7 @@ const fn adjust_len_for_multisig(account_len: usize) -> usize {
 }
 
 /// Helper function to calculate exactly how many bytes a value will take up,
-///
+/// given the value's length
 const fn add_type_and_length_to_len(value_len: usize) -> usize {
     value_len
         .saturating_add(size_of::<ExtensionType>())
@@ -166,14 +166,14 @@ fn get_extension_indices<V: Extension>(
 struct TlvDataInfo {
     /// The extension types written in the TLV buffer
     extension_types: Vec<ExtensionType>,
-    /// The total number bytes allocated for the TLV entries.
+    /// The total number bytes allocated for all TLV entries.
     ///
     /// Each TLV entry's allocated bytes comprises two bytes for the `type`, two
     /// bytes for the `length`, and `length` number of bytes for the `value`.
     used_len: usize,
 }
 
-/// Fetches the basic information about the TLV buffer by iterating through all
+/// Fetches basic information about the TLV buffer by iterating through all
 /// TLV entries.
 fn get_tlv_data_info(tlv_data: &[u8]) -> Result<TlvDataInfo, ProgramError> {
     let mut extension_types = vec![];
