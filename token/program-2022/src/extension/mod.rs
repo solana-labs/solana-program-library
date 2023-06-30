@@ -2083,4 +2083,50 @@ mod test {
             ProgramError::InvalidAccountData,
         );
     }
+
+    #[test]
+    fn account_len() {
+        let value_len = 10;
+        let account_size =
+            BASE_ACCOUNT_LENGTH + size_of::<AccountType>() + add_type_and_length_to_len(value_len);
+        let mut buffer = vec![0; account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+
+        // allocate for a new extension, new length must include padding, 1 byte
+        // for account type, 2 bytes for type, 2 for length
+        let current_len = state.get_account_len().unwrap();
+        assert_eq!(current_len, Mint::LEN);
+        let new_len = state
+            .get_new_account_len::<UnsizedMintTest>(value_len)
+            .unwrap();
+        assert_eq!(
+            new_len
+                .checked_sub(BASE_ACCOUNT_LENGTH)
+                .and_then(|x| x.checked_sub(size_of::<AccountType>()))
+                .unwrap(),
+            add_type_and_length_to_len(value_len)
+        );
+
+        let _ = state.alloc::<UnsizedMintTest>(value_len, false).unwrap();
+        let current_len = state.get_account_len().unwrap();
+        assert_eq!(current_len, new_len);
+
+        // reallocate to smaller
+        let new_len = state
+            .get_new_account_len::<UnsizedMintTest>(value_len - 1)
+            .unwrap();
+        assert_eq!(current_len.checked_sub(new_len).unwrap(), 1);
+
+        // reallocate to larger
+        let new_len = state
+            .get_new_account_len::<UnsizedMintTest>(value_len + 1)
+            .unwrap();
+        assert_eq!(new_len.checked_sub(current_len).unwrap(), 1);
+
+        // reallocate to same
+        let new_len = state
+            .get_new_account_len::<UnsizedMintTest>(value_len)
+            .unwrap();
+        assert_eq!(new_len, current_len);
+    }
 }
