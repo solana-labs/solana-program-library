@@ -1,5 +1,7 @@
 //! Program state processor
 
+use crate::extension::Extension;
+
 use {
     crate::{
         check_program_account, cmp_pubkeys,
@@ -1244,6 +1246,13 @@ impl Processor {
         accounts: &[AccountInfo],
         new_extension_types: Vec<ExtensionType>,
     ) -> ProgramResult {
+        if new_extension_types
+            .iter()
+            .any(|&t| t == ExtensionType::MintCloseAuthority || t == ExtensionType::Uninitialized || t == ExtensionType::ConfidentialTransferMint)
+        {
+            return Err(TokenError::ExtensionTypeMismatch.into());
+        }
+
         let account_info_iter = &mut accounts.iter();
         let mint_account_info = next_account_info(account_info_iter)?;
 
@@ -7523,6 +7532,32 @@ mod tests {
                 vec![&mut invalid_mint_account],
             ),
             Err(ProgramError::IncorrectProgramId)
+        );
+
+        // Invalid Extension Type for mint and uninitialized account
+        assert_eq!(
+            do_process_instruction(
+                get_account_data_size(
+                    &program_id,
+                    &mint_key,
+                    &[ExtensionType::Uninitialized]
+                )
+                .unwrap(),
+                vec![&mut invalid_mint_account],
+            ),
+            Err(TokenError::ExtensionTypeMismatch.into())
+        );
+        assert_eq!(
+            do_process_instruction(
+                get_account_data_size(
+                    &program_id,
+                    &mint_key,
+                    &[ExtensionType::MintCloseAuthority]
+                )
+                .unwrap(),
+                vec![&mut invalid_mint_account],
+            ),
+            Err(TokenError::ExtensionTypeMismatch.into())
         );
     }
 
