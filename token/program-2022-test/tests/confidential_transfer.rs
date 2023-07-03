@@ -626,31 +626,38 @@ async fn confidential_transfer_enable_disable_non_confidential_credits() {
         .unwrap();
 }
 
-#[cfg(feature = "proof-program")]
 #[tokio::test]
-async fn ct_new_account_is_empty() {
-    let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
-        ConfidentialTransferMintWithKeypairs::new();
+async fn confidential_transfer_empty_account() {
+    let authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
     let mut context = TestContext::new().await;
+
+    // newly created confidential transfer account should hold no balance and therefore,
+    // immediately closable
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: ct_mint.authority.into(),
-                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
-                auditor_elgamal_pubkey: ct_mint.auditor_elgamal_pubkey.into(),
-                withdraw_withheld_authority_elgamal_pubkey: ct_mint
-                    .withdraw_withheld_authority_elgamal_pubkey
-                    .into(),
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
             },
         ])
         .await
         .unwrap();
 
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
-
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
+
     token
-        .confidential_transfer_empty_account(&alice_meta.token_account, &alice)
+        .confidential_transfer_empty_account(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            &alice_meta.elgamal_keypair,
+            &[&alice],
+        )
         .await
         .unwrap();
 }
