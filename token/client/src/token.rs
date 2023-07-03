@@ -1686,34 +1686,21 @@ where
     }
 
     /// Prepare a token account with the confidential transfer extension for closing
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_empty_account<S: Signer>(
+    pub async fn confidential_transfer_empty_account<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
-    ) -> TokenResult<T::Output> {
-        let elgamal_keypair =
-            ElGamalKeypair::new(authority, token_account).map_err(TokenError::Key)?;
-        self.confidential_transfer_empty_account_with_keypair(
-            token_account,
-            authority,
-            &elgamal_keypair,
-        )
-        .await
-    }
-
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_empty_account_with_keypair<S: Signer>(
-        &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
         elgamal_keypair: &ElGamalKeypair,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let state = self.get_account_info(token_account).await.unwrap();
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let state = self.get_account_info(account).await.unwrap();
         let extension =
             state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
 
-        let proof_data = confidential_transfer::instruction::CloseAccountData::new(
+        let proof_data = confidential_transfer::instruction::ZeroBalanceProofData::new(
             elgamal_keypair,
             &extension.available_balance.try_into().unwrap(),
         )
@@ -1722,12 +1709,12 @@ where
         self.process_ixs(
             &confidential_transfer::instruction::empty_account(
                 &self.program_id,
-                token_account,
-                &authority.pubkey(),
-                &[],
+                account,
+                authority,
+                &multisig_signers,
                 &proof_data,
             )?,
-            &[authority],
+            signing_keypairs,
         )
         .await
     }

@@ -605,13 +605,12 @@ pub fn inner_empty_account(
 }
 
 /// Create a `EmptyAccount` instruction
-#[cfg(feature = "proof-program")]
 pub fn empty_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &CloseAccountData,
+    proof_data: &ZeroBalanceProofData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
         inner_empty_account(
@@ -621,8 +620,7 @@ pub fn empty_account(
             multisig_signers,
             1,
         )?, // calls check_program_account
-        #[cfg(feature = "proof-program")]
-        verify_close_account(proof_data),
+        verify_zero_balance(None, proof_data),
     ])
 }
 

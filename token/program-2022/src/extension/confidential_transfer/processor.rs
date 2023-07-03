@@ -220,7 +220,6 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
 }
 
 /// Processes an [EmptyAccount] instruction.
-#[cfg(feature = "proof-program")]
 fn process_empty_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -251,17 +250,17 @@ fn process_empty_account(
     // certifies that the available balance ciphertext holds the balance of 0.
     let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-    let proof_data = decode_proof_instruction::<CloseAccountData>(
-        ProofInstruction::VerifyCloseAccount,
-        &zkp_instruction,
-    )?;
+    let proof_context = decode_proof_instruction_context::<
+        ZeroBalanceProofData,
+        ZeroBalanceProofContext,
+    >(ProofInstruction::VerifyZeroBalance, &zkp_instruction)?;
     // Check that the encryption public key and ciphertext associated with the confidential
     // extension account are consistent with those that were actually used to generate the zkp.
-    if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
+    if confidential_transfer_account.elgamal_pubkey != proof_context.pubkey {
         msg!("Encryption public-key mismatch");
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-    if confidential_transfer_account.available_balance != proof_data.ciphertext {
+    if confidential_transfer_account.available_balance != proof_context.ciphertext {
         msg!("Available balance mismatch");
         return Err(ProgramError::InvalidInstructionData);
     }
@@ -968,13 +967,8 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::EmptyAccount => {
             msg!("ConfidentialTransferInstruction::EmptyAccount");
-            #[cfg(feature = "proof-program")]
-            {
-                let data = decode_instruction_data::<EmptyAccountInstructionData>(input)?;
-                process_empty_account(program_id, accounts, data.proof_instruction_offset as i64)
-            }
-            #[cfg(not(feature = "proof-program"))]
-            Err(ProgramError::InvalidInstructionData)
+            let data = decode_instruction_data::<EmptyAccountInstructionData>(input)?;
+            process_empty_account(program_id, accounts, data.proof_instruction_offset as i64)
         }
         ConfidentialTransferInstruction::Deposit => {
             msg!("ConfidentialTransferInstruction::Deposit");
