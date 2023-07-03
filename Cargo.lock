@@ -7082,7 +7082,7 @@ name = "spl-token-wrap"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "num_enum 0.5.11",
+ "num_enum 0.6.1",
  "solana-program",
  "spl-associated-token-account 2.0.0",
  "spl-token 4.0.0",
