@@ -2276,85 +2276,97 @@ where
     }
 
     /// Enable confidential transfer `Deposit` and `Transfer` instructions for a token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_enable_confidential_credits<S: Signer>(
+    pub async fn confidential_transfer_enable_confidential_credits<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 confidential_transfer::instruction::enable_confidential_credits(
                     &self.program_id,
-                    token_account,
-                    &authority.pubkey(),
-                    &[],
+                    account,
+                    authority,
+                    &multisig_signers,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Disable confidential transfer `Deposit` and `Transfer` instructions for a token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_disable_confidential_credits<S: Signer>(
+    pub async fn confidential_transfer_disable_confidential_credits<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 confidential_transfer::instruction::disable_confidential_credits(
                     &self.program_id,
-                    token_account,
-                    &authority.pubkey(),
-                    &[],
+                    account,
+                    authority,
+                    &multisig_signers,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Enable a confidential extension token account to receive non-confidential payments
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_enable_non_confidential_credits<S: Signer>(
+    pub async fn confidential_transfer_enable_non_confidential_credits<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 confidential_transfer::instruction::enable_non_confidential_credits(
                     &self.program_id,
-                    token_account,
-                    &authority.pubkey(),
-                    &[],
+                    account,
+                    authority,
+                    &multisig_signers,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Disable non-confidential payments for a confidential extension token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_disable_non_confidential_credits<S: Signer>(
+    pub async fn confidential_transfer_disable_non_confidential_credits<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 confidential_transfer::instruction::disable_non_confidential_credits(
                     &self.program_id,
-                    token_account,
-                    &authority.pubkey(),
-                    &[],
+                    account,
+                    authority,
+                    &multisig_signers,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
