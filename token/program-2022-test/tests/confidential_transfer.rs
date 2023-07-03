@@ -519,7 +519,6 @@ async fn confidential_enable_disable_confidential_credits() {
     assert!(bool::from(&extension.allow_confidential_credits));
 }
 
-#[cfg(feature = "proof-program")]
 #[tokio::test]
 async fn confidential_transfer_enable_disable_non_confidential_credits() {
     let authority = Keypair::new();
