@@ -1905,29 +1905,28 @@ where
     }
 
     /// Deposit SPL Tokens into the pending balance of a confidential token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_deposit<S: Signer>(
+    pub async fn confidential_transfer_deposit<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        token_authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
         amount: u64,
         decimals: u8,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
-            return Err(TokenError::MaximumDepositTransferAmountExceeded);
-        }
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
             &[confidential_transfer::instruction::deposit(
                 &self.program_id,
-                token_account,
+                account,
                 &self.pubkey,
                 amount,
                 decimals,
-                &token_authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
             )?],
-            &[token_authority],
+            signing_keypairs,
         )
         .await
     }
