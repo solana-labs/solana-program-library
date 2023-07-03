@@ -319,9 +319,10 @@ async fn confidential_transfer_initialize_and_update_mint() {
 
     let err = token
         .confidential_transfer_update_mint(
-            &authority,
+            &authority.pubkey(),
             new_auto_approve_new_accounts,
             new_auditor_elgamal_pubkey,
+            &[&authority],
         )
         .await
         .unwrap_err();
@@ -338,9 +339,10 @@ async fn confidential_transfer_initialize_and_update_mint() {
 
     token
         .confidential_transfer_update_mint(
-            &new_authority,
+            &new_authority.pubkey(),
             new_auto_approve_new_accounts,
             new_auditor_elgamal_pubkey,
+            &[&new_authority],
         )
         .await
         .unwrap();
