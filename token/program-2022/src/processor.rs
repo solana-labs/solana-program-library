@@ -1,7 +1,5 @@
 //! Program state processor
 
-use crate::extension::Extension;
-
 use {
     crate::{
         check_program_account, cmp_pubkeys,
@@ -23,6 +21,7 @@ use {
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
+            AccountType,
             BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
@@ -1248,7 +1247,7 @@ impl Processor {
     ) -> ProgramResult {
         if new_extension_types
             .iter()
-            .any(|&t| t == ExtensionType::MintCloseAuthority || t == ExtensionType::Uninitialized || t == ExtensionType::ConfidentialTransferMint)
+            .any(|&t| t.get_account_type() != AccountType::Account )
         {
             return Err(TokenError::ExtensionTypeMismatch.into());
         }
@@ -7553,6 +7552,18 @@ mod tests {
                     &program_id,
                     &mint_key,
                     &[ExtensionType::MintCloseAuthority]
+                )
+                .unwrap(),
+                vec![&mut invalid_mint_account],
+            ),
+            Err(TokenError::ExtensionTypeMismatch.into())
+        );
+        assert_ne!(
+            do_process_instruction(
+                get_account_data_size(
+                    &program_id,
+                    &mint_key,
+                    &[ExtensionType::MemoTransfer]
                 )
                 .unwrap(),
                 vec![&mut invalid_mint_account],
