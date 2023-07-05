@@ -169,13 +169,12 @@ async fn success_with_seed(activate: bool) {
     let accounts = SinglePoolAccounts::default();
     let rent = context.banks_client.get_rent().await.unwrap();
     let minimum_stake = accounts.initialize(&mut context).await;
-    let alice_default_stake = find_default_deposit_account_address(
-        &accounts.vote_account.pubkey(),
-        &accounts.alice.pubkey(),
-    );
+    let alice_default_stake =
+        find_default_deposit_account_address(&accounts.pool, &accounts.alice.pubkey());
 
     let instructions = instruction::create_and_delegate_user_stake(
         &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice.pubkey(),
         &rent,
         minimum_stake,

@@ -329,6 +329,7 @@ pub fn withdraw_stake(
 /// Uses a fixed address for each wallet and vote account combination to make it easier to find for deposits.
 /// This is an optional helper function; deposits can come from any owned stake account without lockup.
 pub fn create_and_delegate_user_stake(
+    vote_account_address: &Pubkey,
     pool_address: &Pubkey,
     user_wallet: &Pubkey,
     rent: &Rent,
@@ -346,7 +347,7 @@ pub fn create_and_delegate_user_stake(
         &deposit_address,
         user_wallet,
         &deposit_seed,
-        pool_address,
+        vote_account_address,
         &stake::state::Authorized::auto(user_wallet),
         &stake::state::Lockup::default(),
         lamports,
