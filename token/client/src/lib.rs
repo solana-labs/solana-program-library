@@ -1,5 +1,6 @@
 #![allow(clippy::integer_arithmetic)]
 pub mod client;
+pub mod extension_info;
 pub mod output;
 pub mod token;
 

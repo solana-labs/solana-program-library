@@ -9,6 +9,7 @@ version = "0.5.1"
 
 [dependencies]
 async-trait = "0.1"
+bytemuck = { version = "1.13.1", features = ["derive"] }
 futures-util = "0.3"
 solana-cli-output = { version = "1.16.1", optional = true }
 solana-program-test = "1.16.1"

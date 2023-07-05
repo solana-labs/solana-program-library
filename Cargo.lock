@@ -6952,6 +6952,7 @@ name = "spl-token-client"
 version = "0.5.1"
 dependencies = [
  "async-trait",
+ "bytemuck",
  "futures-util",
  "solana-cli-output",
  "solana-program-test",

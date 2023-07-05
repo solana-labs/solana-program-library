@@ -736,7 +736,7 @@ async fn confidential_transfer_deposit() {
         ..
     } = context.token_context.unwrap();
     let alice_meta = ConfidentialTokenAccountMeta::new_with_maximum_pending_balance_credit_counter(
-        &token, &alice, 3,
+        &token, &alice, 2,
     )
     .await;
 
@@ -821,6 +821,18 @@ async fn confidential_transfer_deposit() {
         .await
         .unwrap();
 
+    token
+        .confidential_transfer_apply_pending_balance(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            None,
+            alice_meta.elgamal_keypair.secret(),
+            &alice_meta.aes_key,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
     // try to deposit over maximum allowed value
     let illegal_amount = MAXIMUM_DEPOSIT_TRANSFER_AMOUNT.checked_add(1).unwrap();
 
@@ -868,11 +880,22 @@ async fn confidential_transfer_deposit() {
         .unwrap();
 
     // maximum pending balance credits exceeded
-    let err = token
+    token
         .confidential_transfer_deposit(
             &alice_meta.token_account,
             &alice.pubkey(),
             0,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
+    let err = token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            1,
             decimals,
             &[&alice],
         )
@@ -890,22 +913,6 @@ async fn confidential_transfer_deposit() {
             )
         )))
     );
-
-    token
-        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 0, 65537, 2)
-        .await
-        .unwrap();
-
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    assert_eq!(extension.pending_balance_credit_counter, 0.into());
-    assert_eq!(extension.expected_pending_balance_credit_counter, 2.into());
-    assert_eq!(extension.actual_pending_balance_credit_counter, 2.into());
 }
 
 #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
