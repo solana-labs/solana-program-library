@@ -6963,6 +6963,7 @@ dependencies = [
  "spl-memo 4.0.0",
  "spl-token 4.0.0",
  "spl-token-2022 0.7.0",
+ "spl-token-metadata-interface",
  "spl-transfer-hook-interface",
  "thiserror",
 ]
