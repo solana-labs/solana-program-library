@@ -63,6 +63,8 @@ pub mod non_transferable;
 pub mod permanent_delegate;
 /// Utility to reallocate token accounts
 pub mod reallocate;
+/// Token-metadata extension
+pub mod token_metadata;
 /// Transfer Fee extension
 pub mod transfer_fee;
 /// Transfer Hook extension
@@ -807,6 +809,8 @@ pub enum ExtensionType {
     ConfidentialTransferFeeAmount,
     /// Mint contains a pointer to another account (or the same account) that holds metadata
     MetadataPointer,
+    /// Mint contains token-metadata
+    TokenMetadata,
     /// Test unsized mint extension
     #[cfg(test)]
     UnsizedMintTest = u16::MAX - 2,
@@ -838,6 +842,7 @@ impl ExtensionType {
     /// be added here by hand
     const fn sized(&self) -> bool {
         match self {
+            ExtensionType::TokenMetadata => false,
             #[cfg(test)]
             ExtensionType::UnsizedMintTest => false,
             _ => true,
@@ -879,6 +884,7 @@ impl ExtensionType {
                 pod_get_packed_len::<ConfidentialTransferFeeAmount>()
             }
             ExtensionType::MetadataPointer => pod_get_packed_len::<MetadataPointer>(),
+            ExtensionType::TokenMetadata => unreachable!(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -939,7 +945,8 @@ impl ExtensionType {
             | ExtensionType::PermanentDelegate
             | ExtensionType::TransferHook
             | ExtensionType::ConfidentialTransferFeeConfig
-            | ExtensionType::MetadataPointer => AccountType::Mint,
+            | ExtensionType::MetadataPointer
+            | ExtensionType::TokenMetadata => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
