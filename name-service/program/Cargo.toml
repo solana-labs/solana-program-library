@@ -18,9 +18,10 @@ test-sbf = []
 
 [dependencies]
 solana-program = "1.16.1"
-num-traits = "0.2"
 borsh = "0.10"
+getrandom = { version = "0.2.8", features = ["custom"] }
 num-derive = "0.4.0"
+num-traits = "0.2"
 thiserror = "1.0.41"
 
 [dev-dependencies]

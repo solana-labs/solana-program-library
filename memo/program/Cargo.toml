@@ -17,6 +17,7 @@ solana-program = "1.16.1"
 [dev-dependencies]
 solana-program-test = "1.16.1"
 solana-sdk = "1.16.1"
+getrandom = { version = "0.2.8", features = ["custom"] }
 
 [lib]
 crate-type = ["cdylib", "lib"]
