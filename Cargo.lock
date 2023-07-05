@@ -6873,6 +6873,7 @@ dependencies = [
  "solana-zk-token-sdk",
  "spl-memo 4.0.0",
  "spl-token 4.0.0",
+ "spl-token-metadata-interface",
  "spl-transfer-hook-interface",
  "thiserror",
 ]

@@ -18,7 +18,7 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
-            reallocate,
+            reallocate, token_metadata,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
             BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -40,6 +40,7 @@ use {
         system_instruction, system_program,
         sysvar::{rent::Rent, Sysvar},
     },
+    spl_token_metadata_interface::instruction::TokenMetadataInstruction,
     std::convert::{TryFrom, TryInto},
 };
 
@@ -1457,8 +1458,15 @@ impl Processor {
 
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-        let instruction = TokenInstruction::unpack(input)?;
+        if let Ok(instruction) = TokenMetadataInstruction::unpack(input) {
+            return token_metadata::processor::process_instruction(
+                program_id,
+                accounts,
+                instruction,
+            );
+        }
 
+        let instruction = TokenInstruction::unpack(input)?;
         match instruction {
             TokenInstruction::InitializeMint {
                 decimals,
