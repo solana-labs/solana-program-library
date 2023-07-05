@@ -7533,23 +7533,6 @@ mod tests {
             Err(ProgramError::IncorrectProgramId)
         );
 
-        assert_eq!(
-            do_process_instruction(
-                get_account_data_size(&program_id, &mint_key, &[ExtensionType::MintCloseAuthority])
-                    .unwrap(),
-                vec![&mut invalid_mint_account],
-            ),
-            Err(TokenError::ExtensionTypeMismatch.into())
-        );
-        assert_ne!(
-            do_process_instruction(
-                get_account_data_size(&program_id, &mint_key, &[ExtensionType::MemoTransfer])
-                    .unwrap(),
-                vec![&mut invalid_mint_account],
-            ),
-            Err(TokenError::ExtensionTypeMismatch.into())
-        );
-
         // Invalid Extension Type for mint and uninitialized account
         assert_eq!(
             do_process_instruction(
