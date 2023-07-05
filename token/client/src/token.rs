@@ -1663,20 +1663,24 @@ where
     }
 
     /// Approves a token account for confidential transfers
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_approve_account<S: Signer>(
+    pub async fn confidential_transfer_approve_account<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[confidential_transfer::instruction::approve_account(
                 &self.program_id,
-                token_account,
+                account,
                 &self.pubkey,
-                &authority.pubkey(),
+                authority,
+                &multisig_signers,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }

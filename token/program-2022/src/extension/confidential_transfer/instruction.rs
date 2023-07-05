@@ -459,16 +459,13 @@ pub fn update_mint(
     auditor_elgamal_pubkey: Option<ElGamalPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-
     let mut accounts = vec![
         AccountMeta::new(*mint, false),
         AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
-
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
-
     Ok(encode_instruction(
         token_program_id,
         accounts,
@@ -555,13 +552,17 @@ pub fn approve_account(
     account_to_approve: &Pubkey,
     mint: &Pubkey,
     authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*account_to_approve, false),
         AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(*authority, true),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
     Ok(encode_instruction(
         token_program_id,
         accounts,

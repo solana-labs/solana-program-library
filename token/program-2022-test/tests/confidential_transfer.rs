@@ -421,7 +421,11 @@ async fn confidential_transfer_configure_token_account() {
     );
 
     token
-        .confidential_transfer_approve_account(&alice_meta.token_account, &authority)
+        .confidential_transfer_approve_account(
+            &alice_meta.token_account,
+            &authority.pubkey(),
+            &[&authority],
+        )
         .await
         .unwrap();
 
