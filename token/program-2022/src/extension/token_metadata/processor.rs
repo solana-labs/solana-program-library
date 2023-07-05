@@ -49,6 +49,8 @@ pub fn process_initialize(
 
     // scope the mint authority check, since the mint is in the same account!
     {
+        // This check isn't really needed since we'll be writing into the account,
+        // but auditors like it
         check_program_account(mint_info.owner)?;
         let mint_data = mint_info.try_borrow_data()?;
         let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
