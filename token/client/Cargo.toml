@@ -5,15 +5,15 @@ edition = "2021"
 license = "Apache-2.0"
 name = "spl-token-client"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "0.5.0"
+version = "0.5.1"
 
 [dependencies]
 async-trait = "0.1"
 futures-util = "0.3"
-solana-cli-output = { version = "=1.16.1", optional = true }
-solana-client = "=1.16.1"
-solana-program-test = "=1.16.1"
-solana-sdk = "=1.16.1"
+solana-cli-output = { version = "1.16.1", optional = true }
+solana-program-test = "1.16.1"
+solana-rpc-client = "1.16.1"
+solana-sdk = "1.16.1"
 # We never want the entrypoint for ATA, but we want the entrypoint for token when
 # testing token
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
