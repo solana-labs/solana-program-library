@@ -510,7 +510,7 @@ async fn confidential_transfer_configure_token_account() {
 }
 
 #[tokio::test]
-async fn confidential_enable_disable_confidential_credits() {
+async fn confidential_transfer_enable_disable_confidential_credits() {
     let authority = Keypair::new();
     let auto_approve_new_accounts = true;
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
@@ -528,7 +528,13 @@ async fn confidential_enable_disable_confidential_credits() {
         .await
         .unwrap();
 
-    let TokenContext { token, alice, .. } = context.token_context.unwrap();
+    let TokenContext {
+        token,
+        alice,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
 
     token
@@ -549,6 +555,39 @@ async fn confidential_enable_disable_confidential_credits() {
     assert!(!bool::from(&extension.allow_confidential_credits));
 
     token
+        .mint_to(
+            &alice_meta.token_account,
+            &mint_authority.pubkey(),
+            10,
+            &[&mint_authority],
+        )
+        .await
+        .unwrap();
+
+    let err = token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            10,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(
+                    TokenError::ConfidentialTransferDepositsAndTransfersDisabled as u32
+                )
+            )
+        )))
+    );
+
+    token
         .confidential_transfer_enable_confidential_credits(
             &alice_meta.token_account,
             &alice.pubkey(),
@@ -564,6 +603,17 @@ async fn confidential_enable_disable_confidential_credits() {
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
     assert!(bool::from(&extension.allow_confidential_credits));
+
+    token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            10,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
