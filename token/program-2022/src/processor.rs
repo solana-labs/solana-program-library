@@ -21,8 +21,8 @@ use {
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
-            AccountType,
-            BaseStateWithExtensions, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
+            AccountType, BaseStateWithExtensions, ExtensionType, StateWithExtensions,
+            StateWithExtensionsMut,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
         native_mint,
@@ -1247,7 +1247,7 @@ impl Processor {
     ) -> ProgramResult {
         if new_extension_types
             .iter()
-            .any(|&t| t.get_account_type() != AccountType::Account )
+            .any(|&t| t.get_account_type() != AccountType::Account)
         {
             return Err(TokenError::ExtensionTypeMismatch.into());
         }
@@ -7533,40 +7533,44 @@ mod tests {
             Err(ProgramError::IncorrectProgramId)
         );
 
-        // Invalid Extension Type for mint and uninitialized account
         assert_eq!(
             do_process_instruction(
-                get_account_data_size(
-                    &program_id,
-                    &mint_key,
-                    &[ExtensionType::Uninitialized]
-                )
-                .unwrap(),
-                vec![&mut invalid_mint_account],
-            ),
-            Err(TokenError::ExtensionTypeMismatch.into())
-        );
-        assert_eq!(
-            do_process_instruction(
-                get_account_data_size(
-                    &program_id,
-                    &mint_key,
-                    &[ExtensionType::MintCloseAuthority]
-                )
-                .unwrap(),
+                get_account_data_size(&program_id, &mint_key, &[ExtensionType::MintCloseAuthority])
+                    .unwrap(),
                 vec![&mut invalid_mint_account],
             ),
             Err(TokenError::ExtensionTypeMismatch.into())
         );
         assert_ne!(
             do_process_instruction(
+                get_account_data_size(&program_id, &mint_key, &[ExtensionType::MemoTransfer])
+                    .unwrap(),
+                vec![&mut invalid_mint_account],
+            ),
+            Err(TokenError::ExtensionTypeMismatch.into())
+        );
+
+        // Invalid Extension Type for mint and uninitialized account
+        assert_eq!(
+            do_process_instruction(
+                get_account_data_size(&program_id, &mint_key, &[ExtensionType::Uninitialized])
+                    .unwrap(),
+                vec![&mut mint_account],
+            ),
+            Err(TokenError::ExtensionTypeMismatch.into())
+        );
+        assert_eq!(
+            do_process_instruction(
                 get_account_data_size(
                     &program_id,
                     &mint_key,
-                    &[ExtensionType::MemoTransfer]
+                    &[
+                        ExtensionType::MemoTransfer,
+                        ExtensionType::MintCloseAuthority
+                    ]
                 )
                 .unwrap(),
-                vec![&mut invalid_mint_account],
+                vec![&mut mint_account],
             ),
             Err(TokenError::ExtensionTypeMismatch.into())
         );
