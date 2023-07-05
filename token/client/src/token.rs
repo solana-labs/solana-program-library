@@ -25,6 +25,7 @@ use {
             ExtensionType, StateWithExtensionsOwned,
         },
         instruction, offchain,
+        solana_zk_token_sdk::encryption::{auth_encryption::AeKey, elgamal::ElGamalKeypair},
         solana_zk_token_sdk::{errors::ProofError, zk_token_elgamal::pod::ElGamalPubkey},
         state::{Account, AccountState, Mint, Multisig},
     },
@@ -1620,74 +1621,43 @@ where
         .await
     }
 
-    /// Configures confidential transfers for a token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_configure_token_account<S: Signer>(
+    /// Configures confidential transfers for a token account. If the maximum pending balance
+    /// credit counter for the extension is not provided, then it is set to be a default value of
+    /// `2^16`.
+    pub async fn confidential_transfer_configure_token_account<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
-    ) -> TokenResult<T::Output> {
-        let maximum_pending_balance_credit_counter =
-            2 << confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH;
-
-        self.confidential_transfer_configure_token_account_with_pending_counter(
-            token_account,
-            authority,
-            maximum_pending_balance_credit_counter,
-        )
-        .await
-    }
-
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_configure_token_account_with_pending_counter<S: Signer>(
-        &self,
-        token_account: &Pubkey,
-        authority: &S,
-        maximum_pending_balance_credit_counter: u64,
-    ) -> TokenResult<T::Output> {
-        let elgamal_keypair =
-            ElGamalKeypair::new(authority, token_account).map_err(TokenError::Key)?;
-        let decryptable_zero_balance = AeKey::new(authority, token_account)
-            .map_err(TokenError::Key)?
-            .encrypt(0);
-
-        self.confidential_transfer_configure_token_account_with_pending_counter_and_keypair(
-            token_account,
-            authority,
-            maximum_pending_balance_credit_counter,
-            &elgamal_keypair,
-            decryptable_zero_balance,
-        )
-        .await
-    }
-
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_configure_token_account_with_pending_counter_and_keypair<
-        S: Signer,
-    >(
-        &self,
-        token_account: &Pubkey,
-        authority: &S,
-        maximum_pending_balance_credit_counter: u64,
+        account: &Pubkey,
+        authority: &Pubkey,
+        maximum_pending_balance_credit_counter: Option<u64>,
         elgamal_keypair: &ElGamalKeypair,
-        decryptable_zero_balance: AeCiphertext,
+        aes_key: &AeKey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        const DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER: u64 = 65536;
+
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let maximum_pending_balance_credit_counter = maximum_pending_balance_credit_counter
+            .unwrap_or(DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER);
+
         let proof_data =
             confidential_transfer::instruction::PubkeyValidityData::new(elgamal_keypair)
                 .map_err(TokenError::Proof)?;
+        let decryptable_balance = aes_key.encrypt(0);
 
         self.process_ixs(
             &confidential_transfer::instruction::configure_account(
                 &self.program_id,
-                token_account,
+                account,
                 &self.pubkey,
-                decryptable_zero_balance,
+                decryptable_balance,
                 maximum_pending_balance_credit_counter,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
                 &proof_data,
             )?,
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
