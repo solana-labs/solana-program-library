@@ -4,10 +4,13 @@ use {
     crate::{
         check_program_account,
         error::TokenError,
-        extension::{alloc_and_serialize, StateWithExtensions},
+        extension::{
+            alloc_and_serialize, realloc_and_serialize, BaseStateWithExtensions,
+            StateWithExtensions,
+        },
         state::Mint,
     },
-    borsh::BorshSerialize,
+    borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -24,6 +27,21 @@ use {
         state::{OptionalNonZeroPubkey, TokenMetadata},
     },
 };
+
+fn check_update_authority(
+    update_authority_info: &AccountInfo,
+    expected_update_authority: &OptionalNonZeroPubkey,
+) -> Result<(), ProgramError> {
+    if !update_authority_info.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    let update_authority = Option::<Pubkey>::from(expected_update_authority.clone())
+        .ok_or(TokenMetadataError::ImmutableMetadata)?;
+    if update_authority != *update_authority_info.key {
+        return Err(TokenMetadataError::IncorrectUpdateAuthority.into());
+    }
+    Ok(())
+}
 
 /// Processes a [Initialize](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_initialize(
@@ -81,9 +99,29 @@ pub fn process_initialize(
 /// Processes an [UpdateField](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_update_field(
     _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-    _data: UpdateField,
+    accounts: &[AccountInfo],
+    data: UpdateField,
 ) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let mint_info = next_account_info(account_info_iter)?;
+    let update_authority_info = next_account_info(account_info_iter)?;
+
+    // deserialize the metadata, but scope the data borrow since we'll probably
+    // realloc the account
+    let mut token_metadata = {
+        let buffer = mint_info.try_borrow_data()?;
+        let state = StateWithExtensions::<Mint>::unpack(&buffer)?;
+        TokenMetadata::try_from_slice(state.get_extension_bytes::<TokenMetadata>()?)?
+    };
+
+    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
+
+    // Update the field
+    token_metadata.update(data.field, data.value);
+
+    // Update / realloc the account
+    realloc_and_serialize::<Mint, TokenMetadata>(mint_info, &token_metadata.try_to_vec()?)?;
+
     Ok(())
 }
 
