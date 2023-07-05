@@ -6932,13 +6932,13 @@ dependencies = [
 
 [[package]]
 name = "spl-token-client"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "async-trait",
  "futures-util",
  "solana-cli-output",
- "solana-client",
  "solana-program-test",
+ "solana-rpc-client",
  "solana-sdk",
  "spl-associated-token-account 2.0.0",
  "spl-memo 4.0.0",
