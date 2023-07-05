@@ -6884,6 +6884,7 @@ name = "spl-token-2022-test"
 version = "0.0.1"
 dependencies = [
  "async-trait",
+ "borsh 0.10.3",
  "futures-util",
  "solana-program",
  "solana-program-test",
@@ -6893,6 +6894,7 @@ dependencies = [
  "spl-memo 4.0.0",
  "spl-token-2022 0.7.0",
  "spl-token-client",
+ "spl-token-metadata-interface",
  "spl-transfer-hook-example",
  "spl-transfer-hook-interface",
  "test-case",
@@ -6946,6 +6948,7 @@ dependencies = [
  "spl-memo 4.0.0",
  "spl-token 4.0.0",
  "spl-token-2022 0.7.0",
+ "spl-token-metadata-interface",
  "spl-transfer-hook-interface",
  "thiserror",
 ]

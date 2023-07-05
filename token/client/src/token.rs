@@ -4,6 +4,7 @@ use {
     solana_program_test::tokio::time,
     solana_sdk::{
         account::Account as BaseAccount,
+        borsh::get_instance_packed_len,
         hash::Hash,
         instruction::{AccountMeta, Instruction},
         message::Message,
@@ -28,6 +29,7 @@ use {
         solana_zk_token_sdk::{errors::ProofError, zk_token_elgamal::pod::ElGamalPubkey},
         state::{Account, AccountState, Mint, Multisig},
     },
+    spl_token_metadata_interface::state::TokenMetadata,
     std::{
         fmt, io,
         sync::{Arc, RwLock},
@@ -690,9 +692,10 @@ where
             .ok_or(TokenError::AccountNotFound)
     }
 
-    /// Retrive mint information.
-    pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
-        let account = self.get_account(self.pubkey).await?;
+    fn unpack_mint_info(
+        &self,
+        account: BaseAccount,
+    ) -> TokenResult<StateWithExtensionsOwned<Mint>> {
         if account.owner != self.program_id {
             return Err(TokenError::AccountInvalidOwner);
         }
@@ -707,6 +710,12 @@ where
         }
 
         mint_result
+    }
+
+    /// Retrive mint information.
+    pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
+        let account = self.get_account(self.pubkey).await?;
+        self.unpack_mint_info(account)
     }
 
     /// Retrieve account information.
@@ -2545,5 +2554,82 @@ where
             signing_keypairs,
         )
         .await
+    }
+
+    /// Initialize token-metadata on a mint
+    pub async fn initialize_token_metadata<S: Signers>(
+        &self,
+        update_authority: &Pubkey,
+        mint_authority: &Pubkey,
+        name: String,
+        symbol: String,
+        uri: String,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[spl_token_metadata_interface::instruction::initialize(
+                &self.program_id,
+                &self.pubkey,
+                update_authority,
+                &self.pubkey,
+                mint_authority,
+                name,
+                symbol,
+                uri,
+            )],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Initialize token-metadata on a mint
+    #[allow(clippy::too_many_arguments)]
+    pub async fn initialize_token_metadata_with_rent_transfer<S: Signers>(
+        &self,
+        payer: &Pubkey,
+        update_authority: &Pubkey,
+        mint_authority: &Pubkey,
+        name: String,
+        symbol: String,
+        uri: String,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let account = self.get_account(self.pubkey).await?;
+        let account_lamports = account.lamports;
+        let mint_state = self.unpack_mint_info(account)?;
+        let token_metadata = TokenMetadata {
+            name,
+            symbol,
+            uri,
+            ..Default::default()
+        };
+        let new_space =
+            get_instance_packed_len(&token_metadata).map_err(|e| TokenError::Program(e.into()))?;
+        let new_account_len = mint_state.get_new_account_len::<TokenMetadata>(new_space)?;
+        let new_rent_exempt_minimum = self
+            .client
+            .get_minimum_balance_for_rent_exemption(new_account_len)
+            .await
+            .map_err(TokenError::Client)?;
+        let additional_lamports = new_rent_exempt_minimum.saturating_sub(account_lamports);
+        let mut instructions = vec![];
+        if additional_lamports > 0 {
+            instructions.push(system_instruction::transfer(
+                payer,
+                &self.pubkey,
+                additional_lamports,
+            ));
+        }
+        instructions.push(spl_token_metadata_interface::instruction::initialize(
+            &self.program_id,
+            &self.pubkey,
+            update_authority,
+            &self.pubkey,
+            mint_authority,
+            token_metadata.name,
+            token_metadata.symbol,
+            token_metadata.uri,
+        ));
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 }
