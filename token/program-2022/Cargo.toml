@@ -19,6 +19,7 @@ proof-program = []
 
 [dependencies]
 arrayref = "0.3.7"
+borsh = "0.10"
 bytemuck = { version = "1.13.1", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"

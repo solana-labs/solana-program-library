@@ -6857,6 +6857,7 @@ name = "spl-token-2022"
 version = "0.7.0"
 dependencies = [
  "arrayref",
+ "borsh 0.10.3",
  "bytemuck",
  "lazy_static",
  "num-derive 0.4.0",
