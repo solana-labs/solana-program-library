@@ -270,6 +270,9 @@ fn check_account_type<S: BaseState>(account_type: AccountType) -> Result<(), Pro
 /// that. We do a special case checking for a Multisig length, because those
 /// aren't extensible under any circumstances.
 const BASE_ACCOUNT_LENGTH: usize = Account::LEN;
+/// Helper that tacks on the AccountType length, which gives the minimum for any
+/// account with extensions
+const BASE_ACCOUNT_AND_TYPE_LENGTH: usize = BASE_ACCOUNT_LENGTH + size_of::<AccountType>();
 
 fn type_and_tlv_indices<S: BaseState>(
     rest_input: &[u8],
@@ -370,10 +373,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
         if info.extension_types.is_empty() {
             Ok(S::LEN)
         } else {
-            let total_len = info
-                .used_len
-                .saturating_add(BASE_ACCOUNT_LENGTH)
-                .saturating_add(size_of::<AccountType>());
+            let total_len = info.used_len.saturating_add(BASE_ACCOUNT_AND_TYPE_LENGTH);
             Ok(adjust_len_for_multisig(total_len))
         }
     }
@@ -394,8 +394,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
         // and account type
         let current_len = tlv_info
             .used_len
-            .saturating_add(BASE_ACCOUNT_LENGTH)
-            .saturating_add(size_of::<AccountType>());
+            .saturating_add(BASE_ACCOUNT_AND_TYPE_LENGTH);
         let new_len = if tlv_info.extension_types.is_empty() {
             current_len.saturating_add(new_extension_len)
         } else {
@@ -973,9 +972,7 @@ impl ExtensionType {
             Ok(S::LEN)
         } else {
             let extension_size = Self::try_get_total_tlv_len(extension_types)?;
-            let total_len = extension_size
-                .saturating_add(BASE_ACCOUNT_LENGTH)
-                .saturating_add(size_of::<AccountType>());
+            let total_len = extension_size.saturating_add(BASE_ACCOUNT_AND_TYPE_LENGTH);
             Ok(adjust_len_for_multisig(total_len))
         }
     }
