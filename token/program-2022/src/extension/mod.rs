@@ -369,11 +369,13 @@ pub trait BaseStateWithExtensions<S: BaseState> {
 
     /// Get the total number of bytes used by TLV entries and the base type
     fn try_get_account_len(&self) -> Result<usize, ProgramError> {
-        let info = get_tlv_data_info(self.get_tlv_data())?;
-        if info.extension_types.is_empty() {
+        let tlv_info = get_tlv_data_info(self.get_tlv_data())?;
+        if tlv_info.extension_types.is_empty() {
             Ok(S::LEN)
         } else {
-            let total_len = info.used_len.saturating_add(BASE_ACCOUNT_AND_TYPE_LENGTH);
+            let total_len = tlv_info
+                .used_len
+                .saturating_add(BASE_ACCOUNT_AND_TYPE_LENGTH);
             Ok(adjust_len_for_multisig(total_len))
         }
     }
@@ -1129,7 +1131,7 @@ impl Extension for AccountPaddingTest {
     const TYPE: ExtensionType = ExtensionType::AccountPaddingTest;
 }
 
-/// Packs an unsized extension into a new TLV space
+/// Packs arbitrary bytes for an unsized extension into a new TLV space
 ///
 /// This function reallocates the account as needed to accommodate for the
 /// change in space, then allocates in the TLV buffer, and finally writes the
@@ -1163,7 +1165,7 @@ pub fn alloc_and_serialize<S: BaseState, V: UnsizedExtension>(
     Ok(())
 }
 
-/// Packs an unsized extension into an existing TLV space
+/// Packs arbitrary bytes for an unsized extension into an existing TLV space
 ///
 /// This function reallocates the account as needed to accommodate for the
 /// change in space, then reallocates in the TLV buffer, and finally writes the
@@ -2184,38 +2186,35 @@ mod test {
         let mut buffer = vec![0; account_size];
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
 
-        // allocate for a new extension, new length must include padding, 1 byte
-        // for account type, 2 bytes for type, 2 for length
+        // With a new extension, new length must include padding, 1 byte for
+        // account type, 2 bytes for type, 2 for length
         let current_len = state.try_get_account_len().unwrap();
         assert_eq!(current_len, Mint::LEN);
         let new_len = state
             .try_get_new_account_len::<UnsizedMintTest>(value_len)
             .unwrap();
         assert_eq!(
-            new_len
-                .checked_sub(BASE_ACCOUNT_LENGTH)
-                .and_then(|x| x.checked_sub(size_of::<AccountType>()))
-                .unwrap(),
-            add_type_and_length_to_len(value_len)
+            new_len,
+            BASE_ACCOUNT_AND_TYPE_LENGTH.saturating_add(add_type_and_length_to_len(value_len))
         );
 
         let _ = state.alloc::<UnsizedMintTest>(value_len, false).unwrap();
         let current_len = state.try_get_account_len().unwrap();
         assert_eq!(current_len, new_len);
 
-        // reallocate to smaller
+        // Reduce the extension size
         let new_len = state
             .try_get_new_account_len::<UnsizedMintTest>(value_len - 1)
             .unwrap();
         assert_eq!(current_len.checked_sub(new_len).unwrap(), 1);
 
-        // reallocate to larger
+        // Increase the extension size
         let new_len = state
             .try_get_new_account_len::<UnsizedMintTest>(value_len + 1)
             .unwrap();
         assert_eq!(new_len.checked_sub(current_len).unwrap(), 1);
 
-        // reallocate to same
+        // Maintain the extension size
         let new_len = state
             .try_get_new_account_len::<UnsizedMintTest>(value_len)
             .unwrap();
