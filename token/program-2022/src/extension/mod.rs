@@ -368,7 +368,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     }
 
     /// Get the total number of bytes used by TLV entries and the base type
-    fn get_account_len(&self) -> Result<usize, ProgramError> {
+    fn try_get_account_len(&self) -> Result<usize, ProgramError> {
         let info = get_tlv_data_info(self.get_tlv_data())?;
         if info.extension_types.is_empty() {
             Ok(S::LEN)
@@ -383,7 +383,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     ///
     /// Provides the correct answer regardless if the extension is already present
     /// in the TLV data.
-    fn get_new_account_len<V: UnsizedExtension>(
+    fn try_get_new_account_len<V: UnsizedExtension>(
         &self,
         new_extension_len: usize,
     ) -> Result<usize, ProgramError> {
@@ -1142,7 +1142,7 @@ pub fn alloc_and_serialize<S: BaseState, V: UnsizedExtension>(
     let new_account_len = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        state.get_new_account_len::<V>(value_bytes.len())?
+        state.try_get_new_account_len::<V>(value_bytes.len())?
     };
 
     if previous_account_len < new_account_len {
@@ -1177,7 +1177,7 @@ pub fn realloc_and_serialize<S: BaseState, V: UnsizedExtension>(
     let new_account_len = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        state.get_new_account_len::<V>(new_value_bytes.len())?
+        state.try_get_new_account_len::<V>(new_value_bytes.len())?
     };
 
     if previous_account_len < new_account_len {
@@ -2186,10 +2186,10 @@ mod test {
 
         // allocate for a new extension, new length must include padding, 1 byte
         // for account type, 2 bytes for type, 2 for length
-        let current_len = state.get_account_len().unwrap();
+        let current_len = state.try_get_account_len().unwrap();
         assert_eq!(current_len, Mint::LEN);
         let new_len = state
-            .get_new_account_len::<UnsizedMintTest>(value_len)
+            .try_get_new_account_len::<UnsizedMintTest>(value_len)
             .unwrap();
         assert_eq!(
             new_len
@@ -2200,24 +2200,24 @@ mod test {
         );
 
         let _ = state.alloc::<UnsizedMintTest>(value_len, false).unwrap();
-        let current_len = state.get_account_len().unwrap();
+        let current_len = state.try_get_account_len().unwrap();
         assert_eq!(current_len, new_len);
 
         // reallocate to smaller
         let new_len = state
-            .get_new_account_len::<UnsizedMintTest>(value_len - 1)
+            .try_get_new_account_len::<UnsizedMintTest>(value_len - 1)
             .unwrap();
         assert_eq!(current_len.checked_sub(new_len).unwrap(), 1);
 
         // reallocate to larger
         let new_len = state
-            .get_new_account_len::<UnsizedMintTest>(value_len + 1)
+            .try_get_new_account_len::<UnsizedMintTest>(value_len + 1)
             .unwrap();
         assert_eq!(new_len.checked_sub(current_len).unwrap(), 1);
 
         // reallocate to same
         let new_len = state
-            .get_new_account_len::<UnsizedMintTest>(value_len)
+            .try_get_new_account_len::<UnsizedMintTest>(value_len)
             .unwrap();
         assert_eq!(new_len, current_len);
     }
@@ -2343,7 +2343,7 @@ mod test {
         assert_eq!(extension.metadata_address, max_pubkey);
         let extension_bytes = state.get_extension_bytes::<UnsizedMintTest>().unwrap();
         assert_eq!(extension_bytes, value_bytes);
-        assert_eq!(data.len(), state.get_account_len().unwrap());
+        assert_eq!(data.len(), state.try_get_account_len().unwrap());
 
         // reallocate to larger
         let account_info = (&key, &mut data).into_account_info();
@@ -2356,7 +2356,7 @@ mod test {
         assert_eq!(extension.metadata_address, max_pubkey);
         let extension_bytes = state.get_extension_bytes::<UnsizedMintTest>().unwrap();
         assert_eq!(extension_bytes, value_bytes);
-        assert_eq!(data.len(), state.get_account_len().unwrap());
+        assert_eq!(data.len(), state.try_get_account_len().unwrap());
 
         // reallocate to same
         let account_info = (&key, &mut data).into_account_info();
@@ -2369,6 +2369,6 @@ mod test {
         assert_eq!(extension.metadata_address, max_pubkey);
         let extension_bytes = state.get_extension_bytes::<UnsizedMintTest>().unwrap();
         assert_eq!(extension_bytes, value_bytes);
-        assert_eq!(data.len(), state.get_account_len().unwrap());
+        assert_eq!(data.len(), state.try_get_account_len().unwrap());
     }
 }
