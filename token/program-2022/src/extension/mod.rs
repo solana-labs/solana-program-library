@@ -1155,7 +1155,7 @@ pub fn alloc_and_serialize<S: BaseState, V: UnsizedExtension>(
     let mut buffer = account_info.try_borrow_mut_data()?;
     // write the account type if needed, so that the next unpack works
     if previous_account_len <= BASE_ACCOUNT_LENGTH {
-        buffer[BASE_ACCOUNT_LENGTH] = S::ACCOUNT_TYPE.into();
+        set_account_type::<S>(*buffer)?;
     }
 
     // now alloc in the TLV buffer and write the data
