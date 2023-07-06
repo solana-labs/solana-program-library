@@ -72,7 +72,7 @@
         "chai-as-promised": "^7.1.1",
         "eslint": "^8.20.0",
         "eslint-config-prettier": "^8.5.0",
-        "eslint-plugin-prettier": "^4.2.1",
+        "eslint-plugin-prettier": "^5.0.0-alpha.1",
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^5.0.0",
         "mocha": "^10.1.0",
