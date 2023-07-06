@@ -24,7 +24,7 @@ import {
 ////////////////////////////////////////////////////////////
 
 export const NAME_PROGRAM_ID = new PublicKey(
-  'namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX'
+  'namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX',
 );
 export const HASH_PREFIX = 'SPL Name Service';
 
@@ -50,13 +50,13 @@ export async function createNameRegistry(
   nameOwner: PublicKey,
   lamports?: number,
   nameClass?: PublicKey,
-  parentName?: PublicKey
+  parentName?: PublicKey,
 ): Promise<TransactionInstruction> {
   const hashed_name = await getHashedName(name);
   const nameAccountKey = await getNameAccountKey(
     hashed_name,
     nameClass,
-    parentName
+    parentName,
   );
 
   const balance = lamports
@@ -80,7 +80,7 @@ export async function createNameRegistry(
     new Numberu32(space),
     nameClass,
     parentName,
-    nameParentOwner
+    nameParentOwner,
   );
 
   return createNameInstr;
@@ -102,13 +102,13 @@ export async function updateNameRegistryData(
   offset: number,
   input_data: Buffer,
   nameClass?: PublicKey,
-  nameParent?: PublicKey
+  nameParent?: PublicKey,
 ): Promise<TransactionInstruction> {
   const hashed_name = await getHashedName(name);
   const nameAccountKey = await getNameAccountKey(
     hashed_name,
     nameClass,
-    nameParent
+    nameParent,
   );
 
   let signer: PublicKey;
@@ -125,7 +125,7 @@ export async function updateNameRegistryData(
     new Numberu32(offset),
     input_data,
     signer,
-    nameParent
+    nameParent,
   );
 
   return updateInstr;
@@ -147,13 +147,13 @@ export async function transferNameOwnership(
   name: string,
   newOwner: PublicKey,
   nameClass?: PublicKey,
-  nameParent?: PublicKey
+  nameParent?: PublicKey,
 ): Promise<TransactionInstruction> {
   const hashed_name = await getHashedName(name);
   const nameAccountKey = await getNameAccountKey(
     hashed_name,
     nameClass,
-    nameParent
+    nameParent,
   );
 
   let curentNameOwner: PublicKey;
@@ -171,7 +171,7 @@ export async function transferNameOwnership(
     newOwner,
     curentNameOwner,
     nameClass,
-    nameParent
+    nameParent,
   );
 
   return transferInstr;
@@ -192,13 +192,13 @@ export async function deleteNameRegistry(
   name: string,
   refundTargetKey: PublicKey,
   nameClass?: PublicKey,
-  nameParent?: PublicKey
+  nameParent?: PublicKey,
 ): Promise<TransactionInstruction> {
   const hashed_name = await getHashedName(name);
   const nameAccountKey = await getNameAccountKey(
     hashed_name,
     nameClass,
-    nameParent
+    nameParent,
   );
 
   let nameOwner: PublicKey;
@@ -213,7 +213,7 @@ export async function deleteNameRegistry(
     NAME_PROGRAM_ID,
     nameAccountKey,
     refundTargetKey,
-    nameOwner
+    nameOwner,
   );
 
   return changeAuthoritiesInstr;
@@ -236,13 +236,13 @@ export async function reallocNameAccount(
   space: number,
   payerKey: PublicKey,
   nameClass?: PublicKey,
-  nameParent?: PublicKey
+  nameParent?: PublicKey,
 ): Promise<TransactionInstruction> {
   const hashedName = await getHashedName(name);
   const nameAccountKey = await getNameAccountKey(
     hashedName,
     nameClass,
-    nameParent
+    nameParent,
   );
 
   let nameOwner: PublicKey;
@@ -259,7 +259,7 @@ export async function reallocNameAccount(
     payerKey,
     nameAccountKey,
     nameOwner,
-    new Numberu32(space)
+    new Numberu32(space),
   );
 
   return reallocInstr;

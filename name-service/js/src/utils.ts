@@ -41,7 +41,7 @@ export class Numberu32 extends BN {
         .reverse()
         .map((i) => `00${i.toString(16)}`.slice(-2))
         .join(''),
-      16
+      16,
     );
   }
 }
@@ -73,7 +73,7 @@ export class Numberu64 extends BN {
         .reverse()
         .map((i) => `00${i.toString(16)}`.slice(-2))
         .join(''),
-      16
+      16,
     );
   }
 }
@@ -83,7 +83,7 @@ export const signAndSendTransactionInstructions = async (
   connection: Connection,
   signers: Array<Keypair>,
   feePayer: Keypair,
-  txInstructions: Array<TransactionInstruction>
+  txInstructions: Array<TransactionInstruction>,
 ): Promise<string> => {
   const tx = new Transaction();
   tx.feePayer = feePayer.publicKey;
@@ -101,7 +101,7 @@ export async function getHashedName(name: string): Promise<Buffer> {
 export async function getNameAccountKey(
   hashed_name: Buffer,
   nameClass?: PublicKey,
-  nameParent?: PublicKey
+  nameParent?: PublicKey,
 ): Promise<PublicKey> {
   const seeds = [hashed_name];
   if (nameClass) {
@@ -116,14 +116,14 @@ export async function getNameAccountKey(
   }
   const [nameAccountKey] = await PublicKey.findProgramAddress(
     seeds,
-    NAME_PROGRAM_ID
+    NAME_PROGRAM_ID,
   );
   return nameAccountKey;
 }
 
 export async function getNameOwner(
   connection: Connection,
-  nameAccountKey: PublicKey
+  nameAccountKey: PublicKey,
 ): Promise<NameRegistryState> {
   const nameAccount = await connection.getAccountInfo(nameAccountKey);
   if (!nameAccount) {
@@ -135,7 +135,7 @@ export async function getNameOwner(
 export async function getFilteredProgramAccounts(
   connection: Connection,
   programId: PublicKey,
-  filters
+  filters,
 ): Promise<{ publicKey: PublicKey; accountInfo: AccountInfo<Buffer> }[]> {
   const resp = await connection.getProgramAccounts(programId, {
     commitment: connection.commitment,
@@ -151,6 +151,6 @@ export async function getFilteredProgramAccounts(
         owner: owner,
         lamports,
       },
-    })
+    }),
   );
 }
