@@ -26,12 +26,12 @@ import {
 // Global Variables
 
 export const TWITTER_VERIFICATION_AUTHORITY = new PublicKey(
-  'FvPH7PrVrLGKPfqaf3xJodFTjZriqrAXXLTVWEorTFBi'
+  'FvPH7PrVrLGKPfqaf3xJodFTjZriqrAXXLTVWEorTFBi',
 );
 // The address of the name registry that will be a parent to all twitter handle registries,
 // it should be owned by the TWITTER_VERIFICATION_AUTHORITY and its name is irrelevant
 export const TWITTER_ROOT_PARENT_REGISTRY_KEY = new PublicKey(
-  '4YcexoW3r78zz16J2aqmukBLRwGq6rAvWzJpkYAXqebv'
+  '4YcexoW3r78zz16J2aqmukBLRwGq6rAvWzJpkYAXqebv',
 );
 
 ////////////////////////////////////////////////////
@@ -43,14 +43,14 @@ export async function createVerifiedTwitterRegistry(
   twitterHandle: string,
   verifiedPubkey: PublicKey,
   space: number, // The space that the user will have to write data into the verified registry
-  payerKey: PublicKey
+  payerKey: PublicKey,
 ): Promise<TransactionInstruction[]> {
   // Create user facing registry
   const hashedTwitterHandle = await getHashedName(twitterHandle);
   const twitterHandleRegistryKey = await getNameAccountKey(
     hashedTwitterHandle,
     undefined,
-    TWITTER_ROOT_PARENT_REGISTRY_KEY
+    TWITTER_ROOT_PARENT_REGISTRY_KEY,
   );
 
   let instructions = [
@@ -65,7 +65,7 @@ export async function createVerifiedTwitterRegistry(
       new Numberu32(space),
       undefined,
       TWITTER_ROOT_PARENT_REGISTRY_KEY,
-      TWITTER_VERIFICATION_AUTHORITY // Twitter authority acts as owner of the parent for all user-facing registries
+      TWITTER_VERIFICATION_AUTHORITY, // Twitter authority acts as owner of the parent for all user-facing registries
     ),
   ];
 
@@ -75,8 +75,8 @@ export async function createVerifiedTwitterRegistry(
       twitterHandle,
       twitterHandleRegistryKey,
       verifiedPubkey,
-      payerKey
-    )
+      payerKey,
+    ),
   );
 
   return instructions;
@@ -88,13 +88,13 @@ export async function changeTwitterRegistryData(
   twitterHandle: string,
   verifiedPubkey: PublicKey,
   offset: number, // The offset at which to write the input data into the NameRegistryData
-  input_data: Buffer
+  input_data: Buffer,
 ): Promise<TransactionInstruction[]> {
   const hashedTwitterHandle = await getHashedName(twitterHandle);
   const twitterHandleRegistryKey = await getNameAccountKey(
     hashedTwitterHandle,
     undefined,
-    TWITTER_ROOT_PARENT_REGISTRY_KEY
+    TWITTER_ROOT_PARENT_REGISTRY_KEY,
   );
 
   const instructions = [
@@ -104,7 +104,7 @@ export async function changeTwitterRegistryData(
       new Numberu32(offset),
       input_data,
       verifiedPubkey,
-      undefined
+      undefined,
     ),
   ];
 
@@ -118,13 +118,13 @@ export async function changeVerifiedPubkey(
   twitterHandle: string,
   currentVerifiedPubkey: PublicKey,
   newVerifiedPubkey: PublicKey,
-  payerKey: PublicKey
+  payerKey: PublicKey,
 ): Promise<TransactionInstruction[]> {
   const hashedTwitterHandle = await getHashedName(twitterHandle);
   const twitterHandleRegistryKey = await getNameAccountKey(
     hashedTwitterHandle,
     undefined,
-    TWITTER_ROOT_PARENT_REGISTRY_KEY
+    TWITTER_ROOT_PARENT_REGISTRY_KEY,
   );
 
   // Transfer the user-facing registry ownership
@@ -134,7 +134,7 @@ export async function changeVerifiedPubkey(
       twitterHandleRegistryKey,
       newVerifiedPubkey,
       currentVerifiedPubkey,
-      undefined
+      undefined,
     ),
   ];
 
@@ -145,8 +145,8 @@ export async function changeVerifiedPubkey(
       currentVerifiedPubkey.toString(),
       payerKey,
       TWITTER_VERIFICATION_AUTHORITY,
-      TWITTER_ROOT_PARENT_REGISTRY_KEY
-    )
+      TWITTER_ROOT_PARENT_REGISTRY_KEY,
+    ),
   );
 
   // Create the new reverse registry
@@ -156,8 +156,8 @@ export async function changeVerifiedPubkey(
       twitterHandle,
       twitterHandleRegistryKey,
       newVerifiedPubkey,
-      payerKey
-    )
+      payerKey,
+    ),
   );
 
   return instructions;
@@ -167,20 +167,20 @@ export async function changeVerifiedPubkey(
 // Signed by the verified pubkey
 export async function deleteTwitterRegistry(
   twitterHandle: string,
-  verifiedPubkey: PublicKey
+  verifiedPubkey: PublicKey,
 ): Promise<TransactionInstruction[]> {
   const hashedTwitterHandle = await getHashedName(twitterHandle);
   const twitterHandleRegistryKey = await getNameAccountKey(
     hashedTwitterHandle,
     undefined,
-    TWITTER_ROOT_PARENT_REGISTRY_KEY
+    TWITTER_ROOT_PARENT_REGISTRY_KEY,
   );
 
   const hashedVerifiedPubkey = await getHashedName(verifiedPubkey.toString());
   const reverseRegistryKey = await getNameAccountKey(
     hashedVerifiedPubkey,
     TWITTER_VERIFICATION_AUTHORITY,
-    TWITTER_ROOT_PARENT_REGISTRY_KEY
+    TWITTER_ROOT_PARENT_REGISTRY_KEY,
   );
 
   const instructions = [
@@ -189,14 +189,14 @@ export async function deleteTwitterRegistry(
       NAME_PROGRAM_ID,
       twitterHandleRegistryKey,
       verifiedPubkey,
-      verifiedPubkey
+      verifiedPubkey,
     ),
     // Delete the reverse registry
     deleteInstruction(
       NAME_PROGRAM_ID,
       reverseRegistryKey,
       verifiedPubkey,
-      verifiedPubkey
+      verifiedPubkey,
     ),
   ];
 
@@ -208,47 +208,47 @@ export async function deleteTwitterRegistry(
 
 // Returns the key of the user-facing registry
 export async function getTwitterRegistryKey(
-  twitter_handle: string
+  twitter_handle: string,
 ): Promise<PublicKey> {
   const hashedTwitterHandle = await getHashedName(twitter_handle);
   return await getNameAccountKey(
     hashedTwitterHandle,
     undefined,
-    TWITTER_ROOT_PARENT_REGISTRY_KEY
+    TWITTER_ROOT_PARENT_REGISTRY_KEY,
   );
 }
 
 export async function getTwitterRegistry(
   connection: Connection,
-  twitter_handle: string
+  twitter_handle: string,
 ): Promise<NameRegistryState> {
   const hashedTwitterHandle = await getHashedName(twitter_handle);
   const twitterHandleRegistryKey = await getNameAccountKey(
     hashedTwitterHandle,
     undefined,
-    TWITTER_ROOT_PARENT_REGISTRY_KEY
+    TWITTER_ROOT_PARENT_REGISTRY_KEY,
   );
   const registry = NameRegistryState.retrieve(
     connection,
-    twitterHandleRegistryKey
+    twitterHandleRegistryKey,
   );
   return registry;
 }
 
 export async function getHandleAndRegistryKey(
   connection: Connection,
-  verifiedPubkey: PublicKey
+  verifiedPubkey: PublicKey,
 ): Promise<[string, PublicKey]> {
   const hashedVerifiedPubkey = await getHashedName(verifiedPubkey.toString());
   const reverseRegistryKey = await getNameAccountKey(
     hashedVerifiedPubkey,
     TWITTER_VERIFICATION_AUTHORITY,
-    TWITTER_ROOT_PARENT_REGISTRY_KEY
+    TWITTER_ROOT_PARENT_REGISTRY_KEY,
   );
 
   const reverseRegistryState = await ReverseTwitterRegistryState.retrieve(
     connection,
-    reverseRegistryKey
+    reverseRegistryKey,
   );
   return [
     reverseRegistryState.twitterHandle,
@@ -259,7 +259,7 @@ export async function getHandleAndRegistryKey(
 // Uses the RPC node filtering feature, execution speed may vary
 export async function getTwitterHandleandRegistryKeyViaFilters(
   connection: Connection,
-  verifiedPubkey: PublicKey
+  verifiedPubkey: PublicKey,
 ): Promise<[string, PublicKey]> {
   const filters = [
     {
@@ -285,7 +285,7 @@ export async function getTwitterHandleandRegistryKeyViaFilters(
   const filteredAccounts = await getFilteredProgramAccounts(
     connection,
     NAME_PROGRAM_ID,
-    filters
+    filters,
   );
 
   for (const f of filteredAccounts) {
@@ -294,7 +294,7 @@ export async function getTwitterHandleandRegistryKeyViaFilters(
       const state: ReverseTwitterRegistryState = deserialize(
         ReverseTwitterRegistryState.schema,
         ReverseTwitterRegistryState,
-        data
+        data,
       );
       return [state.twitterHandle, new PublicKey(state.twitterRegistryKey)];
     }
@@ -306,7 +306,7 @@ export async function getTwitterHandleandRegistryKeyViaFilters(
 // Does not give you the handle, but is an alternative to getHandlesAndKeysFromVerifiedPubkey + getTwitterRegistry to get the data
 export async function getTwitterRegistryData(
   connection: Connection,
-  verifiedPubkey: PublicKey
+  verifiedPubkey: PublicKey,
 ): Promise<Buffer> {
   const filters = [
     {
@@ -332,7 +332,7 @@ export async function getTwitterRegistryData(
   const filteredAccounts = await getFilteredProgramAccounts(
     connection,
     NAME_PROGRAM_ID,
-    filters
+    filters,
   );
 
   if (filteredAccounts.length > 1) {
@@ -340,7 +340,7 @@ export async function getTwitterRegistryData(
   }
 
   return filteredAccounts[0].accountInfo.data.slice(
-    NameRegistryState.HEADER_LEN
+    NameRegistryState.HEADER_LEN,
   );
 }
 
@@ -370,11 +370,11 @@ export class ReverseTwitterRegistryState {
 
   public static async retrieve(
     connection: Connection,
-    reverseTwitterAccountKey: PublicKey
+    reverseTwitterAccountKey: PublicKey,
   ): Promise<ReverseTwitterRegistryState> {
     const reverseTwitterAccount = await connection.getAccountInfo(
       reverseTwitterAccountKey,
-      'processed'
+      'processed',
     );
     if (!reverseTwitterAccount) {
       throw new Error('Invalid reverse Twitter account provided');
@@ -383,7 +383,7 @@ export class ReverseTwitterRegistryState {
     const res: ReverseTwitterRegistryState = deserializeUnchecked(
       this.schema,
       ReverseTwitterRegistryState,
-      reverseTwitterAccount.data.slice(NameRegistryState.HEADER_LEN)
+      reverseTwitterAccount.data.slice(NameRegistryState.HEADER_LEN),
     );
 
     return res;
@@ -395,21 +395,21 @@ export async function createReverseTwitterRegistry(
   twitterHandle: string,
   twitterRegistryKey: PublicKey,
   verifiedPubkey: PublicKey,
-  payerKey: PublicKey
+  payerKey: PublicKey,
 ): Promise<TransactionInstruction[]> {
   // Create the reverse lookup registry
   const hashedVerifiedPubkey = await getHashedName(verifiedPubkey.toString());
   const reverseRegistryKey = await getNameAccountKey(
     hashedVerifiedPubkey,
     TWITTER_VERIFICATION_AUTHORITY,
-    TWITTER_ROOT_PARENT_REGISTRY_KEY
+    TWITTER_ROOT_PARENT_REGISTRY_KEY,
   );
   const reverseTwitterRegistryStateBuff = serialize(
     ReverseTwitterRegistryState.schema,
     new ReverseTwitterRegistryState({
       twitterRegistryKey: twitterRegistryKey.toBytes(),
       twitterHandle,
-    })
+    }),
   );
   return [
     createInstruction(
@@ -421,13 +421,13 @@ export async function createReverseTwitterRegistry(
       hashedVerifiedPubkey,
       new Numberu64(
         await connection.getMinimumBalanceForRentExemption(
-          reverseTwitterRegistryStateBuff.length
-        )
+          reverseTwitterRegistryStateBuff.length,
+        ),
       ),
       new Numberu32(reverseTwitterRegistryStateBuff.length),
       TWITTER_VERIFICATION_AUTHORITY, // Twitter authority acts as class for all reverse-lookup registries
       TWITTER_ROOT_PARENT_REGISTRY_KEY, // Reverse registries are also children of the root
-      TWITTER_VERIFICATION_AUTHORITY
+      TWITTER_VERIFICATION_AUTHORITY,
     ),
     updateInstruction(
       NAME_PROGRAM_ID,
@@ -435,7 +435,7 @@ export async function createReverseTwitterRegistry(
       new Numberu32(0),
       Buffer.from(reverseTwitterRegistryStateBuff),
       TWITTER_VERIFICATION_AUTHORITY,
-      undefined
+      undefined,
     ),
   ];
 }
