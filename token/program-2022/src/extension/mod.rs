@@ -2274,8 +2274,9 @@ mod test {
             )
         }
     }
+
     #[test]
-    fn alloc_new_tlv_in_account_info() {
+    fn alloc_new_tlv_in_account_info_from_base_size() {
         const VALUE_LEN: usize = 10;
         let base_account_size = Mint::LEN;
         let mut buffer = vec![0; base_account_size];
@@ -2289,14 +2290,59 @@ mod test {
         let value_bytes = [255; VALUE_LEN];
 
         alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
-        let new_account_len =
-            BASE_ACCOUNT_LENGTH + size_of::<AccountType>() + add_type_and_length_to_len(VALUE_LEN);
+        let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH + add_type_and_length_to_len(VALUE_LEN);
         assert_eq!(data.len(), new_account_len);
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         assert_eq!(
             state.get_extension_bytes::<UnsizedMintTest>().unwrap(),
             value_bytes
         );
+
+        // alloc again fails
+        let account_info = (&key, &mut data).into_account_info();
+        assert_eq!(
+            alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap_err(),
+            TokenError::ExtensionAlreadyInitialized.into()
+        );
+    }
+
+    #[test]
+    fn alloc_new_tlv_in_account_info_from_extended_size() {
+        const VALUE_LEN: usize = 10;
+        let account_size =
+            ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MetadataPointer])
+                .unwrap()
+                + add_type_and_length_to_len(VALUE_LEN);
+        let mut buffer = vec![0; account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+
+        let test_key =
+            OptionalNonZeroPubkey::try_from(Some(Pubkey::new_from_array([20; 32]))).unwrap();
+        let extension = state.init_extension::<MetadataPointer>(false).unwrap();
+        extension.authority = test_key;
+        extension.metadata_address = test_key;
+
+        let mut data = SolanaAccountData::new(&buffer);
+        let key = Pubkey::new_unique();
+        let account_info = (&key, &mut data).into_account_info();
+        let value_bytes = [255; VALUE_LEN];
+
+        alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+        let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH
+            + add_type_and_length_to_len(VALUE_LEN)
+            + add_type_and_length_to_len(size_of::<MetadataPointer>());
+        assert_eq!(data.len(), new_account_len);
+        let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
+        assert_eq!(
+            state.get_extension_bytes::<UnsizedMintTest>().unwrap(),
+            value_bytes
+        );
+        let extension = state.get_extension::<MetadataPointer>().unwrap();
+        assert_eq!(extension.authority, test_key);
+        assert_eq!(extension.metadata_address, test_key);
 
         // alloc again fails
         let account_info = (&key, &mut data).into_account_info();
