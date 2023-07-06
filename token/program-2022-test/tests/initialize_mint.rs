@@ -111,7 +111,8 @@ async fn fail_extension_after_mint_init() {
     let mint_authority_pubkey = Pubkey::new_unique();
 
     let space =
-        ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -196,7 +197,8 @@ async fn fail_init_overallocated_mint() {
     let mint_authority_pubkey = Pubkey::new_unique();
 
     let space =
-        ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -242,9 +244,10 @@ async fn fail_account_init_after_mint_extension() {
     let mint_authority_pubkey = Pubkey::new_unique();
     let token_account = Keypair::new();
 
-    let mint_space = ExtensionType::try_get_account_len::<Mint>(&[]).unwrap();
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[]).unwrap();
     let account_space =
-        ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -312,7 +315,7 @@ async fn fail_account_init_after_mint_init() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let mint_space = ExtensionType::try_get_account_len::<Mint>(&[]).unwrap();
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -365,7 +368,8 @@ async fn fail_account_init_after_mint_init_with_extension() {
     let mint_authority_pubkey = Pubkey::new_unique();
 
     let mint_space =
-        ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -424,7 +428,8 @@ async fn fail_fee_init_after_mint_init() {
     let mint_authority_pubkey = Pubkey::new_unique();
 
     let space =
-        ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]).unwrap();
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::TransferFeeConfig])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -532,7 +537,7 @@ async fn fail_invalid_extensions_combination() {
     .unwrap();
 
     // initialize transfer fee and confidential transfers, but no confidential transfer fee
-    let mint_space = ExtensionType::try_get_account_len::<Mint>(&[
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
     ])
@@ -573,7 +578,7 @@ async fn fail_invalid_extensions_combination() {
     );
 
     // initialize transfer fee and confidential transfer fees, but no confidential transfers
-    let mint_space = ExtensionType::try_get_account_len::<Mint>(&[
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferFeeConfig,
     ])
@@ -615,7 +620,7 @@ async fn fail_invalid_extensions_combination() {
 
     // initialize all of transfer fee, confidential transfers, and confidential transfer fees
     // (success case)
-    let mint_space = ExtensionType::try_get_account_len::<Mint>(&[
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
         ExtensionType::ConfidentialTransferFeeConfig,

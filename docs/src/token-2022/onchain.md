@@ -147,7 +147,7 @@ use spl_token_2022::{extension::ExtensionType, instruction::*, state::Mint};
 use solana_sdk::{system_instruction, transaction::Transaction};
 
 // Calculate the space required using the `ExtensionType`
-let space = ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
+let space = ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
 
 // get the Rent object and calculate the rent required
 let rent_required = rent.minimum_balance(space);
@@ -175,7 +175,7 @@ use spl_token_2022::{extension::ExtensionType, instruction::*, state::Account};
 use solana_sdk::{system_instruction, transaction::Transaction};
 
 // Calculate the space required using the `ExtensionType`
-let space = ExtensionType::try_get_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap();
+let space = ExtensionType::try_calculate_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap();
 
 // get the Rent object and calculate the rent required
 let rent_required = rent.minimum_balance(space);
@@ -498,15 +498,15 @@ extension to the token accounts.
 Instead of:
 
 ```rust
-let mint_space = ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
-let account_space = ExtensionType::try_get_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap();
+let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
+let account_space = ExtensionType::try_calculate_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap();
 ```
 
 We'll do:
 
 ```rust
-let mint_space = ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority, ExtensionType::TransferFeeConfig]).unwrap();
-let account_space = ExtensionType::try_get_account_len::<Account>(&[ExtensionType::ImmutableOwner, ExtensionType::TransferFeeAmount]).unwrap();
+let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority, ExtensionType::TransferFeeConfig]).unwrap();
+let account_space = ExtensionType::try_calculate_account_len::<Account>(&[ExtensionType::ImmutableOwner, ExtensionType::TransferFeeAmount]).unwrap();
 ```
 
 And during initialization of the mint, we'll add in the instruction to initialize
@@ -725,7 +725,7 @@ use spl_token_2022::{extension::ExtensionType, instruction::*, state::Mint};
 use solana_sdk::{system_instruction, transaction::Transaction};
 
 // Calculate the space required using the `ExtensionType`
-let space = ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
+let space = ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]).unwrap();
 
 // get the Rent object and calculate the rent required
 let rent_required = rent.minimum_balance(space);

@@ -109,7 +109,8 @@ async fn reallocate() {
     let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
-        ExtensionType::try_get_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap()
+        ExtensionType::try_calculate_account_len::<Account>(&[ExtensionType::ImmutableOwner])
+            .unwrap()
     );
 
     // reallocate succeeds with noop if account is already large enough
@@ -126,7 +127,8 @@ async fn reallocate() {
     let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
-        ExtensionType::try_get_account_len::<Account>(&[ExtensionType::ImmutableOwner]).unwrap()
+        ExtensionType::try_calculate_account_len::<Account>(&[ExtensionType::ImmutableOwner])
+            .unwrap()
     );
 
     // reallocate only reallocates enough for new extension, and dedupes extensions
@@ -147,7 +149,7 @@ async fn reallocate() {
     let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
-        ExtensionType::try_get_account_len::<Account>(&[
+        ExtensionType::try_calculate_account_len::<Account>(&[
             ExtensionType::ImmutableOwner,
             ExtensionType::TransferFeeAmount
         ])
@@ -190,7 +192,7 @@ async fn reallocate_without_current_extension_knowledge() {
     let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
-        ExtensionType::try_get_account_len::<Account>(&[
+        ExtensionType::try_calculate_account_len::<Account>(&[
             ExtensionType::TransferFeeAmount,
             ExtensionType::ImmutableOwner
         ])
@@ -264,7 +266,7 @@ async fn reallocate_updates_native_rent_exemption(
     let account = token.get_account(alice_account).await.unwrap();
     assert_eq!(
         account.data.len(),
-        ExtensionType::try_get_account_len::<Account>(extensions).unwrap()
+        ExtensionType::try_calculate_account_len::<Account>(extensions).unwrap()
     );
     let expected_rent_exempt_reserve = {
         let mut context = context.lock().await;

@@ -94,7 +94,7 @@ pub async fn create_mint(
 ) -> Result<(), TransportError> {
     assert!(extension_types.is_empty() || program_id != &spl_token::id());
     let rent = banks_client.get_rent().await.unwrap();
-    let space = ExtensionType::try_get_account_len::<Mint>(extension_types).unwrap();
+    let space = ExtensionType::try_calculate_account_len::<Mint>(extension_types).unwrap();
     let mint_rent = rent.minimum_balance(space);
     let mint_pubkey = pool_mint.pubkey();
 
@@ -225,7 +225,7 @@ pub async fn create_token_account(
     extensions: &[ExtensionType],
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
-    let space = ExtensionType::try_get_account_len::<Account>(extensions).unwrap();
+    let space = ExtensionType::try_calculate_account_len::<Account>(extensions).unwrap();
     let account_rent = rent.minimum_balance(space);
 
     let mut instructions = vec![system_instruction::create_account(
