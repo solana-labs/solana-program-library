@@ -109,26 +109,29 @@ If not, it reads the next 4-byte length. If the discriminator matches, it return
 the next `length` bytes. If not, it jumps ahead `length` bytes and reads the
 next 8-byte discriminator.
 
-## Unsized serialization integration
+## Serialization of variable-length types
 
 The initial example works using the `bytemuck` crate for zero-copy serialization
-and deserialization. It's possible to use Borsh by implementing the `UnsizedPack`
+and deserialization. It's possible to use Borsh by implementing the `VariableLenPack`
 trait on your type.
 
 ```rust
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::borsh::{get_instance_packed_len, try_from_slice_unchecked},
-    spl_type_length_value::{state::{TlvState, TlvStateMut}, unsized_pack::UnsizedPack},
+    spl_type_length_value::{
+        state::{TlvState, TlvStateMut},
+        variable_len_pack::VariableLenPack
+    },
 };
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
-struct MyUnsizedType {
+struct MyVariableLenType {
     data: String, // variable length type
 }
-impl SplDiscriminate for MyUnsizedType {
+impl SplDiscriminate for MyVariableLenType {
     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([5; ArrayDiscriminator::LENGTH]);
 }
-impl UnsizedPack for MyUnsizedType {
+impl VariableLenPack for MyVariableLenType {
     fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
         borsh::to_writer(&mut dst[..], self).map_err(Into::into)
     }
@@ -152,11 +155,11 @@ let mut buffer = vec![0; account_size];
 let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
 // No need to hold onto the bytes since we'll serialize back into the right place
-let _ = state.allocate::<MyUnsizedType>(tlv_size).unwrap();
-let my_unsized = MyUnsizedType {
+let _ = state.allocate::<MyVariableLenType>(tlv_size).unwrap();
+let my_variable_len = MyVariableLenType {
     data: initial_data.to_string()
 };
-state.pack_unsized_value(&my_unsized).unwrap();
-let deser = state.get_unsized_value::<MyUnsizedType>().unwrap();
-assert_eq!(deser, my_unsized);
+state.pack_variable_len_value(&my_variable_len).unwrap();
+let deser = state.get_variable_len_value::<MyVariableLenType>().unwrap();
+assert_eq!(deser, my_variable_len);
 ```
