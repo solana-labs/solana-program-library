@@ -660,7 +660,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         Ok(&mut self.tlv_data[value_start..new_value_end])
     }
 
-    /// Allocate the given number of bytes for the given unsized extension
+    /// Allocate the given number of bytes for the given variable-length extension
     ///
     /// This can only be used for variable-sized types, such as `String` or `Vec`.
     /// `Pod` types must use `init_extension`
@@ -861,7 +861,7 @@ pub enum ExtensionType {
     MetadataPointer,
     /// Mint contains token-metadata
     TokenMetadata,
-    /// Test unsized mint extension
+    /// Test variable-length mint extension
     #[cfg(test)]
     VariableLenMintTest = u16::MAX - 2,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
@@ -888,8 +888,8 @@ impl From<ExtensionType> for [u8; 2] {
 impl ExtensionType {
     /// Returns true if the given extension type is sized
     ///
-    /// Most extension types should be sized, so any unsized extension types should
-    /// be added here by hand
+    /// Most extension types should be sized, so any variable-length extension
+    /// types should be added here by hand
     const fn sized(&self) -> bool {
         match self {
             ExtensionType::TokenMetadata => false,
@@ -901,7 +901,7 @@ impl ExtensionType {
 
     /// Get the data length of the type associated with the enum
     ///
-    /// Fails if the extension type is unsized
+    /// Fails if the extension type has a variable length
     fn try_get_type_len(&self) -> Result<usize, ProgramError> {
         if !self.sized() {
             return Err(ProgramError::InvalidArgument);
@@ -946,14 +946,14 @@ impl ExtensionType {
 
     /// Get the TLV length for an ExtensionType
     ///
-    /// Fails if the extension type is unsized
+    /// Fails if the extension type has a variable length
     fn try_get_tlv_len(&self) -> Result<usize, ProgramError> {
         Ok(add_type_and_length_to_len(self.try_get_type_len()?))
     }
 
     /// Get the TLV length for a set of ExtensionTypes
     ///
-    /// Fails if any of the extension types is unsized
+    /// Fails if any of the extension types has a variable length
     fn try_get_total_tlv_len(extension_types: &[Self]) -> Result<usize, ProgramError> {
         // dedupe extensions
         let mut extensions = vec![];
@@ -967,7 +967,7 @@ impl ExtensionType {
 
     /// Get the required account data length for the given ExtensionTypes
     ///
-    /// Fails if any of the extension types is unsized
+    /// Fails if any of the extension types has a variable length
     pub fn try_calculate_account_len<S: BaseState>(
         extension_types: &[Self],
     ) -> Result<usize, ProgramError> {
@@ -1127,7 +1127,7 @@ impl Extension for AccountPaddingTest {
     const TYPE: ExtensionType = ExtensionType::AccountPaddingTest;
 }
 
-/// Packs arbitrary bytes for an unsized extension into a new TLV space
+/// Packs arbitrary bytes for a variable-length extension into a new TLV space
 ///
 /// This function reallocates the account as needed to accommodate for the
 /// change in space, then allocates in the TLV buffer, and finally writes the
@@ -1161,7 +1161,7 @@ pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     Ok(())
 }
 
-/// Packs arbitrary bytes for an unsized extension into an existing TLV space
+/// Packs arbitrary bytes for a variable-length extension into an existing TLV space
 ///
 /// This function reallocates the account as needed to accommodate for the
 /// change in space, then reallocates in the TLV buffer, and finally writes the
@@ -1235,11 +1235,9 @@ mod test {
         fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
             Ok(())
         }
-
         fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
             Ok(Self {})
         }
-
         fn get_packed_len(&self) -> Result<usize, ProgramError> {
             Ok(0)
         }
