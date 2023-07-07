@@ -1227,19 +1227,35 @@ mod test {
 
     /// Test variable-length struct
     #[derive(Clone, Debug, PartialEq)]
-    struct VariableLenMintTest;
+    struct VariableLenMintTest {
+        data: Vec<u8>,
+    }
     impl Extension for VariableLenMintTest {
         const TYPE: ExtensionType = ExtensionType::VariableLenMintTest;
     }
     impl VariableLenPack for VariableLenMintTest {
         fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
-            Ok(())
+            let data_start = size_of::<u64>();
+            let end = data_start + self.data.len();
+            if dst.len() < end {
+                Err(ProgramError::InvalidAccountData)
+            } else {
+                dst[..data_start].copy_from_slice(&self.data.len().to_le_bytes());
+                dst[data_start..end].copy_from_slice(&self.data);
+                Ok(())
+            }
         }
         fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-            Ok(Self {})
+            let data_start = size_of::<u64>();
+            let length = u64::from_le_bytes(src[..data_start].try_into().unwrap()) as usize;
+            if src[data_start..data_start + length].len() != length {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            let data = Vec::from(&src[data_start..data_start + length]);
+            Ok(Self { data })
         }
         fn get_packed_len(&self) -> Result<usize, ProgramError> {
-            Ok(0)
+            Ok(size_of::<u64>().saturating_add(self.data.len()))
         }
     }
 
@@ -2104,7 +2120,8 @@ mod test {
 
     #[test]
     fn alloc() {
-        let alloc_size = 1;
+        let variable_len = VariableLenMintTest { data: vec![1] };
+        let alloc_size = variable_len.get_packed_len().unwrap();
         let account_size =
             BASE_ACCOUNT_LENGTH + size_of::<AccountType>() + add_type_and_length_to_len(alloc_size);
         let mut buffer = vec![0; account_size];
