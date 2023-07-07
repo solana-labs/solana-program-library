@@ -40,11 +40,11 @@ pub trait SplDiscriminate {
 
 The `SplDiscriminate` derive macro is a particularly useful tool for those who wish to derive their 8-byte discriminator from a particular string literal. Typically, you would have to run a hash function against the string literal, then copy the first 8 bytes, and then hard-code those bytes into a statement like the one above.
 
-Instead, you can simply annotate a struct or enum with `SplDiscriminate` and provide a **namespace** via the `discriminator_namespace` attribute, and the macro will automatically derive the 8-byte discriminator for you!
+Instead, you can simply annotate a struct or enum with `SplDiscriminate` and provide a **hash input** via the `discriminator_hash_input` attribute, and the macro will automatically derive the 8-byte discriminator for you!
 
 ```rust
-#[derive(SplDiscriminate)] // Implements `SplDiscriminate` for your struct/enum using your declared string literal namespace
-#[discriminator_namespace("some_discriminator_namespace")]
+#[derive(SplDiscriminate)] // Implements `SplDiscriminate` for your struct/enum using your declared string literal hash_input
+#[discriminator_hash_input("some_discriminator_hash_input")]
 pub struct MyInstruction1 {
     arg1: String,
     arg2: u8,
