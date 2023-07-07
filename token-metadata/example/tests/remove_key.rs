@@ -111,7 +111,7 @@ async fn success_remove() {
     );
     let fetched_metadata_state = TlvStateBorrowed::unpack(&fetched_metadata_account.data).unwrap();
     let fetched_metadata = fetched_metadata_state
-        .borsh_deserialize::<TokenMetadata>()
+        .get_unsized_value::<TokenMetadata>()
         .unwrap();
     assert_eq!(fetched_metadata, token_metadata);
 
