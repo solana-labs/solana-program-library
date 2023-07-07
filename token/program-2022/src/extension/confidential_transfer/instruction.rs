@@ -454,16 +454,18 @@ pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
     auto_approve_new_accounts: bool,
     auditor_elgamal_pubkey: Option<ElGamalPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*mint, false),
-        AccountMeta::new_readonly(*authority, true),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
-
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
     Ok(encode_instruction(
         token_program_id,
         accounts,
@@ -519,7 +521,6 @@ pub fn inner_configure_account(
 /// Create a `ConfigureAccount` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
-#[cfg(feature = "proof-program")]
 pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -541,8 +542,7 @@ pub fn configure_account(
             multisig_signers,
             1,
         )?,
-        #[cfg(feature = "proof-program")]
-        verify_pubkey_validity(proof_data),
+        verify_pubkey_validity(None, proof_data),
     ])
 }
 
@@ -552,13 +552,17 @@ pub fn approve_account(
     account_to_approve: &Pubkey,
     mint: &Pubkey,
     authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*account_to_approve, false),
         AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(*authority, true),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
     Ok(encode_instruction(
         token_program_id,
         accounts,

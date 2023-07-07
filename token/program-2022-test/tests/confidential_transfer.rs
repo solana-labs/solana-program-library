@@ -6,31 +6,25 @@ use {
     program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
-        instruction::InstructionError, signature::Signer, signer::keypair::Keypair,
+        instruction::InstructionError, pubkey::Pubkey, signature::Signer, signer::keypair::Keypair,
         transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
         error::TokenError,
+        extension::{confidential_transfer::ConfidentialTransferAccount, ExtensionType},
         extension::{confidential_transfer::ConfidentialTransferMint, BaseStateWithExtensions},
         instruction,
-        solana_zk_token_sdk::encryption::elgamal::*,
+        solana_zk_token_sdk::encryption::{auth_encryption::*, elgamal::*},
     },
-    spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
+    spl_token_client::{
+        client::SendTransaction,
+        token::{ExtensionInitializationParams, Token, TokenError as TokenClientError},
+    },
     std::convert::TryInto,
 };
 
 #[cfg(feature = "proof-program")]
-use {
-    solana_sdk::{pubkey::Pubkey, signature::Signer},
-    spl_token_2022::{
-        extension::{
-            confidential_transfer::{ConfidentialTransferAccount, EncryptedWithheldAmount},
-            ExtensionType,
-        },
-        solana_zk_token_sdk::{encryption::auth_encryption::*, zk_token_elgamal::pod::Zeroable},
-    },
-    spl_token_client::{client::SendTransaction, token::Token},
-};
+use spl_token_2022::solana_zk_token_sdk::zk_token_elgamal::pod::Zeroable;
 
 #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
 use {solana_sdk::epoch_info::EpochInfo, spl_token_2022::solana_zk_token_sdk::zk_token_elgamal};
@@ -54,14 +48,12 @@ fn test_epoch_info() -> EpochInfo {
     }
 }
 
-#[cfg(feature = "proof-program")]
 struct ConfidentialTokenAccountMeta {
     token_account: Pubkey,
     elgamal_keypair: ElGamalKeypair,
-    ae_key: AeKey,
+    aes_key: AeKey,
 }
 
-#[cfg(feature = "proof-program")]
 impl ConfidentialTokenAccountMeta {
     async fn new<T>(token: &Token<T>, owner: &Keypair) -> Self
     where
@@ -78,14 +70,18 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
         let token_account = token_account_keypair.pubkey();
 
-        let elgamal_keypair = ElGamalKeypair::new(owner, &token_account).unwrap();
-        let ae_key = AeKey::new(owner, &token_account).unwrap();
+        let elgamal_keypair =
+            ElGamalKeypair::new_from_signer(owner, &token_account.to_bytes()).unwrap();
+        let aes_key = AeKey::new_from_signer(owner, &token_account.to_bytes()).unwrap();
 
         token
-            .confidential_transfer_configure_token_account_with_pending_counter(
+            .confidential_transfer_configure_token_account(
                 &token_account,
-                owner,
-                TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
+                &owner.pubkey(),
+                None,
+                &elgamal_keypair,
+                &aes_key,
+                &[owner],
             )
             .await
             .unwrap();
@@ -93,11 +89,11 @@ impl ConfidentialTokenAccountMeta {
         Self {
             token_account,
             elgamal_keypair,
-            ae_key,
+            aes_key,
         }
     }
 
-    #[cfg(feature = "zk-ops")]
+    #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
     async fn new_with_required_memo_transfers<T>(token: &Token<T>, owner: &Keypair) -> Self
     where
         T: SendTransaction,
@@ -116,14 +112,18 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
         let token_account = token_account_keypair.pubkey();
 
-        let elgamal_keypair = ElGamalKeypair::new(owner, &token_account).unwrap();
-        let ae_key = AeKey::new(owner, &token_account).unwrap();
+        let elgamal_keypair =
+            ElGamalKeypair::new_from_signer(owner, &token_account.to_bytes()).unwrap();
+        let aes_key = AeKey::new_from_signer(owner, &token_account.to_bytes()).unwrap();
 
         token
-            .confidential_transfer_configure_token_account_with_pending_counter(
+            .confidential_transfer_configure_token_account(
                 &token_account,
-                owner,
-                TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
+                &owner.pubkey(),
+                None,
+                &elgamal_keypair,
+                &aes_key,
+                &[owner],
             )
             .await
             .unwrap();
@@ -136,7 +136,7 @@ impl ConfidentialTokenAccountMeta {
         Self {
             token_account,
             elgamal_keypair,
-            ae_key,
+            aes_key,
         }
     }
 
@@ -319,9 +319,10 @@ async fn confidential_transfer_initialize_and_update_mint() {
 
     let err = token
         .confidential_transfer_update_mint(
-            &authority,
+            &authority.pubkey(),
             new_auto_approve_new_accounts,
             new_auditor_elgamal_pubkey,
+            &[&authority],
         )
         .await
         .unwrap_err();
@@ -338,9 +339,10 @@ async fn confidential_transfer_initialize_and_update_mint() {
 
     token
         .confidential_transfer_update_mint(
-            &new_authority,
+            &new_authority.pubkey(),
             new_auto_approve_new_accounts,
             new_auditor_elgamal_pubkey,
+            &[&new_authority],
         )
         .await
         .unwrap();
@@ -377,25 +379,20 @@ async fn confidential_transfer_initialize_and_update_mint() {
     assert_eq!(extension.authority, None.try_into().unwrap());
 }
 
-#[cfg(feature = "proof-program")]
 #[tokio::test]
-async fn ct_configure_token_account() {
-    let ConfidentialTransferMintWithKeypairs {
-        ct_mint,
-        ct_mint_authority,
-        ..
-    } = ConfidentialTransferMintWithKeypairs::without_auto_approve();
+async fn confidential_transfer_configure_token_account() {
+    let authority = Keypair::new();
+    let auto_approve_new_accounts = false;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
 
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: ct_mint.authority.into(),
-                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
-                auditor_elgamal_pubkey: ct_mint.auditor_elgamal_pubkey.into(),
-                withdraw_withheld_authority_elgamal_pubkey: ct_mint
-                    .withdraw_withheld_authority_elgamal_pubkey
-                    .into(),
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
             },
         ])
         .await
@@ -403,6 +400,7 @@ async fn ct_configure_token_account() {
 
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
+    let alice_elgamal_pubkey = (*alice_meta.elgamal_keypair.pubkey()).into();
 
     let state = token
         .get_account_info(&alice_meta.token_account)
@@ -413,20 +411,21 @@ async fn ct_configure_token_account() {
         .unwrap();
     assert!(!bool::from(&extension.approved));
     assert!(bool::from(&extension.allow_confidential_credits));
-    assert_eq!(
-        extension.elgamal_pubkey,
-        alice_meta.elgamal_keypair.public.into()
-    );
+    assert_eq!(extension.elgamal_pubkey, alice_elgamal_pubkey);
     assert_eq!(
         alice_meta
-            .ae_key
+            .aes_key
             .decrypt(&(extension.decryptable_available_balance.try_into().unwrap()))
             .unwrap(),
         0
     );
 
     token
-        .confidential_transfer_approve_account(&alice_meta.token_account, &ct_mint_authority)
+        .confidential_transfer_approve_account(
+            &alice_meta.token_account,
+            &authority.pubkey(),
+            &[&authority],
+        )
         .await
         .unwrap();
 
@@ -441,10 +440,13 @@ async fn ct_configure_token_account() {
 
     // Configuring an already initialized account should produce an error
     let err = token
-        .confidential_transfer_configure_token_account_with_pending_counter(
+        .confidential_transfer_configure_token_account(
             &alice_meta.token_account,
-            &alice,
-            TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER,
+            &alice.pubkey(),
+            None,
+            &alice_meta.elgamal_keypair,
+            &alice_meta.aes_key,
+            &[&alice],
         )
         .await
         .unwrap_err();
