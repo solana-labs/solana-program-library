@@ -185,8 +185,12 @@ fn get_tlv_data_info(tlv_data: &[u8]) -> Result<TlvDataInfo, ProgramError> {
     while start_index < tlv_data.len() {
         let tlv_indices = get_tlv_indices(start_index);
         if tlv_data.len() < tlv_indices.length_start {
-            // not enough bytes to store the type, malformed
-            return Err(ProgramError::InvalidAccountData);
+            // There aren't enough bytes to store the next type, which means we
+            // got to the end. The last byte could be used during a realloc!
+            return Ok(TlvDataInfo {
+                extension_types,
+                used_len: tlv_indices.type_start,
+            });
         }
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
@@ -624,6 +628,19 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         Ok(extension_ref)
     }
 
+    /// Reallocate and overwite the TLV entry for the given variable-length
+    /// extension.
+    ///
+    /// Returns an error if the extension is not present, or if this is not enough
+    /// space in the buffer.
+    pub fn realloc_variable_len_extension<V: Extension + VariableLenPack>(
+        &mut self,
+        new_value: &V,
+    ) -> Result<(), ProgramError> {
+        let data = self.realloc::<V>(new_value.get_packed_len()?)?;
+        new_value.pack_into_slice(data)
+    }
+
     /// Reallocate the TLV entry for the given extension to the given number of bytes.
     ///
     /// If the new length is smaller, it will compact the rest of the buffer and zero out
@@ -632,7 +649,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     ///
     /// Returns an error if the extension is not present, or if this is not enough
     /// space in the buffer.
-    pub fn realloc<V: Extension + VariableLenPack>(
+    fn realloc<V: Extension + VariableLenPack>(
         &mut self,
         length: usize,
     ) -> Result<&mut [u8], ProgramError> {
@@ -1188,14 +1205,14 @@ pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
 /// bytes.
 pub fn realloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     account_info: &AccountInfo,
-    new_value_bytes: &[u8],
+    new_value: &V,
 ) -> Result<(), ProgramError> {
     let previous_account_len = account_info.try_data_len()?;
-    let new_value_len = new_value_bytes.len();
+    let new_value_len = new_value.get_packed_len()?;
     let new_account_len = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        state.try_get_new_account_len::<V>(new_value_bytes.len())?
+        state.try_get_new_account_len::<V>(new_value_len)?
     };
 
     if previous_account_len < new_account_len {
@@ -1203,26 +1220,17 @@ pub fn realloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
         account_info.realloc(new_account_len, false)?;
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-        let data = state.realloc::<V>(new_value_len)?;
-        data.copy_from_slice(new_value_bytes);
+        state.realloc_variable_len_extension(new_value)?;
     } else {
         // do it backwards otherwise, write the state, realloc TLV, then the account
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-        let data = state.get_extension_bytes_mut::<V>()?;
-
-        // This check avoids a panic in the next line, but it shouldn't ever happen
-        if data.len() < new_value_len {
-            return Err(ProgramError::AccountDataTooSmall);
-        }
-        data[..new_value_len].copy_from_slice(new_value_bytes);
+        state.realloc_variable_len_extension(new_value)?;
 
         let removed_bytes = previous_account_len
             .checked_sub(new_account_len)
             .ok_or(ProgramError::AccountDataTooSmall)?;
         if removed_bytes > 0 {
-            // we decreased the size, so need to realloc the TLV, then the account
-            state.realloc::<V>(new_value_len)?;
             // this is probably fine, but be safe and avoid invalidating references
             drop(buffer);
             account_info.realloc(new_account_len, false)?;
@@ -2084,13 +2092,10 @@ mod test {
 
         assert_eq!(state.get_extension_types().unwrap(), vec![]);
 
-        // malformed since there aren't two bytes for the type
+        // OK, there aren't two bytes for the type, but that's fine
         let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 2];
         let state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        assert_eq!(
-            state.get_extension_types().unwrap_err(),
-            ProgramError::InvalidAccountData
-        );
+        assert_eq!(state.get_extension_types().unwrap(), []);
     }
 
     #[test]
@@ -2182,19 +2187,28 @@ mod test {
 
     #[test]
     fn realloc() {
-        let variable_len = VariableLenMintTest { data: vec![] };
-        const BIG_SIZE: usize = 18;
-        const SMALL_SIZE: usize = 10;
+        let small_variable_len = VariableLenMintTest {
+            data: vec![1, 2, 3],
+        };
+        let base_variable_len = VariableLenMintTest {
+            data: vec![1, 2, 3, 4],
+        };
+        let big_variable_len = VariableLenMintTest {
+            data: vec![1, 2, 3, 4, 5],
+        };
+        let too_big_variable_len = VariableLenMintTest {
+            data: vec![1, 2, 3, 4, 5, 6],
+        };
         let account_size =
             ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MetadataPointer])
                 .unwrap()
-                + add_type_and_length_to_len(BIG_SIZE);
+                + add_type_and_length_to_len(big_variable_len.get_packed_len().unwrap());
         let mut buffer = vec![0; account_size];
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
 
         // alloc both types
         state
-            .init_variable_len_extension(&variable_len, false)
+            .init_variable_len_extension(&base_variable_len, false)
             .unwrap();
         let max_pubkey =
             OptionalNonZeroPubkey::try_from(Some(Pubkey::new_from_array([255; 32]))).unwrap();
@@ -2202,28 +2216,39 @@ mod test {
         extension.authority = max_pubkey;
         extension.metadata_address = max_pubkey;
 
-        // realloc first entry to larger, new bytes are all 0
-        let data = state.realloc::<VariableLenMintTest>(BIG_SIZE).unwrap();
-        assert_eq!(data, [0; BIG_SIZE]);
+        // realloc first entry to larger
+        state
+            .realloc_variable_len_extension(&big_variable_len)
+            .unwrap();
+        let extension = state
+            .get_variable_len_extension::<VariableLenMintTest>()
+            .unwrap();
+        assert_eq!(extension, big_variable_len);
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
         assert_eq!(extension.metadata_address, max_pubkey);
 
-        // realloc to smaller, removed bytes are all 0
-        let data = state.realloc::<VariableLenMintTest>(SMALL_SIZE).unwrap();
-        assert_eq!(data, [0; SMALL_SIZE]);
+        // realloc to smaller
+        state
+            .realloc_variable_len_extension(&small_variable_len)
+            .unwrap();
+        let extension = state
+            .get_variable_len_extension::<VariableLenMintTest>()
+            .unwrap();
+        assert_eq!(extension, small_variable_len);
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
         assert_eq!(extension.metadata_address, max_pubkey);
-        const DIFF: usize = BIG_SIZE - SMALL_SIZE;
-        assert_eq!(&buffer[account_size - DIFF..account_size], [0; DIFF]);
+        let diff = big_variable_len.get_packed_len().unwrap()
+            - small_variable_len.get_packed_len().unwrap();
+        assert_eq!(&buffer[account_size - diff..account_size], vec![0; diff]);
 
         // unpack again since we dropped the last `state`
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         // realloc too much, fails
         assert_eq!(
             state
-                .realloc::<VariableLenMintTest>(BIG_SIZE + 1)
+                .realloc_variable_len_extension(&too_big_variable_len)
                 .unwrap_err(),
             ProgramError::InvalidAccountData,
         );
@@ -2418,8 +2443,6 @@ mod test {
             data: vec![1, 2, 3, 4, 5],
         };
         let alloc_size = variable_len.get_packed_len().unwrap();
-        const BIG_SIZE: usize = 18;
-        const SMALL_SIZE: usize = 10;
         let account_size =
             ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MetadataPointer])
                 .unwrap()
@@ -2444,41 +2467,51 @@ mod test {
         let mut data = SolanaAccountData::new(&buffer);
         let key = Pubkey::new_unique();
         let account_info = (&key, &mut data).into_account_info();
-        let value_bytes = [1; SMALL_SIZE];
-        realloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes).unwrap();
+        let variable_len = VariableLenMintTest { data: vec![1, 2] };
+        realloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
         assert_eq!(extension.metadata_address, max_pubkey);
-        let extension_bytes = state.get_extension_bytes::<VariableLenMintTest>().unwrap();
-        assert_eq!(extension_bytes, value_bytes);
+        let extension = state
+            .get_variable_len_extension::<VariableLenMintTest>()
+            .unwrap();
+        assert_eq!(extension, variable_len);
         assert_eq!(data.len(), state.try_get_account_len().unwrap());
 
         // reallocate to larger
         let account_info = (&key, &mut data).into_account_info();
-        let value_bytes = [2; BIG_SIZE];
-        realloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes).unwrap();
+        let variable_len = VariableLenMintTest {
+            data: vec![1, 2, 3, 4, 5, 6, 7],
+        };
+        realloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
         assert_eq!(extension.metadata_address, max_pubkey);
-        let extension_bytes = state.get_extension_bytes::<VariableLenMintTest>().unwrap();
-        assert_eq!(extension_bytes, value_bytes);
+        let extension = state
+            .get_variable_len_extension::<VariableLenMintTest>()
+            .unwrap();
+        assert_eq!(extension, variable_len);
         assert_eq!(data.len(), state.try_get_account_len().unwrap());
 
         // reallocate to same
         let account_info = (&key, &mut data).into_account_info();
-        let value_bytes = [3; BIG_SIZE];
-        realloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes).unwrap();
+        let variable_len = VariableLenMintTest {
+            data: vec![7, 6, 5, 4, 3, 2, 1],
+        };
+        realloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
         assert_eq!(extension.metadata_address, max_pubkey);
-        let extension_bytes = state.get_extension_bytes::<VariableLenMintTest>().unwrap();
-        assert_eq!(extension_bytes, value_bytes);
+        let extension = state
+            .get_variable_len_extension::<VariableLenMintTest>()
+            .unwrap();
+        assert_eq!(extension, variable_len);
         assert_eq!(data.len(), state.try_get_account_len().unwrap());
     }
 }
