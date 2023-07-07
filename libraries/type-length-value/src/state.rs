@@ -5,7 +5,7 @@ use {
         error::TlvError,
         length::Length,
         pod::{pod_from_bytes, pod_from_bytes_mut},
-        unsized_pack::UnsizedPack,
+        variable_len_pack::VariableLenPack,
     },
     bytemuck::Pod,
     solana_program::{account_info::AccountInfo, program_error::ProgramError},
@@ -197,8 +197,10 @@ pub trait TlvState {
         pod_from_bytes::<V>(data)
     }
 
-    /// Unpacks a portion of the TLV data as the desired unsized type
-    fn get_unsized_value<V: SplDiscriminate + UnsizedPack>(&self) -> Result<V, ProgramError> {
+    /// Unpacks a portion of the TLV data as the desired variable-length type
+    fn get_variable_len_value<V: SplDiscriminate + VariableLenPack>(
+        &self,
+    ) -> Result<V, ProgramError> {
         let data = get_bytes::<V>(self.get_data())?;
         V::unpack_from_slice(data)
     }
@@ -310,9 +312,9 @@ impl<'data> TlvStateMut<'data> {
         Ok(extension_ref)
     }
 
-    /// Packs an unsized value into its appropriate data segment. Assumes that
+    /// Packs a variable-length value into its appropriate data segment. Assumes that
     /// space has already been allocated for the given type
-    pub fn pack_unsized_value<V: SplDiscriminate + UnsizedPack>(
+    pub fn pack_variable_len_value<V: SplDiscriminate + VariableLenPack>(
         &mut self,
         value: &V,
     ) -> Result<(), ProgramError> {
@@ -407,9 +409,9 @@ impl<'a> TlvState for TlvStateMut<'a> {
     }
 }
 
-/// Packs an unsized value into an existing TLV space, reallocating
+/// Packs a variable-length value into an existing TLV space, reallocating
 /// the account and TLV as needed to accommodate for any change in space
-pub fn realloc_and_pack_unsized<V: SplDiscriminate + UnsizedPack>(
+pub fn realloc_and_pack_variable_len<V: SplDiscriminate + VariableLenPack>(
     account_info: &AccountInfo,
     value: &V,
 ) -> Result<(), ProgramError> {
@@ -433,12 +435,12 @@ pub fn realloc_and_pack_unsized<V: SplDiscriminate + UnsizedPack>(
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = TlvStateMut::unpack(&mut buffer)?;
         state.realloc::<V>(new_length)?;
-        state.pack_unsized_value(value)?;
+        state.pack_variable_len_value(value)?;
     } else {
         // do it backwards otherwise, write the state, realloc TLV, then the account
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = TlvStateMut::unpack(&mut buffer)?;
-        state.pack_unsized_value(value)?;
+        state.pack_variable_len_value(value)?;
         let removed_bytes = previous_length
             .checked_sub(new_length)
             .ok_or(ProgramError::AccountDataTooSmall)?;
@@ -891,25 +893,33 @@ mod test {
     }
 
     #[derive(Clone, Debug, PartialEq)]
-    struct TestUnsized {
+    struct TestVariableLen {
         data: String, // test with a variable length type
     }
-    impl SplDiscriminate for TestUnsized {
+    impl SplDiscriminate for TestVariableLen {
         const SPL_DISCRIMINATOR: ArrayDiscriminator =
             ArrayDiscriminator::new([5; ArrayDiscriminator::LENGTH]);
     }
-    impl UnsizedPack for TestUnsized {
+    impl VariableLenPack for TestVariableLen {
         fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
-            dst[..8].copy_from_slice(&self.data.len().to_le_bytes());
-            dst[8..].copy_from_slice(self.data.as_bytes());
-            Ok(())
+            let bytes = self.data.as_bytes();
+            let end = 8 + bytes.len();
+            if dst.len() < end {
+                Err(ProgramError::InvalidAccountData)
+            } else {
+                dst[..8].copy_from_slice(&self.data.len().to_le_bytes());
+                dst[8..end].copy_from_slice(bytes);
+                Ok(())
+            }
         }
         fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-            let length = u64::from_le_bytes(src[..8].try_into().unwrap());
-            if src[8..].len() != length as usize {
+            let length = u64::from_le_bytes(src[..8].try_into().unwrap()) as usize;
+            if src[8..8 + length].len() != length {
                 return Err(ProgramError::InvalidAccountData);
             }
-            let data = std::str::from_utf8(&src[8..]).unwrap().to_string();
+            let data = std::str::from_utf8(&src[8..8 + length])
+                .unwrap()
+                .to_string();
             Ok(Self { data })
         }
         fn get_packed_len(&self) -> Result<usize, ProgramError> {
@@ -917,7 +927,7 @@ mod test {
         }
     }
     #[test]
-    fn unsized_value() {
+    fn variable_len_value() {
         let initial_data = "This is a pretty cool test!";
         // exactly the right size
         let tlv_size = 8 + initial_data.len();
@@ -926,19 +936,19 @@ mod test {
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         // don't actually need to hold onto the data!
-        let _ = state.alloc::<TestUnsized>(tlv_size).unwrap();
-        let test_unsized = TestUnsized {
+        let _ = state.alloc::<TestVariableLen>(tlv_size).unwrap();
+        let test_variable_len = TestVariableLen {
             data: initial_data.to_string(),
         };
-        state.pack_unsized_value(&test_unsized).unwrap();
-        let deser = state.get_unsized_value::<TestUnsized>().unwrap();
-        assert_eq!(deser, test_unsized);
+        state.pack_variable_len_value(&test_variable_len).unwrap();
+        let deser = state.get_variable_len_value::<TestVariableLen>().unwrap();
+        assert_eq!(deser, test_variable_len);
 
         // writing too much data fails
         let too_much_data = "This is a pretty cool test!?";
         assert_eq!(
             state
-                .pack_unsized_value(&TestUnsized {
+                .pack_variable_len_value(&TestVariableLen {
                     data: too_much_data.to_string(),
                 })
                 .unwrap_err(),
