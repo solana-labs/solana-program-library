@@ -320,7 +320,7 @@ impl<'data> TlvStateMut<'data> {
     ) -> Result<(), ProgramError> {
         let data = self.get_bytes_mut::<V>()?;
         // NOTE: Do *not* use `pack`, since the length check will cause
-        // reallocations to smaller sizes fail
+        // reallocations to smaller sizes to fail
         value.pack_into_slice(data)
     }
 
