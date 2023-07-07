@@ -30,6 +30,7 @@ use {
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack},
     },
+    spl_type_length_value::variable_len_pack::VariableLenPack,
     std::{
         cmp::Ordering,
         convert::{TryFrom, TryInto},
@@ -385,7 +386,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     ///
     /// Provides the correct answer regardless if the extension is already present
     /// in the TLV data.
-    fn try_get_new_account_len<V: UnsizedExtension>(
+    fn try_get_new_account_len<V: Extension + VariableLenPack>(
         &self,
         new_extension_len: usize,
     ) -> Result<usize, ProgramError> {
@@ -611,7 +612,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     ///
     /// Returns an error if the extension is not present, or if this is not enough
     /// space in the buffer.
-    pub fn realloc<V: UnsizedExtension>(
+    pub fn realloc<V: Extension + VariableLenPack>(
         &mut self,
         length: usize,
     ) -> Result<&mut [u8], ProgramError> {
@@ -663,7 +664,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     ///
     /// This can only be used for variable-sized types, such as `String` or `Vec`.
     /// `Pod` types must use `init_extension`
-    pub fn alloc<V: UnsizedExtension>(
+    pub fn alloc<V: Extension + VariableLenPack>(
         &mut self,
         length: usize,
         overwrite: bool,
@@ -862,7 +863,7 @@ pub enum ExtensionType {
     TokenMetadata,
     /// Test unsized mint extension
     #[cfg(test)]
-    UnsizedMintTest = u16::MAX - 2,
+    VariableLenMintTest = u16::MAX - 2,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest,
@@ -893,7 +894,7 @@ impl ExtensionType {
         match self {
             ExtensionType::TokenMetadata => false,
             #[cfg(test)]
-            ExtensionType::UnsizedMintTest => false,
+            ExtensionType::VariableLenMintTest => false,
             _ => true,
         }
     }
@@ -939,7 +940,7 @@ impl ExtensionType {
             #[cfg(test)]
             ExtensionType::MintPaddingTest => pod_get_packed_len::<MintPaddingTest>(),
             #[cfg(test)]
-            ExtensionType::UnsizedMintTest => unreachable!(),
+            ExtensionType::VariableLenMintTest => unreachable!(),
         })
     }
 
@@ -1003,7 +1004,7 @@ impl ExtensionType {
             | ExtensionType::CpiGuard
             | ExtensionType::ConfidentialTransferFeeAmount => AccountType::Account,
             #[cfg(test)]
-            ExtensionType::UnsizedMintTest => AccountType::Mint,
+            ExtensionType::VariableLenMintTest => AccountType::Mint,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
@@ -1087,11 +1088,6 @@ pub trait Extension {
     const TYPE: ExtensionType;
 }
 
-/// Trait to be implemented by any unsized extension.
-///
-/// Prevents calling the raw `alloc` function for sized types.
-pub trait UnsizedExtension: Extension {}
-
 /// Padding a mint account to be exactly Multisig::LEN.
 /// We need to pad 185 bytes, since Multisig::LEN = 355, Account::LEN = 165,
 /// size_of AccountType = 1, size_of ExtensionType = 2, size_of Length = 2.
@@ -1136,7 +1132,7 @@ impl Extension for AccountPaddingTest {
 /// This function reallocates the account as needed to accommodate for the
 /// change in space, then allocates in the TLV buffer, and finally writes the
 /// bytes.
-pub fn alloc_and_serialize<S: BaseState, V: UnsizedExtension>(
+pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     account_info: &AccountInfo,
     value_bytes: &[u8],
 ) -> Result<(), ProgramError> {
@@ -1170,7 +1166,7 @@ pub fn alloc_and_serialize<S: BaseState, V: UnsizedExtension>(
 /// This function reallocates the account as needed to accommodate for the
 /// change in space, then reallocates in the TLV buffer, and finally writes the
 /// bytes.
-pub fn realloc_and_serialize<S: BaseState, V: UnsizedExtension>(
+pub fn realloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     account_info: &AccountInfo,
     new_value_bytes: &[u8],
 ) -> Result<(), ProgramError> {
@@ -1229,13 +1225,25 @@ mod test {
         transfer_fee::test::test_transfer_fee_config,
     };
 
-    /// Test unsized struct
+    /// Test variable-length struct
     #[derive(Clone, Debug, PartialEq)]
-    struct UnsizedMintTest;
-    impl Extension for UnsizedMintTest {
-        const TYPE: ExtensionType = ExtensionType::UnsizedMintTest;
+    struct VariableLenMintTest;
+    impl Extension for VariableLenMintTest {
+        const TYPE: ExtensionType = ExtensionType::VariableLenMintTest;
     }
-    impl UnsizedExtension for UnsizedMintTest {}
+    impl VariableLenPack for VariableLenMintTest {
+        fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
+            Ok(())
+        }
+
+        fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+            Ok(Self {})
+        }
+
+        fn get_packed_len(&self) -> Result<usize, ProgramError> {
+            Ok(0)
+        }
+    }
 
     const MINT_WITH_EXTENSION: &[u8] = &[
         1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -2088,7 +2096,7 @@ mod test {
         assert_eq!(
             ExtensionType::try_calculate_account_len::<Mint>(&[
                 ExtensionType::MintCloseAuthority,
-                ExtensionType::UnsizedMintTest,
+                ExtensionType::VariableLenMintTest,
                 ExtensionType::TransferFeeConfig,
             ])
             .unwrap_err(),
@@ -2103,23 +2111,27 @@ mod test {
             BASE_ACCOUNT_LENGTH + size_of::<AccountType>() + add_type_and_length_to_len(alloc_size);
         let mut buffer = vec![0; account_size];
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        let _ = state.alloc::<UnsizedMintTest>(alloc_size, false).unwrap();
+        let _ = state
+            .alloc::<VariableLenMintTest>(alloc_size, false)
+            .unwrap();
 
         // can't double alloc
         assert_eq!(
             state
-                .alloc::<UnsizedMintTest>(alloc_size, false)
+                .alloc::<VariableLenMintTest>(alloc_size, false)
                 .unwrap_err(),
             TokenError::ExtensionAlreadyInitialized.into()
         );
 
         // unless overwrite is set
-        state.alloc::<UnsizedMintTest>(alloc_size, true).unwrap();
+        state
+            .alloc::<VariableLenMintTest>(alloc_size, true)
+            .unwrap();
 
         // can't change the size during overwrite though
         assert_eq!(
             state
-                .alloc::<UnsizedMintTest>(alloc_size - 1, true)
+                .alloc::<VariableLenMintTest>(alloc_size - 1, true)
                 .unwrap_err(),
             TokenError::InvalidLengthForAlloc.into()
         );
@@ -2127,7 +2139,7 @@ mod test {
         // try to write too far, fail earlier
         assert_eq!(
             state
-                .alloc::<UnsizedMintTest>(alloc_size + 1, true)
+                .alloc::<VariableLenMintTest>(alloc_size + 1, true)
                 .unwrap_err(),
             ProgramError::InvalidAccountData
         );
@@ -2146,7 +2158,9 @@ mod test {
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
 
         // alloc both types
-        let _ = state.alloc::<UnsizedMintTest>(ALLOC_SIZE, false).unwrap();
+        let _ = state
+            .alloc::<VariableLenMintTest>(ALLOC_SIZE, false)
+            .unwrap();
         let max_pubkey =
             OptionalNonZeroPubkey::try_from(Some(Pubkey::new_from_array([255; 32]))).unwrap();
         let extension = state.init_extension::<MetadataPointer>(false).unwrap();
@@ -2154,14 +2168,14 @@ mod test {
         extension.metadata_address = max_pubkey;
 
         // realloc first entry to larger, new bytes are all 0
-        let data = state.realloc::<UnsizedMintTest>(BIG_SIZE).unwrap();
+        let data = state.realloc::<VariableLenMintTest>(BIG_SIZE).unwrap();
         assert_eq!(data, [0; BIG_SIZE]);
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
         assert_eq!(extension.metadata_address, max_pubkey);
 
         // realloc to smaller, removed bytes are all 0
-        let data = state.realloc::<UnsizedMintTest>(SMALL_SIZE).unwrap();
+        let data = state.realloc::<VariableLenMintTest>(SMALL_SIZE).unwrap();
         assert_eq!(data, [0; SMALL_SIZE]);
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
@@ -2173,7 +2187,9 @@ mod test {
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         // realloc too much, fails
         assert_eq!(
-            state.realloc::<UnsizedMintTest>(BIG_SIZE + 1).unwrap_err(),
+            state
+                .realloc::<VariableLenMintTest>(BIG_SIZE + 1)
+                .unwrap_err(),
             ProgramError::InvalidAccountData,
         );
     }
@@ -2191,32 +2207,34 @@ mod test {
         let current_len = state.try_get_account_len().unwrap();
         assert_eq!(current_len, Mint::LEN);
         let new_len = state
-            .try_get_new_account_len::<UnsizedMintTest>(value_len)
+            .try_get_new_account_len::<VariableLenMintTest>(value_len)
             .unwrap();
         assert_eq!(
             new_len,
             BASE_ACCOUNT_AND_TYPE_LENGTH.saturating_add(add_type_and_length_to_len(value_len))
         );
 
-        let _ = state.alloc::<UnsizedMintTest>(value_len, false).unwrap();
+        let _ = state
+            .alloc::<VariableLenMintTest>(value_len, false)
+            .unwrap();
         let current_len = state.try_get_account_len().unwrap();
         assert_eq!(current_len, new_len);
 
         // Reduce the extension size
         let new_len = state
-            .try_get_new_account_len::<UnsizedMintTest>(value_len - 1)
+            .try_get_new_account_len::<VariableLenMintTest>(value_len - 1)
             .unwrap();
         assert_eq!(current_len.checked_sub(new_len).unwrap(), 1);
 
         // Increase the extension size
         let new_len = state
-            .try_get_new_account_len::<UnsizedMintTest>(value_len + 1)
+            .try_get_new_account_len::<VariableLenMintTest>(value_len + 1)
             .unwrap();
         assert_eq!(new_len.checked_sub(current_len).unwrap(), 1);
 
         // Maintain the extension size
         let new_len = state
-            .try_get_new_account_len::<UnsizedMintTest>(value_len)
+            .try_get_new_account_len::<VariableLenMintTest>(value_len)
             .unwrap();
         assert_eq!(new_len, current_len);
     }
@@ -2289,19 +2307,20 @@ mod test {
         let account_info = (&key, &mut data).into_account_info();
         let value_bytes = [255; VALUE_LEN];
 
-        alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+        alloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes).unwrap();
         let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH + add_type_and_length_to_len(VALUE_LEN);
         assert_eq!(data.len(), new_account_len);
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         assert_eq!(
-            state.get_extension_bytes::<UnsizedMintTest>().unwrap(),
+            state.get_extension_bytes::<VariableLenMintTest>().unwrap(),
             value_bytes
         );
 
         // alloc again fails
         let account_info = (&key, &mut data).into_account_info();
         assert_eq!(
-            alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap_err(),
+            alloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes)
+                .unwrap_err(),
             TokenError::ExtensionAlreadyInitialized.into()
         );
     }
@@ -2330,14 +2349,14 @@ mod test {
         let account_info = (&key, &mut data).into_account_info();
         let value_bytes = [255; VALUE_LEN];
 
-        alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+        alloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes).unwrap();
         let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH
             + add_type_and_length_to_len(VALUE_LEN)
             + add_type_and_length_to_len(size_of::<MetadataPointer>());
         assert_eq!(data.len(), new_account_len);
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         assert_eq!(
-            state.get_extension_bytes::<UnsizedMintTest>().unwrap(),
+            state.get_extension_bytes::<VariableLenMintTest>().unwrap(),
             value_bytes
         );
         let extension = state.get_extension::<MetadataPointer>().unwrap();
@@ -2347,7 +2366,8 @@ mod test {
         // alloc again fails
         let account_info = (&key, &mut data).into_account_info();
         assert_eq!(
-            alloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap_err(),
+            alloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes)
+                .unwrap_err(),
             TokenError::ExtensionAlreadyInitialized.into()
         );
     }
@@ -2368,7 +2388,9 @@ mod test {
         state.init_account_type().unwrap();
 
         // alloc both types
-        let _ = state.alloc::<UnsizedMintTest>(ALLOC_SIZE, false).unwrap();
+        let _ = state
+            .alloc::<VariableLenMintTest>(ALLOC_SIZE, false)
+            .unwrap();
         let max_pubkey =
             OptionalNonZeroPubkey::try_from(Some(Pubkey::new_from_array([255; 32]))).unwrap();
         let extension = state.init_extension::<MetadataPointer>(false).unwrap();
@@ -2380,39 +2402,39 @@ mod test {
         let key = Pubkey::new_unique();
         let account_info = (&key, &mut data).into_account_info();
         let value_bytes = [1; SMALL_SIZE];
-        realloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+        realloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes).unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
         assert_eq!(extension.metadata_address, max_pubkey);
-        let extension_bytes = state.get_extension_bytes::<UnsizedMintTest>().unwrap();
+        let extension_bytes = state.get_extension_bytes::<VariableLenMintTest>().unwrap();
         assert_eq!(extension_bytes, value_bytes);
         assert_eq!(data.len(), state.try_get_account_len().unwrap());
 
         // reallocate to larger
         let account_info = (&key, &mut data).into_account_info();
         let value_bytes = [2; BIG_SIZE];
-        realloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+        realloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes).unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
         assert_eq!(extension.metadata_address, max_pubkey);
-        let extension_bytes = state.get_extension_bytes::<UnsizedMintTest>().unwrap();
+        let extension_bytes = state.get_extension_bytes::<VariableLenMintTest>().unwrap();
         assert_eq!(extension_bytes, value_bytes);
         assert_eq!(data.len(), state.try_get_account_len().unwrap());
 
         // reallocate to same
         let account_info = (&key, &mut data).into_account_info();
         let value_bytes = [3; BIG_SIZE];
-        realloc_and_serialize::<Mint, UnsizedMintTest>(&account_info, &value_bytes).unwrap();
+        realloc_and_serialize::<Mint, VariableLenMintTest>(&account_info, &value_bytes).unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
         assert_eq!(extension.authority, max_pubkey);
         assert_eq!(extension.metadata_address, max_pubkey);
-        let extension_bytes = state.get_extension_bytes::<UnsizedMintTest>().unwrap();
+        let extension_bytes = state.get_extension_bytes::<VariableLenMintTest>().unwrap();
         assert_eq!(extension_bytes, value_bytes);
         assert_eq!(data.len(), state.try_get_account_len().unwrap());
     }
