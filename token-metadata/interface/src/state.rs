@@ -10,7 +10,7 @@ use {
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_type_length_value::{
         state::{TlvState, TlvStateBorrowed},
-        unsized_pack::UnsizedPack,
+        variable_len_pack::VariableLenPack,
     },
     std::convert::TryFrom,
 };
@@ -124,7 +124,7 @@ impl TokenMetadata {
         data.get(start..end)
     }
 }
-impl UnsizedPack for TokenMetadata {
+impl VariableLenPack for TokenMetadata {
     fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
         borsh::to_writer(&mut dst[..], self).map_err(Into::into)
     }

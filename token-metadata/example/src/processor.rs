@@ -20,7 +20,7 @@ use {
         state::{OptionalNonZeroPubkey, TokenMetadata},
     },
     spl_type_length_value::state::{
-        realloc_and_pack_unsized, TlvState, TlvStateBorrowed, TlvStateMut,
+        realloc_and_pack_variable_len, TlvState, TlvStateBorrowed, TlvStateMut,
     },
 };
 
@@ -84,7 +84,7 @@ pub fn process_initialize(
     let mut buffer = metadata_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
     state.alloc::<TokenMetadata>(instance_size)?;
-    state.pack_unsized_value(&token_metadata)?;
+    state.pack_variable_len_value(&token_metadata)?;
 
     Ok(())
 }
@@ -104,7 +104,7 @@ pub fn process_update_field(
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
         let state = TlvStateBorrowed::unpack(&buffer)?;
-        state.get_unsized_value::<TokenMetadata>()?
+        state.get_variable_len_value::<TokenMetadata>()?
     };
 
     check_update_authority(update_authority_info, &token_metadata.update_authority)?;
@@ -113,7 +113,7 @@ pub fn process_update_field(
     token_metadata.update(data.field, data.value);
 
     // Update / realloc the account
-    realloc_and_pack_unsized(metadata_info, &token_metadata)?;
+    realloc_and_pack_variable_len(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -133,14 +133,14 @@ pub fn process_remove_key(
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
         let state = TlvStateBorrowed::unpack(&buffer)?;
-        state.get_unsized_value::<TokenMetadata>()?
+        state.get_variable_len_value::<TokenMetadata>()?
     };
 
     check_update_authority(update_authority_info, &token_metadata.update_authority)?;
     if !token_metadata.remove_key(&data.key) && !data.idempotent {
         return Err(TokenMetadataError::KeyNotFound.into());
     }
-    realloc_and_pack_unsized(metadata_info, &token_metadata)?;
+    realloc_and_pack_variable_len(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -160,13 +160,13 @@ pub fn process_update_authority(
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
         let state = TlvStateBorrowed::unpack(&buffer)?;
-        state.get_unsized_value::<TokenMetadata>()?
+        state.get_variable_len_value::<TokenMetadata>()?
     };
 
     check_update_authority(update_authority_info, &token_metadata.update_authority)?;
     token_metadata.update_authority = data.new_authority;
     // Update the account, no realloc needed!
-    realloc_and_pack_unsized(metadata_info, &token_metadata)?;
+    realloc_and_pack_variable_len(metadata_info, &token_metadata)?;
 
     Ok(())
 }
