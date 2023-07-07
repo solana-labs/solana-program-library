@@ -358,6 +358,14 @@ pub trait BaseStateWithExtensions<S: BaseState> {
         pod_from_bytes::<V>(self.get_extension_bytes::<V>()?)
     }
 
+    /// Unpacks a portion of the TLV data as the desired variable-length type
+    fn get_variable_len_extension<V: Extension + VariableLenPack>(
+        &self,
+    ) -> Result<V, ProgramError> {
+        let data = get_extension_bytes::<S, V>(self.get_tlv_data())?;
+        V::unpack_from_slice(data)
+    }
+
     /// Iterates through the TLV entries, returning only the types
     fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
         get_tlv_data_info(self.get_tlv_data()).map(|x| x.extension_types)
@@ -582,6 +590,18 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// Unpack a portion of the TLV data as the desired type that allows modifying the type
     pub fn get_extension_mut<V: Extension + Pod>(&mut self) -> Result<&mut V, ProgramError> {
         pod_from_bytes_mut::<V>(self.get_extension_bytes_mut::<V>()?)
+    }
+
+    /// Packs a variable-length extension into its appropriate data segment. Fails
+    /// if space hasn't already been allocated for the given extension
+    pub fn pack_variable_len_extension<V: Extension + VariableLenPack>(
+        &mut self,
+        value: &V,
+    ) -> Result<(), ProgramError> {
+        let data = self.get_extension_bytes_mut::<V>()?;
+        // NOTE: Do *not* use `pack`, since the length check will cause
+        // reallocations to smaller sizes to fail
+        value.pack_into_slice(data)
     }
 
     /// Packs base state data into the base data portion
