@@ -4,7 +4,7 @@ use crate::{
     state::{
         enums::MintMaxVoterWeightSource,
         governance::{
-            get_governance_address, get_governance_required_signatory_address,
+            get_governance_address,
             get_mint_governance_address, get_program_governance_address,
             get_token_governance_address, GovernanceConfig,
         },
@@ -19,6 +19,7 @@ use crate::{
         },
         realm::{GoverningTokenConfigArgs, SetRealmAuthorityAction},
         realm_config::get_realm_config_address,
+        required_signatory::get_required_signatory_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
         vote_record::{get_vote_record_address, Vote},
@@ -238,10 +239,10 @@ pub enum GovernanceInstruction {
     /// Adds a required signatory to the Governance, which will be applied to all proposals created with it
     ///
     ///   0. `[writable, signer]` The Governance account the config is for
-    ///   1. `[writable]` GovernanceRequiredSignatory Account
+    ///   1. `[writable]` RequiredSignatory Account
     ///   2. `[signer]` Payer
     ///   3. `[]` System program
-    AddRequiredSignatoryToGovernance {
+    AddRequiredSignatory {
         #[allow(dead_code)]
         /// Required signatory to add to the Governance
         signatory: Pubkey,
@@ -250,9 +251,9 @@ pub enum GovernanceInstruction {
     /// Removes a required signatory from the Governance
     ///
     ///  0. `[writable, signer]` The Governance account the config is for
-    ///  1. `[writable]` GovernanceRequiredSignatory Account
-    ///  2. `[writable]` Beneficiary Account which would receive lamports from the disposed GovernanceRequiredSignatory Account
-    RemoveRequiredSignatoryFromGovernance,
+    ///  1. `[writable]` RequiredSignatory Account
+    ///  2. `[writable]` Beneficiary Account which would receive lamports from the disposed RequiredSignatory Account
+    RemoveRequiredSignatory,
 
     /// Inserts Transaction with a set of instructions for the Proposal at the given index position
     /// New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index
@@ -558,7 +559,7 @@ pub enum GovernanceInstruction {
     /// Creates a SignatoryRecord for a Proposal based on a Governance signoff requirement
     ///
     ///  0. `[]` Governance account the proposal belongs to
-    ///  1. `[]` GovernanceRequiredSignatory account for which the SignatoryRecord will be created
+    ///  1. `[]` RequiredSignatory account for which the SignatoryRecord will be created
     ///  2. `[]` Proposal account for which the SignatoryRecord will be created
     ///  3. `[writable]` SignatoryRecord account to be created. PDA seeds: ['governance', proposal, signatory]
     ///  4. `[signer]` Payer
@@ -1653,17 +1654,17 @@ pub fn add_required_signatory_to_governance(
     // Args
     signatory: &Pubkey,
 ) -> Instruction {
-    let governance_required_signatory_address =
-        get_governance_required_signatory_address(program_id, governance, signatory);
+    let required_signatory_address =
+        get_required_signatory_address(program_id, governance, signatory);
 
     let accounts = vec![
         AccountMeta::new(*governance, true),
-        AccountMeta::new(governance_required_signatory_address, false),
+        AccountMeta::new(required_signatory_address, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
-    let instruction = GovernanceInstruction::AddRequiredSignatoryToGovernance {
+    let instruction = GovernanceInstruction::AddRequiredSignatory {
         signatory: *signatory,
     };
 
@@ -1682,16 +1683,16 @@ pub fn remove_required_signatory_from_governance(
     signatory: &Pubkey,
     beneficiary: &Pubkey,
 ) -> Instruction {
-    let governance_required_signatory_address =
-        get_governance_required_signatory_address(program_id, governance, signatory);
+    let required_signatory_address =
+        get_required_signatory_address(program_id, governance, signatory);
 
     let accounts = vec![
         AccountMeta::new(*governance, true),
-        AccountMeta::new(governance_required_signatory_address, false),
+        AccountMeta::new(required_signatory_address, false),
         AccountMeta::new(*beneficiary, false),
     ];
 
-    let instruction = GovernanceInstruction::RemoveRequiredSignatoryFromGovernance;
+    let instruction = GovernanceInstruction::RemoveRequiredSignatory;
 
     Instruction {
         program_id: *program_id,
@@ -1791,14 +1792,14 @@ pub fn create_signatory_record_from_governance(
     // Args
     signatory: &Pubkey,
 ) -> Instruction {
-    let governance_required_signatory_address =
-        get_governance_required_signatory_address(program_id, governance, signatory);
+    let required_signatory_address =
+        get_required_signatory_address(program_id, governance, signatory);
 
     let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
 
     let accounts = vec![
         AccountMeta::new_readonly(*governance, false),
-        AccountMeta::new_readonly(governance_required_signatory_address, false),
+        AccountMeta::new_readonly(required_signatory_address, false),
         AccountMeta::new_readonly(*proposal, false),
         AccountMeta::new(signatory_record_address, false),
         AccountMeta::new(*payer, true),

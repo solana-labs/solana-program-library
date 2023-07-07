@@ -499,9 +499,9 @@ pub enum GovernanceError {
     #[error("Invalid multi choice proposal parameters")]
     InvalidMultiChoiceProposalParameters, // 620
 
-    /// Invalid Governance for GovernanceRequiredSignatory
-    #[error("Invalid Governance for GovernanceRequiredSignatory")]
-    InvalidGovernanceForGovernanceRequiredSignatory,
+    /// Invalid Governance for RequiredSignatory
+    #[error("Invalid Governance for RequiredSignatory")]
+    InvalidGovernanceForRequiredSignatory,
 
     /// SignatoryRecord already exists
     #[error("Signatory Record has already been created")]

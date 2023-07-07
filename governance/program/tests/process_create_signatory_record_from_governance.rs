@@ -41,7 +41,7 @@ async fn test_create_signatory_record_from_governance() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_governance_required_signatory_transaction(
+        .with_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,

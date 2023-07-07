@@ -432,7 +432,7 @@ async fn test_sign_off_proposal_with_governance_signatory() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_governance_required_signatory_transaction(
+        .with_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,

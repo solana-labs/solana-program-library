@@ -75,27 +75,6 @@ pub const DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT: u8 = 10;
 /// or the Proposals is cancelled
 pub const SECURITY_DEPOSIT_BASE_LAMPORTS: u64 = 100_000_000; // 0.1 SOL
 
-/// Governance required signatory
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct GovernanceRequiredSignatory {
-    /// Account type
-    pub account_type: GovernanceAccountType,
-
-    /// Address of required signatory
-    pub address: Pubkey,
-
-    /// Governance this required signatory belongs to
-    pub governance: Pubkey,
-}
-
-impl AccountMaxSize for GovernanceRequiredSignatory {}
-
-impl IsInitialized for GovernanceRequiredSignatory {
-    fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::GovernanceRequiredSignatory
-    }
-}
-
 /// Governance Account
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceV2 {
@@ -128,7 +107,7 @@ pub struct GovernanceV2 {
     pub reserved_v2: Reserved115,
 
     /// The number of required signatories for proposals in the Governance
-    pub signatories_count: u8,
+    pub required_signatories_count: u8,
 
     /// Required to track whether required signatories have changed since a proposal's creation
     pub signatories_nonce: u32,
@@ -174,7 +153,7 @@ pub fn is_governance_v2_account_type(account_type: &GovernanceAccountType) -> bo
         | GovernanceAccountType::VoteRecordV2
         | GovernanceAccountType::ProgramMetadata
         | GovernanceAccountType::ProposalDeposit
-        | GovernanceAccountType::GovernanceRequiredSignatory => false,
+        | GovernanceAccountType::RequiredSignatory => false,
     }
 }
 
@@ -209,7 +188,7 @@ pub fn try_get_governance_v2_type_for_v1(
         | GovernanceAccountType::VoteRecordV2
         | GovernanceAccountType::ProgramMetadata
         | GovernanceAccountType::ProposalDeposit
-        | GovernanceAccountType::GovernanceRequiredSignatory => None,
+        | GovernanceAccountType::RequiredSignatory => None,
     }
 }
 
@@ -257,7 +236,7 @@ impl GovernanceV2 {
             | GovernanceAccountType::RealmV2
             | GovernanceAccountType::TokenOwnerRecordV2
             | GovernanceAccountType::SignatoryRecordV2
-            | GovernanceAccountType::GovernanceRequiredSignatory => {
+            | GovernanceAccountType::RequiredSignatory => {
                 return Err(GovernanceToolsError::InvalidAccountType.into())
             }
         };
@@ -419,7 +398,7 @@ pub fn get_governance_data(
             reserved1: 0,
             config: governance_data_v1.config,
             reserved_v2: Reserved115::default(),
-            signatories_count: 0,
+            required_signatories_count: 0,
             signatories_nonce: 0,
             // GovernanceV1 layout doesn't support active_proposal_count
             // For any legacy GovernanceV1 account it's not preserved until the account layout is migrated to GovernanceV2 in CreateProposal
@@ -478,22 +457,6 @@ pub fn get_governance_data_for_realm(
     }
 
     Ok(governance_data)
-}
-
-/// Deserializes GovernanceRequiredSignatory account, checks the owner program, and asserts that required signatory belongs to the given governance
-pub fn get_governance_required_signatory_data_for_governance(
-    program_id: &Pubkey,
-    governance_required_signatory: &AccountInfo,
-    governance: &Pubkey,
-) -> Result<GovernanceRequiredSignatory, ProgramError> {
-    let governance_required_signatory_data =
-        get_account_data::<GovernanceRequiredSignatory>(program_id, governance_required_signatory)?;
-
-    if governance_required_signatory_data.governance != *governance {
-        return Err(GovernanceError::InvalidGovernanceForGovernanceRequiredSignatory.into());
-    }
-
-    Ok(governance_required_signatory_data)
 }
 
 /// Checks the given account is a governance account and belongs to the given realm
@@ -604,31 +567,6 @@ pub fn get_governance_address<'a>(
     .0
 }
 
-/// Returns GovernanceRequiredSignatory PDA seeds
-pub fn get_governance_required_signatory_address_seeds<'a>(
-    governance: &'a Pubkey,
-    signatory: &'a Pubkey,
-) -> [&'a [u8]; 3] {
-    [
-        b"governance-required-signatory".as_ref(),
-        governance.as_ref(),
-        signatory.as_ref(),
-    ]
-}
-
-/// Returns GovernanceRequiredSignatory PDA address
-pub fn get_governance_required_signatory_address<'a>(
-    program_id: &Pubkey,
-    governance: &'a Pubkey,
-    signatory: &'a Pubkey,
-) -> Pubkey {
-    Pubkey::find_program_address(
-        &get_governance_required_signatory_address_seeds(governance, signatory),
-        program_id,
-    )
-    .0
-}
-
 /// Checks whether the Governance account exists, is initialized and owned by the Governance program
 pub fn assert_is_valid_governance(
     program_id: &Pubkey,
@@ -725,7 +663,7 @@ mod test {
             config: create_test_governance_config(),
             reserved_v2: Reserved115::default(),
             active_proposal_count: 10,
-            signatories_count: 0,
+            required_signatories_count: 0,
             signatories_nonce: 0,
         }
     }

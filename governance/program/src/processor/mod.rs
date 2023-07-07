@@ -1,6 +1,6 @@
 //! Program processor
 
-mod process_add_required_signatory_to_governance;
+mod process_add_required_signatory;
 mod process_add_signatory;
 mod process_cancel_proposal;
 mod process_cast_vote;
@@ -21,7 +21,7 @@ mod process_flag_transaction_error;
 mod process_insert_transaction;
 mod process_refund_proposal_deposit;
 mod process_relinquish_vote;
-mod process_remove_required_signatory_from_governance;
+mod process_remove_required_signatory;
 mod process_remove_signatory;
 mod process_remove_transaction;
 mod process_revoke_governing_tokens;
@@ -35,7 +35,7 @@ mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
 
-use process_add_required_signatory_to_governance::*;
+use process_add_required_signatory::*;
 use process_add_signatory::*;
 use process_cancel_proposal::*;
 use process_cast_vote::*;
@@ -56,7 +56,7 @@ use process_flag_transaction_error::*;
 use process_insert_transaction::*;
 use process_refund_proposal_deposit::*;
 use process_relinquish_vote::*;
-use process_remove_required_signatory_from_governance::*;
+use process_remove_required_signatory::*;
 use process_remove_signatory::*;
 use process_remove_transaction::*;
 use process_revoke_governing_tokens::*;
@@ -240,14 +240,14 @@ pub fn process_instruction(
             process_complete_proposal(program_id, accounts)
         }
 
-        GovernanceInstruction::AddRequiredSignatoryToGovernance { signatory } => {
-            process_add_required_signatory_to_governance(program_id, accounts, signatory)
+        GovernanceInstruction::AddRequiredSignatory { signatory } => {
+            process_add_required_signatory(program_id, accounts, signatory)
         }
         GovernanceInstruction::CreateSignatoryRecordFromGovernance => {
             process_create_signatory_record_from_governance(program_id, accounts)
         }
-        GovernanceInstruction::RemoveRequiredSignatoryFromGovernance => {
-            process_remove_required_signatory_from_governance(program_id, accounts)
+        GovernanceInstruction::RemoveRequiredSignatory => {
+            process_remove_required_signatory(program_id, accounts)
         }
     }
 }

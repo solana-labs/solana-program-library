@@ -133,7 +133,7 @@ pub fn process_create_proposal(
         state: ProposalState::Draft,
         token_owner_record: *proposal_owner_record_info.key,
 
-        signatories_count: governance_data.signatories_count,
+        signatories_count: governance_data.required_signatories_count,
         signatories_signed_off_count: 0,
 
         name,
@@ -162,9 +162,9 @@ pub fn process_create_proposal(
         vote_threshold: None,
 
         reserved: [0; 60],
-        
+
         signature_nonce_at_creation: governance_data.signatories_nonce,
-        
+
         reserved1: 0,
     };
 

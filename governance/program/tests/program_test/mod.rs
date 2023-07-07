@@ -37,8 +37,8 @@ use spl_governance::{
         },
         governance::{
             get_governance_address, get_mint_governance_address, get_program_governance_address,
-            get_token_governance_address, GovernanceConfig, GovernanceRequiredSignatory,
-            GovernanceV2, DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+            get_token_governance_address, GovernanceConfig, GovernanceV2,
+            DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
         },
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
@@ -52,6 +52,7 @@ use spl_governance::{
             GoverningTokenConfigAccountArgs, RealmConfig, RealmV2, SetRealmAuthorityAction,
         },
         realm_config::{get_realm_config_address, GoverningTokenConfig, RealmConfigAccount},
+        required_signatory::RequiredSignatory,
         signatory_record::{get_signatory_record_address, SignatoryRecordV2},
         token_owner_record::{
             get_token_owner_record_address, TokenOwnerRecordV2, TOKEN_OWNER_RECORD_LAYOUT_VERSION,
@@ -1505,7 +1506,7 @@ impl GovernanceProgramTest {
             config: governance_config.clone(),
             reserved1: 0,
             reserved_v2: Reserved115::default(),
-            signatories_count: 0,
+            required_signatories_count: 0,
             active_proposal_count: 0,
             signatories_nonce: 0,
         };
@@ -1677,7 +1678,7 @@ impl GovernanceProgramTest {
             config,
             reserved1: 0,
             reserved_v2: Reserved115::default(),
-            signatories_count: 0,
+            required_signatories_count: 0,
             active_proposal_count: 0,
             signatories_nonce: 0,
         };
@@ -1800,7 +1801,7 @@ impl GovernanceProgramTest {
             config: governance_config.clone(),
             reserved1: 0,
             reserved_v2: Reserved115::default(),
-            signatories_count: 0,
+            required_signatories_count: 0,
             active_proposal_count: 0,
             signatories_nonce: 0,
         };
@@ -1883,7 +1884,7 @@ impl GovernanceProgramTest {
             config,
             reserved1: 0,
             reserved_v2: Reserved115::default(),
-            signatories_count: 0,
+            required_signatories_count: 0,
             active_proposal_count: 0,
             signatories_nonce: 0,
         };
@@ -2078,9 +2079,9 @@ impl GovernanceProgramTest {
             vote_threshold: None,
 
             reserved: [0; 60],
-            
+
             signature_nonce_at_creation: governance_cookie.account.signatories_nonce,
-            
+
             reserved1: 0,
         };
 
@@ -2818,7 +2819,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_governance_required_signatory_transaction(
+    pub async fn with_required_signatory_transaction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
@@ -2844,7 +2845,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_remove_governance_required_signatory_transaction(
+    pub async fn with_remove_required_signatory_transaction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
@@ -3075,12 +3076,12 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_governance_required_signatory_account(
+    pub async fn get_required_signatory_account(
         &mut self,
-        governance_required_signatory_address: &Pubkey,
-    ) -> GovernanceRequiredSignatory {
+        required_signatory_address: &Pubkey,
+    ) -> RequiredSignatory {
         self.bench
-            .get_borsh_account::<GovernanceRequiredSignatory>(governance_required_signatory_address)
+            .get_borsh_account::<RequiredSignatory>(required_signatory_address)
             .await
     }
 

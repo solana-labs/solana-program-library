@@ -73,7 +73,7 @@ pub fn process_create_program_governance(
         config,
         reserved1: 0,
         reserved_v2: Reserved115::default(),
-        signatories_count: 0,
+        required_signatories_count: 0,
         active_proposal_count: 0,
         signatories_nonce: 0,
     };

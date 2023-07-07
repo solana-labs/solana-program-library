@@ -49,7 +49,7 @@ async fn set_up_governance_with_required_signatory(
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_governance_required_signatory_transaction(
+        .with_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -86,7 +86,7 @@ async fn set_up_governance_with_required_signatory(
 }
 
 #[tokio::test]
-async fn test_remove_required_signatory_from_governance() {
+async fn test_remove_required_signatory() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -101,7 +101,7 @@ async fn test_remove_required_signatory_from_governance() {
     let beneficiary = Pubkey::new_unique();
 
     let proposal_transaction_cookie = governance_test
-        .with_remove_governance_required_signatory_transaction(
+        .with_remove_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -161,12 +161,12 @@ async fn test_remove_required_signatory_from_governance() {
         .get_governance_account(&governance_cookie.address)
         .await;
 
-    assert_eq!(0, governance_account.signatories_count);
+    assert_eq!(0, governance_account.required_signatories_count);
     assert_eq!(2, governance_account.signatories_nonce);
 }
 
 #[tokio::test]
-async fn test_remove_non_existing_required_signatory_from_governance_err() {
+async fn test_remove_non_existing_required_signatory_err() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -181,7 +181,7 @@ async fn test_remove_non_existing_required_signatory_from_governance_err() {
     let beneficiary = Pubkey::new_unique();
 
     let proposal_transaction_cookie = governance_test
-        .with_remove_governance_required_signatory_transaction(
+        .with_remove_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,

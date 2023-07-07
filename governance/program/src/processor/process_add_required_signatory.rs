@@ -13,15 +13,13 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType,
-        governance::{
-            get_governance_data, get_governance_required_signatory_address_seeds,
-            GovernanceRequiredSignatory,
-        },
+        governance::get_governance_data,
+        required_signatory::{get_required_signatory_address_seeds, RequiredSignatory},
     },
 };
 
-/// Processes AddRequiredSignatoryToGovernance instruction
-pub fn process_add_required_signatory_to_governance(
+/// Processes AddRequiredSignatory instruction
+pub fn process_add_required_signatory(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     signatory: Pubkey,
@@ -30,7 +28,7 @@ pub fn process_add_required_signatory_to_governance(
 
     let governance_info = next_account_info(account_info_iter)?; // 0
 
-    let signatory_record_info = next_account_info(account_info_iter)?; // 1
+    let required_signatory_info = next_account_info(account_info_iter)?; // 1
 
     let payer_info = next_account_info(account_info_iter)?; // 2
     let system_info = next_account_info(account_info_iter)?; // 3
@@ -43,21 +41,22 @@ pub fn process_add_required_signatory_to_governance(
     };
 
     let mut governance_data = get_governance_data(program_id, governance_info)?;
-    governance_data.signatories_count = governance_data.signatories_count.checked_add(1).unwrap();
+    governance_data.required_signatories_count = governance_data.required_signatories_count.checked_add(1).unwrap();
     governance_data.signatories_nonce = governance_data.signatories_nonce.checked_add(1).unwrap();
-    governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
+    governance_data.serialize(&mut governance_info.data.borrow_mut()[..])?;
 
-    let signatory_record_data = GovernanceRequiredSignatory {
-        address: signatory,
-        account_type: GovernanceAccountType::GovernanceRequiredSignatory,
+    let signatory_record_data = RequiredSignatory {
+        signatory,
+        account_type: GovernanceAccountType::RequiredSignatory,
         governance: *governance_info.key,
+        account_version: 0,
     };
 
-    create_and_serialize_account_signed::<GovernanceRequiredSignatory>(
+    create_and_serialize_account_signed::<RequiredSignatory>(
         payer_info,
-        signatory_record_info,
+        required_signatory_info,
         &signatory_record_data,
-        &get_governance_required_signatory_address_seeds(governance_info.key, &signatory),
+        &get_required_signatory_address_seeds(governance_info.key, &signatory),
         program_id,
         system_info,
         &rent,
