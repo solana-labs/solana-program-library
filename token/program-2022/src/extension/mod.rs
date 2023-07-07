@@ -400,10 +400,10 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     /// in the TLV data.
     fn try_get_new_account_len<V: Extension + VariableLenPack>(
         &self,
-        new_extension_len: usize,
+        new_value: &V,
     ) -> Result<usize, ProgramError> {
         // get the new length used by the extension
-        let new_extension_len = add_type_and_length_to_len(new_extension_len);
+        let new_extension_len = add_type_and_length_to_len(new_value.get_packed_len()?);
         let tlv_info = get_tlv_data_info(self.get_tlv_data())?;
         // If we're adding an extension, then we must have at least BASE_ACCOUNT_LENGTH
         // and account type
@@ -1179,7 +1179,7 @@ pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     let new_account_len = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        state.try_get_new_account_len::<V>(value.get_packed_len()?)?
+        state.try_get_new_account_len(value)?
     };
 
     if previous_account_len < new_account_len {
@@ -1208,11 +1208,10 @@ pub fn realloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     new_value: &V,
 ) -> Result<(), ProgramError> {
     let previous_account_len = account_info.try_data_len()?;
-    let new_value_len = new_value.get_packed_len()?;
     let new_account_len = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        state.try_get_new_account_len::<V>(new_value_len)?
+        state.try_get_new_account_len(new_value)?
     };
 
     if previous_account_len < new_account_len {
@@ -2256,8 +2255,14 @@ mod test {
 
     #[test]
     fn account_len() {
+        let small_variable_len = VariableLenMintTest {
+            data: vec![20, 30, 40],
+        };
         let variable_len = VariableLenMintTest {
             data: vec![20, 30, 40, 50],
+        };
+        let big_variable_len = VariableLenMintTest {
+            data: vec![20, 30, 40, 50, 60],
         };
         let value_len = variable_len.get_packed_len().unwrap();
         let account_size =
@@ -2270,7 +2275,7 @@ mod test {
         let current_len = state.try_get_account_len().unwrap();
         assert_eq!(current_len, Mint::LEN);
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(value_len)
+            .try_get_new_account_len::<VariableLenMintTest>(&variable_len)
             .unwrap();
         assert_eq!(
             new_len,
@@ -2285,19 +2290,19 @@ mod test {
 
         // Reduce the extension size
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(value_len - 1)
+            .try_get_new_account_len::<VariableLenMintTest>(&small_variable_len)
             .unwrap();
         assert_eq!(current_len.checked_sub(new_len).unwrap(), 1);
 
         // Increase the extension size
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(value_len + 1)
+            .try_get_new_account_len::<VariableLenMintTest>(&big_variable_len)
             .unwrap();
         assert_eq!(new_len.checked_sub(current_len).unwrap(), 1);
 
         // Maintain the extension size
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(value_len)
+            .try_get_new_account_len::<VariableLenMintTest>(&variable_len)
             .unwrap();
         assert_eq!(new_len, current_len);
     }
