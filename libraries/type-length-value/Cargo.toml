@@ -8,11 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 exclude = ["js/**"]
 
-[features]
-borsh = ["dep:borsh"]
-
 [dependencies]
-borsh = { version = "0.10", optional = true }
 bytemuck = { version = "1.13.1", features = ["derive"] }
 solana-program = "1.16.1"
 spl-discriminator = { version = "0.1.0", path = "../discriminator" }

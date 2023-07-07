@@ -109,22 +109,37 @@ If not, it reads the next 4-byte length. If the discriminator matches, it return
 the next `length` bytes. If not, it jumps ahead `length` bytes and reads the
 next 8-byte discriminator.
 
-## Borsh integration
+## Unsized serialization integration
 
 The initial example works using the `bytemuck` crate for zero-copy serialization
-and deserialization. It's possible to use Borsh by activating the `borsh` feature.
+and deserialization. It's possible to use Borsh by implementing the `UnsizedPack`
+trait on your type.
 
 ```rust
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    spl_type_length_value::state::{TlvState, TlvStateMut},
+    solana_program::borsh::{get_instance_packed_len, try_from_slice_unchecked},
+    spl_type_length_value::{state::{TlvState, TlvStateMut}, unsized_pack::UnsizedPack},
 };
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
-struct MyBorsh {
+struct MyUnsizedType {
     data: String, // variable length type
 }
-impl SplDiscriminate for MyBorsh {
+impl SplDiscriminate for MyUnsizedType {
     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([5; ArrayDiscriminator::LENGTH]);
+}
+impl UnsizedPack for MyUnsizedType {
+    fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
+        borsh::to_writer(&mut dst[..], self).map_err(Into::into)
+    }
+
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+        try_from_slice_unchecked(src).map_err(Into::into)
+    }
+
+    fn get_packed_len(&self) -> Result<usize, ProgramError> {
+        get_instance_packed_len(self).map_err(Into::into)
+    }
 }
 let initial_data = "This is a pretty cool test!";
 // Allocate exactly the right size for the string, can go bigger if desired
@@ -137,11 +152,11 @@ let mut buffer = vec![0; account_size];
 let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
 // No need to hold onto the bytes since we'll serialize back into the right place
-let _ = state.allocate::<MyBorsh>(tlv_size).unwrap();
-let my_borsh = MyBorsh {
+let _ = state.allocate::<MyUnsizedType>(tlv_size).unwrap();
+let my_unsized = MyUnsizedType {
     data: initial_data.to_string()
 };
-state.borsh_serialize(&my_borsh).unwrap();
-let deser = state.borsh_deserialize::<MyBorsh>().unwrap();
-assert_eq!(deser, my_borsh);
+state.pack_unsized_value(&my_unsized).unwrap();
+let deser = state.get_unsized_value::<MyUnsizedType>().unwrap();
+assert_eq!(deser, my_unsized);
 ```

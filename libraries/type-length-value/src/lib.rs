@@ -9,6 +9,7 @@ pub mod error;
 pub mod length;
 pub mod pod;
 pub mod state;
+pub mod unsized_pack;
 
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;

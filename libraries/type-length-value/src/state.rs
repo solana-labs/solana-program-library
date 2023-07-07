@@ -5,9 +5,10 @@ use {
         error::TlvError,
         length::Length,
         pod::{pod_from_bytes, pod_from_bytes_mut},
+        unsized_pack::UnsizedPack,
     },
     bytemuck::Pod,
-    solana_program::program_error::ProgramError,
+    solana_program::{account_info::AccountInfo, program_error::ProgramError},
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     std::{cmp::Ordering, mem::size_of},
 };
@@ -196,13 +197,10 @@ pub trait TlvState {
         pod_from_bytes::<V>(data)
     }
 
-    /// Unpacks a portion of the TLV data as the desired Borsh type
-    #[cfg(feature = "borsh")]
-    fn borsh_deserialize<V: SplDiscriminate + borsh::BorshDeserialize>(
-        &self,
-    ) -> Result<V, ProgramError> {
+    /// Unpacks a portion of the TLV data as the desired unsized type
+    fn get_unsized_value<V: SplDiscriminate + UnsizedPack>(&self) -> Result<V, ProgramError> {
         let data = get_bytes::<V>(self.get_data())?;
-        solana_program::borsh::try_from_slice_unchecked::<V>(data).map_err(Into::into)
+        V::unpack_from_slice(data)
     }
 
     /// Unpack a portion of the TLV data as bytes
@@ -312,15 +310,16 @@ impl<'data> TlvStateMut<'data> {
         Ok(extension_ref)
     }
 
-    /// Packs a borsh-serializable value into its appropriate data segment. Assumes
-    /// that space has already been allocated for the given type
-    #[cfg(feature = "borsh")]
-    pub fn borsh_serialize<V: SplDiscriminate + borsh::BorshSerialize>(
+    /// Packs an unsized value into its appropriate data segment. Assumes that
+    /// space has already been allocated for the given type
+    pub fn pack_unsized_value<V: SplDiscriminate + UnsizedPack>(
         &mut self,
         value: &V,
     ) -> Result<(), ProgramError> {
         let data = self.get_bytes_mut::<V>()?;
-        borsh::to_writer(&mut data[..], value).map_err(Into::into)
+        // NOTE: Do *not* use `pack`, since the length check will cause
+        // reallocations to smaller sizes fail
+        value.pack_into_slice(data)
     }
 
     /// Allocate the given number of bytes for the given SplDiscriminate
@@ -408,11 +407,10 @@ impl<'a> TlvState for TlvStateMut<'a> {
     }
 }
 
-/// Packs a borsh-serializable value into an existing TLV space, reallocating
+/// Packs an unsized value into an existing TLV space, reallocating
 /// the account and TLV as needed to accommodate for any change in space
-#[cfg(feature = "borsh")]
-pub fn realloc_and_borsh_serialize<V: SplDiscriminate + borsh::BorshSerialize>(
-    account_info: &solana_program::account_info::AccountInfo,
+pub fn realloc_and_pack_unsized<V: SplDiscriminate + UnsizedPack>(
+    account_info: &AccountInfo,
     value: &V,
 ) -> Result<(), ProgramError> {
     let previous_length = {
@@ -424,7 +422,7 @@ pub fn realloc_and_borsh_serialize<V: SplDiscriminate + borsh::BorshSerialize>(
         } = get_indices(&data, V::SPL_DISCRIMINATOR, false)?;
         usize::try_from(*pod_from_bytes::<Length>(&data[length_start..value_start])?)?
     };
-    let new_length = solana_program::borsh::get_instance_packed_len(&value)?;
+    let new_length = value.get_packed_len()?;
     let previous_account_size = account_info.try_data_len()?;
     if previous_length < new_length {
         // size increased, so realloc the account, then the TLV entry, then write data
@@ -435,12 +433,12 @@ pub fn realloc_and_borsh_serialize<V: SplDiscriminate + borsh::BorshSerialize>(
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = TlvStateMut::unpack(&mut buffer)?;
         state.realloc::<V>(new_length)?;
-        state.borsh_serialize(value)?;
+        state.pack_unsized_value(value)?;
     } else {
         // do it backwards otherwise, write the state, realloc TLV, then the account
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = TlvStateMut::unpack(&mut buffer)?;
-        state.borsh_serialize(value)?;
+        state.pack_unsized_value(value)?;
         let removed_bytes = previous_length
             .checked_sub(new_length)
             .ok_or(ProgramError::AccountDataTooSmall)?;
@@ -891,57 +889,60 @@ mod test {
             ProgramError::InvalidAccountData,
         );
     }
-}
-#[cfg(all(test, feature = "borsh"))]
-mod borsh_test {
-    use super::*;
-    #[derive(Clone, Debug, PartialEq, borsh::BorshDeserialize, borsh::BorshSerialize)]
-    struct TestBorsh {
+
+    #[derive(Clone, Debug, PartialEq)]
+    struct TestUnsized {
         data: String, // test with a variable length type
-        inner: TestInnerBorsh,
     }
-    #[derive(Clone, Debug, PartialEq, borsh::BorshDeserialize, borsh::BorshSerialize)]
-    struct TestInnerBorsh {
-        data: String,
-    }
-    impl SplDiscriminate for TestBorsh {
+    impl SplDiscriminate for TestUnsized {
         const SPL_DISCRIMINATOR: ArrayDiscriminator =
             ArrayDiscriminator::new([5; ArrayDiscriminator::LENGTH]);
     }
+    impl UnsizedPack for TestUnsized {
+        fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
+            dst[..8].copy_from_slice(&self.data.len().to_le_bytes());
+            dst[8..].copy_from_slice(self.data.as_bytes());
+            Ok(())
+        }
+        fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+            let length = u64::from_le_bytes(src[..8].try_into().unwrap());
+            if src[8..].len() != length as usize {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            let data = std::str::from_utf8(&src[8..]).unwrap().to_string();
+            Ok(Self { data })
+        }
+        fn get_packed_len(&self) -> Result<usize, ProgramError> {
+            Ok(size_of::<u64>().saturating_add(self.data.len()))
+        }
+    }
     #[test]
-    fn borsh_value() {
+    fn unsized_value() {
         let initial_data = "This is a pretty cool test!";
-        let initial_inner_data = "And it gets even cooler!";
         // exactly the right size
-        let tlv_size = 4 + initial_data.len() + 4 + initial_inner_data.len();
+        let tlv_size = 8 + initial_data.len();
         let account_size = get_base_len() + tlv_size;
         let mut buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         // don't actually need to hold onto the data!
-        let _ = state.alloc::<TestBorsh>(tlv_size).unwrap();
-        let test_borsh = TestBorsh {
+        let _ = state.alloc::<TestUnsized>(tlv_size).unwrap();
+        let test_unsized = TestUnsized {
             data: initial_data.to_string(),
-            inner: TestInnerBorsh {
-                data: initial_inner_data.to_string(),
-            },
         };
-        state.borsh_serialize(&test_borsh).unwrap();
-        let deser = state.borsh_deserialize::<TestBorsh>().unwrap();
-        assert_eq!(deser, test_borsh);
+        state.pack_unsized_value(&test_unsized).unwrap();
+        let deser = state.get_unsized_value::<TestUnsized>().unwrap();
+        assert_eq!(deser, test_unsized);
 
         // writing too much data fails
         let too_much_data = "This is a pretty cool test!?";
         assert_eq!(
             state
-                .borsh_serialize(&TestBorsh {
+                .pack_unsized_value(&TestUnsized {
                     data: too_much_data.to_string(),
-                    inner: TestInnerBorsh {
-                        data: initial_inner_data.to_string(),
-                    }
                 })
                 .unwrap_err(),
-            ProgramError::BorshIoError("failed to write whole buffer".to_string()),
+            ProgramError::InvalidAccountData
         );
     }
 }
