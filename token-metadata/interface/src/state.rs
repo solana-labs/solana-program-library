@@ -2,9 +2,16 @@
 
 use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{borsh::get_instance_packed_len, program_error::ProgramError, pubkey::Pubkey},
+    solana_program::{
+        borsh::{get_instance_packed_len, try_from_slice_unchecked},
+        program_error::ProgramError,
+        pubkey::Pubkey,
+    },
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
-    spl_type_length_value::state::{TlvState, TlvStateBorrowed},
+    spl_type_length_value::{
+        state::{TlvState, TlvStateBorrowed},
+        variable_len_pack::VariableLenPack,
+    },
     std::convert::TryFrom,
 };
 
@@ -115,6 +122,17 @@ impl TokenMetadata {
         let start = start.unwrap_or(0) as usize;
         let end = end.map(|x| x as usize).unwrap_or(data.len());
         data.get(start..end)
+    }
+}
+impl VariableLenPack for TokenMetadata {
+    fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
+        borsh::to_writer(&mut dst[..], self).map_err(Into::into)
+    }
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+        try_from_slice_unchecked(src).map_err(Into::into)
+    }
+    fn get_packed_len(&self) -> Result<usize, ProgramError> {
+        get_instance_packed_len(self).map_err(Into::into)
     }
 }
 
