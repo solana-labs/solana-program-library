@@ -622,7 +622,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         overwrite: bool,
     ) -> Result<&mut V, ProgramError> {
         let length = pod_get_packed_len::<V>();
-        let buffer = self.alloc_internal::<V>(length, overwrite)?;
+        let buffer = self.alloc::<V>(length, overwrite)?;
         let extension_ref = pod_from_bytes_mut::<V>(buffer)?;
         *extension_ref = V::default();
         Ok(extension_ref)
@@ -707,11 +707,11 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         value: &V,
         overwrite: bool,
     ) -> Result<(), ProgramError> {
-        let data = self.alloc_internal::<V>(value.get_packed_len()?, overwrite)?;
+        let data = self.alloc::<V>(value.get_packed_len()?, overwrite)?;
         value.pack_into_slice(data)
     }
 
-    fn alloc_internal<V: Extension>(
+    fn alloc<V: Extension>(
         &mut self,
         length: usize,
         overwrite: bool,
@@ -2277,7 +2277,7 @@ mod test {
             BASE_ACCOUNT_AND_TYPE_LENGTH.saturating_add(add_type_and_length_to_len(value_len))
         );
 
-        let _ = state
+        state
             .init_variable_len_extension::<VariableLenMintTest>(&variable_len, false)
             .unwrap();
         let current_len = state.try_get_account_len().unwrap();
