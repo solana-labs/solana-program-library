@@ -15,7 +15,7 @@ bytemuck = { version = "1.13.1", features = ["derive"] }
 solana-program = "1.16.1"
 spl-discriminator = { version = "0.1", path = "../discriminator" }
 spl-program-error = { version = "0.2.0", path = "../program-error" }
-spl-type-length-value = { version = "0.2", path = "../type-length-value" }
+spl-type-length-value = { version = "0.3", path = "../type-length-value" }
 
 [dev-dependencies]
 solana-program-test = "1.16.1"
