@@ -6892,6 +6892,7 @@ dependencies = [
  "spl-token 4.0.0",
  "spl-token-metadata-interface",
  "spl-transfer-hook-interface",
+ "spl-type-length-value",
  "thiserror",
 ]
 
