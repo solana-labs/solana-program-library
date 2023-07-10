@@ -1172,16 +1172,12 @@ impl Extension for AccountPaddingTest {
 /// change in space, then reallocates in the TLV buffer, and finally writes the
 /// bytes.
 ///
-/// NOTE: This function does not protect against double-alloc, and will realloc
-/// an existing extension. The calling code must check if the extension already
-/// exists, and return an error if appropriate.
-///
-/// For example, during `TokenMetadataInstruction::Initialize`, the instruction
-/// processor must return an error if the token-metadata extension is already
-/// present, and not rely on `alloc_and_serialize` to return an error.
+/// NOTE: Unlike the `reallocate` instruction, this function will reduce the
+/// size of an account if it has too many bytes allocated for the given value.
 pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     account_info: &AccountInfo,
     new_extension: &V,
+    overwrite: bool,
 ) -> Result<(), ProgramError> {
     let previous_account_len = account_info.try_data_len()?;
     let (new_account_len, extension_already_exists) = {
@@ -1191,6 +1187,10 @@ pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
         let extension_already_exists = state.get_extension_bytes::<V>().is_ok();
         (new_account_len, extension_already_exists)
     };
+
+    if extension_already_exists && !overwrite {
+        return Err(TokenError::ExtensionAlreadyInitialized.into());
+    }
 
     if previous_account_len < new_account_len {
         // account size increased, so realloc the account, then the TLV entry, then write data
@@ -2367,7 +2367,7 @@ mod test {
         let key = Pubkey::new_unique();
         let account_info = (&key, &mut data).into_account_info();
 
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
+        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, false).unwrap();
         let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH + add_type_and_length_to_len(value_len);
         assert_eq!(data.len(), new_account_len);
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
@@ -2378,9 +2378,16 @@ mod test {
             variable_len
         );
 
-        // alloc again succeeds because the function does *not* check
+        // alloc again succeeds with "overwrite"
         let account_info = (&key, &mut data).into_account_info();
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
+        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
+
+        // alloc again fails without "overwrite"
+        let account_info = (&key, &mut data).into_account_info();
+        assert_eq!(
+            alloc_and_serialize::<Mint, _>(&account_info, &variable_len, false).unwrap_err(),
+            TokenError::ExtensionAlreadyInitialized.into()
+        );
     }
 
     #[test]
@@ -2407,7 +2414,7 @@ mod test {
         let key = Pubkey::new_unique();
         let account_info = (&key, &mut data).into_account_info();
 
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
+        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, false).unwrap();
         let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH
             + add_type_and_length_to_len(value_len)
             + add_type_and_length_to_len(size_of::<MetadataPointer>());
@@ -2423,9 +2430,16 @@ mod test {
         assert_eq!(extension.authority, test_key);
         assert_eq!(extension.metadata_address, test_key);
 
-        // alloc again succeeds because the function does *not* check
+        // alloc again succeeds with "overwrite"
         let account_info = (&key, &mut data).into_account_info();
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
+        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
+
+        // alloc again fails without "overwrite"
+        let account_info = (&key, &mut data).into_account_info();
+        assert_eq!(
+            alloc_and_serialize::<Mint, _>(&account_info, &variable_len, false).unwrap_err(),
+            TokenError::ExtensionAlreadyInitialized.into()
+        );
     }
 
     #[test]
@@ -2459,7 +2473,7 @@ mod test {
         let key = Pubkey::new_unique();
         let account_info = (&key, &mut data).into_account_info();
         let variable_len = VariableLenMintTest { data: vec![1, 2] };
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
+        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
@@ -2476,7 +2490,7 @@ mod test {
         let variable_len = VariableLenMintTest {
             data: vec![1, 2, 3, 4, 5, 6, 7],
         };
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
+        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
@@ -2493,7 +2507,7 @@ mod test {
         let variable_len = VariableLenMintTest {
             data: vec![7, 6, 5, 4, 3, 2, 1],
         };
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len).unwrap();
+        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
