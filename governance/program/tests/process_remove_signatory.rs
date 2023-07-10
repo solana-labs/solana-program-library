@@ -36,7 +36,7 @@ async fn test_remove_signatory() {
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -94,7 +94,7 @@ async fn test_remove_signatory_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -151,7 +151,7 @@ async fn test_remove_signatory_with_invalid_proposal_owner_error() {
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -205,12 +205,12 @@ async fn test_remove_signatory_with_not_editable_error() {
         .unwrap();
 
     let signatory_record_cookie1 = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
     let signatory_record_cookie2 = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -265,7 +265,7 @@ async fn test_remove_signatory_with_already_signed_error() {
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 

@@ -21,13 +21,13 @@ use spl_governance::{
         add_required_signatory_to_governance, add_signatory, cancel_proposal, cast_vote,
         complete_proposal, create_governance, create_mint_governance, create_native_treasury,
         create_program_governance, create_proposal, create_realm,
-        create_signatory_record_from_governance, create_token_governance,
+        create_token_governance,
         create_token_owner_record, deposit_governing_tokens, execute_transaction, finalize_vote,
         flag_transaction_error, insert_transaction, refund_proposal_deposit, relinquish_vote,
         remove_required_signatory_from_governance, remove_signatory, remove_transaction,
         revoke_governing_tokens, set_governance_config, set_governance_delegate,
         set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
-        withdraw_governing_tokens,
+        withdraw_governing_tokens, AddSignatoryPermission,
     },
     processor::process_instruction,
     state::{
@@ -1947,7 +1947,7 @@ impl GovernanceProgramTest {
             .await?;
 
         let signatory_record_cookie = self
-            .with_signatory(&proposal_cookie, token_owner_record_cookie)
+            .with_signatory(&proposal_cookie, &governance_cookie, token_owner_record_cookie)
             .await?;
 
         self.sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
@@ -2122,15 +2122,20 @@ impl GovernanceProgramTest {
     pub async fn with_signatory(
         &mut self,
         proposal_cookie: &ProposalCookie,
+        governance_cookie: &GovernanceCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
+
     ) -> Result<SignatoryRecordCookie, ProgramError> {
         let signatory = Keypair::new();
 
         let add_signatory_ix = add_signatory(
             &self.program_id,
             &proposal_cookie.address,
-            &token_owner_record_cookie.address,
-            &token_owner_record_cookie.token_owner.pubkey(),
+            &AddSignatoryPermission::GovernanceAuthority {
+                token_owner_record: token_owner_record_cookie.address,
+                governance_authority: token_owner_record_cookie.token_owner.pubkey(),
+            },
+            &governance_cookie.address,
             &self.bench.payer.pubkey(),
             &signatory.pubkey(),
         );
@@ -2902,10 +2907,11 @@ impl GovernanceProgramTest {
         governance: &GovernanceCookie,
         signatory: &Pubkey,
     ) -> Result<SignatoryRecordCookieWithoutKeypair, ProgramError> {
-        let create_signatory_record_ix = create_signatory_record_from_governance(
+        let create_signatory_record_ix = add_signatory(
             &self.program_id,
-            &governance.address,
             &proposal_cookie.address,
+            &AddSignatoryPermission::RequiredByGovernance,
+            &governance.address,
             &self.bench.payer.pubkey(),
             signatory,
         );

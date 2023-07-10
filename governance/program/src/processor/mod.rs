@@ -11,7 +11,6 @@ mod process_create_native_treasury;
 mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
-mod process_create_signatory_record_from_governance;
 mod process_create_token_governance;
 mod process_create_token_owner_record;
 mod process_deposit_governing_tokens;
@@ -46,7 +45,6 @@ use process_create_native_treasury::*;
 use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
-use process_create_signatory_record_from_governance::*;
 use process_create_token_governance::*;
 use process_create_token_owner_record::*;
 use process_deposit_governing_tokens::*;
@@ -242,9 +240,6 @@ pub fn process_instruction(
 
         GovernanceInstruction::AddRequiredSignatory { signatory } => {
             process_add_required_signatory(program_id, accounts, signatory)
-        }
-        GovernanceInstruction::CreateSignatoryRecordFromGovernance => {
-            process_create_signatory_record_from_governance(program_id, accounts)
         }
         GovernanceInstruction::RemoveRequiredSignatory => {
             process_remove_required_signatory(program_id, accounts)

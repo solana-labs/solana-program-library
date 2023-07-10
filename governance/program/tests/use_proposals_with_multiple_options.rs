@@ -272,7 +272,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -375,7 +375,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -505,7 +505,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie1)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie1)
         .await
         .unwrap();
 
@@ -704,7 +704,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie1)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie1)
         .await
         .unwrap();
 
@@ -913,7 +913,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie1)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie1)
         .await
         .unwrap();
 

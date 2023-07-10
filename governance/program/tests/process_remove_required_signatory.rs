@@ -44,7 +44,7 @@ async fn set_up_governance_with_required_signatory(
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 

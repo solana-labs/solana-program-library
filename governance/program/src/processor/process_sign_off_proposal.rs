@@ -76,15 +76,16 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
             .checked_add(1)
             .unwrap();
     }
-    
+
     // If the governance's required signatories were changed after the proposal was created,
     // then the proposal could be in an invalid state and should be cancelled
     if proposal_data.signature_nonce_at_creation != governance_data.signatories_nonce {
         proposal_data.state = ProposalState::Cancelled;
     }
-
     // If all Signatories signed off we can start voting
-    else if proposal_data.signatories_signed_off_count == proposal_data.signatories_count {
+    else if proposal_data.signatories_signed_off_count == proposal_data.signatories_count
+        && proposal_data.signatories_count >= governance_data.required_signatories_count
+    {
         proposal_data.voting_at = Some(clock.unix_timestamp);
         proposal_data.voting_at_slot = Some(clock.slot);
         proposal_data.state = ProposalState::Voting;

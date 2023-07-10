@@ -4,8 +4,7 @@ use crate::{
     state::{
         enums::MintMaxVoterWeightSource,
         governance::{
-            get_governance_address,
-            get_mint_governance_address, get_program_governance_address,
+            get_governance_address, get_mint_governance_address, get_program_governance_address,
             get_token_governance_address, GovernanceConfig,
         },
         native_treasury::get_native_treasury_address,
@@ -211,12 +210,15 @@ pub enum GovernanceInstruction {
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   3. `[writable]` Signatory Record Account
-    ///   4. `[signer]` Payer
-    ///   5. `[]` System program
-    ///   6. `[]` Rent sysvar
+    ///   1. `[writable]` Signatory Record Account
+    ///   2. `[]` Governance account associated with the proposal.
+    ///   3. `[signer]` Payer
+    ///   4. `[]` System program
+    ///   Either:
+    ///      - 5. `[]` TokenOwnerRecord account of the Proposal owner
+    ///        6. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///
+    ///      - 5. `[]` RequiredSignatory account associated with the governance.
     AddSignatory {
         #[allow(dead_code)]
         /// Signatory to add to the Proposal
@@ -555,16 +557,6 @@ pub enum GovernanceInstruction {
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` CompleteProposal authority (Token Owner or Delegate)
     CompleteProposal {},
-
-    /// Creates a SignatoryRecord for a Proposal based on a Governance signoff requirement
-    ///
-    ///  0. `[]` Governance account the proposal belongs to
-    ///  1. `[]` RequiredSignatory account for which the SignatoryRecord will be created
-    ///  2. `[]` Proposal account for which the SignatoryRecord will be created
-    ///  3. `[writable]` SignatoryRecord account to be created. PDA seeds: ['governance', proposal, signatory]
-    ///  4. `[signer]` Payer
-    ///  5. `[]` System
-    CreateSignatoryRecordFromGovernance,
 }
 
 /// Creates CreateRealm instruction
@@ -1002,22 +994,37 @@ pub fn add_signatory(
     program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
-    token_owner_record: &Pubkey,
-    governance_authority: &Pubkey,
+    permission: &AddSignatoryPermission,
+    governance: &Pubkey,
     payer: &Pubkey,
     // Args
     signatory: &Pubkey,
 ) -> Instruction {
     let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*proposal, false),
-        AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(signatory_record_address, false),
+        AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
+
+    match permission {
+        AddSignatoryPermission::GovernanceAuthority {
+            governance_authority,
+            token_owner_record,
+        } => {
+            accounts.push(AccountMeta::new_readonly(*token_owner_record, false));
+            accounts.push(AccountMeta::new_readonly(*governance_authority, true));
+        }
+        AddSignatoryPermission::RequiredByGovernance => {
+            accounts.push(AccountMeta::new_readonly(
+                get_required_signatory_address(program_id, governance, signatory),
+                false,
+            ));
+        }
+    };
 
     let instruction = GovernanceInstruction::AddSignatory {
         signatory: *signatory,
@@ -1028,6 +1035,20 @@ pub fn add_signatory(
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
+}
+
+#[derive(Debug, Copy, Clone)]
+/// Enum to specify the authority by which the instruction should add a signatory
+pub enum AddSignatoryPermission {
+    /// Governance authority holders can add signatories to a proposal
+    GovernanceAuthority {
+        /// Token holder or governance delegate
+        governance_authority: Pubkey,
+        /// Token owner record
+        token_owner_record: Pubkey,
+    },
+    /// Anyone can add signatories that are required by the governance to a proposal
+    RequiredByGovernance,
 }
 
 /// Creates RemoveSignatory instruction
@@ -1774,39 +1795,6 @@ pub fn complete_proposal(
     ];
 
     let instruction = GovernanceInstruction::CompleteProposal {};
-
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: instruction.try_to_vec().unwrap(),
-    }
-}
-
-/// Creates CreateSignatoryRecordFromGovernance instruction
-pub fn create_signatory_record_from_governance(
-    program_id: &Pubkey,
-    // Accounts
-    governance: &Pubkey,
-    proposal: &Pubkey,
-    payer: &Pubkey,
-    // Args
-    signatory: &Pubkey,
-) -> Instruction {
-    let required_signatory_address =
-        get_required_signatory_address(program_id, governance, signatory);
-
-    let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
-
-    let accounts = vec![
-        AccountMeta::new_readonly(*governance, false),
-        AccountMeta::new_readonly(required_signatory_address, false),
-        AccountMeta::new_readonly(*proposal, false),
-        AccountMeta::new(signatory_record_address, false),
-        AccountMeta::new(*payer, true),
-        AccountMeta::new_readonly(system_program::id(), false),
-    ];
-
-    let instruction = GovernanceInstruction::CreateSignatoryRecordFromGovernance;
 
     Instruction {
         program_id: *program_id,

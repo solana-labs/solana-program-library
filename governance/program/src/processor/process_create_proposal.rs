@@ -133,7 +133,7 @@ pub fn process_create_proposal(
         state: ProposalState::Draft,
         token_owner_record: *proposal_owner_record_info.key,
 
-        signatories_count: governance_data.required_signatories_count,
+        signatories_count: 0,
         signatories_signed_off_count: 0,
 
         name,
