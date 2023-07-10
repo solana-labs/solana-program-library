@@ -400,10 +400,10 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     /// in the TLV data.
     fn try_get_new_account_len<V: Extension + VariableLenPack>(
         &self,
-        new_value: &V,
+        new_extension: &V,
     ) -> Result<usize, ProgramError> {
         // get the new length used by the extension
-        let new_extension_len = add_type_and_length_to_len(new_value.get_packed_len()?);
+        let new_extension_len = add_type_and_length_to_len(new_extension.get_packed_len()?);
         let tlv_info = get_tlv_data_info(self.get_tlv_data())?;
         // If we're adding an extension, then we must have at least BASE_ACCOUNT_LENGTH
         // and account type
@@ -600,12 +600,12 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// if space hasn't already been allocated for the given extension
     pub fn pack_variable_len_extension<V: Extension + VariableLenPack>(
         &mut self,
-        value: &V,
+        extension: &V,
     ) -> Result<(), ProgramError> {
         let data = self.get_extension_bytes_mut::<V>()?;
         // NOTE: Do *not* use `pack`, since the length check will cause
         // reallocations to smaller sizes to fail
-        value.pack_into_slice(data)
+        extension.pack_into_slice(data)
     }
 
     /// Packs base state data into the base data portion
@@ -631,14 +631,14 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// Reallocate and overwite the TLV entry for the given variable-length
     /// extension.
     ///
-    /// Returns an error if the extension is not present, or if this is not enough
+    /// Returns an error if the extension is not present, or if there is not enough
     /// space in the buffer.
     pub fn realloc_variable_len_extension<V: Extension + VariableLenPack>(
         &mut self,
-        new_value: &V,
+        new_extension: &V,
     ) -> Result<(), ProgramError> {
-        let data = self.realloc::<V>(new_value.get_packed_len()?)?;
-        new_value.pack_into_slice(data)
+        let data = self.realloc::<V>(new_extension.get_packed_len()?)?;
+        new_extension.pack_into_slice(data)
     }
 
     /// Reallocate the TLV entry for the given extension to the given number of bytes.
@@ -704,11 +704,11 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// `Pod` types must use `init_extension`
     pub fn init_variable_len_extension<V: Extension + VariableLenPack>(
         &mut self,
-        value: &V,
+        extension: &V,
         overwrite: bool,
     ) -> Result<(), ProgramError> {
-        let data = self.alloc::<V>(value.get_packed_len()?, overwrite)?;
-        value.pack_into_slice(data)
+        let data = self.alloc::<V>(extension.get_packed_len()?, overwrite)?;
+        extension.pack_into_slice(data)
     }
 
     fn alloc<V: Extension>(
@@ -1166,20 +1166,19 @@ impl Extension for AccountPaddingTest {
     const TYPE: ExtensionType = ExtensionType::AccountPaddingTest;
 }
 
-/// Packs arbitrary bytes for a variable-length extension into a new TLV space
+/// Packs a variable-length extension into a new TLV space
 ///
 /// This function reallocates the account as needed to accommodate for the
-/// change in space, then allocates in the TLV buffer, and finally writes the
-/// bytes.
+/// change in space, then initializes the extension.
 pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     account_info: &AccountInfo,
-    value: &V,
+    extension: &V,
 ) -> Result<(), ProgramError> {
     let previous_account_len = account_info.try_data_len()?;
     let new_account_len = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        state.try_get_new_account_len(value)?
+        state.try_get_new_account_len(extension)?
     };
 
     if previous_account_len < new_account_len {
@@ -1195,23 +1194,23 @@ pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
 
     // now alloc in the TLV buffer and write the data
     let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-    state.init_variable_len_extension(value, false)
+    state.init_variable_len_extension(extension, false)
 }
 
-/// Packs arbitrary bytes for a variable-length extension into an existing TLV space
+/// Packs a variable-length extension into an existing TLV space
 ///
 /// This function reallocates the account as needed to accommodate for the
 /// change in space, then reallocates in the TLV buffer, and finally writes the
 /// bytes.
 pub fn realloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     account_info: &AccountInfo,
-    new_value: &V,
+    new_extension: &V,
 ) -> Result<(), ProgramError> {
     let previous_account_len = account_info.try_data_len()?;
     let new_account_len = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        state.try_get_new_account_len(new_value)?
+        state.try_get_new_account_len(new_extension)?
     };
 
     if previous_account_len < new_account_len {
@@ -1219,12 +1218,12 @@ pub fn realloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
         account_info.realloc(new_account_len, false)?;
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-        state.realloc_variable_len_extension(new_value)?;
+        state.realloc_variable_len_extension(new_extension)?;
     } else {
         // do it backwards otherwise, write the state, realloc TLV, then the account
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-        state.realloc_variable_len_extension(new_value)?;
+        state.realloc_variable_len_extension(new_extension)?;
 
         let removed_bytes = previous_account_len
             .checked_sub(new_account_len)
