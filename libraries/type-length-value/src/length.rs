@@ -12,7 +12,8 @@ pub struct Length(PodU32);
 impl TryFrom<Length> for usize {
     type Error = ProgramError;
     fn try_from(n: Length) -> Result<Self, Self::Error> {
-        Self::try_from(u32::from(n.0)).map_err(|_| ProgramError::AccountDataTooSmall)
+        Self::try_from(u32::from(n.0))
+            .map_err(|_| ProgramError::AccountDataTooSmall)
     }
 }
 impl TryFrom<usize> for Length {

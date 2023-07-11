@@ -11,19 +11,28 @@ pub fn pod_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&T, ProgramError> {
     bytemuck::try_from_bytes(bytes).map_err(|_| ProgramError::InvalidArgument)
 }
 /// Convert a slice into a mutable `Pod` (zero copy)
-pub fn pod_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut T, ProgramError> {
-    bytemuck::try_from_bytes_mut(bytes).map_err(|_| ProgramError::InvalidArgument)
+pub fn pod_from_bytes_mut<T: Pod>(
+    bytes: &mut [u8],
+) -> Result<&mut T, ProgramError> {
+    bytemuck::try_from_bytes_mut(bytes)
+        .map_err(|_| ProgramError::InvalidArgument)
 }
 /// Convert a slice into a mutable `Pod` slice (zero copy)
-pub fn pod_slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], ProgramError> {
+pub fn pod_slice_from_bytes<T: Pod>(
+    bytes: &[u8],
+) -> Result<&[T], ProgramError> {
     bytemuck::try_cast_slice(bytes).map_err(|_| ProgramError::InvalidArgument)
 }
 /// Convert a slice into a mutable `Pod` slice (zero copy)
-pub fn pod_slice_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut [T], ProgramError> {
-    bytemuck::try_cast_slice_mut(bytes).map_err(|_| ProgramError::InvalidArgument)
+pub fn pod_slice_from_bytes_mut<T: Pod>(
+    bytes: &mut [u8],
+) -> Result<&mut [T], ProgramError> {
+    bytemuck::try_cast_slice_mut(bytes)
+        .map_err(|_| ProgramError::InvalidArgument)
 }
 
-/// Simple macro for implementing conversion functions between Pod* ints and standard ints.
+/// Simple macro for implementing conversion functions between Pod* ints and
+/// standard ints.
 ///
 /// The standard int types can cause alignment issues when placed in a `Pod`,
 /// so these replacements are usable in all `Pod`s.
@@ -114,7 +123,10 @@ pub struct PodSliceMut<'data, T: Pod> {
 impl<'data, T: Pod> PodSliceMut<'data, T> {
     /// Unpack the mutable buffer into a mutable slice, with the option to
     /// initialize the data
-    fn unpack_internal<'a>(data: &'a mut [u8], init: bool) -> Result<Self, ProgramError>
+    fn unpack_internal<'a>(
+        data: &'a mut [u8],
+        init: bool,
+    ) -> Result<Self, ProgramError>
     where
         'a: 'data,
     {

@@ -11,6 +11,8 @@ pub mod pod;
 pub mod state;
 pub mod variable_len_pack;
 
-// Export current sdk types for downstream users building with a different sdk version
-pub use solana_program;
-pub use spl_type_length_value_derive::SplBorshVariableLenPack;
+// Export current sdk types for downstream users building with a different sdk
+// version
+pub use {
+    solana_program, spl_type_length_value_derive::SplBorshVariableLenPack,
+};

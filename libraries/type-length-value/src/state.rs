@@ -89,7 +89,8 @@ fn get_discriminators_and_end_index(
     while start_index < tlv_data.len() {
         let tlv_indices = get_indices_unchecked(start_index);
         if tlv_data.len() < tlv_indices.length_start {
-            // we got to the end, but there might be some uninitialized data after
+            // we got to the end, but there might be some uninitialized data
+            // after
             let remainder = &tlv_data[tlv_indices.type_start..];
             if remainder.iter().all(|&x| x == 0) {
                 return Ok((discriminators, tlv_indices.type_start));
@@ -136,7 +137,8 @@ fn get_bytes<V: SplDiscriminate>(
         },
         _,
     ) = get_indices(tlv_data, V::SPL_DISCRIMINATOR, false, Some(0))?;
-    // get_indices has checked that tlv_data is long enough to include these indices
+    // get_indices has checked that tlv_data is long enough to include these
+    // indices
     let length =
         pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::try_from(*length)?);
@@ -159,7 +161,8 @@ fn get_bytes_specific<V: SplDiscriminate>(
         },
         _,
     ) = get_indices(tlv_data, V::SPL_DISCRIMINATOR, false, Some(entry_number))?;
-    // get_indices has checked that tlv_data is long enough to include these indices
+    // get_indices has checked that tlv_data is long enough to include these
+    // indices
     let length =
         pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::try_from(*length)?);
@@ -184,8 +187,8 @@ fn get_bytes_specific<V: SplDiscriminate>(
 /// For example, if we have two distinct types, one which is an 8-byte array
 /// of value `[0, 1, 0, 0, 0, 0, 0, 0]` and discriminator
 /// `[1, 1, 1, 1, 1, 1, 1, 1]`, and another which is just a single `u8` of value
-/// `4` with the discriminator `[2, 2, 2, 2, 2, 2, 2, 2]`, we can deserialize this
-/// buffer as follows:
+/// `4` with the discriminator `[2, 2, 2, 2, 2, 2, 2, 2]`, we can deserialize
+/// this buffer as follows:
 ///
 /// ```
 /// use {
@@ -360,7 +363,8 @@ impl TlvStateNonStrict for TlvStateNonStrictOwned {
     }
 }
 
-/// Encapsulates immutable base state data (mint or account) with possible extensions
+/// Encapsulates immutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct TlvStateStrictBorrowed<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -382,7 +386,8 @@ impl<'a> TlvStateStrict for TlvStateStrictBorrowed<'a> {
 }
 
 /// TODO: Joe
-/// Encapsulates immutable base state data (mint or account) with possible extensions
+/// Encapsulates immutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct TlvStateNonStrictBorrowed<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -403,7 +408,8 @@ impl<'a> TlvStateNonStrict for TlvStateNonStrictBorrowed<'a> {
     }
 }
 
-/// Encapsulates mutable base state data (mint or account) with possible extensions
+/// Encapsulates mutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct TlvStateStrictMut<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -418,7 +424,8 @@ impl<'data> TlvStateStrictMut<'data> {
         Ok(Self { data })
     }
 
-    /// Unpack a portion of the TLV data as the desired type that allows modifying the type
+    /// Unpack a portion of the TLV data as the desired type that allows
+    /// modifying the type
     pub fn get_value_mut<V: SplDiscriminate + Pod>(
         &mut self,
     ) -> Result<&mut V, ProgramError> {
@@ -460,8 +467,8 @@ impl<'data> TlvStateStrictMut<'data> {
         Ok(extension_ref)
     }
 
-    /// Packs a variable-length value into its appropriate data segment. Assumes that
-    /// space has already been allocated for the given type
+    /// Packs a variable-length value into its appropriate data segment. Assumes
+    /// that space has already been allocated for the given type
     pub fn pack_variable_len_value<V: SplDiscriminate + VariableLenPack>(
         &mut self,
         value: &V,
@@ -509,10 +516,10 @@ impl<'data> TlvStateStrictMut<'data> {
         }
     }
 
-    /// Reallocate the given number of bytes for the given SplDiscriminate. If the new
-    /// length is smaller, it will compact the rest of the buffer and zero out
-    /// the difference at the end. If it's larger, it will move the rest of
-    /// the buffer data and zero out the new data.
+    /// Reallocate the given number of bytes for the given SplDiscriminate. If
+    /// the new length is smaller, it will compact the rest of the buffer
+    /// and zero out the difference at the end. If it's larger, it will move
+    /// the rest of the buffer data and zero out the new data.
     pub fn realloc<V: SplDiscriminate>(
         &mut self,
         length: usize,
@@ -542,8 +549,8 @@ impl<'data> TlvStateStrictMut<'data> {
             }
         }
 
-        // write new length after the check, to avoid getting into a bad situation
-        // if trying to recover from an error
+        // write new length after the check, to avoid getting into a bad
+        // situation if trying to recover from an error
         *length_ref = Length::try_from(length)?;
 
         let old_value_end = value_start.saturating_add(old_length);
@@ -574,7 +581,8 @@ impl<'a> TlvStateStrict for TlvStateStrictMut<'a> {
 }
 
 /// TODO: Joe
-/// Encapsulates mutable base state data (mint or account) with possible extensions
+/// Encapsulates mutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct TlvStateNonStrictMut<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -715,8 +723,8 @@ impl<'data> TlvStateNonStrictMut<'data> {
             }
         }
 
-        // write new length after the check, to avoid getting into a bad situation
-        // if trying to recover from an error
+        // write new length after the check, to avoid getting into a bad
+        // situation if trying to recover from an error
         *length_ref = Length::try_from(length)?;
 
         let old_value_end = value_start.saturating_add(old_length);
@@ -771,7 +779,8 @@ pub fn realloc_and_pack_variable_len_strict<
     let new_length = value.get_packed_len()?;
     let previous_account_size = account_info.try_data_len()?;
     if previous_length < new_length {
-        // size increased, so realloc the account, then the TLV entry, then write data
+        // size increased, so realloc the account, then the TLV entry, then
+        // write data
         let additional_bytes = new_length
             .checked_sub(previous_length)
             .ok_or(ProgramError::AccountDataTooSmall)?;
@@ -784,7 +793,8 @@ pub fn realloc_and_pack_variable_len_strict<
         state.realloc::<V>(new_length)?;
         state.pack_variable_len_value(value)?;
     } else {
-        // do it backwards otherwise, write the state, realloc TLV, then the account
+        // do it backwards otherwise, write the state, realloc TLV, then the
+        // account
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = TlvStateStrictMut::unpack(&mut buffer)?;
         state.pack_variable_len_value(value)?;
@@ -792,9 +802,11 @@ pub fn realloc_and_pack_variable_len_strict<
             .checked_sub(new_length)
             .ok_or(ProgramError::AccountDataTooSmall)?;
         if removed_bytes > 0 {
-            // we decreased the size, so need to realloc the TLV, then the account
+            // we decreased the size, so need to realloc the TLV, then the
+            // account
             state.realloc::<V>(new_length)?;
-            // this is probably fine, but be safe and avoid invalidating references
+            // this is probably fine, but be safe and avoid invalidating
+            // references
             drop(buffer);
             account_info.realloc(
                 previous_account_size.saturating_sub(removed_bytes),
@@ -819,8 +831,10 @@ fn check_data(tlv_data: &[u8]) -> Result<(), ProgramError> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use bytemuck::{Pod, Zeroable};
+    use {
+        super::*,
+        bytemuck::{Pod, Zeroable},
+    };
 
     const TEST_BUFFER: &[u8] = &[
         1, 1, 1, 1, 1, 1, 1, 1, // discriminator
