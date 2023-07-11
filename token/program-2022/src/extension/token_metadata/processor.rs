@@ -14,6 +14,7 @@ use {
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
         msg,
+        program::set_return_data,
         program_error::ProgramError,
         program_option::COption,
         pubkey::Pubkey,
@@ -149,7 +150,21 @@ pub fn process_update_authority(
 }
 
 /// Processes an [Emit](enum.TokenMetadataInstruction.html) instruction.
-pub fn process_emit(_program_id: &Pubkey, _accounts: &[AccountInfo], _data: Emit) -> ProgramResult {
+pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let metadata_info = next_account_info(account_info_iter)?;
+
+    if metadata_info.owner != program_id {
+        return Err(ProgramError::IllegalOwner);
+    }
+
+    let buffer = metadata_info.try_borrow_data()?;
+    let state = StateWithExtensions::<Mint>::unpack(&buffer)?;
+    let metadata_bytes = state.get_extension_bytes::<TokenMetadata>()?;
+
+    if let Some(range) = TokenMetadata::get_slice(metadata_bytes, data.start, data.end) {
+        set_return_data(range);
+    }
     Ok(())
 }
 
