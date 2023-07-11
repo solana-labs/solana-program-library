@@ -356,13 +356,11 @@ fn process_deposit(
 /// most significant 32 bits of the amount.
 #[cfg(feature = "zk-ops")]
 fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError> {
-    if amount >> MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH > 0 {
+    if amount > MAXIMUM_DEPOSIT_TRANSFER_AMOUNT {
         return Err(TokenError::MaximumDepositAmountExceeded);
     }
-    let deposit_amount_lo =
-        amount << (64 - PENDING_BALANCE_LO_BIT_LENGTH) >> PENDING_BALANCE_HI_BIT_LENGTH;
-    let deposit_amount_hi = amount >> PENDING_BALANCE_LO_BIT_LENGTH;
-
+    let deposit_amount_lo = amount & (u16::MAX as u64);
+    let deposit_amount_hi = amount.checked_shr(u16::BITS).unwrap();
     Ok((deposit_amount_lo, deposit_amount_hi))
 }
 
