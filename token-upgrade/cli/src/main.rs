@@ -497,7 +497,7 @@ mod test {
         super::*,
         solana_sdk::{bpf_loader_upgradeable, signer::keypair::Keypair},
         solana_test_validator::{TestValidator, TestValidatorGenesis, UpgradeableProgramInfo},
-        spl_token_client::client::{ProgramClient, SendTransaction},
+        spl_token_client::client::{ProgramClient, SendTransaction, SimulateTransaction},
         std::path::PathBuf,
     };
 
@@ -533,7 +533,7 @@ mod test {
         test_validator_genesis.start_async().await
     }
 
-    async fn setup_mint<T: SendTransaction>(
+    async fn setup_mint<T: SendTransaction + SimulateTransaction>(
         program_id: &Pubkey,
         mint_authority: &Pubkey,
         decimals: u8,
