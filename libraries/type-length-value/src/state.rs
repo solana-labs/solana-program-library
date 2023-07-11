@@ -76,7 +76,7 @@ fn get_indices(
             .saturating_add(usize::try_from(*length)?);
         start_index = value_end_index;
     }
-    Err(TlvError::TypeNotFound.into())
+    Err(ProgramError::InvalidAccountData)
 }
 
 // This function is doing two separate things at once, and would probably be

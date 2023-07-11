@@ -16,7 +16,7 @@ use {
         instruction::update_authority,
         state::{OptionalNonZeroPubkey, TokenMetadata},
     },
-    spl_type_length_value::state::{TlvState, TlvStateBorrowed},
+    spl_type_length_value::state::{TlvStateStrict, TlvStateStrictBorrowed},
 };
 
 #[tokio::test]
@@ -67,7 +67,8 @@ async fn success_update() {
 
     let new_update_authority = Keypair::new();
     let new_update_authority_pubkey =
-        OptionalNonZeroPubkey::try_from(Some(new_update_authority.pubkey())).unwrap();
+        OptionalNonZeroPubkey::try_from(Some(new_update_authority.pubkey()))
+            .unwrap();
     token_metadata.update_authority = new_update_authority_pubkey.clone();
 
     let transaction = Transaction::new_signed_with_payer(
@@ -98,7 +99,8 @@ async fn success_update() {
         fetched_metadata_account.data.len(),
         token_metadata.tlv_size_of().unwrap()
     );
-    let fetched_metadata_state = TlvStateBorrowed::unpack(&fetched_metadata_account.data).unwrap();
+    let fetched_metadata_state =
+        TlvStateStrictBorrowed::unpack(&fetched_metadata_account.data).unwrap();
     let fetched_metadata = fetched_metadata_state
         .get_variable_len_value::<TokenMetadata>()
         .unwrap();
@@ -133,7 +135,8 @@ async fn success_update() {
         fetched_metadata_account.data.len(),
         token_metadata.tlv_size_of().unwrap()
     );
-    let fetched_metadata_state = TlvStateBorrowed::unpack(&fetched_metadata_account.data).unwrap();
+    let fetched_metadata_state =
+        TlvStateStrictBorrowed::unpack(&fetched_metadata_account.data).unwrap();
     let fetched_metadata = fetched_metadata_state
         .get_variable_len_value::<TokenMetadata>()
         .unwrap();
@@ -161,7 +164,9 @@ async fn success_update() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(TokenMetadataError::ImmutableMetadata as u32)
+            InstructionError::Custom(
+                TokenMetadataError::ImmutableMetadata as u32
+            )
         )
     );
 }
@@ -234,7 +239,10 @@ async fn fail_authority_checks() {
         .unwrap();
     assert_eq!(
         error,
-        TransactionError::InstructionError(0, InstructionError::MissingRequiredSignature,)
+        TransactionError::InstructionError(
+            0,
+            InstructionError::MissingRequiredSignature,
+        )
     );
 
     // wrong authority
@@ -259,7 +267,9 @@ async fn fail_authority_checks() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(TokenMetadataError::IncorrectUpdateAuthority as u32),
+            InstructionError::Custom(
+                TokenMetadataError::IncorrectUpdateAuthority as u32
+            ),
         )
     );
 }

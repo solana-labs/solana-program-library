@@ -13,11 +13,12 @@ use {
         transaction::{Transaction, TransactionError},
     },
     spl_token_metadata_interface::{
-        error::TokenMetadataError, instruction::initialize, state::TokenMetadata,
+        error::TokenMetadataError, instruction::initialize,
+        state::TokenMetadata,
     },
     spl_type_length_value::{
         error::TlvError,
-        state::{TlvState, TlvStateBorrowed},
+        state::{TlvStateStrict, TlvStateStrictBorrowed},
     },
 };
 
@@ -74,7 +75,8 @@ async fn success_initialize() {
         .await
         .unwrap()
         .unwrap();
-    let fetched_metadata_state = TlvStateBorrowed::unpack(&fetched_metadata_account.data).unwrap();
+    let fetched_metadata_state =
+        TlvStateStrictBorrowed::unpack(&fetched_metadata_account.data).unwrap();
     let fetched_metadata = fetched_metadata_state
         .get_variable_len_value::<TokenMetadata>()
         .unwrap();
@@ -186,7 +188,10 @@ async fn fail_without_authority_signature() {
         .unwrap();
     assert_eq!(
         error,
-        TransactionError::InstructionError(1, InstructionError::MissingRequiredSignature,)
+        TransactionError::InstructionError(
+            1,
+            InstructionError::MissingRequiredSignature,
+        )
     );
 }
 
@@ -265,7 +270,9 @@ async fn fail_incorrect_authority() {
         error,
         TransactionError::InstructionError(
             1,
-            InstructionError::Custom(TokenMetadataError::IncorrectMintAuthority as u32)
+            InstructionError::Custom(
+                TokenMetadataError::IncorrectMintAuthority as u32
+            )
         )
     );
 }
