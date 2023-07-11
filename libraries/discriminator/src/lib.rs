@@ -38,45 +38,16 @@ mod tests {
 
     #[allow(dead_code)]
     #[derive(SplDiscriminate)]
-    #[discriminator_hash_input("global:my_instruction_with_lifetime")]
-    pub struct MyInstruction3<'a> {
-        data: &'a [u8],
+    #[discriminator_hash_input("my_crate_public_instruction")]
+    pub(crate) struct MyInstruction3 {
+        arg1: String,
     }
 
     #[allow(dead_code)]
     #[derive(SplDiscriminate)]
-    #[discriminator_hash_input("global:my_instruction_with_one_generic")]
-    pub struct MyInstruction4<T> {
-        data: T,
-    }
-
-    #[allow(dead_code)]
-    #[derive(SplDiscriminate)]
-    #[discriminator_hash_input("global:my_instruction_with_one_generic_and_lifetime")]
-    pub struct MyInstruction5<'b, T> {
-        data: &'b [T],
-    }
-
-    #[allow(dead_code)]
-    #[derive(SplDiscriminate)]
-    #[discriminator_hash_input("global:my_instruction_with_multiple_generics_and_lifetime")]
-    pub struct MyInstruction6<'c, U, V> {
-        data1: &'c [U],
-        data2: &'c [V],
-    }
-
-    #[allow(dead_code)]
-    #[derive(SplDiscriminate)]
-    #[discriminator_hash_input(
-        "global:my_instruction_with_multiple_generics_and_lifetime_and_where"
-    )]
-    pub struct MyInstruction7<'c, U, V>
-    where
-        U: Clone + Copy,
-        V: Clone + Copy,
-    {
-        data1: &'c [U],
-        data2: &'c [V],
+    #[discriminator_hash_input("my_private_instruction")]
+    struct MyInstruction4 {
+        arg1: u8,
     }
 
     fn assert_discriminator<T: spl_discriminator::discriminator::SplDiscriminate>(
@@ -114,17 +85,8 @@ mod tests {
 
         assert_discriminator::<MyInstruction1>("my_first_instruction");
         assert_discriminator::<MyInstruction2>("global:my_second_instruction");
-        assert_discriminator::<MyInstruction3<'_>>("global:my_instruction_with_lifetime");
-        assert_discriminator::<MyInstruction4<u8>>("global:my_instruction_with_one_generic");
-        assert_discriminator::<MyInstruction5<'_, u8>>(
-            "global:my_instruction_with_one_generic_and_lifetime",
-        );
-        assert_discriminator::<MyInstruction6<'_, u8, u8>>(
-            "global:my_instruction_with_multiple_generics_and_lifetime",
-        );
-        assert_discriminator::<MyInstruction7<'_, u8, u8>>(
-            "global:my_instruction_with_multiple_generics_and_lifetime_and_where",
-        );
+        assert_discriminator::<MyInstruction3>("my_crate_public_instruction");
+        assert_discriminator::<MyInstruction4>("my_private_instruction");
     }
 }
 
