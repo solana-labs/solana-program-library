@@ -17,7 +17,7 @@ solana-program = "1.16.1"
 spl-tlv-account-resolution = { version = "0.2.0" , path = "../../libraries/tlv-account-resolution" }
 spl-token-2022 = { version = "0.7",  path = "../program-2022", features = ["no-entrypoint"] }
 spl-transfer-hook-interface = { version = "0.1.0" , path = "../transfer-hook-interface" }
-spl-type-length-value = { version = "0.3.0" , path = "../../libraries/type-length-value" }
+spl-type-length-value = { version = "0.2.0" , path = "../../libraries/type-length-value" }
 
 [dev-dependencies]
 solana-program-test = "1.16.1"
