@@ -1,7 +1,5 @@
 //! Type-length-value structure definition and manipulation
 
-use std::collections::HashMap;
-
 use {
     crate::{
         error::TlvError,
@@ -1397,6 +1395,352 @@ mod test {
                 })
                 .unwrap_err(),
             ProgramError::InvalidAccountData
+        );
+    }
+}
+
+#[cfg(all(test, feature = "derive"))]
+mod strict_nonstrict_tests {
+
+    use {
+        super::*,
+        crate::SplBorshVariableLenPack,
+        borsh::{BorshDeserialize, BorshSerialize},
+        bytemuck::{Pod, Zeroable},
+        spl_discriminator::SplDiscriminate,
+        std::mem::size_of,
+    };
+
+    #[repr(C)]
+    #[derive(
+        Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate,
+    )]
+    #[discriminator_hash_input("vehicle::chevrolet_fixed")]
+    pub struct ChevroletFixed {
+        vin: [u8; 8],
+        plate: [u8; 7],
+    }
+
+    #[repr(C)]
+    #[derive(
+        Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate,
+    )]
+    #[discriminator_hash_input("vehicle::ford_fixed")]
+    pub struct FordFixed {
+        vin: [u8; 8],
+        plate: [u8; 7],
+    }
+
+    #[cfg_attr(feature = "derive", derive(SplBorshVariableLenPack))]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        PartialEq,
+        BorshDeserialize,
+        BorshSerialize,
+        SplDiscriminate,
+    )]
+    #[discriminator_hash_input("vehicle::chevrolet_variable")]
+    pub struct ChevroletVariable {
+        vin: Vec<u8>,
+        plate: Vec<u8>,
+    }
+
+    #[cfg_attr(feature = "derive", derive(SplBorshVariableLenPack))]
+    #[derive(
+        Clone,
+        Debug,
+        Default,
+        PartialEq,
+        BorshDeserialize,
+        BorshSerialize,
+        SplDiscriminate,
+    )]
+    #[discriminator_hash_input("vehicle::ford_variable")]
+    pub struct FordVariable {
+        vin: Vec<u8>,
+        plate: Vec<u8>,
+    }
+
+    #[test]
+    fn test_strict() {
+        let chevrolet_fixed = ChevroletFixed {
+            vin: *b"12345678",
+            plate: *b"ABC1234",
+        };
+        let ford_fixed = FordFixed {
+            vin: *b"12345678",
+            plate: *b"ABC1234",
+        };
+
+        let account_size = get_base_len()
+            + size_of::<ChevroletFixed>()
+            + get_base_len()
+            + size_of::<FordFixed>();
+        let mut buffer = vec![0; account_size];
+
+        let mut state = TlvStateStrictMut::unpack(&mut buffer).unwrap();
+
+        // Write a `ChevroletFixed`
+        state.add_entry::<ChevroletFixed>(&chevrolet_fixed).unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[ChevroletFixed::SPL_DISCRIMINATOR]
+        );
+        assert_eq!(
+            state.get_value::<ChevroletFixed>().unwrap(),
+            &chevrolet_fixed
+        );
+
+        // Should fail if we try to write another `ChevroletFixed`
+        assert_eq!(
+            state.init_value::<ChevroletFixed>().unwrap_err(),
+            TlvError::TypeAlreadyExists.into(),
+        );
+
+        // Write a `FordFixed`
+        state.add_entry::<FordFixed>(&ford_fixed).unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                FordFixed::SPL_DISCRIMINATOR
+            ]
+        );
+        assert_eq!(state.get_value::<FordFixed>().unwrap(), &ford_fixed);
+
+        // Should fail if we try to write another `FordFixed`
+        assert_eq!(
+            state.init_value::<FordFixed>().unwrap_err(),
+            TlvError::TypeAlreadyExists.into(),
+        );
+    }
+
+    #[test]
+    fn test_nonstrict() {
+        let chevrolet_fixed1 = ChevroletFixed {
+            vin: *b"12345678",
+            plate: *b"ABC1234",
+        };
+        let chevrolet_fixed2 = ChevroletFixed {
+            vin: *b"87654321",
+            plate: *b"XYZ4321",
+        };
+        let ford_fixed1 = FordFixed {
+            vin: *b"12345678",
+            plate: *b"ABC1234",
+        };
+        let ford_fixed2 = FordFixed {
+            vin: *b"87654321",
+            plate: *b"XYZ4321",
+        };
+
+        let account_size = get_base_len()
+            + size_of::<ChevroletFixed>()
+            + get_base_len()
+            + size_of::<ChevroletFixed>()
+            + get_base_len()
+            + size_of::<FordFixed>()
+            + get_base_len()
+            + size_of::<FordFixed>();
+        let mut buffer = vec![0; account_size];
+
+        let mut state = TlvStateNonStrictMut::unpack(&mut buffer).unwrap();
+
+        // Write a `ChevroletFixed`
+        state
+            .add_entry::<ChevroletFixed>(&chevrolet_fixed1)
+            .unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[ChevroletFixed::SPL_DISCRIMINATOR]
+        );
+        assert_eq!(
+            state.get_first::<ChevroletFixed>().unwrap(),
+            &chevrolet_fixed1
+        );
+
+        // Write another `ChevroletFixed`
+        state
+            .add_entry::<ChevroletFixed>(&chevrolet_fixed2)
+            .unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletFixed::SPL_DISCRIMINATOR,
+            ]
+        );
+        assert_eq!(
+            state.get_value::<ChevroletFixed>(1).unwrap(),
+            &chevrolet_fixed2
+        );
+
+        // Write a `FordFixed`
+        state.add_entry::<FordFixed>(&ford_fixed1).unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                FordFixed::SPL_DISCRIMINATOR,
+            ]
+        );
+        assert_eq!(state.get_first::<FordFixed>().unwrap(), &ford_fixed1);
+
+        // Write another `FordFixed`
+        state.add_entry::<FordFixed>(&ford_fixed2).unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                FordFixed::SPL_DISCRIMINATOR,
+                FordFixed::SPL_DISCRIMINATOR,
+            ]
+        );
+        assert_eq!(state.get_value::<FordFixed>(1).unwrap(), &ford_fixed2);
+    }
+
+    #[test]
+    fn test_nonstrict_mix_and_match() {
+        let chevrolet_fixed1 = ChevroletFixed {
+            vin: *b"12345678",
+            plate: *b"ABC1234",
+        };
+        let chevrolet_fixed2 = ChevroletFixed {
+            vin: *b"87654321",
+            plate: *b"XYZ4321",
+        };
+        let chevrolet_variable = ChevroletVariable {
+            vin: b"12345678".to_vec(),
+            plate: b"ABC1234".to_vec(),
+        };
+        let ford_fixed1 = FordFixed {
+            vin: *b"12345678",
+            plate: *b"ABC1234",
+        };
+        let ford_fixed2 = FordFixed {
+            vin: *b"87654321",
+            plate: *b"XYZ4321",
+        };
+        let ford_variable = FordVariable {
+            vin: b"12345678".to_vec(),
+            plate: b"ABC1234".to_vec(),
+        };
+
+        let account_size = get_base_len()
+            + size_of::<ChevroletFixed>()
+            + get_base_len()
+            + size_of::<ChevroletFixed>()
+            + get_base_len()
+            + size_of::<ChevroletVariable>()
+            + get_base_len()
+            + size_of::<FordFixed>()
+            + get_base_len()
+            + size_of::<FordFixed>()
+            + get_base_len()
+            + size_of::<FordVariable>();
+        let mut buffer = vec![0; account_size];
+
+        let mut state = TlvStateNonStrictMut::unpack(&mut buffer).unwrap();
+
+        // Write a `ChevroletFixed`
+        state
+            .add_entry::<ChevroletFixed>(&chevrolet_fixed1)
+            .unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[ChevroletFixed::SPL_DISCRIMINATOR]
+        );
+        assert_eq!(
+            state.get_first::<ChevroletFixed>().unwrap(),
+            &chevrolet_fixed1
+        );
+
+        // Write another `ChevroletFixed`
+        state
+            .add_entry::<ChevroletFixed>(&chevrolet_fixed2)
+            .unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletFixed::SPL_DISCRIMINATOR,
+            ]
+        );
+        assert_eq!(
+            state.get_value::<ChevroletFixed>(1).unwrap(),
+            &chevrolet_fixed2
+        );
+
+        // Write a `ChevroletVariable`
+        state
+            .add_variable_len_entry::<ChevroletVariable>(&chevrolet_variable)
+            .unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletVariable::SPL_DISCRIMINATOR,
+            ]
+        );
+        assert_eq!(
+            state
+                .get_first_variable_len_value::<ChevroletVariable>()
+                .unwrap(),
+            chevrolet_variable
+        );
+
+        // Write a `FordFixed`
+        state.add_entry::<FordFixed>(&ford_fixed1).unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletVariable::SPL_DISCRIMINATOR,
+                FordFixed::SPL_DISCRIMINATOR,
+            ]
+        );
+        assert_eq!(state.get_first::<FordFixed>().unwrap(), &ford_fixed1);
+
+        // Write another `FordFixed`
+        state.add_entry::<FordFixed>(&ford_fixed2).unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletVariable::SPL_DISCRIMINATOR,
+                FordFixed::SPL_DISCRIMINATOR,
+                FordFixed::SPL_DISCRIMINATOR,
+            ]
+        );
+        assert_eq!(state.get_value::<FordFixed>(1).unwrap(), &ford_fixed2);
+
+        // Write a `FordVariable`
+        state
+            .add_variable_len_entry::<FordVariable>(&ford_variable)
+            .unwrap();
+        assert_eq!(
+            &state.get_discriminators().unwrap(),
+            &[
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletFixed::SPL_DISCRIMINATOR,
+                ChevroletVariable::SPL_DISCRIMINATOR,
+                FordFixed::SPL_DISCRIMINATOR,
+                FordFixed::SPL_DISCRIMINATOR,
+                FordVariable::SPL_DISCRIMINATOR,
+            ]
+        );
+        assert_eq!(
+            state
+                .get_first_variable_len_value::<FordVariable>()
+                .unwrap(),
+            ford_variable
         );
     }
 }

@@ -5,6 +5,9 @@
 #![deny(missing_docs)]
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
+#[cfg(feature = "derive")]
+extern crate self as spl_type_length_value;
+
 pub mod error;
 pub mod length;
 pub mod pod;

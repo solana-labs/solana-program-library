@@ -18,6 +18,9 @@ spl-discriminator = { version = "0.1.0", path = "../discriminator" }
 spl-program-error = { version = "0.2.0", path = "../program-error" }
 spl-type-length-value-derive = { version = "0.0.1", path = "./derive", optional = true }
 
+[dev-dependencies]
+borsh = "0.10"
+
 [lib]
 crate-type = ["cdylib", "lib"]
 

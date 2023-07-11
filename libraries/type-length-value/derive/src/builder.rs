@@ -1,7 +1,9 @@
 use {
     proc_macro2::{Span, TokenStream},
     quote::{quote, ToTokens},
-    syn::{parse::Parse, Generics, Ident, Item, ItemEnum, ItemStruct, WhereClause},
+    syn::{
+        parse::Parse, Generics, Ident, Item, ItemEnum, ItemStruct, WhereClause,
+    },
 };
 
 pub struct SplBorshVariableLenPackBuilder {
@@ -56,7 +58,12 @@ impl Parse for SplBorshVariableLenPackBuilder {
                 ))
             }
         }
-        .map_err(|e| syn::Error::new(input.span(), format!("Failed to parse item: {}", e)))
+        .map_err(|e| {
+            syn::Error::new(
+                input.span(),
+                format!("Failed to parse item: {}", e),
+            )
+        })
     }
 }
 
@@ -78,11 +85,11 @@ impl From<&SplBorshVariableLenPackBuilder> for TokenStream {
                 }
 
                 fn unpack_from_slice(src: &[u8]) -> Result<Self, solana_program::program_error::ProgramError> {
-                    try_from_slice_unchecked(src).map_err(Into::into)
+                    solana_program::borsh::try_from_slice_unchecked(src).map_err(Into::into)
                 }
 
                 fn get_packed_len(&self) -> Result<usize, solana_program::program_error::ProgramError> {
-                    get_instance_packed_len(self).map_err(Into::into)
+                    solana_program::borsh::get_instance_packed_len(self).map_err(Into::into)
                 }
             }
         }
