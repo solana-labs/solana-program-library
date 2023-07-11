@@ -9,7 +9,7 @@ use {
     spl_token_client::{
         client::{
             ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient,
-            SendTransaction,
+            SendTransaction, SimulateTransaction,
         },
         token::Token,
     },
@@ -56,7 +56,7 @@ pub async fn setup(
     (context, client, payer)
 }
 
-pub async fn setup_mint<T: SendTransaction>(
+pub async fn setup_mint<T: SendTransaction + SimulateTransaction>(
     program_id: &Pubkey,
     mint_authority: &Pubkey,
     decimals: u8,
