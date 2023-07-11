@@ -7010,9 +7010,11 @@ version = "0.5.1"
 dependencies = [
  "async-trait",
  "futures-util",
+ "solana-banks-interface",
  "solana-cli-output",
  "solana-program-test",
  "solana-rpc-client",
+ "solana-rpc-client-api",
  "solana-sdk",
  "spl-associated-token-account 2.0.0",
  "spl-memo 4.0.0",
