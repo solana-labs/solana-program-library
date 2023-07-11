@@ -254,7 +254,7 @@ impl ApplyPendingBalanceAccountInfo {
             .ok_or(TokenError::AccountDecryption)
     }
 
-    /// Decrypt the available balance in the account.
+    /// Update the decryptable available balance.
     pub fn new_decryptable_available_balance(
         &self,
         elgamal_secret_key: &ElGamalSecretKey,
