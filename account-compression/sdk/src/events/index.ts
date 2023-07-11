@@ -1,11 +1,15 @@
-import { bs58 } from '@project-serum/anchor/dist/cjs/utils/bytes';
-import BN from 'bn.js';
+import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+import BN from "bn.js";
 
-import { ChangeLogEventV1 } from '../types';
-import { accountCompressionEventBeet } from '../generated/types/AccountCompressionEvent';
-import { ApplicationDataEvent, ChangeLogEventV1 as CLV1 } from '../generated';
-import { PublicKey, TransactionResponse } from '@solana/web3.js';
-import { SPL_NOOP_PROGRAM_ID } from '../constants';
+import { ChangeLogEventV1 } from "../types";
+import { accountCompressionEventBeet } from "../generated/types/AccountCompressionEvent";
+import { ApplicationDataEvent, ChangeLogEventV1 as CLV1 } from "../generated";
+import {
+  PublicKey,
+  TransactionResponse,
+  VersionedTransactionResponse,
+} from "@solana/web3.js";
+import { SPL_NOOP_PROGRAM_ID } from "../constants";
 
 /**
  * Helper method for indexing a {@link ConcurrentMerkleTree}
@@ -17,7 +21,7 @@ export function deserializeChangeLogEventV1(data: Buffer): ChangeLogEventV1 {
     .toFixedFromData(data, 0)
     .read(data, 0);
 
-  if (event.__kind == 'ChangeLog' && event.fields[0].__kind == 'V1') {
+  if (event.__kind == "ChangeLog" && event.fields[0].__kind == "V1") {
     const changeLogV1: CLV1 = event.fields[0].fields[0];
     return {
       treeId: changeLogV1.id,
@@ -26,7 +30,7 @@ export function deserializeChangeLogEventV1(data: Buffer): ChangeLogEventV1 {
       index: changeLogV1.index,
     };
   } else {
-    throw Error('Unable to decode buffer as ChangeLogEvent V1');
+    throw Error("Unable to decode buffer as ChangeLogEvent V1");
   }
 }
 
@@ -42,11 +46,11 @@ export function deserializeApplicationDataEvent(
     .toFixedFromData(data, 0)
     .read(data, 0);
   switch (event.__kind) {
-    case 'ApplicationData': {
+    case "ApplicationData": {
       return event.fields[0];
     }
     default:
-      throw Error('Unable to decode buffer as ApplicationDataEvent');
+      throw Error("Unable to decode buffer as ApplicationDataEvent");
   }
 }
 
@@ -56,62 +60,65 @@ export function deserializeApplicationDataEvent(
  * @param programId - PublicKey of the program (aka `programId`) that utilized the leaf on the tree
  * @param noopProgramId - program id of the noop program used (default: `SPL_NOOP_PROGRAM_ID`)
  * @returns
- */ 
-export function getChangeLogEventV1FromTransaction(
-  txResponse: TransactionResponse,
+ */
+export function getAllChangeLogEventV1FromTransaction(
+  txResponse: TransactionResponse | VersionedTransactionResponse,
   programId: PublicKey,
-  noopProgramId: PublicKey = SPL_NOOP_PROGRAM_ID,
-) : ChangeLogEventV1[]{
+  noopProgramId: PublicKey = SPL_NOOP_PROGRAM_ID
+): ChangeLogEventV1[] {
   // ensure a transaction response was provided
   if (!txResponse) throw Error("No txResponse provided");
 
+  // flatten the array of all account keys (e.g. static, readonly, writable)
+  const accountKeys = txResponse.transaction.message
+    .getAccountKeys()
+    .keySegments()
+    .flat();
+
   // find the correct index of the `programId` instruction
   const relevantIndex =
-  txResponse.transaction.message.compiledInstructions.findIndex(
-    (instruction) => {
-      return (
-        txResponse?.transaction.message.staticAccountKeys[
-          instruction.programIdIndex
-        ].toBase58() === programId.toBase58()
-      );
-    }
-  );
+    txResponse.transaction.message.compiledInstructions.findIndex(
+      (instruction) =>
+        accountKeys[instruction.programIdIndex].toBase58() ===
+        programId.toBase58()
+    );
 
   // locate the noop's inner instructions called via cpi from `programId`
   const relevantInnerIxs = txResponse!.meta?.innerInstructions?.[
     relevantIndex
   ].instructions.filter((instruction) => {
     return (
-      txResponse?.transaction.message.staticAccountKeys[
-        instruction.programIdIndex
-      ].toBase58() === noopProgramId.toBase58()
+      accountKeys[instruction.programIdIndex].toBase58() ===
+      noopProgramId.toBase58()
     );
   });
 
   // when no valid noop instructions are found, throw an error
   if (!relevantInnerIxs || relevantInnerIxs.length == 0)
-    throw Error('Unable to locate valid noop instructions');
+    throw Error("Unable to locate any noop cpi instructions");
 
   let changeLogEvents: ChangeLogEventV1[] = [];
-  
+
   /**
-   * note: the ChangeLogEvent V1 is expected to be at position `1`, 
+   * note: the ChangeLogEvent V1 is expected to be at position `1`,
    * and normally expect only 2 `relevantInnerIx`
    * so this sort method is more efficient for most uses cases
-  */
-  for (let i = relevantInnerIxs.length - 1; i > 0; i--) {
+   */
+  for (let i = relevantInnerIxs.length - 1; i >= 0; i--) {
     try {
-      changeLogEvents.push(deserializeChangeLogEventV1(
-        Buffer.from(bs58.decode(relevantInnerIxs[i]?.data!))
-      ))
+      changeLogEvents.push(
+        deserializeChangeLogEventV1(
+          Buffer.from(bs58.decode(relevantInnerIxs[i]?.data!))
+        )
+      );
     } catch (__) {
-      // do nothing, invalid data is handled just after this for loop
+      // this noop cpi is not a changelog event. do nothing with it.
     }
   }
 
   // when no changeLogEvents were found, throw an error
   if (changeLogEvents.length == 0)
-    throw Error('Unable to locate any `ChangeLogEventV1` events');
+    throw Error("Unable to locate any `ChangeLogEventV1` events");
 
   return changeLogEvents;
 }
