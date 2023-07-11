@@ -963,6 +963,18 @@ async fn confidential_transfer_deposit() {
             )
         )))
     );
+
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    assert_eq!(state.base.amount, 1);
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(extension.pending_balance_credit_counter, 2.into());
+    assert_eq!(extension.expected_pending_balance_credit_counter, 2.into());
+    assert_eq!(extension.actual_pending_balance_credit_counter, 2.into());
 }
 
 #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
