@@ -18,7 +18,7 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
-            reallocate,
+            reallocate, token_metadata,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
             AccountType, BaseStateWithExtensions, ExtensionType, StateWithExtensions,
@@ -41,6 +41,7 @@ use {
         system_instruction, system_program,
         sysvar::{rent::Rent, Sysvar},
     },
+    spl_token_metadata_interface::instruction::TokenMetadataInstruction,
     std::convert::{TryFrom, TryInto},
 };
 
@@ -70,7 +71,7 @@ impl Processor {
 
         let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
         let extension_types = mint.get_extension_types()?;
-        if ExtensionType::try_get_account_len::<Mint>(&extension_types)? != mint_data_len {
+        if ExtensionType::try_calculate_account_len::<Mint>(&extension_types)? != mint_data_len {
             return Err(ProgramError::InvalidAccountData);
         }
         ExtensionType::check_for_invalid_mint_extension_combinations(&extension_types)?;
@@ -155,7 +156,7 @@ impl Processor {
         }
         let required_extensions =
             Self::get_required_account_extensions_from_unpacked_mint(mint_info.owner, &mint)?;
-        if ExtensionType::try_get_account_len::<Account>(&required_extensions)?
+        if ExtensionType::try_calculate_account_len::<Account>(&required_extensions)?
             > new_account_info_data_len
         {
             return Err(ProgramError::InvalidAccountData);
@@ -1256,11 +1257,11 @@ impl Processor {
         let mint_account_info = next_account_info(account_info_iter)?;
 
         let mut account_extensions = Self::get_required_account_extensions(mint_account_info)?;
-        // ExtensionType::try_get_account_len() dedupes types, so just a dumb concatenation is fine
+        // ExtensionType::try_calculate_account_len() dedupes types, so just a dumb concatenation is fine
         // here
         account_extensions.extend_from_slice(&new_extension_types);
 
-        let account_len = ExtensionType::try_get_account_len::<Account>(&account_extensions)?;
+        let account_len = ExtensionType::try_calculate_account_len::<Account>(&account_extensions)?;
         set_return_data(&account_len.to_le_bytes());
 
         Ok(())
@@ -1465,188 +1466,206 @@ impl Processor {
 
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-        let instruction = TokenInstruction::unpack(input)?;
-
-        match instruction {
-            TokenInstruction::InitializeMint {
-                decimals,
-                mint_authority,
-                freeze_authority,
-            } => {
-                msg!("Instruction: InitializeMint");
-                Self::process_initialize_mint(accounts, decimals, mint_authority, freeze_authority)
+        if let Ok(instruction) = TokenInstruction::unpack(input) {
+            match instruction {
+                TokenInstruction::InitializeMint {
+                    decimals,
+                    mint_authority,
+                    freeze_authority,
+                } => {
+                    msg!("Instruction: InitializeMint");
+                    Self::process_initialize_mint(
+                        accounts,
+                        decimals,
+                        mint_authority,
+                        freeze_authority,
+                    )
+                }
+                TokenInstruction::InitializeMint2 {
+                    decimals,
+                    mint_authority,
+                    freeze_authority,
+                } => {
+                    msg!("Instruction: InitializeMint2");
+                    Self::process_initialize_mint2(
+                        accounts,
+                        decimals,
+                        mint_authority,
+                        freeze_authority,
+                    )
+                }
+                TokenInstruction::InitializeAccount => {
+                    msg!("Instruction: InitializeAccount");
+                    Self::process_initialize_account(accounts)
+                }
+                TokenInstruction::InitializeAccount2 { owner } => {
+                    msg!("Instruction: InitializeAccount2");
+                    Self::process_initialize_account2(accounts, owner)
+                }
+                TokenInstruction::InitializeAccount3 { owner } => {
+                    msg!("Instruction: InitializeAccount3");
+                    Self::process_initialize_account3(accounts, owner)
+                }
+                TokenInstruction::InitializeMultisig { m } => {
+                    msg!("Instruction: InitializeMultisig");
+                    Self::process_initialize_multisig(accounts, m)
+                }
+                TokenInstruction::InitializeMultisig2 { m } => {
+                    msg!("Instruction: InitializeMultisig2");
+                    Self::process_initialize_multisig2(accounts, m)
+                }
+                #[allow(deprecated)]
+                TokenInstruction::Transfer { amount } => {
+                    msg!("Instruction: Transfer");
+                    Self::process_transfer(program_id, accounts, amount, None, None)
+                }
+                TokenInstruction::Approve { amount } => {
+                    msg!("Instruction: Approve");
+                    Self::process_approve(program_id, accounts, amount, None)
+                }
+                TokenInstruction::Revoke => {
+                    msg!("Instruction: Revoke");
+                    Self::process_revoke(program_id, accounts)
+                }
+                TokenInstruction::SetAuthority {
+                    authority_type,
+                    new_authority,
+                } => {
+                    msg!("Instruction: SetAuthority");
+                    Self::process_set_authority(program_id, accounts, authority_type, new_authority)
+                }
+                TokenInstruction::MintTo { amount } => {
+                    msg!("Instruction: MintTo");
+                    Self::process_mint_to(program_id, accounts, amount, None)
+                }
+                TokenInstruction::Burn { amount } => {
+                    msg!("Instruction: Burn");
+                    Self::process_burn(program_id, accounts, amount, None)
+                }
+                TokenInstruction::CloseAccount => {
+                    msg!("Instruction: CloseAccount");
+                    Self::process_close_account(program_id, accounts)
+                }
+                TokenInstruction::FreezeAccount => {
+                    msg!("Instruction: FreezeAccount");
+                    Self::process_toggle_freeze_account(program_id, accounts, true)
+                }
+                TokenInstruction::ThawAccount => {
+                    msg!("Instruction: ThawAccount");
+                    Self::process_toggle_freeze_account(program_id, accounts, false)
+                }
+                TokenInstruction::TransferChecked { amount, decimals } => {
+                    msg!("Instruction: TransferChecked");
+                    Self::process_transfer(program_id, accounts, amount, Some(decimals), None)
+                }
+                TokenInstruction::ApproveChecked { amount, decimals } => {
+                    msg!("Instruction: ApproveChecked");
+                    Self::process_approve(program_id, accounts, amount, Some(decimals))
+                }
+                TokenInstruction::MintToChecked { amount, decimals } => {
+                    msg!("Instruction: MintToChecked");
+                    Self::process_mint_to(program_id, accounts, amount, Some(decimals))
+                }
+                TokenInstruction::BurnChecked { amount, decimals } => {
+                    msg!("Instruction: BurnChecked");
+                    Self::process_burn(program_id, accounts, amount, Some(decimals))
+                }
+                TokenInstruction::SyncNative => {
+                    msg!("Instruction: SyncNative");
+                    Self::process_sync_native(accounts)
+                }
+                TokenInstruction::GetAccountDataSize { extension_types } => {
+                    msg!("Instruction: GetAccountDataSize");
+                    Self::process_get_account_data_size(accounts, extension_types)
+                }
+                TokenInstruction::InitializeMintCloseAuthority { close_authority } => {
+                    msg!("Instruction: InitializeMintCloseAuthority");
+                    Self::process_initialize_mint_close_authority(accounts, close_authority)
+                }
+                TokenInstruction::TransferFeeExtension(instruction) => {
+                    transfer_fee::processor::process_instruction(program_id, accounts, instruction)
+                }
+                TokenInstruction::ConfidentialTransferExtension => {
+                    confidential_transfer::processor::process_instruction(
+                        program_id,
+                        accounts,
+                        &input[1..],
+                    )
+                }
+                TokenInstruction::DefaultAccountStateExtension => {
+                    default_account_state::processor::process_instruction(
+                        program_id,
+                        accounts,
+                        &input[1..],
+                    )
+                }
+                TokenInstruction::InitializeImmutableOwner => {
+                    msg!("Instruction: InitializeImmutableOwner");
+                    Self::process_initialize_immutable_owner(accounts)
+                }
+                TokenInstruction::AmountToUiAmount { amount } => {
+                    msg!("Instruction: AmountToUiAmount");
+                    Self::process_amount_to_ui_amount(accounts, amount)
+                }
+                TokenInstruction::UiAmountToAmount { ui_amount } => {
+                    msg!("Instruction: UiAmountToAmount");
+                    Self::process_ui_amount_to_amount(accounts, ui_amount)
+                }
+                TokenInstruction::Reallocate { extension_types } => {
+                    msg!("Instruction: Reallocate");
+                    reallocate::process_reallocate(program_id, accounts, extension_types)
+                }
+                TokenInstruction::MemoTransferExtension => {
+                    memo_transfer::processor::process_instruction(program_id, accounts, &input[1..])
+                }
+                TokenInstruction::CreateNativeMint => {
+                    msg!("Instruction: CreateNativeMint");
+                    Self::process_create_native_mint(accounts)
+                }
+                TokenInstruction::InitializeNonTransferableMint => {
+                    msg!("Instruction: InitializeNonTransferableMint");
+                    Self::process_initialize_non_transferable_mint(accounts)
+                }
+                TokenInstruction::InterestBearingMintExtension => {
+                    interest_bearing_mint::processor::process_instruction(
+                        program_id,
+                        accounts,
+                        &input[1..],
+                    )
+                }
+                TokenInstruction::CpiGuardExtension => {
+                    cpi_guard::processor::process_instruction(program_id, accounts, &input[1..])
+                }
+                TokenInstruction::InitializePermanentDelegate { delegate } => {
+                    msg!("Instruction: InitializePermanentDelegate");
+                    Self::process_initialize_permanent_delegate(accounts, delegate)
+                }
+                TokenInstruction::TransferHookExtension => {
+                    transfer_hook::processor::process_instruction(program_id, accounts, &input[1..])
+                }
+                TokenInstruction::ConfidentialTransferFeeExtension => {
+                    confidential_transfer_fee::processor::process_instruction(
+                        program_id,
+                        accounts,
+                        &input[1..],
+                    )
+                }
+                TokenInstruction::WithdrawExcessLamports => {
+                    msg!("Instruction: WithdrawExcessLamports");
+                    Self::process_withdraw_excess_lamports(program_id, accounts)
+                }
+                TokenInstruction::MetadataPointerExtension => {
+                    metadata_pointer::processor::process_instruction(
+                        program_id,
+                        accounts,
+                        &input[1..],
+                    )
+                }
             }
-            TokenInstruction::InitializeMint2 {
-                decimals,
-                mint_authority,
-                freeze_authority,
-            } => {
-                msg!("Instruction: InitializeMint2");
-                Self::process_initialize_mint2(accounts, decimals, mint_authority, freeze_authority)
-            }
-            TokenInstruction::InitializeAccount => {
-                msg!("Instruction: InitializeAccount");
-                Self::process_initialize_account(accounts)
-            }
-            TokenInstruction::InitializeAccount2 { owner } => {
-                msg!("Instruction: InitializeAccount2");
-                Self::process_initialize_account2(accounts, owner)
-            }
-            TokenInstruction::InitializeAccount3 { owner } => {
-                msg!("Instruction: InitializeAccount3");
-                Self::process_initialize_account3(accounts, owner)
-            }
-            TokenInstruction::InitializeMultisig { m } => {
-                msg!("Instruction: InitializeMultisig");
-                Self::process_initialize_multisig(accounts, m)
-            }
-            TokenInstruction::InitializeMultisig2 { m } => {
-                msg!("Instruction: InitializeMultisig2");
-                Self::process_initialize_multisig2(accounts, m)
-            }
-            #[allow(deprecated)]
-            TokenInstruction::Transfer { amount } => {
-                msg!("Instruction: Transfer");
-                Self::process_transfer(program_id, accounts, amount, None, None)
-            }
-            TokenInstruction::Approve { amount } => {
-                msg!("Instruction: Approve");
-                Self::process_approve(program_id, accounts, amount, None)
-            }
-            TokenInstruction::Revoke => {
-                msg!("Instruction: Revoke");
-                Self::process_revoke(program_id, accounts)
-            }
-            TokenInstruction::SetAuthority {
-                authority_type,
-                new_authority,
-            } => {
-                msg!("Instruction: SetAuthority");
-                Self::process_set_authority(program_id, accounts, authority_type, new_authority)
-            }
-            TokenInstruction::MintTo { amount } => {
-                msg!("Instruction: MintTo");
-                Self::process_mint_to(program_id, accounts, amount, None)
-            }
-            TokenInstruction::Burn { amount } => {
-                msg!("Instruction: Burn");
-                Self::process_burn(program_id, accounts, amount, None)
-            }
-            TokenInstruction::CloseAccount => {
-                msg!("Instruction: CloseAccount");
-                Self::process_close_account(program_id, accounts)
-            }
-            TokenInstruction::FreezeAccount => {
-                msg!("Instruction: FreezeAccount");
-                Self::process_toggle_freeze_account(program_id, accounts, true)
-            }
-            TokenInstruction::ThawAccount => {
-                msg!("Instruction: ThawAccount");
-                Self::process_toggle_freeze_account(program_id, accounts, false)
-            }
-            TokenInstruction::TransferChecked { amount, decimals } => {
-                msg!("Instruction: TransferChecked");
-                Self::process_transfer(program_id, accounts, amount, Some(decimals), None)
-            }
-            TokenInstruction::ApproveChecked { amount, decimals } => {
-                msg!("Instruction: ApproveChecked");
-                Self::process_approve(program_id, accounts, amount, Some(decimals))
-            }
-            TokenInstruction::MintToChecked { amount, decimals } => {
-                msg!("Instruction: MintToChecked");
-                Self::process_mint_to(program_id, accounts, amount, Some(decimals))
-            }
-            TokenInstruction::BurnChecked { amount, decimals } => {
-                msg!("Instruction: BurnChecked");
-                Self::process_burn(program_id, accounts, amount, Some(decimals))
-            }
-            TokenInstruction::SyncNative => {
-                msg!("Instruction: SyncNative");
-                Self::process_sync_native(accounts)
-            }
-            TokenInstruction::GetAccountDataSize { extension_types } => {
-                msg!("Instruction: GetAccountDataSize");
-                Self::process_get_account_data_size(accounts, extension_types)
-            }
-            TokenInstruction::InitializeMintCloseAuthority { close_authority } => {
-                msg!("Instruction: InitializeMintCloseAuthority");
-                Self::process_initialize_mint_close_authority(accounts, close_authority)
-            }
-            TokenInstruction::TransferFeeExtension(instruction) => {
-                transfer_fee::processor::process_instruction(program_id, accounts, instruction)
-            }
-            TokenInstruction::ConfidentialTransferExtension => {
-                confidential_transfer::processor::process_instruction(
-                    program_id,
-                    accounts,
-                    &input[1..],
-                )
-            }
-            TokenInstruction::DefaultAccountStateExtension => {
-                default_account_state::processor::process_instruction(
-                    program_id,
-                    accounts,
-                    &input[1..],
-                )
-            }
-            TokenInstruction::InitializeImmutableOwner => {
-                msg!("Instruction: InitializeImmutableOwner");
-                Self::process_initialize_immutable_owner(accounts)
-            }
-            TokenInstruction::AmountToUiAmount { amount } => {
-                msg!("Instruction: AmountToUiAmount");
-                Self::process_amount_to_ui_amount(accounts, amount)
-            }
-            TokenInstruction::UiAmountToAmount { ui_amount } => {
-                msg!("Instruction: UiAmountToAmount");
-                Self::process_ui_amount_to_amount(accounts, ui_amount)
-            }
-            TokenInstruction::Reallocate { extension_types } => {
-                msg!("Instruction: Reallocate");
-                reallocate::process_reallocate(program_id, accounts, extension_types)
-            }
-            TokenInstruction::MemoTransferExtension => {
-                memo_transfer::processor::process_instruction(program_id, accounts, &input[1..])
-            }
-            TokenInstruction::CreateNativeMint => {
-                msg!("Instruction: CreateNativeMint");
-                Self::process_create_native_mint(accounts)
-            }
-            TokenInstruction::InitializeNonTransferableMint => {
-                msg!("Instruction: InitializeNonTransferableMint");
-                Self::process_initialize_non_transferable_mint(accounts)
-            }
-            TokenInstruction::InterestBearingMintExtension => {
-                interest_bearing_mint::processor::process_instruction(
-                    program_id,
-                    accounts,
-                    &input[1..],
-                )
-            }
-            TokenInstruction::CpiGuardExtension => {
-                cpi_guard::processor::process_instruction(program_id, accounts, &input[1..])
-            }
-            TokenInstruction::InitializePermanentDelegate { delegate } => {
-                msg!("Instruction: InitializePermanentDelegate");
-                Self::process_initialize_permanent_delegate(accounts, delegate)
-            }
-            TokenInstruction::TransferHookExtension => {
-                transfer_hook::processor::process_instruction(program_id, accounts, &input[1..])
-            }
-            TokenInstruction::ConfidentialTransferFeeExtension => {
-                confidential_transfer_fee::processor::process_instruction(
-                    program_id,
-                    accounts,
-                    &input[1..],
-                )
-            }
-            TokenInstruction::WithdrawExcessLamports => {
-                msg!("Instruction: WithdrawExcessLamports");
-                Self::process_withdraw_excess_lamports(program_id, accounts)
-            }
-            TokenInstruction::MetadataPointerExtension => {
-                metadata_pointer::processor::process_instruction(program_id, accounts, &input[1..])
-            }
+        } else if let Ok(instruction) = TokenMetadataInstruction::unpack(input) {
+            token_metadata::processor::process_instruction(program_id, accounts, instruction)
+        } else {
+            Err(TokenError::InvalidInstruction.into())
         }
     }
 
@@ -4511,7 +4530,7 @@ mod tests {
         let account_key = Pubkey::new_unique();
 
         let account_len =
-            ExtensionType::try_get_account_len::<Account>(&[ExtensionType::ImmutableOwner])
+            ExtensionType::try_calculate_account_len::<Account>(&[ExtensionType::ImmutableOwner])
                 .unwrap();
         let mut account_account = SolanaAccount::new(
             Rent::default().minimum_balance(account_len),
@@ -7392,7 +7411,7 @@ mod tests {
         .unwrap();
 
         set_expected_data(
-            ExtensionType::try_get_account_len::<Account>(&[])
+            ExtensionType::try_calculate_account_len::<Account>(&[])
                 .unwrap()
                 .to_le_bytes()
                 .to_vec(),
@@ -7404,10 +7423,12 @@ mod tests {
         .unwrap();
 
         set_expected_data(
-            ExtensionType::try_get_account_len::<Account>(&[ExtensionType::TransferFeeAmount])
-                .unwrap()
-                .to_le_bytes()
-                .to_vec(),
+            ExtensionType::try_calculate_account_len::<Account>(&[
+                ExtensionType::TransferFeeAmount,
+            ])
+            .unwrap()
+            .to_le_bytes()
+            .to_vec(),
         );
         do_process_instruction(
             get_account_data_size(
@@ -7426,7 +7447,7 @@ mod tests {
         // Native mint
         let mut mint_account = native_mint();
         set_expected_data(
-            ExtensionType::try_get_account_len::<Account>(&[])
+            ExtensionType::try_calculate_account_len::<Account>(&[])
                 .unwrap()
                 .to_le_bytes()
                 .to_vec(),
@@ -7439,7 +7460,7 @@ mod tests {
 
         // Extended mint
         let mint_len =
-            ExtensionType::try_get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig])
+            ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::TransferFeeConfig])
                 .unwrap();
         let mut extended_mint_account = SolanaAccount::new(
             Rent::default().minimum_balance(mint_len),
@@ -7460,10 +7481,12 @@ mod tests {
         .unwrap();
 
         set_expected_data(
-            ExtensionType::try_get_account_len::<Account>(&[ExtensionType::TransferFeeAmount])
-                .unwrap()
-                .to_le_bytes()
-                .to_vec(),
+            ExtensionType::try_calculate_account_len::<Account>(&[
+                ExtensionType::TransferFeeAmount,
+            ])
+            .unwrap()
+            .to_le_bytes()
+            .to_vec(),
         );
         do_process_instruction(
             get_account_data_size(&program_id, &mint_key, &[]).unwrap(),
