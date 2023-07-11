@@ -51,7 +51,7 @@ export function deserializeApplicationDataEvent(
 }
 
 /**
- * Helper function to extract the ChangeLogEvent V1 from a TransactionResponse
+ * Helper function to extract the ChangeLogEvent V1 events from a TransactionResponse
  * @param txResponse - TransactionResponse from the `@solana/web3.js`
  * @param programId - PublicKey of the program (aka `programId`) that utilized the leaf on the tree
  * @param noopProgramId - program id of the noop program used (default: `SPL_NOOP_PROGRAM_ID`)
@@ -61,7 +61,7 @@ export function getChangeLogEventV1FromTransaction(
   txResponse: TransactionResponse,
   programId: PublicKey,
   noopProgramId: PublicKey = SPL_NOOP_PROGRAM_ID,
-){
+) : ChangeLogEventV1[]{
   // ensure a transaction response was provided
   if (!txResponse) throw Error("No txResponse provided");
 
@@ -92,7 +92,7 @@ export function getChangeLogEventV1FromTransaction(
   if (!relevantInnerIxs || relevantInnerIxs.length == 0)
     throw Error('Unable to locate valid noop instructions');
 
-  let changeLogEvent: ChangeLogEventV1 | undefined = undefined;
+  let changeLogEvents: ChangeLogEventV1[] = [];
   
   /**
    * note: the ChangeLogEvent V1 is expected to be at position `1`, 
@@ -101,18 +101,17 @@ export function getChangeLogEventV1FromTransaction(
   */
   for (let i = relevantInnerIxs.length - 1; i > 0; i--) {
     try {
-      changeLogEvent = deserializeChangeLogEventV1(
+      changeLogEvents.push(deserializeChangeLogEventV1(
         Buffer.from(bs58.decode(relevantInnerIxs[i]?.data!))
-      );
-
+      ))
     } catch (__) {
       // do nothing, invalid data is handled just after this for loop
     }
   }
 
-  // when no `changeLogEvent` was found, throw an error
-  if (typeof changeLogEvent == 'undefined')
-    throw Error('Unable to locate the ChangeLogEventV1');
+  // when no changeLogEvents were found, throw an error
+  if (changeLogEvents.length == 0)
+    throw Error('Unable to locate any `ChangeLogEventV1` events');
 
-  return changeLogEvent;
+  return changeLogEvents;
 }
