@@ -365,7 +365,7 @@ fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError
 }
 
 /// Processes a [Withdraw] instruction.
-#[cfg(all(feature = "zk-ops", feature = "proof-program"))]
+#[cfg(feature = "zk-ops")]
 fn process_withdraw(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -424,13 +424,13 @@ fn process_withdraw(
     // amount.
     let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-    let proof_data = decode_proof_instruction::<WithdrawData>(
+    let proof_context = decode_proof_instruction_context::<WithdrawData, WithdrawProofContext>(
         ProofInstruction::VerifyWithdraw,
         &zkp_instruction,
     )?;
     // Check that the encryption public key associated with the confidential extension is
     // consistent with the public key that was actually used to generate the zkp.
-    if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
+    if confidential_transfer_account.elgamal_pubkey != proof_context.pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
@@ -442,7 +442,7 @@ fn process_withdraw(
     }
     // Check that the final available balance ciphertext is consistent with the actual ciphertext
     // for which the zero-knowledge proof was generated for.
-    if confidential_transfer_account.available_balance != proof_data.final_ciphertext {
+    if confidential_transfer_account.available_balance != proof_context.final_ciphertext {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
@@ -980,20 +980,16 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferInstruction::Withdraw => {
             msg!("ConfidentialTransferInstruction::Withdraw");
-            #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
-            {
-                let data = decode_instruction_data::<WithdrawInstructionData>(input)?;
-                process_withdraw(
-                    program_id,
-                    accounts,
-                    data.amount.into(),
-                    data.decimals,
-                    data.new_decryptable_available_balance,
-                    data.proof_instruction_offset as i64,
-                )
-            }
-            #[cfg(not(all(feature = "zk-ops", feature = "proof-program")))]
-            Err(ProgramError::InvalidInstructionData)
+            #[cfg(feature = "zk-ops")]
+            let data = decode_instruction_data::<WithdrawInstructionData>(input)?;
+            process_withdraw(
+                program_id,
+                accounts,
+                data.amount.into(),
+                data.decimals,
+                data.new_decryptable_available_balance,
+                data.proof_instruction_offset as i64,
+            )
         }
         ConfidentialTransferInstruction::Transfer => {
             msg!("ConfidentialTransferInstruction::Transfer");

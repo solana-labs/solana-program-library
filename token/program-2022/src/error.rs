@@ -207,6 +207,9 @@ pub enum TokenError {
     /// Failed to decrypt a confidential transfer account
     #[error("Failed to decrypt a confidential transfer account")]
     AccountDecryption,
+    /// Failed to generate a zero-knowledge proof needed for a token instruction
+    #[error("Failed to generate proof")]
+    ProofGeneration,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -360,6 +363,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::AccountDecryption => {
                 msg!("Failed to decrypt a confidential transfer account")
+            }
+            TokenError::ProofGeneration => {
+                msg!("Failed to generate proof")
             }
         }
     }

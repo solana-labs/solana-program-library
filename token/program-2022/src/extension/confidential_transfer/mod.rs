@@ -1,7 +1,10 @@
 #[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::encryption::{
-    auth_encryption::{AeCiphertext, AeKey},
-    elgamal::ElGamalSecretKey,
+use solana_zk_token_sdk::{
+    encryption::{
+        auth_encryption::{AeCiphertext, AeKey},
+        elgamal::{ElGamalKeypair, ElGamalSecretKey},
+    },
+    instruction::withdraw::WithdrawData,
 };
 use {
     crate::{
@@ -198,6 +201,18 @@ impl ConfidentialTransferAccount {
             decryptable_available_balance,
         }
     }
+
+    /// Return the account information needed to construct a `Withdraw` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn withdraw_account_info(&self) -> WithdrawAccountInfo {
+        let available_balance = self.available_balance;
+        let decryptable_available_balance = self.decryptable_available_balance;
+
+        WithdrawAccountInfo {
+            available_balance,
+            decryptable_available_balance,
+        }
+    }
 }
 
 /// Confidential Transfer extension information needed to construct an `ApplyPendingBalance`
@@ -269,6 +284,63 @@ impl ApplyPendingBalanceAccountInfo {
         let new_decrypted_available_balance = current_available_balance
             .checked_add(pending_balance)
             .unwrap(); // total balance cannot exceed `u64`
+
+        Ok(aes_key.encrypt(new_decrypted_available_balance))
+    }
+}
+
+/// Confidential Transfer extension information needed to construct a `Withdraw` instruction.
+#[cfg(not(target_os = "solana"))]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct WithdrawAccountInfo {
+    available_balance: ElGamalCiphertext,
+    decryptable_available_balance: PodAeCiphertext,
+}
+#[cfg(not(target_os = "solana"))]
+impl WithdrawAccountInfo {
+    fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
+        let decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        aes_key
+            .decrypt(&decryptable_available_balance)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    /// Create a withdraw proof data.
+    pub fn generate_proof_data(
+        &self,
+        withdraw_amount: u64,
+        elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+    ) -> Result<WithdrawData, TokenError> {
+        let current_available_balance = self
+            .available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
+
+        WithdrawData::new(
+            withdraw_amount,
+            elgamal_keypair,
+            current_decrypted_available_balance,
+            &current_available_balance,
+        )
+        .map_err(|_| TokenError::ProofGeneration)
+    }
+
+    /// Update the decryptable available balance.
+    pub fn new_decryptable_available_balance(
+        &self,
+        withdraw_amount: u64,
+        aes_key: &AeKey,
+    ) -> Result<AeCiphertext, TokenError> {
+        let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
+        let new_decrypted_available_balance = current_decrypted_available_balance
+            .checked_sub(withdraw_amount)
+            .ok_or(TokenError::ProofGeneration)?;
 
         Ok(aes_key.encrypt(new_decrypted_available_balance))
     }
