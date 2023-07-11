@@ -15,12 +15,14 @@ use {
     spl_token_metadata_interface::{
         error::TokenMetadataError,
         instruction::{
-            Emit, Initialize, RemoveKey, TokenMetadataInstruction, UpdateAuthority, UpdateField,
+            Emit, Initialize, RemoveKey, TokenMetadataInstruction,
+            UpdateAuthority, UpdateField,
         },
         state::{OptionalNonZeroPubkey, TokenMetadata},
     },
     spl_type_length_value::state::{
-        realloc_and_pack_variable_len, TlvState, TlvStateBorrowed, TlvStateMut,
+        realloc_and_pack_variable_len_strict, TlvStateStrict,
+        TlvStateStrictBorrowed, TlvStateStrictMut,
     },
 };
 
@@ -31,8 +33,9 @@ fn check_update_authority(
     if !update_authority_info.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    let update_authority = Option::<Pubkey>::from(expected_update_authority.clone())
-        .ok_or(TokenMetadataError::ImmutableMetadata)?;
+    let update_authority =
+        Option::<Pubkey>::from(expected_update_authority.clone())
+            .ok_or(TokenMetadataError::ImmutableMetadata)?;
     if update_authority != *update_authority_info.key {
         return Err(TokenMetadataError::IncorrectUpdateAuthority.into());
     }
@@ -63,13 +66,16 @@ pub fn process_initialize(
         if !mint_authority_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
-        if mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
+        if mint.base.mint_authority.as_ref()
+            != COption::Some(mint_authority_info.key)
+        {
             return Err(TokenMetadataError::IncorrectMintAuthority.into());
         }
     }
 
     // get the required size, assumes that there's enough space for the entry
-    let update_authority = OptionalNonZeroPubkey::try_from(Some(*update_authority_info.key))?;
+    let update_authority =
+        OptionalNonZeroPubkey::try_from(Some(*update_authority_info.key))?;
     let token_metadata = TokenMetadata {
         name: data.name,
         symbol: data.symbol,
@@ -82,7 +88,7 @@ pub fn process_initialize(
 
     // allocate a TLV entry for the space and write it in
     let mut buffer = metadata_info.try_borrow_mut_data()?;
-    let mut state = TlvStateMut::unpack(&mut buffer)?;
+    let mut state = TlvStateStrictMut::unpack(&mut buffer)?;
     state.alloc::<TokenMetadata>(instance_size)?;
     state.pack_variable_len_value(&token_metadata)?;
 
@@ -103,17 +109,20 @@ pub fn process_update_field(
     // realloc the account
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
-        let state = TlvStateBorrowed::unpack(&buffer)?;
+        let state = TlvStateStrictBorrowed::unpack(&buffer)?;
         state.get_variable_len_value::<TokenMetadata>()?
     };
 
-    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
+    check_update_authority(
+        update_authority_info,
+        &token_metadata.update_authority,
+    )?;
 
     // Update the field
     token_metadata.update(data.field, data.value);
 
     // Update / realloc the account
-    realloc_and_pack_variable_len(metadata_info, &token_metadata)?;
+    realloc_and_pack_variable_len_strict(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -132,15 +141,18 @@ pub fn process_remove_key(
     // realloc the account
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
-        let state = TlvStateBorrowed::unpack(&buffer)?;
+        let state = TlvStateStrictBorrowed::unpack(&buffer)?;
         state.get_variable_len_value::<TokenMetadata>()?
     };
 
-    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
+    check_update_authority(
+        update_authority_info,
+        &token_metadata.update_authority,
+    )?;
     if !token_metadata.remove_key(&data.key) && !data.idempotent {
         return Err(TokenMetadataError::KeyNotFound.into());
     }
-    realloc_and_pack_variable_len(metadata_info, &token_metadata)?;
+    realloc_and_pack_variable_len_strict(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -159,20 +171,27 @@ pub fn process_update_authority(
     // realloc the account
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
-        let state = TlvStateBorrowed::unpack(&buffer)?;
+        let state = TlvStateStrictBorrowed::unpack(&buffer)?;
         state.get_variable_len_value::<TokenMetadata>()?
     };
 
-    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
+    check_update_authority(
+        update_authority_info,
+        &token_metadata.update_authority,
+    )?;
     token_metadata.update_authority = data.new_authority;
     // Update the account, no realloc needed!
-    realloc_and_pack_variable_len(metadata_info, &token_metadata)?;
+    realloc_and_pack_variable_len_strict(metadata_info, &token_metadata)?;
 
     Ok(())
 }
 
 /// Processes an [Emit](enum.TokenMetadataInstruction.html) instruction.
-pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -> ProgramResult {
+pub fn process_emit(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    data: Emit,
+) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let metadata_info = next_account_info(account_info_iter)?;
 
@@ -181,10 +200,12 @@ pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -
     }
 
     let buffer = metadata_info.try_borrow_data()?;
-    let state = TlvStateBorrowed::unpack(&buffer)?;
+    let state = TlvStateStrictBorrowed::unpack(&buffer)?;
     let metadata_bytes = state.get_bytes::<TokenMetadata>()?;
 
-    if let Some(range) = TokenMetadata::get_slice(metadata_bytes, data.start, data.end) {
+    if let Some(range) =
+        TokenMetadata::get_slice(metadata_bytes, data.start, data.end)
+    {
         set_return_data(range);
     }
 
@@ -192,7 +213,11 @@ pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -
 }
 
 /// Processes an [Instruction](enum.Instruction.html).
-pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
+pub fn process(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    input: &[u8],
+) -> ProgramResult {
     let instruction = TokenMetadataInstruction::unpack(input)?;
 
     match instruction {

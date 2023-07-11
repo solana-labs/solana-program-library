@@ -7145,6 +7145,16 @@ dependencies = [
  "solana-program",
  "spl-discriminator",
  "spl-program-error",
+ "spl-type-length-value-derive",
+]
+
+[[package]]
+name = "spl-type-length-value-derive"
+version = "0.0.1"
+dependencies = [
+ "proc-macro2 1.0.63",
+ "quote 1.0.29",
+ "syn 2.0.23",
 ]
 
 [[package]]

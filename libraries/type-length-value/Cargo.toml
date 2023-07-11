@@ -13,6 +13,7 @@ bytemuck = { version = "1.13.1", features = ["derive"] }
 solana-program = "1.16.1"
 spl-discriminator = { version = "0.1.0", path = "../discriminator" }
 spl-program-error = { version = "0.2.0", path = "../program-error" }
+spl-type-length-value-derive = { version = "0.0.1", path = "./derive" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

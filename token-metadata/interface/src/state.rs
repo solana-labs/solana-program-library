@@ -9,7 +9,7 @@ use {
     },
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_type_length_value::{
-        state::{TlvState, TlvStateBorrowed},
+        state::{TlvStateStrict, TlvStateStrictBorrowed},
         variable_len_pack::VariableLenPack,
     },
     std::convert::TryFrom,
@@ -17,7 +17,15 @@ use {
 
 /// A Pubkey that encodes `None` as all `0`, meant to be usable as a Pod type,
 /// similar to all NonZero* number types from the bytemuck library.
-#[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    BorshDeserialize,
+    BorshSerialize,
+    BorshSchema,
+)]
 #[repr(transparent)]
 pub struct OptionalNonZeroPubkey(Pubkey);
 impl TryFrom<Option<Pubkey>> for OptionalNonZeroPubkey {
@@ -49,7 +57,15 @@ impl From<OptionalNonZeroPubkey> for Option<Pubkey> {
 ///
 /// The type and length parts must be handled by the TLV library, and not stored
 /// as part of this struct.
-#[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    BorshDeserialize,
+    BorshSerialize,
+    BorshSchema,
+)]
 pub struct TokenMetadata {
     /// The authority that can sign to update the metadata
     pub update_authority: OptionalNonZeroPubkey,
@@ -74,7 +90,7 @@ impl SplDiscriminate for TokenMetadata {
 impl TokenMetadata {
     /// Gives the total size of this struct as a TLV entry in an account
     pub fn tlv_size_of(&self) -> Result<usize, ProgramError> {
-        TlvStateBorrowed::get_base_len()
+        TlvStateStrictBorrowed::get_base_len()
             .checked_add(get_instance_packed_len(self)?)
             .ok_or(ProgramError::InvalidAccountData)
     }
@@ -118,7 +134,11 @@ impl TokenMetadata {
     }
 
     /// Get the slice corresponding to the given start and end range
-    pub fn get_slice(data: &[u8], start: Option<u64>, end: Option<u64>) -> Option<&[u8]> {
+    pub fn get_slice(
+        data: &[u8],
+        start: Option<u64>,
+        end: Option<u64>,
+    ) -> Option<&[u8]> {
         let start = start.unwrap_or(0) as usize;
         let end = end.map(|x| x as usize).unwrap_or(data.len());
         data.get(start..end)
@@ -155,9 +175,12 @@ mod tests {
 
     #[test]
     fn discriminator() {
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:token_metadata").as_bytes()]);
-        let discriminator =
-            ArrayDiscriminator::try_from(&preimage.as_ref()[..ArrayDiscriminator::LENGTH]).unwrap();
+        let preimage =
+            hash::hashv(&[format!("{NAMESPACE}:token_metadata").as_bytes()]);
+        let discriminator = ArrayDiscriminator::try_from(
+            &preimage.as_ref()[..ArrayDiscriminator::LENGTH],
+        )
+        .unwrap();
         assert_eq!(TokenMetadata::SPL_DISCRIMINATOR, discriminator);
     }
 
