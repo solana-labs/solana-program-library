@@ -150,10 +150,6 @@ impl SimulateTransactionRpc for ProgramRpcClientSendTransaction {
         transaction: &'a Transaction,
     ) -> BoxFuture<'a, ProgramClientResult<Self::SimulationOutput>> {
         Box::pin(async move {
-            if !transaction.is_signed() {
-                return Err("Cannot send transaction: not fully signed".into());
-            }
-
             client
                 .simulate_transaction(transaction)
                 .await
