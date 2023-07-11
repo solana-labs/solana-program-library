@@ -4598,6 +4598,10 @@ async fn finish_tx<'a>(
                 signature: signature.to_string(),
             }))
         }
+        RpcClientResponse::Simulation(_) => {
+            // Implement this once the CLI supports dry-running / simulation
+            unreachable!()
+        }
     }
 }
 
