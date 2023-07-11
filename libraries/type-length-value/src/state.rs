@@ -28,13 +28,10 @@ const fn get_indices_unchecked(type_start: usize) -> TlvIndices {
 /// Internal helper struct for returning the indices of the type, length, and
 /// value in a TLV entry
 #[derive(Debug)]
-pub struct TlvIndices {
-    /// TODO: Joe
-    pub type_start: usize,
-    /// TODO: Joe
-    pub length_start: usize,
-    /// TODO: Joe
-    pub value_start: usize,
+struct TlvIndices {
+    type_start: usize,
+    length_start: usize,
+    value_start: usize,
 }
 
 type TlvIndicesWithEntryNumber = (TlvIndices, usize);
@@ -151,7 +148,8 @@ fn get_bytes<V: SplDiscriminate>(
     Ok(&tlv_data[value_start..value_end])
 }
 
-// TODO: Joe
+/// Same as the `get_bytes` function, but allows specifying which entry to
+/// retrieve. This is useful for arrays of TLVs.
 fn get_bytes_specific<V: SplDiscriminate>(
     tlv_data: &[u8],
     entry_number: usize,
@@ -175,7 +173,7 @@ fn get_bytes_specific<V: SplDiscriminate>(
     Ok(&tlv_data[value_start..value_end])
 }
 
-/// Trait for all TLV state
+/// Trait for "strict" TLV state - meaning discriminators are unique.
 ///
 /// Stores data as any number of type-length-value structures underneath, where:
 ///
@@ -267,12 +265,75 @@ pub trait TlvStateStrict {
     }
 }
 
-/// TODO: Joe
+/// Trait for "non-strict" TLV state - meaning discriminators are allowed to
+/// repeat.
+///
+/// Stores data as any number of type-length-value structures underneath, where:
+///
+///   * the "type" is an `ArrayDiscriminator`, 8 bytes
+///   * the "length" is a `Length`, 4 bytes
+///   * the "value" is a slab of "length" bytes
+///
+/// With this structure, it's possible to hold onto any number of entries with
+/// 8-byte discriminators, provided that the total underlying data has enough
+/// bytes for every entry.
+///
+/// For example, if we have two distinct types, one which is an 8-byte array
+/// of value `[0, 1, 0, 0, 0, 0, 0, 0]` and discriminator
+/// `[1, 1, 1, 1, 1, 1, 1, 1]`, and another which is just a single `u8` of value
+/// `4` with the discriminator `[2, 2, 2, 2, 2, 2, 2, 2]`, we can deserialize
+/// this buffer as follows:
+///
+/// ```
+/// use {
+///     bytemuck::{Pod, Zeroable},
+///     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
+///     spl_type_length_value::state::{TlvStateNonStrict, TlvStateNonStrictBorrowed, TlvStateNonStrictMut},
+/// };
+/// #[repr(C)]
+/// #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+/// struct MyPodValue {
+///     data: [u8; 8],
+/// }
+/// impl SplDiscriminate for MyPodValue {
+///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
+/// }
+/// #[repr(C)]
+/// #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+/// struct MyOtherPodValue {
+///     data: u8,
+/// }
+/// impl SplDiscriminate for MyOtherPodValue {
+///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
+/// }
+/// let buffer = [
+///   1, 1, 1, 1, 1, 1, 1, 1, // first type's discriminator
+///   8, 0, 0, 0,             // first type's length
+///   0, 1, 0, 0, 0, 0, 0, 0, // first type's value
+///   1, 1, 1, 1, 1, 1, 1, 1, // first type's discriminator (again)
+///   8, 0, 0, 0,             // first type's length (again)
+///   0, 1, 0, 0, 0, 0, 0, 0, // first type's value (again)
+///   2, 2, 2, 2, 2, 2, 2, 2, // second type's discriminator
+///   1, 0, 0, 0,             // second type's length
+///   4,                      // second type's value
+/// ];
+/// let state = TlvStateNonStrictBorrowed::unpack(&buffer).unwrap();
+/// let value = state.get_first::<MyPodValue>().unwrap();
+/// assert_eq!(value.data, [0, 1, 0, 0, 0, 0, 0, 0]);
+/// // Now retrieve another value of the same type at index 1
+/// let value = state.get_value::<MyPodValue>(1).unwrap();
+/// assert_eq!(value.data, [0, 1, 0, 0, 0, 0, 0, 0]);
+/// let value = state.get_first::<MyOtherPodValue>().unwrap();
+/// assert_eq!(value.data, 4);
+/// ```
+///
+/// See the README and tests for more examples on how to use these types.
 pub trait TlvStateNonStrict {
     /// Get the full buffer containing all TLV data
     fn get_data(&self) -> &[u8];
 
-    /// TODO: Joe
+    /// Unpack a portion of the TLV data as the desired Pod type at the
+    /// designated entry index
     fn get_value<V: SplDiscriminate + Pod>(
         &self,
         entry_number: usize,
@@ -281,12 +342,13 @@ pub trait TlvStateNonStrict {
         pod_from_bytes::<V>(data)
     }
 
-    /// TODO: Joe
+    /// Unpacks the first TLV entry as the desired Pod type
     fn get_first<V: SplDiscriminate + Pod>(&self) -> Result<&V, ProgramError> {
         self.get_value(0)
     }
 
-    /// TODO: Joe
+    /// Unpacks a portion of the TLV data as the desired variable-length type at
+    /// the designated entry index
     fn get_variable_len_value<V: SplDiscriminate + VariableLenPack>(
         &self,
         entry_number: usize,
@@ -295,14 +357,14 @@ pub trait TlvStateNonStrict {
         V::unpack_from_slice(data)
     }
 
-    /// TODO: Joe
+    /// Unpacks the first TLV entry as the desired variable-length type
     fn get_first_variable_len_value<V: SplDiscriminate + VariableLenPack>(
         &self,
     ) -> Result<V, ProgramError> {
         self.get_variable_len_value(0)
     }
 
-    /// TODO: Joe
+    /// Unpack a portion of the TLV data as bytes at the designated entry index
     fn get_bytes<V: SplDiscriminate>(
         &self,
         entry_number: usize,
@@ -310,7 +372,7 @@ pub trait TlvStateNonStrict {
         get_bytes_specific::<V>(self.get_data(), entry_number)
     }
 
-    /// TODO: Joe
+    /// Iterates through the TLV entries, returning only the types
     fn get_discriminators(
         &self,
     ) -> Result<Vec<ArrayDiscriminator>, ProgramError> {
@@ -323,7 +385,7 @@ pub trait TlvStateNonStrict {
     }
 }
 
-/// Encapsulates owned TLV data
+/// Encapsulates owned TLV data for "strict" TLV state
 #[derive(Debug, PartialEq)]
 pub struct TlvStateStrictOwned {
     /// Raw TLV data, deserialized on demand
@@ -344,8 +406,7 @@ impl TlvStateStrict for TlvStateStrictOwned {
     }
 }
 
-/// TODO: Joe
-/// Encapsulates owned TLV data
+/// Encapsulates owned TLV data for "non-strict" TLV state
 #[derive(Debug, PartialEq)]
 pub struct TlvStateNonStrictOwned {
     /// Raw TLV data, deserialized on demand
@@ -367,7 +428,7 @@ impl TlvStateNonStrict for TlvStateNonStrictOwned {
 }
 
 /// Encapsulates immutable base state data (mint or account) with possible
-/// extensions
+/// extensions for "strict" TLV state
 #[derive(Debug, PartialEq)]
 pub struct TlvStateStrictBorrowed<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -388,9 +449,7 @@ impl<'a> TlvStateStrict for TlvStateStrictBorrowed<'a> {
     }
 }
 
-/// TODO: Joe
-/// Encapsulates immutable base state data (mint or account) with possible
-/// extensions
+/// Encapsulates immutable base state data for "non-strict" TLV state
 #[derive(Debug, PartialEq)]
 pub struct TlvStateNonStrictBorrowed<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -412,7 +471,7 @@ impl<'a> TlvStateNonStrict for TlvStateNonStrictBorrowed<'a> {
 }
 
 /// Encapsulates mutable base state data (mint or account) with possible
-/// extensions
+/// extensions for "strict" TLV state
 #[derive(Debug, PartialEq)]
 pub struct TlvStateStrictMut<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -519,7 +578,8 @@ impl<'data> TlvStateStrictMut<'data> {
         }
     }
 
-    /// TODO: Joe
+    /// Allocates and serializes a new TLV entry from a Pod type, where no
+    /// repeating discriminators are allowed
     pub fn add_entry<V: SplDiscriminate + Pod>(
         &mut self,
         value: &V,
@@ -529,7 +589,8 @@ impl<'data> TlvStateStrictMut<'data> {
         Ok(())
     }
 
-    /// TODO: Joe
+    /// Allocates and serializes a new TLV entry from a `VariableLenPack` type,
+    /// where no repeating discriminators are allowed
     pub fn add_variable_len_entry<V: SplDiscriminate + VariableLenPack>(
         &mut self,
         value: &V,
@@ -604,9 +665,7 @@ impl<'a> TlvStateStrict for TlvStateStrictMut<'a> {
     }
 }
 
-/// TODO: Joe
-/// Encapsulates mutable base state data (mint or account) with possible
-/// extensions
+/// Encapsulates mutable base state data for "non-strict" TLV state
 #[derive(Debug, PartialEq)]
 pub struct TlvStateNonStrictMut<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -621,7 +680,39 @@ impl<'data> TlvStateNonStrictMut<'data> {
         Ok(Self { data })
     }
 
-    /// TODO: Joe
+    /// Unpack a portion of the TLV data as the desired type that allows
+    /// modifying the type, where the particular entry can be found by
+    /// index.
+    pub fn get_value_mut<V: SplDiscriminate + Pod>(
+        &mut self,
+        entry_number: usize,
+    ) -> Result<&mut V, ProgramError> {
+        let data = self.get_bytes_mut::<V>(entry_number)?;
+        pod_from_bytes_mut::<V>(data)
+    }
+
+    /// Unpack a portion of the TLV data as the desired `Pod` type that allows
+    /// modifying the type, where the particular entry can be found by
+    /// searching the TLV data for the entry.
+    pub fn find_value_mut<V: SplDiscriminate + Pod>(
+        &mut self,
+        _entry: &V,
+    ) -> Result<(&mut [u8], usize), ProgramError> {
+        todo!("We're going to want to use the custom iterator here!")
+    }
+
+    /// Unpack a portion of the TLV data as the desired `VariableLenPack` type
+    /// that allows modifying the type, where the particular entry can be
+    /// found by searching the TLV data for the entry.
+    pub fn find_variable_len_value_mut<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+        _entry: &V,
+    ) -> Result<(&mut [u8], usize), ProgramError> {
+        todo!("We're going to want to use the custom iterator here!")
+    }
+
+    /// Unpack a portion of the TLV data as mutable bytes, where the particular
+    /// entry can be found by index.
     pub fn get_bytes_mut<V: SplDiscriminate>(
         &mut self,
         entry_number: usize,
@@ -649,32 +740,9 @@ impl<'data> TlvStateNonStrictMut<'data> {
         Ok(&mut self.data[value_start..value_end])
     }
 
-    /// TODO: Joe
-    pub fn get_value_mut<V: SplDiscriminate + Pod>(
-        &mut self,
-        entry_number: usize,
-    ) -> Result<&mut V, ProgramError> {
-        let data = self.get_bytes_mut::<V>(entry_number)?;
-        pod_from_bytes_mut::<V>(data)
-    }
-
-    /// TODO: Joe
-    pub fn find_value_mut<V: SplDiscriminate + Pod>(
-        &mut self,
-        _entry: &V,
-    ) -> Result<(&mut [u8], usize), ProgramError> {
-        todo!("We're going to want to use the custom iterator here!")
-    }
-
-    /// TODO: Joe
-    pub fn find_variable_len_value_mut<V: SplDiscriminate + VariableLenPack>(
-        &mut self,
-        _entry: &V,
-    ) -> Result<(&mut [u8], usize), ProgramError> {
-        todo!("We're going to want to use the custom iterator here!")
-    }
-
-    /// TODO: Joe
+    /// Packs the default TLV data into the first open slot in the data buffer.
+    /// Does not check for duplicates. Will add a new entry to the next open
+    /// slot provided there is enough space.
     pub fn init_value<V: SplDiscriminate + Pod + Default>(
         &mut self,
     ) -> Result<(&mut V, usize), ProgramError> {
@@ -685,7 +753,8 @@ impl<'data> TlvStateNonStrictMut<'data> {
         Ok((extension_ref, entry_number))
     }
 
-    /// TODO: Joe
+    /// Packs a variable-length value into its appropriate data segment. Assumes
+    /// that space has already been allocated for the given type
     pub fn pack_variable_len_value<V: SplDiscriminate + VariableLenPack>(
         &mut self,
         value: &V,
@@ -697,7 +766,9 @@ impl<'data> TlvStateNonStrictMut<'data> {
         value.pack_into_slice(data)
     }
 
-    /// TODO: Joe
+    /// Allocate the given number of bytes for the given SplDiscriminate
+    /// where repeating discriminators _are_ allowed. Will add a new entry to
+    /// the next open slot provided there is enough space.
     pub fn alloc<V: SplDiscriminate>(
         &mut self,
         length: usize,
@@ -727,7 +798,9 @@ impl<'data> TlvStateNonStrictMut<'data> {
         Ok((&mut self.data[value_start..value_end], entry_number))
     }
 
-    /// TODO: Joe
+    /// Allocates and serializes a new TLV entry from a Pod type, where
+    /// repeating discriminators _are_ allowed. Will add a new entry to the
+    /// next open slot provided there is enough space.
     pub fn add_entry<V: SplDiscriminate + Pod>(
         &mut self,
         value: &V,
@@ -737,7 +810,9 @@ impl<'data> TlvStateNonStrictMut<'data> {
         Ok(())
     }
 
-    /// TODO: Joe
+    /// Allocates and serializes a new TLV entry from a `VariableLenPack` type,
+    /// where repeating discriminators _are_ allowed. Will add a new entry
+    /// to the next open slot provided there is enough space.
     pub fn add_variable_len_entry<V: SplDiscriminate + VariableLenPack>(
         &mut self,
         value: &V,
@@ -748,7 +823,10 @@ impl<'data> TlvStateNonStrictMut<'data> {
         Ok(())
     }
 
-    /// TODO: Joe
+    /// Reallocate the given number of bytes for the given SplDiscriminate. If
+    /// the new length is smaller, it will compact the rest of the buffer
+    /// and zero out the difference at the end. If it's larger, it will move
+    /// the rest of the buffer data and zero out the new data.
     pub fn realloc<V: SplDiscriminate>(
         &mut self,
         length: usize,

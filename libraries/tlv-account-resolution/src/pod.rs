@@ -2,7 +2,9 @@
 
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+    solana_program::{
+        account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey,
+    },
     spl_type_length_value::pod::PodBool,
 };
 
