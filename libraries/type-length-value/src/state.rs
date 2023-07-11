@@ -1,5 +1,7 @@
 //! Type-length-value structure definition and manipulation
 
+use std::collections::HashMap;
+
 use {
     crate::{
         error::TlvError,
@@ -28,9 +30,12 @@ const fn get_indices_unchecked(type_start: usize) -> TlvIndices {
 /// Internal helper struct for returning the indices of the type, length, and
 /// value in a TLV entry
 #[derive(Debug)]
-struct TlvIndices {
+pub struct TlvIndices {
+    /// TODO: Joe
     pub type_start: usize,
+    /// TODO: Joe
     pub length_start: usize,
+    /// TODO: Joe
     pub value_start: usize,
 }
 
@@ -516,6 +521,27 @@ impl<'data> TlvStateStrictMut<'data> {
         }
     }
 
+    /// TODO: Joe
+    pub fn add_entry<V: SplDiscriminate + Pod>(
+        &mut self,
+        value: &V,
+    ) -> Result<(), ProgramError> {
+        let data = self.alloc::<V>(size_of::<V>())?;
+        data.copy_from_slice(bytemuck::bytes_of(value));
+        Ok(())
+    }
+
+    /// TODO: Joe
+    pub fn add_variable_len_entry<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+        value: &V,
+    ) -> Result<(), ProgramError> {
+        let length = value.get_packed_len()?;
+        let data = self.alloc::<V>(length)?;
+        value.pack_into_slice(data)?;
+        Ok(())
+    }
+
     /// Reallocate the given number of bytes for the given SplDiscriminate. If
     /// the new length is smaller, it will compact the rest of the buffer
     /// and zero out the difference at the end. If it's larger, it will move
@@ -598,15 +624,6 @@ impl<'data> TlvStateNonStrictMut<'data> {
     }
 
     /// TODO: Joe
-    pub fn get_value_mut<V: SplDiscriminate + Pod>(
-        &mut self,
-        entry_number: usize,
-    ) -> Result<&mut V, ProgramError> {
-        let data = self.get_bytes_mut::<V>(entry_number)?;
-        pod_from_bytes_mut::<V>(data)
-    }
-
-    /// TODO: Joe
     pub fn get_bytes_mut<V: SplDiscriminate>(
         &mut self,
         entry_number: usize,
@@ -632,6 +649,31 @@ impl<'data> TlvStateNonStrictMut<'data> {
             return Err(ProgramError::InvalidAccountData);
         }
         Ok(&mut self.data[value_start..value_end])
+    }
+
+    /// TODO: Joe
+    pub fn get_value_mut<V: SplDiscriminate + Pod>(
+        &mut self,
+        entry_number: usize,
+    ) -> Result<&mut V, ProgramError> {
+        let data = self.get_bytes_mut::<V>(entry_number)?;
+        pod_from_bytes_mut::<V>(data)
+    }
+
+    /// TODO: Joe
+    pub fn find_value_mut<V: SplDiscriminate + Pod>(
+        &mut self,
+        _entry: &V,
+    ) -> Result<(&mut [u8], usize), ProgramError> {
+        todo!("We're going to want to use the custom iterator here!")
+    }
+
+    /// TODO: Joe
+    pub fn find_variable_len_value_mut<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+        _entry: &V,
+    ) -> Result<(&mut [u8], usize), ProgramError> {
+        todo!("We're going to want to use the custom iterator here!")
     }
 
     /// TODO: Joe
@@ -685,6 +727,27 @@ impl<'data> TlvStateNonStrictMut<'data> {
             return Err(ProgramError::InvalidAccountData);
         }
         Ok((&mut self.data[value_start..value_end], entry_number))
+    }
+
+    /// TODO: Joe
+    pub fn add_entry<V: SplDiscriminate + Pod>(
+        &mut self,
+        value: &V,
+    ) -> Result<(), ProgramError> {
+        let (data, _) = self.alloc::<V>(size_of::<V>())?;
+        data.copy_from_slice(bytemuck::bytes_of(value));
+        Ok(())
+    }
+
+    /// TODO: Joe
+    pub fn add_variable_len_entry<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+        value: &V,
+    ) -> Result<(), ProgramError> {
+        let length = value.get_packed_len()?;
+        let (data, _) = self.alloc::<V>(length)?;
+        value.pack_into_slice(data)?;
+        Ok(())
     }
 
     /// TODO: Joe
