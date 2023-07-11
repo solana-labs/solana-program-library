@@ -1,8 +1,5 @@
 use {
-    crate::{
-        client::{ProgramClient, ProgramClientError, SendTransaction},
-        extension_info::ApplyPendingBalanceExtensionInfo,
-    },
+    crate::client::{ProgramClient, ProgramClientError, SendTransaction},
     futures_util::TryFutureExt,
     solana_program_test::tokio::time,
     solana_sdk::{
@@ -23,7 +20,9 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_transfer::{self, ConfidentialTransferAccount},
+            confidential_transfer::{
+                self, ApplyPendingBalanceAccountInfo, ConfidentialTransferAccount,
+            },
             cpi_guard, default_account_state, interest_bearing_mint, memo_transfer,
             metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
             StateWithExtensionsOwned,
@@ -2218,7 +2217,7 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
-        extension_info: Option<ApplyPendingBalanceExtensionInfo>,
+        account_info: Option<ApplyPendingBalanceAccountInfo>,
         elgamal_secret_key: &ElGamalSecretKey,
         aes_key: &AeKey,
         signing_keypairs: &S,
@@ -2226,19 +2225,19 @@ where
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let extension_info = if let Some(extension_info) = extension_info {
-            extension_info
+        let account_info = if let Some(account_info) = account_info {
+            account_info
         } else {
-            let account_state = self.get_account_info(account).await?;
-            let confidential_transfer_account_info =
-                account_state.get_extension::<ConfidentialTransferAccount>()?;
-            ApplyPendingBalanceExtensionInfo::new(confidential_transfer_account_info)
+            self.get_account_info(account)
+                .await?
+                .get_extension::<ConfidentialTransferAccount>()?
+                .apply_pending_balance_account_info()
         };
 
-        let expected_pending_balance_credit_counter =
-            extension_info.pending_balance_credit_counter();
-        let new_decryptable_available_balance =
-            extension_info.new_decryptable_available_balance(elgamal_secret_key, aes_key)?;
+        let expected_pending_balance_credit_counter = account_info.pending_balance_credit_counter();
+        let new_decryptable_available_balance = account_info
+            .new_decryptable_available_balance(elgamal_secret_key, aes_key)
+            .map_err(|_| TokenError::AccountDecryption)?;
 
         self.process_ixs(
             &[confidential_transfer::instruction::apply_pending_balance(

@@ -1,3 +1,8 @@
+#[cfg(not(target_os = "solana"))]
+use solana_zk_token_sdk::encryption::{
+    auth_encryption::{AeCiphertext, AeKey},
+    elgamal::ElGamalSecretKey,
+};
 use {
     crate::{
         error::TokenError,
@@ -6,7 +11,9 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod::{AeCiphertext, ElGamalCiphertext, ElGamalPubkey},
+    solana_zk_token_sdk::zk_token_elgamal::pod::{
+        AeCiphertext as PodAeCiphertext, ElGamalCiphertext, ElGamalPubkey,
+    },
 };
 
 /// Maximum bit length of any deposit or transfer amount
@@ -26,7 +33,7 @@ pub mod processor;
 /// ElGamal ciphertext containing an account balance
 pub type EncryptedBalance = ElGamalCiphertext;
 /// Authenticated encryption containing an account balance
-pub type DecryptableBalance = AeCiphertext;
+pub type DecryptableBalance = PodAeCiphertext;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
@@ -175,4 +182,101 @@ impl ConfidentialTransferAccount {
         .into();
         Ok(())
     }
+
+    /// Return the account information needed to construct an `ApplyPendingBalance` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn apply_pending_balance_account_info(&self) -> ApplyPendingBalanceAccountInfo {
+        let pending_balance_credit_counter = self.pending_balance_credit_counter;
+        let pending_balance_lo = self.pending_balance_lo;
+        let pending_balance_hi = self.pending_balance_hi;
+        let decryptable_available_balance = self.decryptable_available_balance;
+
+        ApplyPendingBalanceAccountInfo {
+            pending_balance_credit_counter,
+            pending_balance_lo,
+            pending_balance_hi,
+            decryptable_available_balance,
+        }
+    }
+}
+
+/// Confidential Transfer extension information needed to construct an `ApplyPendingBalance`
+/// instruction.
+#[cfg(not(target_os = "solana"))]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct ApplyPendingBalanceAccountInfo {
+    pending_balance_credit_counter: PodU64,
+    pending_balance_lo: EncryptedBalance,
+    pending_balance_hi: EncryptedBalance,
+    decryptable_available_balance: DecryptableBalance,
+}
+#[cfg(not(target_os = "solana"))]
+impl ApplyPendingBalanceAccountInfo {
+    /// Return the pending balance credit counter of the account.
+    pub fn pending_balance_credit_counter(&self) -> u64 {
+        self.pending_balance_credit_counter.into()
+    }
+
+    fn decrypted_pending_balance_lo(
+        &self,
+        elgamal_secret_key: &ElGamalSecretKey,
+    ) -> Result<u64, TokenError> {
+        let pending_balance_lo = self
+            .pending_balance_lo
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        elgamal_secret_key
+            .decrypt_u32(&pending_balance_lo)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    fn decrypted_pending_balance_hi(
+        &self,
+        elgamal_secret_key: &ElGamalSecretKey,
+    ) -> Result<u64, TokenError> {
+        let pending_balance_hi = self
+            .pending_balance_hi
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        elgamal_secret_key
+            .decrypt_u32(&pending_balance_hi)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
+        let decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        aes_key
+            .decrypt(&decryptable_available_balance)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    /// Decrypt the available balance in the account.
+    pub fn new_decryptable_available_balance(
+        &self,
+        elgamal_secret_key: &ElGamalSecretKey,
+        aes_key: &AeKey,
+    ) -> Result<AeCiphertext, TokenError> {
+        let decrypted_pending_balance_lo = self.decrypted_pending_balance_lo(elgamal_secret_key)?;
+        let decrypted_pending_balance_hi = self.decrypted_pending_balance_hi(elgamal_secret_key)?;
+        let pending_balance =
+            combine_balances(decrypted_pending_balance_lo, decrypted_pending_balance_hi)
+                .ok_or(TokenError::AccountDecryption)?;
+        let current_available_balance = self.decrypted_available_balance(aes_key)?;
+        let new_decrypted_available_balance = current_available_balance
+            .checked_add(pending_balance)
+            .unwrap(); // total balance cannot exceed `u64`
+
+        Ok(aes_key.encrypt(new_decrypted_available_balance))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+fn combine_balances(balance_lo: u64, balance_hi: u64) -> Option<u64> {
+    balance_hi
+        .checked_shl(PENDING_BALANCE_LO_BIT_LENGTH)?
+        .checked_add(balance_lo)
 }

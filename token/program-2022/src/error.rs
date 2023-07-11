@@ -204,6 +204,9 @@ pub enum TokenError {
     /// Extension allocation with overwrite must use the same length
     #[error("Extension allocation with overwrite must use the same length")]
     InvalidLengthForAlloc,
+    /// Failed to decrypt a confidential transfer account
+    #[error("Failed to decrypt a confidential transfer account")]
+    AccountDecryption,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -354,6 +357,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::InvalidLengthForAlloc => {
                 msg!("Extension allocation with overwrite must use the same length")
+            }
+            TokenError::AccountDecryption => {
+                msg!("Failed to decrypt a confidential transfer account")
             }
         }
     }
