@@ -18,13 +18,13 @@ use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
     instruction::{
-        add_required_signatory_to_governance, add_signatory, cancel_proposal, cast_vote,
+        add_required_signatory, add_signatory, cancel_proposal, cast_vote,
         complete_proposal, create_governance, create_mint_governance, create_native_treasury,
         create_program_governance, create_proposal, create_realm,
         create_token_governance,
         create_token_owner_record, deposit_governing_tokens, execute_transaction, finalize_vote,
         flag_transaction_error, insert_transaction, refund_proposal_deposit, relinquish_vote,
-        remove_required_signatory_from_governance, remove_transaction,
+        remove_required_signatory, remove_transaction,
         revoke_governing_tokens, set_governance_config, set_governance_delegate,
         set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
         withdraw_governing_tokens, AddSignatoryPermission,
@@ -2806,7 +2806,7 @@ impl GovernanceProgramTest {
         governance: &GovernanceCookie,
         signatory: &Pubkey,
     ) -> Result<ProposalTransactionCookie, ProgramError> {
-        let mut gwr_ix = add_required_signatory_to_governance(
+        let mut gwr_ix = add_required_signatory(
             &self.program_id,
             &governance.address,
             &self.bench.payer.pubkey(),
@@ -2833,7 +2833,7 @@ impl GovernanceProgramTest {
         signatory: &Pubkey,
         beneficiary: &Pubkey,
     ) -> Result<ProposalTransactionCookie, ProgramError> {
-        let mut ix = remove_required_signatory_from_governance(
+        let mut ix = remove_required_signatory(
             &self.program_id,
             &governance.address,
             signatory,

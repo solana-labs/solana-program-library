@@ -1622,8 +1622,8 @@ pub fn revoke_governing_tokens(
     }
 }
 
-/// Creates AddRequiredSignatoryToGovernance instruction
-pub fn add_required_signatory_to_governance(
+/// Creates AddRequiredSignatory instruction
+pub fn add_required_signatory(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
@@ -1652,8 +1652,8 @@ pub fn add_required_signatory_to_governance(
     }
 }
 
-/// Creates RemoveRequiredSignatoryFromGovernance instruction
-pub fn remove_required_signatory_from_governance(
+/// Creates RemoveRequiredSignatory instruction
+pub fn remove_required_signatory(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,

@@ -34,11 +34,11 @@ impl IsInitialized for RequiredSignatory {
 /// Deserializes RequiredSignatory account, checks the owner program, and asserts that required signatory belongs to the given governance
 pub fn get_required_signatory_data_for_governance(
     program_id: &Pubkey,
-    required_signatory: &AccountInfo,
+    required_signatory_info: &AccountInfo,
     governance: &Pubkey,
 ) -> Result<RequiredSignatory, ProgramError> {
     let required_signatory_data =
-        get_account_data::<RequiredSignatory>(program_id, required_signatory)?;
+        get_account_data::<RequiredSignatory>(program_id, required_signatory_info)?;
 
     if required_signatory_data.governance != *governance {
         return Err(GovernanceError::InvalidGovernanceForRequiredSignatory.into());
