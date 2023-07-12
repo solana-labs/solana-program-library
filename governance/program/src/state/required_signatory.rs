@@ -10,11 +10,11 @@ use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 /// Required signatory
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RequiredSignatory {
-    /// Account version
-    pub account_version: u8,
-
     /// Account type
     pub account_type: GovernanceAccountType,
+
+    /// Account version
+    pub account_version: u8,
 
     /// Governance this required signatory belongs to
     pub governance: Pubkey,
