@@ -88,3 +88,44 @@ function buildAssociatedTokenAccountInstruction(
         data: instructionData,
     });
 }
+
+/**
+ * Construct a RecoverNested instruction
+ *
+ * @param nestedAssociatedToken             Nested associated token account (must be owned by `ownerAssociatedToken`)
+ * @param nestedMint                        Token mint for the nested associated token account
+ * @param destinationAssociatedToken        Wallet's associated token account
+ * @param ownerAssociatedToken              Owner associated token account address (must be owned by `owner`)
+ * @param ownerMint                         Token mint for the owner associated token account
+ * @param owner                             Wallet address for the owner associated token account
+ * @param programId                         SPL Token program account
+ * @param associatedTokenProgramId          SPL Associated Token program account
+ *
+ * @return Instruction to add to a transaction
+ */
+export function createRecoverNestedInstruction(
+    nestedAssociatedToken: PublicKey,
+    nestedMint: PublicKey,
+    destinationAssociatedToken: PublicKey,
+    ownerAssociatedToken: PublicKey,
+    ownerMint: PublicKey,
+    owner: PublicKey,
+    programId = TOKEN_PROGRAM_ID,
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+): TransactionInstruction {
+    const keys = [
+        { pubkey: nestedAssociatedToken, isSigner: false, isWritable: true },
+        { pubkey: nestedMint, isSigner: false, isWritable: false },
+        { pubkey: destinationAssociatedToken, isSigner: false, isWritable: true },
+        { pubkey: ownerAssociatedToken, isSigner: false, isWritable: true },
+        { pubkey: ownerMint, isSigner: false, isWritable: false },
+        { pubkey: owner, isSigner: true, isWritable: true },
+        { pubkey: programId, isSigner: false, isWritable: false },
+    ];
+
+    return new TransactionInstruction({
+        keys,
+        programId: associatedTokenProgramId,
+        data: Buffer.from([2]),
+    });
+}

@@ -7,7 +7,6 @@
 #![deny(missing_docs)]
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
-pub mod inline_spl_token;
 pub mod processor;
 pub mod state;
 

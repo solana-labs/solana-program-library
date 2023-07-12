@@ -20,7 +20,7 @@ chai.use(chaiAsPromised);
 
 describe('SplNameService Instructions', () => {
   const nameServiceAddress = new PublicKey(
-    'namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX'
+    'namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX',
   );
   const nameAccountKey = Keypair.generate().publicKey;
   const nameOwnerKey = Keypair.generate().publicKey;
@@ -39,7 +39,7 @@ describe('SplNameService Instructions', () => {
       payerKey,
       name,
       new Numberu64(LAMPORTS_PER_SOL),
-      new Numberu64(10)
+      new Numberu64(10),
     );
 
     expect(instruction.keys).to.have.length(6);
@@ -63,7 +63,7 @@ describe('SplNameService Instructions', () => {
       new Numberu64(10),
       nameClassKey,
       nameParent,
-      nameParentOwner
+      nameParentOwner,
     );
 
     expect(instruction.keys).to.have.length(7);
@@ -84,7 +84,7 @@ describe('SplNameService Instructions', () => {
       new Numberu32(0),
       data,
       nameOwnerKey,
-      undefined
+      undefined,
     );
 
     expect(instruction.keys).to.have.length(2);
@@ -98,7 +98,7 @@ describe('SplNameService Instructions', () => {
       nameServiceAddress,
       nameAccountKey,
       newOwner,
-      nameOwnerKey
+      nameOwnerKey,
     );
 
     expect(instruction.keys).to.have.length(2);
@@ -111,7 +111,7 @@ describe('SplNameService Instructions', () => {
       nameServiceAddress,
       nameAccountKey,
       payerKey,
-      nameOwnerKey
+      nameOwnerKey,
     );
 
     expect(instruction.keys).to.have.length(3);
@@ -127,7 +127,7 @@ describe('SplNameService Instructions', () => {
       payerKey,
       nameAccountKey,
       nameOwnerKey,
-      new Numberu32(30)
+      new Numberu32(30),
     );
 
     expect(instruction.keys).to.have.length(4);

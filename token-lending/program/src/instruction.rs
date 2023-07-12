@@ -449,7 +449,7 @@ impl LendingInstruction {
             return Err(LendingError::InstructionUnpackError.into());
         }
         let (key, rest) = input.split_at(PUBKEY_BYTES);
-        let pk = Pubkey::new(key);
+        let pk = Pubkey::try_from(key).map_err(|_| LendingError::InstructionUnpackError)?;
         Ok((pk, rest))
     }
 

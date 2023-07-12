@@ -193,6 +193,23 @@ pub enum TokenError {
     /// Account does not accept non-confidential transfers
     #[error("Non-confidential transfers disabled")]
     NonConfidentialTransfersDisabled,
+
+    // 50
+    /// An account can only be closed if the confidential withheld fee is zero
+    #[error("An account can only be closed if the confidential withheld fee is zero")]
+    ConfidentialTransferFeeAccountHasWithheldFee,
+    /// A mint or an account is initialized to an invalid combination of extensions
+    #[error("A mint or an account is initialized to an invalid combination of extensions")]
+    InvalidExtensionCombination,
+    /// Extension allocation with overwrite must use the same length
+    #[error("Extension allocation with overwrite must use the same length")]
+    InvalidLengthForAlloc,
+    /// Failed to decrypt a confidential transfer account
+    #[error("Failed to decrypt a confidential transfer account")]
+    AccountDecryption,
+    /// Failed to generate a zero-knowledge proof needed for a token instruction
+    #[error("Failed to generate proof")]
+    ProofGeneration,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -334,6 +351,21 @@ impl PrintProgramError for TokenError {
             }
             TokenError::NonConfidentialTransfersDisabled => {
                 msg!("Non-confidential transfers disabled")
+            }
+            TokenError::ConfidentialTransferFeeAccountHasWithheldFee => {
+                msg!("Account has non-zero confidential withheld fee")
+            }
+            TokenError::InvalidExtensionCombination => {
+                msg!("Mint or account is initialized to an invalid combination of extensions")
+            }
+            TokenError::InvalidLengthForAlloc => {
+                msg!("Extension allocation with overwrite must use the same length")
+            }
+            TokenError::AccountDecryption => {
+                msg!("Failed to decrypt a confidential transfer account")
+            }
+            TokenError::ProofGeneration => {
+                msg!("Failed to generate proof")
             }
         }
     }

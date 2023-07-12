@@ -19,7 +19,10 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{transfer_hook::TransferHook, BaseStateWithExtensions},
+        extension::{
+            transfer_hook::{TransferHook, TransferHookAccount},
+            BaseStateWithExtensions,
+        },
         instruction, offchain, onchain,
         processor::Processor,
     },
@@ -449,6 +452,28 @@ async fn success_transfer() {
         .await
         .unwrap();
     assert_eq!(destination.base.amount, amount);
+
+    // the example program checks that the transferring flag was set to true,
+    // so make sure that it was correctly unset by the token program
+    assert_eq!(
+        destination
+            .get_extension::<TransferHookAccount>()
+            .unwrap()
+            .transferring,
+        false.into()
+    );
+    let source = token_context
+        .token
+        .get_account_info(&alice_account)
+        .await
+        .unwrap();
+    assert_eq!(
+        source
+            .get_extension::<TransferHookAccount>()
+            .unwrap()
+            .transferring,
+        false.into()
+    );
 }
 
 #[tokio::test]

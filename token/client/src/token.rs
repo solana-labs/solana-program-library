@@ -22,15 +22,25 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_transfer, cpi_guard, default_account_state, interest_bearing_mint,
-            memo_transfer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
+            confidential_transfer::{
+                self, ApplyPendingBalanceAccountInfo, ConfidentialTransferAccount,
+                WithdrawAccountInfo,
+            },
+            cpi_guard, default_account_state, interest_bearing_mint, memo_transfer,
+            metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
             StateWithExtensionsOwned,
         },
         instruction, offchain,
-        pod::EncryptionPubkey,
-        solana_zk_token_sdk::errors::ProofError,
+        solana_zk_token_sdk::{
+            encryption::{
+                auth_encryption::AeKey,
+                elgamal::{ElGamalKeypair, ElGamalSecretKey},
+            },
+            zk_token_elgamal::pod::ElGamalPubkey,
+        },
         state::{Account, AccountState, Mint, Multisig},
     },
+    spl_token_metadata_interface::state::TokenMetadata,
     std::{
         fmt, io,
         sync::{Arc, RwLock},
@@ -64,8 +74,8 @@ pub enum TokenError {
     AccountInvalidAssociatedAddress,
     #[error("invalid auxiliary account address")]
     AccountInvalidAuxiliaryAddress,
-    #[error("proof error: {0}")]
-    Proof(ProofError),
+    #[error("proof generation")]
+    ProofGeneration,
     #[error("maximum deposit transfer amount exceeded")]
     MaximumDepositTransferAmountExceeded,
     #[error("encryption key error")]
@@ -113,8 +123,7 @@ pub enum ExtensionInitializationParams {
     ConfidentialTransferMint {
         authority: Option<Pubkey>,
         auto_approve_new_accounts: bool,
-        auditor_encryption_pubkey: Option<EncryptionPubkey>,
-        withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey>,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
     },
     DefaultAccountState {
         state: AccountState,
@@ -140,6 +149,10 @@ pub enum ExtensionInitializationParams {
         authority: Option<Pubkey>,
         program_id: Option<Pubkey>,
     },
+    MetadataPointer {
+        authority: Option<Pubkey>,
+        metadata_address: Option<Pubkey>,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -153,6 +166,7 @@ impl ExtensionInitializationParams {
             Self::NonTransferable => ExtensionType::NonTransferable,
             Self::PermanentDelegate { .. } => ExtensionType::PermanentDelegate,
             Self::TransferHook { .. } => ExtensionType::TransferHook,
+            Self::MetadataPointer { .. } => ExtensionType::MetadataPointer,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -165,15 +179,13 @@ impl ExtensionInitializationParams {
             Self::ConfidentialTransferMint {
                 authority,
                 auto_approve_new_accounts,
-                auditor_encryption_pubkey,
-                withdraw_withheld_authority_encryption_pubkey,
+                auditor_elgamal_pubkey,
             } => confidential_transfer::instruction::initialize_mint(
                 token_program_id,
                 mint,
                 authority,
                 auto_approve_new_accounts,
-                auditor_encryption_pubkey,
-                withdraw_withheld_authority_encryption_pubkey,
+                auditor_elgamal_pubkey,
             ),
             Self::DefaultAccountState { state } => {
                 default_account_state::instruction::initialize_default_account_state(
@@ -225,6 +237,15 @@ impl ExtensionInitializationParams {
                 mint,
                 authority,
                 program_id,
+            ),
+            Self::MetadataPointer {
+                authority,
+                metadata_address,
+            } => metadata_pointer::instruction::initialize(
+                token_program_id,
+                mint,
+                authority,
+                metadata_address,
             ),
         }
     }
@@ -411,9 +432,9 @@ where
         ))))
     }
 
-    fn get_multisig_signers<'a, 'b>(
+    fn get_multisig_signers<'a>(
         &self,
-        authority: &'b Pubkey,
+        authority: &Pubkey,
         signing_pubkeys: &'a [Pubkey],
     ) -> Vec<&'a Pubkey> {
         if signing_pubkeys == [*authority] {
@@ -522,7 +543,7 @@ where
             .iter()
             .map(|e| e.extension())
             .collect::<Vec<_>>();
-        let space = ExtensionType::get_account_len::<Mint>(&extension_types);
+        let space = ExtensionType::try_calculate_account_len::<Mint>(&extension_types)?;
 
         let mut instructions = vec![system_instruction::create_account(
             &self.payer.pubkey(),
@@ -644,7 +665,7 @@ where
                 required_extensions.push(extension_type);
             }
         }
-        let space = ExtensionType::get_account_len::<Account>(&required_extensions);
+        let space = ExtensionType::try_calculate_account_len::<Account>(&required_extensions)?;
         let mut instructions = vec![system_instruction::create_account(
             &self.payer.pubkey(),
             &account.pubkey(),
@@ -682,9 +703,10 @@ where
             .ok_or(TokenError::AccountNotFound)
     }
 
-    /// Retrive mint information.
-    pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
-        let account = self.get_account(self.pubkey).await?;
+    fn unpack_mint_info(
+        &self,
+        account: BaseAccount,
+    ) -> TokenResult<StateWithExtensionsOwned<Mint>> {
         if account.owner != self.program_id {
             return Err(TokenError::AccountInvalidOwner);
         }
@@ -699,6 +721,12 @@ where
         }
 
         mint_result
+    }
+
+    /// Retrive mint information.
+    pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
+        let account = self.get_account(self.pubkey).await?;
+        self.unpack_mint_info(account)
     }
 
     /// Retrieve account information.
@@ -1252,7 +1280,7 @@ where
             } else {
                 vec![]
             };
-            let space = ExtensionType::get_account_len::<Account>(&extensions);
+            let space = ExtensionType::try_calculate_account_len::<Account>(&extensions)?;
 
             instructions.push(system_instruction::create_account(
                 &self.payer.pubkey(),
@@ -1566,160 +1594,148 @@ where
         .await
     }
 
-    /// Update confidential transfer mint
-    pub async fn confidential_transfer_update_mint<S: Signer>(
+    /// Update metadata pointer address
+    pub async fn update_metadata_address<S: Signers>(
         &self,
-        authority: &S,
-        auto_approve_new_account: bool,
-        auditor_encryption_pubkey: Option<EncryptionPubkey>,
+        authority: &Pubkey,
+        new_metadata_address: Option<Pubkey>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[metadata_pointer::instruction::update(
+                &self.program_id,
+                self.get_address(),
+                authority,
+                &multisig_signers,
+                new_metadata_address,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Update confidential transfer mint
+    pub async fn confidential_transfer_update_mint<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        auto_approve_new_account: bool,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[confidential_transfer::instruction::update_mint(
                 &self.program_id,
                 &self.pubkey,
-                &authority.pubkey(),
+                authority,
+                &multisig_signers,
                 auto_approve_new_account,
-                auditor_encryption_pubkey,
+                auditor_elgamal_pubkey,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
-    /// Configures confidential transfers for a token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_configure_token_account<S: Signer>(
+    /// Configures confidential transfers for a token account. If the maximum pending balance
+    /// credit counter for the extension is not provided, then it is set to be a default value of
+    /// `2^16`.
+    pub async fn confidential_transfer_configure_token_account<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
-    ) -> TokenResult<T::Output> {
-        let maximum_pending_balance_credit_counter =
-            2 << confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH;
-
-        self.confidential_transfer_configure_token_account_with_pending_counter(
-            token_account,
-            authority,
-            maximum_pending_balance_credit_counter,
-        )
-        .await
-    }
-
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_configure_token_account_with_pending_counter<S: Signer>(
-        &self,
-        token_account: &Pubkey,
-        authority: &S,
-        maximum_pending_balance_credit_counter: u64,
-    ) -> TokenResult<T::Output> {
-        let elgamal_keypair =
-            ElGamalKeypair::new(authority, token_account).map_err(TokenError::Key)?;
-        let decryptable_zero_balance = AeKey::new(authority, token_account)
-            .map_err(TokenError::Key)?
-            .encrypt(0);
-
-        self.confidential_transfer_configure_token_account_with_pending_counter_and_keypair(
-            token_account,
-            authority,
-            maximum_pending_balance_credit_counter,
-            &elgamal_keypair,
-            decryptable_zero_balance,
-        )
-        .await
-    }
-
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_configure_token_account_with_pending_counter_and_keypair<
-        S: Signer,
-    >(
-        &self,
-        token_account: &Pubkey,
-        authority: &S,
-        maximum_pending_balance_credit_counter: u64,
+        account: &Pubkey,
+        authority: &Pubkey,
+        maximum_pending_balance_credit_counter: Option<u64>,
         elgamal_keypair: &ElGamalKeypair,
-        decryptable_zero_balance: AeCiphertext,
+        aes_key: &AeKey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        const DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER: u64 = 65536;
+
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let maximum_pending_balance_credit_counter = maximum_pending_balance_credit_counter
+            .unwrap_or(DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER);
+
         let proof_data =
             confidential_transfer::instruction::PubkeyValidityData::new(elgamal_keypair)
-                .map_err(TokenError::Proof)?;
+                .map_err(|_| TokenError::ProofGeneration)?;
+        let decryptable_balance = aes_key.encrypt(0);
 
         self.process_ixs(
             &confidential_transfer::instruction::configure_account(
                 &self.program_id,
-                token_account,
+                account,
                 &self.pubkey,
-                decryptable_zero_balance,
+                decryptable_balance,
                 maximum_pending_balance_credit_counter,
-                &authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
                 &proof_data,
             )?,
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Approves a token account for confidential transfers
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_approve_account<S: Signer>(
+    pub async fn confidential_transfer_approve_account<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[confidential_transfer::instruction::approve_account(
                 &self.program_id,
-                token_account,
+                account,
                 &self.pubkey,
-                &authority.pubkey(),
+                authority,
+                &multisig_signers,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Prepare a token account with the confidential transfer extension for closing
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_empty_account<S: Signer>(
+    pub async fn confidential_transfer_empty_account<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
-    ) -> TokenResult<T::Output> {
-        let elgamal_keypair =
-            ElGamalKeypair::new(authority, token_account).map_err(TokenError::Key)?;
-        self.confidential_transfer_empty_account_with_keypair(
-            token_account,
-            authority,
-            &elgamal_keypair,
-        )
-        .await
-    }
-
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_empty_account_with_keypair<S: Signer>(
-        &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
         elgamal_keypair: &ElGamalKeypair,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let state = self.get_account_info(token_account).await.unwrap();
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let state = self.get_account_info(account).await.unwrap();
         let extension =
             state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
 
-        let proof_data = confidential_transfer::instruction::CloseAccountData::new(
+        let proof_data = confidential_transfer::instruction::ZeroBalanceProofData::new(
             elgamal_keypair,
             &extension.available_balance.try_into().unwrap(),
         )
-        .map_err(TokenError::Proof)?;
+        .map_err(|_| TokenError::ProofGeneration)?;
 
         self.process_ixs(
             &confidential_transfer::instruction::empty_account(
                 &self.program_id,
-                token_account,
-                &authority.pubkey(),
-                &[],
+                account,
+                authority,
+                &multisig_signers,
                 &proof_data,
             )?,
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
@@ -1854,36 +1870,35 @@ where
 
     /// Fetch the ElGamal public key associated with a confidential token account
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_encryption_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_elgamal_pubkey<S: Signer>(
         &self,
         token_account: &Pubkey,
     ) -> TokenResult<ElGamalPubkey> {
         let state = self.get_account_info(token_account).await.unwrap();
         let extension =
             state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
-        let encryption_pubkey = extension
-            .encryption_pubkey
+        let elgamal_pubkey = extension
+            .elgamal_pubkey
             .try_into()
             .map_err(TokenError::Proof)?;
 
-        Ok(encryption_pubkey)
+        Ok(elgamal_pubkey)
     }
 
     /// Fetch the ElGamal pubkey key of the auditor associated with a confidential token mint
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_auditor_encryption_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_auditor_elgamal_pubkey<S: Signer>(
         &self,
     ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let auditor_encryption_pubkey: Option<EncryptionPubkey> =
-            ct_mint.auditor_encryption_pubkey.into();
+        let auditor_elgamal_pubkey: Option<ElGamalPubkey> = ct_mint.auditor_elgamal_pubkey.into();
 
-        if let Some(encryption_pubkey) = auditor_encryption_pubkey {
-            let encryption_pubkey: ElGamalPubkey =
-                encryption_pubkey.try_into().map_err(TokenError::Proof)?;
-            Ok(Some(encryption_pubkey))
+        if let Some(elgamal_pubkey) = auditor_elgamal_pubkey {
+            let elgamal_pubkey: ElGamalPubkey =
+                elgamal_pubkey.try_into().map_err(TokenError::Proof)?;
+            Ok(Some(elgamal_pubkey))
         } else {
             Ok(None)
         }
@@ -1892,81 +1907,97 @@ where
     /// Fetch the ElGamal pubkey key of the withdraw withheld authority associated with a
     /// confidential token mint
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_withdraw_withheld_authority_encryption_pubkey<
-        S: Signer,
-    >(
+    pub async fn confidential_transfer_get_withdraw_withheld_authority_elgamal_pubkey<S: Signer>(
         &self,
     ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
         let ct_mint =
             mint_state.get_extension::<confidential_transfer::ConfidentialTransferMint>()?;
-        let withdraw_withheld_authority_encryption_pubkey: Option<EncryptionPubkey> =
-            ct_mint.withdraw_withheld_authority_encryption_pubkey.into();
+        let withdraw_withheld_authority_elgamal_pubkey: Option<ElGamalPubkey> =
+            ct_mint.withdraw_withheld_authority_elgamal_pubkey.into();
 
-        if let Some(encryption_pubkey) = withdraw_withheld_authority_encryption_pubkey {
-            let encryption_pubkey: ElGamalPubkey =
-                encryption_pubkey.try_into().map_err(TokenError::Proof)?;
-            Ok(Some(encryption_pubkey))
+        if let Some(elgamal_pubkey) = withdraw_withheld_authority_elgamal_pubkey {
+            let elgamal_pubkey: ElGamalPubkey =
+                elgamal_pubkey.try_into().map_err(TokenError::Proof)?;
+            Ok(Some(elgamal_pubkey))
         } else {
             Ok(None)
         }
     }
 
     /// Deposit SPL Tokens into the pending balance of a confidential token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_deposit<S: Signer>(
+    pub async fn confidential_transfer_deposit<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        token_authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
         amount: u64,
         decimals: u8,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
-            return Err(TokenError::MaximumDepositTransferAmountExceeded);
-        }
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
         self.process_ixs(
             &[confidential_transfer::instruction::deposit(
                 &self.program_id,
-                token_account,
+                account,
                 &self.pubkey,
                 amount,
                 decimals,
-                &token_authority.pubkey(),
-                &[],
+                authority,
+                &multisig_signers,
             )?],
-            &[token_authority],
+            signing_keypairs,
         )
         .await
     }
 
-    /// Withdraw SPL Tokens from the available balance of a confidential token account using the
-    /// uniquely derived decryption key from a signer
+    /// Withdraw SPL Tokens from the available balance of a confidential token account
     #[allow(clippy::too_many_arguments)]
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_withdraw<S: Signer>(
+    pub async fn confidential_transfer_withdraw<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        token_authority: &S,
-        amount: u64,
-        available_balance: u64,
-        available_balance_ciphertext: &ElGamalCiphertext,
+        account: &Pubkey,
+        authority: &Pubkey,
+        withdraw_amount: u64,
         decimals: u8,
+        account_info: Option<WithdrawAccountInfo>,
+        elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let elgamal_keypair =
-            ElGamalKeypair::new(token_authority, token_account).map_err(TokenError::Key)?;
-        let authenticated_encryption_key =
-            AeKey::new(token_authority, token_account).map_err(TokenError::Key)?;
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        self.confidential_transfer_withdraw_with_key(
-            token_account,
-            token_authority,
-            amount,
-            decimals,
-            available_balance,
-            available_balance_ciphertext,
-            &elgamal_keypair,
-            &authenticated_encryption_key,
+        let account_info = if let Some(account_info) = account_info {
+            account_info
+        } else {
+            self.get_account_info(account)
+                .await?
+                .get_extension::<ConfidentialTransferAccount>()?
+                .withdraw_account_info()
+        };
+
+        let proof_data = account_info
+            .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
+            .map_err(|_| TokenError::ProofGeneration)?;
+
+        let new_decryptable_available_balance = account_info
+            .new_decryptable_available_balance(withdraw_amount, aes_key)
+            .map_err(|_| TokenError::AccountDecryption)?;
+
+        self.process_ixs(
+            &confidential_transfer::instruction::withdraw(
+                &self.program_id,
+                account,
+                &self.pubkey,
+                withdraw_amount,
+                decimals,
+                new_decryptable_available_balance,
+                authority,
+                &multisig_signers,
+                &proof_data,
+            )?,
+            signing_keypairs,
         )
         .await
     }
@@ -2215,141 +2246,139 @@ where
         .await
     }
 
-    /// Applies the confidential transfer pending balance to the available balance using the
-    /// uniquely derived decryption key
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_apply_pending_balance<S: Signer>(
+    /// Applies the confidential transfer pending balance to the available balance
+    pub async fn confidential_transfer_apply_pending_balance<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
-        available_balance: u64,
-        pending_balance: u64,
-        expected_pending_balance_credit_counter: u64,
+        account: &Pubkey,
+        authority: &Pubkey,
+        account_info: Option<ApplyPendingBalanceAccountInfo>,
+        elgamal_secret_key: &ElGamalSecretKey,
+        aes_key: &AeKey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let authenticated_encryption_key =
-            AeKey::new(authority, token_account).map_err(TokenError::Key)?;
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        self.confidential_transfer_apply_pending_balance_with_key(
-            token_account,
-            authority,
-            available_balance,
-            pending_balance,
-            expected_pending_balance_credit_counter,
-            &authenticated_encryption_key,
-        )
-        .await
-    }
+        let account_info = if let Some(account_info) = account_info {
+            account_info
+        } else {
+            self.get_account_info(account)
+                .await?
+                .get_extension::<ConfidentialTransferAccount>()?
+                .apply_pending_balance_account_info()
+        };
 
-    /// Applies the confidential transfer pending balance to the available balance using a custom
-    /// decryption key
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_apply_pending_balance_with_key<S: Signer>(
-        &self,
-        token_account: &Pubkey,
-        authority: &S,
-        available_balance: u64,
-        pending_balance: u64,
-        expected_pending_balance_credit_counter: u64,
-        authenticated_encryption_key: &AeKey,
-    ) -> TokenResult<T::Output> {
-        let new_decryptable_balance = available_balance.checked_add(pending_balance).unwrap();
-        let new_decryptable_balance_ciphertext =
-            authenticated_encryption_key.encrypt(new_decryptable_balance);
+        let expected_pending_balance_credit_counter = account_info.pending_balance_credit_counter();
+        let new_decryptable_available_balance = account_info
+            .new_decryptable_available_balance(elgamal_secret_key, aes_key)
+            .map_err(|_| TokenError::AccountDecryption)?;
 
         self.process_ixs(
             &[confidential_transfer::instruction::apply_pending_balance(
                 &self.program_id,
-                token_account,
+                account,
                 expected_pending_balance_credit_counter,
-                new_decryptable_balance_ciphertext,
-                &authority.pubkey(),
-                &[],
+                new_decryptable_available_balance,
+                authority,
+                &multisig_signers,
             )?],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Enable confidential transfer `Deposit` and `Transfer` instructions for a token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_enable_confidential_credits<S: Signer>(
+    pub async fn confidential_transfer_enable_confidential_credits<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 confidential_transfer::instruction::enable_confidential_credits(
                     &self.program_id,
-                    token_account,
-                    &authority.pubkey(),
-                    &[],
+                    account,
+                    authority,
+                    &multisig_signers,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Disable confidential transfer `Deposit` and `Transfer` instructions for a token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_disable_confidential_credits<S: Signer>(
+    pub async fn confidential_transfer_disable_confidential_credits<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 confidential_transfer::instruction::disable_confidential_credits(
                     &self.program_id,
-                    token_account,
-                    &authority.pubkey(),
-                    &[],
+                    account,
+                    authority,
+                    &multisig_signers,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Enable a confidential extension token account to receive non-confidential payments
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_enable_non_confidential_credits<S: Signer>(
+    pub async fn confidential_transfer_enable_non_confidential_credits<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 confidential_transfer::instruction::enable_non_confidential_credits(
                     &self.program_id,
-                    token_account,
-                    &authority.pubkey(),
-                    &[],
+                    account,
+                    authority,
+                    &multisig_signers,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
 
     /// Disable non-confidential payments for a confidential extension token account
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_disable_non_confidential_credits<S: Signer>(
+    pub async fn confidential_transfer_disable_non_confidential_credits<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        authority: &S,
+        account: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
         self.process_ixs(
             &[
                 confidential_transfer::instruction::disable_non_confidential_credits(
                     &self.program_id,
-                    token_account,
-                    &authority.pubkey(),
-                    &[],
+                    account,
+                    authority,
+                    &multisig_signers,
                 )?,
             ],
-            &[authority],
+            signing_keypairs,
         )
         .await
     }
@@ -2496,5 +2525,103 @@ where
             &[],
         )
         .await
+    }
+
+    pub async fn withdraw_excess_lamports<S: Signers>(
+        &self,
+        source: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[spl_token_2022::instruction::withdraw_excess_lamports(
+                &self.program_id,
+                source,
+                destination,
+                authority,
+                &multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Initialize token-metadata on a mint
+    pub async fn initialize_token_metadata<S: Signers>(
+        &self,
+        update_authority: &Pubkey,
+        mint_authority: &Pubkey,
+        name: String,
+        symbol: String,
+        uri: String,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[spl_token_metadata_interface::instruction::initialize(
+                &self.program_id,
+                &self.pubkey,
+                update_authority,
+                &self.pubkey,
+                mint_authority,
+                name,
+                symbol,
+                uri,
+            )],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Initialize token-metadata on a mint
+    #[allow(clippy::too_many_arguments)]
+    pub async fn initialize_token_metadata_with_rent_transfer<S: Signers>(
+        &self,
+        payer: &Pubkey,
+        update_authority: &Pubkey,
+        mint_authority: &Pubkey,
+        name: String,
+        symbol: String,
+        uri: String,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let account = self.get_account(self.pubkey).await?;
+        let account_lamports = account.lamports;
+        let mint_state = self.unpack_mint_info(account)?;
+        let token_metadata = TokenMetadata {
+            name,
+            symbol,
+            uri,
+            ..Default::default()
+        };
+        let new_account_len = mint_state.try_get_new_account_len(&token_metadata)?;
+        let new_rent_exempt_minimum = self
+            .client
+            .get_minimum_balance_for_rent_exemption(new_account_len)
+            .await
+            .map_err(TokenError::Client)?;
+        let additional_lamports = new_rent_exempt_minimum.saturating_sub(account_lamports);
+        let mut instructions = vec![];
+        if additional_lamports > 0 {
+            instructions.push(system_instruction::transfer(
+                payer,
+                &self.pubkey,
+                additional_lamports,
+            ));
+        }
+        instructions.push(spl_token_metadata_interface::instruction::initialize(
+            &self.program_id,
+            &self.pubkey,
+            update_authority,
+            &self.pubkey,
+            mint_authority,
+            token_metadata.name,
+            token_metadata.symbol,
+            token_metadata.uri,
+        ));
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 }

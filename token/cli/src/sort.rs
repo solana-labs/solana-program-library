@@ -108,10 +108,7 @@ pub(crate) fn sort_and_parse_token_accounts(
     }
 
     Ok(CliTokenAccounts {
-        accounts: cli_accounts
-            .into_iter()
-            .map(|(_key, accounts_list)| accounts_list)
-            .collect(),
+        accounts: cli_accounts.into_values().collect(),
         unsupported_accounts,
         max_len_balance,
         aux_len: if aux_count > 0 {

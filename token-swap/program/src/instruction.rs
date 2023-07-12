@@ -283,7 +283,7 @@ impl SwapInstruction {
     /// Packs a [SwapInstruction](enum.SwapInstruction.html) into a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
-        match &*self {
+        match self {
             Self::Initialize(Initialize { fees, swap_curve }) => {
                 buf.push(0);
                 let mut fees_slice = [0u8; Fees::LEN];

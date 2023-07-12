@@ -22,9 +22,11 @@ members = [
   "governance/tools",
   "governance/chat/program",
   "instruction-padding/program",
-  "libraries/math",
+  "libraries/discriminator",
   "libraries/concurrent-merkle-tree",
+  "libraries/math",
   "libraries/merkle-tree-reference",
+  "libraries/program-error",
   "libraries/tlv-account-resolution",
   "libraries/type-length-value",
   "memo/program",
@@ -38,10 +40,13 @@ members = [
   "stateless-asks/program",
   "token-lending/cli",
   "token-lending/program",
+  "token-metadata/example",
+  "token-metadata/interface",
   "token-swap/program",
   "token-swap/program/fuzz",
   "token-upgrade/cli",
   "token-upgrade/program",
+  "token-wrap/program",
   "token/cli",
   "token/program",
   "token/program-2022",
@@ -53,3 +58,11 @@ members = [
   "utils/test-client",
   "token-lending/flash_loan_receiver",
 ]
+
+exclude = [
+]
+
+[patch.crates-io]
+# Rust 1.69+ broke ntapi v0.3.x, which doesn't contain proper fix:
+#   https://github.com/MSxDOS/ntapi/pull/12
+ntapi = { git = "https://github.com/solana-labs/ntapi", rev = "97ede981a1777883ff86d142b75024b023f04fad" }

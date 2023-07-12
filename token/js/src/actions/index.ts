@@ -15,6 +15,7 @@ export * from './freezeAccount.js';
 export * from './getOrCreateAssociatedTokenAccount.js';
 export * from './mintTo.js';
 export * from './mintToChecked.js';
+export * from './recoverNested.js';
 export * from './revoke.js';
 export * from './setAuthority.js';
 export * from './syncNative.js';

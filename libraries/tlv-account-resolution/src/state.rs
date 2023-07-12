@@ -13,17 +13,18 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
     },
+    spl_discriminator::SplDiscriminate,
     spl_type_length_value::{
-        discriminator::TlvDiscriminator,
+        pod::{PodSlice, PodSliceMut},
         state::{TlvState, TlvStateBorrowed, TlvStateMut},
     },
 };
 
 /// Stateless helper for storing additional accounts required for an instruction.
 ///
-/// This struct works with any `TlvDiscriminator`, and stores the extra accounts
-/// needed for that specific instruction, using the given `Discriminator` as the
-/// type-length-value `Discriminator`, and then storing all of the given
+/// This struct works with any `SplDiscriminate`, and stores the extra accounts
+/// needed for that specific instruction, using the given `ArrayDiscriminator` as the
+/// type-length-value `ArrayDiscriminator`, and then storing all of the given
 /// `AccountMeta`s as a zero-copy slice.
 ///
 /// Sample usage:
@@ -34,14 +35,14 @@ use {
 ///         account_info::AccountInfo, instruction::{AccountMeta, Instruction},
 ///         pubkey::Pubkey
 ///     },
-///     spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator},
+///     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
 ///     spl_tlv_account_resolution::state::ExtraAccountMetas,
 /// };
 ///
 /// struct MyInstruction;
-/// impl TlvDiscriminator for MyInstruction {
+/// impl SplDiscriminate for MyInstruction {
 ///     // Give it a unique discriminator, can also be generated using a hash function
-///     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 /// }
 ///
 /// // actually put it in the additional required account keys and signer / writable
@@ -191,7 +192,7 @@ pub struct ExtraAccountMetas;
 impl ExtraAccountMetas {
     /// Initialize pod slice data for the given instruction and any type
     /// convertible to account metas
-    pub fn init<'a, T: TlvDiscriminator, M>(
+    pub fn init<'a, T: SplDiscriminate, M>(
         data: &mut [u8],
         convertible_account_types: &'a [M],
     ) -> Result<(), ProgramError>
@@ -210,7 +211,7 @@ impl ExtraAccountMetas {
 
     /// Initialize a TLV entry for the given discriminator, populating the data
     /// with the given account infos
-    pub fn init_with_account_infos<T: TlvDiscriminator>(
+    pub fn init_with_account_infos<T: SplDiscriminate>(
         data: &mut [u8],
         account_infos: &[AccountInfo<'_>],
     ) -> Result<(), ProgramError> {
@@ -222,7 +223,7 @@ impl ExtraAccountMetas {
     /// Due to lifetime annoyances, this function can't just take in the bytes,
     /// since then we would be returning a reference to a locally created
     /// `TlvStateBorrowed`. I hope there's a better way to do this!
-    pub fn unpack_with_tlv_state<'a, T: TlvDiscriminator>(
+    pub fn unpack_with_tlv_state<'a, T: SplDiscriminate>(
         tlv_state: &'a TlvStateBorrowed,
     ) -> Result<PodSlice<'a, PodAccountMeta>, ProgramError> {
         let bytes = tlv_state.get_bytes::<T>()?;
@@ -231,7 +232,7 @@ impl ExtraAccountMetas {
 
     /// Initialize a TLV entry for the given discriminator, populating the data
     /// with the given account metas
-    pub fn init_with_account_metas<T: TlvDiscriminator>(
+    pub fn init_with_account_metas<T: SplDiscriminate>(
         data: &mut [u8],
         account_metas: &[AccountMeta],
     ) -> Result<(), ProgramError> {
@@ -434,13 +435,15 @@ mod tests {
     };
 
     pub struct TestInstruction;
-    impl TlvDiscriminator for TestInstruction {
-        const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+    impl SplDiscriminate for TestInstruction {
+        const SPL_DISCRIMINATOR: ArrayDiscriminator =
+            ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
     }
 
     pub struct TestOtherInstruction;
-    impl TlvDiscriminator for TestOtherInstruction {
-        const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+    impl SplDiscriminate for TestOtherInstruction {
+        const SPL_DISCRIMINATOR: ArrayDiscriminator =
+            ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
     }
 
     #[test]

@@ -1,3 +1,11 @@
+#[cfg(not(target_os = "solana"))]
+use solana_zk_token_sdk::{
+    encryption::{
+        auth_encryption::{AeCiphertext, AeKey},
+        elgamal::{ElGamalKeypair, ElGamalSecretKey},
+    },
+    instruction::withdraw::WithdrawData,
+};
 use {
     crate::{
         error::TokenError,
@@ -6,18 +14,18 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod,
+    solana_zk_token_sdk::zk_token_elgamal::pod::{
+        AeCiphertext as PodAeCiphertext, ElGamalCiphertext, ElGamalPubkey,
+    },
 };
 
 /// Maximum bit length of any deposit or transfer amount
 ///
 /// Any deposit or transfer amount must be less than 2^48
-pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH: usize = 48;
+pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT: u64 = (u16::MAX as u64) + (1 << 16) * (u32::MAX as u64);
 
 /// Bit length of the low bits of pending balance plaintext
-pub const PENDING_BALANCE_LO_BIT_LENGTH: usize = 16;
-/// Bit length of the high bits of pending balance plaintext
-pub const PENDING_BALANCE_HI_BIT_LENGTH: usize = 48;
+pub const PENDING_BALANCE_LO_BIT_LENGTH: u32 = 16;
 
 /// Confidential Transfer Extension instructions
 pub mod instruction;
@@ -26,13 +34,9 @@ pub mod instruction;
 pub mod processor;
 
 /// ElGamal ciphertext containing an account balance
-pub type EncryptedBalance = pod::ElGamalCiphertext;
+pub type EncryptedBalance = ElGamalCiphertext;
 /// Authenticated encryption containing an account balance
-pub type DecryptableBalance = pod::AeCiphertext;
-/// (aggregated) ElGamal ciphertext containing a transfer fee
-pub type EncryptedFee = pod::FeeEncryption;
-/// ElGamal ciphertext containing a withheld amount
-pub type EncryptedWithheldAmount = pod::ElGamalCiphertext;
+pub type DecryptableBalance = PodAeCiphertext;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
@@ -53,25 +57,7 @@ pub struct ConfidentialTransferMint {
     pub auto_approve_new_accounts: PodBool,
 
     /// Authority to decode any transfer amount in a confidential transafer.
-    pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
-
-    /// Authority to withraw withheld fees that are associated with accounts. It must be set to
-    /// `None` if the mint is not extended for fees.
-    ///
-    /// Note that the withdraw withheld authority has the ability to decode any withheld fee
-    /// amount that are associated with accounts. When combined with the fee parameters, the
-    /// withheld fee amounts can reveal information about transfer amounts.
-    ///
-    /// * If not `None`, transfers must include ElGamal cyphertext of the transfer fee with this
-    /// public key. If this is the case, but the base mint is not extended for fees, then any
-    /// transfer will fail.
-    /// * If `None`, transfer fee is disabled. If this is the case, but the base mint is extended
-    /// for fees, then any transfer will fail.
-    pub withdraw_withheld_authority_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
-
-    /// Withheld transfer fee confidential tokens that have been moved to the mint for withdrawal.
-    /// This will always be zero if fees are never enabled.
-    pub withheld_amount: EncryptedWithheldAmount,
+    pub auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
 }
 
 impl Extension for ConfidentialTransferMint {
@@ -87,12 +73,12 @@ pub struct ConfidentialTransferAccount {
     pub approved: PodBool,
 
     /// The public key associated with ElGamal encryption
-    pub encryption_pubkey: EncryptionPubkey,
+    pub elgamal_pubkey: ElGamalPubkey,
 
-    /// The low 16 bits of the pending balance (encrypted by `encryption_pubkey`)
+    /// The low 16 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance_lo: EncryptedBalance,
 
-    /// The high 48 bits of the pending balance (encrypted by `encryption_pubkey`)
+    /// The high 48 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance_hi: EncryptedBalance,
 
     /// The available balance (encrypted by `encrypiton_pubkey`)
@@ -122,9 +108,6 @@ pub struct ConfidentialTransferAccount {
     /// The actual `pending_balance_credit_counter` when the last `ApplyPendingBalance` instruction
     /// was executed
     pub actual_pending_balance_credit_counter: PodU64,
-
-    /// The withheld amount of fees. This will always be zero if fees are never enabled.
-    pub withheld_amount: EncryptedWithheldAmount,
 }
 
 impl Extension for ConfidentialTransferAccount {
@@ -146,7 +129,6 @@ impl ConfidentialTransferAccount {
         if self.pending_balance_lo == EncryptedBalance::zeroed()
             && self.pending_balance_hi == EncryptedBalance::zeroed()
             && self.available_balance == EncryptedBalance::zeroed()
-            && self.withheld_amount == EncryptedWithheldAmount::zeroed()
         {
             Ok(())
         } else {
@@ -203,4 +185,170 @@ impl ConfidentialTransferAccount {
         .into();
         Ok(())
     }
+
+    /// Return the account information needed to construct an `ApplyPendingBalance` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn apply_pending_balance_account_info(&self) -> ApplyPendingBalanceAccountInfo {
+        let pending_balance_credit_counter = self.pending_balance_credit_counter;
+        let pending_balance_lo = self.pending_balance_lo;
+        let pending_balance_hi = self.pending_balance_hi;
+        let decryptable_available_balance = self.decryptable_available_balance;
+
+        ApplyPendingBalanceAccountInfo {
+            pending_balance_credit_counter,
+            pending_balance_lo,
+            pending_balance_hi,
+            decryptable_available_balance,
+        }
+    }
+
+    /// Return the account information needed to construct a `Withdraw` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn withdraw_account_info(&self) -> WithdrawAccountInfo {
+        let available_balance = self.available_balance;
+        let decryptable_available_balance = self.decryptable_available_balance;
+
+        WithdrawAccountInfo {
+            available_balance,
+            decryptable_available_balance,
+        }
+    }
+}
+
+/// Confidential Transfer extension information needed to construct an `ApplyPendingBalance`
+/// instruction.
+#[cfg(not(target_os = "solana"))]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct ApplyPendingBalanceAccountInfo {
+    pending_balance_credit_counter: PodU64,
+    pending_balance_lo: EncryptedBalance,
+    pending_balance_hi: EncryptedBalance,
+    decryptable_available_balance: DecryptableBalance,
+}
+#[cfg(not(target_os = "solana"))]
+impl ApplyPendingBalanceAccountInfo {
+    /// Return the pending balance credit counter of the account.
+    pub fn pending_balance_credit_counter(&self) -> u64 {
+        self.pending_balance_credit_counter.into()
+    }
+
+    fn decrypted_pending_balance_lo(
+        &self,
+        elgamal_secret_key: &ElGamalSecretKey,
+    ) -> Result<u64, TokenError> {
+        let pending_balance_lo = self
+            .pending_balance_lo
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        elgamal_secret_key
+            .decrypt_u32(&pending_balance_lo)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    fn decrypted_pending_balance_hi(
+        &self,
+        elgamal_secret_key: &ElGamalSecretKey,
+    ) -> Result<u64, TokenError> {
+        let pending_balance_hi = self
+            .pending_balance_hi
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        elgamal_secret_key
+            .decrypt_u32(&pending_balance_hi)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
+        let decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        aes_key
+            .decrypt(&decryptable_available_balance)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    /// Update the decryptable available balance.
+    pub fn new_decryptable_available_balance(
+        &self,
+        elgamal_secret_key: &ElGamalSecretKey,
+        aes_key: &AeKey,
+    ) -> Result<AeCiphertext, TokenError> {
+        let decrypted_pending_balance_lo = self.decrypted_pending_balance_lo(elgamal_secret_key)?;
+        let decrypted_pending_balance_hi = self.decrypted_pending_balance_hi(elgamal_secret_key)?;
+        let pending_balance =
+            combine_balances(decrypted_pending_balance_lo, decrypted_pending_balance_hi)
+                .ok_or(TokenError::AccountDecryption)?;
+        let current_available_balance = self.decrypted_available_balance(aes_key)?;
+        let new_decrypted_available_balance = current_available_balance
+            .checked_add(pending_balance)
+            .unwrap(); // total balance cannot exceed `u64`
+
+        Ok(aes_key.encrypt(new_decrypted_available_balance))
+    }
+}
+
+/// Confidential Transfer extension information needed to construct a `Withdraw` instruction.
+#[cfg(not(target_os = "solana"))]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct WithdrawAccountInfo {
+    available_balance: ElGamalCiphertext,
+    decryptable_available_balance: PodAeCiphertext,
+}
+#[cfg(not(target_os = "solana"))]
+impl WithdrawAccountInfo {
+    fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
+        let decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        aes_key
+            .decrypt(&decryptable_available_balance)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    /// Create a withdraw proof data.
+    pub fn generate_proof_data(
+        &self,
+        withdraw_amount: u64,
+        elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+    ) -> Result<WithdrawData, TokenError> {
+        let current_available_balance = self
+            .available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
+
+        WithdrawData::new(
+            withdraw_amount,
+            elgamal_keypair,
+            current_decrypted_available_balance,
+            &current_available_balance,
+        )
+        .map_err(|_| TokenError::ProofGeneration)
+    }
+
+    /// Update the decryptable available balance.
+    pub fn new_decryptable_available_balance(
+        &self,
+        withdraw_amount: u64,
+        aes_key: &AeKey,
+    ) -> Result<AeCiphertext, TokenError> {
+        let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
+        let new_decrypted_available_balance = current_decrypted_available_balance
+            .checked_sub(withdraw_amount)
+            .ok_or(TokenError::ProofGeneration)?;
+
+        Ok(aes_key.encrypt(new_decrypted_available_balance))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+fn combine_balances(balance_lo: u64, balance_hi: u64) -> Option<u64> {
+    balance_hi
+        .checked_shl(PENDING_BALANCE_LO_BIT_LENGTH)?
+        .checked_add(balance_lo)
 }

@@ -1021,7 +1021,6 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
     let options_count = 10;
 
     let options: Vec<String> = (0..options_count)
-        .into_iter()
         .map(|n| format!("option {:?}", n))
         .collect();
 
@@ -1050,7 +1049,6 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
 
     let vote = Vote::Approve(
         (0..options_count)
-            .into_iter()
             .map(|_| VoteChoice {
                 rank: 0,
                 weight_percentage: 100,

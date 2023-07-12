@@ -1,10 +1,13 @@
 use {
     crate::{
-        extension::{BaseState, BaseStateWithExtensions, Extension, ExtensionType},
-        pod::OptionalNonZeroPubkey,
+        extension::{
+            BaseState, BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsMut,
+        },
+        pod::{OptionalNonZeroPubkey, PodBool},
+        state::Account,
     },
     bytemuck::{Pod, Zeroable},
-    solana_program::pubkey::Pubkey,
+    solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
 };
 
 /// Instructions for the TransferHook extension
@@ -12,7 +15,7 @@ pub mod instruction;
 /// Instruction processor for the TransferHook extension
 pub mod processor;
 
-/// Close authority extension data for mints.
+/// Transfer hook extension data for mints.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct TransferHook {
@@ -25,7 +28,10 @@ pub struct TransferHook {
 /// Indicates that the tokens from this account belong to a mint with a transfer hook
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct TransferHookAccount;
+pub struct TransferHookAccount {
+    /// Flag to indicate that the account is in the middle of a transfer
+    pub transferring: PodBool,
+}
 
 impl Extension for TransferHook {
     const TYPE: ExtensionType = ExtensionType::TransferHook;
@@ -44,4 +50,20 @@ pub fn get_program_id<S: BaseState, BSE: BaseStateWithExtensions<S>>(
         .get_extension::<TransferHook>()
         .ok()
         .and_then(|e| Option::<Pubkey>::from(e.program_id))
+}
+
+/// Helper function to set the transferring flag before calling into transfer hook
+pub fn set_transferring(account: &mut StateWithExtensionsMut<Account>) -> Result<(), ProgramError> {
+    let account_extension = account.get_extension_mut::<TransferHookAccount>()?;
+    account_extension.transferring = true.into();
+    Ok(())
+}
+
+/// Helper function to unset the transferring flag after a transfer
+pub fn unset_transferring(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    let mut account_data = account_info.data.borrow_mut();
+    let mut account = StateWithExtensionsMut::<Account>::unpack(&mut account_data)?;
+    let account_extension = account.get_extension_mut::<TransferHookAccount>()?;
+    account_extension.transferring = false.into();
+    Ok(())
 }
