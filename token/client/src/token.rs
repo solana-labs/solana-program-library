@@ -2722,7 +2722,7 @@ where
     }
 
     /// Remove a token-metadata field on a mint
-    pub async fn remove_key_in_token_metadata<S: Signers>(
+    pub async fn token_metadata_remove_key<S: Signers>(
         &self,
         update_authority: &Pubkey,
         key: String,

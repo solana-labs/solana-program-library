@@ -113,7 +113,7 @@ async fn success_remove() {
     // now remove it
     token_context
         .token
-        .remove_key_in_token_metadata(
+        .token_metadata_remove_key(
             &update_authority.pubkey(),
             key.clone(),
             false, // idempotent
@@ -131,7 +131,7 @@ async fn success_remove() {
     // succeed again with idempotent flag
     token_context
         .token
-        .remove_key_in_token_metadata(
+        .token_metadata_remove_key(
             &update_authority.pubkey(),
             key.clone(),
             true, // idempotent
@@ -215,7 +215,7 @@ async fn fail_authority_checks() {
     // wrong authority
     let error = token_context
         .token
-        .remove_key_in_token_metadata(
+        .token_metadata_remove_key(
             &payer_pubkey,
             key,
             true, // idempotent
