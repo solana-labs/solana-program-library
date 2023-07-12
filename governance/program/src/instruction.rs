@@ -225,25 +225,6 @@ pub enum GovernanceInstruction {
         signatory: Pubkey,
     },
 
-    /// Adds a required signatory to the Governance, which will be applied to all proposals created with it
-    ///
-    ///   0. `[writable, signer]` The Governance account the config is for
-    ///   1. `[writable]` RequiredSignatory Account
-    ///   2. `[signer]` Payer
-    ///   3. `[]` System program
-    AddRequiredSignatory {
-        #[allow(dead_code)]
-        /// Required signatory to add to the Governance
-        signatory: Pubkey,
-    },
-
-    /// Removes a required signatory from the Governance
-    ///
-    ///  0. `[writable, signer]` The Governance account the config is for
-    ///  1. `[writable]` RequiredSignatory Account
-    ///  2. `[writable]` Beneficiary Account which would receive lamports from the disposed RequiredSignatory Account
-    RemoveRequiredSignatory,
-
     /// Inserts Transaction with a set of instructions for the Proposal at the given index position
     /// New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index
     /// If a Transaction replaces an existing Transaction at a given index then the old one must be removed using RemoveTransaction first
@@ -544,6 +525,25 @@ pub enum GovernanceInstruction {
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` CompleteProposal authority (Token Owner or Delegate)
     CompleteProposal {},
+
+    /// Adds a required signatory to the Governance, which will be applied to all proposals created with it
+    ///
+    ///   0. `[writable, signer]` The Governance account the config is for
+    ///   1. `[writable]` RequiredSignatory Account
+    ///   2. `[signer]` Payer
+    ///   3. `[]` System program
+    AddRequiredSignatory {
+        #[allow(dead_code)]
+        /// Required signatory to add to the Governance
+        signatory: Pubkey,
+    },
+
+    /// Removes a required signatory from the Governance
+    ///
+    ///  0. `[writable, signer]` The Governance account the config is for
+    ///  1. `[writable]` RequiredSignatory Account
+    ///  2. `[writable]` Beneficiary Account which would receive lamports from the disposed RequiredSignatory Account
+    RemoveRequiredSignatory,
 }
 
 /// Creates CreateRealm instruction
