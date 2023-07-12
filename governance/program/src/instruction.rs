@@ -209,9 +209,9 @@ pub enum GovernanceInstruction {
 
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
     ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Signatory Record Account
-    ///   2. `[]` Governance account associated with the proposal.
+    ///   0. `[]` Governance account
+    ///   1. `[writable]` Proposal account associated with the governance
+    ///   2. `[writable]` Signatory Record Account
     ///   3. `[signer]` Payer
     ///   4. `[]` System program
     ///   Either:
@@ -980,9 +980,9 @@ pub fn create_proposal(
 pub fn add_signatory(
     program_id: &Pubkey,
     // Accounts
+    governance: &Pubkey,
     proposal: &Pubkey,
     permission: &AddSignatoryPermission,
-    governance: &Pubkey,
     payer: &Pubkey,
     // Args
     signatory: &Pubkey,
@@ -990,9 +990,9 @@ pub fn add_signatory(
     let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
 
     let mut accounts = vec![
+        AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(signatory_record_address, false),
-        AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];

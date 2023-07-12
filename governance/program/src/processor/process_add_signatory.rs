@@ -29,10 +29,10 @@ pub fn process_add_signatory(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let proposal_info = next_account_info(account_info_iter)?; // 0
-    let signatory_record_info = next_account_info(account_info_iter)?; // 1
+    let governance_info = next_account_info(account_info_iter)?; // 0
+    let proposal_info = next_account_info(account_info_iter)?; // 1
+    let signatory_record_info = next_account_info(account_info_iter)?; // 2
 
-    let governance_info = next_account_info(account_info_iter)?; // 2
 
     let payer_info = next_account_info(account_info_iter)?; // 3
     let system_info = next_account_info(account_info_iter)?; // 4

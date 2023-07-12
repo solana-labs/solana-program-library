@@ -2130,12 +2130,12 @@ impl GovernanceProgramTest {
 
         let add_signatory_ix = add_signatory(
             &self.program_id,
+            &governance_cookie.address,
             &proposal_cookie.address,
             &AddSignatoryPermission::GovernanceAuthority {
                 token_owner_record: token_owner_record_cookie.address,
                 governance_authority: token_owner_record_cookie.token_owner.pubkey(),
             },
-            &governance_cookie.address,
             &self.bench.payer.pubkey(),
             &signatory.pubkey(),
         );
@@ -2884,9 +2884,9 @@ impl GovernanceProgramTest {
     ) -> Result<SignatoryRecordCookieWithoutKeypair, ProgramError> {
         let create_signatory_record_ix = add_signatory(
             &self.program_id,
+            &governance.address,
             &proposal_cookie.address,
             &AddSignatoryPermission::RequiredByGovernance,
-            &governance.address,
             &self.bench.payer.pubkey(),
             signatory,
         );
