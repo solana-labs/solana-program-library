@@ -20,7 +20,7 @@ use {
         state::{OptionalNonZeroPubkey, TokenMetadata},
     },
     spl_type_length_value::state::{
-        realloc_and_pack_variable_len, TlvStateStrict, TlvStateStrictBorrowed, TlvStateStrictMut,
+        realloc_and_pack_variable_len_strict, TlvStateStrict, TlvStateStrictBorrowed, TlvStateStrictMut,
     },
 };
 
@@ -113,7 +113,7 @@ pub fn process_update_field(
     token_metadata.update(data.field, data.value);
 
     // Update / realloc the account
-    realloc_and_pack_variable_len(metadata_info, &token_metadata)?;
+    realloc_and_pack_variable_len_strict(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -140,7 +140,7 @@ pub fn process_remove_key(
     if !token_metadata.remove_key(&data.key) && !data.idempotent {
         return Err(TokenMetadataError::KeyNotFound.into());
     }
-    realloc_and_pack_variable_len(metadata_info, &token_metadata)?;
+    realloc_and_pack_variable_len_strict(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -166,7 +166,7 @@ pub fn process_update_authority(
     check_update_authority(update_authority_info, &token_metadata.update_authority)?;
     token_metadata.update_authority = data.new_authority;
     // Update the account, no realloc needed!
-    realloc_and_pack_variable_len(metadata_info, &token_metadata)?;
+    realloc_and_pack_variable_len_strict(metadata_info, &token_metadata)?;
 
     Ok(())
 }
