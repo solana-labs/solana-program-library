@@ -115,10 +115,6 @@ export function getAllChangeLogEventV1FromTransaction(
       // this noop cpi is not a changelog event. do nothing with it.
     }
   }
-
-  // when no changeLogEvents were found, throw an error
-  if (changeLogEvents.length == 0)
-    throw Error("Unable to locate any `ChangeLogEventV1` events");
-
+  
   return changeLogEvents;
 }
