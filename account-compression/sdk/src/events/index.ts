@@ -55,15 +55,13 @@ export function deserializeApplicationDataEvent(
 }
 
 /**
- * Helper function to extract the ChangeLogEvent V1 events from a TransactionResponse
- * @param txResponse - TransactionResponse from the `@solana/web3.js`
- * @param programId - PublicKey of the program (aka `programId`) that utilized the leaf on the tree
+ * Helper function to extract the all ChangeLogEventV1 emitted in a transaction
+ * @param txResponse - Transaction response from `@solana/web3.js`
  * @param noopProgramId - program id of the noop program used (default: `SPL_NOOP_PROGRAM_ID`)
  * @returns
  */
 export function getAllChangeLogEventV1FromTransaction(
   txResponse: TransactionResponse | VersionedTransactionResponse,
-  programId: PublicKey,
   noopProgramId: PublicKey = SPL_NOOP_PROGRAM_ID
 ): ChangeLogEventV1[] {
   // ensure a transaction response was provided
@@ -75,46 +73,28 @@ export function getAllChangeLogEventV1FromTransaction(
     .keySegments()
     .flat();
 
-  // find the correct index of the `programId` instruction
-  const relevantIndex =
-    txResponse.transaction.message.compiledInstructions.findIndex(
-      (instruction) =>
-        accountKeys[instruction.programIdIndex].toBase58() ===
-        programId.toBase58()
-    );
-
-  // locate the noop's inner instructions called via cpi from `programId`
-  const relevantInnerIxs = txResponse!.meta?.innerInstructions?.[
-    relevantIndex
-  ].instructions.filter((instruction) => {
-    return (
-      accountKeys[instruction.programIdIndex].toBase58() ===
-      noopProgramId.toBase58()
-    );
-  });
-
-  // when no valid noop instructions are found, throw an error
-  if (!relevantInnerIxs || relevantInnerIxs.length == 0)
-    throw Error("Unable to locate any noop cpi instructions");
-
   let changeLogEvents: ChangeLogEventV1[] = [];
 
-  /**
-   * note: the ChangeLogEvent V1 is expected to be at position `1`,
-   * and normally expect only 2 `relevantInnerIx`
-   * so this sort method is more efficient for most uses cases
-   */
-  for (let i = relevantInnerIxs.length - 1; i >= 0; i--) {
-    try {
-      changeLogEvents.push(
-        deserializeChangeLogEventV1(
-          Buffer.from(bs58.decode(relevantInnerIxs[i]?.data!))
-        )
-      );
-    } catch (__) {
-      // this noop cpi is not a changelog event. do nothing with it.
-    }
-  }
-  
+  // locate and parse noop instruction calls via cpi (aka inner instructions)
+  txResponse!.meta?.innerInstructions?.forEach((compiledIx) => {
+    compiledIx.instructions.forEach((innerIx) => {
+      // only attempt to parse noop instructions
+      if (
+        noopProgramId.toBase58() !==
+        accountKeys[innerIx.programIdIndex].toBase58()
+      )
+        return;
+
+      try {
+        // try to deserialize the cpi data as a changelog event
+        changeLogEvents.push(
+          deserializeChangeLogEventV1(Buffer.from(bs58.decode(innerIx.data)))
+        );
+      } catch (__) {
+        // this noop cpi is not a changelog event. do nothing with it.
+      }
+    });
+  });
+
   return changeLogEvents;
 }
