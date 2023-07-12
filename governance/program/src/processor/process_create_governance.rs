@@ -9,7 +9,7 @@ use crate::{
         },
         realm::get_realm_data,
     },
-    tools::structs::Reserved120,
+    tools::structs::Reserved112,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -60,8 +60,9 @@ pub fn process_create_governance(
         governed_account: *governed_account_info.key,
         config,
         reserved1: 0,
-        reserved_v2: Reserved120::default(),
+        reserved_v2: Reserved112::default(),
         active_proposal_count: 0,
+        config_nonce: 0,
     };
 
     create_and_serialize_account_signed::<GovernanceV2>(

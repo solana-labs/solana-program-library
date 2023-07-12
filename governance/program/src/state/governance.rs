@@ -9,7 +9,7 @@ use crate::{
         realm::{assert_is_valid_realm, RealmV2},
         vote_record::VoteKind,
     },
-    tools::structs::Reserved120,
+    tools::structs::Reserved112,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -104,7 +104,7 @@ pub struct GovernanceV2 {
     /// Reserved space for versions v2 and onwards
     /// Note 1: V1 accounts must be resized before using this space
     /// Note 2: The reserved space should be used from the end to also allow the config to grow if needed
-    pub reserved_v2: Reserved120,
+    pub reserved_v2: Reserved112,
 
     /// The number of active proposals where active means Draft, SigningOff or Voting state
     ///
@@ -112,6 +112,9 @@ pub struct GovernanceV2 {
     /// If the program is upgraded from program V1 or V2 while there are any outstanding active proposals
     /// the counter won't be accurate until all proposals are transitioned to an inactive final state and the counter reset
     pub active_proposal_count: u64,
+
+    /// Nonce used to invalidate proposals when governance config is changed.
+    pub config_nonce: u64,
 }
 
 impl AccountMaxSize for GovernanceV2 {
@@ -243,7 +246,7 @@ impl GovernanceV2 {
             // V1 account can't be resized and we have to translate it back to the original format
 
             // If reserved_v2 is used it must be individually assessed for GovernanceV1 account backward compatibility impact
-            if self.reserved_v2 != Reserved120::default() {
+            if self.reserved_v2 != Reserved112::default() {
                 panic!("Extended data not supported by GovernanceV1")
             }
 
@@ -388,10 +391,11 @@ pub fn get_governance_data(
             governed_account: governance_data_v1.governed_account,
             reserved1: 0,
             config: governance_data_v1.config,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved112::default(),
             // GovernanceV1 layout doesn't support active_proposal_count
             // For any legacy GovernanceV1 account it's not preserved until the account layout is migrated to GovernanceV2 in CreateProposal
             active_proposal_count: 0,
+            config_nonce: 0,
         }
     } else {
         get_account_data::<GovernanceV2>(program_id, governance_info)?
@@ -650,8 +654,9 @@ mod test {
             governed_account: Pubkey::new_unique(),
             reserved1: 0,
             config: create_test_governance_config(),
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved112::default(),
             active_proposal_count: 10,
+            config_nonce: 0,
         }
     }
 

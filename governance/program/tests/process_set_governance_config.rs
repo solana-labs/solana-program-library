@@ -85,6 +85,7 @@ async fn test_set_governance_config() {
         .await;
 
     assert_eq!(new_governance_config, governance_account.config);
+    assert_eq!(governance_account.config_nonce, 1);
 }
 
 #[tokio::test]

@@ -161,8 +161,10 @@ pub fn process_create_proposal(
         max_voting_time: None,
         vote_threshold: None,
 
-        reserved: [0; 64],
+        reserved: [0; 56],
         reserved1: 0,
+        
+        governance_config_nonce: governance_data.config_nonce,
     };
 
     create_and_serialize_account_signed::<ProposalV2>(

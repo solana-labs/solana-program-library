@@ -58,7 +58,7 @@ use spl_governance::{
     },
     tools::{
         bpf_loader_upgradeable::get_program_data_address,
-        structs::{Reserved110, Reserved120},
+        structs::{Reserved110, Reserved112},
     },
 };
 use spl_governance_addin_api::{
@@ -1501,8 +1501,9 @@ impl GovernanceProgramTest {
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
             reserved1: 0,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved112::default(),
             active_proposal_count: 0,
+            config_nonce: 0,
         };
 
         let default_signers = &[create_authority];
@@ -1671,8 +1672,9 @@ impl GovernanceProgramTest {
             governed_account: governed_program_cookie.address,
             config,
             reserved1: 0,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved112::default(),
             active_proposal_count: 0,
+            config_nonce: 0,
         };
 
         let program_governance_address = get_program_governance_address(
@@ -1792,8 +1794,9 @@ impl GovernanceProgramTest {
             governed_account: governed_mint_cookie.address,
             config: governance_config.clone(),
             reserved1: 0,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved112::default(),
             active_proposal_count: 0,
+            config_nonce: 0,
         };
 
         let mint_governance_address = get_mint_governance_address(
@@ -1873,8 +1876,9 @@ impl GovernanceProgramTest {
             governed_account: governed_token_cookie.address,
             config,
             reserved1: 0,
-            reserved_v2: Reserved120::default(),
+            reserved_v2: Reserved112::default(),
             active_proposal_count: 0,
+            config_nonce: 0,
         };
 
         let token_governance_address = get_token_governance_address(
@@ -2066,8 +2070,10 @@ impl GovernanceProgramTest {
             max_voting_time: None,
             vote_threshold: None,
 
-            reserved: [0; 64],
+            reserved: [0; 56],
             reserved1: 0,
+
+            governance_config_nonce: governance_cookie.account.config_nonce,
         };
 
         let proposal_address = get_proposal_address(

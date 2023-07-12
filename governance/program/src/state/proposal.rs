@@ -199,7 +199,7 @@ pub struct ProposalV2 {
     /// When the Proposal entered Executing state
     pub executing_at: Option<UnixTimestamp>,
 
-    /// When the Proposal entered final state Completed or Cancelled and was closed
+    /// When the Proposal entered final state Completed, Cancelled or Invalidated and was closed
     pub closed_at: Option<UnixTimestamp>,
 
     /// Instruction execution flag for ordered and transactional instructions
@@ -222,7 +222,7 @@ pub struct ProposalV2 {
     pub vote_threshold: Option<VoteThreshold>,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 64],
+    pub reserved: [u8; 56],
 
     /// Proposal name
     pub name: String,
@@ -232,6 +232,9 @@ pub struct ProposalV2 {
 
     /// The total weight of Veto votes
     pub veto_vote_weight: u64,
+
+    /// Governance config nonce
+    pub governance_config_nonce: u64,
 }
 
 impl AccountMaxSize for ProposalV2 {
@@ -265,7 +268,8 @@ impl ProposalV2 {
             | ProposalState::Voting
             | ProposalState::Succeeded
             | ProposalState::Defeated
-            | ProposalState::Vetoed => Err(GovernanceError::InvalidStateCannotSignOff.into()),
+            | ProposalState::Vetoed
+            | ProposalState::Invalidated => Err(GovernanceError::InvalidStateCannotSignOff.into()),
         }
     }
 
@@ -293,7 +297,8 @@ impl ProposalV2 {
             ProposalState::Completed
             | ProposalState::Cancelled
             | ProposalState::Defeated
-            | ProposalState::Vetoed => Ok(()),
+            | ProposalState::Vetoed
+            | ProposalState::Invalidated => Ok(()),
             ProposalState::Executing
             | ProposalState::ExecutingWithErrors
             | ProposalState::SigningOff
@@ -342,7 +347,8 @@ impl ProposalV2 {
             | ProposalState::Cancelled
             | ProposalState::Defeated
             | ProposalState::ExecutingWithErrors
-            | ProposalState::Vetoed => Ok(()),
+            | ProposalState::Vetoed
+            | ProposalState::Invalidated => Ok(()),
             ProposalState::Draft | ProposalState::SigningOff | ProposalState::Voting => {
                 Err(GovernanceError::CannotRefundProposalDeposit.into())
             }
@@ -765,7 +771,8 @@ impl ProposalV2 {
             | ProposalState::Cancelled
             | ProposalState::Succeeded
             | ProposalState::Defeated
-            | ProposalState::Vetoed => {
+            | ProposalState::Vetoed
+            | ProposalState::Invalidated => {
                 Err(GovernanceError::InvalidStateCannotCancelProposal.into())
             }
         }
@@ -802,7 +809,8 @@ impl ProposalV2 {
             | ProposalState::Voting
             | ProposalState::Cancelled
             | ProposalState::Defeated
-            | ProposalState::Vetoed => {
+            | ProposalState::Vetoed
+            | ProposalState::Invalidated => {
                 return Err(GovernanceError::InvalidStateCannotExecuteTransaction.into())
             }
         }
@@ -949,6 +957,32 @@ impl ProposalV2 {
         Ok(())
     }
 
+    /// Checks if the Proposal should allow actions to advance to a completed state
+    pub fn assert_should_not_be_invalidated(&self, governance_config_nonce: u64) -> Result<(), ProgramError> {
+        if self.should_invalidate(governance_config_nonce) {
+            return Err(GovernanceError::GovernanceConfigChanged.into());
+        } else {
+            return Ok(())
+        }
+    }
+    
+    /// Checks if a Proposal should be invalidated due to Governance config change
+    pub fn should_invalidate(&self, governance_config_nonce: u64) -> bool {
+        match self.state {
+            ProposalState::Draft | ProposalState::SigningOff | ProposalState::Voting => {
+                self.governance_config_nonce != governance_config_nonce
+            }
+            ProposalState::Cancelled
+            | ProposalState::Completed
+            | ProposalState::Defeated
+            | ProposalState::Executing
+            | ProposalState::ExecutingWithErrors
+            | ProposalState::Invalidated
+            | ProposalState::Succeeded
+            | ProposalState::Vetoed => false,
+        }
+    }
+
     /// Serializes account into the target buffer
     pub fn serialize<W: Write>(self, writer: W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::ProposalV2 {
@@ -1053,7 +1087,8 @@ pub fn get_proposal_data(
             ProposalState::Draft
             | ProposalState::SigningOff
             | ProposalState::Voting
-            | ProposalState::Cancelled => OptionVoteResult::None,
+            | ProposalState::Cancelled
+            | ProposalState::Invalidated => OptionVoteResult::None,
             ProposalState::Succeeded
             | ProposalState::Executing
             | ProposalState::ExecutingWithErrors
@@ -1095,7 +1130,8 @@ pub fn get_proposal_data(
             vote_threshold: proposal_data_v1.vote_threshold,
             name: proposal_data_v1.name,
             description_link: proposal_data_v1.description_link,
-            reserved: [0; 64],
+            governance_config_nonce: 0,
+            reserved: [0; 56],
             reserved1: 0,
         });
     }
@@ -1253,7 +1289,9 @@ mod test {
             max_voting_time: Some(0),
             vote_threshold: Some(VoteThreshold::YesVotePercentage(100)),
 
-            reserved: [0; 64],
+            governance_config_nonce: 0,
+
+            reserved: [0; 56],
             reserved1: 0,
         }
     }

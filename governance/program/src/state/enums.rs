@@ -129,6 +129,9 @@ pub enum ProposalState {
 
     /// The Proposal was vetoed
     Vetoed,
+    
+    /// The Proposal was invalidated by Governance changes
+    Invalidated
 }
 
 /// The type of the vote threshold used to resolve a vote on a Proposal

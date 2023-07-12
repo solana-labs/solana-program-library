@@ -498,6 +498,10 @@ pub enum GovernanceError {
     /// Invalid multi choice proposal parameters
     #[error("Invalid multi choice proposal parameters")]
     InvalidMultiChoiceProposalParameters, // 620
+    
+    /// Governance configuration has changed
+    #[error("Governance configuration has changed")]
+    GovernanceConfigChanged, // 621
 }
 
 impl PrintProgramError for GovernanceError {
