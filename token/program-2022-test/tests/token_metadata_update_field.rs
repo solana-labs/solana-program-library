@@ -79,7 +79,7 @@ async fn success_update(field: Field, value: String) {
 
     token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &update_authority.pubkey(),
             &token_context.mint_authority.pubkey(),
@@ -98,7 +98,7 @@ async fn success_update(field: Field, value: String) {
     if new_space > old_space {
         let error = token_context
             .token
-            .update_field_in_token_metadata(
+            .token_metadata_update_field(
                 &update_authority.pubkey(),
                 field.clone(),
                 value.clone(),
@@ -117,7 +117,7 @@ async fn success_update(field: Field, value: String) {
     // transfer required lamports
     token_context
         .token
-        .update_field_in_token_metadata_with_rent_transfer(
+        .token_metadata_update_field_with_rent_transfer(
             &payer_pubkey,
             &update_authority.pubkey(),
             field,
@@ -146,7 +146,7 @@ async fn fail_authority_checks() {
     let update_authority = Keypair::new();
     token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &update_authority.pubkey(),
             &token_context.mint_authority.pubkey(),
@@ -184,7 +184,7 @@ async fn fail_authority_checks() {
     let wrong_authority = Keypair::new();
     let error = token_context
         .token
-        .update_field_in_token_metadata(
+        .token_metadata_update_field(
             &wrong_authority.pubkey(),
             Field::Name,
             "new_name".to_string(),
