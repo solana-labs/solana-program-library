@@ -225,19 +225,6 @@ pub enum GovernanceInstruction {
         signatory: Pubkey,
     },
 
-    /// Removes a Signatory from the Proposal
-    ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   3. `[writable]` Signatory Record Account
-    ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed Signatory Record Account
-    RemoveSignatory {
-        #[allow(dead_code)]
-        /// Signatory to remove from the Proposal
-        signatory: Pubkey,
-    },
-
     /// Adds a required signatory to the Governance, which will be applied to all proposals created with it
     ///
     ///   0. `[writable, signer]` The Governance account the config is for
@@ -1049,37 +1036,6 @@ pub enum AddSignatoryPermission {
     },
     /// Anyone can add signatories that are required by the governance to a proposal
     RequiredByGovernance,
-}
-
-/// Creates RemoveSignatory instruction
-pub fn remove_signatory(
-    program_id: &Pubkey,
-    // Accounts
-    proposal: &Pubkey,
-    token_owner_record: &Pubkey,
-    governance_authority: &Pubkey,
-    signatory: &Pubkey,
-    beneficiary: &Pubkey,
-) -> Instruction {
-    let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
-
-    let accounts = vec![
-        AccountMeta::new(*proposal, false),
-        AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(signatory_record_address, false),
-        AccountMeta::new(*beneficiary, false),
-    ];
-
-    let instruction = GovernanceInstruction::RemoveSignatory {
-        signatory: *signatory,
-    };
-
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: instruction.try_to_vec().unwrap(),
-    }
 }
 
 /// Creates SignOffProposal instruction

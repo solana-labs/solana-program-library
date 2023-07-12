@@ -21,7 +21,6 @@ mod process_insert_transaction;
 mod process_refund_proposal_deposit;
 mod process_relinquish_vote;
 mod process_remove_required_signatory;
-mod process_remove_signatory;
 mod process_remove_transaction;
 mod process_revoke_governing_tokens;
 mod process_set_governance_config;
@@ -55,7 +54,6 @@ use process_insert_transaction::*;
 use process_refund_proposal_deposit::*;
 use process_relinquish_vote::*;
 use process_remove_required_signatory::*;
-use process_remove_signatory::*;
 use process_remove_transaction::*;
 use process_revoke_governing_tokens::*;
 use process_set_governance_config::*;
@@ -167,9 +165,6 @@ pub fn process_instruction(
         ),
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)
-        }
-        GovernanceInstruction::RemoveSignatory { signatory } => {
-            process_remove_signatory(program_id, accounts, signatory)
         }
         GovernanceInstruction::SignOffProposal {} => {
             process_sign_off_proposal(program_id, accounts)

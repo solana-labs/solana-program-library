@@ -24,7 +24,7 @@ use spl_governance::{
         create_token_governance,
         create_token_owner_record, deposit_governing_tokens, execute_transaction, finalize_vote,
         flag_transaction_error, insert_transaction, refund_proposal_deposit, relinquish_vote,
-        remove_required_signatory_from_governance, remove_signatory, remove_transaction,
+        remove_required_signatory_from_governance, remove_transaction,
         revoke_governing_tokens, set_governance_config, set_governance_delegate,
         set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
         withdraw_governing_tokens, AddSignatoryPermission,
@@ -2170,31 +2170,6 @@ impl GovernanceProgramTest {
         Ok(signatory_record_cookie)
     }
 
-    #[allow(dead_code)]
-    pub async fn remove_signatory(
-        &mut self,
-        proposal_cookie: &ProposalCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-        signatory_record_cookie: &SignatoryRecordCookie,
-    ) -> Result<(), ProgramError> {
-        let remove_signatory_ix = remove_signatory(
-            &self.program_id,
-            &proposal_cookie.address,
-            &token_owner_record_cookie.address,
-            &token_owner_record_cookie.token_owner.pubkey(),
-            &signatory_record_cookie.account.signatory,
-            &token_owner_record_cookie.token_owner.pubkey(),
-        );
-
-        self.bench
-            .process_transaction(
-                &[remove_signatory_ix],
-                Some(&[&token_owner_record_cookie.token_owner]),
-            )
-            .await?;
-
-        Ok(())
-    }
     #[allow(dead_code)]
     pub async fn sign_off_proposal_by_owner(
         &mut self,

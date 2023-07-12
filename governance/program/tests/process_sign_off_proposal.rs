@@ -804,7 +804,7 @@ async fn test_repeat_sign_off_proposal_err() {
             &signatory_1.pubkey(),
         )
         .await
-        .unwrap();
+    .unwrap();
 
     // Sign off 1
     governance_test
@@ -816,6 +816,7 @@ async fn test_repeat_sign_off_proposal_err() {
         )
         .await
         .unwrap();
+    governance_test.advance_clock().await;
 
     // Act
     let err = governance_test
