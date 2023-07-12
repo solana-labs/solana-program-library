@@ -17,6 +17,11 @@ use {
     },
 };
 
+#[cfg(feature = "serde-traits")]
+use {
+    serde::{Deserialize, Serialize},
+};
+
 /// Confidential Transfer extension instructions
 #[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
@@ -329,6 +334,7 @@ pub enum ConfidentialTransferInstruction {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::InitializeMint`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeMintData {

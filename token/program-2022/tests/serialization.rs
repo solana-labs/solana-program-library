@@ -1,8 +1,23 @@
 #![cfg(feature = "serde-traits")]
 
 use {
-    solana_program::program_option::COption, solana_sdk::pubkey::Pubkey,
-    spl_token_2022::instruction, std::str::FromStr,
+    solana_program::program_option::COption,
+    solana_sdk::{
+        pubkey::Pubkey,
+    },
+    spl_token_2022::{
+        extension::{confidential_transfer},
+        instruction,
+        solana_zk_token_sdk::{
+            encryption::elgamal::{
+                ElGamalPubkey as ElGamalPubkeyDecoded,
+                ElGamalKeypair as ElGamalKeypairDecoded,
+            },
+            zk_token_elgamal::pod::ElGamalPubkey as ElGamalPubkeyPod,
+        },
+        pod::{OptionalNonZeroPubkey, OptionalNonZeroElGamalPubkey},
+    },
+    std::str::FromStr,
 };
 
 #[test]
@@ -34,4 +49,28 @@ fn token_program_serde_with_none() {
     );
 
     serde_json::from_str::<instruction::TokenInstruction>(&serialized).unwrap();
+}
+
+#[test]
+fn token_program_extension_serde() {
+    let authority_option: Option<Pubkey> = Some(Pubkey::from_str("4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM").unwrap());
+    let authority: OptionalNonZeroPubkey = authority_option.try_into().unwrap();
+
+    let elgamal_pubkey: ElGamalPubkeyDecoded = ElGamalKeypairDecoded::new_rand().public;
+    let elgamal_pubkey_pod: ElGamalPubkeyPod = ElGamalPubkeyPod::from(elgamal_pubkey);
+    let elgamal_pubkey_pod_option: Option<ElGamalPubkeyPod> = Some(elgamal_pubkey_pod);
+    let auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey = elgamal_pubkey_pod_option.try_into().unwrap();
+
+    let inst = confidential_transfer::instruction::InitializeMintData {
+        authority,
+        auto_approve_new_accounts: false.into(),
+        auditor_elgamal_pubkey,
+    };
+
+    let serialized = serde_json::to_string(&inst).unwrap();
+    let serialized_expected = &format!("{{\"authority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\",\"auto_approve_new_accounts\":false,\"auditor_elgamal_pubkey\":\"{}\"}}", elgamal_pubkey.to_string());
+    assert_eq!(&serialized, serialized_expected);
+
+    let deserialized = serde_json::from_str::<confidential_transfer::instruction::InitializeMintData>(&serialized).unwrap();
+    assert_eq!(inst, deserialized);
 }
