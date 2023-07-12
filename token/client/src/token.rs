@@ -38,7 +38,7 @@ use {
         },
         state::{Account, AccountState, Mint, Multisig},
     },
-    spl_token_metadata_interface::state::TokenMetadata,
+    spl_token_metadata_interface::state::{Field, TokenMetadata},
     std::{
         fmt, io,
         sync::{Arc, RwLock},
@@ -2572,6 +2572,22 @@ where
         .await
     }
 
+    async fn get_additional_rent_for_new_metadata(
+        &self,
+        token_metadata: &TokenMetadata,
+    ) -> TokenResult<u64> {
+        let account = self.get_account(self.pubkey).await?;
+        let account_lamports = account.lamports;
+        let mint_state = self.unpack_mint_info(account)?;
+        let new_account_len = mint_state.try_get_new_account_len(token_metadata)?;
+        let new_rent_exempt_minimum = self
+            .client
+            .get_minimum_balance_for_rent_exemption(new_account_len)
+            .await
+            .map_err(TokenError::Client)?;
+        Ok(new_rent_exempt_minimum.saturating_sub(account_lamports))
+    }
+
     /// Initialize token-metadata on a mint
     #[allow(clippy::too_many_arguments)]
     pub async fn initialize_token_metadata_with_rent_transfer<S: Signers>(
@@ -2584,22 +2600,15 @@ where
         uri: String,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let account = self.get_account(self.pubkey).await?;
-        let account_lamports = account.lamports;
-        let mint_state = self.unpack_mint_info(account)?;
         let token_metadata = TokenMetadata {
             name,
             symbol,
             uri,
             ..Default::default()
         };
-        let new_account_len = mint_state.try_get_new_account_len(&token_metadata)?;
-        let new_rent_exempt_minimum = self
-            .client
-            .get_minimum_balance_for_rent_exemption(new_account_len)
-            .await
-            .map_err(TokenError::Client)?;
-        let additional_lamports = new_rent_exempt_minimum.saturating_sub(account_lamports);
+        let additional_lamports = self
+            .get_additional_rent_for_new_metadata(&token_metadata)
+            .await?;
         let mut instructions = vec![];
         if additional_lamports > 0 {
             instructions.push(system_instruction::transfer(
@@ -2617,6 +2626,78 @@ where
             token_metadata.name,
             token_metadata.symbol,
             token_metadata.uri,
+        ));
+        self.process_ixs(&instructions, signing_keypairs).await
+    }
+
+    /// Update a token-metadata field on a mint
+    pub async fn update_field_in_token_metadata<S: Signers>(
+        &self,
+        update_authority: &Pubkey,
+        field: Field,
+        value: String,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[spl_token_metadata_interface::instruction::update_field(
+                &self.program_id,
+                &self.pubkey,
+                update_authority,
+                field,
+                value,
+            )],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    async fn get_additional_rent_for_updated_metadata(
+        &self,
+        field: Field,
+        value: String,
+    ) -> TokenResult<u64> {
+        let account = self.get_account(self.pubkey).await?;
+        let account_lamports = account.lamports;
+        let mint_state = self.unpack_mint_info(account)?;
+        let mut token_metadata = mint_state.get_variable_len_extension::<TokenMetadata>()?;
+        token_metadata.update(field, value);
+        let new_account_len = mint_state.try_get_new_account_len(&token_metadata)?;
+        let new_rent_exempt_minimum = self
+            .client
+            .get_minimum_balance_for_rent_exemption(new_account_len)
+            .await
+            .map_err(TokenError::Client)?;
+        Ok(new_rent_exempt_minimum.saturating_sub(account_lamports))
+    }
+
+    /// Update a token-metadata field on a mint. Includes a transfer for any
+    /// additional rent-exempt SOL required.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_field_in_token_metadata_with_rent_transfer<S: Signers>(
+        &self,
+        payer: &Pubkey,
+        update_authority: &Pubkey,
+        field: Field,
+        value: String,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let additional_lamports = self
+            .get_additional_rent_for_updated_metadata(field.clone(), value.clone())
+            .await?;
+        let mut instructions = vec![];
+        if additional_lamports > 0 {
+            instructions.push(system_instruction::transfer(
+                payer,
+                &self.pubkey,
+                additional_lamports,
+            ));
+        }
+        instructions.push(spl_token_metadata_interface::instruction::update_field(
+            &self.program_id,
+            &self.pubkey,
+            update_authority,
+            field,
+            value,
         ));
         self.process_ixs(&instructions, signing_keypairs).await
     }
