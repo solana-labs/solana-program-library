@@ -22,17 +22,20 @@ use {
         extension::{
             confidential_transfer::{
                 self, ApplyPendingBalanceAccountInfo, ConfidentialTransferAccount,
+                WithdrawAccountInfo,
             },
             cpi_guard, default_account_state, interest_bearing_mint, memo_transfer,
             metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
             StateWithExtensionsOwned,
         },
         instruction, offchain,
-        solana_zk_token_sdk::encryption::{
-            auth_encryption::AeKey,
-            elgamal::{ElGamalKeypair, ElGamalSecretKey},
+        solana_zk_token_sdk::{
+            encryption::{
+                auth_encryption::AeKey,
+                elgamal::{ElGamalKeypair, ElGamalSecretKey},
+            },
+            zk_token_elgamal::pod::ElGamalPubkey,
         },
-        solana_zk_token_sdk::{errors::ProofError, zk_token_elgamal::pod::ElGamalPubkey},
         state::{Account, AccountState, Mint, Multisig},
     },
     spl_token_metadata_interface::state::TokenMetadata,
@@ -69,8 +72,8 @@ pub enum TokenError {
     AccountInvalidAssociatedAddress,
     #[error("invalid auxiliary account address")]
     AccountInvalidAuxiliaryAddress,
-    #[error("proof error: {0}")]
-    Proof(ProofError),
+    #[error("proof generation")]
+    ProofGeneration,
     #[error("maximum deposit transfer amount exceeded")]
     MaximumDepositTransferAmountExceeded,
     #[error("encryption key error")]
@@ -1657,7 +1660,7 @@ where
 
         let proof_data =
             confidential_transfer::instruction::PubkeyValidityData::new(elgamal_keypair)
-                .map_err(TokenError::Proof)?;
+                .map_err(|_| TokenError::ProofGeneration)?;
         let decryptable_balance = aes_key.encrypt(0);
 
         self.process_ixs(
@@ -1718,7 +1721,7 @@ where
             elgamal_keypair,
             &extension.available_balance.try_into().unwrap(),
         )
-        .map_err(TokenError::Proof)?;
+        .map_err(|_| TokenError::ProofGeneration)?;
 
         self.process_ixs(
             &confidential_transfer::instruction::empty_account(
@@ -1945,33 +1948,52 @@ where
         .await
     }
 
-    /// Withdraw SPL Tokens from the available balance of a confidential token account using the
-    /// uniquely derived decryption key from a signer
+    /// Withdraw SPL Tokens from the available balance of a confidential token account
     #[allow(clippy::too_many_arguments)]
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_withdraw<S: Signer>(
+    pub async fn confidential_transfer_withdraw<S: Signers>(
         &self,
-        token_account: &Pubkey,
-        token_authority: &S,
-        amount: u64,
-        available_balance: u64,
-        available_balance_ciphertext: &ElGamalCiphertext,
+        account: &Pubkey,
+        authority: &Pubkey,
+        withdraw_amount: u64,
         decimals: u8,
+        account_info: Option<WithdrawAccountInfo>,
+        elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let elgamal_keypair =
-            ElGamalKeypair::new(token_authority, token_account).map_err(TokenError::Key)?;
-        let authenticated_encryption_key =
-            AeKey::new(token_authority, token_account).map_err(TokenError::Key)?;
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        self.confidential_transfer_withdraw_with_key(
-            token_account,
-            token_authority,
-            amount,
-            decimals,
-            available_balance,
-            available_balance_ciphertext,
-            &elgamal_keypair,
-            &authenticated_encryption_key,
+        let account_info = if let Some(account_info) = account_info {
+            account_info
+        } else {
+            self.get_account_info(account)
+                .await?
+                .get_extension::<ConfidentialTransferAccount>()?
+                .withdraw_account_info()
+        };
+
+        let proof_data = account_info
+            .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
+            .map_err(|_| TokenError::ProofGeneration)?;
+
+        let new_decryptable_available_balance = account_info
+            .new_decryptable_available_balance(withdraw_amount, aes_key)
+            .map_err(|_| TokenError::AccountDecryption)?;
+
+        self.process_ixs(
+            &confidential_transfer::instruction::withdraw(
+                &self.program_id,
+                account,
+                &self.pubkey,
+                withdraw_amount,
+                decimals,
+                new_decryptable_available_balance,
+                authority,
+                &multisig_signers,
+                &proof_data,
+            )?,
+            signing_keypairs,
         )
         .await
     }

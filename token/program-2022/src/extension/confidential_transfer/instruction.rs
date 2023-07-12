@@ -702,7 +702,6 @@ pub fn inner_withdraw(
 /// Create a `Withdraw` instruction
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
-#[cfg(feature = "proof-program")]
 pub fn withdraw(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -726,8 +725,7 @@ pub fn withdraw(
             multisig_signers,
             1,
         )?, // calls check_program_account
-        #[cfg(feature = "proof-program")]
-        verify_withdraw(proof_data),
+        verify_withdraw(None, proof_data),
     ])
 }
 
