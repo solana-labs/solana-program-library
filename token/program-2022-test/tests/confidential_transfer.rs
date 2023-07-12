@@ -11,10 +11,18 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{confidential_transfer::ConfidentialTransferAccount, ExtensionType},
-        extension::{confidential_transfer::ConfidentialTransferMint, BaseStateWithExtensions},
+        extension::{
+            confidential_transfer::{
+                ConfidentialTransferAccount, ConfidentialTransferMint,
+                MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
+            },
+            BaseStateWithExtensions, ExtensionType,
+        },
         instruction,
-        solana_zk_token_sdk::encryption::{auth_encryption::*, elgamal::*},
+        solana_zk_token_sdk::{
+            encryption::{auth_encryption::*, elgamal::*},
+            zk_token_elgamal::pod::{self, Zeroable},
+        },
     },
     spl_token_client::{
         client::SendTransaction,
@@ -23,11 +31,8 @@ use {
     std::convert::TryInto,
 };
 
-#[cfg(feature = "proof-program")]
-use spl_token_2022::solana_zk_token_sdk::zk_token_elgamal::pod::Zeroable;
-
 #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
-use {solana_sdk::epoch_info::EpochInfo, spl_token_2022::solana_zk_token_sdk::zk_token_elgamal};
+use solana_sdk::epoch_info::EpochInfo;
 
 #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
 const TEST_MAXIMUM_FEE: u64 = 100;
@@ -79,6 +84,48 @@ impl ConfidentialTokenAccountMeta {
                 &token_account,
                 &owner.pubkey(),
                 None,
+                &elgamal_keypair,
+                &aes_key,
+                &[owner],
+            )
+            .await
+            .unwrap();
+
+        Self {
+            token_account,
+            elgamal_keypair,
+            aes_key,
+        }
+    }
+
+    async fn new_with_maximum_pending_balance_credit_counter<T>(
+        token: &Token<T>,
+        owner: &Keypair,
+        maximum_pending_balance_credit_counter: u64,
+    ) -> Self
+    where
+        T: SendTransaction,
+    {
+        let token_account_keypair = Keypair::new();
+        token
+            .create_auxiliary_token_account_with_extension_space(
+                &token_account_keypair,
+                &owner.pubkey(),
+                vec![ExtensionType::ConfidentialTransferAccount],
+            )
+            .await
+            .unwrap();
+        let token_account = token_account_keypair.pubkey();
+
+        let elgamal_keypair =
+            ElGamalKeypair::new_from_signer(owner, &token_account.to_bytes()).unwrap();
+        let aes_key = AeKey::new_from_signer(owner, &token_account.to_bytes()).unwrap();
+
+        token
+            .confidential_transfer_configure_token_account(
+                &token_account,
+                &owner.pubkey(),
+                Some(maximum_pending_balance_credit_counter),
                 &elgamal_keypair,
                 &aes_key,
                 &[owner],
@@ -175,7 +222,7 @@ impl ConfidentialTokenAccountMeta {
         meta
     }
 
-    #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
+    #[cfg(feature = "zk-ops")]
     async fn check_balances<T>(&self, token: &Token<T>, expected: ConfidentialTokenAccountBalances)
     where
         T: SendTransaction,
@@ -188,26 +235,26 @@ impl ConfidentialTokenAccountMeta {
         assert_eq!(
             extension
                 .pending_balance_lo
-                .decrypt(&self.elgamal_keypair.secret)
+                .decrypt(self.elgamal_keypair.secret())
                 .unwrap(),
             expected.pending_balance_lo,
         );
         assert_eq!(
             extension
                 .pending_balance_hi
-                .decrypt(&self.elgamal_keypair.secret)
+                .decrypt(self.elgamal_keypair.secret())
                 .unwrap(),
             expected.pending_balance_hi,
         );
         assert_eq!(
             extension
                 .available_balance
-                .decrypt(&self.elgamal_keypair.secret)
+                .decrypt(self.elgamal_keypair.secret())
                 .unwrap(),
             expected.available_balance,
         );
         assert_eq!(
-            self.ae_key
+            self.aes_key
                 .decrypt(&extension.decryptable_available_balance.try_into().unwrap())
                 .unwrap(),
             expected.decryptable_available_balance,
@@ -215,7 +262,7 @@ impl ConfidentialTokenAccountMeta {
     }
 }
 
-#[cfg(all(feature = "zk-ops", feature = "proof-program"))]
+#[cfg(feature = "zk-ops")]
 struct ConfidentialTokenAccountBalances {
     pending_balance_lo: u64,
     pending_balance_hi: u64,
@@ -463,7 +510,7 @@ async fn confidential_transfer_configure_token_account() {
 }
 
 #[tokio::test]
-async fn confidential_enable_disable_confidential_credits() {
+async fn confidential_transfer_enable_disable_confidential_credits() {
     let authority = Keypair::new();
     let auto_approve_new_accounts = true;
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
@@ -481,7 +528,13 @@ async fn confidential_enable_disable_confidential_credits() {
         .await
         .unwrap();
 
-    let TokenContext { token, alice, .. } = context.token_context.unwrap();
+    let TokenContext {
+        token,
+        alice,
+        mint_authority,
+        decimals,
+        ..
+    } = context.token_context.unwrap();
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
 
     token
@@ -502,6 +555,39 @@ async fn confidential_enable_disable_confidential_credits() {
     assert!(!bool::from(&extension.allow_confidential_credits));
 
     token
+        .mint_to(
+            &alice_meta.token_account,
+            &mint_authority.pubkey(),
+            10,
+            &[&mint_authority],
+        )
+        .await
+        .unwrap();
+
+    let err = token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            10,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(
+                    TokenError::ConfidentialTransferDepositsAndTransfersDisabled as u32
+                )
+            )
+        )))
+    );
+
+    token
         .confidential_transfer_enable_confidential_credits(
             &alice_meta.token_account,
             &alice.pubkey(),
@@ -517,6 +603,17 @@ async fn confidential_enable_disable_confidential_credits() {
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
     assert!(bool::from(&extension.allow_confidential_credits));
+
+    token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            10,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -661,21 +758,21 @@ async fn confidential_transfer_empty_account() {
         .unwrap();
 }
 
-#[cfg(all(feature = "zk-ops", feature = "proof-program"))]
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
-async fn ct_deposit() {
-    let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
-        ConfidentialTransferMintWithKeypairs::new();
+async fn confidential_transfer_deposit() {
+    let authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: ct_mint.authority.into(),
-                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
-                auditor_elgamal_pubkey: ct_mint.auditor_elgamal_pubkey.into(),
-                withdraw_withheld_authority_elgamal_pubkey: ct_mint
-                    .withdraw_withheld_authority_elgamal_pubkey
-                    .into(),
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
             },
         ])
         .await
@@ -688,7 +785,10 @@ async fn ct_deposit() {
         decimals,
         ..
     } = context.token_context.unwrap();
-    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
+    let alice_meta = ConfidentialTokenAccountMeta::new_with_maximum_pending_balance_credit_counter(
+        &token, &alice, 2,
+    )
+    .await;
 
     token
         .mint_to(
@@ -713,19 +813,25 @@ async fn ct_deposit() {
     assert_eq!(extension.actual_pending_balance_credit_counter, 0.into());
     assert_eq!(
         extension.pending_balance_lo,
-        zk_token_elgamal::pod::ElGamalCiphertext::zeroed()
+        pod::ElGamalCiphertext::zeroed()
     );
     assert_eq!(
         extension.pending_balance_hi,
-        zk_token_elgamal::pod::ElGamalCiphertext::zeroed()
+        pod::ElGamalCiphertext::zeroed()
     );
     assert_eq!(
         extension.available_balance,
-        zk_token_elgamal::pod::ElGamalCiphertext::zeroed()
+        pod::ElGamalCiphertext::zeroed()
     );
 
     token
-        .confidential_transfer_deposit(&alice_meta.token_account, &alice, 65537, decimals)
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            65537,
+            decimals,
+            &[&alice],
+        )
         .await
         .unwrap();
 
@@ -753,13 +859,96 @@ async fn ct_deposit() {
         )
         .await;
 
+    // deposit zero amount
     token
-        .confidential_transfer_deposit(&alice_meta.token_account, &alice, 0, decimals)
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            0,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
+    token
+        .confidential_transfer_apply_pending_balance(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            None,
+            alice_meta.elgamal_keypair.secret(),
+            &alice_meta.aes_key,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
+    // try to deposit over maximum allowed value
+    let illegal_amount = MAXIMUM_DEPOSIT_TRANSFER_AMOUNT.checked_add(1).unwrap();
+
+    token
+        .mint_to(
+            &alice_meta.token_account,
+            &mint_authority.pubkey(),
+            illegal_amount,
+            &[&mint_authority],
+        )
         .await
         .unwrap();
 
     let err = token
-        .confidential_transfer_deposit(&alice_meta.token_account, &alice, 0, decimals)
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            illegal_amount,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::MaximumDepositAmountExceeded as u32),
+            )
+        )))
+    );
+
+    // deposit maximum allowed value
+    token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
+    // maximum pending balance credits exceeded
+    token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            0,
+            decimals,
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
+    let err = token
+        .confidential_transfer_deposit(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            1,
+            decimals,
+            &[&alice],
+        )
         .await
         .unwrap_err();
 
@@ -775,19 +964,15 @@ async fn ct_deposit() {
         )))
     );
 
-    token
-        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 0, 65537, 2)
-        .await
-        .unwrap();
-
     let state = token
         .get_account_info(&alice_meta.token_account)
         .await
         .unwrap();
+    assert_eq!(state.base.amount, 1);
     let extension = state
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
-    assert_eq!(extension.pending_balance_credit_counter, 0.into());
+    assert_eq!(extension.pending_balance_credit_counter, 2.into());
     assert_eq!(extension.expected_pending_balance_credit_counter, 2.into());
     assert_eq!(extension.actual_pending_balance_credit_counter, 2.into());
 }
