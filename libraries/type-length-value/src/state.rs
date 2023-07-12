@@ -15,8 +15,7 @@ use {
 
 /// Get the current TlvIndices from the current spot
 const fn get_indices_unchecked(type_start: usize) -> TlvIndices {
-    let length_start =
-        type_start.saturating_add(size_of::<ArrayDiscriminator>());
+    let length_start = type_start.saturating_add(size_of::<ArrayDiscriminator>());
     let value_start = length_start.saturating_add(size_of::<Length>());
     TlvIndices {
         type_start,
@@ -71,9 +70,7 @@ fn get_indices(
                 return Err(TlvError::TypeNotFound.into());
             }
         }
-        let length = pod_from_bytes::<Length>(
-            &tlv_data[tlv_indices.length_start..tlv_indices.value_start],
-        )?;
+        let length = pod_from_bytes::<Length>(&tlv_data[tlv_indices.length_start..tlv_indices.value_start])?;
         let value_end_index = tlv_indices
             .value_start
             .saturating_add(usize::try_from(*length)?);
@@ -129,9 +126,7 @@ fn get_discriminators_and_end_index(
     Ok((discriminators, start_index))
 }
 
-fn get_bytes<V: SplDiscriminate>(
-    tlv_data: &[u8],
-) -> Result<&[u8], ProgramError> {
+fn get_bytes<V: SplDiscriminate>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
     let (
         TlvIndices {
             type_start: _,
@@ -142,8 +137,7 @@ fn get_bytes<V: SplDiscriminate>(
     ) = get_indices(tlv_data, V::SPL_DISCRIMINATOR, false, Some(0))?;
     // get_indices has checked that tlv_data is long enough to include these
     // indices
-    let length =
-        pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
+    let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::try_from(*length)?);
     if tlv_data.len() < value_end {
         return Err(ProgramError::InvalidAccountData);
@@ -167,8 +161,7 @@ fn get_bytes_specific<V: SplDiscriminate>(
     ) = get_indices(tlv_data, V::SPL_DISCRIMINATOR, false, Some(entry_number))?;
     // get_indices has checked that tlv_data is long enough to include these
     // indices
-    let length =
-        pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
+    let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::try_from(*length)?);
     if tlv_data.len() < value_end {
         return Err(ProgramError::InvalidAccountData);
@@ -256,9 +249,7 @@ pub trait TlvStateStrict {
     }
 
     /// Iterates through the TLV entries, returning only the types
-    fn get_discriminators(
-        &self,
-    ) -> Result<Vec<ArrayDiscriminator>, ProgramError> {
+    fn get_discriminators(&self) -> Result<Vec<ArrayDiscriminator>, ProgramError> {
         get_discriminators_and_end_index(self.get_data()).map(|v| v.0)
     }
 
@@ -337,10 +328,7 @@ pub trait TlvStateNonStrict {
 
     /// Unpack a portion of the TLV data as the desired Pod type at the
     /// designated entry index
-    fn get_value<V: SplDiscriminate + Pod>(
-        &self,
-        entry_number: usize,
-    ) -> Result<&V, ProgramError> {
+    fn get_value<V: SplDiscriminate + Pod>(&self, entry_number: usize) -> Result<&V, ProgramError> {
         let data = get_bytes_specific::<V>(self.get_data(), entry_number)?;
         pod_from_bytes::<V>(data)
     }
@@ -368,17 +356,12 @@ pub trait TlvStateNonStrict {
     }
 
     /// Unpack a portion of the TLV data as bytes at the designated entry index
-    fn get_bytes<V: SplDiscriminate>(
-        &self,
-        entry_number: usize,
-    ) -> Result<&[u8], ProgramError> {
+    fn get_bytes<V: SplDiscriminate>(&self, entry_number: usize) -> Result<&[u8], ProgramError> {
         get_bytes_specific::<V>(self.get_data(), entry_number)
     }
 
     /// Iterates through the TLV entries, returning only the types
-    fn get_discriminators(
-        &self,
-    ) -> Result<Vec<ArrayDiscriminator>, ProgramError> {
+    fn get_discriminators(&self) -> Result<Vec<ArrayDiscriminator>, ProgramError> {
         get_discriminators_and_end_index(self.get_data()).map(|v| v.0)
     }
 
@@ -491,17 +474,13 @@ impl<'data> TlvStateStrictMut<'data> {
 
     /// Unpack a portion of the TLV data as the desired type that allows
     /// modifying the type
-    pub fn get_value_mut<V: SplDiscriminate + Pod>(
-        &mut self,
-    ) -> Result<&mut V, ProgramError> {
+    pub fn get_value_mut<V: SplDiscriminate + Pod>(&mut self) -> Result<&mut V, ProgramError> {
         let data = self.get_bytes_mut::<V>()?;
         pod_from_bytes_mut::<V>(data)
     }
 
     /// Unpack a portion of the TLV data as mutable bytes
-    pub fn get_bytes_mut<V: SplDiscriminate>(
-        &mut self,
-    ) -> Result<&mut [u8], ProgramError> {
+    pub fn get_bytes_mut<V: SplDiscriminate>(&mut self) -> Result<&mut [u8], ProgramError> {
         let (
             TlvIndices {
                 type_start: _,
@@ -511,8 +490,7 @@ impl<'data> TlvStateStrictMut<'data> {
             _,
         ) = get_indices(self.data, V::SPL_DISCRIMINATOR, false, Some(0))?;
 
-        let length =
-            pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
+        let length = pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
         let value_end = value_start.saturating_add(usize::try_from(*length)?);
         if self.data.len() < value_end {
             return Err(ProgramError::InvalidAccountData);
@@ -546,10 +524,7 @@ impl<'data> TlvStateStrictMut<'data> {
 
     /// Allocate the given number of bytes for the given SplDiscriminate
     /// where no repeating discriminators are allowed
-    pub fn alloc<V: SplDiscriminate>(
-        &mut self,
-        length: usize,
-    ) -> Result<&mut [u8], ProgramError> {
+    pub fn alloc<V: SplDiscriminate>(&mut self, length: usize) -> Result<&mut [u8], ProgramError> {
         let (
             TlvIndices {
                 type_start,
@@ -559,16 +534,14 @@ impl<'data> TlvStateStrictMut<'data> {
             _,
         ) = get_indices(self.data, V::SPL_DISCRIMINATOR, true, Some(0))?;
 
-        let discriminator =
-            ArrayDiscriminator::try_from(&self.data[type_start..length_start])?;
+        let discriminator = ArrayDiscriminator::try_from(&self.data[type_start..length_start])?;
         if discriminator == ArrayDiscriminator::UNINITIALIZED {
             // write type
             let discriminator_ref = &mut self.data[type_start..length_start];
             discriminator_ref.copy_from_slice(V::SPL_DISCRIMINATOR.as_ref());
             // write length
-            let length_ref = pod_from_bytes_mut::<Length>(
-                &mut self.data[length_start..value_start],
-            )?;
+            let length_ref = 
+                pod_from_bytes_mut::<Length>(&mut self.data[length_start..value_start])?;
             *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
@@ -583,10 +556,7 @@ impl<'data> TlvStateStrictMut<'data> {
 
     /// Allocates and serializes a new TLV entry from a Pod type, where no
     /// repeating discriminators are allowed
-    pub fn add_entry<V: SplDiscriminate + Pod>(
-        &mut self,
-        value: &V,
-    ) -> Result<(), ProgramError> {
+    pub fn add_entry<V: SplDiscriminate + Pod>(&mut self, value: &V) -> Result<(), ProgramError> {
         let data = self.alloc::<V>(size_of::<V>())?;
         data.copy_from_slice(bytemuck::bytes_of(value));
         Ok(())
@@ -623,15 +593,12 @@ impl<'data> TlvStateStrictMut<'data> {
         let (_, end_index) = get_discriminators_and_end_index(self.data)?;
         let data_len = self.data.len();
 
-        let length_ref = pod_from_bytes_mut::<Length>(
-            &mut self.data[length_start..value_start],
-        )?;
+        let length_ref = pod_from_bytes_mut::<Length>(&mut self.data[length_start..value_start])?;
         let old_length = usize::try_from(*length_ref)?;
 
         // check that we're not going to panic during `copy_within`
         if old_length < length {
-            let new_end_index =
-                end_index.saturating_add(length.saturating_sub(old_length));
+            let new_end_index = end_index.saturating_add(length.saturating_sub(old_length));
             if new_end_index > data_len {
                 return Err(ProgramError::InvalidAccountData);
             }
@@ -648,8 +615,7 @@ impl<'data> TlvStateStrictMut<'data> {
         match old_length.cmp(&length) {
             Ordering::Greater => {
                 // realloc to smaller, fill the end
-                let new_end_index =
-                    end_index.saturating_sub(old_length.saturating_sub(length));
+                let new_end_index = end_index.saturating_sub(old_length.saturating_sub(length));
                 self.data[new_end_index..end_index].fill(0);
             }
             Ordering::Less => {
@@ -707,10 +673,7 @@ impl<'data> TlvStateNonStrictMut<'data> {
             let found_value = self.get_value::<V>(entry_number)?;
             let found_value_bytes = bytemuck::bytes_of(found_value);
             if found_value_bytes == entry_bytes {
-                return Ok((
-                    self.get_value_mut::<V>(entry_number)?,
-                    entry_number,
-                ));
+                return Ok((self.get_value_mut::<V>(entry_number)?, entry_number));
             }
             entry_number += 1;
         }
@@ -729,15 +692,9 @@ impl<'data> TlvStateNonStrictMut<'data> {
                 value_start,
             },
             _,
-        ) = get_indices(
-            self.data,
-            V::SPL_DISCRIMINATOR,
-            false,
-            Some(entry_number),
-        )?;
+        ) = get_indices(self.data, V::SPL_DISCRIMINATOR, false, Some(entry_number))?;
 
-        let length =
-            pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
+        let length = pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
         let value_end = value_start.saturating_add(usize::try_from(*length)?);
         if self.data.len() < value_end {
             return Err(ProgramError::InvalidAccountData);
@@ -791,9 +748,7 @@ impl<'data> TlvStateNonStrictMut<'data> {
         let discriminator_ref = &mut self.data[type_start..length_start];
         discriminator_ref.copy_from_slice(V::SPL_DISCRIMINATOR.as_ref());
         // write length
-        let length_ref = pod_from_bytes_mut::<Length>(
-            &mut self.data[length_start..value_start],
-        )?;
+        let length_ref = pod_from_bytes_mut::<Length>(&mut self.data[length_start..value_start])?;
         *length_ref = Length::try_from(length)?;
 
         let value_end = value_start.saturating_add(length);
@@ -806,10 +761,7 @@ impl<'data> TlvStateNonStrictMut<'data> {
     /// Allocates and serializes a new TLV entry from a Pod type, where
     /// repeating discriminators _are_ allowed. Will add a new entry to the
     /// next open slot provided there is enough space.
-    pub fn add_entry<V: SplDiscriminate + Pod>(
-        &mut self,
-        value: &V,
-    ) -> Result<(), ProgramError> {
+    pub fn add_entry<V: SplDiscriminate + Pod>(&mut self, value: &V) -> Result<(), ProgramError> {
         let (data, _) = self.alloc::<V>(size_of::<V>())?;
         data.copy_from_slice(bytemuck::bytes_of(value));
         Ok(())
@@ -844,24 +796,16 @@ impl<'data> TlvStateNonStrictMut<'data> {
                 value_start,
             },
             _,
-        ) = get_indices(
-            self.data,
-            V::SPL_DISCRIMINATOR,
-            false,
-            Some(entry_number),
-        )?;
+        ) = get_indices(self.data, V::SPL_DISCRIMINATOR, false, Some(entry_number))?;
         let (_, end_index) = get_discriminators_and_end_index(self.data)?;
         let data_len = self.data.len();
 
-        let length_ref = pod_from_bytes_mut::<Length>(
-            &mut self.data[length_start..value_start],
-        )?;
+        let length_ref = pod_from_bytes_mut::<Length>(&mut self.data[length_start..value_start])?;
         let old_length = usize::try_from(*length_ref)?;
 
         // check that we're not going to panic during `copy_within`
         if old_length < length {
-            let new_end_index =
-                end_index.saturating_add(length.saturating_sub(old_length));
+            let new_end_index = end_index.saturating_add(length.saturating_sub(old_length));
             if new_end_index > data_len {
                 return Err(ProgramError::InvalidAccountData);
             }
@@ -878,8 +822,7 @@ impl<'data> TlvStateNonStrictMut<'data> {
         match old_length.cmp(&length) {
             Ordering::Greater => {
                 // realloc to smaller, fill the end
-                let new_end_index =
-                    end_index.saturating_sub(old_length.saturating_sub(length));
+                let new_end_index = end_index.saturating_sub(old_length.saturating_sub(length));
                 self.data[new_end_index..end_index].fill(0);
             }
             Ordering::Less => {
@@ -908,9 +851,7 @@ impl<'data> IntoIterator for TlvStateNonStrictMut<'data> {
 
 /// Packs a variable-length value into an existing TLV space, reallocating
 /// the account and TLV as needed to accommodate for any change in space
-pub fn realloc_and_pack_variable_len_strict<
-    V: SplDiscriminate + VariableLenPack,
->(
+pub fn realloc_and_pack_variable_len_strict<V: SplDiscriminate + VariableLenPack>(
     account_info: &AccountInfo,
     value: &V,
 ) -> Result<(), ProgramError> {
@@ -924,9 +865,7 @@ pub fn realloc_and_pack_variable_len_strict<
             },
             _,
         ) = get_indices(&data, V::SPL_DISCRIMINATOR, false, Some(0))?;
-        usize::try_from(*pod_from_bytes::<Length>(
-            &data[length_start..value_start],
-        )?)?
+        usize::try_from(*pod_from_bytes::<Length>(&data[length_start..value_start])?)?
     };
     let new_length = value.get_packed_len()?;
     let previous_account_size = account_info.try_data_len()?;
@@ -936,10 +875,7 @@ pub fn realloc_and_pack_variable_len_strict<
         let additional_bytes = new_length
             .checked_sub(previous_length)
             .ok_or(ProgramError::AccountDataTooSmall)?;
-        account_info.realloc(
-            previous_account_size.saturating_add(additional_bytes),
-            true,
-        )?;
+        account_info.realloc(previous_account_size.saturating_add(additional_bytes), true)?;
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = TlvStateStrictMut::unpack(&mut buffer)?;
         state.realloc::<V>(new_length)?;
@@ -960,10 +896,7 @@ pub fn realloc_and_pack_variable_len_strict<
             // this is probably fine, but be safe and avoid invalidating
             // references
             drop(buffer);
-            account_info.realloc(
-                previous_account_size.saturating_sub(removed_bytes),
-                false,
-            )?;
+            account_info.realloc(previous_account_size.saturating_sub(removed_bytes), false)?;
         }
     }
     Ok(())
@@ -1001,18 +934,14 @@ impl<'data> TlvIterator<'data> {
     }
 
     /// Get the next TLV entry as a `Pod` type
-    pub fn next_tlv_entry<V: SplDiscriminate + Pod>(
-        &mut self,
-    ) -> Result<&V, ProgramError> {
+    pub fn next_tlv_entry<V: SplDiscriminate + Pod>(&mut self) -> Result<&V, ProgramError> {
         loop {
             let indices = self.next_tlv()?;
             let length = usize::try_from(*pod_from_bytes::<Length>(
                 &self.data[indices.length_start..indices.value_start],
             )?)?;
             let value_end = indices.value_start.saturating_add(length);
-            match pod_from_bytes::<V>(
-                &self.data[indices.value_start..value_end],
-            ) {
+            match pod_from_bytes::<V>(&self.data[indices.value_start..value_end]) {
                 Ok(value) => return Ok(value),
                 Err(_) => continue,
             }
@@ -1029,9 +958,7 @@ impl<'data> TlvIterator<'data> {
                 &self.data[indices.length_start..indices.value_start],
             )?)?;
             let value_end = indices.value_start.saturating_add(length);
-            match V::unpack_from_slice(
-                &self.data[indices.value_start..value_end],
-            ) {
+            match V::unpack_from_slice(&self.data[indices.value_start..value_end]) {
                 Ok(value) => return Ok(value),
                 Err(_) => continue,
             }
@@ -1043,9 +970,7 @@ impl Iterator for TlvIterator<'_> {
     type Item = Result<TlvIndices, ProgramError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let pod_length = match pod_from_bytes::<Length>(
-            &self.data[self.next.1..self.next.2],
-        ) {
+        let pod_length = match pod_from_bytes::<Length>(&self.data[self.next.1..self.next.2]) {
             Ok(length) => length,
             Err(e) => return Some(Err(e)),
         };
@@ -1060,12 +985,11 @@ impl Iterator for TlvIterator<'_> {
         if self.data[self.next.0..].len() < 8 {
             return Some(Err(ProgramError::InvalidAccountData));
         } else {
-            let discriminator = match ArrayDiscriminator::try_from(
-                &self.data[self.next.0..self.next.1],
-            ) {
-                Ok(discriminator) => discriminator,
-                Err(e) => return Some(Err(e)),
-            };
+            let discriminator = 
+                match ArrayDiscriminator::try_from(&self.data[self.next.0..self.next.1]) {
+                    Ok(discriminator) => discriminator,
+                    Err(e) => return Some(Err(e)),
+                };
             if discriminator == ArrayDiscriminator::UNINITIALIZED {
                 return None; // For now
             }
@@ -1101,24 +1025,22 @@ fn check_data(tlv_data: &[u8]) -> Result<(), ProgramError> {
 
 #[cfg(test)]
 mod test {
-    use {
-        super::*,
-        bytemuck::{Pod, Zeroable},
-    };
+    use super::*;
+    use bytemuck::{Pod, Zeroable};
 
     const TEST_BUFFER: &[u8] = &[
         1, 1, 1, 1, 1, 1, 1, 1, // discriminator
         32, 0, 0, 0, // length
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, // value
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, // value
         0, 0, // empty, not enough for a discriminator
     ];
 
     const TEST_BIG_BUFFER: &[u8] = &[
         1, 1, 1, 1, 1, 1, 1, 1, // discriminator
         32, 0, 0, 0, // length
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, // value
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, // value
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, // empty, but enough for a discriminator and empty value
     ];
@@ -1248,26 +1170,20 @@ mod test {
         );
         // correct due to the good discriminator length and zero length
         assert_eq!(
-            get_discriminators_and_end_index(&[
-                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-            ])
-            .unwrap(),
+            get_discriminators_and_end_index(&[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap(),
             (vec![ArrayDiscriminator::try_from(1).unwrap()], 12)
         );
         // correct since it's just uninitialized data
         assert_eq!(
-            get_discriminators_and_end_index(&[0, 0, 0, 0, 0, 0, 0, 0])
-                .unwrap(),
+            get_discriminators_and_end_index(&[0, 0, 0, 0, 0, 0, 0, 0]).unwrap(),
             (vec![], 0)
         );
     }
 
     #[test]
     fn value_pack_unpack() {
-        let account_size = get_base_len()
-            + size_of::<TestValue>()
-            + get_base_len()
-            + size_of::<TestSmallValue>();
+        let account_size =
+            get_base_len() + size_of::<TestValue>() + get_base_len() + size_of::<TestSmallValue>();
         let mut buffer = vec![0; account_size];
 
         let mut state = TlvStateStrictMut::unpack(&mut buffer).unwrap();
@@ -1291,9 +1207,7 @@ mod test {
         // check raw buffer
         let mut expect = vec![];
         expect.extend_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
-        expect.extend_from_slice(
-            &u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes(),
-        );
+        expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
         expect.extend_from_slice(&data);
         expect.extend_from_slice(&[0; size_of::<ArrayDiscriminator>()]);
         expect.extend_from_slice(&[0; size_of::<Length>()]);
@@ -1317,9 +1231,7 @@ mod test {
         // check raw buffer
         let mut expect = vec![];
         expect.extend_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
-        expect.extend_from_slice(
-            &u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes(),
-        );
+        expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
         expect.extend_from_slice(&new_data);
         expect.extend_from_slice(&[0; size_of::<ArrayDiscriminator>()]);
         expect.extend_from_slice(&[0; size_of::<Length>()]);
@@ -1343,9 +1255,7 @@ mod test {
         // check raw buffer
         let mut expect = vec![];
         expect.extend_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
-        expect.extend_from_slice(
-            &u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes(),
-        );
+        expect.extend_from_slice(&u32::try_from(size_of::<TestValue>()).unwrap().to_le_bytes());
         expect.extend_from_slice(&new_data);
         expect.extend_from_slice(TestSmallValue::SPL_DISCRIMINATOR.as_ref());
         expect.extend_from_slice(
@@ -1366,10 +1276,8 @@ mod test {
 
     #[test]
     fn value_any_order() {
-        let account_size = get_base_len()
-            + size_of::<TestValue>()
-            + get_base_len()
-            + size_of::<TestSmallValue>();
+        let account_size =
+            get_base_len() + size_of::<TestValue>() + get_base_len() + size_of::<TestSmallValue>();
         let mut buffer = vec![0; account_size];
 
         let mut state = TlvStateStrictMut::unpack(&mut buffer).unwrap();
@@ -1411,8 +1319,7 @@ mod test {
         // buffers are NOT the same because written in a different order
         assert_ne!(buffer, other_buffer);
         let state = TlvStateStrictBorrowed::unpack(&buffer).unwrap();
-        let other_state =
-            TlvStateStrictBorrowed::unpack(&other_buffer).unwrap();
+        let other_state = TlvStateStrictBorrowed::unpack(&other_buffer).unwrap();
 
         // BUT values are the same
         assert_eq!(
@@ -1444,8 +1351,7 @@ mod test {
 
         // hack the buffer to look like it was initialized, still fails
         let discriminator_ref = &mut state.data[0..ArrayDiscriminator::LENGTH];
-        discriminator_ref
-            .copy_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
+        discriminator_ref.copy_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
         state.data[ArrayDiscriminator::LENGTH] = 32;
         let err = state.get_value::<TestValue>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
@@ -1563,8 +1469,7 @@ mod test {
             }
         }
         fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-            let length =
-                u64::from_le_bytes(src[..8].try_into().unwrap()) as usize;
+            let length = u64::from_le_bytes(src[..8].try_into().unwrap()) as usize;
             if src[8..8 + length].len() != length {
                 return Err(ProgramError::InvalidAccountData);
             }
@@ -1620,9 +1525,7 @@ mod strict_nonstrict_tests {
     };
 
     #[repr(C)]
-    #[derive(
-        Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate,
-    )]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate)]
     #[discriminator_hash_input("vehicle::chevrolet_fixed")]
     pub struct ChevroletFixed {
         vin: [u8; 8],
@@ -1630,9 +1533,7 @@ mod strict_nonstrict_tests {
     }
 
     #[repr(C)]
-    #[derive(
-        Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate,
-    )]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate)]
     #[discriminator_hash_input("vehicle::ford_fixed")]
     pub struct FordFixed {
         vin: [u8; 8],
@@ -1640,15 +1541,7 @@ mod strict_nonstrict_tests {
     }
 
     #[cfg_attr(feature = "derive", derive(SplBorshVariableLenPack))]
-    #[derive(
-        Clone,
-        Debug,
-        Default,
-        PartialEq,
-        BorshDeserialize,
-        BorshSerialize,
-        SplDiscriminate,
-    )]
+    #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, SplDiscriminate)]
     #[discriminator_hash_input("vehicle::chevrolet_variable")]
     pub struct ChevroletVariable {
         vin: Vec<u8>,
@@ -1656,15 +1549,7 @@ mod strict_nonstrict_tests {
     }
 
     #[cfg_attr(feature = "derive", derive(SplBorshVariableLenPack))]
-    #[derive(
-        Clone,
-        Debug,
-        Default,
-        PartialEq,
-        BorshDeserialize,
-        BorshSerialize,
-        SplDiscriminate,
-    )]
+    #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, SplDiscriminate)]
     #[discriminator_hash_input("vehicle::ford_variable")]
     pub struct FordVariable {
         vin: Vec<u8>,
@@ -1682,10 +1567,8 @@ mod strict_nonstrict_tests {
             plate: *b"ABC1234",
         };
 
-        let account_size = get_base_len()
-            + size_of::<ChevroletFixed>()
-            + get_base_len()
-            + size_of::<FordFixed>();
+        let account_size = 
+            get_base_len() + size_of::<ChevroletFixed>() + get_base_len() + size_of::<FordFixed>();
         let mut buffer = vec![0; account_size];
 
         let mut state = TlvStateStrictMut::unpack(&mut buffer).unwrap();

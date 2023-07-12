@@ -1,9 +1,8 @@
+//! The actual token generator for the macro
 use {
     proc_macro2::{Span, TokenStream},
     quote::{quote, ToTokens},
-    syn::{
-        parse::Parse, Generics, Ident, Item, ItemEnum, ItemStruct, WhereClause,
-    },
+    syn::{parse::Parse, Generics, Ident, Item, ItemEnum, ItemStruct, WhereClause},
 };
 
 pub struct SplBorshVariableLenPackBuilder {
@@ -58,12 +57,7 @@ impl Parse for SplBorshVariableLenPackBuilder {
                 ))
             }
         }
-        .map_err(|e| {
-            syn::Error::new(
-                input.span(),
-                format!("Failed to parse item: {}", e),
-            )
-        })
+        .map_err(|e| syn::Error::new(input.span(), format!("Failed to parse item: {}", e)))
     }
 }
 

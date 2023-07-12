@@ -13,24 +13,20 @@ use {
     spl_tlv_account_resolution::state::ExtraAccountMetas,
     spl_token_2022::{
         extension::{
-            transfer_hook::TransferHookAccount, BaseStateWithExtensions,
-            StateWithExtensions,
+            transfer_hook::TransferHookAccount, BaseStateWithExtensions, StateWithExtensions,
         },
         state::{Account, Mint},
     },
     spl_transfer_hook_interface::{
         collect_extra_account_metas_signer_seeds,
         error::TransferHookError,
-        get_extra_account_metas_address,
-        get_extra_account_metas_address_and_bump_seed,
+        get_extra_account_metas_address, get_extra_account_metas_address_and_bump_seed,
         instruction::{ExecuteInstruction, TransferHookInstruction},
     },
     spl_type_length_value::state::TlvStateStrictBorrowed,
 };
 
-fn check_token_account_is_transferring(
-    account_info: &AccountInfo,
-) -> Result<(), ProgramError> {
+fn check_token_account_is_transferring(account_info: &AccountInfo) -> Result<(), ProgramError> {
     let account_data = account_info.try_borrow_data()?;
     let token_account = StateWithExtensions::<Account>::unpack(&account_data)?;
     let extension = token_account.get_extension::<TransferHookAccount>()?;
@@ -61,8 +57,7 @@ pub fn process_execute(
 
     // For the example program, we just check that the correct pda and validation
     // pubkeys are provided
-    let expected_validation_address =
-        get_extra_account_metas_address(mint_info.key, program_id);
+    let expected_validation_address = get_extra_account_metas_address(mint_info.key, program_id);
     if expected_validation_address != *extra_account_metas_info.key {
         return Err(ProgramError::InvalidSeeds);
     }
@@ -119,26 +114,19 @@ pub fn process_initialize_extra_account_metas(
 
     // Check validation account
     let (expected_validation_address, bump_seed) =
-        get_extra_account_metas_address_and_bump_seed(
-            mint_info.key,
-            program_id,
-        );
+        get_extra_account_metas_address_and_bump_seed(mint_info.key, program_id);
     if expected_validation_address != *extra_account_metas_info.key {
         return Err(ProgramError::InvalidSeeds);
     }
 
     // Create the account
     let bump_seed = [bump_seed];
-    let signer_seeds =
-        collect_extra_account_metas_signer_seeds(mint_info.key, &bump_seed);
+    let signer_seeds = collect_extra_account_metas_signer_seeds(mint_info.key, &bump_seed);
     let extra_account_infos = account_info_iter.as_slice();
     let length = extra_account_infos.len();
     let account_size = ExtraAccountMetas::size_of(length)?;
     invoke_signed(
-        &system_instruction::allocate(
-            extra_account_metas_info.key,
-            account_size as u64,
-        ),
+        &system_instruction::allocate(extra_account_metas_info.key, account_size as u64),
         &[extra_account_metas_info.clone()],
         &[&signer_seeds],
     )?;
@@ -159,11 +147,7 @@ pub fn process_initialize_extra_account_metas(
 }
 
 /// Processes an [Instruction](enum.Instruction.html).
-pub fn process(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    input: &[u8],
-) -> ProgramResult {
+pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
     let instruction = TransferHookInstruction::unpack(input)?;
 
     match instruction {

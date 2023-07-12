@@ -1,7 +1,6 @@
-//! Crate defining a state interface for offchain account resolution. If a
-//! program writes the proper state information into one of their accounts, any
-//! offchain and onchain client can fetch any additional required accounts for
-//! an instruction.
+//! Crate defining a state interface for offchain account resolution. If a program
+//! writes the proper state information into one of their accounts, any offchain
+//! and onchain client can fetch any additional required accounts for an instruction.
 
 #![allow(clippy::integer_arithmetic)]
 #![deny(missing_docs)]
@@ -11,6 +10,5 @@ pub mod error;
 pub mod pod;
 pub mod state;
 
-// Export current sdk types for downstream users building with a different sdk
-// version
+// Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;

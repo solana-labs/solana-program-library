@@ -109,8 +109,7 @@ async fn success_remove() {
         fetched_metadata_account.data.len(),
         token_metadata.tlv_size_of().unwrap()
     );
-    let fetched_metadata_state =
-        TlvStateStrictBorrowed::unpack(&fetched_metadata_account.data).unwrap();
+    let fetched_metadata_state = TlvStateStrictBorrowed::unpack(&fetched_metadata_account.data).unwrap();
     let fetched_metadata = fetched_metadata_state
         .get_variable_len_value::<TokenMetadata>()
         .unwrap();
@@ -240,10 +239,7 @@ async fn fail_authority_checks() {
         .unwrap();
     assert_eq!(
         error,
-        TransactionError::InstructionError(
-            0,
-            InstructionError::MissingRequiredSignature,
-        )
+        TransactionError::InstructionError(0, InstructionError::MissingRequiredSignature,)
     );
 
     // wrong authority
@@ -269,9 +265,7 @@ async fn fail_authority_checks() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(
-                TokenMetadataError::IncorrectUpdateAuthority as u32
-            ),
+            InstructionError::Custom(TokenMetadataError::IncorrectUpdateAuthority as u32),
         )
     );
 }
