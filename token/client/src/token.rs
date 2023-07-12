@@ -2703,7 +2703,7 @@ where
     }
 
     /// Update the token-metadata authority in a mint
-    pub async fn update_authority_in_token_metadata<S: Signers>(
+    pub async fn token_metadata_update_authority<S: Signers>(
         &self,
         current_authority: &Pubkey,
         new_authority: Option<Pubkey>,

@@ -98,7 +98,7 @@ async fn success_update() {
 
     token_context
         .token
-        .update_authority_in_token_metadata(
+        .token_metadata_update_authority(
             &authority.pubkey(),
             Some(new_update_authority.pubkey()),
             &[&authority],
@@ -115,7 +115,7 @@ async fn success_update() {
     token_metadata.update_authority = None.try_into().unwrap();
     token_context
         .token
-        .update_authority_in_token_metadata(
+        .token_metadata_update_authority(
             &new_update_authority.pubkey(),
             None,
             &[&new_update_authority],
@@ -130,7 +130,7 @@ async fn success_update() {
     // fail to update
     let error = token_context
         .token
-        .update_authority_in_token_metadata(
+        .token_metadata_update_authority(
             &new_update_authority.pubkey(),
             Some(new_update_authority.pubkey()),
             &[&new_update_authority],
@@ -188,7 +188,7 @@ async fn fail_authority_checks() {
     // wrong authority
     let error = token_context
         .token
-        .update_authority_in_token_metadata(&payer_pubkey, None, &[] as &[&dyn Signer; 0])
+        .token_metadata_update_authority(&payer_pubkey, None, &[] as &[&dyn Signer; 0])
         .await
         .unwrap_err();
     assert_eq!(
