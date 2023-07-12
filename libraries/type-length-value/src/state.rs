@@ -70,7 +70,8 @@ fn get_indices(
                 return Err(TlvError::TypeNotFound.into());
             }
         }
-        let length = pod_from_bytes::<Length>(&tlv_data[tlv_indices.length_start..tlv_indices.value_start])?;
+        let length =
+            pod_from_bytes::<Length>(&tlv_data[tlv_indices.length_start..tlv_indices.value_start])?;
         let value_end_index = tlv_indices
             .value_start
             .saturating_add(usize::try_from(*length)?);
@@ -540,7 +541,7 @@ impl<'data> TlvStateStrictMut<'data> {
             let discriminator_ref = &mut self.data[type_start..length_start];
             discriminator_ref.copy_from_slice(V::SPL_DISCRIMINATOR.as_ref());
             // write length
-            let length_ref = 
+            let length_ref =
                 pod_from_bytes_mut::<Length>(&mut self.data[length_start..value_start])?;
             *length_ref = Length::try_from(length)?;
 
@@ -985,7 +986,7 @@ impl Iterator for TlvIterator<'_> {
         if self.data[self.next.0..].len() < 8 {
             return Some(Err(ProgramError::InvalidAccountData));
         } else {
-            let discriminator = 
+            let discriminator =
                 match ArrayDiscriminator::try_from(&self.data[self.next.0..self.next.1]) {
                     Ok(discriminator) => discriminator,
                     Err(e) => return Some(Err(e)),
@@ -1541,7 +1542,9 @@ mod strict_nonstrict_tests {
     }
 
     #[cfg_attr(feature = "derive", derive(SplBorshVariableLenPack))]
-    #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, SplDiscriminate)]
+    #[derive(
+        Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, SplDiscriminate,
+    )]
     #[discriminator_hash_input("vehicle::chevrolet_variable")]
     pub struct ChevroletVariable {
         vin: Vec<u8>,
@@ -1549,7 +1552,9 @@ mod strict_nonstrict_tests {
     }
 
     #[cfg_attr(feature = "derive", derive(SplBorshVariableLenPack))]
-    #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, SplDiscriminate)]
+    #[derive(
+        Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, SplDiscriminate,
+    )]
     #[discriminator_hash_input("vehicle::ford_variable")]
     pub struct FordVariable {
         vin: Vec<u8>,
@@ -1567,7 +1572,7 @@ mod strict_nonstrict_tests {
             plate: *b"ABC1234",
         };
 
-        let account_size = 
+        let account_size =
             get_base_len() + size_of::<ChevroletFixed>() + get_base_len() + size_of::<FordFixed>();
         let mut buffer = vec![0; account_size];
 

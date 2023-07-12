@@ -20,7 +20,8 @@ use {
         state::{OptionalNonZeroPubkey, TokenMetadata},
     },
     spl_type_length_value::state::{
-        realloc_and_pack_variable_len_strict, TlvStateStrict, TlvStateStrictBorrowed, TlvStateStrictMut,
+        realloc_and_pack_variable_len_strict, TlvStateStrict, TlvStateStrictBorrowed,
+        TlvStateStrictMut,
     },
 };
 
