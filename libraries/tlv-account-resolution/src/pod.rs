@@ -7,7 +7,10 @@ use {
         seeds::Seed,
     },
     bytemuck::{Pod, Zeroable},
-    solana_program::{account_info::AccountInfo, instruction::AccountMeta, pubkey::Pubkey},
+    solana_program::{
+        account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
+        pubkey::Pubkey,
+    },
     spl_type_length_value::pod::PodBool,
 };
 
@@ -98,7 +101,8 @@ impl TryFrom<&PodAccountMeta> for RequiredAccount {
     fn try_from(pod: &PodAccountMeta) -> Result<Self, Self::Error> {
         if pod.discriminator == 0 {
             Ok(RequiredAccount::Account {
-                pubkey: Pubkey::new(&pod.address_config),
+                pubkey: Pubkey::try_from(pod.address_config)
+                    .map_err(|_| ProgramError::from(AccountResolutionError::InvalidPubkey))?,
                 is_signer: pod.is_signer.into(),
                 is_writable: pod.is_writable.into(),
             })
@@ -164,8 +168,8 @@ impl TryFromAccountType<&RequiredAccount> for PodAccountMeta {
             } => Ok(PodAccountMeta {
                 discriminator: 0,
                 address_config: pubkey.to_bytes(),
-                is_signer: is_signer.into(),
-                is_writable: is_writable.into(),
+                is_signer: PodBool::from(*is_signer),
+                is_writable: PodBool::from(*is_writable),
             }),
             RequiredAccount::Pda {
                 seeds,
@@ -174,8 +178,8 @@ impl TryFromAccountType<&RequiredAccount> for PodAccountMeta {
             } => Ok(PodAccountMeta {
                 discriminator: 1,
                 address_config: Seed::pack_slice(seeds)?,
-                is_signer: is_signer.into(),
-                is_writable: is_writable.into(),
+                is_signer: PodBool::from(*is_signer),
+                is_writable: PodBool::from(*is_writable),
             }),
         }
     }

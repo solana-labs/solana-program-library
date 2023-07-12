@@ -4,7 +4,7 @@ use {
     crate::{
         account::RequiredAccount,
         error::AccountResolutionError,
-        pod::{PodAccountMeta, PodSlice, PodSliceMut, TryFromAccountType},
+        pod::{PodAccountMeta, TryFromAccountType},
         seeds::SeedConfig,
     },
     solana_program::{
@@ -92,7 +92,7 @@ use {
 /// ```rust
 /// use {
 ///     solana_program::{account_info::AccountInfo, instruction::{AccountMeta, Instruction}, pubkey::Pubkey},
-///     spl_type_length_value::discriminator::{Discriminator, TlvDiscriminator},
+///     spl_type_length_value::discriminator::{Discriminator, SplDiscriminate},
 ///     spl_tlv_account_resolution::{
 ///         account::RequiredAccount,
 ///         seeds::{Seed, SeedArgType, SeedConfig},
@@ -101,7 +101,7 @@ use {
 /// };
 ///
 /// struct MyInstruction;
-/// impl TlvDiscriminator for MyInstruction {
+/// impl SplDiscriminate for MyInstruction {
 ///     const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
 /// }
 ///
@@ -242,7 +242,7 @@ impl ExtraAccountMetas {
     /// Initialize a TLV entry for the given discriminator, populating the data
     /// with the given required accounts - which can be standard `AccountMeta`s or
     /// PDAs
-    pub fn init_with_required_accounts<T: TlvDiscriminator>(
+    pub fn init_with_required_accounts<T: SplDiscriminate>(
         data: &mut [u8],
         required_accounts: &[RequiredAccount],
     ) -> Result<(), ProgramError> {
@@ -286,7 +286,7 @@ impl ExtraAccountMetas {
     }
 
     /// Add the additional account metas to an existing instruction
-    pub fn add_to_vec<T: TlvDiscriminator>(
+    pub fn add_to_vec<T: SplDiscriminate>(
         program_id: &Pubkey,
         existing_account_metas: &mut Vec<AccountMeta>,
         data: &[u8],
@@ -341,7 +341,7 @@ impl ExtraAccountMetas {
     }
 
     /// Add the additional account metas to an existing instruction
-    pub fn add_to_instruction<T: TlvDiscriminator>(
+    pub fn add_to_instruction<T: SplDiscriminate>(
         program_id: &Pubkey,
         instruction: &mut Instruction,
         data: &[u8],
@@ -356,7 +356,7 @@ impl ExtraAccountMetas {
     /// If an added account already exists in the instruction with lower
     /// privileges, match it to the existing account. This prevents a lower
     /// program from gaining unexpected privileges.
-    pub fn add_to_cpi_instruction<'a, T: TlvDiscriminator>(
+    pub fn add_to_cpi_instruction<'a, T: SplDiscriminate>(
         program_id: &Pubkey,
         cpi_instruction: &mut Instruction,
         cpi_account_infos: &mut Vec<AccountInfo<'a>>,
@@ -431,7 +431,7 @@ mod tests {
         solana_program::{
             clock::Epoch, entrypoint::ProgramResult, instruction::AccountMeta, pubkey::Pubkey,
         },
-        spl_type_length_value::discriminator::Discriminator,
+        spl_discriminator::discriminator::ArrayDiscriminator,
     };
 
     pub struct TestInstruction;
