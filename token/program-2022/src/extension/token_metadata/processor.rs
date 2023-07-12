@@ -149,8 +149,8 @@ pub fn process_update_authority(
     let metadata_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
 
-    // deserialize the metadata, but scope the data borrow since we'll probably
-    // realloc the account
+    // deserialize the metadata, but scope the data borrow since we'll write
+    // to the account later
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
         let mint = StateWithExtensions::<Mint>::unpack(&buffer)?;
