@@ -142,7 +142,8 @@ async fn success_update(field: Field, value: String) {
         fetched_metadata_account.data.len(),
         token_metadata.tlv_size_of().unwrap()
     );
-    let fetched_metadata_state = TlvStateStrictBorrowed::unpack(&fetched_metadata_account.data).unwrap();
+    let fetched_metadata_state =
+        TlvStateStrictBorrowed::unpack(&fetched_metadata_account.data).unwrap();
     let fetched_metadata = fetched_metadata_state
         .get_variable_len_value::<TokenMetadata>()
         .unwrap();

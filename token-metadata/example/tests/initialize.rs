@@ -74,7 +74,8 @@ async fn success_initialize() {
         .await
         .unwrap()
         .unwrap();
-    let fetched_metadata_state = TlvStateStrictBorrowed::unpack(&fetched_metadata_account.data).unwrap();
+    let fetched_metadata_state =
+        TlvStateStrictBorrowed::unpack(&fetched_metadata_account.data).unwrap();
     let fetched_metadata = fetched_metadata_state
         .get_variable_len_value::<TokenMetadata>()
         .unwrap();
