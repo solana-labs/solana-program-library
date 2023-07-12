@@ -25,13 +25,16 @@ const fn get_indices_unchecked(type_start: usize) -> TlvIndices {
     }
 }
 
-/// Internal helper struct for returning the indices of the type, length, and
+/// Struct for returning the indices of the type, length, and
 /// value in a TLV entry
 #[derive(Debug)]
-struct TlvIndices {
-    type_start: usize,
-    length_start: usize,
-    value_start: usize,
+pub struct TlvIndices {
+    /// Index where the type begins
+    pub type_start: usize,
+    /// Index where the length begins
+    pub length_start: usize,
+    /// Index where the value begins
+    pub value_start: usize,
 }
 
 type TlvIndicesWithEntryNumber = (TlvIndices, usize);
@@ -696,19 +699,21 @@ impl<'data> TlvStateNonStrictMut<'data> {
     /// searching the TLV data for the entry.
     pub fn find_value_mut<V: SplDiscriminate + Pod>(
         &mut self,
-        _entry: &V,
-    ) -> Result<(&mut [u8], usize), ProgramError> {
-        todo!("We're going to want to use the custom iterator here!")
-    }
-
-    /// Unpack a portion of the TLV data as the desired `VariableLenPack` type
-    /// that allows modifying the type, where the particular entry can be
-    /// found by searching the TLV data for the entry.
-    pub fn find_variable_len_value_mut<V: SplDiscriminate + VariableLenPack>(
-        &mut self,
-        _entry: &V,
-    ) -> Result<(&mut [u8], usize), ProgramError> {
-        todo!("We're going to want to use the custom iterator here!")
+        entry: &V,
+    ) -> Result<(&mut V, usize), ProgramError> {
+        let entry_bytes = bytemuck::bytes_of(entry);
+        let mut entry_number = 0;
+        loop {
+            let found_value = self.get_value::<V>(entry_number)?;
+            let found_value_bytes = bytemuck::bytes_of(found_value);
+            if found_value_bytes == entry_bytes {
+                return Ok((
+                    self.get_value_mut::<V>(entry_number)?,
+                    entry_number,
+                ));
+            }
+            entry_number += 1;
+        }
     }
 
     /// Unpack a portion of the TLV data as mutable bytes, where the particular
@@ -892,6 +897,14 @@ impl<'a> TlvStateNonStrict for TlvStateNonStrictMut<'a> {
         self.data
     }
 }
+impl<'data> IntoIterator for TlvStateNonStrictMut<'data> {
+    type Item = Result<TlvIndices, ProgramError>;
+    type IntoIter = TlvIterator<'data>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        TlvIterator::new(self.data)
+    }
+}
 
 /// Packs a variable-length value into an existing TLV space, reallocating
 /// the account and TLV as needed to accommodate for any change in space
@@ -954,6 +967,124 @@ pub fn realloc_and_pack_variable_len_strict<
         }
     }
     Ok(())
+}
+
+/// An iterator over TLV state data
+pub struct TlvIterator<'data> {
+    data: &'data [u8],
+    current: (usize, usize, usize),
+    next: (usize, usize, usize),
+}
+impl<'data> TlvIterator<'data> {
+    /// Create a new instance of the `TlvIterator`
+    pub fn new(data: &'data [u8]) -> Self {
+        let current = (0, 0, 0);
+        let next_indices = get_indices_unchecked(0);
+        let next = (
+            next_indices.type_start,
+            next_indices.length_start,
+            next_indices.value_start,
+        );
+        Self {
+            data,
+            current,
+            next,
+        }
+    }
+    /// Get the next TLV indices
+    pub fn next_tlv(&mut self) -> Result<TlvIndices, ProgramError> {
+        if let Some(next) = self.next() {
+            next
+        } else {
+            Err(TlvError::TlvIteratorEnd.into())
+        }
+    }
+
+    /// Get the next TLV entry as a `Pod` type
+    pub fn next_tlv_entry<V: SplDiscriminate + Pod>(
+        &mut self,
+    ) -> Result<&V, ProgramError> {
+        loop {
+            let indices = self.next_tlv()?;
+            let length = usize::try_from(*pod_from_bytes::<Length>(
+                &self.data[indices.length_start..indices.value_start],
+            )?)?;
+            let value_end = indices.value_start.saturating_add(length);
+            match pod_from_bytes::<V>(
+                &self.data[indices.value_start..value_end],
+            ) {
+                Ok(value) => return Ok(value),
+                Err(_) => continue,
+            }
+        }
+    }
+
+    /// Get the next TLV entry as a `VariableLenPack` type
+    pub fn next_variable_len_tlv_entry<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+    ) -> Result<V, ProgramError> {
+        loop {
+            let indices = self.next_tlv()?;
+            let length = usize::try_from(*pod_from_bytes::<Length>(
+                &self.data[indices.length_start..indices.value_start],
+            )?)?;
+            let value_end = indices.value_start.saturating_add(length);
+            match V::unpack_from_slice(
+                &self.data[indices.value_start..value_end],
+            ) {
+                Ok(value) => return Ok(value),
+                Err(_) => continue,
+            }
+        }
+    }
+}
+
+impl Iterator for TlvIterator<'_> {
+    type Item = Result<TlvIndices, ProgramError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let pod_length = match pod_from_bytes::<Length>(
+            &self.data[self.next.1..self.next.2],
+        ) {
+            Ok(length) => length,
+            Err(e) => return Some(Err(e)),
+        };
+        let length = match usize::try_from(*pod_length) {
+            Ok(length) => length,
+            Err(e) => return Some(Err(e)),
+        };
+
+        let value_end_index = self.next.2.saturating_add(length);
+        let new_next = get_indices_unchecked(value_end_index);
+
+        if self.data[self.next.0..].len() < 8 {
+            return Some(Err(ProgramError::InvalidAccountData));
+        } else {
+            let discriminator = match ArrayDiscriminator::try_from(
+                &self.data[self.next.0..self.next.1],
+            ) {
+                Ok(discriminator) => discriminator,
+                Err(e) => return Some(Err(e)),
+            };
+            if discriminator == ArrayDiscriminator::UNINITIALIZED {
+                return None; // For now
+            }
+        }
+        self.current = std::mem::replace(
+            &mut self.next,
+            (
+                new_next.type_start,
+                new_next.length_start,
+                new_next.value_start,
+            ),
+        );
+
+        Some(Ok(TlvIndices {
+            type_start: self.current.0,
+            length_start: self.current.1,
+            value_start: self.current.2,
+        }))
+    }
 }
 
 /// Get the base size required for TLV data
@@ -1479,7 +1610,6 @@ mod test {
 
 #[cfg(all(test, feature = "derive"))]
 mod strict_nonstrict_tests {
-
     use {
         super::*,
         crate::SplBorshVariableLenPack,
@@ -1818,6 +1948,85 @@ mod strict_nonstrict_tests {
             state
                 .get_first_variable_len_value::<FordVariable>()
                 .unwrap(),
+            ford_variable
+        );
+    }
+
+    #[test]
+    fn test_iterator() {
+        let chevrolet_fixed1 = ChevroletFixed {
+            vin: *b"12345678",
+            plate: *b"ABC1234",
+        };
+        let chevrolet_fixed2 = ChevroletFixed {
+            vin: *b"87654321",
+            plate: *b"XYZ4321",
+        };
+        let chevrolet_variable = ChevroletVariable {
+            vin: b"12345678".to_vec(),
+            plate: b"ABC1234".to_vec(),
+        };
+        let ford_fixed1 = FordFixed {
+            vin: *b"12345678",
+            plate: *b"ABC1234",
+        };
+        let ford_fixed2 = FordFixed {
+            vin: *b"87654321",
+            plate: *b"XYZ4321",
+        };
+        let ford_variable = FordVariable {
+            vin: b"12345678".to_vec(),
+            plate: b"ABC1234".to_vec(),
+        };
+
+        let account_size = get_base_len()
+            + size_of::<ChevroletFixed>()
+            + get_base_len()
+            + size_of::<ChevroletFixed>()
+            + get_base_len()
+            + size_of::<ChevroletVariable>()
+            + get_base_len()
+            + size_of::<FordFixed>()
+            + get_base_len()
+            + size_of::<FordFixed>()
+            + get_base_len()
+            + size_of::<FordVariable>();
+        let mut buffer = vec![0; account_size];
+
+        let mut state = TlvStateNonStrictMut::unpack(&mut buffer).unwrap();
+        state
+            .add_entry::<ChevroletFixed>(&chevrolet_fixed1)
+            .unwrap();
+        state
+            .add_entry::<ChevroletFixed>(&chevrolet_fixed2)
+            .unwrap();
+        state
+            .add_variable_len_entry::<ChevroletVariable>(&chevrolet_variable)
+            .unwrap();
+        state.add_entry::<FordFixed>(&ford_fixed1).unwrap();
+        state.add_entry::<FordFixed>(&ford_fixed2).unwrap();
+        state
+            .add_variable_len_entry::<FordVariable>(&ford_variable)
+            .unwrap();
+
+        let mut iter = state.into_iter();
+        assert_eq!(
+            iter.next_tlv_entry::<ChevroletFixed>().unwrap(),
+            &chevrolet_fixed1
+        );
+        assert_eq!(
+            iter.next_tlv_entry::<ChevroletFixed>().unwrap(),
+            &chevrolet_fixed2
+        );
+        assert_eq!(
+            iter.next_variable_len_tlv_entry::<ChevroletVariable>()
+                .unwrap(),
+            chevrolet_variable
+        );
+        assert_eq!(iter.next_tlv_entry::<FordFixed>().unwrap(), &ford_fixed1);
+        assert_eq!(iter.next_tlv_entry::<FordFixed>().unwrap(), &ford_fixed2);
+        assert_eq!(
+            iter.next_variable_len_tlv_entry::<FordVariable>().unwrap(),
             ford_variable
         );
     }

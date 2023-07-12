@@ -20,4 +20,7 @@ pub enum TlvError {
     /// Provided byte buffer too large for expected type
     #[error("Provided byte buffer too large for expected type")]
     BufferTooLarge,
+    /// Enf of TLV iterator
+    #[error("End of TLV iterator")]
+    TlvIteratorEnd,
 }
