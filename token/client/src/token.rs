@@ -21,8 +21,9 @@ use {
     spl_token_2022::{
         extension::{
             confidential_transfer::{
-                self, ApplyPendingBalanceAccountInfo, ConfidentialTransferAccount,
-                WithdrawAccountInfo,
+                self,
+                account_info::{ApplyPendingBalanceAccountInfo, WithdrawAccountInfo},
+                ConfidentialTransferAccount,
             },
             cpi_guard, default_account_state, interest_bearing_mint, memo_transfer,
             metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,

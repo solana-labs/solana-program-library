@@ -1,0 +1,163 @@
+#[cfg(not(target_os = "solana"))]
+use {
+    crate::{
+        error::TokenError,
+        extension::confidential_transfer::{
+            DecryptableBalance, EncryptedBalance, PENDING_BALANCE_LO_BIT_LENGTH,
+        },
+        pod::*,
+    },
+    bytemuck::{Pod, Zeroable},
+    solana_zk_token_sdk::{
+        encryption::{
+            auth_encryption::{AeCiphertext, AeKey},
+            elgamal::{ElGamalKeypair, ElGamalSecretKey},
+        },
+        instruction::withdraw::WithdrawData,
+    },
+};
+
+/// Confidential Transfer extension information needed to construct an `ApplyPendingBalance`
+/// instruction.
+#[cfg(not(target_os = "solana"))]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct ApplyPendingBalanceAccountInfo {
+    /// The total number of `Deposit` and `Transfer` instructions that have credited
+    /// `pending_balance`
+    pub(crate) pending_balance_credit_counter: PodU64,
+    /// The low 16 bits of the pending balance (encrypted by `elgamal_pubkey`)
+    pub(crate) pending_balance_lo: EncryptedBalance,
+    /// The high 48 bits of the pending balance (encrypted by `elgamal_pubkey`)
+    pub(crate) pending_balance_hi: EncryptedBalance,
+    /// The decryptable available balance
+    pub(crate) decryptable_available_balance: DecryptableBalance,
+}
+#[cfg(not(target_os = "solana"))]
+impl ApplyPendingBalanceAccountInfo {
+    /// Return the pending balance credit counter of the account.
+    pub fn pending_balance_credit_counter(&self) -> u64 {
+        self.pending_balance_credit_counter.into()
+    }
+
+    fn decrypted_pending_balance_lo(
+        &self,
+        elgamal_secret_key: &ElGamalSecretKey,
+    ) -> Result<u64, TokenError> {
+        let pending_balance_lo = self
+            .pending_balance_lo
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        elgamal_secret_key
+            .decrypt_u32(&pending_balance_lo)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    fn decrypted_pending_balance_hi(
+        &self,
+        elgamal_secret_key: &ElGamalSecretKey,
+    ) -> Result<u64, TokenError> {
+        let pending_balance_hi = self
+            .pending_balance_hi
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        elgamal_secret_key
+            .decrypt_u32(&pending_balance_hi)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
+        let decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        aes_key
+            .decrypt(&decryptable_available_balance)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    /// Update the decryptable available balance.
+    pub fn new_decryptable_available_balance(
+        &self,
+        elgamal_secret_key: &ElGamalSecretKey,
+        aes_key: &AeKey,
+    ) -> Result<AeCiphertext, TokenError> {
+        let decrypted_pending_balance_lo = self.decrypted_pending_balance_lo(elgamal_secret_key)?;
+        let decrypted_pending_balance_hi = self.decrypted_pending_balance_hi(elgamal_secret_key)?;
+        let pending_balance =
+            combine_balances(decrypted_pending_balance_lo, decrypted_pending_balance_hi)
+                .ok_or(TokenError::AccountDecryption)?;
+        let current_available_balance = self.decrypted_available_balance(aes_key)?;
+        let new_decrypted_available_balance = current_available_balance
+            .checked_add(pending_balance)
+            .unwrap(); // total balance cannot exceed `u64`
+
+        Ok(aes_key.encrypt(new_decrypted_available_balance))
+    }
+}
+
+/// Confidential Transfer extension information needed to construct a `Withdraw` instruction.
+#[cfg(not(target_os = "solana"))]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct WithdrawAccountInfo {
+    /// The available balance (encrypted by `encrypiton_pubkey`)
+    pub available_balance: EncryptedBalance,
+    /// The decryptable available balance
+    pub decryptable_available_balance: DecryptableBalance,
+}
+#[cfg(not(target_os = "solana"))]
+impl WithdrawAccountInfo {
+    fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
+        let decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        aes_key
+            .decrypt(&decryptable_available_balance)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    /// Create a withdraw proof data.
+    pub fn generate_proof_data(
+        &self,
+        withdraw_amount: u64,
+        elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+    ) -> Result<WithdrawData, TokenError> {
+        let current_available_balance = self
+            .available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
+
+        WithdrawData::new(
+            withdraw_amount,
+            elgamal_keypair,
+            current_decrypted_available_balance,
+            &current_available_balance,
+        )
+        .map_err(|_| TokenError::ProofGeneration)
+    }
+
+    /// Update the decryptable available balance.
+    pub fn new_decryptable_available_balance(
+        &self,
+        withdraw_amount: u64,
+        aes_key: &AeKey,
+    ) -> Result<AeCiphertext, TokenError> {
+        let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
+        let new_decrypted_available_balance = current_decrypted_available_balance
+            .checked_sub(withdraw_amount)
+            .ok_or(TokenError::InsufficientFunds)?;
+
+        Ok(aes_key.encrypt(new_decrypted_available_balance))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+fn combine_balances(balance_lo: u64, balance_hi: u64) -> Option<u64> {
+    balance_hi
+        .checked_shl(PENDING_BALANCE_LO_BIT_LENGTH)?
+        .checked_add(balance_lo)
+}
