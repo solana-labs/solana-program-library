@@ -143,9 +143,26 @@ pub fn process_remove_key(
 /// Processes a [UpdateAuthority](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_update_authority(
     _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-    _data: UpdateAuthority,
+    accounts: &[AccountInfo],
+    data: UpdateAuthority,
 ) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let metadata_info = next_account_info(account_info_iter)?;
+    let update_authority_info = next_account_info(account_info_iter)?;
+
+    // deserialize the metadata, but scope the data borrow since we'll write
+    // to the account later
+    let mut token_metadata = {
+        let buffer = metadata_info.try_borrow_data()?;
+        let mint = StateWithExtensions::<Mint>::unpack(&buffer)?;
+        mint.get_variable_len_extension::<TokenMetadata>()?
+    };
+
+    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
+    token_metadata.update_authority = data.new_authority;
+    // Update the account, no realloc needed!
+    alloc_and_serialize::<Mint, _>(metadata_info, &token_metadata, true)?;
+
     Ok(())
 }
 

@@ -2701,4 +2701,23 @@ where
         ));
         self.process_ixs(&instructions, signing_keypairs).await
     }
+
+    /// Update the token-metadata authority in a mint
+    pub async fn token_metadata_update_authority<S: Signers>(
+        &self,
+        current_authority: &Pubkey,
+        new_authority: Option<Pubkey>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[spl_token_metadata_interface::instruction::update_authority(
+                &self.program_id,
+                &self.pubkey,
+                current_authority,
+                new_authority.try_into()?,
+            )],
+            signing_keypairs,
+        )
+        .await
+    }
 }
