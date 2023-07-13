@@ -208,4 +208,16 @@ impl ConfidentialTransferAccount {
             decryptable_available_balance,
         }
     }
+
+    /// Return the account information needed to construct a `Transfer` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn transfer_account_info(&self) -> TransferAccountInfo {
+        let available_balance = self.available_balance;
+        let decryptable_available_balance = self.decryptable_available_balance;
+
+        TransferAccountInfo {
+            available_balance,
+            decryptable_available_balance,
+        }
+    }
 }

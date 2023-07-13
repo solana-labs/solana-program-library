@@ -22,7 +22,9 @@ use {
         extension::{
             confidential_transfer::{
                 self,
-                account_info::{ApplyPendingBalanceAccountInfo, WithdrawAccountInfo},
+                account_info::{
+                    ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
+                },
                 ConfidentialTransferAccount,
             },
             cpi_guard, default_account_state, interest_bearing_mint, memo_transfer,
@@ -33,9 +35,9 @@ use {
         solana_zk_token_sdk::{
             encryption::{
                 auth_encryption::AeKey,
-                elgamal::{ElGamalKeypair, ElGamalSecretKey},
+                elgamal::{ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
             },
-            zk_token_elgamal::pod::ElGamalPubkey,
+            zk_token_elgamal::pod::ElGamalPubkey as PodElGamalPubkey,
         },
         state::{Account, AccountState, Mint, Multisig},
     },
@@ -122,7 +124,7 @@ pub enum ExtensionInitializationParams {
     ConfidentialTransferMint {
         authority: Option<Pubkey>,
         auto_approve_new_accounts: bool,
-        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+        auditor_elgamal_pubkey: Option<PodElGamalPubkey>,
     },
     DefaultAccountState {
         state: AccountState,
@@ -1619,7 +1621,7 @@ where
         &self,
         authority: &Pubkey,
         auto_approve_new_account: bool,
-        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+        auditor_elgamal_pubkey: Option<PodElGamalPubkey>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
@@ -2045,92 +2047,59 @@ where
         .await
     }
 
-    /// Transfer tokens confidentially using the uniquely derived decryption keys from a signer
+    /// Transfer tokens confidentially
     #[allow(clippy::too_many_arguments)]
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_transfer<S: Signer>(
+    pub async fn confidential_transfer_transfer<S: Signers>(
         &self,
-        source_token_account: &Pubkey,
-        destination_token_account: &Pubkey,
-        source_token_authority: &S,
-        amount: u64,
-        source_available_balance: u64,
-        source_available_balance_ciphertext: &ElGamalCiphertext,
-        destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
-    ) -> TokenResult<T::Output> {
-        let source_elgamal_keypair =
-            ElGamalKeypair::new(source_token_authority, source_token_account)
-                .map_err(TokenError::Key)?;
-        let source_authenticated_encryption_key =
-            AeKey::new(source_token_authority, source_token_account).map_err(TokenError::Key)?;
-
-        self.confidential_transfer_transfer_with_key(
-            source_token_account,
-            destination_token_account,
-            source_token_authority,
-            amount,
-            source_available_balance,
-            source_available_balance_ciphertext,
-            destination_elgamal_pubkey,
-            auditor_elgamal_pubkey,
-            &source_elgamal_keypair,
-            &source_authenticated_encryption_key,
-        )
-        .await
-    }
-
-    /// Transfer tokens confidentially using custom decryption keys
-    #[allow(clippy::too_many_arguments)]
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_transfer_with_key<S: Signer>(
-        &self,
-        source_token_account: &Pubkey,
-        destination_token_account: &Pubkey,
-        source_token_authority: &S,
-        amount: u64,
-        source_available_balance: u64,
-        source_available_balance_ciphertext: &ElGamalCiphertext,
-        destination_elgamal_pubkey: &ElGamalPubkey,
-        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+        source_account: &Pubkey,
+        destination_account: &Pubkey,
+        source_authority: &Pubkey,
+        transfer_amount: u64,
+        account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
-        source_authenticated_encryption_key: &AeKey,
+        source_aes_key: &AeKey,
+        destination_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        if amount >> confidential_transfer::MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH != 0 {
-            return Err(TokenError::MaximumDepositTransferAmountExceeded);
-        }
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(source_authority, &signing_pubkeys);
 
-        let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
+        let account_info = if let Some(account_info) = account_info {
+            account_info
+        } else {
+            self.get_account_info(source_account)
+                .await?
+                .get_extension::<ConfidentialTransferAccount>()?
+                .transfer_account_info()
+        };
 
-        let proof_data = confidential_transfer::instruction::TransferData::new(
-            amount,
-            (
-                source_available_balance,
-                source_available_balance_ciphertext,
-            ),
-            source_elgamal_keypair,
-            (destination_elgamal_pubkey, &auditor_elgamal_pubkey),
-        )
-        .map_err(TokenError::Proof)?;
+        let proof_data = account_info
+            .generate_proof_data(
+                transfer_amount,
+                source_elgamal_keypair,
+                source_aes_key,
+                destination_elgamal_pubkey,
+                auditor_elgamal_pubkey,
+            )
+            .map_err(|_| TokenError::ProofGeneration)?;
 
-        let source_remaining_balance = source_available_balance
-            .checked_sub(amount)
-            .ok_or(TokenError::NotEnoughFunds)?;
-        let new_source_available_balance =
-            source_authenticated_encryption_key.encrypt(source_remaining_balance);
+        let new_decryptable_available_balance = account_info
+            .new_decryptable_available_balance(transfer_amount, source_aes_key)
+            .map_err(|_| TokenError::AccountDecryption)?;
 
         self.process_ixs(
             &confidential_transfer::instruction::transfer(
                 &self.program_id,
-                source_token_account,
-                destination_token_account,
+                source_account,
+                destination_account,
                 &self.pubkey,
-                new_source_available_balance,
-                &source_token_authority.pubkey(),
-                &[],
+                new_decryptable_available_balance,
+                source_authority,
+                &multisig_signers,
                 &proof_data,
             )?,
-            &[source_token_authority],
+            signing_keypairs,
         )
         .await
     }

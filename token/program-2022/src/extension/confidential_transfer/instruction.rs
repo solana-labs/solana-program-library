@@ -771,7 +771,6 @@ pub fn inner_transfer(
 /// Create a `Transfer` instruction with regular (no-fee) proof
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_os = "solana"))]
-#[cfg(feature = "proof-program")]
 pub fn transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -793,8 +792,7 @@ pub fn transfer(
             multisig_signers,
             1,
         )?, // calls check_program_account
-        #[cfg(feature = "proof-program")]
-        verify_transfer(proof_data),
+        verify_transfer(None, proof_data),
     ])
 }
 

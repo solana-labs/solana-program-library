@@ -11,9 +11,9 @@ use {
     solana_zk_token_sdk::{
         encryption::{
             auth_encryption::{AeCiphertext, AeKey},
-            elgamal::{ElGamalKeypair, ElGamalSecretKey},
+            elgamal::{ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
         },
-        instruction::withdraw::WithdrawData,
+        instruction::{transfer::TransferData, withdraw::WithdrawData},
     },
 };
 
@@ -149,6 +149,74 @@ impl WithdrawAccountInfo {
         let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
         let new_decrypted_available_balance = current_decrypted_available_balance
             .checked_sub(withdraw_amount)
+            .ok_or(TokenError::InsufficientFunds)?;
+
+        Ok(aes_key.encrypt(new_decrypted_available_balance))
+    }
+}
+
+/// Confidential Transfer extension information needed to construct a `Transfer` instruction.
+#[cfg(not(target_os = "solana"))]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct TransferAccountInfo {
+    /// The available balance (encrypted by `encrypiton_pubkey`)
+    pub available_balance: EncryptedBalance,
+    /// The decryptable available balance
+    pub decryptable_available_balance: DecryptableBalance,
+}
+#[cfg(not(target_os = "solana"))]
+impl TransferAccountInfo {
+    fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
+        let decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        aes_key
+            .decrypt(&decryptable_available_balance)
+            .ok_or(TokenError::AccountDecryption)
+    }
+
+    /// Create a transfer proof data.
+    pub fn generate_proof_data(
+        &self,
+        transfer_amount: u64,
+        elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+        destination_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
+    ) -> Result<TransferData, TokenError> {
+        let current_source_available_balance = self
+            .available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+        let current_source_decrypted_available_balance =
+            self.decrypted_available_balance(aes_key)?;
+
+        let default_auditor_pubkey = ElGamalPubkey::default();
+        let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or(&default_auditor_pubkey);
+
+        TransferData::new(
+            transfer_amount,
+            (
+                current_source_decrypted_available_balance,
+                &current_source_available_balance,
+            ),
+            elgamal_keypair,
+            (destination_elgamal_pubkey, auditor_elgamal_pubkey),
+        )
+        .map_err(|_| TokenError::ProofGeneration)
+    }
+
+    /// Update the decryptable available balance.
+    pub fn new_decryptable_available_balance(
+        &self,
+        transfer_amount: u64,
+        aes_key: &AeKey,
+    ) -> Result<AeCiphertext, TokenError> {
+        let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
+        let new_decrypted_available_balance = current_decrypted_available_balance
+            .checked_sub(transfer_amount)
             .ok_or(TokenError::InsufficientFunds)?;
 
         Ok(aes_key.encrypt(new_decrypted_available_balance))
