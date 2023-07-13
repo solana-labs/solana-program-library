@@ -79,7 +79,7 @@ async fn success_update() {
 
     token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &authority.pubkey(),
             &token_context.mint_authority.pubkey(),
@@ -173,7 +173,7 @@ async fn fail_authority_checks() {
 
     token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &authority.pubkey(),
             &token_context.mint_authority.pubkey(),
