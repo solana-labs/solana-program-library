@@ -80,7 +80,7 @@ async fn success_remove() {
 
     token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &update_authority.pubkey(),
             &token_context.mint_authority.pubkey(),
@@ -100,7 +100,7 @@ async fn success_remove() {
     // add the field
     token_context
         .token
-        .update_field_in_token_metadata_with_rent_transfer(
+        .token_metadata_update_field_with_rent_transfer(
             &payer_pubkey,
             &update_authority.pubkey(),
             field,
@@ -198,7 +198,7 @@ async fn fail_authority_checks() {
 
     token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &update_authority.pubkey(),
             &token_context.mint_authority.pubkey(),
