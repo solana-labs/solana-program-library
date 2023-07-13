@@ -2547,7 +2547,7 @@ where
     }
 
     /// Initialize token-metadata on a mint
-    pub async fn initialize_token_metadata<S: Signers>(
+    pub async fn token_metadata_initialize<S: Signers>(
         &self,
         update_authority: &Pubkey,
         mint_authority: &Pubkey,
@@ -2590,7 +2590,7 @@ where
 
     /// Initialize token-metadata on a mint
     #[allow(clippy::too_many_arguments)]
-    pub async fn initialize_token_metadata_with_rent_transfer<S: Signers>(
+    pub async fn token_metadata_initialize_with_rent_transfer<S: Signers>(
         &self,
         payer: &Pubkey,
         update_authority: &Pubkey,
@@ -2631,7 +2631,7 @@ where
     }
 
     /// Update a token-metadata field on a mint
-    pub async fn update_field_in_token_metadata<S: Signers>(
+    pub async fn token_metadata_update_field<S: Signers>(
         &self,
         update_authority: &Pubkey,
         field: Field,
@@ -2673,7 +2673,7 @@ where
     /// Update a token-metadata field on a mint. Includes a transfer for any
     /// additional rent-exempt SOL required.
     #[allow(clippy::too_many_arguments)]
-    pub async fn update_field_in_token_metadata_with_rent_transfer<S: Signers>(
+    pub async fn token_metadata_update_field_with_rent_transfer<S: Signers>(
         &self,
         payer: &Pubkey,
         update_authority: &Pubkey,

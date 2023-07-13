@@ -82,7 +82,7 @@ async fn success(start: Option<u64>, end: Option<u64>) {
 
     token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &update_authority.pubkey(),
             &token_context.mint_authority.pubkey(),
