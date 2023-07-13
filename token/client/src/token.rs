@@ -2720,4 +2720,25 @@ where
         )
         .await
     }
+
+    /// Remove a token-metadata field on a mint
+    pub async fn token_metadata_remove_key<S: Signers>(
+        &self,
+        update_authority: &Pubkey,
+        key: String,
+        idempotent: bool,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[spl_token_metadata_interface::instruction::remove_key(
+                &self.program_id,
+                &self.pubkey,
+                update_authority,
+                key,
+                idempotent,
+            )],
+            signing_keypairs,
+        )
+        .await
+    }
 }
