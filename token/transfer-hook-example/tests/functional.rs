@@ -1,4 +1,5 @@
-// Mark this test as SBF-only due to current `ProgramTest` limitations when CPIing into the system program
+// Mark this test as SBF-only due to current `ProgramTest` limitations when
+// CPIing into the system program
 #![cfg(feature = "test-sbf")]
 
 use {

@@ -884,8 +884,8 @@ where
                 .map(|p| AccountMeta::new_readonly(*p, false));
             instruction.accounts.extend(additional_account_metas);
         } else {
-            offchain::get_extra_transfer_account_metas(
-                &mut instruction.accounts,
+            offchain::resolve_extra_transfer_account_metas(
+                &mut instruction,
                 |address| {
                     self.client
                         .get_account(address)

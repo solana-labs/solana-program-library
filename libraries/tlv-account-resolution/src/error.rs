@@ -20,4 +20,31 @@ pub enum AccountResolutionError {
     /// Too many pubkeys provided
     #[error("Too many pubkeys provided")]
     TooManyPubkeys,
+    /// Failed to parse `Pubkey` from bytes
+    #[error("Failed to parse `Pubkey` from bytes")]
+    InvalidPubkey,
+    /// Invalid account type
+    #[error("Invalid account type")]
+    InvalidAccountType,
+    /// Attempted to deserialize an `AccountMeta` but the underlying type was
+    /// `AccountMetaPda`
+    #[error(
+        "Attempted to deserialize an `AccountMeta` but the underlying type was `AccountMetaPda`"
+    )]
+    RequiredAccountNotAccountMeta,
+    /// Attempted to deserialize an `AccountMetaPda` but the underlying type was
+    /// `AccountMeta`
+    #[error(
+        "Attempted to deserialize an `AccountMetaPda` but the underlying type was `AccountMeta`"
+    )]
+    RequiredAccountNotPda,
+    /// Provided list of seed configurations too large for a validation account
+    #[error("Provided list of seed configurations too large for a validation account")]
+    SeedConfigsTooLarge,
+    /// Circular reference in validation account PDA configuration
+    #[error("Circular reference in validation account PDA configuration")]
+    CircularReference,
+    /// Could not find account at specified index
+    #[error("Could not find account at specified index")]
+    AccountNotFound,
 }

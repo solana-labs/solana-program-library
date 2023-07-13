@@ -4,6 +4,7 @@ use {
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
+        instruction::AccountMeta,
         msg,
         program::invoke_signed,
         program_error::ProgramError,
@@ -76,7 +77,11 @@ pub fn process_execute(
 
     // Let's assume that they're provided in the correct order
     for (i, account_info) in extra_account_infos.iter().enumerate() {
-        if &account_metas[i] != account_info {
+        let meta = AccountMeta::try_from(&account_metas[i])?;
+        if &meta.pubkey != account_info.key
+            && meta.is_signer != account_info.is_signer
+            && meta.is_writable != account_info.is_writable
+        {
             return Err(TransferHookError::IncorrectAccount.into());
         }
     }
