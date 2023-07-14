@@ -4,7 +4,8 @@ use {
     crate::processor,
     solana_program::{
         account_info::AccountInfo,
-        entrypoint::{self, ProgramResult},
+        entrypoint,
+        entrypoint::ProgramResult,
         program_error::PrintProgramError,
         pubkey::Pubkey,
     },
