@@ -123,8 +123,8 @@ impl From<&RequiredAccount> for PodAccountMeta {
             } => Self {
                 discriminator: 0,
                 address_config: pubkey.to_bytes(),
-                is_signer: PodBool::from(*is_signer),
-                is_writable: PodBool::from(*is_writable),
+                is_signer: is_signer.into(),
+                is_writable: is_writable.into(),
             },
             RequiredAccount::Pda {
                 seeds,
@@ -133,8 +133,8 @@ impl From<&RequiredAccount> for PodAccountMeta {
             } => Self {
                 discriminator: 1,
                 address_config: Seed::pack_into_array(seeds).unwrap(),
-                is_signer: PodBool::from(*is_signer),
-                is_writable: PodBool::from(*is_writable),
+                is_signer: is_signer.into(),
+                is_writable: is_writable.into(),
             },
         }
     }

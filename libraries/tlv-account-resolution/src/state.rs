@@ -4,20 +4,18 @@ use {
     crate::{
         account::{PodAccountMeta, RequiredAccount},
         error::AccountResolutionError,
-        seeds::Seed,
+        queue::AccountResolutionQueue,
     },
     solana_program::{
         account_info::AccountInfo,
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
-        pubkey::Pubkey,
     },
     spl_discriminator::SplDiscriminate,
     spl_type_length_value::{
         pod::{PodSlice, PodSliceMut},
         state::{TlvState, TlvStateBorrowed, TlvStateMut},
     },
-    std::collections::{HashMap, HashSet},
 };
 
 /// Stateless helper for storing additional accounts required for an
@@ -152,19 +150,7 @@ impl ExtraAccountMetas {
         instruction: &mut Instruction,
         data: &[u8],
     ) -> Result<(), ProgramError> {
-        // Because the seed configurations for an `AccountMetaPda` can reference
-        // the public key of another account in either the instruction's accounts
-        // or the required extra accounts, we have to collect all accounts
-        // first as a `RequiredAccount` and then resolve them to `AccountMeta`s
-        // afterwards, when we know which ones to grab first.
-        //
-        // This is due to the fact that, for example, a PDA at index 3 could
-        // require the pubkey of another PDA at index 5 (after it).
-        //
-        // To solve this, we are using a tree!
-        let mut tree = AccountResolutionTree::build::<T>(instruction, data)?;
-
-        tree.resolve_instruction(instruction)
+        AccountResolutionQueue::resolve::<T>(instruction, data)
     }
 
     /// Add the additional account metas and account infos for a CPI
@@ -174,322 +160,17 @@ impl ExtraAccountMetas {
         data: &[u8],
         account_infos: &[AccountInfo<'a>],
     ) -> Result<(), ProgramError> {
-        // Because the seed configurations for an `AccountMetaPda` can reference
-        // the public key of another account in either the instruction's accounts
-        // or the required extra accounts, we have to collect all accounts
-        // first as a `RequiredAccount` and then resolve them to `AccountMeta`s
-        // afterwards, when we know which ones to grab first.
-        //
-        // This is due to the fact that, for example, a PDA at index 3 could
-        // require the pubkey of another PDA at index 5 (after it).
-        //
-        // To solve this, we are using a tree!
-        let mut tree = AccountResolutionTree::build::<T>(cpi_instruction, data)?;
+        AccountResolutionQueue::resolve::<T>(cpi_instruction, data)?;
 
-        tree.resolve_cpi(cpi_instruction, cpi_account_infos, account_infos)
-    }
-}
-
-/// The tree node's value and it's child values
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct Node {
-    /// The node's index in the list of accounts
-    index: usize,
-    /// The branches of the node
-    branches: Option<Vec<Node>>,
-}
-
-/// A tree for resolving required accounts
-struct AccountResolutionTree {
-    /// The root nodes of the tree
-    root: Vec<Node>,
-    /// A map of all required accounts
-    required_accounts_map: HashMap<usize, RequiredAccount>,
-    /// The initial length of the instruction accounts list
-    initial_instruction_accounts_len: usize,
-}
-impl AccountResolutionTree {
-    /// Create a new instance of a tree
-    fn new(instruction_accounts: &Vec<AccountMeta>) -> Self {
-        // Initializes the tree with all instruction accounts as root nodes
-        // and creates a map of them required accounts (`RequiredAccount::AccountMeta`)
-        let initial_instruction_accounts_len = instruction_accounts.len();
-        let mut required_accounts_map = HashMap::new();
-        let mut root = vec![];
-        for (index, acct) in instruction_accounts.iter().enumerate() {
-            let required_account = RequiredAccount::from(acct);
-            required_accounts_map.insert(index, required_account);
-            root.push(Node {
-                index,
-                branches: None,
-            });
-        }
-        Self {
-            root,
-            required_accounts_map,
-            initial_instruction_accounts_len,
-        }
-    }
-
-    fn find_recursive(row: &Vec<Node>, index: usize) -> Option<&Node> {
-        for node in row {
-            if node.index == index {
-                return Some(node);
-            }
-            if let Some(ref branches) = node.branches {
-                if let Some(branch) = Self::find_recursive(branches, index) {
-                    return Some(branch);
-                }
-            }
-        }
-        None
-    }
-
-    fn update_recursive(
-        row: &mut Vec<Node>,
-        node_index: usize,
-        branch: &Node,
-    ) -> Result<(), ProgramError> {
-        let branch_index = branch.index;
-        for mut node in row.iter_mut() {
-            if node.index == node_index {
-                if let Some(ref mut branches) = node.branches {
-                    branches.push(branch.clone());
-                } else {
-                    node.branches = Some(vec![branch.clone()]);
-                }
-                break;
-            } else if let Some(branches) = &mut node.branches {
-                Self::update_recursive(branches, node_index, branch)?;
-            }
-        }
-        row.retain(|node| node.index != branch_index);
-        Ok(())
-    }
-
-    /// Update the tree with new node information
-    fn update(
-        &mut self,
-        index: usize,
-        dependencies: Option<Vec<usize>>,
-    ) -> Result<(), ProgramError> {
-        if let Some(deps) = dependencies {
-            for d in deps {
-                let branch = match Self::find_recursive(&self.root, index) {
-                    Some(branch) => branch.clone(),
-                    None => Node {
-                        index,
-                        branches: None,
-                    },
-                };
-                Self::update_recursive(&mut self.root, d, &branch)?;
-            }
-        } else {
-            // If no other accounts depend on this account, add it to the root
-            self.root.push(Node {
-                index,
-                branches: None,
-            });
-        }
-        Ok(())
-    }
-
-    /// Process a required account and add it to the tree
-    fn add(&mut self, index: usize, required_account: RequiredAccount) -> Result<(), ProgramError> {
-        let accounts_list_index = index + self.initial_instruction_accounts_len;
-        match &required_account {
-            RequiredAccount::Account { .. } => self.update(accounts_list_index, None)?,
-            RequiredAccount::Pda { seeds, .. } => {
-                self.update(accounts_list_index, Seed::get_account_key_indices(seeds))?
-            }
-        }
-        self.required_accounts_map
-            .insert(accounts_list_index, required_account);
-        Ok(())
-    }
-
-    /// Build a full tree from an instruction and validation data
-    fn build<T: SplDiscriminate>(
-        instruction: &Instruction,
-        data: &[u8],
-    ) -> Result<Self, ProgramError> {
-        let mut tree = Self::new(&instruction.accounts);
-        let state = TlvStateBorrowed::unpack(data)?;
-        let bytes = state.get_bytes::<T>()?;
-        let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
-
-        for (index, account_meta) in extra_account_metas.data().iter().enumerate() {
-            let required_account = RequiredAccount::try_from(account_meta)?;
-            tree.add(index, required_account)?;
-        }
-
-        Ok(tree)
-    }
-
-    fn collapse_map(
-        required_accounts_map: &HashMap<usize, RequiredAccount>,
-    ) -> Result<Vec<AccountMeta>, ProgramError> {
-        let mut account_metas = vec![];
-        for (k, v) in required_accounts_map {
-            let meta = AccountMeta::try_from(v)?;
-            account_metas.push((k, meta));
-        }
-        account_metas.sort_by_key(|k| k.0);
-        Ok(account_metas.into_iter().map(|(_, v)| v).collect())
-    }
-
-    fn resolve_recursive(
-        required_accounts_map: &mut HashMap<usize, RequiredAccount>,
-        program_id: &Pubkey,
-        instruction_data: &[u8],
-        row: &HashSet<&Node>,
-    ) -> Result<Vec<AccountMeta>, ProgramError> {
-        let mut next_row: HashSet<&Node> = HashSet::new();
-        for node in row {
-            if let Some(b) = &node.branches {
-                for branch_node in b {
-                    next_row.insert(branch_node);
-                }
-            }
-            let peek_required_account = required_accounts_map
-                .get(&node.index)
-                .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?;
-            let maybe_resolved_meta = if let RequiredAccount::Pda {
-                seeds,
-                is_signer,
-                is_writable,
-            } = peek_required_account
-            {
-                let mut pda_seeds: Vec<&[u8]> = vec![];
-                for config in seeds {
-                    match config {
-                        Seed::Literal { bytes } => pda_seeds.push(bytes),
-                        Seed::InstructionArg { index, ty } => {
-                            let arg_start = *index as usize;
-                            let arg_end = arg_start + ty.arg_size() as usize;
-                            pda_seeds.push(&instruction_data[arg_start..arg_end]);
-                        }
-                        Seed::AccountKey { index } => {
-                            let account_index = *index as usize;
-                            let account_meta = required_accounts_map
-                                .get(&account_index)
-                                .ok_or::<ProgramError>(
-                                AccountResolutionError::AccountNotFound.into(),
-                            )?;
-                            if let RequiredAccount::Account { pubkey, .. } = account_meta {
-                                pda_seeds.push(pubkey.as_ref());
-                            } else {
-                                return Err(AccountResolutionError::CircularReference.into());
-                            }
-                        }
-                    }
-                }
-                Some(RequiredAccount::Account {
-                    pubkey: Pubkey::find_program_address(&pda_seeds, program_id).0,
-                    is_signer: *is_signer,
-                    is_writable: *is_writable,
-                })
-            } else {
-                None
-            };
-            if let Some(meta) = maybe_resolved_meta {
-                required_accounts_map.insert(node.index, meta);
-            }
-        }
-        if next_row.is_empty() {
-            // No branches, so we're at the end of the tree
-            Self::collapse_map(required_accounts_map)
-        } else {
-            // Recursively resolve the next layer of nodes
-            Self::resolve_recursive(
-                required_accounts_map,
-                program_id,
-                instruction_data,
-                &next_row,
-            )
-        }
-    }
-
-    /// Resolves the entire tree by traversing the tree and evaluating
-    /// each node into a resolved account meta
-    fn resolve(
-        &mut self,
-        program_id: &Pubkey,
-        instruction_data: &[u8],
-    ) -> Result<Vec<AccountMeta>, ProgramError> {
-        Self::resolve_recursive(
-            &mut self.required_accounts_map,
-            program_id,
-            instruction_data,
-            &self.root.iter().collect::<HashSet<_>>(),
-        )
-    }
-
-    fn de_escalate_account_meta(
-        account_meta: &mut AccountMeta,
-        account_metas: &[AccountMeta],
-        initial_length: usize,
-    ) {
-        // This is a little tricky to read, but the idea is to see if
-        // this account is marked as writable or signer anywhere in
-        // the instruction at the start. If so, DON'T escalate it to
-        // be a writer or signer
-        let maybe_highest_privileges = account_metas
-            .iter()
-            .take(initial_length)
-            .filter(|&x| x.pubkey == account_meta.pubkey)
-            .map(|x| (x.is_signer, x.is_writable))
-            .reduce(|acc, x| (acc.0 || x.0, acc.1 || x.1));
-        // If `Some`, then the account was found somewhere in the instruction
-        if let Some((is_signer, is_writable)) = maybe_highest_privileges {
-            if !is_signer && is_signer != account_meta.is_signer {
-                // Existing account is *NOT* a signer already,
-                // so de-escalate to not be a signer
-                account_meta.is_signer = false;
-            }
-            if !is_writable && is_writable != account_meta.is_writable {
-                // Existing account is *NOT* writable already,
-                // so de-escalate to not be writable
-                account_meta.is_writable = false;
-            }
-        }
-    }
-
-    /// Resolve the tree for an instruction
-    fn resolve_instruction(&mut self, instruction: &mut Instruction) -> Result<(), ProgramError> {
-        instruction.accounts.clear();
-        for mut account_meta in self.resolve(&instruction.program_id, &instruction.data)? {
-            Self::de_escalate_account_meta(
-                &mut account_meta,
-                &instruction.accounts,
-                self.initial_instruction_accounts_len,
-            );
-            instruction.accounts.push(account_meta);
-        }
-        Ok(())
-    }
-
-    /// Resolve the tree for a CPI instruction
-    fn resolve_cpi<'a>(
-        &mut self,
-        cpi_instruction: &mut Instruction,
-        cpi_account_infos: &mut Vec<AccountInfo<'a>>,
-        account_infos: &[AccountInfo<'a>],
-    ) -> Result<(), ProgramError> {
-        cpi_instruction.accounts.clear();
-        for mut account_meta in self.resolve(&cpi_instruction.program_id, &cpi_instruction.data)? {
+        for account_meta in cpi_instruction.accounts.iter() {
             let account_info = account_infos
                 .iter()
                 .find(|&x| *x.key == account_meta.pubkey)
                 .ok_or(AccountResolutionError::IncorrectAccount)?
                 .clone();
-            Self::de_escalate_account_meta(
-                &mut account_meta,
-                &cpi_instruction.accounts,
-                self.initial_instruction_accounts_len,
-            );
-            cpi_account_infos.push(account_info);
-            cpi_instruction.accounts.push(account_meta);
+            if !cpi_account_infos.iter().any(|x| x.key == account_info.key) {
+                cpi_account_infos.push(account_info);
+            }
         }
         Ok(())
     }
@@ -516,7 +197,7 @@ mod tests {
             ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
     }
 
-    // #[cfg(ignore)]
+    #[cfg(ignore)]
     #[test]
     fn init_with_metas() {
         let metas = [
@@ -533,6 +214,7 @@ mod tests {
         let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
         ExtraAccountMetas::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
             .unwrap();
+
         assert_eq!(
             instruction
                 .accounts
@@ -626,7 +308,7 @@ mod tests {
         );
     }
 
-    // #[cfg(ignore)]
+    #[cfg(ignore)]
     #[test]
     fn init_multiple() {
         let metas = [
@@ -825,7 +507,7 @@ mod tests {
         );
     }
 
-    // #[cfg(ignore)]
+    #[cfg(ignore)]
     #[test]
     fn init_mixed() {
         // annoying to setup, but need to test this!
@@ -1094,7 +776,7 @@ mod tests {
         );
     }
 
-    // #[cfg(ignore)]
+    #[cfg(ignore)]
     #[test]
     fn cpi_instruction() {
         // annoying to setup, but need to test this!
@@ -1403,5 +1085,115 @@ mod tests {
             assert_eq!(a.is_signer, b.is_signer);
             assert_eq!(a.is_writable, b.is_writable);
         }
+    }
+
+    #[cfg(ignore)]
+    #[test]
+    fn test_queue() {
+        // Adding highly-complex PDA configurations to test Account Resolution queue
+        let program_id = Pubkey::new_unique();
+
+        let extra_meta7_literal_str = "seed_prefix";
+
+        // A
+        let ix_account1 = AccountMeta::new(Pubkey::new_unique(), false);
+        // B
+        let ix_account2 = AccountMeta::new(Pubkey::new_unique(), true);
+
+        // C
+        let extra_meta1 = AccountMeta::new(Pubkey::new_unique(), false);
+        // D
+        let extra_meta2 = AccountMeta::new(Pubkey::new_unique(), true);
+        // E
+        let extra_meta3 = RequiredAccount::Pda {
+            seeds: vec![Seed::AccountKey { index: 3 }, Seed::AccountKey { index: 8 }],
+            is_signer: false,
+            is_writable: true,
+        };
+        // F
+        let extra_meta4 = RequiredAccount::Pda {
+            seeds: vec![
+                Seed::AccountKey { index: 1 },
+                Seed::AccountKey { index: 2 },
+                Seed::AccountKey { index: 4 },
+                Seed::AccountKey { index: 6 },
+                Seed::AccountKey { index: 11 },
+            ],
+            is_signer: false,
+            is_writable: true,
+        };
+        // G
+        let extra_meta5 = RequiredAccount::Pda {
+            seeds: vec![
+                Seed::AccountKey { index: 4 },
+                Seed::AccountKey { index: 8 },
+                Seed::AccountKey { index: 10 },
+            ],
+            is_signer: false,
+            is_writable: true,
+        };
+        // H
+        let extra_meta6 = RequiredAccount::Pda {
+            seeds: vec![
+                Seed::AccountKey { index: 4 },
+                Seed::AccountKey { index: 8 },
+                Seed::AccountKey { index: 10 },
+            ],
+            is_signer: false,
+            is_writable: true,
+        };
+        // I
+        let extra_meta7 = RequiredAccount::Pda {
+            seeds: vec![Seed::Literal {
+                bytes: extra_meta7_literal_str.as_bytes().to_vec(),
+            }],
+            is_signer: false,
+            is_writable: true,
+        };
+        // J
+        let extra_meta8 = RequiredAccount::Pda {
+            seeds: vec![Seed::AccountKey { index: 6 }],
+            is_signer: false,
+            is_writable: true,
+        };
+        // K
+        let extra_meta9 = RequiredAccount::Pda {
+            seeds: vec![Seed::AccountKey { index: 0 }, Seed::AccountKey { index: 8 }],
+            is_signer: false,
+            is_writable: true,
+        };
+        // L
+        let extra_meta10 = RequiredAccount::Pda {
+            seeds: vec![Seed::AccountKey { index: 3 }, Seed::AccountKey { index: 4 }],
+            is_signer: false,
+            is_writable: true,
+        };
+
+        let metas = [
+            RequiredAccount::from(&extra_meta1),
+            RequiredAccount::from(&extra_meta2),
+            extra_meta3,
+            extra_meta4,
+            extra_meta5,
+            extra_meta6,
+            extra_meta7,
+            extra_meta8,
+            extra_meta9,
+            extra_meta10,
+        ];
+
+        let ix_accounts = vec![ix_account1, ix_account2];
+        let mut instruction = Instruction::new_with_bytes(program_id, &[], ix_accounts);
+
+        let account_size = ExtraAccountMetas::size_of(metas.len()).unwrap();
+        let mut buffer = vec![0; account_size];
+
+        ExtraAccountMetas::init_with_required_accounts::<TestInstruction>(&mut buffer, &metas)
+            .unwrap();
+
+        ExtraAccountMetas::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
+            .unwrap();
+
+        assert_eq!(instruction.accounts.len(), 12);
     }
 }

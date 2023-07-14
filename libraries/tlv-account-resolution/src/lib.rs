@@ -9,6 +9,7 @@
 
 pub mod account;
 pub mod error;
+pub mod queue;
 pub mod seeds;
 pub mod state;
 
