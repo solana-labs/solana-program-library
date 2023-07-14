@@ -197,7 +197,6 @@ mod tests {
             ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
     }
 
-    #[cfg(ignore)]
     #[test]
     fn init_with_metas() {
         let metas = [
@@ -225,7 +224,7 @@ mod tests {
         );
     }
 
-    // #[cfg(ignore)]
+    //
     #[test]
     fn init_with_metas_and_seeds() {
         let program_id = Pubkey::new_unique();
@@ -308,7 +307,6 @@ mod tests {
         );
     }
 
-    #[cfg(ignore)]
     #[test]
     fn init_multiple() {
         let metas = [
@@ -356,7 +354,7 @@ mod tests {
         );
     }
 
-    // #[cfg(ignore)]
+    //
     #[test]
     fn init_multiple_with_seeds() {
         let extra_meta5_literal_str = "seed_prefix";
@@ -507,7 +505,6 @@ mod tests {
         );
     }
 
-    #[cfg(ignore)]
     #[test]
     fn init_mixed() {
         // annoying to setup, but need to test this!
@@ -598,7 +595,7 @@ mod tests {
         );
     }
 
-    // #[cfg(ignore)]
+    //
     #[test]
     fn init_mixed_with_seeds() {
         let extra_meta5_literal_str = "seed_prefix";
@@ -776,7 +773,6 @@ mod tests {
         );
     }
 
-    #[cfg(ignore)]
     #[test]
     fn cpi_instruction() {
         // annoying to setup, but need to test this!
@@ -884,7 +880,7 @@ mod tests {
         }
     }
 
-    // #[cfg(ignore)]
+    //
     #[test]
     fn cpi_instruction_with_seeds() {
         let required_pda1_literal_string = "required_pda1";
@@ -1087,7 +1083,6 @@ mod tests {
         }
     }
 
-    #[cfg(ignore)]
     #[test]
     fn test_queue() {
         // Adding highly-complex PDA configurations to test Account Resolution queue
