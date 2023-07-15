@@ -23,7 +23,8 @@ use {
             confidential_transfer::{
                 self,
                 account_info::{
-                    ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
+                    ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo, TransferAccountInfo,
+                    WithdrawAccountInfo,
                 },
                 ConfidentialTransferAccount,
             },
@@ -1726,21 +1727,25 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
+        account_info: Option<EmptyAccountAccountInfo>,
         elgamal_keypair: &ElGamalKeypair,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let state = self.get_account_info(account).await.unwrap();
-        let extension =
-            state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
+        let account_info = if let Some(account_info) = account_info {
+            account_info
+        } else {
+            self.get_account_info(account)
+                .await?
+                .get_extension::<ConfidentialTransferAccount>()?
+                .empty_account_account_info()
+        };
 
-        let proof_data = confidential_transfer::instruction::ZeroBalanceProofData::new(
-            elgamal_keypair,
-            &extension.available_balance.try_into().unwrap(),
-        )
-        .map_err(|_| TokenError::ProofGeneration)?;
+        let proof_data = account_info
+            .generate_proof_data(elgamal_keypair)
+            .map_err(|_| TokenError::ProofGeneration)?;
 
         self.process_ixs(
             &confidential_transfer::instruction::empty_account(

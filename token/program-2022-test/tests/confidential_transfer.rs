@@ -764,6 +764,7 @@ async fn confidential_transfer_empty_account() {
         .confidential_transfer_empty_account(
             &alice_meta.token_account,
             &alice.pubkey(),
+            None,
             &alice_meta.elgamal_keypair,
             &[&alice],
         )
@@ -1123,6 +1124,7 @@ async fn confidential_transfer_withdraw() {
         .confidential_transfer_empty_account(
             &alice_meta.token_account,
             &alice.pubkey(),
+            None,
             &alice_meta.elgamal_keypair,
             &[&alice],
         )
