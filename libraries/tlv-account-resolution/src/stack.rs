@@ -23,7 +23,7 @@ use {
 struct Node {
     /// The index of the account in the total accounts list
     index: usize,
-    /// The indices of the accounts whose keys this account's 
+    /// The indices of the accounts whose keys this account's
     /// PDA depends on (if any)
     dependencies: Vec<usize>,
     /// The required account itself as a `RequiredAccount`

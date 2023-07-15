@@ -889,7 +889,8 @@ mod tests {
         //
         // These account infos must contain all required account infos for the CPI.
         //
-        // We'll mess them up a bit to make sure the ordering doesn't matter when performing account resolution.
+        // We'll mess them up a bit to make sure the ordering doesn't matter when
+        // performing account resolution.
         let mut messed_account_infos = Vec::new();
 
         // First add the instruction account infos.
@@ -1235,14 +1236,14 @@ mod tests {
         let metas = [
             RequiredAccount::from(&extra_meta_c),
             RequiredAccount::from(&extra_meta_d),
-            extra_meta_e.clone(),
-            extra_meta_f.clone(),
-            extra_meta_g.clone(),
-            extra_meta_h.clone(),
-            extra_meta_i.clone(),
-            extra_meta_j.clone(),
-            extra_meta_k.clone(),
-            extra_meta_l.clone(),
+            extra_meta_e,
+            extra_meta_f,
+            extra_meta_g,
+            extra_meta_h,
+            extra_meta_i,
+            extra_meta_j,
+            extra_meta_k,
+            extra_meta_l,
         ];
 
         let ix_accounts = vec![ix_account_a.clone(), ix_account_b.clone()];
@@ -1315,7 +1316,7 @@ mod tests {
         );
 
         let check_extra_meta_i_pda =
-            Pubkey::find_program_address(&[&extra_meta7_literal_str.as_bytes()], &program_id).0;
+            Pubkey::find_program_address(&[extra_meta7_literal_str.as_bytes()], &program_id).0;
         assert_eq!(
             check_extra_meta_i_pda,
             instruction.accounts.get(8).unwrap().pubkey
