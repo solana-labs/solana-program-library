@@ -3,10 +3,7 @@
 //! The largest possible seed configuration is 3 bytes (`InstructionArg`).
 //! This means that an `AccountMetaPda` can store up to 10 seed configurations.
 
-use {
-    crate::error::AccountResolutionError, solana_program::program_error::ProgramError,
-    std::collections::HashSet,
-};
+use {crate::error::AccountResolutionError, solana_program::program_error::ProgramError};
 
 /// Enum to describe a required seed for a Program-Derived Address
 #[derive(Clone, Debug, PartialEq)]
@@ -134,19 +131,14 @@ impl Seed {
     }
 
     /// Get all indices references by an `AccountKey` configuration
-    pub fn get_account_key_indices(seed_configs: &[Self]) -> Option<HashSet<usize>> {
-        let indices: HashSet<usize> = seed_configs
+    pub fn get_account_key_indices(seed_configs: &[Self]) -> Vec<usize> {
+        seed_configs
             .iter()
             .filter_map(|seed_config| match seed_config {
                 Seed::AccountKey { index } => Some(*index as usize),
                 _ => None,
             })
-            .collect();
-        if indices.is_empty() {
-            None
-        } else {
-            Some(indices)
-        }
+            .collect::<Vec<_>>()
     }
 }
 

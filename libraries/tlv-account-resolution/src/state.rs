@@ -4,7 +4,7 @@ use {
     crate::{
         account::{PodAccountMeta, RequiredAccount},
         error::AccountResolutionError,
-        queue::AccountResolutionQueue,
+        stack::AccountResolutionStack,
     },
     solana_program::{
         account_info::AccountInfo,
@@ -150,7 +150,7 @@ impl ExtraAccountMetas {
         instruction: &mut Instruction,
         data: &[u8],
     ) -> Result<(), ProgramError> {
-        AccountResolutionQueue::resolve::<T>(instruction, data)
+        AccountResolutionStack::resolve::<T>(instruction, data)
     }
 
     /// Add the additional account metas and account infos for a CPI
@@ -160,7 +160,7 @@ impl ExtraAccountMetas {
         data: &[u8],
         account_infos: &[AccountInfo<'a>],
     ) -> Result<(), ProgramError> {
-        AccountResolutionQueue::resolve::<T>(cpi_instruction, data)?;
+        AccountResolutionStack::resolve::<T>(cpi_instruction, data)?;
 
         for account_meta in cpi_instruction.accounts.iter() {
             let account_info = account_infos
@@ -197,6 +197,7 @@ mod tests {
             ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
     }
 
+    // #[cfg(ignore)]
     #[test]
     fn init_with_metas() {
         let metas = [
@@ -224,7 +225,7 @@ mod tests {
         );
     }
 
-    //
+    // #[cfg(ignore)]
     #[test]
     fn init_with_metas_and_seeds() {
         let program_id = Pubkey::new_unique();
@@ -307,6 +308,7 @@ mod tests {
         );
     }
 
+    // #[cfg(ignore)]
     #[test]
     fn init_multiple() {
         let metas = [
@@ -354,7 +356,7 @@ mod tests {
         );
     }
 
-    //
+    // #[cfg(ignore)]
     #[test]
     fn init_multiple_with_seeds() {
         let extra_meta5_literal_str = "seed_prefix";
@@ -505,6 +507,7 @@ mod tests {
         );
     }
 
+    // #[cfg(ignore)]
     #[test]
     fn init_mixed() {
         // annoying to setup, but need to test this!
@@ -595,7 +598,7 @@ mod tests {
         );
     }
 
-    //
+    // #[cfg(ignore)]
     #[test]
     fn init_mixed_with_seeds() {
         let extra_meta5_literal_str = "seed_prefix";
@@ -773,6 +776,7 @@ mod tests {
         );
     }
 
+    // #[cfg(ignore)]
     #[test]
     fn cpi_instruction() {
         // annoying to setup, but need to test this!
@@ -880,7 +884,7 @@ mod tests {
         }
     }
 
-    //
+    // #[cfg(ignore)]
     #[test]
     fn cpi_instruction_with_seeds() {
         let required_pda1_literal_string = "required_pda1";
@@ -1084,8 +1088,8 @@ mod tests {
     }
 
     #[test]
-    fn test_queue() {
-        // Adding highly-complex PDA configurations to test Account Resolution queue
+    fn test_stack() {
+        // Adding highly-complex PDA configurations to test Account Resolution stack
         let program_id = Pubkey::new_unique();
 
         let extra_meta7_literal_str = "seed_prefix";

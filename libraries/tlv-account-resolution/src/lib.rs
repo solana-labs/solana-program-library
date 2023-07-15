@@ -9,8 +9,8 @@
 
 pub mod account;
 pub mod error;
-pub mod queue;
 pub mod seeds;
+pub mod stack;
 pub mod state;
 
 // Export current sdk types for downstream users building with a different sdk
