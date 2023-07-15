@@ -23,7 +23,8 @@ use {
 struct Node {
     /// The index of the account in the total accounts list
     index: usize,
-    /// The indices of the accounts whose key this account's PDA depends on
+    /// The indices of the accounts whose keys this account's 
+    /// PDA depends on (if any)
     dependencies: Vec<usize>,
     /// The required account itself as a `RequiredAccount`
     required_account: RequiredAccount,
@@ -139,7 +140,7 @@ impl AccountResolutionStack {
             stack.push_before(node)
         }
         // If a node is found that dependends on the new node,
-        // stop and check the rest of the stack for the any dependencies.
+        // stop and check the rest of the stack for any dependencies.
         else if stack.has_dependency(node.index) {
             // If any are found, throw a circular reference error.
             // The configuration can't be resolved.
@@ -153,8 +154,6 @@ impl AccountResolutionStack {
         // If the end of the stack is reached, add the new node to the end.
         // This account can be resolved last, since no other accounts depend
         // on it.
-        // If any dependencies have not been found, they are not currently in
-        // the stack, and will be added to the front when this function closes.
         else if !stack.has_next() {
             stack.push_next(node)
         } else {
