@@ -54,7 +54,7 @@ impl Node {
 ///
 /// To solve this, we use a stack!
 #[derive(Debug)]
-pub struct AccountResolutionStack(Option<(Node, Box<AccountResolutionStack>)>);
+pub struct AccountResolutionStack(Option<(Node, Box<Self>)>);
 impl AccountResolutionStack {
     fn new() -> Self {
         Self(None)
@@ -113,7 +113,7 @@ impl AccountResolutionStack {
     fn push_before(&mut self, node: Node) -> Result<(), ProgramError> {
         if !self.search(&[node.index]) {
             let next = self.0.take();
-            self.0 = Some((node, Box::new(AccountResolutionStack(next))));
+            self.0 = Some((node, Box::new(Self(next))));
             return Ok(());
         }
         Err(AccountResolutionError::CircularReference.into())
@@ -123,17 +123,13 @@ impl AccountResolutionStack {
         if self.has_next() {
             self.next_mut().push_before(node)?;
         } else {
-            let next =
-                AccountResolutionStack(Some((node, Box::new(AccountResolutionStack::new()))));
+            let next = Self(Some((node, Box::new(Self::new()))));
             self.0.as_mut().unwrap().1 = Box::new(next);
         }
         Ok(())
     }
 
-    fn update_recursive(
-        stack: &mut AccountResolutionStack,
-        node: Node,
-    ) -> Result<(), ProgramError> {
+    fn update_recursive(stack: &mut Self, node: Node) -> Result<(), ProgramError> {
         // If the new node has no dependencies, add it to the front.
         // This account can be resolved first.
         //
