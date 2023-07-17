@@ -32,11 +32,16 @@ struct TlvIndices {
     pub length_start: usize,
     pub value_start: usize,
 }
+
+type TlvIndicesWithEntryNumber = (TlvIndices, usize);
+
 fn get_indices(
     tlv_data: &[u8],
     value_discriminator: ArrayDiscriminator,
     init: bool,
-) -> Result<TlvIndices, ProgramError> {
+    entry_number: Option<usize>,
+) -> Result<TlvIndicesWithEntryNumber, ProgramError> {
+    let mut current_entry_number = 0;
     let mut start_index = 0;
     while start_index < tlv_data.len() {
         let tlv_indices = get_indices_unchecked(start_index);
@@ -47,25 +52,27 @@ fn get_indices(
             &tlv_data[tlv_indices.type_start..tlv_indices.length_start],
         )?;
         if discriminator == value_discriminator {
-            // found an instance of the extension that we're initializing, return!
-            return Ok(tlv_indices);
+            if let Some(desired_entry_number) = entry_number {
+                if current_entry_number == desired_entry_number {
+                    return Ok((tlv_indices, current_entry_number));
+                }
+            }
+            current_entry_number += 1;
         // got to an empty spot, init here, or error if we're searching, since
         // nothing is written after an Uninitialized spot
         } else if discriminator == ArrayDiscriminator::UNINITIALIZED {
             if init {
-                return Ok(tlv_indices);
+                return Ok((tlv_indices, current_entry_number));
             } else {
                 return Err(TlvError::TypeNotFound.into());
             }
-        } else {
-            let length = pod_from_bytes::<Length>(
-                &tlv_data[tlv_indices.length_start..tlv_indices.value_start],
-            )?;
-            let value_end_index = tlv_indices
-                .value_start
-                .saturating_add(usize::try_from(*length)?);
-            start_index = value_end_index;
         }
+        let length =
+            pod_from_bytes::<Length>(&tlv_data[tlv_indices.length_start..tlv_indices.value_start])?;
+        let value_end_index = tlv_indices
+            .value_start
+            .saturating_add(usize::try_from(*length)?);
+        start_index = value_end_index;
     }
     Err(ProgramError::InvalidAccountData)
 }
@@ -116,13 +123,20 @@ fn get_discriminators_and_end_index(
     Ok((discriminators, start_index))
 }
 
-fn get_bytes<V: SplDiscriminate>(tlv_data: &[u8]) -> Result<&[u8], ProgramError> {
-    let TlvIndices {
-        type_start: _,
-        length_start,
-        value_start,
-    } = get_indices(tlv_data, V::SPL_DISCRIMINATOR, false)?;
-    // get_indices has checked that tlv_data is long enough to include these indices
+fn get_bytes<V: SplDiscriminate>(
+    tlv_data: &[u8],
+    entry_number: usize,
+) -> Result<&[u8], ProgramError> {
+    let (
+        TlvIndices {
+            type_start: _,
+            length_start,
+            value_start,
+        },
+        _,
+    ) = get_indices(tlv_data, V::SPL_DISCRIMINATOR, false, Some(entry_number))?;
+    // get_indices has checked that tlv_data is long enough to include these
+    // indices
     let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::try_from(*length)?);
     if tlv_data.len() < value_end {
@@ -146,8 +160,8 @@ fn get_bytes<V: SplDiscriminate>(tlv_data: &[u8]) -> Result<&[u8], ProgramError>
 /// For example, if we have two distinct types, one which is an 8-byte array
 /// of value `[0, 1, 0, 0, 0, 0, 0, 0]` and discriminator
 /// `[1, 1, 1, 1, 1, 1, 1, 1]`, and another which is just a single `u8` of value
-/// `4` with the discriminator `[2, 2, 2, 2, 2, 2, 2, 2]`, we can deserialize this
-/// buffer as follows:
+/// `4` with the discriminator `[2, 2, 2, 2, 2, 2, 2, 2]`, we can deserialize
+/// this buffer as follows:
 ///
 /// ```
 /// use {
@@ -180,9 +194,9 @@ fn get_bytes<V: SplDiscriminate>(tlv_data: &[u8]) -> Result<&[u8], ProgramError>
 ///   4,                      // second type's value
 /// ];
 /// let state = TlvStateBorrowed::unpack(&buffer).unwrap();
-/// let value = state.get_value::<MyPodValue>().unwrap();
+/// let value = state.get_first_value::<MyPodValue>().unwrap();
 /// assert_eq!(value.data, [0, 1, 0, 0, 0, 0, 0, 0]);
-/// let value = state.get_value::<MyOtherPodValue>().unwrap();
+/// let value = state.get_first_value::<MyOtherPodValue>().unwrap();
 /// assert_eq!(value.data, 4);
 /// ```
 ///
@@ -191,23 +205,45 @@ pub trait TlvState {
     /// Get the full buffer containing all TLV data
     fn get_data(&self) -> &[u8];
 
-    /// Unpack a portion of the TLV data as the desired Pod type
-    fn get_value<V: SplDiscriminate + Pod>(&self) -> Result<&V, ProgramError> {
-        let data = get_bytes::<V>(self.get_data())?;
+    /// Unpack a portion of the TLV data as the desired Pod type for the entry
+    /// number specified
+    fn get_value<V: SplDiscriminate + Pod>(&self, entry_number: usize) -> Result<&V, ProgramError> {
+        let data = get_bytes::<V>(self.get_data(), entry_number)?;
         pod_from_bytes::<V>(data)
     }
 
+    /// Unpack a portion of the TLV data as the desired Pod type for the first
+    /// entry found
+    fn get_first_value<V: SplDiscriminate + Pod>(&self) -> Result<&V, ProgramError> {
+        self.get_value::<V>(0)
+    }
+
     /// Unpacks a portion of the TLV data as the desired variable-length type
+    /// for the entry number specified
     fn get_variable_len_value<V: SplDiscriminate + VariableLenPack>(
         &self,
+        entry_number: usize,
     ) -> Result<V, ProgramError> {
-        let data = get_bytes::<V>(self.get_data())?;
+        let data = get_bytes::<V>(self.get_data(), entry_number)?;
         V::unpack_from_slice(data)
     }
 
-    /// Unpack a portion of the TLV data as bytes
-    fn get_bytes<V: SplDiscriminate>(&self) -> Result<&[u8], ProgramError> {
-        get_bytes::<V>(self.get_data())
+    /// Unpacks a portion of the TLV data as the desired variable-length type
+    /// for the first entry found
+    fn get_first_variable_len_value<V: SplDiscriminate + VariableLenPack>(
+        &self,
+    ) -> Result<V, ProgramError> {
+        self.get_variable_len_value::<V>(0)
+    }
+
+    /// Unpack a portion of the TLV data as bytes for the entry number specified
+    fn get_bytes<V: SplDiscriminate>(&self, entry_number: usize) -> Result<&[u8], ProgramError> {
+        get_bytes::<V>(self.get_data(), entry_number)
+    }
+
+    /// Unpack a portion of the TLV data as bytes for the first entry found
+    fn get_first_bytes<V: SplDiscriminate>(&self) -> Result<&[u8], ProgramError> {
+        self.get_bytes::<V>(0)
     }
 
     /// Iterates through the TLV entries, returning only the types
@@ -242,7 +278,8 @@ impl TlvState for TlvStateOwned {
     }
 }
 
-/// Encapsulates immutable base state data (mint or account) with possible extensions
+/// Encapsulates immutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct TlvStateBorrowed<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -263,7 +300,8 @@ impl<'a> TlvState for TlvStateBorrowed<'a> {
     }
 }
 
-/// Encapsulates mutable base state data (mint or account) with possible extensions
+/// Encapsulates mutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct TlvStateMut<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -278,19 +316,38 @@ impl<'data> TlvStateMut<'data> {
         Ok(Self { data })
     }
 
-    /// Unpack a portion of the TLV data as the desired type that allows modifying the type
-    pub fn get_value_mut<V: SplDiscriminate + Pod>(&mut self) -> Result<&mut V, ProgramError> {
-        let data = self.get_bytes_mut::<V>()?;
+    /// Unpack a portion of the TLV data as the desired type that allows
+    /// modifying the type for the entry number specified
+    pub fn get_value_mut<V: SplDiscriminate + Pod>(
+        &mut self,
+        entry_number: usize,
+    ) -> Result<&mut V, ProgramError> {
+        let data = self.get_bytes_mut::<V>(entry_number)?;
         pod_from_bytes_mut::<V>(data)
     }
 
-    /// Unpack a portion of the TLV data as mutable bytes
-    pub fn get_bytes_mut<V: SplDiscriminate>(&mut self) -> Result<&mut [u8], ProgramError> {
-        let TlvIndices {
-            type_start: _,
-            length_start,
-            value_start,
-        } = get_indices(self.data, V::SPL_DISCRIMINATOR, false)?;
+    /// Unpack a portion of the TLV data as the desired type that allows
+    /// modifying the type for the first entry found
+    pub fn get_first_value_mut<V: SplDiscriminate + Pod>(
+        &mut self,
+    ) -> Result<&mut V, ProgramError> {
+        self.get_value_mut::<V>(0)
+    }
+
+    /// Unpack a portion of the TLV data as mutable bytes for the entry number
+    /// specified
+    pub fn get_bytes_mut<V: SplDiscriminate>(
+        &mut self,
+        entry_number: usize,
+    ) -> Result<&mut [u8], ProgramError> {
+        let (
+            TlvIndices {
+                type_start: _,
+                length_start,
+                value_start,
+            },
+            _,
+        ) = get_indices(self.data, V::SPL_DISCRIMINATOR, false, Some(entry_number))?;
 
         let length = pod_from_bytes::<Length>(&self.data[length_start..value_start])?;
         let value_end = value_start.saturating_add(usize::try_from(*length)?);
@@ -300,37 +357,87 @@ impl<'data> TlvStateMut<'data> {
         Ok(&mut self.data[value_start..value_end])
     }
 
-    /// Packs the default TLV data into the first open slot in the data buffer.
-    /// If extension is already found in the buffer, it returns an error.
-    pub fn init_value<V: SplDiscriminate + Pod + Default>(
+    /// Unpack a portion of the TLV data as mutable bytes for the first entry
+    /// found
+    pub fn get_first_bytes_mut<V: SplDiscriminate>(&mut self) -> Result<&mut [u8], ProgramError> {
+        self.get_bytes_mut::<V>(0)
+    }
+
+    fn init_value_at_entry<V: SplDiscriminate + Pod + Default>(
         &mut self,
-    ) -> Result<&mut V, ProgramError> {
+        entry_number: Option<usize>,
+    ) -> Result<(&mut V, usize), ProgramError> {
         let length = size_of::<V>();
-        let buffer = self.alloc::<V>(length)?;
+        let (buffer, entry_number) = self.alloc::<V>(length, entry_number)?;
         let extension_ref = pod_from_bytes_mut::<V>(buffer)?;
         *extension_ref = V::default();
+        Ok((extension_ref, entry_number))
+    }
+
+    /// Packs the default TLV data into the first open slot in the data buffer.
+    /// Does not check for duplicates. Will add a new entry to the next open
+    /// slot provided there is enough space.
+    pub fn init_value<V: SplDiscriminate + Pod + Default>(
+        &mut self,
+    ) -> Result<(&mut V, usize), ProgramError> {
+        self.init_value_at_entry::<V>(None)
+    }
+
+    /// Packs the default TLV data into the first open slot in the data buffer.
+    /// If extension is already found in the buffer, it returns an error.
+    pub fn init_value_unique<V: SplDiscriminate + Pod + Default>(
+        &mut self,
+    ) -> Result<&mut V, ProgramError> {
+        let (extension_ref, _) = self.init_value_at_entry::<V>(Some(0))?;
         Ok(extension_ref)
     }
 
-    /// Packs a variable-length value into its appropriate data segment. Assumes that
-    /// space has already been allocated for the given type
-    pub fn pack_variable_len_value<V: SplDiscriminate + VariableLenPack>(
+    /// Packs a variable-length value into its appropriate data segment. Assumes
+    /// that space has already been allocated for the given type
+    fn pack_variable_len_value_at_entry<V: SplDiscriminate + VariableLenPack>(
         &mut self,
         value: &V,
+        entry_number: usize,
     ) -> Result<(), ProgramError> {
-        let data = self.get_bytes_mut::<V>()?;
+        let data = self.get_bytes_mut::<V>(entry_number)?;
         // NOTE: Do *not* use `pack`, since the length check will cause
         // reallocations to smaller sizes to fail
         value.pack_into_slice(data)
     }
 
+    /// Packs a variable-length value into its appropriate data segment, where
+    /// repeating discriminators _are_ allowed
+    pub fn pack_variable_len_value<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+        value: &V,
+        entry_number: usize,
+    ) -> Result<(), ProgramError> {
+        self.pack_variable_len_value_at_entry::<V>(value, entry_number)
+    }
+
+    /// Packs a variable-length value into its appropriate data segment, where
+    /// no repeating discriminators are allowed
+    pub fn pack_variable_len_value_unique<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+        value: &V,
+    ) -> Result<(), ProgramError> {
+        self.pack_variable_len_value_at_entry::<V>(value, 0)
+    }
+
     /// Allocate the given number of bytes for the given SplDiscriminate
-    pub fn alloc<V: SplDiscriminate>(&mut self, length: usize) -> Result<&mut [u8], ProgramError> {
-        let TlvIndices {
-            type_start,
-            length_start,
-            value_start,
-        } = get_indices(self.data, V::SPL_DISCRIMINATOR, true)?;
+    fn alloc<V: SplDiscriminate>(
+        &mut self,
+        length: usize,
+        entry_number: Option<usize>,
+    ) -> Result<(&mut [u8], usize), ProgramError> {
+        let (
+            TlvIndices {
+                type_start,
+                length_start,
+                value_start,
+            },
+            entry_number,
+        ) = get_indices(self.data, V::SPL_DISCRIMINATOR, true, entry_number)?;
 
         let discriminator = ArrayDiscriminator::try_from(&self.data[type_start..length_start])?;
         if discriminator == ArrayDiscriminator::UNINITIALIZED {
@@ -346,25 +453,111 @@ impl<'data> TlvStateMut<'data> {
             if self.data.len() < value_end {
                 return Err(ProgramError::InvalidAccountData);
             }
-            Ok(&mut self.data[value_start..value_end])
+            Ok((&mut self.data[value_start..value_end], entry_number))
         } else {
             Err(TlvError::TypeAlreadyExists.into())
         }
     }
 
-    /// Reallocate the given number of bytes for the given SplDiscriminate. If the new
-    /// length is smaller, it will compact the rest of the buffer and zero out
-    /// the difference at the end. If it's larger, it will move the rest of
-    /// the buffer data and zero out the new data.
-    pub fn realloc<V: SplDiscriminate>(
+    /// Allocate space for the given type, where no repeating discriminators are
+    /// allowed
+    pub fn alloc_unique<V: SplDiscriminate>(
         &mut self,
         length: usize,
     ) -> Result<&mut [u8], ProgramError> {
-        let TlvIndices {
-            type_start: _,
-            length_start,
-            value_start,
-        } = get_indices(self.data, V::SPL_DISCRIMINATOR, false)?;
+        let (bytes, _) = self.alloc::<V>(length, Some(0))?;
+        Ok(bytes)
+    }
+
+    /// Allocate space for the given type, where repeating discriminators _are_
+    /// allowed
+    pub fn alloc_allow_repeating<V: SplDiscriminate>(
+        &mut self,
+        length: usize,
+    ) -> Result<(&mut [u8], usize), ProgramError> {
+        self.alloc::<V>(length, None)
+    }
+
+    /// Allocates and serializes a new TLV entry from a Pod type
+    fn add_entry<V: SplDiscriminate + Pod>(
+        &mut self,
+        value: &V,
+        entry_number: Option<usize>,
+    ) -> Result<usize, ProgramError> {
+        let (data, entry_number) = self.alloc::<V>(size_of::<V>(), entry_number)?;
+        data.copy_from_slice(bytemuck::bytes_of(value));
+        Ok(entry_number)
+    }
+
+    /// Allocates and serializes a new TLV entry from a Pod type, where no
+    /// repeating discriminators are allowed
+    pub fn add_entry_unique<V: SplDiscriminate + Pod>(
+        &mut self,
+        value: &V,
+    ) -> Result<(), ProgramError> {
+        self.add_entry(value, Some(0))?;
+        Ok(())
+    }
+
+    /// Allocates and serializes a new TLV entry from a Pod type, where
+    /// repeating discriminators _are_ allowed. Will add a new entry to the
+    /// next open slot provided there is enough space.
+    pub fn add_entry_allow_repeating<V: SplDiscriminate + Pod>(
+        &mut self,
+        value: &V,
+    ) -> Result<usize, ProgramError> {
+        self.add_entry(value, None)
+    }
+
+    /// Allocates and serializes a new TLV entry from a `VariableLenPack` type
+    fn add_variable_len_entry<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+        value: &V,
+        entry_number: Option<usize>,
+    ) -> Result<usize, ProgramError> {
+        let length = value.get_packed_len()?;
+        let (data, entry_number) = self.alloc::<V>(length, entry_number)?;
+        value.pack_into_slice(data)?;
+        Ok(entry_number)
+    }
+
+    /// Allocates and serializes a new TLV entry from a `VariableLenPack` type,
+    /// where no repeating discriminators _are_ allowed
+    pub fn add_variable_len_entry_unique<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+        value: &V,
+    ) -> Result<(), ProgramError> {
+        self.add_variable_len_entry(value, Some(0))?;
+        Ok(())
+    }
+
+    /// Allocates and serializes a new TLV entry from a `VariableLenPack` type,
+    /// where repeating discriminators _are_ allowed. Will add a new entry
+    /// to the next open slot provided there is enough space.
+    pub fn add_variable_len_entry_allow_repeating<V: SplDiscriminate + VariableLenPack>(
+        &mut self,
+        value: &V,
+    ) -> Result<usize, ProgramError> {
+        self.add_variable_len_entry(value, None)
+    }
+
+    /// Reallocate the given number of bytes for the given SplDiscriminate. If
+    /// the new length is smaller, it will compact the rest of the buffer
+    /// and zero out the difference at the end. If it's larger, it will move
+    /// the rest of the buffer data and zero out the new data.
+    fn realloc<V: SplDiscriminate>(
+        &mut self,
+        length: usize,
+        entry_number: usize,
+    ) -> Result<&mut [u8], ProgramError> {
+        let (
+            TlvIndices {
+                type_start: _,
+                length_start,
+                value_start,
+            },
+            _,
+        ) = get_indices(self.data, V::SPL_DISCRIMINATOR, false, Some(entry_number))?;
         let (_, end_index) = get_discriminators_and_end_index(self.data)?;
         let data_len = self.data.len();
 
@@ -402,7 +595,27 @@ impl<'data> TlvStateMut<'data> {
 
         Ok(&mut self.data[value_start..new_value_end])
     }
+
+    /// Reallocate the given number of bytes for the given SplDiscriminate,
+    /// where no repeating discriminators are allowed
+    pub fn realloc_unique<V: SplDiscriminate>(
+        &mut self,
+        length: usize,
+    ) -> Result<&mut [u8], ProgramError> {
+        self.realloc::<V>(length, 0)
+    }
+
+    /// Reallocate the given number of bytes for the given SplDiscriminate,
+    /// where repeating discriminators _are_ allowed
+    pub fn realloc_allow_repeating<V: SplDiscriminate>(
+        &mut self,
+        length: usize,
+        entry_number: usize,
+    ) -> Result<&mut [u8], ProgramError> {
+        self.realloc::<V>(length, entry_number)
+    }
 }
+
 impl<'a> TlvState for TlvStateMut<'a> {
     fn get_data(&self) -> &[u8] {
         self.data
@@ -411,17 +624,21 @@ impl<'a> TlvState for TlvStateMut<'a> {
 
 /// Packs a variable-length value into an existing TLV space, reallocating
 /// the account and TLV as needed to accommodate for any change in space
-pub fn realloc_and_pack_variable_len<V: SplDiscriminate + VariableLenPack>(
+fn realloc_and_pack_variable_len<V: SplDiscriminate + VariableLenPack>(
     account_info: &AccountInfo,
     value: &V,
+    entry_number: usize,
 ) -> Result<(), ProgramError> {
     let previous_length = {
         let data = account_info.try_borrow_data()?;
-        let TlvIndices {
-            type_start: _,
-            length_start,
-            value_start,
-        } = get_indices(&data, V::SPL_DISCRIMINATOR, false)?;
+        let (
+            TlvIndices {
+                type_start: _,
+                length_start,
+                value_start,
+            },
+            _,
+        ) = get_indices(&data, V::SPL_DISCRIMINATOR, false, Some(entry_number))?;
         usize::try_from(*pod_from_bytes::<Length>(&data[length_start..value_start])?)?
     };
     let new_length = value.get_packed_len()?;
@@ -434,25 +651,44 @@ pub fn realloc_and_pack_variable_len<V: SplDiscriminate + VariableLenPack>(
         account_info.realloc(previous_account_size.saturating_add(additional_bytes), true)?;
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = TlvStateMut::unpack(&mut buffer)?;
-        state.realloc::<V>(new_length)?;
-        state.pack_variable_len_value(value)?;
+        state.realloc::<V>(new_length, entry_number)?;
+        state.pack_variable_len_value(value, entry_number)?;
     } else {
         // do it backwards otherwise, write the state, realloc TLV, then the account
         let mut buffer = account_info.try_borrow_mut_data()?;
         let mut state = TlvStateMut::unpack(&mut buffer)?;
-        state.pack_variable_len_value(value)?;
+        state.pack_variable_len_value(value, entry_number)?;
         let removed_bytes = previous_length
             .checked_sub(new_length)
             .ok_or(ProgramError::AccountDataTooSmall)?;
         if removed_bytes > 0 {
             // we decreased the size, so need to realloc the TLV, then the account
-            state.realloc::<V>(new_length)?;
+            state.realloc::<V>(new_length, entry_number)?;
             // this is probably fine, but be safe and avoid invalidating references
             drop(buffer);
             account_info.realloc(previous_account_size.saturating_sub(removed_bytes), false)?;
         }
     }
     Ok(())
+}
+
+/// Packs a variable-length value into an existing TLV space, where no repeating
+/// discriminators are allowed
+pub fn realloc_and_pack_variable_len_unique<V: SplDiscriminate + VariableLenPack>(
+    account_info: &AccountInfo,
+    value: &V,
+) -> Result<(), ProgramError> {
+    realloc_and_pack_variable_len::<V>(account_info, value, 0)
+}
+
+/// Packs a variable-length value into an existing TLV space, where no repeating
+/// discriminators are allowed
+pub fn realloc_and_pack_variable_len_allow_repeating<V: SplDiscriminate + VariableLenPack>(
+    account_info: &AccountInfo,
+    value: &V,
+    entry_number: usize,
+) -> Result<(), ProgramError> {
+    realloc_and_pack_variable_len::<V>(account_info, value, entry_number)
 }
 
 /// Get the base size required for TLV data
@@ -467,10 +703,13 @@ fn check_data(tlv_data: &[u8]) -> Result<(), ProgramError> {
     Ok(())
 }
 
+// Tests for the base-use case of the TLV structure, where entries do NOT repeat
 #[cfg(test)]
 mod test {
-    use super::*;
-    use bytemuck::{Pod, Zeroable};
+    use {
+        super::*,
+        bytemuck::{Pod, Zeroable},
+    };
 
     const TEST_BUFFER: &[u8] = &[
         1, 1, 1, 1, 1, 1, 1, 1, // discriminator
@@ -538,19 +777,19 @@ mod test {
     #[test]
     fn unpack_opaque_buffer() {
         let state = TlvStateBorrowed::unpack(TEST_BUFFER).unwrap();
-        let value = state.get_value::<TestValue>().unwrap();
+        let value = state.get_first_value::<TestValue>().unwrap();
         assert_eq!(value.data, [1; 32]);
         assert_eq!(
-            state.get_value::<TestEmptyValue>(),
+            state.get_first_value::<TestEmptyValue>(),
             Err(ProgramError::InvalidAccountData)
         );
 
         let mut test_buffer = TEST_BUFFER.to_vec();
         let state = TlvStateMut::unpack(&mut test_buffer).unwrap();
-        let value = state.get_value::<TestValue>().unwrap();
+        let value = state.get_first_value::<TestValue>().unwrap();
         assert_eq!(value.data, [1; 32]);
         let state = TlvStateOwned::unpack(test_buffer).unwrap();
-        let value = state.get_value::<TestValue>().unwrap();
+        let value = state.get_first_value::<TestValue>().unwrap();
         assert_eq!(value.data, [1; 32]);
     }
 
@@ -576,7 +815,7 @@ mod test {
         buffer[0] += 1;
         let state = TlvStateMut::unpack(&mut buffer).unwrap();
         assert_eq!(
-            state.get_value::<TestValue>(),
+            state.get_first_value::<TestValue>(),
             Err(ProgramError::InvalidAccountData)
         );
 
@@ -593,7 +832,7 @@ mod test {
         buffer[ArrayDiscriminator::LENGTH] -= 1;
         let state = TlvStateMut::unpack(&mut buffer).unwrap();
         assert_eq!(
-            state.get_value::<TestValue>(),
+            state.get_first_value::<TestValue>(),
             Err(ProgramError::InvalidArgument)
         );
 
@@ -633,18 +872,18 @@ mod test {
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         // success init and write value
-        let value = state.init_value::<TestValue>().unwrap();
+        let value = state.init_value_unique::<TestValue>().unwrap();
         let data = [100; 32];
         value.data = data;
         assert_eq!(
             &state.get_discriminators().unwrap(),
             &[TestValue::SPL_DISCRIMINATOR],
         );
-        assert_eq!(&state.get_value::<TestValue>().unwrap().data, &data,);
+        assert_eq!(&state.get_first_value::<TestValue>().unwrap().data, &data,);
 
         // fail init extension when already initialized
         assert_eq!(
-            state.init_value::<TestValue>().unwrap_err(),
+            state.init_value_unique::<TestValue>().unwrap_err(),
             TlvError::TypeAlreadyExists.into(),
         );
 
@@ -660,7 +899,7 @@ mod test {
 
         // check unpacking
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
-        let mut unpacked = state.get_value_mut::<TestValue>().unwrap();
+        let mut unpacked = state.get_first_value_mut::<TestValue>().unwrap();
         assert_eq!(*unpacked, TestValue { data });
 
         // update extension
@@ -669,7 +908,7 @@ mod test {
 
         // check updates are propagated
         let state = TlvStateBorrowed::unpack(&buffer).unwrap();
-        let unpacked = state.get_value::<TestValue>().unwrap();
+        let unpacked = state.get_first_value::<TestValue>().unwrap();
         assert_eq!(*unpacked, TestValue { data: new_data });
 
         // check raw buffer
@@ -684,7 +923,7 @@ mod test {
 
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
         // init one more value
-        let new_value = state.init_value::<TestSmallValue>().unwrap();
+        let new_value = state.init_value_unique::<TestSmallValue>().unwrap();
         let small_data = [102; 3];
         new_value.data = small_data;
 
@@ -713,7 +952,7 @@ mod test {
         // fail to init one more extension that does not fit
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
         assert_eq!(
-            state.init_value::<TestEmptyValue>(),
+            state.init_value_unique::<TestEmptyValue>(),
             Err(ProgramError::InvalidAccountData),
         );
     }
@@ -730,9 +969,9 @@ mod test {
         let small_data = [98; 3];
 
         // write values
-        let value = state.init_value::<TestValue>().unwrap();
+        let value = state.init_value_unique::<TestValue>().unwrap();
         value.data = data;
-        let value = state.init_value::<TestSmallValue>().unwrap();
+        let value = state.init_value_unique::<TestSmallValue>().unwrap();
         value.data = small_data;
 
         assert_eq!(
@@ -747,9 +986,9 @@ mod test {
         let mut other_buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut other_buffer).unwrap();
 
-        let value = state.init_value::<TestSmallValue>().unwrap();
+        let value = state.init_value_unique::<TestSmallValue>().unwrap();
         value.data = small_data;
-        let value = state.init_value::<TestValue>().unwrap();
+        let value = state.init_value_unique::<TestValue>().unwrap();
         value.data = data;
 
         assert_eq!(
@@ -767,12 +1006,12 @@ mod test {
 
         // BUT values are the same
         assert_eq!(
-            state.get_value::<TestValue>().unwrap(),
-            other_state.get_value::<TestValue>().unwrap()
+            state.get_first_value::<TestValue>().unwrap(),
+            other_state.get_first_value::<TestValue>().unwrap()
         );
         assert_eq!(
-            state.get_value::<TestSmallValue>().unwrap(),
-            other_state.get_value::<TestSmallValue>().unwrap()
+            state.get_first_value::<TestSmallValue>().unwrap(),
+            other_state.get_first_value::<TestSmallValue>().unwrap()
         );
     }
 
@@ -781,7 +1020,7 @@ mod test {
         let account_size = get_base_len() + size_of::<TestNonZeroDefault>();
         let mut buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
-        let value = state.init_value::<TestNonZeroDefault>().unwrap();
+        let value = state.init_value_unique::<TestNonZeroDefault>().unwrap();
         assert_eq!(value.data, TEST_NON_ZERO_DEFAULT_DATA);
     }
 
@@ -790,14 +1029,14 @@ mod test {
         let account_size = get_base_len() + size_of::<TestValue>();
         let mut buffer = vec![0; account_size - 1];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
-        let err = state.init_value::<TestValue>().unwrap_err();
+        let err = state.init_value_unique::<TestValue>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
 
         // hack the buffer to look like it was initialized, still fails
         let discriminator_ref = &mut state.data[0..ArrayDiscriminator::LENGTH];
         discriminator_ref.copy_from_slice(TestValue::SPL_DISCRIMINATOR.as_ref());
         state.data[ArrayDiscriminator::LENGTH] = 32;
-        let err = state.get_value::<TestValue>().unwrap_err();
+        let err = state.get_first_value::<TestValue>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
         assert_eq!(
             state.get_discriminators().unwrap_err(),
@@ -812,16 +1051,16 @@ mod test {
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         assert_eq!(
-            state.get_value::<TestEmptyValue>().unwrap_err(),
+            state.get_first_value::<TestEmptyValue>().unwrap_err(),
             TlvError::TypeNotFound.into(),
         );
 
-        state.init_value::<TestEmptyValue>().unwrap();
-        state.get_value::<TestEmptyValue>().unwrap();
+        state.init_value_unique::<TestEmptyValue>().unwrap();
+        state.get_first_value::<TestEmptyValue>().unwrap();
 
         // re-init fails
         assert_eq!(
-            state.init_value::<TestEmptyValue>().unwrap_err(),
+            state.init_value_unique::<TestEmptyValue>().unwrap_err(),
             TlvError::TypeAlreadyExists.into(),
         );
     }
@@ -834,7 +1073,7 @@ mod test {
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         // not enough room
-        let data = state.alloc::<TestValue>(tlv_size).unwrap();
+        let data = state.alloc_unique::<TestValue>(tlv_size).unwrap();
         assert_eq!(
             pod_from_bytes_mut::<TestValue>(data).unwrap_err(),
             ProgramError::InvalidArgument,
@@ -842,7 +1081,7 @@ mod test {
 
         // can't double alloc
         assert_eq!(
-            state.alloc::<TestValue>(tlv_size).unwrap_err(),
+            state.alloc_unique::<TestValue>(tlv_size).unwrap_err(),
             TlvError::TypeAlreadyExists.into(),
         );
     }
@@ -861,19 +1100,21 @@ mod test {
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         // alloc both types
-        let _ = state.alloc::<TestValue>(TLV_SIZE).unwrap();
-        let _ = state.init_value::<TestNonZeroDefault>().unwrap();
+        let _ = state.alloc_unique::<TestValue>(TLV_SIZE).unwrap();
+        let _ = state.init_value_unique::<TestNonZeroDefault>().unwrap();
 
         // realloc first entry to larger, all 0
-        let data = state.realloc::<TestValue>(TLV_SIZE + EXTRA_SPACE).unwrap();
+        let data = state
+            .realloc_unique::<TestValue>(TLV_SIZE + EXTRA_SPACE)
+            .unwrap();
         assert_eq!(data, [0; TLV_SIZE + EXTRA_SPACE]);
-        let value = state.get_value::<TestNonZeroDefault>().unwrap();
+        let value = state.get_first_value::<TestNonZeroDefault>().unwrap();
         assert_eq!(*value, TestNonZeroDefault::default());
 
         // realloc to smaller, still all 0
-        let data = state.realloc::<TestValue>(SMALL_SIZE).unwrap();
+        let data = state.realloc_unique::<TestValue>(SMALL_SIZE).unwrap();
         assert_eq!(data, [0; SMALL_SIZE]);
-        let value = state.get_value::<TestNonZeroDefault>().unwrap();
+        let value = state.get_first_value::<TestNonZeroDefault>().unwrap();
         assert_eq!(*value, TestNonZeroDefault::default());
         let (_, end_index) = get_discriminators_and_end_index(&buffer).unwrap();
         assert_eq!(
@@ -886,7 +1127,7 @@ mod test {
         // realloc too much, fails
         assert_eq!(
             state
-                .realloc::<TestValue>(TLV_SIZE + EXTRA_SPACE + 1)
+                .realloc_unique::<TestValue>(TLV_SIZE + EXTRA_SPACE + 1)
                 .unwrap_err(),
             ProgramError::InvalidAccountData,
         );
@@ -936,19 +1177,23 @@ mod test {
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
         // don't actually need to hold onto the data!
-        let _ = state.alloc::<TestVariableLen>(tlv_size).unwrap();
+        let _ = state.alloc_unique::<TestVariableLen>(tlv_size).unwrap();
         let test_variable_len = TestVariableLen {
             data: initial_data.to_string(),
         };
-        state.pack_variable_len_value(&test_variable_len).unwrap();
-        let deser = state.get_variable_len_value::<TestVariableLen>().unwrap();
+        state
+            .pack_variable_len_value_unique(&test_variable_len)
+            .unwrap();
+        let deser = state
+            .get_first_variable_len_value::<TestVariableLen>()
+            .unwrap();
         assert_eq!(deser, test_variable_len);
 
         // writing too much data fails
         let too_much_data = "This is a pretty cool test!?";
         assert_eq!(
             state
-                .pack_variable_len_value(&TestVariableLen {
+                .pack_variable_len_value_unique(&TestVariableLen {
                     data: too_much_data.to_string(),
                 })
                 .unwrap_err(),

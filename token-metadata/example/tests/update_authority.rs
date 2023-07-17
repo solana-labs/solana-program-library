@@ -100,7 +100,7 @@ async fn success_update() {
     );
     let fetched_metadata_state = TlvStateBorrowed::unpack(&fetched_metadata_account.data).unwrap();
     let fetched_metadata = fetched_metadata_state
-        .get_variable_len_value::<TokenMetadata>()
+        .get_first_variable_len_value::<TokenMetadata>()
         .unwrap();
     assert_eq!(fetched_metadata, token_metadata);
 
@@ -135,7 +135,7 @@ async fn success_update() {
     );
     let fetched_metadata_state = TlvStateBorrowed::unpack(&fetched_metadata_account.data).unwrap();
     let fetched_metadata = fetched_metadata_state
-        .get_variable_len_value::<TokenMetadata>()
+        .get_first_variable_len_value::<TokenMetadata>()
         .unwrap();
     assert_eq!(fetched_metadata, token_metadata);
 
