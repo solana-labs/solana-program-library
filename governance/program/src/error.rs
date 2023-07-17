@@ -510,6 +510,10 @@ pub enum GovernanceError {
     /// Instruction has been removed
     #[error("Instruction has been removed")]
     InstructionDeprecated,
+
+    /// Proposal is missing signatories required by its governance
+    #[error("Proposal is missing required signatories")]
+    MissingRequiredSignatories,
 }
 
 impl PrintProgramError for GovernanceError {
