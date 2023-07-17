@@ -5,7 +5,7 @@ A TypeScript library for interacting with SPL Account Compression and SPL NoOp. 
 ## Install
 
 ```shell
-npm install --save @solana/spl-account-compression @solana/web3.js
+npm install --save @solana/spl-account-compression @solana/web3.js @project-serum/anchor
 ```
 
 __OR__
