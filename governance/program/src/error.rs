@@ -506,6 +506,10 @@ pub enum GovernanceError {
     /// SignatoryRecord already exists
     #[error("Signatory Record has already been created")]
     SignatoryRecordAlreadyExists,
+
+    /// Instruction has been removed
+    #[error("Instruction has been removed")]
+    InstructionDeprecated,
 }
 
 impl PrintProgramError for GovernanceError {

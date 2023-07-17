@@ -225,6 +225,9 @@ pub enum GovernanceInstruction {
         signatory: Pubkey,
     },
 
+    /// Formerly RemoveSignatory. Exists for backwards-compatibility.
+    Legacy1,
+
     /// Inserts Transaction with a set of instructions for the Proposal at the given index position
     /// New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index
     /// If a Transaction replaces an existing Transaction at a given index then the old one must be removed using RemoveTransaction first

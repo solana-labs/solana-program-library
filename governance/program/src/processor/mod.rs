@@ -31,7 +31,7 @@ mod process_sign_off_proposal;
 mod process_update_program_metadata;
 mod process_withdraw_governing_tokens;
 
-use crate::instruction::GovernanceInstruction;
+use crate::{instruction::GovernanceInstruction, error::GovernanceError};
 
 use process_add_required_signatory::*;
 use process_add_signatory::*;
@@ -165,6 +165,9 @@ pub fn process_instruction(
         ),
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)
+        }
+        GovernanceInstruction::Legacy1 => {
+            Err(GovernanceError::InstructionDeprecated.into()) // No-op
         }
         GovernanceInstruction::SignOffProposal {} => {
             process_sign_off_proposal(program_id, accounts)
