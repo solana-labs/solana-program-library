@@ -2,8 +2,9 @@
 
 use solana_program::program_error::ProgramError;
 
-/// Trait that mimics a lot of the functionality of `solana_program::program_pack::Pack`
-/// but specifically works for variable-size types.
+/// Trait that mimics a lot of the functionality of
+/// `solana_program::program_pack::Pack` but specifically works for
+/// variable-size types.
 pub trait VariableLenPack {
     /// Writes the serialized form of the instance into the given slice
     fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError>;
