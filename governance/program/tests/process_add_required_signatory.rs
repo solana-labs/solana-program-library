@@ -78,5 +78,4 @@ async fn test_add_signatory() {
         .await;
 
     assert_eq!(1, governance_account.required_signatories_count);
-    assert_eq!(1, governance_account.signatories_nonce);
 }

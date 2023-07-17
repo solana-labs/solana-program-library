@@ -161,10 +161,7 @@ pub fn process_create_proposal(
         max_voting_time: None,
         vote_threshold: None,
 
-        reserved: [0; 60],
-
-        signature_nonce_at_creation: governance_data.signatories_nonce,
-
+        reserved: [0; 64],
         reserved1: 0,
     };
 

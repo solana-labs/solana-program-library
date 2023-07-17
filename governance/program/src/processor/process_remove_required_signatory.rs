@@ -36,7 +36,6 @@ pub fn process_remove_required_signatory(
         .required_signatories_count
         .checked_sub(1)
         .unwrap();
-    governance_data.signatories_nonce = governance_data.signatories_nonce.checked_add(1).unwrap();
     governance_data.serialize(&mut governance_info.data.borrow_mut()[..])?;
 
     dispose_account(required_signatory_info, beneficiary_info)?;
