@@ -35,19 +35,21 @@ pub mod test {
             plate: [0; 7],
         };
 
-        let dst = &mut [0u8; 15];
-
-        assert_eq!(
-            borsh::to_writer(&mut dst[..], &vehicle).unwrap(),
-            vehicle.pack_into_slice(&mut dst[..]).unwrap()
-        );
-
         assert_eq!(
             get_instance_packed_len::<Vehicle>(&vehicle).unwrap(),
             vehicle.get_packed_len().unwrap()
         );
 
-        let buffer = dst.clone();
+        let dst1 = &mut [0u8; 15];
+        borsh::to_writer(&mut dst1[..], &vehicle).unwrap();
+
+        let dst2 = &mut [0u8; 15];
+        vehicle.pack_into_slice(&mut dst2[..]).unwrap();
+
+        assert_eq!(dst1, dst2,);
+
+        let mut buffer = [0u8; 15];
+        buffer.copy_from_slice(&dst1[..]);
 
         assert_eq!(
             try_from_slice_unchecked::<Vehicle>(&buffer).unwrap(),
