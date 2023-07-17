@@ -11,7 +11,7 @@ npm install --save @solana/spl-account-compression @solana/web3.js
 __OR__
 
 ```shell
-yarn add @solana/spl-account-compression @solana/web3.js
+yarn add @solana/spl-account-compression @solana/web3.js @project-serum/anchor
 ```
 
 ## Information
