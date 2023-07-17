@@ -985,7 +985,7 @@ pub fn add_signatory(
     // Accounts
     governance: &Pubkey,
     proposal: &Pubkey,
-    permission: &AddSignatoryPermission,
+    add_signatory_authority: &AddSignatoryAuthority,
     payer: &Pubkey,
     // Args
     signatory: &Pubkey,
@@ -1000,15 +1000,15 @@ pub fn add_signatory(
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
-    match permission {
-        AddSignatoryPermission::GovernanceAuthority {
+    match add_signatory_authority {
+        AddSignatoryAuthority::ProposalOwner {
             governance_authority,
             token_owner_record,
         } => {
             accounts.push(AccountMeta::new_readonly(*token_owner_record, false));
             accounts.push(AccountMeta::new_readonly(*governance_authority, true));
         }
-        AddSignatoryPermission::RequiredByGovernance => {
+        AddSignatoryAuthority::None => {
             accounts.push(AccountMeta::new_readonly(
                 get_required_signatory_address(program_id, governance, signatory),
                 false,
@@ -1029,16 +1029,16 @@ pub fn add_signatory(
 
 #[derive(Debug, Copy, Clone)]
 /// Enum to specify the authority by which the instruction should add a signatory
-pub enum AddSignatoryPermission {
-    /// Governance authority holders can add signatories to a proposal
-    GovernanceAuthority {
-        /// Token holder or governance delegate
+pub enum AddSignatoryAuthority {
+    /// Proposal owners can add optional signatories to a proposal
+    ProposalOwner {
+        /// Token owner or its delegate
         governance_authority: Pubkey,
-        /// Token owner record
+        /// Token owner record of the Proposal owner
         token_owner_record: Pubkey,
     },
     /// Anyone can add signatories that are required by the governance to a proposal
-    RequiredByGovernance,
+    None,
 }
 
 /// Creates SignOffProposal instruction

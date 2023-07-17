@@ -27,7 +27,7 @@ use spl_governance::{
         remove_required_signatory, remove_transaction,
         revoke_governing_tokens, set_governance_config, set_governance_delegate,
         set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
-        withdraw_governing_tokens, AddSignatoryPermission,
+        withdraw_governing_tokens, AddSignatoryAuthority,
     },
     processor::process_instruction,
     state::{
@@ -2126,7 +2126,7 @@ impl GovernanceProgramTest {
             &self.program_id,
             &governance_cookie.address,
             &proposal_cookie.address,
-            &AddSignatoryPermission::GovernanceAuthority {
+            &AddSignatoryAuthority::ProposalOwner {
                 token_owner_record: token_owner_record_cookie.address,
                 governance_authority: token_owner_record_cookie.token_owner.pubkey(),
             },
@@ -2880,7 +2880,7 @@ impl GovernanceProgramTest {
             &self.program_id,
             &governance.address,
             &proposal_cookie.address,
-            &AddSignatoryPermission::RequiredByGovernance,
+            &AddSignatoryAuthority::None,
             &self.bench.payer.pubkey(),
             signatory,
         );
