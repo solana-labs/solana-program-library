@@ -14,12 +14,13 @@ use {
     },
 };
 
-/// Stateless helper for storing additional accounts required for an instruction.
+/// Stateless helper for storing additional accounts required for an
+/// instruction.
 ///
 /// This struct works with any `SplDiscriminate`, and stores the extra accounts
-/// needed for that specific instruction, using the given `ArrayDiscriminator` as the
-/// type-length-value `ArrayDiscriminator`, and then storing all of the given
-/// `AccountMeta`s as a zero-copy slice.
+/// needed for that specific instruction, using the given `ArrayDiscriminator`
+/// as the type-length-value `ArrayDiscriminator`, and then storing all of the
+/// given `AccountMeta`s as a zero-copy slice.
 ///
 /// Sample usage:
 ///

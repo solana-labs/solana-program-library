@@ -545,7 +545,7 @@ impl<'data> TlvStateMut<'data> {
     /// the new length is smaller, it will compact the rest of the buffer
     /// and zero out the difference at the end. If it's larger, it will move
     /// the rest of the buffer data and zero out the new data.
-    fn realloc<V: SplDiscriminate>(
+    pub fn realloc<V: SplDiscriminate>(
         &mut self,
         length: usize,
         entry_number: usize,
@@ -604,16 +604,6 @@ impl<'data> TlvStateMut<'data> {
     ) -> Result<&mut [u8], ProgramError> {
         self.realloc::<V>(length, 0)
     }
-
-    /// Reallocate the given number of bytes for the given SplDiscriminate,
-    /// where repeating discriminators _are_ allowed
-    pub fn realloc_allow_repeating<V: SplDiscriminate>(
-        &mut self,
-        length: usize,
-        entry_number: usize,
-    ) -> Result<&mut [u8], ProgramError> {
-        self.realloc::<V>(length, entry_number)
-    }
 }
 
 impl<'a> TlvState for TlvStateMut<'a> {
@@ -624,7 +614,7 @@ impl<'a> TlvState for TlvStateMut<'a> {
 
 /// Packs a variable-length value into an existing TLV space, reallocating
 /// the account and TLV as needed to accommodate for any change in space
-fn realloc_and_pack_variable_len<V: SplDiscriminate + VariableLenPack>(
+pub fn realloc_and_pack_variable_len<V: SplDiscriminate + VariableLenPack>(
     account_info: &AccountInfo,
     value: &V,
     entry_number: usize,
@@ -681,16 +671,6 @@ pub fn realloc_and_pack_variable_len_unique<V: SplDiscriminate + VariableLenPack
     realloc_and_pack_variable_len::<V>(account_info, value, 0)
 }
 
-/// Packs a variable-length value into an existing TLV space, where no repeating
-/// discriminators are allowed
-pub fn realloc_and_pack_variable_len_allow_repeating<V: SplDiscriminate + VariableLenPack>(
-    account_info: &AccountInfo,
-    value: &V,
-    entry_number: usize,
-) -> Result<(), ProgramError> {
-    realloc_and_pack_variable_len::<V>(account_info, value, entry_number)
-}
-
 /// Get the base size required for TLV data
 const fn get_base_len() -> usize {
     let indices = get_indices_unchecked(0);
@@ -706,6 +686,8 @@ fn check_data(tlv_data: &[u8]) -> Result<(), ProgramError> {
 // Tests for the base-use case of the TLV structure, where entries do NOT repeat
 #[cfg(test)]
 mod test {
+    use solana_program::pubkey::Pubkey;
+
     use {
         super::*,
         bytemuck::{Pod, Zeroable},
@@ -1066,7 +1048,7 @@ mod test {
     }
 
     #[test]
-    fn alloc() {
+    fn alloc_unique() {
         let tlv_size = 1;
         let account_size = get_base_len() + tlv_size;
         let mut buffer = vec![0; account_size];
@@ -1087,7 +1069,28 @@ mod test {
     }
 
     #[test]
-    fn realloc() {
+    fn alloc_allow_repeating() {
+        let tlv_size = 1;
+        let account_size = (get_base_len() + tlv_size) * 2;
+        let mut buffer = vec![0; account_size];
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+
+        let (data, entry_number) = state.alloc_allow_repeating::<TestValue>(tlv_size).unwrap();
+        assert_eq!(entry_number, 0);
+
+        // not enough room
+        assert_eq!(
+            pod_from_bytes_mut::<TestValue>(data).unwrap_err(),
+            ProgramError::InvalidArgument,
+        );
+
+        // Can alloc again!
+        let (_data, entry_number) = state.alloc_allow_repeating::<TestValue>(tlv_size).unwrap();
+        assert_eq!(entry_number, 1);
+    }
+
+    #[test]
+    fn realloc_unique() {
         const TLV_SIZE: usize = 10;
         const EXTRA_SPACE: usize = 5;
         const SMALL_SIZE: usize = 2;
@@ -1133,6 +1136,56 @@ mod test {
         );
     }
 
+    #[test]
+    fn realloc_with_repeating_entries() {
+        const TLV_SIZE: usize = 10;
+        const EXTRA_SPACE: usize = 5;
+        const SMALL_SIZE: usize = 2;
+        const ACCOUNT_SIZE: usize = get_base_len()
+            + TLV_SIZE
+            + EXTRA_SPACE
+            + get_base_len()
+            + TLV_SIZE
+            + get_base_len()
+            + size_of::<TestNonZeroDefault>();
+        let mut buffer = vec![0; ACCOUNT_SIZE];
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+
+        // alloc both types, two for the first type and one for the second
+        let _ = state.alloc_allow_repeating::<TestValue>(TLV_SIZE).unwrap();
+        let _ = state.alloc_allow_repeating::<TestValue>(TLV_SIZE).unwrap();
+        let _ = state.init_value::<TestNonZeroDefault>().unwrap();
+
+        // realloc first entry to larger, all 0
+        let data = state
+            .realloc::<TestValue>(TLV_SIZE + EXTRA_SPACE, 0)
+            .unwrap();
+        assert_eq!(data, [0; TLV_SIZE + EXTRA_SPACE]);
+        let value = state.get_first_value::<TestNonZeroDefault>().unwrap();
+        assert_eq!(*value, TestNonZeroDefault::default());
+
+        // realloc to smaller, still all 0
+        let data = state.realloc::<TestValue>(SMALL_SIZE, 0).unwrap();
+        assert_eq!(data, [0; SMALL_SIZE]);
+        let value = state.get_first_value::<TestNonZeroDefault>().unwrap();
+        assert_eq!(*value, TestNonZeroDefault::default());
+        let (_, end_index) = get_discriminators_and_end_index(&buffer).unwrap();
+        assert_eq!(
+            &buffer[end_index..ACCOUNT_SIZE],
+            [0; TLV_SIZE + EXTRA_SPACE - SMALL_SIZE]
+        );
+
+        // unpack again since we dropped the last `state`
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+        // realloc too much, fails
+        assert_eq!(
+            state
+                .realloc::<TestValue>(TLV_SIZE + EXTRA_SPACE + 1, 0)
+                .unwrap_err(),
+            ProgramError::InvalidAccountData,
+        );
+    }
+
     #[derive(Clone, Debug, PartialEq)]
     struct TestVariableLen {
         data: String, // test with a variable length type
@@ -1167,8 +1220,9 @@ mod test {
             Ok(size_of::<u64>().saturating_add(self.data.len()))
         }
     }
+
     #[test]
-    fn variable_len_value() {
+    fn variable_len_value_unique() {
         let initial_data = "This is a pretty cool test!";
         // exactly the right size
         let tlv_size = 8 + initial_data.len();
@@ -1199,5 +1253,110 @@ mod test {
                 .unwrap_err(),
             ProgramError::InvalidAccountData
         );
+    }
+
+    #[test]
+    fn variable_len_value_allow_repeating() {
+        let initial_data = "This is a pretty cool test!";
+        // exactly the right size
+        let tlv_size = 8 + initial_data.len();
+        // Times two since we are going to pack two entries
+        let account_size = (get_base_len() + tlv_size) * 2;
+        let mut buffer = vec![0; account_size];
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+
+        // Alloc and get entry number (first entry)
+        let (_, entry_number) = state
+            .alloc_allow_repeating::<TestVariableLen>(tlv_size)
+            .unwrap();
+        let test_variable_len = TestVariableLen {
+            data: initial_data.to_string(),
+        };
+
+        // Pack and get first
+        state
+            .pack_variable_len_value(&test_variable_len, entry_number)
+            .unwrap();
+        let deser = state
+            .get_first_variable_len_value::<TestVariableLen>()
+            .unwrap();
+        assert_eq!(deser, test_variable_len);
+
+        // Alloc and get entry number (second entry)
+        let (_, entry_number) = state
+            .alloc_allow_repeating::<TestVariableLen>(tlv_size)
+            .unwrap();
+        let test_variable_len = TestVariableLen {
+            data: initial_data.to_string(),
+        };
+
+        // Pack and get second (by entry number)
+        state
+            .pack_variable_len_value(&test_variable_len, entry_number)
+            .unwrap();
+        let deser = state
+            .get_variable_len_value::<TestVariableLen>(entry_number)
+            .unwrap();
+        assert_eq!(deser, test_variable_len);
+    }
+
+    #[test]
+    fn add_entry_mix_and_match() {
+        let variable_initial_data = TestVariableLen {
+            data: "This is another pretty cool test!".to_string(),
+        };
+        let variable_tlv_size = get_base_len() + 8 + variable_initial_data.data.len();
+
+        let fixed_initial_data = TestValue {
+            data: Pubkey::new_unique().to_bytes(),
+        };
+        let fixed_tlv_size = get_base_len() + size_of::<TestValue>();
+
+        let account_size = variable_tlv_size * 3 + fixed_tlv_size * 3;
+        let mut buffer = vec![0; account_size];
+
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+
+        // Add an entry for a fixed length value
+        let fixed_entry_number = state
+            .add_entry_allow_repeating(&fixed_initial_data)
+            .unwrap();
+        // Should be the first entry for our fixed length value
+        assert_eq!(fixed_entry_number, 0);
+
+        // Add an entry for a variable length value
+        let variable_entry_number = state
+            .add_variable_len_entry_allow_repeating(&variable_initial_data)
+            .unwrap();
+        // Should be the first entry for our variable length value
+        assert_eq!(variable_entry_number, 0);
+
+        // Add another entry for a variable length value
+        let variable_entry_number = state
+            .add_variable_len_entry_allow_repeating(&variable_initial_data)
+            .unwrap();
+        // Should be the second entry for our variable length value
+        assert_eq!(variable_entry_number, 1);
+
+        // Add another entry for a fixed length value
+        let fixed_entry_number = state
+            .add_entry_allow_repeating(&fixed_initial_data)
+            .unwrap();
+        // Should be the second entry for our fixed length value
+        assert_eq!(fixed_entry_number, 1);
+
+        // Add another entry for a fixed length value
+        let fixed_entry_number = state
+            .add_entry_allow_repeating(&fixed_initial_data)
+            .unwrap();
+        // Should be the third entry for our fixed length value
+        assert_eq!(fixed_entry_number, 2);
+
+        // Add another entry for a variable length value
+        let variable_entry_number = state
+            .add_variable_len_entry_allow_repeating(&variable_initial_data)
+            .unwrap();
+        // Should be the third entry for our variable length value
+        assert_eq!(variable_entry_number, 2);
     }
 }
