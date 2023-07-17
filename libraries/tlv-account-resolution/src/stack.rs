@@ -90,7 +90,7 @@ impl AccountResolutionStack {
 
     fn search(&self, indices: &[usize]) -> bool {
         if indices.is_empty() {
-            return true;
+            return false;
         }
         let mut node = self;
         while node.has_next() {
@@ -136,19 +136,15 @@ impl AccountResolutionStack {
     ) -> Result<(), ProgramError> {
         // If the new node has no dependencies, add it to the front.
         // This account can be resolved first.
-        if stack.is_empty() || node.dependencies.is_empty() {
-            stack.push_before(node)
-        }
+        //
         // If a node is found that dependends on the new node,
         // stop and check the rest of the stack for any dependencies.
-        else if stack.has_dependency(node.index) {
-            // If any are found, throw a circular reference error.
-            // The configuration can't be resolved.
-            if stack.search(&node.dependencies) {
-                return Err(AccountResolutionError::CircularReference.into());
-            }
-            // If not, add the new node before the dependent node.
-            // This account must be resolved before the dependent node.
+        //
+        //      If any are found, throw a circular reference error.
+        //      The configuration can't be resolved.
+        //      If not, add the new node before the dependent node.
+        //      This account must be resolved before the dependent node.
+        if stack.is_empty() || node.dependencies.is_empty() || stack.has_dependency(node.index) {
             stack.push_before(node)
         }
         // If the end of the stack is reached, add the new node to the end.
