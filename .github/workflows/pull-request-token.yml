@@ -3,17 +3,17 @@ name: Token Pull Request
 on:
   pull_request:
     paths:
-    - 'associated-token-account/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token.yml'
+      - "associated-token-account/**"
+      - "token/**"
+      - "ci/*-version.sh"
+      - ".github/workflows/pull-request-token.yml"
   push:
     branches: [master]
     paths:
-    - 'associated-token-account/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token.yml'
+      - "associated-token-account/**"
+      - "token/**"
+      - "ci/*-version.sh"
+      - ".github/workflows/pull-request-token.yml"
 
 jobs:
   cargo-test-sbf:
@@ -143,7 +143,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test transfer hook example
-        run: ./ci/cargo-test-sbf.sh token/transfer-hook-example
+        run: ./ci/cargo-test-sbf.sh interfaces/transfer-hook/example
 
   cargo-test-sbf-associated-token-account:
     runs-on: ubuntu-latest
