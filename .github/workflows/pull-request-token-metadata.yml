@@ -3,17 +3,17 @@ name: Token-Metadata Pull Request
 on:
   pull_request:
     paths:
-    - 'token-metadata/**'
-    - 'token/program-2022/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token-metadata.yml'
+      - "token-metadata/**"
+      - "token/program-2022/**"
+      - "ci/*-version.sh"
+      - ".github/workflows/pull-request-token-metadata.yml"
   push:
     branches: [master]
     paths:
-    - 'token-metadata/**'
-    - 'token/program-2022/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token-metadata.yml'
+      - "token-metadata/**"
+      - "token/program-2022/**"
+      - "ci/*-version.sh"
+      - ".github/workflows/pull-request-token-metadata.yml"
 
 jobs:
   cargo-test-sbf:
@@ -59,4 +59,4 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test example
-        run: ./ci/cargo-test-sbf.sh token-metadata/example
+        run: ./ci/cargo-test-sbf.sh interfaces/token-metadata/example
