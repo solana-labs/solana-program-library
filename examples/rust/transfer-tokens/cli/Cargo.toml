@@ -1,0 +1,20 @@
+[package]
+name = "spl-example-transfer-tokens-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "3", features = ["cargo"] }
+futures-util = "0.3.19"
+solana-clap-v3-utils = "=1.16.3"
+solana-cli-config = "=1.16.3"
+solana-client = "=1.16.3"
+solana-logger = "=1.16.3"
+solana-remote-wallet = "=1.16.3"
+solana-sdk = "=1.16.3"
+spl-associated-token-account = { version = "2", path = "../../../../associated-token-account/program" }
+spl-token = { version = "4", path = "../../../../token/program" }
+tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+solana-test-validator = "=1.16.3"

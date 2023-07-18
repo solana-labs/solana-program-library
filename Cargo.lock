@@ -6503,6 +6503,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-example-transfer-tokens-cli"
+version = "0.1.0"
+dependencies = [
+ "clap 3.2.25",
+ "futures-util",
+ "solana-clap-v3-utils",
+ "solana-cli-config",
+ "solana-client",
+ "solana-logger",
+ "solana-remote-wallet",
+ "solana-sdk",
+ "solana-test-validator",
+ "spl-associated-token-account 2.0.0",
+ "spl-token 4.0.0",
+ "tokio",
+]
+
+[[package]]
 name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
