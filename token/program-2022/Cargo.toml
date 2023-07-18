@@ -27,8 +27,8 @@ solana-program = "1.16.3"
 solana-zk-token-sdk = "1.16.3"
 spl-memo = { version = "4.0.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
 spl-token = { version = "4.0",  path = "../program", features = ["no-entrypoint"] }
-spl-token-metadata-interface = { version = "0.1.0", path = "../../token-metadata/interface" }
-spl-transfer-hook-interface = { version = "0.1.0", path = "../transfer-hook-interface" }
+spl-token-metadata-interface = { version = "0.1.0", path = "../../interfaces/token-metadata/interface" }
+spl-transfer-hook-interface = { version = "0.1.0", path = "../../interfaces/transfer-hook/interface" }
 spl-type-length-value = { version = "0.2.0", path = "../../libraries/type-length-value" }
 thiserror = "1.0"
 serde = { version = "1.0.171", optional = true }
