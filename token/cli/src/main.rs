@@ -144,6 +144,7 @@ pub enum CommandName {
     EnableCpiGuard,
     DisableCpiGuard,
     UpdateDefaultAccountState,
+    UpdateMetadataPointerAddress,
     WithdrawWithheldTokens,
     SetTransferFee,
     WithdrawExcessLamports,
@@ -2302,6 +2303,33 @@ async fn command_cpi_guard(
     })
 }
 
+async fn command_update_metadata_pointer_address(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    authority: Pubkey,
+    new_metadata_address: Option<Pubkey>,
+    bulk_signers: BulkSigners,
+) -> CommandResult {
+    if config.sign_only {
+        panic!("Config can not be sign-only for updating metadata pointer address.");
+    }
+
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let res = token
+        .update_metadata_address(&authority, Some(new_metadata_address), &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 async fn command_update_default_account_state(
     config: &Config<'_>,
     token_pubkey: Pubkey,
@@ -3625,6 +3653,44 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
+            SubCommand::with_name(CommandName::UpdateMetadataPointerAddress.into())
+                .about("Updates default account state for the mint. Requires the default account state extension.")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token mint to update default account state"),
+                )
+                .arg(
+                    Arg::with_name("metadata_address")
+                        .long("metadata-address")
+                        .value_name("ADDRESS")
+                        .takes_value(true)
+                        .help(
+                            "Specify address that stores token metadata."
+                        ),
+                )
+                .arg(
+                    Arg::with_name("authority")
+                        .long("authority")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the token's authority. \
+                            This may be a keypair file or the ASK keyword. \
+                            Defaults to the client keypair.",
+                        ),
+                )
+                .arg(owner_address_arg())
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+                .offline_args(),
+        )
+        .subcommand(
             SubCommand::with_name(CommandName::WithdrawWithheldTokens.into())
                 .about("Withdraw withheld transfer fee tokens from mint and / or account(s)")
                 .arg(
@@ -4383,6 +4449,28 @@ async fn process_command<'a>(
                 token,
                 freeze_authority,
                 new_default_state,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::UpdateMetadataPointerAddress, arg_matches) => {
+            // Since account is required argument it will always be present
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+
+            let (authority_signer, authority) =
+                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(authority_signer, &mut bulk_signers);
+            }
+            let metadata_address = value_t!(arg_matches, "metadata_address", Pubkey).ok();
+
+            command_update_metadata_pointer_address(
+                config,
+                token,
+                authority,
+                metadata_address,
                 bulk_signers,
             )
             .await
