@@ -55,3 +55,5 @@ async fn fail_double_init() {
         .unwrap_err();
     check_error(e, SinglePoolError::PoolAlreadyInitialized);
 }
+
+// TODO test that init can succeed without mpl program

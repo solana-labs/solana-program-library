@@ -328,6 +328,7 @@ pub fn withdraw_stake(
 /// Creates necessary instructions to create and delegate a new stake account to a given validator.
 /// Uses a fixed address for each wallet and vote account combination to make it easier to find for deposits.
 /// This is an optional helper function; deposits can come from any owned stake account without lockup.
+// TODO FIXME ugh this is wrong... i need to pass in vote account
 pub fn create_and_delegate_user_stake(
     vote_account_address: &Pubkey,
     pool_address: &Pubkey,

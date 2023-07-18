@@ -14,6 +14,7 @@ use {
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
         msg,
+        program::set_return_data,
         program_error::ProgramError,
         program_option::COption,
         pubkey::Pubkey,
@@ -133,23 +134,71 @@ pub fn process_update_field(
 /// Processes a [RemoveKey](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_remove_key(
     _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-    _data: RemoveKey,
+    accounts: &[AccountInfo],
+    data: RemoveKey,
 ) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let metadata_info = next_account_info(account_info_iter)?;
+    let update_authority_info = next_account_info(account_info_iter)?;
+
+    // deserialize the metadata, but scope the data borrow since we'll probably
+    // realloc the account
+    let mut token_metadata = {
+        let buffer = metadata_info.try_borrow_data()?;
+        let mint = StateWithExtensions::<Mint>::unpack(&buffer)?;
+        mint.get_variable_len_extension::<TokenMetadata>()?
+    };
+
+    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
+    if !token_metadata.remove_key(&data.key) && !data.idempotent {
+        return Err(TokenMetadataError::KeyNotFound.into());
+    }
+    alloc_and_serialize::<Mint, _>(metadata_info, &token_metadata, true)?;
     Ok(())
 }
 
 /// Processes a [UpdateAuthority](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_update_authority(
     _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-    _data: UpdateAuthority,
+    accounts: &[AccountInfo],
+    data: UpdateAuthority,
 ) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let metadata_info = next_account_info(account_info_iter)?;
+    let update_authority_info = next_account_info(account_info_iter)?;
+
+    // deserialize the metadata, but scope the data borrow since we'll write
+    // to the account later
+    let mut token_metadata = {
+        let buffer = metadata_info.try_borrow_data()?;
+        let mint = StateWithExtensions::<Mint>::unpack(&buffer)?;
+        mint.get_variable_len_extension::<TokenMetadata>()?
+    };
+
+    check_update_authority(update_authority_info, &token_metadata.update_authority)?;
+    token_metadata.update_authority = data.new_authority;
+    // Update the account, no realloc needed!
+    alloc_and_serialize::<Mint, _>(metadata_info, &token_metadata, true)?;
+
     Ok(())
 }
 
 /// Processes an [Emit](enum.TokenMetadataInstruction.html) instruction.
-pub fn process_emit(_program_id: &Pubkey, _accounts: &[AccountInfo], _data: Emit) -> ProgramResult {
+pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let metadata_info = next_account_info(account_info_iter)?;
+
+    if metadata_info.owner != program_id {
+        return Err(ProgramError::IllegalOwner);
+    }
+
+    let buffer = metadata_info.try_borrow_data()?;
+    let state = StateWithExtensions::<Mint>::unpack(&buffer)?;
+    let metadata_bytes = state.get_extension_bytes::<TokenMetadata>()?;
+
+    if let Some(range) = TokenMetadata::get_slice(metadata_bytes, data.start, data.end) {
+        set_return_data(range);
+    }
     Ok(())
 }
 

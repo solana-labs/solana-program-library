@@ -73,7 +73,7 @@ async fn success_initialize() {
     // fails without more lamports for new rent-exemption
     let error = token_context
         .token
-        .initialize_token_metadata(
+        .token_metadata_initialize(
             &update_authority,
             &token_context.mint_authority.pubkey(),
             token_metadata.name.clone(),
@@ -94,7 +94,7 @@ async fn success_initialize() {
     let not_mint_authority = Keypair::new();
     let error = token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &update_authority,
             &not_mint_authority.pubkey(),
@@ -117,7 +117,7 @@ async fn success_initialize() {
 
     token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &update_authority,
             &token_context.mint_authority.pubkey(),
@@ -138,7 +138,7 @@ async fn success_initialize() {
     // fail double-init
     let error = token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &update_authority,
             &token_context.mint_authority.pubkey(),
@@ -183,7 +183,7 @@ async fn fail_without_metadata_pointer() {
 
     let error = token_context
         .token
-        .initialize_token_metadata_with_rent_transfer(
+        .token_metadata_initialize_with_rent_transfer(
             &payer_pubkey,
             &Pubkey::new_unique(),
             &token_context.mint_authority.pubkey(),
