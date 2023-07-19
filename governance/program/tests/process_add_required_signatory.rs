@@ -8,7 +8,7 @@ use program_test::*;
 use solana_program::pubkey::Pubkey;
 
 #[tokio::test]
-async fn test_add_signatory() {
+async fn test_add_required_signatory() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -36,13 +36,8 @@ async fn test_add_signatory() {
         .await
         .unwrap();
 
-    let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
-        .await
-        .unwrap();
-
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -52,7 +47,7 @@ async fn test_add_signatory() {
         .unwrap();
 
     governance_test
-        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 

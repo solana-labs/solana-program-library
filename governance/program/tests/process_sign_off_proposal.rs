@@ -418,7 +418,7 @@ async fn test_sign_off_proposal_with_non_existing_realm_error() {
 }
 
 #[tokio::test]
-async fn test_sign_off_proposal_with_governance_signatory() {
+async fn test_sign_off_proposal_with_required_signatory() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -456,7 +456,7 @@ async fn test_sign_off_proposal_with_governance_signatory() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -490,7 +490,7 @@ async fn test_sign_off_proposal_with_governance_signatory() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &new_proposal_cookie,
             &governance_cookie,
             &signatory.pubkey(),
@@ -559,7 +559,7 @@ async fn test_partial_sign_off_proposal_with_two_governance_signatories() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -594,7 +594,7 @@ async fn test_partial_sign_off_proposal_with_two_governance_signatories() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -604,7 +604,7 @@ async fn test_partial_sign_off_proposal_with_two_governance_signatories() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &proposal_cookie,
             &governance_cookie,
             &signatory_1.pubkey(),
@@ -644,7 +644,7 @@ async fn test_partial_sign_off_proposal_with_two_governance_signatories() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &new_proposal_cookie,
             &governance_cookie,
             &signatory_1.pubkey(),
@@ -653,7 +653,7 @@ async fn test_partial_sign_off_proposal_with_two_governance_signatories() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &new_proposal_cookie,
             &governance_cookie,
             &signatory_2.pubkey(),
@@ -722,7 +722,7 @@ async fn test_repeat_sign_off_proposal_err() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -757,7 +757,7 @@ async fn test_repeat_sign_off_proposal_err() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -767,7 +767,7 @@ async fn test_repeat_sign_off_proposal_err() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &proposal_cookie,
             &governance_cookie,
             &signatory_1.pubkey(),
@@ -807,7 +807,7 @@ async fn test_repeat_sign_off_proposal_err() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &new_proposal_cookie,
             &governance_cookie,
             &signatory_1.pubkey(),
@@ -816,7 +816,7 @@ async fn test_repeat_sign_off_proposal_err() {
     .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &new_proposal_cookie,
             &governance_cookie,
             &signatory_2.pubkey(),
@@ -893,7 +893,7 @@ async fn test_sign_off_without_all_required_signatories_err() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -928,7 +928,7 @@ async fn test_sign_off_without_all_required_signatories_err() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -938,7 +938,7 @@ async fn test_sign_off_without_all_required_signatories_err() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &proposal_cookie,
             &governance_cookie,
             &signatory_1.pubkey(),
@@ -978,7 +978,7 @@ async fn test_sign_off_without_all_required_signatories_err() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &new_proposal_cookie,
             &governance_cookie,
             &signatory_1.pubkey(),

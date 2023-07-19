@@ -77,7 +77,7 @@ pub mod cookies;
 pub mod legacy;
 
 use crate::program_test::cookies::{
-    RealmConfigCookie, SignatoryRecordCookie, SignatoryRecordCookieWithoutKeypair,
+    RealmConfigCookie, SignatoryRecordCookie,
     VoterWeightRecordCookie,
 };
 
@@ -2158,7 +2158,7 @@ impl GovernanceProgramTest {
         let signatory_record_cookie = SignatoryRecordCookie {
             address: signatory_record_address,
             account: signatory_record_data,
-            signatory,
+            signatory: Some(signatory),
         };
 
         Ok(signatory_record_cookie)
@@ -2236,13 +2236,13 @@ impl GovernanceProgramTest {
             &proposal_cookie.realm,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
-            &signatory_record_cookie.signatory.pubkey(),
+            &signatory_record_cookie.signatory.as_ref().unwrap().pubkey(),
             None,
         );
 
         instruction_override(&mut sign_off_proposal_ix);
 
-        let default_signers = &[&signatory_record_cookie.signatory];
+        let default_signers = &[signatory_record_cookie.signatory.as_ref().unwrap()];
         let signers = signers_override.unwrap_or(default_signers);
 
         self.bench
@@ -2793,7 +2793,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_required_signatory_transaction(
+    pub async fn with_add_required_signatory_transaction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
@@ -2870,12 +2870,12 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_signatory_record_from_governance(
+    pub async fn with_signatory_record_for_required_signatory(
         &mut self,
         proposal_cookie: &ProposalCookie,
         governance: &GovernanceCookie,
         signatory: &Pubkey,
-    ) -> Result<SignatoryRecordCookieWithoutKeypair, ProgramError> {
+    ) -> Result<SignatoryRecordCookie, ProgramError> {
         let create_signatory_record_ix = add_signatory(
             &self.program_id,
             &governance.address,
@@ -2900,12 +2900,87 @@ impl GovernanceProgramTest {
             reserved_v2: [0; 8],
         };
 
-        let signatory_record_cookie = SignatoryRecordCookieWithoutKeypair {
+        let signatory_record_cookie = SignatoryRecordCookie {
             address: signatory_record_address,
             account: signatory_record_data,
+            signatory: None,
         };
 
         Ok(signatory_record_cookie)
+    }
+
+
+    pub async fn with_governance_with_required_signatory(&mut self,
+    ) -> (
+        TokenOwnerRecordCookie,
+        GovernanceCookie,
+        RealmCookie,
+        Keypair,
+    ) {
+        let realm_cookie = self.with_realm().await;
+        let governed_account_cookie = self.with_governed_account().await;
+
+        let signatory = Keypair::new();
+
+        let token_owner_record_cookie = self
+            .with_community_token_deposit(&realm_cookie)
+            .await
+            .unwrap();
+
+        let mut governance_cookie = self
+            .with_governance(
+                &realm_cookie,
+                &governed_account_cookie,
+                &token_owner_record_cookie,
+            )
+            .await
+            .unwrap();
+
+        let mut proposal_cookie = self
+            .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+            .await
+            .unwrap();
+
+        let signatory_record_cookie = self
+            .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
+            .await
+            .unwrap();
+
+        let proposal_transaction_cookie = self
+            .with_add_required_signatory_transaction(
+                &mut proposal_cookie,
+                &token_owner_record_cookie,
+                &governance_cookie,
+                &signatory.pubkey(),
+            )
+            .await
+            .unwrap();
+
+        self
+            .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+            .await
+            .unwrap();
+
+        self
+            .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+            .await
+            .unwrap();
+
+        self
+            .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+            .await;
+
+        self
+            .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
+            .await
+            .unwrap();
+
+        (
+            token_owner_record_cookie,
+            governance_cookie,
+            realm_cookie,
+            signatory,
+        )
     }
 
     #[allow(dead_code)]

@@ -150,7 +150,7 @@ async fn test_add_signatory_with_invalid_proposal_owner_error() {
 }
 
 #[tokio::test]
-async fn test_add_signatory_from_governance() {
+async fn test_add_signatory_for_required_signatory() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -183,7 +183,7 @@ async fn test_add_signatory_from_governance() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -219,7 +219,7 @@ async fn test_add_signatory_from_governance() {
 
     // Act
     let new_signatory_record_cookie = governance_test
-        .with_signatory_record_from_governance(&new_proposal_cookie, &governance_cookie, &signatory)
+        .with_signatory_record_for_required_signatory(&new_proposal_cookie, &governance_cookie, &signatory)
         .await
         .unwrap();
 
@@ -241,7 +241,7 @@ async fn test_add_signatory_from_governance() {
 
 
 #[tokio::test]
-async fn test_add_signatory_from_governance_multiple_times_err() {
+async fn test_add_signatory_for_required_signatory_multiple_times_err() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -274,7 +274,7 @@ async fn test_add_signatory_from_governance_multiple_times_err() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
+        .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
@@ -309,14 +309,14 @@ async fn test_add_signatory_from_governance_multiple_times_err() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(&new_proposal_cookie, &governance_cookie, &signatory)
+        .with_signatory_record_for_required_signatory(&new_proposal_cookie, &governance_cookie, &signatory)
         .await
         .unwrap();
     governance_test.advance_clock().await;
 
     // Act
     let err = governance_test
-        .with_signatory_record_from_governance(&new_proposal_cookie, &governance_cookie, &signatory)
+        .with_signatory_record_for_required_signatory(&new_proposal_cookie, &governance_cookie, &signatory)
         .await
         .err()
         .unwrap();

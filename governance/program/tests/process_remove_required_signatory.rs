@@ -11,87 +11,13 @@ use crate::cookies::{GovernanceCookie, RealmCookie, TokenOwnerRecordCookie};
 use solana_sdk::signature::{Keypair, Signer};
 use spl_governance_tools::error::GovernanceToolsError;
 
-async fn set_up_governance_with_required_signatory(
-    governance_test: &mut GovernanceProgramTest,
-) -> (
-    TokenOwnerRecordCookie,
-    GovernanceCookie,
-    RealmCookie,
-    Keypair,
-) {
-    let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
-
-    let signatory = Keypair::new();
-
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
-
-    let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
-        .await
-        .unwrap();
-
-    let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
-        .await
-        .unwrap();
-
-    let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
-        .await
-        .unwrap();
-
-    let proposal_transaction_cookie = governance_test
-        .with_required_signatory_transaction(
-            &mut proposal_cookie,
-            &token_owner_record_cookie,
-            &governance_cookie,
-            &signatory.pubkey(),
-        )
-        .await
-        .unwrap();
-
-    governance_test
-        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
-        .await
-        .unwrap();
-
-    governance_test
-        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
-        .await
-        .unwrap();
-
-    governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
-        .await;
-
-    governance_test
-        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
-        .await
-        .unwrap();
-
-    (
-        token_owner_record_cookie,
-        governance_cookie,
-        realm_cookie,
-        signatory,
-    )
-}
-
 #[tokio::test]
 async fn test_remove_required_signatory() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let (token_owner_record_cookie, mut governance_cookie, realm_cookie, signatory) =
-        set_up_governance_with_required_signatory(&mut governance_test).await;
+        governance_test.with_governance_with_required_signatory().await;
 
     let mut proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
@@ -112,7 +38,7 @@ async fn test_remove_required_signatory() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &proposal_cookie,
             &governance_cookie,
             &signatory.pubkey(),
@@ -170,7 +96,7 @@ async fn test_remove_non_existing_required_signatory_err() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let (token_owner_record_cookie, mut governance_cookie, realm_cookie, signatory) =
-        set_up_governance_with_required_signatory(&mut governance_test).await;
+        governance_test.with_governance_with_required_signatory().await;
 
     let mut proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
@@ -191,7 +117,7 @@ async fn test_remove_non_existing_required_signatory_err() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_from_governance(
+        .with_signatory_record_for_required_signatory(
             &proposal_cookie,
             &governance_cookie,
             &signatory.pubkey(),

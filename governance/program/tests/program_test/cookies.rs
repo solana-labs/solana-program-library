@@ -157,13 +157,7 @@ pub struct ProposalDepositCookie {
 pub struct SignatoryRecordCookie {
     pub address: Pubkey,
     pub account: SignatoryRecordV2,
-    pub signatory: Keypair,
-}
-
-#[derive(Debug)]
-pub struct SignatoryRecordCookieWithoutKeypair {
-    pub address: Pubkey,
-    pub account: SignatoryRecordV2,
+    pub signatory: Option<Keypair>,
 }
 
 #[derive(Debug)]
