@@ -144,7 +144,7 @@ pub enum CommandName {
     EnableCpiGuard,
     DisableCpiGuard,
     UpdateDefaultAccountState,
-    UpdateMetadataPointerAddress,
+    UpdateMetadataAddress,
     WithdrawWithheldTokens,
     SetTransferFee,
     WithdrawExcessLamports,
@@ -2316,7 +2316,7 @@ async fn command_update_metadata_pointer_address(
 
     let token = token_client_from_config(config, &token_pubkey, None)?;
     let res = token
-        .update_metadata_address(&authority, Some(new_metadata_address), &bulk_signers)
+        .update_metadata_address(&authority, new_metadata_address, &bulk_signers)
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -3653,8 +3653,8 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
-            SubCommand::with_name(CommandName::UpdateMetadataPointerAddress.into())
-                .about("Updates default account state for the mint. Requires the default account state extension.")
+            SubCommand::with_name(CommandName::UpdateMetadataAddress.into())
+                .about("Updates metadata pointer address for the mint. Requires the metadata pointer extension.")
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
@@ -3662,16 +3662,15 @@ fn app<'a, 'b>(
                         .takes_value(true)
                         .index(1)
                         .required(true)
-                        .help("The address of the token mint to update default account state"),
+                        .help("The address of the token mint to update the metadata pointer address"),
                 )
                 .arg(
                     Arg::with_name("metadata_address")
                         .long("metadata-address")
-                        .value_name("ADDRESS")
+                        .value_name("METADATA_ADDRESS")
                         .takes_value(true)
-                        .help(
-                            "Specify address that stores token metadata."
-                        ),
+                        .required_unless("disable")
+                        .help("Specify address that stores token's metadata-pointer"),
                 )
                 .arg(
                     Arg::with_name("authority")
@@ -3680,15 +3679,13 @@ fn app<'a, 'b>(
                         .validator(is_valid_signer)
                         .takes_value(true)
                         .help(
-                            "Specify the token's authority. \
+                            "Specify the token's metadata-pointer authority. \
                             This may be a keypair file or the ASK keyword. \
                             Defaults to the client keypair.",
                         ),
                 )
-                .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
-                .offline_args(),
         )
         .subcommand(
             SubCommand::with_name(CommandName::WithdrawWithheldTokens.into())
@@ -4453,7 +4450,7 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::UpdateMetadataPointerAddress, arg_matches) => {
+        (CommandName::UpdateMetadataAddress, arg_matches) => {
             // Since account is required argument it will always be present
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
@@ -7551,6 +7548,8 @@ mod tests {
         let program_id = spl_token_2022::id();
         let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
         let metadata_address = Pubkey::new_unique();
+        let token_keypair = Keypair::new();
+        let token_pubkey = token_keypair.pubkey();
 
         let result = process_test_command(
             &config,
@@ -7577,5 +7576,36 @@ mod tests {
             extension.metadata_address,
             Some(metadata_address).try_into().unwrap()
         );
+
+        let new_metadata_address = Pubkey::new_unique();
+
+        let new_result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::UpdateMetadataAddress.into(),
+                "--token",
+                &token_pubkey.to_string(),
+                "--metadata-address",
+                &new_metadata_address.to_string(),
+                "--authority",
+                &payer.pubkey().to_string(),
+            ],
+        )
+        .await;
+        
+        let new_value: serde_json::Value = serde_json::from_str(&new_result.unwrap()).unwrap();
+        let new_mint = Pubkey::from_str(new_value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+        let new_account = config.rpc_client.get_account(&new_mint).await.unwrap();
+        let new_mint_state = StateWithExtensionsOwned::<Mint>::unpack(new_account.data).unwrap();
+
+        let new_extension = new_mint_state.get_extension::<MetadataPointer>().unwrap();
+
+        assert_eq!(
+            new_extension.metadata_address,
+            Some(new_metadata_address).try_into().unwrap()
+        );
+
     }
 }
