@@ -23,4 +23,7 @@ pub enum TokenEditionsError {
     /// Original print has no update authority
     #[error("Original print has no update authority")]
     ImmutablePrint,
+    /// Incorrect original print provided
+    #[error("Incorrect original print provided")]
+    IncorrectOriginal,
 }

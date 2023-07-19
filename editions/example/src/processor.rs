@@ -175,7 +175,7 @@ pub fn process_update_original_authority(
 pub fn process_create_reprint(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
-    _data: CreateReprint,
+    data: CreateReprint,
 ) -> ProgramResult {
     // Assumes the `Original` print has already been created,
     // as well as the mint and metadata for the original print.
@@ -264,6 +264,10 @@ pub fn process_create_reprint(
     };
 
     check_update_authority(update_authority_info, &original_print.update_authority)?;
+
+    if data.original != *original_info.key {
+        return Err(TokenEditionsError::IncorrectOriginal.into());
+    }
 
     // Update the current supply
     let copy = original_print.supply + 1;
