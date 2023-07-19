@@ -813,7 +813,7 @@ async fn test_repeat_sign_off_proposal_err() {
             &signatory_1.pubkey(),
         )
         .await
-    .unwrap();
+        .unwrap();
 
     governance_test
         .with_signatory_record_for_required_signatory(

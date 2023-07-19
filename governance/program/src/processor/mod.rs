@@ -31,7 +31,7 @@ mod process_sign_off_proposal;
 mod process_update_program_metadata;
 mod process_withdraw_governing_tokens;
 
-use crate::{instruction::GovernanceInstruction, error::GovernanceError};
+use crate::{error::GovernanceError, instruction::GovernanceInstruction};
 
 use process_add_required_signatory::*;
 use process_add_signatory::*;

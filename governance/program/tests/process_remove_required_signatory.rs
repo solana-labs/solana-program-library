@@ -17,7 +17,9 @@ async fn test_remove_required_signatory() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let (token_owner_record_cookie, mut governance_cookie, realm_cookie, signatory) =
-        governance_test.with_governance_with_required_signatory().await;
+        governance_test
+            .with_governance_with_required_signatory()
+            .await;
 
     let mut proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
@@ -96,7 +98,9 @@ async fn test_remove_non_existing_required_signatory_err() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let (token_owner_record_cookie, mut governance_cookie, realm_cookie, signatory) =
-        governance_test.with_governance_with_required_signatory().await;
+        governance_test
+            .with_governance_with_required_signatory()
+            .await;
 
     let mut proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut governance_cookie)

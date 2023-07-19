@@ -33,7 +33,6 @@ pub fn process_add_signatory(
     let proposal_info = next_account_info(account_info_iter)?; // 1
     let signatory_record_info = next_account_info(account_info_iter)?; // 2
 
-
     let payer_info = next_account_info(account_info_iter)?; // 3
     let system_info = next_account_info(account_info_iter)?; // 4
 
@@ -69,7 +68,8 @@ pub fn process_add_signatory(
             &proposal_data.token_owner_record,
         )?;
 
-        token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
+        token_owner_record_data
+            .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
     }
 
     let rent = Rent::get()?;

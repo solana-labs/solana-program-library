@@ -687,7 +687,7 @@ impl ProposalV2 {
             return None;
         };
 
-        let mut yes_option = &mut self.options[0];
+        let yes_option = &mut self.options[0];
 
         let yes_vote_weight = yes_option.vote_weight;
         let deny_vote_weight = self.deny_vote_weight.unwrap();

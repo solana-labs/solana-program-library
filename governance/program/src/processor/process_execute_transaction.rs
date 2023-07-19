@@ -88,7 +88,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
         proposal_data.state = ProposalState::Executing;
     }
 
-    let mut option = &mut proposal_data.options[proposal_transaction_data.option_index as usize];
+    let option = &mut proposal_data.options[proposal_transaction_data.option_index as usize];
     option.transactions_executed_count = option.transactions_executed_count.checked_add(1).unwrap();
 
     // Checking for Executing and ExecutingWithErrors states because instruction can still be executed after being flagged with error

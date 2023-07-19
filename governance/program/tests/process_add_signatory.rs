@@ -38,7 +38,11 @@ async fn test_add_signatory() {
 
     // Act
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
+        .with_signatory(
+            &proposal_cookie,
+            &governance_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 
@@ -92,7 +96,11 @@ async fn test_add_signatory_with_owner_or_delegate_must_sign_error() {
 
     // Act
     let err = governance_test
-        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
+        .with_signatory(
+            &proposal_cookie,
+            &governance_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .err()
         .unwrap();
@@ -140,7 +148,11 @@ async fn test_add_signatory_with_invalid_proposal_owner_error() {
 
     // Act
     let err = governance_test
-        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
+        .with_signatory(
+            &proposal_cookie,
+            &governance_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .err()
         .unwrap();
@@ -178,7 +190,11 @@ async fn test_add_signatory_for_required_signatory() {
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
+        .with_signatory(
+            &proposal_cookie,
+            &governance_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 
@@ -219,7 +235,11 @@ async fn test_add_signatory_for_required_signatory() {
 
     // Act
     let new_signatory_record_cookie = governance_test
-        .with_signatory_record_for_required_signatory(&new_proposal_cookie, &governance_cookie, &signatory)
+        .with_signatory_record_for_required_signatory(
+            &new_proposal_cookie,
+            &governance_cookie,
+            &signatory,
+        )
         .await
         .unwrap();
 
@@ -238,7 +258,6 @@ async fn test_add_signatory_for_required_signatory() {
 
     assert_eq!(new_proposal_account.signatories_count, 1);
 }
-
 
 #[tokio::test]
 async fn test_add_signatory_for_required_signatory_multiple_times_err() {
@@ -269,7 +288,11 @@ async fn test_add_signatory_for_required_signatory_multiple_times_err() {
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
+        .with_signatory(
+            &proposal_cookie,
+            &governance_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 
@@ -309,14 +332,22 @@ async fn test_add_signatory_for_required_signatory_multiple_times_err() {
         .unwrap();
 
     governance_test
-        .with_signatory_record_for_required_signatory(&new_proposal_cookie, &governance_cookie, &signatory)
+        .with_signatory_record_for_required_signatory(
+            &new_proposal_cookie,
+            &governance_cookie,
+            &signatory,
+        )
         .await
         .unwrap();
     governance_test.advance_clock().await;
 
     // Act
     let err = governance_test
-        .with_signatory_record_for_required_signatory(&new_proposal_cookie, &governance_cookie, &signatory)
+        .with_signatory_record_for_required_signatory(
+            &new_proposal_cookie,
+            &governance_cookie,
+            &signatory,
+        )
         .await
         .err()
         .unwrap();

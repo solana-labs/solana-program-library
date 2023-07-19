@@ -18,16 +18,15 @@ use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
     instruction::{
-        add_required_signatory, add_signatory, cancel_proposal, cast_vote,
-        complete_proposal, create_governance, create_mint_governance, create_native_treasury,
-        create_program_governance, create_proposal, create_realm,
-        create_token_governance,
+        add_required_signatory, add_signatory, cancel_proposal, cast_vote, complete_proposal,
+        create_governance, create_mint_governance, create_native_treasury,
+        create_program_governance, create_proposal, create_realm, create_token_governance,
         create_token_owner_record, deposit_governing_tokens, execute_transaction, finalize_vote,
         flag_transaction_error, insert_transaction, refund_proposal_deposit, relinquish_vote,
-        remove_required_signatory, remove_transaction,
-        revoke_governing_tokens, set_governance_config, set_governance_delegate,
-        set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
-        withdraw_governing_tokens, AddSignatoryAuthority,
+        remove_required_signatory, remove_transaction, revoke_governing_tokens,
+        set_governance_config, set_governance_delegate, set_realm_authority, set_realm_config,
+        sign_off_proposal, upgrade_program_metadata, withdraw_governing_tokens,
+        AddSignatoryAuthority,
     },
     processor::process_instruction,
     state::{
@@ -77,8 +76,7 @@ pub mod cookies;
 pub mod legacy;
 
 use crate::program_test::cookies::{
-    RealmConfigCookie, SignatoryRecordCookie,
-    VoterWeightRecordCookie,
+    RealmConfigCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
 };
 
 use spl_governance_test_sdk::{
@@ -1943,7 +1941,11 @@ impl GovernanceProgramTest {
             .await?;
 
         let signatory_record_cookie = self
-            .with_signatory(&proposal_cookie, &governance_cookie, token_owner_record_cookie)
+            .with_signatory(
+                &proposal_cookie,
+                governance_cookie,
+                token_owner_record_cookie,
+            )
             .await?;
 
         self.sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
@@ -2118,7 +2120,6 @@ impl GovernanceProgramTest {
         proposal_cookie: &ProposalCookie,
         governance_cookie: &GovernanceCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-
     ) -> Result<SignatoryRecordCookie, ProgramError> {
         let signatory = Keypair::new();
 
@@ -2863,7 +2864,7 @@ impl GovernanceProgramTest {
         );
 
         self.bench
-            .process_transaction(&[ix], Some(&[&signatory]))
+            .process_transaction(&[ix], Some(&[signatory]))
             .await?;
 
         Ok(())
@@ -2909,8 +2910,8 @@ impl GovernanceProgramTest {
         Ok(signatory_record_cookie)
     }
 
-
-    pub async fn with_governance_with_required_signatory(&mut self,
+    pub async fn with_governance_with_required_signatory(
+        &mut self,
     ) -> (
         TokenOwnerRecordCookie,
         GovernanceCookie,
@@ -2942,7 +2943,11 @@ impl GovernanceProgramTest {
             .unwrap();
 
         let signatory_record_cookie = self
-            .with_signatory(&proposal_cookie, &governance_cookie, &token_owner_record_cookie)
+            .with_signatory(
+                &proposal_cookie,
+                &governance_cookie,
+                &token_owner_record_cookie,
+            )
             .await
             .unwrap();
 
@@ -2956,22 +2961,18 @@ impl GovernanceProgramTest {
             .await
             .unwrap();
 
-        self
-            .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        self.sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
             .await
             .unwrap();
 
-        self
-            .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        self.with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
             .await
             .unwrap();
 
-        self
-            .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        self.advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
             .await;
 
-        self
-            .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
+        self.execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
             .await
             .unwrap();
 
