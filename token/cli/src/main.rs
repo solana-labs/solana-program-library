@@ -7548,8 +7548,6 @@ mod tests {
         let program_id = spl_token_2022::id();
         let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
         let metadata_address = Pubkey::new_unique();
-        let token_keypair = Keypair::new();
-        let token_pubkey = token_keypair.pubkey();
 
         let result = process_test_command(
             &config,
@@ -7579,25 +7577,20 @@ mod tests {
 
         let new_metadata_address = Pubkey::new_unique();
 
-        let new_result = process_test_command(
+        let _new_result = process_test_command(
             &config,
             &payer,
             &[
                 "spl-token",
                 CommandName::UpdateMetadataAddress.into(),
-                "--token",
-                &token_pubkey.to_string(),
+                &mint.to_string(),
                 "--metadata-address",
                 &new_metadata_address.to_string(),
-                "--authority",
-                &payer.pubkey().to_string(),
             ],
         )
         .await;
-        
-        let new_value: serde_json::Value = serde_json::from_str(&new_result.unwrap()).unwrap();
-        let new_mint = Pubkey::from_str(new_value["commandOutput"]["address"].as_str().unwrap()).unwrap();
-        let new_account = config.rpc_client.get_account(&new_mint).await.unwrap();
+
+        let new_account = config.rpc_client.get_account(&mint).await.unwrap();
         let new_mint_state = StateWithExtensionsOwned::<Mint>::unpack(new_account.data).unwrap();
 
         let new_extension = new_mint_state.get_extension::<MetadataPointer>().unwrap();
@@ -7606,6 +7599,5 @@ mod tests {
             new_extension.metadata_address,
             Some(new_metadata_address).try_into().unwrap()
         );
-
     }
 }
