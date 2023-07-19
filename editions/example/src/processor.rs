@@ -201,8 +201,7 @@ pub fn process_create_reprint(
     let original_metadata_info = next_account_info(account_info_iter)?;
     let original_mint_info = next_account_info(account_info_iter)?;
     let mint_authority_info = next_account_info(account_info_iter)?;
-    // Only needed for CPI
-    let _metadata_program_info = next_account_info(account_info_iter)?;
+    let metadata_program_info = next_account_info(account_info_iter)?;
     // No additional accounts required in this example
 
     // Mint & metadata checks on the original
@@ -276,7 +275,7 @@ pub fn process_create_reprint(
 
     // Create the reprint metadata from the original metadata
     let cpi_instruction = initialize(
-        &spl_token_2022::id(),
+        metadata_program_info.key,
         reprint_mint_info.key,
         update_authority_info.key,
         reprint_mint_info.key,
