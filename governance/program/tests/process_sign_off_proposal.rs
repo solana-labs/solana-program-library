@@ -543,7 +543,6 @@ async fn test_partial_sign_off_proposal_with_two_governance_signatories() {
         .await
         .unwrap();
 
-    // Proposal to create required signatory 1
     let mut proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
@@ -558,12 +557,22 @@ async fn test_partial_sign_off_proposal_with_two_governance_signatories() {
         .await
         .unwrap();
 
-    let proposal_transaction_cookie = governance_test
+    let proposal_transaction_cookie_1 = governance_test
         .with_add_required_signatory_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &governance_cookie,
             &signatory_1.pubkey(),
+        )
+        .await
+        .unwrap();
+
+    let proposal_transaction_cookie_2 = governance_test
+        .with_add_required_signatory_transaction(
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            &governance_cookie,
+            &signatory_2.pubkey(),
         )
         .await
         .unwrap();
@@ -579,64 +588,20 @@ async fn test_partial_sign_off_proposal_with_two_governance_signatories() {
         .unwrap();
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie_2.account.hold_up_time as u64)
         .await;
 
     governance_test
-        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
-        .await
-        .unwrap();
-
-    // Proposal to create required signatory 2
-    let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
-        .await
-        .unwrap();
-
-    let proposal_transaction_cookie = governance_test
-        .with_add_required_signatory_transaction(
-            &mut proposal_cookie,
-            &token_owner_record_cookie,
-            &governance_cookie,
-            &signatory_2.pubkey(),
-        )
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie_1)
         .await
         .unwrap();
 
     governance_test
-        .with_signatory_record_for_required_signatory(
-            &proposal_cookie,
-            &governance_cookie,
-            &signatory_1.pubkey(),
-        )
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie_2)
         .await
         .unwrap();
 
-    governance_test
-        .do_required_signoff(
-            &realm_cookie,
-            &governance_cookie,
-            &proposal_cookie,
-            &signatory_1,
-        )
-        .await
-        .unwrap();
-
-    governance_test
-        .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
-        .await
-        .unwrap();
-
-    governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
-        .await;
-
-    governance_test
-        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
-        .await
-        .unwrap();
-
-    // End setup proposals
+    // End setup proposal
 
     let new_proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
