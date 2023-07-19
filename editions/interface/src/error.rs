@@ -14,6 +14,9 @@ pub enum TokenEditionsError {
     /// Incorrect mint authority has signed the instruction
     #[error("Incorrect mint authority has signed the instruction")]
     IncorrectMintAuthority,
+    /// Incorrect metadata associated with mint
+    #[error("Incorrect metadata associated with mint")]
+    IncorrectMetadata,
     /// Incorrect original print update authority has signed the instruction
     #[error("Incorrect original print update authority has signed the instruction")]
     IncorrectUpdateAuthority,

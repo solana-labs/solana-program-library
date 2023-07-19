@@ -2,17 +2,19 @@
 
 This interface is designed to allow on-chain programs to make use of printed "copies" of token metadata, with parent-child relationships.
 
-## Metaplex Protocol
-
 Metaplex introduced the idea of [Editions](https://docs.metaplex.com/programs/token-metadata/overview#printing-editions) for tokens, a concept most projects on Solana are readily familiar with.
 
-In short, editions allow you to create an original "copy" of an token and then print new "copies" of that token. Although we're talking about "copies", the token itself is not copied. All that's being copied with Editions is the Metadata.
+In short, editions allow you to create an original "copy" of a token and then print new "copies" of that token. Although we're talking about "copies", the token itself is not copied. All that's being copied with Editions is the **token metadata**.
+
+## Metaplex Protocol
+
+Below is an overview of how Metaplex's Editions work.
 
 ### Create the Original
 
 Create a `MasterEdition` account for the the original token.
 
-- Mint a new SPL Token with supply of 1, decimals 0, and no mint authority.
+- Mint a new SPL Token.
 - Create a `Metadata` account for the token.
 - Create a `MasterEdition` account for the token.
 
@@ -35,7 +37,7 @@ With Metaplex's protocol, the `MasterEdition` determines the max supply and also
 
 Create one or more copies of the original token by creating an `Edition`, by creating new tokens that inherently "copy" the original token's metadata.
 
-- Mint a new SPL Token with supply of 1, decimals 0, and no mint authority.
+- Mint a new SPL Token.
 - Create a `Metadata` account for the token with the data _copied from the `Metadata` account referred to by the `MasterEdition`_.
 - Create an `Edition` account for the token pointing to the `MasterEdition` account.
 
@@ -59,13 +61,13 @@ The PDA seeds used to derive a `MasterEdition` and an `Edition` are the same, so
 
 ## SPL Interface
 
-The interface - albeit strongly inspired and largely based upon Metaplex's original engineering - should be simple enough to not inundate or force anyone to comply with any preconcieved ideas of how these parent-child relationships amongst editions should interact.
+The interface - albeit strongly inspired by and largely based upon Metaplex's original engineering - should be simple enough to not inundate or force anyone to comply with any preconcieved ideas of how these parent-child relationships amongst editions should interact.
 
 > Note: Changing the nomenclature of these state objects may potentially confuse people familiar with Metaplex's model, but serve to acknowledge the fact that this interface is something entirely different.
 
 ### The Original
 
-This interface will dub the original token or NFT as simply an `Original`.
+This interface will dub the original token metadata simply as an `Original`.
 
 Similar to `MasterEdition`, this state will store information pertaining to supply and maximum supply.
 
@@ -94,4 +96,14 @@ pub struct Reprint {
 
 It's worth noting that, as Metaplex has designed, making the seeds for these types of accounts the same is a good idea. However, this interface cannot enforce this.
 
-In the case of the interface, both states share the same SPL discriminator, thus mimic the seed pattern of Metaplex.
+In the case of the interface, both states share the same **SPL discriminator**, thus mimicking the conflicting seed pattern of Metaplex.
+
+> Note: Although the naming conventions `Original` and `Reprint` exist in the instruction nomonclature, this interface cannot enforce state.
+
+### Working with Metadata
+
+Editions work closely with token metadata, so it makes sense to implement _both_ the SPL Token Metadata interface as well as the SPL Token Editions interface within the same on-chain program.
+
+However, this is not required! As long as the mint authority is correct, a program that implements the SPL Token Editions interface can create `Original` prints and simply CPI into the proper Token Metadata program to create `Reprint` copies!
+
+To see this concept in action, and more details on implementing the SPL Token Editions interface, see the `example` program in this repository.

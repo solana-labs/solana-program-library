@@ -202,4 +202,36 @@ mod tests {
         original_print.update_max_supply(new_max_supply).unwrap();
         assert_eq!(original_print.max_supply, new_max_supply);
     }
+
+    #[test]
+    fn update_current_supply() {
+        let mut original_print = Original {
+            max_supply: Some(1),
+            ..Default::default()
+        };
+
+        original_print.update_supply(1).unwrap();
+        assert_eq!(original_print.supply, 1);
+
+        // Try to set the current supply to 2, which is greater than the max supply
+        assert_eq!(
+            original_print.update_supply(2),
+            Err(ProgramError::from(
+                TokenEditionsError::SupplyExceedsMaxSupply
+            ))
+        );
+
+        // Test with a `None` max supply
+        let mut original_print = Original {
+            max_supply: None,
+            ..Default::default()
+        };
+
+        assert_eq!(
+            original_print.update_supply(1),
+            Err(ProgramError::from(
+                TokenEditionsError::SupplyExceedsMaxSupply
+            ))
+        );
+    }
 }

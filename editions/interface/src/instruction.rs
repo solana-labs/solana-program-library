@@ -72,15 +72,14 @@ pub enum TokenEditionsInstruction {
     /// Create a new `Original` print
     ///
     /// Assumes one has already created a mint and a metadata account for the
-    /// print.
+    /// original print.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[w]` Original
-    ///   1. `[]` Update authority
-    ///   2. `[]` Metadata
-    ///   3. `[]` Mint
-    ///   4. `[s]` Mint authority
+    ///   1. `[]` Metadata
+    ///   2. `[]` Mint
+    ///   3. `[s]` Mint authority
     ///
     /// Data: `CreateOriginal`: max_supply: `Option<u64>`
     CreateOriginal(CreateOriginal),
@@ -107,20 +106,24 @@ pub enum TokenEditionsInstruction {
 
     /// Create a new `Reprint` of an `Original` print
     ///
-    /// Assumes the `Original` print has already been created.
+    /// Assumes the `Original` print has already been created,
+    /// as well as the mint and metadata for the original print.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[w]` Reprint
     ///   1. `[w]` Reprint Metadata
     ///   2. `[]` Reprint Mint
-    ///   3. `[]` Original
-    ///   4. `[]` Update authority
+    ///   3. `[w]` Original
+    ///   4. `[s]` Update authority
     ///   5. `[]` Original Metadata
     ///   6. `[]` Original Mint
     ///   7. `[s]` Mint authority
+    ///   8. `[]` Metadata program
+    ///   8..8+M `[]` `M` additional accounts, written in validation account
+    /// data
     ///
-    /// Data: `CreateReprint`: original: `Pubkey`
+    /// Data: `CreateReprint`: original: `Pubkey`, copy: `u64`
     CreateReprint(CreateReprint),
 
     /// Emits the print edition as return data
@@ -132,6 +135,9 @@ pub enum TokenEditionsInstruction {
     /// With this instruction, a program that implements the token-editions
     /// interface can return `Original` or `Reprint` without adhering to the
     /// specific byte layout of the structs in any accounts.
+    ///
+    /// The dictation of which data to emit is determined by the `PrintType`
+    /// enum argument to the instruction data.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -205,22 +211,14 @@ impl TokenEditionsInstruction {
 pub fn create_original(
     program_id: &Pubkey,
     original: &Pubkey,
-    update_authority: Option<Pubkey>,
     metadata: &Pubkey,
     mint: &Pubkey,
     mint_authority: &Pubkey,
+    update_authority: Option<Pubkey>,
     max_supply: Option<u64>,
 ) -> Instruction {
-    let (update_authority, update_authority_pubkey) = {
-        (
-            OptionalNonZeroPubkey::try_from(update_authority)
-                .expect("Failed to deserialize pubkey for update authority"),
-            match update_authority {
-                Some(pubkey) => pubkey,
-                None => *program_id,
-            },
-        )
-    };
+    let update_authority = OptionalNonZeroPubkey::try_from(update_authority)
+        .expect("Failed to deserialize `Option<Pubkey>`");
     let data = TokenEditionsInstruction::CreateOriginal(CreateOriginal {
         update_authority,
         max_supply,
@@ -229,7 +227,6 @@ pub fn create_original(
         program_id: *program_id,
         accounts: vec![
             AccountMeta::new(*original, false),
-            AccountMeta::new_readonly(update_authority_pubkey, false),
             AccountMeta::new_readonly(*metadata, false),
             AccountMeta::new_readonly(*mint, false),
             AccountMeta::new_readonly(*mint_authority, true),
@@ -265,7 +262,7 @@ pub fn update_original_authority(
     new_authority: Option<Pubkey>,
 ) -> Instruction {
     let new_authority = OptionalNonZeroPubkey::try_from(new_authority)
-        .expect("Failed to deserialize pubkey for update authority");
+        .expect("Failed to deserialize `Option<Pubkey>`");
     let data = TokenEditionsInstruction::UpdateOriginalAuthority(UpdateOriginalAuthority {
         new_authority,
     });
@@ -291,6 +288,7 @@ pub fn create_reprint(
     original_metadata: &Pubkey,
     original_mint: &Pubkey,
     mint_authority: &Pubkey,
+    metadata_program_id: &Pubkey,
 ) -> Instruction {
     let data = TokenEditionsInstruction::CreateReprint(CreateReprint {
         original: *original,
@@ -300,12 +298,13 @@ pub fn create_reprint(
         accounts: vec![
             AccountMeta::new(*reprint, false),
             AccountMeta::new(*reprint_metadata, false),
-            AccountMeta::new_readonly(*reprint_mint, false),
+            AccountMeta::new(*reprint_mint, false),
             AccountMeta::new(*original, false),
             AccountMeta::new_readonly(*update_authority, true),
             AccountMeta::new_readonly(*original_metadata, false),
             AccountMeta::new_readonly(*original_mint, false),
             AccountMeta::new_readonly(*mint_authority, true),
+            AccountMeta::new_readonly(*metadata_program_id, false),
         ],
         data: data.pack(),
     }
@@ -396,14 +395,23 @@ mod test {
 
     #[test]
     fn emit_pack() {
-        let data = Emit {
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:emitter").as_bytes()]);
+        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
+
+        let original_data = Emit {
             print_type: PrintType::Original,
             start: None,
             end: Some(10),
         };
-        let check = TokenEditionsInstruction::Emit(data.clone());
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:emitter").as_bytes()]);
-        let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
-        check_pack_unpack(check, discriminator, data);
+        let original_check = TokenEditionsInstruction::Emit(original_data.clone());
+        check_pack_unpack(original_check, discriminator, original_data);
+
+        let reprint_data = Emit {
+            print_type: PrintType::Reprint,
+            start: None,
+            end: Some(7),
+        };
+        let reprint_check = TokenEditionsInstruction::Emit(reprint_data.clone());
+        check_pack_unpack(reprint_check, discriminator, reprint_data);
     }
 }

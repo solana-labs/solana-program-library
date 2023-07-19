@@ -6,12 +6,17 @@ use {
         borsh::get_instance_packed_len,
         entrypoint::ProgramResult,
         msg,
-        program::set_return_data,
+        program::{invoke, set_return_data},
         program_error::ProgramError,
         program_option::COption,
         pubkey::Pubkey,
     },
-    spl_token_2022::{extension::StateWithExtensions, state::Mint},
+    spl_token_2022::{
+        extension::{
+            metadata_pointer::MetadataPointer, BaseStateWithExtensions, StateWithExtensions,
+        },
+        state::Mint,
+    },
     spl_token_editions_interface::{
         error::TokenEditionsError,
         instruction::{
@@ -20,6 +25,7 @@ use {
         },
         state::{get_emit_slice, OptionalNonZeroPubkey, Original, Reprint},
     },
+    spl_token_metadata_interface::{instruction::initialize, state::TokenMetadata},
     spl_type_length_value::state::{
         realloc_and_pack_variable_len, TlvState, TlvStateBorrowed, TlvStateMut,
     },
@@ -47,15 +53,22 @@ pub fn process_create_original(
     accounts: &[AccountInfo],
     data: CreateOriginal,
 ) -> ProgramResult {
+    // Assumes one has already created a mint and a metadata account for the
+    // original print.
     let account_info_iter = &mut accounts.iter();
 
+    // Accounts expected by this instruction:
+    //
+    //   0. `[w]` Original
+    //   1. `[]` Metadata
+    //   2. `[]` Mint
+    //   3. `[s]` Mint authority
     let original_info = next_account_info(account_info_iter)?;
-    let update_authority_info = next_account_info(account_info_iter)?;
-    let _metadata_info = next_account_info(account_info_iter)?;
+    let metadata_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let mint_authority_info = next_account_info(account_info_iter)?;
 
-    // scope the mint authority check, in case the mint is in the same account!
+    // Mint & metadata checks
     {
         // IMPORTANT: this example program is designed to work with any
         // program that implements the SPL token interface, so there is no
@@ -69,17 +82,21 @@ pub fn process_create_original(
         if mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
             return Err(TokenEditionsError::IncorrectMintAuthority.into());
         }
+
+        // IMPORTANT: metadata is passed as a separate account because it may be owned
+        // by another program - separate from the program implementing the SPL token
+        // interface _or_ the program implementing the SPL token editions interface.
+        let metadata_pointer = mint.get_extension::<MetadataPointer>()?;
+        let metadata_pointer_address = Option::<Pubkey>::from(metadata_pointer.metadata_address);
+        if metadata_pointer_address != Some(*metadata_info.key) {
+            return Err(TokenEditionsError::IncorrectMetadata.into());
+        }
     }
 
-    /* Check metadata account exists and is not empty */
-
-    // get the required size, assumes that there's enough space for the entry
-    let update_authority = OptionalNonZeroPubkey::try_from(Some(*update_authority_info.key))?;
-    let original_print = Original::new(update_authority, data.max_supply);
-
+    let original_print = Original::new(data.update_authority, data.max_supply);
     let instance_size = get_instance_packed_len(&original_print)?;
 
-    // allocate a TLV entry for the space and write it in
+    // Allocate a TLV entry for the space and write it in
     let mut buffer = original_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
     state.alloc::<Original>(instance_size)?;
@@ -97,6 +114,10 @@ pub fn process_update_original_max_supply(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
+    // Accounts expected by this instruction:
+    //
+    //   0. `[w]` Original
+    //   1. `[s]` Update authority
     let original_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
 
@@ -126,6 +147,10 @@ pub fn process_update_original_authority(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
+    // Accounts expected by this instruction:
+    //
+    //   0. `[w]` Original
+    //   1. `[s]` Current update authority
     let original_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
 
@@ -152,16 +177,85 @@ pub fn process_create_reprint(
     accounts: &[AccountInfo],
     _data: CreateReprint,
 ) -> ProgramResult {
+    // Assumes the `Original` print has already been created,
+    // as well as the mint and metadata for the original print.
     let account_info_iter = &mut accounts.iter();
 
+    // Accounts expected by this instruction:
+    //
+    //   0. `[w]` Reprint
+    //   1. `[w]` Reprint Metadata
+    //   2. `[]` Reprint Mint
+    //   3. `[w]` Original
+    //   4. `[s]` Update authority
+    //   5. `[]` Original Metadata
+    //   6. `[]` Original Mint
+    //   7. `[s]` Mint authority
+    //   8. `[]` Metadata program
+    //   8..8+M `[]` `M` additional accounts, written in validation account data
     let reprint_info = next_account_info(account_info_iter)?;
-    let _reprint_metadata_info = next_account_info(account_info_iter)?;
-    let _reprint_mint_info = next_account_info(account_info_iter)?;
+    let reprint_metadata_info = next_account_info(account_info_iter)?;
+    let reprint_mint_info = next_account_info(account_info_iter)?;
     let original_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
-    let _original_metadata_info = next_account_info(account_info_iter)?;
-    let _original_mint_info = next_account_info(account_info_iter)?;
-    let _mint_authority_info = next_account_info(account_info_iter)?;
+    let original_metadata_info = next_account_info(account_info_iter)?;
+    let original_mint_info = next_account_info(account_info_iter)?;
+    let mint_authority_info = next_account_info(account_info_iter)?;
+    // Only needed for CPI
+    let _metadata_program_info = next_account_info(account_info_iter)?;
+    // No additional accounts required in this example
+
+    // Mint & metadata checks on the original
+    let token_metadata = {
+        // IMPORTANT: this example program is designed to work with any
+        // program that implements the SPL token interface, so there is no
+        // ownership check on the mint account.
+        let original_mint_data = original_mint_info.try_borrow_data()?;
+        let original_mint = StateWithExtensions::<Mint>::unpack(&original_mint_data)?;
+
+        if !mint_authority_info.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+        if original_mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
+            return Err(TokenEditionsError::IncorrectMintAuthority.into());
+        }
+
+        // IMPORTANT: metadata is passed as a separate account because it may be owned
+        // by another program - separate from the program implementing the SPL token
+        // interface _or_ the program implementing the SPL token editions interface.
+        let metadata_pointer = original_mint.get_extension::<MetadataPointer>()?;
+        let metadata_pointer_address = Option::<Pubkey>::from(metadata_pointer.metadata_address);
+        if metadata_pointer_address != Some(*original_metadata_info.key) {
+            return Err(TokenEditionsError::IncorrectMetadata.into());
+        }
+
+        original_mint.get_variable_len_extension::<TokenMetadata>()?
+    };
+
+    // Mint & metadata checks on the reprint
+    {
+        // IMPORTANT: this example program is designed to work with any
+        // program that implements the SPL token interface, so there is no
+        // ownership check on the mint account.
+        let reprint_mint_data = reprint_mint_info.try_borrow_data()?;
+        let reprint_mint = StateWithExtensions::<Mint>::unpack(&reprint_mint_data)?;
+
+        if !mint_authority_info.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+        if reprint_mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
+            return Err(TokenEditionsError::IncorrectMintAuthority.into());
+        }
+
+        // IMPORTANT: metadata is passed as a separate account because it may be owned
+        // by another program - separate from the program implementing the SPL token
+        // interface _or_ the program implementing the SPL token editions interface.
+        let metadata_pointer = reprint_mint.get_extension::<MetadataPointer>()?;
+        let metadata_pointer_address = Option::<Pubkey>::from(metadata_pointer.metadata_address);
+        if metadata_pointer_address != Some(*reprint_metadata_info.key) {
+            return Err(TokenEditionsError::IncorrectMetadata.into());
+        }
+    }
 
     let mut original_print = {
         let buffer = original_info.try_borrow_data()?;
@@ -172,16 +266,34 @@ pub fn process_create_reprint(
     check_update_authority(update_authority_info, &original_print.update_authority)?;
 
     // Update the current supply
-    original_print.update_supply(original_print.supply + 1)?;
-
-    // Update the account, no realloc needed!
+    let copy = original_print.supply + 1;
+    original_print.update_supply(copy)?;
     realloc_and_pack_variable_len(original_info, &original_print)?;
 
+    // Create the reprint metadata from the original metadata
+    let cpi_instruction = initialize(
+        &spl_token_2022::id(),
+        reprint_mint_info.key,
+        update_authority_info.key,
+        reprint_mint_info.key,
+        mint_authority_info.key,
+        token_metadata.name,
+        token_metadata.symbol,
+        token_metadata.uri,
+    );
+    let cpi_account_infos = &[
+        reprint_mint_info.clone(),
+        update_authority_info.clone(),
+        reprint_mint_info.clone(),
+        mint_authority_info.clone(),
+    ];
+    invoke(&cpi_instruction, cpi_account_infos)?;
+
+    // Create the reprint
     let reprint = Reprint {
         original: *original_info.key,
-        copy: 1,
+        copy,
     };
-
     let instance_size = get_instance_packed_len(&reprint)?;
 
     // allocate a TLV entry for the space and write it in
@@ -197,6 +309,9 @@ pub fn process_create_reprint(
 pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
+    // Accounts expected by this instruction:
+    //
+    //   0. `[]` Original _or_ Reprint account
     let print_info = next_account_info(account_info_iter)?;
 
     if print_info.owner != program_id {
@@ -205,6 +320,8 @@ pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -
 
     let buffer = print_info.try_borrow_data()?;
     let state = TlvStateBorrowed::unpack(&buffer)?;
+
+    // `print_type` determines which asset we're working with
     let print_bytes = match data.print_type {
         PrintType::Original => state.get_bytes::<Original>()?,
         PrintType::Reprint => state.get_bytes::<Reprint>()?,

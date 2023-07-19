@@ -135,10 +135,10 @@ pub async fn setup_original_print(
             create_original(
                 editions_program_id,
                 &original_keypair.pubkey(),
-                Option::<Pubkey>::from(original_data.update_authority.clone()),
                 metadata,
                 mint,
                 &mint_authority.pubkey(),
+                Option::<Pubkey>::from(original_data.update_authority.clone()),
                 original_data.max_supply,
             ),
         ],
@@ -164,22 +164,35 @@ pub async fn setup_reprint(
     original_pubkey: &Pubkey,
     original_metadata: &Pubkey,
     original_mint: &Pubkey,
+    metadata_program_id: &Pubkey,
     reprint_data: &Reprint,
+    token_metadata: &TokenMetadata,
     reprint_keypair: &Keypair,
     update_authority: &Keypair,
     mint_authority: &Keypair,
 ) {
     let rent = context.banks_client.get_rent().await.unwrap();
-    let space = reprint_data.tlv_size_of().unwrap();
-    let rent_lamports = rent.minimum_balance(space);
+
+    let token_metadata_space = token_metadata.tlv_size_of().unwrap();
+    let token_metadata_rent_lamports = rent.minimum_balance(token_metadata_space);
+
+    let reprint_space = reprint_data.tlv_size_of().unwrap();
+    let reprint_rent_lamports = rent.minimum_balance(reprint_space);
+
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::create_account(
                 &context.payer.pubkey(),
                 &reprint_keypair.pubkey(),
-                rent_lamports,
-                space.try_into().unwrap(),
+                reprint_rent_lamports,
+                reprint_space.try_into().unwrap(),
                 editions_program_id,
+            ),
+            // Fund the mint with extra rent for metadata
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                reprint_mint,
+                token_metadata_rent_lamports,
             ),
             create_reprint(
                 editions_program_id,
@@ -191,6 +204,7 @@ pub async fn setup_reprint(
                 original_metadata,
                 original_mint,
                 &mint_authority.pubkey(),
+                metadata_program_id,
             ),
         ],
         Some(&context.payer.pubkey()),
