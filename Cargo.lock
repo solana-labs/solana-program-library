@@ -7039,6 +7039,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-editions-example"
+version = "0.1.0"
+dependencies = [
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token-2022 0.7.0",
+ "spl-token-client",
+ "spl-token-editions-interface",
+ "spl-token-metadata-interface",
+ "spl-type-length-value",
+ "test-case",
+]
+
+[[package]]
+name = "spl-token-editions-interface"
+version = "0.1.0"
+dependencies = [
+ "borsh 0.10.3",
+ "solana-program",
+ "spl-discriminator",
+ "spl-program-error",
+ "spl-type-length-value",
+]
+
+[[package]]
 name = "spl-token-lending"
 version = "0.2.0"
 dependencies = [
