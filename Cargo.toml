@@ -7,6 +7,8 @@ members = [
   "associated-token-account/program-test",
   "binary-option/program",
   "binary-oracle-pair/program",
+  "collections/example",
+  "collections/interface",
   "examples/rust/cross-program-invocation",
   "examples/rust/custom-heap",
   "examples/rust/logging",
