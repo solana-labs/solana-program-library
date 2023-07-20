@@ -151,7 +151,13 @@ impl VariableLenPack for Reprint {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::NAMESPACE, solana_program::hash, spl_discriminator::ArrayDiscriminator};
+    use {
+        super::*,
+        crate::NAMESPACE,
+        solana_program::hash,
+        spl_discriminator::ArrayDiscriminator,
+        spl_type_length_value::{error::TlvError, state::TlvStateMut},
+    };
 
     #[test]
     fn discriminators() {
@@ -160,6 +166,41 @@ mod tests {
             ArrayDiscriminator::try_from(&preimage.as_ref()[..ArrayDiscriminator::LENGTH]).unwrap();
         assert_eq!(Original::SPL_DISCRIMINATOR, discriminator);
         assert_eq!(Reprint::SPL_DISCRIMINATOR, discriminator);
+    }
+
+    #[test]
+    fn tlv_state_pack() {
+        // Make sure we can NOT pack more than one instance of each type
+        let original_data = Original {
+            update_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new_unique())).unwrap(),
+            supply: 10,
+            max_supply: Some(20),
+        };
+        let original_instance_size = get_instance_packed_len(&original_data).unwrap();
+
+        let member_data = Reprint {
+            original: Pubkey::new_unique(),
+            copy: 1,
+        };
+        let member_instance_size = get_instance_packed_len(&member_data).unwrap();
+
+        let account_size =
+            original_data.tlv_size_of().unwrap() + member_data.tlv_size_of().unwrap();
+        let mut buffer = vec![0; account_size];
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+
+        state.alloc::<Original>(original_instance_size).unwrap();
+        state.pack_variable_len_value(&original_data).unwrap();
+
+        assert_eq!(
+            state.get_variable_len_value::<Original>().unwrap(),
+            original_data
+        );
+
+        assert_eq!(
+            state.alloc::<Reprint>(member_instance_size).unwrap_err(),
+            TlvError::TypeAlreadyExists.into(),
+        );
     }
 
     #[test]
