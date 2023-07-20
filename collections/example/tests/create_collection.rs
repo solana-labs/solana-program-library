@@ -162,9 +162,9 @@ async fn fail_without_authority_signature() {
     )
     .await;
 
-    let name = "My Cool Collection Print".to_string();
+    let name = "My Cool Collection".to_string();
     let symbol = "COOL".to_string();
-    let uri = "cool.collection.print".to_string();
+    let uri = "cool.collection.com".to_string();
     let token_metadata = TokenMetadata {
         name,
         symbol,
@@ -261,9 +261,9 @@ async fn fail_incorrect_authority() {
     )
     .await;
 
-    let name = "My Cool Collection Print".to_string();
+    let name = "My Cool Collection".to_string();
     let symbol = "COOL".to_string();
-    let uri = "cool.collection.print".to_string();
+    let uri = "cool.collection.com".to_string();
     let token_metadata = TokenMetadata {
         name,
         symbol,

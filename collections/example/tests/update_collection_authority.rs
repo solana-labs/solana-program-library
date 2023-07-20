@@ -48,7 +48,7 @@ async fn success_update_collection_max_size() {
 
     let name = "My Cool Collection".to_string();
     let symbol = "COOL".to_string();
-    let uri = "cool.collection.print".to_string();
+    let uri = "cool.collection.com".to_string();
     let token_metadata = TokenMetadata {
         name,
         symbol,
@@ -194,7 +194,7 @@ async fn fail_authority_checks() {
 
     let name = "My Cool Collection".to_string();
     let symbol = "COOL".to_string();
-    let uri = "cool.collection.print".to_string();
+    let uri = "cool.collection.com".to_string();
     let token_metadata = TokenMetadata {
         name,
         symbol,

@@ -63,9 +63,9 @@ async fn success_create_member() {
     )
     .await;
 
-    let name = "My Cool Collection Print".to_string();
+    let name = "My Cool Collection".to_string();
     let symbol = "COOL".to_string();
-    let uri = "cool.collection.print".to_string();
+    let uri = "cool.collection.com".to_string();
     let token_metadata = TokenMetadata {
         name,
         symbol,
@@ -80,6 +80,30 @@ async fn success_create_member() {
         &update_authority_pubkey,
         &token_metadata,
         &collection_metadata_keypair,
+        &mint_authority,
+        payer.clone(),
+    )
+    .await;
+
+    // For demonstration purposes, we'll set up _different_ metadata for
+    // the collection member
+    let name = "I'm a member of the Cool Collection!".to_string();
+    let symbol = "YAY".to_string();
+    let uri = "i.am.a.member".to_string();
+    let token_metadata = TokenMetadata {
+        name,
+        symbol,
+        uri,
+        update_authority: Some(update_authority_pubkey).try_into().unwrap(),
+        mint: *member_token.get_address(),
+        ..Default::default()
+    };
+
+    setup_metadata(
+        &member_token,
+        &update_authority_pubkey,
+        &token_metadata,
+        &member_metadata_keypair,
         &mint_authority,
         payer.clone(),
     )
@@ -182,9 +206,9 @@ async fn fail_without_authority_signature() {
     )
     .await;
 
-    let name = "My Cool Collection Print".to_string();
+    let name = "My Cool Collection".to_string();
     let symbol = "COOL".to_string();
-    let uri = "cool.collection.print".to_string();
+    let uri = "cool.collection.com".to_string();
     let token_metadata = TokenMetadata {
         name,
         symbol,
@@ -200,6 +224,30 @@ async fn fail_without_authority_signature() {
         &token_metadata,
         &collection_metadata_keypair,
         &collection_mint_authority,
+        payer.clone(),
+    )
+    .await;
+
+    // For demonstration purposes, we'll set up _different_ metadata for
+    // the collection member
+    let name = "I'm a member of the Cool Collection!".to_string();
+    let symbol = "YAY".to_string();
+    let uri = "i.am.a.member".to_string();
+    let token_metadata = TokenMetadata {
+        name,
+        symbol,
+        uri,
+        update_authority: Some(update_authority_pubkey).try_into().unwrap(),
+        mint: *member_token.get_address(),
+        ..Default::default()
+    };
+
+    setup_metadata(
+        &member_token,
+        &update_authority_pubkey,
+        &token_metadata,
+        &member_metadata_keypair,
+        &member_mint_authority,
         payer.clone(),
     )
     .await;
@@ -379,9 +427,9 @@ async fn fail_incorrect_authority() {
     )
     .await;
 
-    let name = "My Cool Collection Print".to_string();
+    let name = "My Cool Collection".to_string();
     let symbol = "COOL".to_string();
-    let uri = "cool.collection.print".to_string();
+    let uri = "cool.collection.com".to_string();
     let token_metadata = TokenMetadata {
         name,
         symbol,
@@ -397,6 +445,30 @@ async fn fail_incorrect_authority() {
         &token_metadata,
         &collection_metadata_keypair,
         &collection_mint_authority,
+        payer.clone(),
+    )
+    .await;
+
+    // For demonstration purposes, we'll set up _different_ metadata for
+    // the collection member
+    let name = "I'm a member of the Cool Collection!".to_string();
+    let symbol = "YAY".to_string();
+    let uri = "i.am.a.member".to_string();
+    let token_metadata = TokenMetadata {
+        name,
+        symbol,
+        uri,
+        update_authority: Some(update_authority_pubkey).try_into().unwrap(),
+        mint: *member_token.get_address(),
+        ..Default::default()
+    };
+
+    setup_metadata(
+        &member_token,
+        &update_authority_pubkey,
+        &token_metadata,
+        &member_metadata_keypair,
+        &member_mint_authority,
         payer.clone(),
     )
     .await;

@@ -149,7 +149,13 @@ impl VariableLenPack for Member {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::NAMESPACE, solana_program::hash, spl_discriminator::ArrayDiscriminator};
+    use {
+        super::*,
+        crate::NAMESPACE,
+        solana_program::hash,
+        spl_discriminator::ArrayDiscriminator,
+        spl_type_length_value::{error::TlvError, state::TlvStateMut},
+    };
 
     #[test]
     fn discriminators() {
@@ -162,6 +168,68 @@ mod tests {
         let discriminator =
             ArrayDiscriminator::try_from(&preimage.as_ref()[..ArrayDiscriminator::LENGTH]).unwrap();
         assert_eq!(Member::SPL_DISCRIMINATOR, discriminator);
+    }
+
+    #[test]
+    fn tlv_state_pack() {
+        // Make sure we can pack more than one instance of each type
+        let collection_data = Collection {
+            update_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new_unique())).unwrap(),
+            size: 10,
+            max_size: Some(20),
+        };
+        let collection_instance_size = get_instance_packed_len(&collection_data).unwrap();
+
+        let member_data = Member {
+            collection: Pubkey::new_unique(),
+        };
+        let member_instance_size = get_instance_packed_len(&member_data).unwrap();
+
+        let account_size =
+            collection_data.tlv_size_of().unwrap() + member_data.tlv_size_of().unwrap();
+        let mut buffer = vec![0; account_size];
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+
+        state.alloc::<Collection>(collection_instance_size).unwrap();
+        state.pack_variable_len_value(&collection_data).unwrap();
+
+        state.alloc::<Member>(member_instance_size).unwrap();
+        state.pack_variable_len_value(&member_data).unwrap();
+
+        assert_eq!(
+            state.get_variable_len_value::<Collection>().unwrap(),
+            collection_data
+        );
+        assert_eq!(
+            state.get_variable_len_value::<Member>().unwrap(),
+            member_data
+        );
+
+        // But we don't want to be able to pack two of the same
+
+        let mut buffer = vec![0; account_size];
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+
+        state.alloc::<Collection>(collection_instance_size).unwrap();
+        state.pack_variable_len_value(&collection_data).unwrap();
+
+        assert_eq!(
+            state
+                .alloc::<Collection>(collection_instance_size)
+                .unwrap_err(),
+            TlvError::TypeAlreadyExists.into(),
+        );
+
+        let mut buffer = vec![0; account_size];
+        let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+
+        state.alloc::<Member>(member_instance_size).unwrap();
+        state.pack_variable_len_value(&member_data).unwrap();
+
+        assert_eq!(
+            state.alloc::<Member>(member_instance_size).unwrap_err(),
+            TlvError::TypeAlreadyExists.into(),
+        );
     }
 
     #[test]
