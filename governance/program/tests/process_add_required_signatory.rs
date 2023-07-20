@@ -10,6 +10,9 @@ use solana_program::{
     program_error::ProgramError, pubkey::Pubkey, system_instruction::SystemError,
 };
 use solana_sdk::signature::Signer;
+use solana_sdk::signer::keypair::Keypair;
+use spl_governance::error::GovernanceError;
+use spl_governance::instruction::add_required_signatory;
 
 #[tokio::test]
 async fn test_add_required_signatory() {
@@ -144,4 +147,50 @@ pub async fn add_same_required_signatory_to_governance_twice_err() {
         err,
         ProgramError::Custom(SystemError::AccountAlreadyInUse.to_u32().unwrap())
     );
+}
+
+#[tokio::test]
+pub async fn add_required_signatory_to_governance_without_governance_signer_err() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let signatory = Keypair::new();
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let signatory = Pubkey::new_unique();
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut governance_cookie = governance_test
+        .with_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let mut gwr_ix = add_required_signatory(
+        &governance_test.program_id,
+        &governance_cookie.address,
+        &governance_test.bench.payer.pubkey(),
+        &signatory,
+    );
+
+    gwr_ix.accounts[0].is_signer = false;
+
+    // Act
+    let err = governance_test
+        .bench
+        .process_transaction(&[gwr_ix], Some(&[]))
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::GovernancePdaMustSign.into());
 }
