@@ -2,6 +2,7 @@
 
 mod program_test;
 
+use solana_program::program_error::ProgramError;
 use solana_program_test::tokio;
 
 use program_test::*;
@@ -354,4 +355,32 @@ async fn test_add_signatory_for_required_signatory_multiple_times_err() {
 
     // Assert
     assert_eq!(err, GovernanceError::SignatoryRecordAlreadyExists.into());
+}
+
+#[tokio::test]
+pub async fn test_add_optional_signatory_before_all_required_signatories_err() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let (token_owner_record_cookie, mut governance_cookie, _, _) =
+        governance_test.with_governance_with_required_signatory().await;
+
+    let proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .with_signatory(
+            &proposal_cookie,
+            &governance_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, ProgramError::UninitializedAccount);
 }
