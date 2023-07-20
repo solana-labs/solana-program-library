@@ -8,10 +8,10 @@ extern crate proc_macro;
 
 mod builder;
 
-use builder::SplBorshVariableLenPackBuilder;
-use proc_macro::TokenStream;
-use quote::ToTokens;
-use syn::parse_macro_input;
+use {
+    builder::SplBorshVariableLenPackBuilder, proc_macro::TokenStream, quote::ToTokens,
+    syn::parse_macro_input,
+};
 
 /// Derive macro to add `VariableLenPack` trait for borsh-implemented types
 #[proc_macro_derive(SplBorshVariableLenPack)]

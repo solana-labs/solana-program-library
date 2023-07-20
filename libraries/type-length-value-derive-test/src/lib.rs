@@ -1,15 +1,15 @@
-//! Test crate to avoid making `borsh` a direct dependency of `spl-type-length-value`.
-//! You can't use a derive macro from within the same crate that the macro is defined, so we need this extra crate for just testing the macro itself.
+//! Test crate to avoid making `borsh` a direct dependency of
+//! `spl-type-length-value`. You can't use a derive macro from within the same
+//! crate that the macro is defined, so we need this extra crate for just
+//! testing the macro itself.
 
 #[cfg(test)]
 pub mod test {
-    use solana_program::borsh::{get_instance_packed_len, try_from_slice_unchecked};
-    use spl_type_length_value::variable_len_pack::VariableLenPack;
-
     use {
         borsh::{BorshDeserialize, BorshSerialize},
+        solana_program::borsh::{get_instance_packed_len, try_from_slice_unchecked},
         spl_discriminator::SplDiscriminate,
-        spl_type_length_value::SplBorshVariableLenPack,
+        spl_type_length_value::{variable_len_pack::VariableLenPack, SplBorshVariableLenPack},
     };
 
     #[derive(
