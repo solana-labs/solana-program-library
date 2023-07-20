@@ -76,10 +76,10 @@ pub enum TokenEditionsInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[w]` Original
-    ///   1. `[]` Metadata
-    ///   2. `[]` Mint
-    ///   3. `[s]` Mint authority
+    ///   0. `[w]`  Original
+    ///   1. `[]`   Metadata
+    ///   2. `[]`   Mint
+    ///   3. `[s]`  Mint authority
     ///
     /// Data: `CreateOriginal`: max_supply: `Option<u64>`
     CreateOriginal(CreateOriginal),
@@ -88,8 +88,8 @@ pub enum TokenEditionsInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[w]` Original
-    ///   1. `[s]` Update authority
+    ///   0. `[w]`  Original
+    ///   1. `[s]`  Update authority
     ///
     /// Data: `UpdateOriginalMaxSupply`: max_supply: `Option<u64>`
     UpdateOriginalMaxSupply(UpdateOriginalMaxSupply),
@@ -98,8 +98,8 @@ pub enum TokenEditionsInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[w]` Original
-    ///   1. `[s]` Current update authority
+    ///   0. `[w]`  Original
+    ///   1. `[s]`  Current update authority
     ///
     /// Data: the new authority. Can be unset using a `None` value
     UpdateOriginalAuthority(UpdateOriginalAuthority),
@@ -111,16 +111,17 @@ pub enum TokenEditionsInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[w]` Reprint
-    ///   1. `[w]` Reprint Metadata
-    ///   2. `[]` Reprint Mint
-    ///   3. `[w]` Original
-    ///   4. `[s]` Update authority
-    ///   5. `[]` Original Metadata
-    ///   6. `[]` Original Mint
-    ///   7. `[s]` Mint authority
-    ///   8. `[]` Metadata program
-    ///   8..8+M `[]` `M` additional accounts, written in validation account
+    ///   0. `[w]`  Reprint
+    ///   1. `[w]`  Reprint Metadata
+    ///   2. `[]`   Reprint Metadata Update Authority
+    ///   3. `[]`   Reprint Mint
+    ///   4. `[s]`  Reprint Mint Authority
+    ///   5. `[w]`  Original
+    ///   6. `[]`   Original Metadata
+    ///   7. `[]`   Original Mint
+    ///   8. `[s]`  Original Mint Authority
+    ///   9. `[]`   Metadata program
+    ///   9..9+M `[]` `M` additional accounts, written in validation account
     /// data
     ///
     /// Data: `CreateReprint`: original: `Pubkey`, copy: `u64`
@@ -282,12 +283,13 @@ pub fn create_reprint(
     program_id: &Pubkey,
     reprint: &Pubkey,
     reprint_metadata: &Pubkey,
+    reprint_metadata_update_authority: &Pubkey,
     reprint_mint: &Pubkey,
+    reprint_mint_authority: &Pubkey,
     original: &Pubkey,
-    update_authority: &Pubkey,
     original_metadata: &Pubkey,
     original_mint: &Pubkey,
-    mint_authority: &Pubkey,
+    original_mint_authority: &Pubkey,
     metadata_program_id: &Pubkey,
 ) -> Instruction {
     let data = TokenEditionsInstruction::CreateReprint(CreateReprint {
@@ -298,12 +300,13 @@ pub fn create_reprint(
         accounts: vec![
             AccountMeta::new(*reprint, false),
             AccountMeta::new(*reprint_metadata, false),
-            AccountMeta::new(*reprint_mint, false),
+            AccountMeta::new_readonly(*reprint_metadata_update_authority, false),
+            AccountMeta::new_readonly(*reprint_mint, false),
+            AccountMeta::new_readonly(*reprint_mint_authority, true),
             AccountMeta::new(*original, false),
-            AccountMeta::new_readonly(*update_authority, true),
             AccountMeta::new_readonly(*original_metadata, false),
             AccountMeta::new_readonly(*original_mint, false),
-            AccountMeta::new_readonly(*mint_authority, true),
+            AccountMeta::new_readonly(*original_mint_authority, true),
             AccountMeta::new_readonly(*metadata_program_id, false),
         ],
         data: data.pack(),

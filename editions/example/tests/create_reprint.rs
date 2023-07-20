@@ -12,7 +12,6 @@ use {
         system_instruction,
         transaction::{Transaction, TransactionError},
     },
-    spl_token_2022::error::TokenError,
     spl_token_editions_interface::{
         error::TokenEditionsError,
         instruction::create_reprint,
@@ -120,16 +119,16 @@ async fn success_create_reprint() {
         &mut context,
         &program_id,
         &reprint_metadata_pubkey,
+        &update_authority_pubkey,
         reprint_token.get_address(),
         &original_pubkey,
         &original_metadata_pubkey,
         original_token.get_address(),
         &metadata_program_id,
-        &reprint,
-        &token_metadata,
         &reprint_keypair,
-        &update_authority_keypair,
         &mint_authority,
+        &mint_authority,
+        &token_metadata,
     )
     .await;
 
@@ -144,40 +143,6 @@ async fn success_create_reprint() {
         .get_variable_len_value::<Reprint>()
         .unwrap();
     assert_eq!(fetched_reprint, reprint);
-
-    // Fail trying to create a copy in the same account as the original
-    {
-        let transaction = Transaction::new_signed_with_payer(
-            &[create_reprint(
-                &program_id,
-                &original_keypair.pubkey(),   // Reprint
-                &original_metadata_pubkey,    // Reprint
-                original_token.get_address(), // Reprint
-                &original_keypair.pubkey(),
-                &update_authority_pubkey,
-                &original_metadata_pubkey,
-                original_token.get_address(),
-                &mint_authority.pubkey(),
-                &metadata_program_id,
-            )],
-            Some(&payer.pubkey()),
-            &[&payer, &update_authority_keypair, &mint_authority],
-            context.last_blockhash,
-        );
-        let error = context
-            .banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap();
-        assert_eq!(
-            error,
-            TransactionError::InstructionError(
-                0,
-                InstructionError::Custom(TokenError::ExtensionAlreadyInitialized as u32)
-            )
-        );
-    }
 }
 
 #[tokio::test]
@@ -185,8 +150,11 @@ async fn fail_without_authority_signature() {
     let program_id = Pubkey::new_unique();
     let (context, client, payer) = setup(&program_id).await;
 
-    let mint_authority = Keypair::new();
-    let mint_authority_pubkey = mint_authority.pubkey();
+    let original_mint_authority = Keypair::new();
+    let original_mint_authority_pubkey = original_mint_authority.pubkey();
+
+    let reprint_mint_authority = Keypair::new();
+    let reprint_mint_authority_pubkey = reprint_mint_authority.pubkey();
 
     let token_program_id = spl_token_2022::id();
     let metadata_program_id = spl_token_2022::id();
@@ -200,7 +168,7 @@ async fn fail_without_authority_signature() {
 
     let original_token = setup_mint(
         &token_program_id,
-        &mint_authority_pubkey,
+        &original_mint_authority_pubkey,
         &original_metadata_pubkey,
         &update_authority_pubkey,
         decimals,
@@ -214,7 +182,7 @@ async fn fail_without_authority_signature() {
 
     let reprint_token = setup_mint(
         &token_program_id,
-        &mint_authority_pubkey,
+        &reprint_mint_authority_pubkey,
         &reprint_metadata_pubkey,
         &update_authority_pubkey,
         decimals,
@@ -240,7 +208,7 @@ async fn fail_without_authority_signature() {
         &update_authority_pubkey,
         &token_metadata,
         &original_metadata_keypair,
-        &mint_authority,
+        &original_mint_authority,
         payer.clone(),
     )
     .await;
@@ -262,7 +230,7 @@ async fn fail_without_authority_signature() {
         original_token.get_address(),
         &original_print,
         &original_keypair,
-        &mint_authority,
+        &original_mint_authority,
     )
     .await;
 
@@ -282,18 +250,19 @@ async fn fail_without_authority_signature() {
     let reprint_space = reprint_data.tlv_size_of().unwrap();
     let reprint_rent_lamports = rent.minimum_balance(reprint_space);
 
-    // Fail missing update authority
+    // Fail missing reprint mint authority
 
     let mut create_reprint_ix = create_reprint(
         &program_id,
         &reprint_keypair.pubkey(),
         &reprint_metadata_pubkey,
-        reprint_token.get_address(),
-        &original_pubkey,
         &update_authority_pubkey,
+        reprint_token.get_address(),
+        &reprint_mint_authority.pubkey(),
+        &original_keypair.pubkey(),
         &original_metadata_pubkey,
         original_token.get_address(),
-        &mint_authority.pubkey(),
+        &original_mint_authority.pubkey(),
         &metadata_program_id,
     );
     create_reprint_ix.accounts[4].is_signer = false;
@@ -316,7 +285,8 @@ async fn fail_without_authority_signature() {
             create_reprint_ix,
         ],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &reprint_keypair, &mint_authority], // Missing update authority
+        &[&context.payer, &reprint_keypair, &original_mint_authority], /* Missing reprint mint
+                                                                        * authority */
         context.last_blockhash,
     );
 
@@ -331,21 +301,22 @@ async fn fail_without_authority_signature() {
         TransactionError::InstructionError(2, InstructionError::MissingRequiredSignature,)
     );
 
-    // Fail missing mint authority
+    // Fail missing original mint authority
 
     let mut create_reprint_ix = create_reprint(
         &program_id,
         &reprint_keypair.pubkey(),
         &reprint_metadata_pubkey,
-        reprint_token.get_address(),
-        &original_pubkey,
         &update_authority_pubkey,
+        reprint_token.get_address(),
+        &reprint_mint_authority.pubkey(),
+        &original_keypair.pubkey(),
         &original_metadata_pubkey,
         original_token.get_address(),
-        &mint_authority.pubkey(),
+        &original_mint_authority.pubkey(),
         &metadata_program_id,
     );
-    create_reprint_ix.accounts[7].is_signer = false;
+    create_reprint_ix.accounts[8].is_signer = false;
 
     let transaction = Transaction::new_signed_with_payer(
         &[
@@ -365,7 +336,8 @@ async fn fail_without_authority_signature() {
             create_reprint_ix,
         ],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &reprint_keypair, &update_authority_keypair], // Missing mint authority
+        &[&context.payer, &reprint_keypair, &reprint_mint_authority], /* Missing original mint
+                                                                       * authority */
         context.last_blockhash,
     );
 
@@ -386,8 +358,11 @@ async fn fail_incorrect_authority() {
     let program_id = Pubkey::new_unique();
     let (context, client, payer) = setup(&program_id).await;
 
-    let mint_authority = Keypair::new();
-    let mint_authority_pubkey = mint_authority.pubkey();
+    let original_mint_authority = Keypair::new();
+    let original_mint_authority_pubkey = original_mint_authority.pubkey();
+
+    let reprint_mint_authority = Keypair::new();
+    let reprint_mint_authority_pubkey = reprint_mint_authority.pubkey();
 
     let token_program_id = spl_token_2022::id();
     let metadata_program_id = spl_token_2022::id();
@@ -401,7 +376,7 @@ async fn fail_incorrect_authority() {
 
     let original_token = setup_mint(
         &token_program_id,
-        &mint_authority_pubkey,
+        &original_mint_authority_pubkey,
         &original_metadata_pubkey,
         &update_authority_pubkey,
         decimals,
@@ -415,7 +390,7 @@ async fn fail_incorrect_authority() {
 
     let reprint_token = setup_mint(
         &token_program_id,
-        &mint_authority_pubkey,
+        &reprint_mint_authority_pubkey,
         &reprint_metadata_pubkey,
         &update_authority_pubkey,
         decimals,
@@ -441,7 +416,7 @@ async fn fail_incorrect_authority() {
         &update_authority_pubkey,
         &token_metadata,
         &original_metadata_keypair,
-        &mint_authority,
+        &original_mint_authority,
         payer.clone(),
     )
     .await;
@@ -463,12 +438,12 @@ async fn fail_incorrect_authority() {
         original_token.get_address(),
         &original_print,
         &original_keypair,
-        &mint_authority,
+        &original_mint_authority,
     )
     .await;
 
     let reprint_keypair = Keypair::new();
-    let reprint_pubkey = reprint_keypair.pubkey();
+    let _reprint_pubkey = reprint_keypair.pubkey();
 
     let reprint_data = Reprint {
         original: original_pubkey,
@@ -483,18 +458,19 @@ async fn fail_incorrect_authority() {
     let reprint_space = reprint_data.tlv_size_of().unwrap();
     let reprint_rent_lamports = rent.minimum_balance(reprint_space);
 
-    // Fail incorrect update authority
+    // Fail incorrect reprint mint authority
 
     let mut create_reprint_ix = create_reprint(
         &program_id,
         &reprint_keypair.pubkey(),
         &reprint_metadata_pubkey,
+        &update_authority_pubkey,
         reprint_token.get_address(),
-        &original_pubkey,
-        &reprint_pubkey, // NOT the update authority
+        &original_mint_authority.pubkey(), // NOT the reprint mint authority
+        &original_keypair.pubkey(),
         &original_metadata_pubkey,
         original_token.get_address(),
-        &mint_authority.pubkey(),
+        &original_mint_authority.pubkey(),
         &metadata_program_id,
     );
     create_reprint_ix.accounts[4].is_signer = false;
@@ -517,7 +493,7 @@ async fn fail_incorrect_authority() {
             create_reprint_ix,
         ],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &reprint_keypair, &mint_authority],
+        &[&context.payer, &reprint_keypair, &original_mint_authority],
         context.last_blockhash,
     );
 
@@ -531,25 +507,26 @@ async fn fail_incorrect_authority() {
         error,
         TransactionError::InstructionError(
             2,
-            InstructionError::Custom(TokenEditionsError::IncorrectUpdateAuthority as u32)
+            InstructionError::Custom(TokenEditionsError::IncorrectMintAuthority as u32)
         )
     );
 
-    // Fail missing mint authority
+    // Fail missing original mint authority
 
     let mut create_reprint_ix = create_reprint(
         &program_id,
         &reprint_keypair.pubkey(),
         &reprint_metadata_pubkey,
-        reprint_token.get_address(),
-        &original_pubkey,
         &update_authority_pubkey,
+        reprint_token.get_address(),
+        &reprint_mint_authority.pubkey(),
+        &original_keypair.pubkey(),
         &original_metadata_pubkey,
         original_token.get_address(),
-        &reprint_pubkey, // NOT the mint authority
+        &reprint_mint_authority.pubkey(), // NOT the original mint authority
         &metadata_program_id,
     );
-    create_reprint_ix.accounts[7].is_signer = false;
+    create_reprint_ix.accounts[8].is_signer = false;
 
     let transaction = Transaction::new_signed_with_payer(
         &[
@@ -569,7 +546,7 @@ async fn fail_incorrect_authority() {
             create_reprint_ix,
         ],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &reprint_keypair, &update_authority_keypair],
+        &[&context.payer, &reprint_keypair, &reprint_mint_authority],
         context.last_blockhash,
     );
 

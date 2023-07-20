@@ -171,16 +171,16 @@ async fn success(start: Option<u64>, end: Option<u64>) {
         &mut context,
         &program_id,
         &reprint_metadata_pubkey,
+        &update_authority_pubkey,
         reprint_token.get_address(),
         &original_pubkey,
         &original_metadata_pubkey,
         original_token.get_address(),
         &metadata_program_id,
-        &reprint,
-        &token_metadata,
         &reprint_keypair,
-        &update_authority_keypair,
         &mint_authority,
+        &mint_authority,
+        &token_metadata,
     )
     .await;
 

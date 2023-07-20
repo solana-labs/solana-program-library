@@ -59,10 +59,10 @@ pub fn process_create_original(
 
     // Accounts expected by this instruction:
     //
-    //   0. `[w]` Original
-    //   1. `[]` Metadata
-    //   2. `[]` Mint
-    //   3. `[s]` Mint authority
+    //   0. `[w]`  Original
+    //   1. `[]`   Metadata
+    //   2. `[]`   Mint
+    //   3. `[s]`  Mint authority
     let original_info = next_account_info(account_info_iter)?;
     let metadata_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
@@ -116,8 +116,8 @@ pub fn process_update_original_max_supply(
 
     // Accounts expected by this instruction:
     //
-    //   0. `[w]` Original
-    //   1. `[s]` Update authority
+    //   0. `[w]`  Original
+    //   1. `[s]`  Update authority
     let original_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
 
@@ -149,8 +149,8 @@ pub fn process_update_original_authority(
 
     // Accounts expected by this instruction:
     //
-    //   0. `[w]` Original
-    //   1. `[s]` Current update authority
+    //   0. `[w]`  Original
+    //   1. `[s]`  Current update authority
     let original_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
 
@@ -183,24 +183,26 @@ pub fn process_create_reprint(
 
     // Accounts expected by this instruction:
     //
-    //   0. `[w]` Reprint
-    //   1. `[w]` Reprint Metadata
-    //   2. `[]` Reprint Mint
-    //   3. `[w]` Original
-    //   4. `[s]` Update authority
-    //   5. `[]` Original Metadata
-    //   6. `[]` Original Mint
-    //   7. `[s]` Mint authority
-    //   8. `[]` Metadata program
-    //   8..8+M `[]` `M` additional accounts, written in validation account data
+    //   0. `[w]`  Reprint
+    //   1. `[w]`  Reprint Metadata
+    //   2. `[]`   Reprint Metadata Update Authority
+    //   3. `[]`   Reprint Mint
+    //   4. `[s]`  Reprint Mint Authority
+    //   5. `[w]`  Original
+    //   6. `[]`   Original Metadata
+    //   7. `[]`   Original Mint
+    //   8. `[s]`  Original Mint Authority
+    //   9. `[]`   Metadata program
+    //   9..9+M `[]` `M` additional accounts
     let reprint_info = next_account_info(account_info_iter)?;
     let reprint_metadata_info = next_account_info(account_info_iter)?;
+    let reprint_metadata_update_authority_info = next_account_info(account_info_iter)?;
     let reprint_mint_info = next_account_info(account_info_iter)?;
+    let reprint_mint_authority_info = next_account_info(account_info_iter)?;
     let original_info = next_account_info(account_info_iter)?;
-    let update_authority_info = next_account_info(account_info_iter)?;
     let original_metadata_info = next_account_info(account_info_iter)?;
     let original_mint_info = next_account_info(account_info_iter)?;
-    let mint_authority_info = next_account_info(account_info_iter)?;
+    let original_mint_authority_info = next_account_info(account_info_iter)?;
     let metadata_program_info = next_account_info(account_info_iter)?;
     // No additional accounts required in this example
 
@@ -212,10 +214,12 @@ pub fn process_create_reprint(
         let original_mint_data = original_mint_info.try_borrow_data()?;
         let original_mint = StateWithExtensions::<Mint>::unpack(&original_mint_data)?;
 
-        if !mint_authority_info.is_signer {
+        if !original_mint_authority_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
-        if original_mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
+        if original_mint.base.mint_authority.as_ref()
+            != COption::Some(original_mint_authority_info.key)
+        {
             return Err(TokenEditionsError::IncorrectMintAuthority.into());
         }
 
@@ -239,10 +243,12 @@ pub fn process_create_reprint(
         let reprint_mint_data = reprint_mint_info.try_borrow_data()?;
         let reprint_mint = StateWithExtensions::<Mint>::unpack(&reprint_mint_data)?;
 
-        if !mint_authority_info.is_signer {
+        if !reprint_mint_authority_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
-        if reprint_mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
+        if reprint_mint.base.mint_authority.as_ref()
+            != COption::Some(reprint_mint_authority_info.key)
+        {
             return Err(TokenEditionsError::IncorrectMintAuthority.into());
         }
 
@@ -262,8 +268,6 @@ pub fn process_create_reprint(
         state.get_variable_len_value::<Original>()?
     };
 
-    check_update_authority(update_authority_info, &original_print.update_authority)?;
-
     if data.original != *original_info.key {
         return Err(TokenEditionsError::IncorrectOriginal.into());
     }
@@ -277,18 +281,18 @@ pub fn process_create_reprint(
     let cpi_instruction = initialize(
         metadata_program_info.key,
         reprint_mint_info.key,
-        update_authority_info.key,
+        reprint_metadata_update_authority_info.key,
         reprint_mint_info.key,
-        mint_authority_info.key,
+        reprint_mint_authority_info.key,
         token_metadata.name,
         token_metadata.symbol,
         token_metadata.uri,
     );
     let cpi_account_infos = &[
         reprint_mint_info.clone(),
-        update_authority_info.clone(),
+        reprint_metadata_update_authority_info.clone(),
         reprint_mint_info.clone(),
-        mint_authority_info.clone(),
+        reprint_mint_authority_info.clone(),
     ];
     invoke(&cpi_instruction, cpi_account_infos)?;
 

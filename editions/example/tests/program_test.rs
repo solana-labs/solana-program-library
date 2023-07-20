@@ -160,23 +160,23 @@ pub async fn setup_reprint(
     context: &mut ProgramTestContext,
     editions_program_id: &Pubkey,
     reprint_metadata: &Pubkey,
+    reprint_metadata_update_authority: &Pubkey,
     reprint_mint: &Pubkey,
     original_pubkey: &Pubkey,
     original_metadata: &Pubkey,
     original_mint: &Pubkey,
     metadata_program_id: &Pubkey,
-    reprint_data: &Reprint,
-    token_metadata: &TokenMetadata,
     reprint_keypair: &Keypair,
-    update_authority: &Keypair,
-    mint_authority: &Keypair,
+    reprint_mint_authority: &Keypair,
+    original_mint_authority: &Keypair,
+    token_metadata: &TokenMetadata,
 ) {
     let rent = context.banks_client.get_rent().await.unwrap();
 
     let token_metadata_space = token_metadata.tlv_size_of().unwrap();
     let token_metadata_rent_lamports = rent.minimum_balance(token_metadata_space);
 
-    let reprint_space = reprint_data.tlv_size_of().unwrap();
+    let reprint_space = Reprint::default().tlv_size_of().unwrap();
     let reprint_rent_lamports = rent.minimum_balance(reprint_space);
 
     let transaction = Transaction::new_signed_with_payer(
@@ -198,12 +198,13 @@ pub async fn setup_reprint(
                 editions_program_id,
                 &reprint_keypair.pubkey(),
                 reprint_metadata,
+                reprint_metadata_update_authority,
                 reprint_mint,
+                &reprint_mint_authority.pubkey(),
                 original_pubkey,
-                &update_authority.pubkey(),
                 original_metadata,
                 original_mint,
-                &mint_authority.pubkey(),
+                &original_mint_authority.pubkey(),
                 metadata_program_id,
             ),
         ],
@@ -211,8 +212,8 @@ pub async fn setup_reprint(
         &[
             &context.payer,
             reprint_keypair,
-            update_authority,
-            mint_authority,
+            reprint_mint_authority,
+            original_mint_authority,
         ],
         context.last_blockhash,
     );
