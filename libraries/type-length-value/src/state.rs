@@ -146,8 +146,8 @@ fn get_bytes<V: SplDiscriminate>(tlv_data: &[u8]) -> Result<&[u8], ProgramError>
 /// For example, if we have two distinct types, one which is an 8-byte array
 /// of value `[0, 1, 0, 0, 0, 0, 0, 0]` and discriminator
 /// `[1, 1, 1, 1, 1, 1, 1, 1]`, and another which is just a single `u8` of value
-/// `4` with the discriminator `[2, 2, 2, 2, 2, 2, 2, 2]`, we can deserialize this
-/// buffer as follows:
+/// `4` with the discriminator `[2, 2, 2, 2, 2, 2, 2, 2]`, we can deserialize
+/// this buffer as follows:
 ///
 /// ```
 /// use {
@@ -242,7 +242,8 @@ impl TlvState for TlvStateOwned {
     }
 }
 
-/// Encapsulates immutable base state data (mint or account) with possible extensions
+/// Encapsulates immutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct TlvStateBorrowed<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -263,7 +264,8 @@ impl<'a> TlvState for TlvStateBorrowed<'a> {
     }
 }
 
-/// Encapsulates mutable base state data (mint or account) with possible extensions
+/// Encapsulates mutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct TlvStateMut<'data> {
     /// Slice of data containing all TLV data, deserialized on demand
@@ -278,7 +280,8 @@ impl<'data> TlvStateMut<'data> {
         Ok(Self { data })
     }
 
-    /// Unpack a portion of the TLV data as the desired type that allows modifying the type
+    /// Unpack a portion of the TLV data as the desired type that allows
+    /// modifying the type
     pub fn get_value_mut<V: SplDiscriminate + Pod>(&mut self) -> Result<&mut V, ProgramError> {
         let data = self.get_bytes_mut::<V>()?;
         pod_from_bytes_mut::<V>(data)
@@ -312,8 +315,8 @@ impl<'data> TlvStateMut<'data> {
         Ok(extension_ref)
     }
 
-    /// Packs a variable-length value into its appropriate data segment. Assumes that
-    /// space has already been allocated for the given type
+    /// Packs a variable-length value into its appropriate data segment. Assumes
+    /// that space has already been allocated for the given type
     pub fn pack_variable_len_value<V: SplDiscriminate + VariableLenPack>(
         &mut self,
         value: &V,
@@ -352,10 +355,10 @@ impl<'data> TlvStateMut<'data> {
         }
     }
 
-    /// Reallocate the given number of bytes for the given SplDiscriminate. If the new
-    /// length is smaller, it will compact the rest of the buffer and zero out
-    /// the difference at the end. If it's larger, it will move the rest of
-    /// the buffer data and zero out the new data.
+    /// Reallocate the given number of bytes for the given SplDiscriminate. If
+    /// the new length is smaller, it will compact the rest of the buffer
+    /// and zero out the difference at the end. If it's larger, it will move
+    /// the rest of the buffer data and zero out the new data.
     pub fn realloc<V: SplDiscriminate>(
         &mut self,
         length: usize,
@@ -469,8 +472,10 @@ fn check_data(tlv_data: &[u8]) -> Result<(), ProgramError> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use bytemuck::{Pod, Zeroable};
+    use {
+        super::*,
+        bytemuck::{Pod, Zeroable},
+    };
 
     const TEST_BUFFER: &[u8] = &[
         1, 1, 1, 1, 1, 1, 1, 1, // discriminator
