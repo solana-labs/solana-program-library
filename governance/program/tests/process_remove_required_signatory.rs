@@ -10,8 +10,8 @@ use spl_governance::instruction::remove_required_signatory;
 
 use crate::cookies::{GovernanceCookie, RealmCookie, TokenOwnerRecordCookie};
 use solana_sdk::signature::{Keypair, Signer};
-use spl_governance_tools::error::GovernanceToolsError;
 use spl_governance::error::GovernanceError;
+use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
 async fn test_remove_required_signatory() {
