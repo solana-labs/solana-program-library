@@ -5,10 +5,14 @@ mod program_test;
 use solana_program::program_error::ProgramError;
 use solana_program_test::tokio;
 
+use borsh::BorshSerialize;
 use program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
-use spl_governance::error::GovernanceError;
+use spl_governance::{
+    error::GovernanceError,
+    instruction::{add_signatory, AddSignatoryAuthority, GovernanceInstruction},
+};
 
 #[tokio::test]
 async fn test_add_signatory() {
@@ -424,4 +428,45 @@ pub async fn test_add_optional_signatory_to_proposal_with_required_signatories()
         .get_proposal_account(&proposal_cookie.address)
         .await;
     assert_eq!(proposal_account.signatories_count, 2);
+}
+
+#[tokio::test]
+pub async fn test_add_non_matching_required_signatory_to_proposal_err() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let (token_owner_record_cookie, mut governance_cookie, _, signatory) = governance_test
+        .with_governance_with_required_signatory()
+        .await;
+
+    let proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    let mut create_signatory_record_ix = add_signatory(
+        &governance_test.program_id,
+        &governance_cookie.address,
+        &proposal_cookie.address,
+        &AddSignatoryAuthority::None,
+        &governance_test.bench.payer.pubkey(),
+        &signatory.pubkey(),
+    );
+
+    create_signatory_record_ix.data = GovernanceInstruction::AddSignatory {
+        signatory: Pubkey::new_unique(),
+    }
+    .try_to_vec()
+    .unwrap();
+
+    // Act
+    let err = governance_test
+        .bench
+        .process_transaction(&[create_signatory_record_ix], Some(&[]))
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::InvalidSignatoryAddress.into());
 }
