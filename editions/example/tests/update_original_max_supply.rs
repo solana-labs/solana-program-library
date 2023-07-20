@@ -19,7 +19,7 @@ use {
 };
 
 #[tokio::test]
-async fn success_update_original_authority() {
+async fn success_update_original_max_supply() {
     let program_id = Pubkey::new_unique();
     let (context, client, payer) = setup(&program_id).await;
 

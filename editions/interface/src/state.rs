@@ -89,8 +89,6 @@ impl Original {
             if new_max_supply < self.supply {
                 return Err(TokenEditionsError::SupplyExceedsNewMaxSupply.into());
             }
-        } else if self.supply > 0 {
-            return Err(TokenEditionsError::SupplyExceedsNewMaxSupply.into());
         }
         self.max_supply = max_supply;
         Ok(())
@@ -103,8 +101,6 @@ impl Original {
             if new_supply > max_supply {
                 return Err(TokenEditionsError::SupplyExceedsMaxSupply.into());
             }
-        } else if new_supply > 0 {
-            return Err(TokenEditionsError::SupplyExceedsMaxSupply.into());
         }
         self.supply = new_supply;
         Ok(())
@@ -227,11 +223,7 @@ mod tests {
             ..Default::default()
         };
 
-        assert_eq!(
-            original_print.update_supply(1),
-            Err(ProgramError::from(
-                TokenEditionsError::SupplyExceedsMaxSupply
-            ))
-        );
+        original_print.update_supply(1).unwrap();
+        assert_eq!(original_print.supply, 1);
     }
 }
