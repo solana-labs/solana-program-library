@@ -6,7 +6,7 @@ use solana_program::program_error::ProgramError;
 use solana_program_test::tokio;
 
 use program_test::*;
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{pubkey::Pubkey, signature::Signer};
 
 use spl_governance::error::GovernanceError;
 
@@ -362,8 +362,9 @@ pub async fn test_add_optional_signatory_before_all_required_signatories_err() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
-    let (token_owner_record_cookie, mut governance_cookie, _, _) =
-        governance_test.with_governance_with_required_signatory().await;
+    let (token_owner_record_cookie, mut governance_cookie, _, _) = governance_test
+        .with_governance_with_required_signatory()
+        .await;
 
     let proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
@@ -383,4 +384,44 @@ pub async fn test_add_optional_signatory_before_all_required_signatories_err() {
 
     // Assert
     assert_eq!(err, ProgramError::UninitializedAccount);
+}
+
+#[tokio::test]
+pub async fn test_add_optional_signatory_to_proposal_with_required_signatories() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let (token_owner_record_cookie, mut governance_cookie, _, signatory) = governance_test
+        .with_governance_with_required_signatory()
+        .await;
+
+    let proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_signatory_record_for_required_signatory(
+            &proposal_cookie,
+            &governance_cookie,
+            &signatory.pubkey(),
+        )
+        .await
+        .unwrap();
+
+    // Act
+    governance_test
+        .with_signatory(
+            &proposal_cookie,
+            &governance_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+    assert_eq!(proposal_account.signatories_count, 2);
 }
