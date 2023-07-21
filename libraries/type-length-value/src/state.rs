@@ -14,10 +14,15 @@ use {
 };
 
 /// Get the current TlvIndices from the current spot
-const fn get_indices_unchecked(type_start: usize) -> (usize, usize, usize) {
+const fn get_indices_unchecked(type_start: usize, value_repetition_number: usize) -> TlvIndices {
     let length_start = type_start.saturating_add(size_of::<ArrayDiscriminator>());
     let value_start = length_start.saturating_add(size_of::<Length>());
-    (type_start, length_start, value_start)
+    TlvIndices {
+        type_start,
+        length_start,
+        value_start,
+        value_repetition_number,
+    }
 }
 
 /// Internal helper struct for returning the indices of the type, length, and
@@ -39,20 +44,17 @@ fn get_indices(
     let mut current_repetition_number = 0;
     let mut start_index = 0;
     while start_index < tlv_data.len() {
-        let (type_start, length_start, value_start) = get_indices_unchecked(start_index);
-        if tlv_data.len() < value_start {
+        let tlv_indices = get_indices_unchecked(start_index, current_repetition_number);
+        if tlv_data.len() < tlv_indices.value_start {
             return Err(ProgramError::InvalidAccountData);
         }
-        let discriminator = ArrayDiscriminator::try_from(&tlv_data[type_start..length_start])?;
+        let discriminator = ArrayDiscriminator::try_from(
+            &tlv_data[tlv_indices.type_start..tlv_indices.length_start],
+        )?;
         if discriminator == value_discriminator {
             if let Some(desired_repetition_number) = repetition_number {
                 if current_repetition_number == desired_repetition_number {
-                    return Ok(TlvIndices {
-                        type_start,
-                        length_start,
-                        value_start,
-                        value_repetition_number: current_repetition_number,
-                    });
+                    return Ok(tlv_indices);
                 }
             }
             current_repetition_number += 1;
@@ -60,18 +62,16 @@ fn get_indices(
         // nothing is written after an Uninitialized spot
         } else if discriminator == ArrayDiscriminator::UNINITIALIZED {
             if init {
-                return Ok(TlvIndices {
-                    type_start,
-                    length_start,
-                    value_start,
-                    value_repetition_number: current_repetition_number,
-                });
+                return Ok(tlv_indices);
             } else {
                 return Err(TlvError::TypeNotFound.into());
             }
         }
-        let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
-        let value_end_index = value_start.saturating_add(usize::try_from(*length)?);
+        let length =
+            pod_from_bytes::<Length>(&tlv_data[tlv_indices.length_start..tlv_indices.value_start])?;
+        let value_end_index = tlv_indices
+            .value_start
+            .saturating_add(usize::try_from(*length)?);
         start_index = value_end_index;
     }
     Err(ProgramError::InvalidAccountData)
@@ -85,28 +85,34 @@ fn get_discriminators_and_end_index(
     let mut discriminators = vec![];
     let mut start_index = 0;
     while start_index < tlv_data.len() {
-        let (type_start, length_start, value_start) = get_indices_unchecked(start_index);
-        if tlv_data.len() < length_start {
+        let tlv_indices = get_indices_unchecked(start_index, 0);
+        if tlv_data.len() < tlv_indices.length_start {
             // we got to the end, but there might be some uninitialized data after
-            let remainder = &tlv_data[type_start..];
+            let remainder = &tlv_data[tlv_indices.type_start..];
             if remainder.iter().all(|&x| x == 0) {
-                return Ok((discriminators, type_start));
+                return Ok((discriminators, tlv_indices.type_start));
             } else {
                 return Err(ProgramError::InvalidAccountData);
             }
         }
-        let discriminator = ArrayDiscriminator::try_from(&tlv_data[type_start..length_start])?;
+        let discriminator = ArrayDiscriminator::try_from(
+            &tlv_data[tlv_indices.type_start..tlv_indices.length_start],
+        )?;
         if discriminator == ArrayDiscriminator::UNINITIALIZED {
-            return Ok((discriminators, type_start));
+            return Ok((discriminators, tlv_indices.type_start));
         } else {
-            if tlv_data.len() < value_start {
+            if tlv_data.len() < tlv_indices.value_start {
                 // not enough bytes to store the length, malformed
                 return Err(ProgramError::InvalidAccountData);
             }
             discriminators.push(discriminator);
-            let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
+            let length = pod_from_bytes::<Length>(
+                &tlv_data[tlv_indices.length_start..tlv_indices.value_start],
+            )?;
 
-            let value_end_index = value_start.saturating_add(usize::try_from(*length)?);
+            let value_end_index = tlv_indices
+                .value_start
+                .saturating_add(usize::try_from(*length)?);
             if value_end_index > tlv_data.len() {
                 // value blows past the size of the slice, malformed
                 return Err(ProgramError::InvalidAccountData);
@@ -593,7 +599,7 @@ pub fn realloc_and_pack_first_variable_len<V: SplDiscriminate + VariableLenPack>
 
 /// Get the base size required for TLV data
 const fn get_base_len() -> usize {
-    get_indices_unchecked(0).2
+    get_indices_unchecked(0, 0).value_start
 }
 
 fn check_data(tlv_data: &[u8]) -> Result<(), ProgramError> {
