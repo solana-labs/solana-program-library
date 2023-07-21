@@ -85,6 +85,8 @@ fn get_discriminators_and_end_index(
     let mut discriminators = vec![];
     let mut start_index = 0;
     while start_index < tlv_data.len() {
+        // This function is not concerned with repetitions, so we can just
+        // arbitrarily pass `0` here
         let tlv_indices = get_indices_unchecked(start_index, 0);
         if tlv_data.len() < tlv_indices.length_start {
             // we got to the end, but there might be some uninitialized data after
