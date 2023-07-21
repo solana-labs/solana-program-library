@@ -2099,6 +2099,7 @@ where
         source_account: &Pubkey,
         destination_account: &Pubkey,
         source_authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
@@ -2119,15 +2120,21 @@ where
                 .transfer_account_info()
         };
 
-        let proof_data = account_info
-            .generate_transfer_proof_data(
-                transfer_amount,
-                source_elgamal_keypair,
-                source_aes_key,
-                destination_elgamal_pubkey,
-                auditor_elgamal_pubkey,
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                account_info
+                    .generate_transfer_proof_data(
+                        transfer_amount,
+                        source_elgamal_keypair,
+                        source_aes_key,
+                        destination_elgamal_pubkey,
+                        auditor_elgamal_pubkey,
+                    )
+                    .map_err(|_| TokenError::ProofGeneration)?,
             )
-            .map_err(|_| TokenError::ProofGeneration)?;
+        };
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
@@ -2140,9 +2147,10 @@ where
                 destination_account,
                 &self.pubkey,
                 new_decryptable_available_balance,
+                context_state_account,
                 source_authority,
                 &multisig_signers,
-                &proof_data,
+                proof_data.as_ref(),
             )?,
             signing_keypairs,
         )
@@ -2156,6 +2164,7 @@ where
         source_account: &Pubkey,
         destination_account: &Pubkey,
         source_authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
@@ -2179,18 +2188,24 @@ where
                 .transfer_account_info()
         };
 
-        let proof_data = account_info
-            .generate_transfer_with_fee_proof_data(
-                transfer_amount,
-                source_elgamal_keypair,
-                source_aes_key,
-                destination_elgamal_pubkey,
-                auditor_elgamal_pubkey,
-                withdraw_withheld_authority_elgamal_pubkey,
-                fee_rate_basis_points,
-                maximum_fee,
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                account_info
+                    .generate_transfer_with_fee_proof_data(
+                        transfer_amount,
+                        source_elgamal_keypair,
+                        source_aes_key,
+                        destination_elgamal_pubkey,
+                        auditor_elgamal_pubkey,
+                        withdraw_withheld_authority_elgamal_pubkey,
+                        fee_rate_basis_points,
+                        maximum_fee,
+                    )
+                    .map_err(|_| TokenError::ProofGeneration)?,
             )
-            .map_err(|_| TokenError::ProofGeneration)?;
+        };
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
@@ -2203,9 +2218,10 @@ where
                 destination_account,
                 &self.pubkey,
                 new_decryptable_available_balance,
+                context_state_account,
                 source_authority,
                 &multisig_signers,
-                &proof_data,
+                proof_data.as_ref(),
             )?,
             signing_keypairs,
         )

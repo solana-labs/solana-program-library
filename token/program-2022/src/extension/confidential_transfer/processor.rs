@@ -507,6 +507,13 @@ fn process_transfer(
     let destination_token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let instructions_sysvar_info = next_account_info(account_info_iter)?;
+
+    let context_state_account_info = if proof_instruction_offset == 0 {
+        Some(next_account_info(account_info_iter)?)
+    } else {
+        None
+    };
+
     let authority_info = next_account_info(account_info_iter)?;
 
     check_program_account(mint_info.owner)?;
@@ -533,12 +540,24 @@ fn process_transfer(
         // The zero-knowledge proof certifies that:
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-        let proof_context = decode_proof_instruction_context::<TransferData, TransferProofContext>(
-            ProofInstruction::VerifyTransfer,
-            &zkp_instruction,
-        )?;
+        let proof_context = if let Some(context_state_account_info) = context_state_account_info {
+            let context_state_account_data = context_state_account_info.data.borrow();
+            let context_state = pod_from_bytes::<ProofContextState<TransferProofContext>>(
+                &context_state_account_data,
+            )?;
+            if context_state.proof_type != ProofType::Transfer.into() {
+                return Err(ProgramError::InvalidInstructionData);
+            }
+            context_state.proof_context
+        } else {
+            let zkp_instruction =
+                get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
+            *decode_proof_instruction_context::<TransferData, TransferProofContext>(
+                ProofInstruction::VerifyTransfer,
+                &zkp_instruction,
+            )?
+        };
+
         // Check that the auditor encryption public key associated wth the confidential mint is
         // consistent with what was actually used to generate the zkp.
         if !confidential_transfer_mint
@@ -586,12 +605,24 @@ fn process_transfer(
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
         //   3. the transfer fee is computed correctly and encrypted in the correct form
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-        let proof_context = decode_proof_instruction_context::<
-            TransferWithFeeData,
-            TransferWithFeeProofContext,
-        >(ProofInstruction::VerifyTransferWithFee, &zkp_instruction)?;
+        let proof_context = if let Some(context_state_account_info) = context_state_account_info {
+            let context_state_account_data = context_state_account_info.data.borrow();
+            let context_state = pod_from_bytes::<ProofContextState<TransferWithFeeProofContext>>(
+                &context_state_account_data,
+            )?;
+            if context_state.proof_type != ProofType::Transfer.into() {
+                return Err(ProgramError::InvalidInstructionData);
+            }
+            context_state.proof_context
+        } else {
+            let zkp_instruction =
+                get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
+            *decode_proof_instruction_context::<TransferWithFeeData, TransferWithFeeProofContext>(
+                ProofInstruction::VerifyTransfer,
+                &zkp_instruction,
+            )?
+        };
+
         // Check that the encryption public keys associated with the mint confidential transfer and
         // confidential transfer fee extensions are consistent with the keys that were used to
         // generate the zkp.

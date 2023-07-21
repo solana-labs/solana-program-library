@@ -211,15 +211,17 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[writable]` The destination SPL Token account.
     ///   3. `[]` The token mint.
     ///   4. `[]` Instructions sysvar.
-    ///   5. `[signer]` The single source account owner.
+    ///   5. `[]` Context state account for `TransferProof` (optional)
+    ///   6. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[writable]` The destination SPL Token account.
     ///   3. `[]` The token mint.
     ///   4. `[]` Instructions sysvar.
-    ///   5. `[]` The multisig  source account owner.
-    ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   5. `[]` Context state account for `TransferProof` (optional)
+    ///   6. `[]` The multisig  source account owner.
+    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `TransferInstructionData`
@@ -419,7 +421,8 @@ pub struct TransferInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     pub new_source_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyTransfer` instruction to the
-    /// `Transfer` instruction in the transaction
+    /// `Transfer` instruction in the transaction. If the offset is `0`, then use a context state
+    /// account for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -826,6 +829,7 @@ pub fn inner_transfer(
     destination_token_account: &Pubkey,
     mint: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
+    context_state_account: Option<&Pubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
@@ -836,8 +840,17 @@ pub fn inner_transfer(
         AccountMeta::new(*destination_token_account, false),
         AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
+
+    if proof_instruction_offset == 0 {
+        let context_state_account = context_state_account.ok_or(ProgramError::InvalidArgument)?;
+        accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
@@ -864,23 +877,41 @@ pub fn transfer(
     destination_token_account: &Pubkey,
     mint: &Pubkey,
     new_source_decryptable_available_balance: AeCiphertext,
+    context_state_account: Option<&Pubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &TransferData,
+    proof_data: Option<&TransferData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_transfer(
-            token_program_id,
-            source_token_account,
-            destination_token_account,
-            mint,
-            new_source_decryptable_available_balance.into(),
-            authority,
-            multisig_signers,
-            1,
-        )?, // calls check_program_account
-        verify_transfer(None, proof_data),
-    ])
+    if let Some(proof_data) = proof_data {
+        Ok(vec![
+            inner_transfer(
+                token_program_id,
+                source_token_account,
+                destination_token_account,
+                mint,
+                new_source_decryptable_available_balance.into(),
+                context_state_account,
+                authority,
+                multisig_signers,
+                1,
+            )?, // calls check_program_account
+            verify_transfer(None, proof_data),
+        ])
+    } else {
+        Ok(vec![
+            inner_transfer(
+                token_program_id,
+                source_token_account,
+                destination_token_account,
+                mint,
+                new_source_decryptable_available_balance.into(),
+                context_state_account,
+                authority,
+                multisig_signers,
+                0,
+            )?, // calls check_program_account
+        ])
+    }
 }
 
 /// Create a `Transfer` instruction with fee proof
@@ -892,23 +923,39 @@ pub fn transfer_with_fee(
     destination_token_account: &Pubkey,
     mint: &Pubkey,
     new_source_decryptable_available_balance: AeCiphertext,
+    context_state_account: Option<&Pubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &TransferWithFeeData,
+    proof_data: Option<&TransferWithFeeData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_transfer(
+    if let Some(proof_data) = proof_data {
+        Ok(vec![
+            inner_transfer(
+                token_program_id,
+                source_token_account,
+                destination_token_account,
+                mint,
+                new_source_decryptable_available_balance.into(),
+                context_state_account,
+                authority,
+                multisig_signers,
+                1,
+            )?, // calls check_program_account
+            verify_transfer_with_fee(None, proof_data),
+        ])
+    } else {
+        Ok(vec![inner_transfer(
             token_program_id,
             source_token_account,
             destination_token_account,
             mint,
             new_source_decryptable_available_balance.into(),
+            context_state_account,
             authority,
             multisig_signers,
-            1,
-        )?, // calls check_program_account
-        verify_transfer_with_fee(None, proof_data),
-    ])
+            0,
+        )?])
+    }
 }
 
 /// Create a inner `ApplyPendingBalance` instruction
