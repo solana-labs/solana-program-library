@@ -3667,6 +3667,7 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("metadata_address")
                         .index(2)
+                        .validator(is_valid_pubkey)
                         .value_name("METADATA_ADDRESS")
                         .takes_value(true)
                         .required_unless("disable")
