@@ -84,7 +84,7 @@ impl ExtraAccountMetas {
     {
         let mut state = TlvStateMut::unpack(data).unwrap();
         let tlv_size = PodSlice::<PodAccountMeta>::size_of(convertible_account_metas.len())?;
-        let bytes = state.alloc_unique::<T>(tlv_size)?;
+        let (bytes, _) = state.alloc::<T>(tlv_size, false)?;
         let mut extra_account_metas = PodSliceMut::init(bytes)?;
         for account_metas in convertible_account_metas {
             extra_account_metas.push(PodAccountMeta::from(account_metas))?;

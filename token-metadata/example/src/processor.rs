@@ -20,7 +20,7 @@ use {
         state::{OptionalNonZeroPubkey, TokenMetadata},
     },
     spl_type_length_value::state::{
-        realloc_and_pack_variable_len_unique, TlvState, TlvStateBorrowed, TlvStateMut,
+        realloc_and_pack_first_variable_len, TlvState, TlvStateBorrowed, TlvStateMut,
     },
 };
 
@@ -83,8 +83,8 @@ pub fn process_initialize(
     // allocate a TLV entry for the space and write it in
     let mut buffer = metadata_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
-    state.alloc_unique::<TokenMetadata>(instance_size)?;
-    state.pack_variable_len_value_unique(&token_metadata)?;
+    state.alloc::<TokenMetadata>(instance_size, false)?;
+    state.pack_first_variable_len_value(&token_metadata)?;
 
     Ok(())
 }
@@ -113,7 +113,7 @@ pub fn process_update_field(
     token_metadata.update(data.field, data.value);
 
     // Update / realloc the account
-    realloc_and_pack_variable_len_unique(metadata_info, &token_metadata)?;
+    realloc_and_pack_first_variable_len(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -140,7 +140,7 @@ pub fn process_remove_key(
     if !token_metadata.remove_key(&data.key) && !data.idempotent {
         return Err(TokenMetadataError::KeyNotFound.into());
     }
-    realloc_and_pack_variable_len_unique(metadata_info, &token_metadata)?;
+    realloc_and_pack_first_variable_len(metadata_info, &token_metadata)?;
 
     Ok(())
 }
@@ -166,7 +166,7 @@ pub fn process_update_authority(
     check_update_authority(update_authority_info, &token_metadata.update_authority)?;
     token_metadata.update_authority = data.new_authority;
     // Update the account, no realloc needed!
-    realloc_and_pack_variable_len_unique(metadata_info, &token_metadata)?;
+    realloc_and_pack_first_variable_len(metadata_info, &token_metadata)?;
 
     Ok(())
 }
