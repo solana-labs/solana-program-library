@@ -3666,11 +3666,18 @@ fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("metadata_address")
-                        .long("metadata-address")
+                        .index(2)
                         .value_name("METADATA_ADDRESS")
                         .takes_value(true)
                         .required_unless("disable")
                         .help("Specify address that stores token's metadata-pointer"),
+                )
+                .arg(
+                    Arg::with_name("disable")
+                        .long("disable")
+                        .takes_value(false)
+                        .conflicts_with("metadata_address")
+                        .help("Unset metadata pointer address.")
                 )
                 .arg(
                     Arg::with_name("authority")
@@ -7584,7 +7591,6 @@ mod tests {
                 "spl-token",
                 CommandName::UpdateMetadataAddress.into(),
                 &mint.to_string(),
-                "--metadata-address",
                 &new_metadata_address.to_string(),
             ],
         )
@@ -7598,6 +7604,31 @@ mod tests {
         assert_eq!(
             new_extension.metadata_address,
             Some(new_metadata_address).try_into().unwrap()
+        );
+
+        let _result_with_disable = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::UpdateMetadataAddress.into(),
+                &mint.to_string(),
+                "--disable",
+            ],
+        )
+        .await;
+
+        let new_account_disbale = config.rpc_client.get_account(&mint).await.unwrap();
+        let new_mint_state_disable =
+            StateWithExtensionsOwned::<Mint>::unpack(new_account_disbale.data).unwrap();
+
+        let new_extension_disable = new_mint_state_disable
+            .get_extension::<MetadataPointer>()
+            .unwrap();
+
+        assert_eq!(
+            new_extension_disable.metadata_address,
+            None.try_into().unwrap()
         );
     }
 }
