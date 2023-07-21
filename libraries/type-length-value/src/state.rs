@@ -321,11 +321,11 @@ impl<'data> TlvStateMut<'data> {
 
     /// Unpack a portion of the TLV data as the desired type that allows
     /// modifying the type for the entry number specified
-    pub fn get_value_mut<V: SplDiscriminate + Pod>(
+    pub fn get_value_with_repetition_mut<V: SplDiscriminate + Pod>(
         &mut self,
         repetition_number: usize,
     ) -> Result<&mut V, ProgramError> {
-        let data = self.get_bytes_mut::<V>(repetition_number)?;
+        let data = self.get_bytes_with_repetition_mut::<V>(repetition_number)?;
         pod_from_bytes_mut::<V>(data)
     }
 
@@ -334,12 +334,12 @@ impl<'data> TlvStateMut<'data> {
     pub fn get_first_value_mut<V: SplDiscriminate + Pod>(
         &mut self,
     ) -> Result<&mut V, ProgramError> {
-        self.get_value_mut::<V>(0)
+        self.get_value_with_repetition_mut::<V>(0)
     }
 
     /// Unpack a portion of the TLV data as mutable bytes for the entry number
     /// specified
-    pub fn get_bytes_mut<V: SplDiscriminate>(
+    pub fn get_bytes_with_repetition_mut<V: SplDiscriminate>(
         &mut self,
         repetition_number: usize,
     ) -> Result<&mut [u8], ProgramError> {
@@ -366,7 +366,7 @@ impl<'data> TlvStateMut<'data> {
     /// Unpack a portion of the TLV data as mutable bytes for the first entry
     /// found
     pub fn get_first_bytes_mut<V: SplDiscriminate>(&mut self) -> Result<&mut [u8], ProgramError> {
-        self.get_bytes_mut::<V>(0)
+        self.get_bytes_with_repetition_mut::<V>(0)
     }
 
     /// Packs the default TLV data into the first open slot in the data buffer.
@@ -385,19 +385,6 @@ impl<'data> TlvStateMut<'data> {
         Ok((extension_ref, repetition_number))
     }
 
-    /// Private function that packs a variable-length value into its
-    /// appropriate data segment
-    fn pack_variable_len_value<V: SplDiscriminate + VariableLenPack>(
-        &mut self,
-        value: &V,
-        repetition_number: usize,
-    ) -> Result<(), ProgramError> {
-        let data = self.get_bytes_mut::<V>(repetition_number)?;
-        // NOTE: Do *not* use `pack`, since the length check will cause
-        // reallocations to smaller sizes to fail
-        value.pack_into_slice(data)
-    }
-
     /// Packs a variable-length value into its appropriate data segment, where
     /// repeating discriminators _are_ allowed
     pub fn pack_variable_len_value_with_repetition<V: SplDiscriminate + VariableLenPack>(
@@ -405,7 +392,10 @@ impl<'data> TlvStateMut<'data> {
         value: &V,
         repetition_number: usize,
     ) -> Result<(), ProgramError> {
-        self.pack_variable_len_value::<V>(value, repetition_number)
+        let data = self.get_bytes_with_repetition_mut::<V>(repetition_number)?;
+        // NOTE: Do *not* use `pack`, since the length check will cause
+        // reallocations to smaller sizes to fail
+        value.pack_into_slice(data)
     }
 
     /// Packs a variable-length value into its appropriate data segment, where
@@ -414,7 +404,7 @@ impl<'data> TlvStateMut<'data> {
         &mut self,
         value: &V,
     ) -> Result<(), ProgramError> {
-        self.pack_variable_len_value::<V>(value, 0)
+        self.pack_variable_len_value_with_repetition::<V>(value, 0)
     }
 
     /// Allocate the given number of bytes for the given SplDiscriminate
@@ -974,7 +964,7 @@ mod test {
     }
 
     #[test]
-    fn alloc_unique() {
+    fn alloc_first() {
         let tlv_size = 1;
         let account_size = get_base_len() + tlv_size;
         let mut buffer = vec![0; account_size];
@@ -1158,7 +1148,7 @@ mod test {
     }
 
     #[test]
-    fn variable_len_value_unique() {
+    fn first_variable_len_value() {
         let initial_data = "This is a pretty cool test!";
         // exactly the right size
         let tlv_size = 8 + initial_data.len();
@@ -1192,44 +1182,85 @@ mod test {
     }
 
     #[test]
-    fn variable_len_value_allow_repeating() {
-        let initial_data = "This is a pretty cool test!";
-        // exactly the right size
-        let tlv_size = 8 + initial_data.len();
-        // Times two since we are going to pack two entries
-        let account_size = (get_base_len() + tlv_size) * 2;
+    fn variable_len_value_with_repetition() {
+        let variable_len_1 = TestVariableLen {
+            data: "Let's see if we can pack multiple variable length values".to_string(),
+        };
+        let tlv_size_1 = 8 + variable_len_1.data.len();
+
+        let variable_len_2 = TestVariableLen {
+            data: "I think we can".to_string(),
+        };
+        let tlv_size_2 = 8 + variable_len_2.data.len();
+
+        let variable_len_3 = TestVariableLen {
+            data: "In fact, I know we can!".to_string(),
+        };
+        let tlv_size_3 = 8 + variable_len_3.data.len();
+
+        let variable_len_4 = TestVariableLen {
+            data: "How cool is this?".to_string(),
+        };
+        let tlv_size_4 = 8 + variable_len_4.data.len();
+
+        let account_size = get_base_len()
+            + tlv_size_1
+            + get_base_len()
+            + tlv_size_2
+            + get_base_len()
+            + tlv_size_3
+            + get_base_len()
+            + tlv_size_4;
         let mut buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
-        // Alloc and get entry number (first entry)
-        let (_, repetition_number) = state.alloc::<TestVariableLen>(tlv_size, true).unwrap();
-        let test_variable_len = TestVariableLen {
-            data: initial_data.to_string(),
-        };
-
-        // Pack and get first
+        let (_, repetition_number) = state.alloc::<TestVariableLen>(tlv_size_1, true).unwrap();
         state
-            .pack_variable_len_value_with_repetition(&test_variable_len, repetition_number)
+            .pack_variable_len_value_with_repetition(&variable_len_1, repetition_number)
             .unwrap();
-        let deser = state
-            .get_first_variable_len_value::<TestVariableLen>()
-            .unwrap();
-        assert_eq!(deser, test_variable_len);
+        assert_eq!(repetition_number, 0);
+        assert_eq!(
+            state
+                .get_first_variable_len_value::<TestVariableLen>()
+                .unwrap(),
+            variable_len_1,
+        );
 
-        // Alloc and get entry number (second entry)
-        let (_, repetition_number) = state.alloc::<TestVariableLen>(tlv_size, true).unwrap();
-        let test_variable_len = TestVariableLen {
-            data: initial_data.to_string(),
-        };
-
-        // Pack and get second (by entry number)
+        let (_, repetition_number) = state.alloc::<TestVariableLen>(tlv_size_2, true).unwrap();
         state
-            .pack_variable_len_value_with_repetition(&test_variable_len, repetition_number)
+            .pack_variable_len_value_with_repetition(&variable_len_2, repetition_number)
             .unwrap();
-        let deser = state
-            .get_variable_len_value_with_repetition::<TestVariableLen>(repetition_number)
+        assert_eq!(repetition_number, 1);
+        assert_eq!(
+            state
+                .get_variable_len_value_with_repetition::<TestVariableLen>(repetition_number)
+                .unwrap(),
+            variable_len_2,
+        );
+
+        let (_, repetition_number) = state.alloc::<TestVariableLen>(tlv_size_3, true).unwrap();
+        state
+            .pack_variable_len_value_with_repetition(&variable_len_3, repetition_number)
             .unwrap();
-        assert_eq!(deser, test_variable_len);
+        assert_eq!(repetition_number, 2);
+        assert_eq!(
+            state
+                .get_variable_len_value_with_repetition::<TestVariableLen>(repetition_number)
+                .unwrap(),
+            variable_len_3,
+        );
+
+        let (_, repetition_number) = state.alloc::<TestVariableLen>(tlv_size_4, true).unwrap();
+        state
+            .pack_variable_len_value_with_repetition(&variable_len_4, repetition_number)
+            .unwrap();
+        assert_eq!(repetition_number, 3);
+        assert_eq!(
+            state
+                .get_variable_len_value_with_repetition::<TestVariableLen>(repetition_number)
+                .unwrap(),
+            variable_len_4,
+        );
     }
 
     #[test]
