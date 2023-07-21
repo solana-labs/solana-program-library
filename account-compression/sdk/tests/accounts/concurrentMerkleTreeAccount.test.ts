@@ -60,7 +60,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
   beforeEach(async () => {
     payerKeypair = Keypair.generate();
     payer = payerKeypair.publicKey;
-    connection = new Connection('http://localhost:8899', {
+    connection = new Connection('http://127.0.0.1:8899', {
       commitment: 'confirmed',
     });
     const wallet = new NodeWallet(payerKeypair);

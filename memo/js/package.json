@@ -40,7 +40,7 @@
         "lint:fix": "npm run fmt && eslint --fix .",
         "test": "npm run test:unit && npm run test:e2e",
         "test:unit": "jest test/unit",
-        "test:e2e": "start-server-and-test 'solana-test-validator -r -q' http://localhost:8899/health 'jest test/e2e'",
+        "test:e2e": "start-server-and-test 'solana-test-validator -r -q' http://127.0.0.1:8899/health 'jest test/e2e'",
         "deploy": "npm run deploy:docs",
         "docs": "shx rm -rf docs && typedoc && shx cp .nojekyll docs/",
         "deploy:docs": "npm run docs && gh-pages --dest memo/js --dist docs --dotfiles"
