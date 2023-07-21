@@ -1661,10 +1661,12 @@ where
     /// Configures confidential transfers for a token account. If the maximum pending balance
     /// credit counter for the extension is not provided, then it is set to be a default value of
     /// `2^16`.
+    #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_configure_token_account<S: Signers>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
         maximum_pending_balance_credit_counter: Option<u64>,
         elgamal_keypair: &ElGamalKeypair,
         aes_key: &AeKey,
@@ -1678,9 +1680,14 @@ where
         let maximum_pending_balance_credit_counter = maximum_pending_balance_credit_counter
             .unwrap_or(DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER);
 
-        let proof_data =
-            confidential_transfer::instruction::PubkeyValidityData::new(elgamal_keypair)
-                .map_err(|_| TokenError::ProofGeneration)?;
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                confidential_transfer::instruction::PubkeyValidityData::new(elgamal_keypair)
+                    .map_err(|_| TokenError::ProofGeneration)?,
+            )
+        };
         let decryptable_balance = aes_key.encrypt(0);
 
         self.process_ixs(
@@ -1690,9 +1697,10 @@ where
                 &self.pubkey,
                 decryptable_balance,
                 maximum_pending_balance_credit_counter,
+                context_state_account,
                 authority,
                 &multisig_signers,
-                &proof_data,
+                proof_data.as_ref(),
             )?,
             signing_keypairs,
         )

@@ -102,6 +102,13 @@ fn process_configure_account(
     let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let instructions_sysvar_info = next_account_info(account_info_iter)?;
+
+    let context_state_account_info = if proof_instruction_offset == 0 {
+        Some(next_account_info(account_info_iter)?)
+    } else {
+        None
+    };
+
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
 
@@ -127,12 +134,25 @@ fn process_configure_account(
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
     // zero-knowledge proof certifies that the supplied ElGamal public key is valid
-    let zkp_instruction =
-        get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-    let proof_context = decode_proof_instruction_context::<
-        PubkeyValidityData,
-        PubkeyValidityProofContext,
-    >(ProofInstruction::VerifyPubkeyValidity, &zkp_instruction)?;
+    let proof_context = if let Some(context_state_account_info) = context_state_account_info {
+        let context_state_account_data = context_state_account_info.data.borrow();
+        let context_state = pod_from_bytes::<ProofContextState<PubkeyValidityProofContext>>(
+            &context_state_account_data,
+        )?;
+
+        if context_state.proof_type != ProofType::PubkeyValidity.into() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+
+        context_state.proof_context
+    } else {
+        let zkp_instruction =
+            get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
+        *decode_proof_instruction_context::<PubkeyValidityData, PubkeyValidityProofContext>(
+            ProofInstruction::VerifyPubkeyValidity,
+            &zkp_instruction,
+        )?
+    };
 
     // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension

@@ -1,6 +1,8 @@
 #[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
-pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
+pub use solana_zk_token_sdk::{
+    zk_token_proof_instruction::*, zk_token_proof_state::ProofContextState,
+};
 use {
     crate::{
         check_program_account,
@@ -73,14 +75,16 @@ pub enum ConfidentialTransferInstruction {
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
     ///   2. `[]` Instructions sysvar.
-    ///   3. `[signer]` The single source account owner.
+    ///   3. `[]` Context state account for `ZeroBalanceProof` (optional)
+    ///   4. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` The multisig source account owner.
-    ///   3. `[]` Instructions sysvar.
-    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   2. `[]` Instructions sysvar.
+    ///   3. `[]` Context state account `ZeroBalanceProof` (optional)
+    ///   4. `[]` The multisig source account owner.
+    ///   5.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `ConfigureAccountInstructionData`
@@ -362,8 +366,9 @@ pub struct ConfigureAccountInstructionData {
     /// The maximum number of despots and transfers that an account can receiver before the
     /// `ApplyPendingBalance` is executed
     pub maximum_pending_balance_credit_counter: PodU64,
-    /// Relative location of the `ProofInstruction::VerifyPubkey` instruction to the
-    /// `ConfigureAccount` instruction in the transaction
+    /// Relative location of the `ProofInstruction::ZeroBalanceProof` instruction to the
+    /// `ConfigureAccount` instruction in the transaction. If the offset is `0`, then use a context
+    /// state account for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -489,18 +494,28 @@ pub fn inner_configure_account(
     mint: &Pubkey,
     decryptable_zero_balance: AeCiphertext,
     maximum_pending_balance_credit_counter: u64,
+    context_state_account: Option<&Pubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
+
     let mut accounts = vec![
         AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
+    if proof_instruction_offset == 0 {
+        let context_state_account = context_state_account.ok_or(ProgramError::InvalidArgument)?;
+        accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
@@ -527,23 +542,39 @@ pub fn configure_account(
     mint: &Pubkey,
     decryptable_zero_balance: AeCiphertext,
     maximum_pending_balance_credit_counter: u64,
+    context_state_account: Option<&Pubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &PubkeyValidityData,
+    proof_data: Option<&PubkeyValidityData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_configure_account(
+    if let Some(proof_data) = proof_data {
+        Ok(vec![
+            inner_configure_account(
+                token_program_id,
+                token_account,
+                mint,
+                decryptable_zero_balance,
+                maximum_pending_balance_credit_counter,
+                None,
+                authority,
+                multisig_signers,
+                1,
+            )?,
+            verify_pubkey_validity(None, proof_data),
+        ])
+    } else {
+        Ok(vec![inner_configure_account(
             token_program_id,
             token_account,
             mint,
             decryptable_zero_balance,
             maximum_pending_balance_credit_counter,
+            context_state_account,
             authority,
             multisig_signers,
-            1,
-        )?,
-        verify_pubkey_validity(None, proof_data),
-    ])
+            0,
+        )?])
+    }
 }
 
 /// Create an `ApproveAccount` instruction
