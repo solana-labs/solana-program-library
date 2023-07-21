@@ -127,13 +127,15 @@ pub enum ConfidentialTransferInstruction {
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` Instructions sysvar.
-    ///   2. `[signer]` The single account owner.
+    ///   2. `[]` Context state account for `ZeroBalanceProof` (optional)
+    ///   3. `[signer]` The single account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` Instructions sysvar.
     ///   2. `[]` The multisig account owner.
-    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   3. `[]` Context state account for `ZeroBalanceProof` (optional)
+    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `EmptyAccountInstructionData`
@@ -377,7 +379,8 @@ pub struct ConfigureAccountInstructionData {
 #[repr(C)]
 pub struct EmptyAccountInstructionData {
     /// Relative location of the `ProofInstruction::VerifyCloseAccount` instruction to the
-    /// `EmptyAccount` instruction in the transaction
+    /// `EmptyAccount` instruction in the transaction. If the offset is `0`, then use a context
+    /// state account for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -609,6 +612,7 @@ pub fn approve_account(
 pub fn inner_empty_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
+    context_state_account: Option<&Pubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
@@ -617,8 +621,17 @@ pub fn inner_empty_account(
     let mut accounts = vec![
         AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
+
+    if proof_instruction_offset == 0 {
+        let context_state_account = context_state_account.ok_or(ProgramError::InvalidArgument)?;
+        accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
@@ -639,20 +652,33 @@ pub fn inner_empty_account(
 pub fn empty_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
+    context_state_account: Option<&Pubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &ZeroBalanceProofData,
+    proof_data: Option<&ZeroBalanceProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_empty_account(
+    if let Some(proof_data) = proof_data {
+        Ok(vec![
+            inner_empty_account(
+                token_program_id,
+                token_account,
+                context_state_account,
+                authority,
+                multisig_signers,
+                1,
+            )?,
+            verify_zero_balance(None, proof_data),
+        ])
+    } else {
+        Ok(vec![inner_empty_account(
             token_program_id,
             token_account,
+            context_state_account,
             authority,
             multisig_signers,
-            1,
-        )?, // calls check_program_account
-        verify_zero_balance(None, proof_data),
-    ])
+            0,
+        )?])
+    }
 }
 
 /// Create a `Deposit` instruction

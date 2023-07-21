@@ -1735,6 +1735,7 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
         account_info: Option<EmptyAccountAccountInfo>,
         elgamal_keypair: &ElGamalKeypair,
         signing_keypairs: &S,
@@ -1751,17 +1752,24 @@ where
                 .empty_account_account_info()
         };
 
-        let proof_data = account_info
-            .generate_proof_data(elgamal_keypair)
-            .map_err(|_| TokenError::ProofGeneration)?;
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                account_info
+                    .generate_proof_data(elgamal_keypair)
+                    .map_err(|_| TokenError::ProofGeneration)?,
+            )
+        };
 
         self.process_ixs(
             &confidential_transfer::instruction::empty_account(
                 &self.program_id,
                 account,
+                context_state_account,
                 authority,
                 &multisig_signers,
-                &proof_data,
+                proof_data.as_ref(),
             )?,
             signing_keypairs,
         )

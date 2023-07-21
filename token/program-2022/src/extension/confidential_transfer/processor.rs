@@ -224,6 +224,13 @@ fn process_empty_account(
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let instructions_sysvar_info = next_account_info(account_info_iter)?;
+
+    let context_state_account_info = if proof_instruction_offset == 0 {
+        Some(next_account_info(account_info_iter)?)
+    } else {
+        None
+    };
+
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
 
@@ -244,12 +251,26 @@ fn process_empty_account(
 
     // An `EmptyAccount` instruction must be accompanied by a zero-knowledge proof instruction that
     // certifies that the available balance ciphertext holds the balance of 0.
-    let zkp_instruction =
-        get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-    let proof_context = decode_proof_instruction_context::<
-        ZeroBalanceProofData,
-        ZeroBalanceProofContext,
-    >(ProofInstruction::VerifyZeroBalance, &zkp_instruction)?;
+    let proof_context = if let Some(context_state_account_info) = context_state_account_info {
+        let context_state_account_data = context_state_account_info.data.borrow();
+        let context_state = pod_from_bytes::<ProofContextState<ZeroBalanceProofContext>>(
+            &context_state_account_data,
+        )?;
+
+        if context_state.proof_type != ProofType::ZeroBalance.into() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+
+        context_state.proof_context
+    } else {
+        let zkp_instruction =
+            get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
+        *decode_proof_instruction_context::<ZeroBalanceProofData, ZeroBalanceProofContext>(
+            ProofInstruction::VerifyZeroBalance,
+            &zkp_instruction,
+        )?
+    };
+
     // Check that the encryption public key and ciphertext associated with the confidential
     // extension account are consistent with those that were actually used to generate the zkp.
     if confidential_transfer_account.elgamal_pubkey != proof_context.pubkey {
