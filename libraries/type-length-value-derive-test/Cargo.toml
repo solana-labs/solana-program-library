@@ -1,0 +1,14 @@
+[package]
+name = "spl-type-length-value-derive-test"
+version = "0.1.0"
+description = "Testing Derive Macro Library for SPL Type Length Value traits"
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2021"
+
+[dev-dependencies]
+borsh = "0.10"
+solana-program = "1.16"
+spl-discriminator = { version = "0.1.0", path = "../discriminator" }
+spl-type-length-value = { version = "0.2.0", path = "../type-length-value", features = ["derive"] }
