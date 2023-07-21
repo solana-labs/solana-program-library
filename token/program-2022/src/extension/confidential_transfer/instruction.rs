@@ -182,14 +182,16 @@ pub enum ConfidentialTransferInstruction {
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
     ///   2. `[]` Instructions sysvar.
-    ///   3. `[signer]` The single source account owner.
+    ///   3. `[]` Context state account for `WithdrawData` (optional)
+    ///   4. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
     ///   2. `[]` Instructions sysvar.
-    ///   3. `[]` The multisig  source account owner.
-    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   3. `[]` Context state account for `WithdrawData` (optional)
+    ///   4. `[]` The multisig  source account owner.
+    ///   5.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `WithdrawInstructionData`
@@ -405,7 +407,8 @@ pub struct WithdrawInstructionData {
     /// The new decryptable balance if the withdrawal succeeds
     pub new_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyWithdraw` instruction to the `Withdraw`
-    /// instruction in the transaction
+    /// instruction in the transaction. If the offset is `0`, then use a context state account for
+    /// the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -726,6 +729,7 @@ pub fn inner_withdraw(
     amount: u64,
     decimals: u8,
     new_decryptable_available_balance: DecryptableBalance,
+    context_state_account: Option<&Pubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
@@ -735,8 +739,17 @@ pub fn inner_withdraw(
         AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
+
+    if proof_instruction_offset == 0 {
+        let context_state_account = context_state_account.ok_or(ProgramError::InvalidArgument)?;
+        accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
@@ -766,24 +779,41 @@ pub fn withdraw(
     amount: u64,
     decimals: u8,
     new_decryptable_available_balance: AeCiphertext,
+    context_state_account: Option<&Pubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &WithdrawData,
+    proof_data: Option<&WithdrawData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_withdraw(
+    if let Some(proof_data) = proof_data {
+        Ok(vec![
+            inner_withdraw(
+                token_program_id,
+                token_account,
+                mint,
+                amount,
+                decimals,
+                new_decryptable_available_balance.into(),
+                None,
+                authority,
+                multisig_signers,
+                1,
+            )?, // calls check_program_account
+            verify_withdraw(None, proof_data),
+        ])
+    } else {
+        Ok(vec![inner_withdraw(
             token_program_id,
             token_account,
             mint,
             amount,
             decimals,
             new_decryptable_available_balance.into(),
+            context_state_account,
             authority,
             multisig_signers,
-            1,
-        )?, // calls check_program_account
-        verify_withdraw(None, proof_data),
-    ])
+            0,
+        )?])
+    }
 }
 
 /// Create a inner `Transfer` instruction

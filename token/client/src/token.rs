@@ -1994,6 +1994,7 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
         withdraw_amount: u64,
         decimals: u8,
         account_info: Option<WithdrawAccountInfo>,
@@ -2013,9 +2014,15 @@ where
                 .withdraw_account_info()
         };
 
-        let proof_data = account_info
-            .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
-            .map_err(|_| TokenError::ProofGeneration)?;
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                account_info
+                    .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
+                    .map_err(|_| TokenError::ProofGeneration)?,
+            )
+        };
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(withdraw_amount, aes_key)
@@ -2029,9 +2036,10 @@ where
                 withdraw_amount,
                 decimals,
                 new_decryptable_available_balance,
+                context_state_account,
                 authority,
                 &multisig_signers,
-                &proof_data,
+                proof_data.as_ref(),
             )?,
             signing_keypairs,
         )
