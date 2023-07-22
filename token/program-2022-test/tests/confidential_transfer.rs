@@ -1103,7 +1103,7 @@ async fn confidential_transfer_withdraw() {
         .await;
 
     // attempt to withdraw without enough funds
-    token
+    let err = token
         .confidential_transfer_withdraw(
             &alice_meta.token_account,
             &alice.pubkey(),
@@ -1116,6 +1116,8 @@ async fn confidential_transfer_withdraw() {
         )
         .await
         .unwrap_err();
+
+    assert_eq!(err, TokenClientError::ProofGeneration);
 
     token
         .confidential_transfer_empty_account(
