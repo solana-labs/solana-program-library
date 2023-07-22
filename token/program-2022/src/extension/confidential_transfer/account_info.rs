@@ -1,4 +1,3 @@
-#[cfg(not(target_os = "solana"))]
 use {
     crate::{
         error::TokenError,
@@ -22,7 +21,6 @@ use {
 
 /// Confidential Transfer extension information needed to construct an `ApplyPendingBalance`
 /// instruction.
-#[cfg(not(target_os = "solana"))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ApplyPendingBalanceAccountInfo {
@@ -36,7 +34,6 @@ pub struct ApplyPendingBalanceAccountInfo {
     /// The decryptable available balance
     pub(crate) decryptable_available_balance: DecryptableBalance,
 }
-#[cfg(not(target_os = "solana"))]
 impl ApplyPendingBalanceAccountInfo {
     /// Return the pending balance credit counter of the account.
     pub fn pending_balance_credit_counter(&self) -> u64 {
@@ -100,7 +97,6 @@ impl ApplyPendingBalanceAccountInfo {
 }
 
 /// Confidential Transfer extension information needed to construct a `Withdraw` instruction.
-#[cfg(not(target_os = "solana"))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct WithdrawAccountInfo {
@@ -109,7 +105,6 @@ pub struct WithdrawAccountInfo {
     /// The decryptable available balance
     pub decryptable_available_balance: DecryptableBalance,
 }
-#[cfg(not(target_os = "solana"))]
 impl WithdrawAccountInfo {
     fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
         let decryptable_available_balance = self
@@ -159,7 +154,6 @@ impl WithdrawAccountInfo {
 }
 
 /// Confidential Transfer extension information needed to construct a `Transfer` instruction.
-#[cfg(not(target_os = "solana"))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct TransferAccountInfo {
@@ -168,7 +162,6 @@ pub struct TransferAccountInfo {
     /// The decryptable available balance
     pub decryptable_available_balance: DecryptableBalance,
 }
-#[cfg(not(target_os = "solana"))]
 impl TransferAccountInfo {
     fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
         let decryptable_available_balance = self
@@ -268,7 +261,6 @@ impl TransferAccountInfo {
     }
 }
 
-#[cfg(not(target_os = "solana"))]
 fn combine_balances(balance_lo: u64, balance_hi: u64) -> Option<u64> {
     balance_hi
         .checked_shl(PENDING_BALANCE_LO_BIT_LENGTH)?

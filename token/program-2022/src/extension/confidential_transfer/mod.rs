@@ -26,6 +26,7 @@ pub mod instruction;
 pub mod processor;
 
 /// Confidential Transfer Extension account information needed for instructions
+#[cfg(not(target_os = "solana"))]
 pub mod account_info;
 
 /// ElGamal ciphertext containing an account balance
