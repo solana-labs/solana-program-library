@@ -606,6 +606,16 @@ fn process_transfer(
 }
 
 /// Extract the transfer amount ciphertext encrypted under the source ElGamal public key.
+///
+/// A transfer amount ciphertext consists of the following 32-byte components that are serialized
+/// in order:
+///   1. The `commitment` component that encodes the transfer amount.
+///   2. The `decryption handle` component with respect to the source public key.
+///   3. The `decryption handle` component with respect to the destination public key.
+///   4. The `decryption handle` component with respect to the auditor public key.
+///
+/// An ElGamal ciphertext for the source consists of the `commitment` component and the `decryption
+/// handle` component with respect to the source.
 #[cfg(feature = "zk-ops")]
 fn transfer_amount_source_ciphertext(
     transfer_amount_ciphertext: &TransferAmountCiphertext,
@@ -620,6 +630,16 @@ fn transfer_amount_source_ciphertext(
 }
 
 /// Extract the transfer amount ciphertext encrypted under the destination ElGamal public key.
+///
+/// A transfer amount ciphertext consists of the following 32-byte components that are serialized
+/// in order:
+///   1. The `commitment` component that encodes the transfer amount.
+///   2. The `decryption handle` component with respect to the source public key.
+///   3. The `decryption handle` component with respect to the destination public key.
+///   4. The `decryption handle` component with respect to the auditor public key.
+///
+/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
+/// `decryption handle` component with respect to the destination public key.
 #[cfg(feature = "zk-ops")]
 fn transfer_amount_destination_ciphertext(
     transfer_amount_ciphertext: &TransferAmountCiphertext,
@@ -634,6 +654,16 @@ fn transfer_amount_destination_ciphertext(
 }
 
 /// Extract the fee amount ciphertext encrypted under the destination ElGamal public key.
+///
+/// A fee encryption amount consists of the following 32-byte components that are serialized in
+/// order:
+///   1. The `commitment` component that encodes the fee amount.
+///   2. The `decryption handle` component with respect to the destination public key.
+///   3. The `decryption handle` component with respect to the withdraw withheld authority public
+///      key.
+///
+/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
+/// `decryption handle` component with respect to the destination public key.
 #[cfg(feature = "zk-ops")]
 fn fee_amount_destination_ciphertext(
     transfer_amount_ciphertext: &EncryptedFee,
@@ -649,6 +679,16 @@ fn fee_amount_destination_ciphertext(
 
 /// Extract the transfer amount ciphertext encrypted under the withdraw withheld authority ElGamal
 /// public key.
+///
+/// A fee encryption amount consists of the following 32-byte components that are serialized in
+/// order:
+///   1. The `commitment` component that encodes the fee amount.
+///   2. The `decryption handle` component with respect to the destination public key.
+///   3. The `decryption handle` component with respect to the withdraw withheld authority public
+///      key.
+///
+/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
+/// `decryption handle` component with respect to the withdraw withheld authority public key.
 #[cfg(feature = "zk-ops")]
 fn fee_amount_withdraw_withheld_authority_ciphertext(
     transfer_amount_ciphertext: &EncryptedFee,
