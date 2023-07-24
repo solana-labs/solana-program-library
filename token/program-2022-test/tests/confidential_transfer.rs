@@ -25,7 +25,7 @@ use {
         },
     },
     spl_token_client::{
-        client::SendTransaction,
+        client::{SendTransaction, SimulateTransaction},
         token::{ExtensionInitializationParams, Token, TokenError as TokenClientError},
     },
     std::convert::TryInto,
@@ -62,7 +62,7 @@ struct ConfidentialTokenAccountMeta {
 impl ConfidentialTokenAccountMeta {
     async fn new<T>(token: &Token<T>, owner: &Keypair) -> Self
     where
-        T: SendTransaction,
+        T: SendTransaction + SimulateTransaction,
     {
         let token_account_keypair = Keypair::new();
         token
@@ -104,7 +104,7 @@ impl ConfidentialTokenAccountMeta {
         maximum_pending_balance_credit_counter: u64,
     ) -> Self
     where
-        T: SendTransaction,
+        T: SendTransaction + SimulateTransaction,
     {
         let token_account_keypair = Keypair::new();
         token
@@ -143,7 +143,7 @@ impl ConfidentialTokenAccountMeta {
     #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
     async fn new_with_required_memo_transfers<T>(token: &Token<T>, owner: &Keypair) -> Self
     where
-        T: SendTransaction,
+        T: SendTransaction + SimulateTransaction,
     {
         let token_account_keypair = Keypair::new();
         token
@@ -196,7 +196,7 @@ impl ConfidentialTokenAccountMeta {
         decimals: u8,
     ) -> Self
     where
-        T: SendTransaction,
+        T: SendTransaction + SimulateTransaction,
     {
         let meta = Self::new(token, owner).await;
 
@@ -238,7 +238,7 @@ impl ConfidentialTokenAccountMeta {
     #[cfg(feature = "zk-ops")]
     async fn check_balances<T>(&self, token: &Token<T>, expected: ConfidentialTokenAccountBalances)
     where
-        T: SendTransaction,
+        T: SendTransaction + SimulateTransaction,
     {
         let state = token.get_account_info(&self.token_account).await.unwrap();
         let extension = state
@@ -289,7 +289,7 @@ async fn check_withheld_amount_in_mint<T>(
     withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
     expected: u64,
 ) where
-    T: SendTransaction,
+    T: SendTransaction + SimulateTransaction,
 {
     let state = token.get_mint_info().await.unwrap();
     let extension = state.get_extension::<ConfidentialTransferMint>().unwrap();

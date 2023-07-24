@@ -1,5 +1,5 @@
 use {
-    crate::client::{ProgramClient, ProgramClientError, SendTransaction},
+    crate::client::{ProgramClient, ProgramClientError, SendTransaction, SimulateTransaction},
     futures_util::TryFutureExt,
     solana_program_test::tokio::time,
     solana_sdk::{
@@ -319,7 +319,7 @@ fn native_mint_decimals(program_id: &Pubkey) -> u8 {
 
 impl<T> Token<T>
 where
-    T: SendTransaction,
+    T: SendTransaction + SimulateTransaction,
 {
     pub fn new(
         client: Arc<dyn ProgramClient<T>>,
@@ -510,6 +510,21 @@ where
             .map_err(|error| TokenError::Client(error.into()))?;
 
         Ok(transaction)
+    }
+
+    pub async fn simulate_ixs<S: Signers>(
+        &self,
+        token_instructions: &[Instruction],
+        signing_keypairs: &S,
+    ) -> TokenResult<T::SimulationOutput> {
+        let transaction = self
+            .construct_tx(token_instructions, signing_keypairs)
+            .await?;
+
+        self.client
+            .simulate_transaction(&transaction)
+            .await
+            .map_err(TokenError::Client)
     }
 
     pub async fn process_ixs<S: Signers>(
