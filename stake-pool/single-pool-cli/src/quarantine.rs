@@ -42,7 +42,7 @@ pub async fn get_stake_info(
         .await?
     {
         match bincode::deserialize::<StakeState>(&stake_account.data)? {
-            StakeState::Stake(meta, stake) => Ok(Some((meta, stake))),
+            StakeState::Stake(meta, stake, _) => Ok(Some((meta, stake))),
             StakeState::Initialized(_) => {
                 Err(format!("Stake account {} is undelegated", stake_account_address).into())
             }

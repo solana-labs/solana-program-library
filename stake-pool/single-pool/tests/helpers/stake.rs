@@ -28,7 +28,7 @@ pub async fn get_stake_account(
     let lamports = stake_account.lamports;
     match deserialize::<StakeState>(&stake_account.data).unwrap() {
         StakeState::Initialized(meta) => (meta, None, lamports),
-        StakeState::Stake(meta, stake) => (meta, Some(stake), lamports),
+        StakeState::Stake(meta, stake, _) => (meta, Some(stake), lamports),
         _ => unimplemented!(),
     }
 }
