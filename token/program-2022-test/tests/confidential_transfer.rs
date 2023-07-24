@@ -104,7 +104,7 @@ impl ConfidentialTokenAccountMeta {
         maximum_pending_balance_credit_counter: u64,
     ) -> Self
     where
-        T: SendTransaction,
+        T: SendTransaction + SimulateTransaction,
     {
         let token_account_keypair = Keypair::new();
         token
