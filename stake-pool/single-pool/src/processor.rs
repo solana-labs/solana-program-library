@@ -78,7 +78,7 @@ fn get_stake_state(stake_account_info: &AccountInfo) -> Result<(Meta, Stake), Pr
     let stake_state = try_from_slice_unchecked::<StakeState>(&stake_account_info.data.borrow())?;
 
     match stake_state {
-        StakeState::Stake(meta, stake, _) => Ok((meta, stake)),
+        StakeState::Stake(meta, stake) => Ok((meta, stake)),
         _ => Err(SinglePoolError::WrongStakeState.into()),
     }
 }
