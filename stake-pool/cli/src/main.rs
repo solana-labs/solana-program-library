@@ -683,7 +683,7 @@ fn command_deposit_stake(
         println!("Depositing stake account {:?}", stake_state);
     }
     let vote_account = match stake_state {
-        stake::state::StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
+        stake::state::StakeState::Stake(_, stake, _) => Ok(stake.delegation.voter_pubkey),
         _ => Err("Wrong stake account state, must be delegated to validator"),
     }?;
 
@@ -865,7 +865,7 @@ fn command_deposit_all_stake(
         let stake_state = get_stake_state(&config.rpc_client, &stake_address)?;
 
         let vote_account = match stake_state {
-            stake::state::StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
+            stake::state::StakeState::Stake(_, stake, _) => Ok(stake.delegation.voter_pubkey),
             _ => Err("Wrong stake account state, must be delegated to validator"),
         }?;
 

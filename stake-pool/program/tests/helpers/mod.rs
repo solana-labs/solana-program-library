@@ -2382,7 +2382,9 @@ pub fn add_validator_stake_account(
     let stake_account = SolanaAccount::create(
         stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
         bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Stake(
-            meta, stake,
+            meta,
+            stake,
+            stake::stake_flags::StakeFlags::empty(),
         ))
         .unwrap(),
         stake::program::id(),
