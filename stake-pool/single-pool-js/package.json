@@ -1,10 +1,11 @@
 {
-    "type": "module", 
-  "devDependencies": {
-    "typescript": "^5.1.6"
-  },
-  "dependencies": {
-    "@solana/web3.js": "^2.0.0-experimental.ee9f3d8",
-    "node-fetch": "^3.3.1"
-  }
+    "type": "module",
+    "devDependencies": {
+        "typescript": "^5.1.6"
+    },
+    "dependencies": {
+        "@solana/buffer-layout": "^4.0.1",
+        "@solana/spl-token": "^0.3.8",
+        "@solana/web3.js": "^1.78.0"
+    }
 }
