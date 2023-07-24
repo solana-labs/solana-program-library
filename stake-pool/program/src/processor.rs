@@ -51,7 +51,7 @@ fn get_stake_state(
     let stake_state =
         try_from_slice_unchecked::<stake::state::StakeState>(&stake_account_info.data.borrow())?;
     match stake_state {
-        stake::state::StakeState::Stake(meta, stake, _) => Ok((meta, stake)),
+        stake::state::StakeState::Stake(meta, stake) => Ok((meta, stake)),
         _ => Err(StakePoolError::WrongStakeState.into()),
     }
 }
@@ -1738,7 +1738,7 @@ impl Processor {
             )?;
             match stake_state {
                 // if it was delegated on or before this epoch, we're good
-                stake::state::StakeState::Stake(_, stake, _)
+                stake::state::StakeState::Stake(_, stake)
                     if stake.delegation.activation_epoch <= clock.epoch => {}
                 // all other situations, delegate!
                 _ => {
@@ -2275,7 +2275,7 @@ impl Processor {
                         }
                     }
                 }
-                Some(stake::state::StakeState::Stake(meta, stake, _)) => {
+                Some(stake::state::StakeState::Stake(meta, stake)) => {
                     if stake_is_usable_by_pool(
                         &meta,
                         withdraw_authority_info.key,
@@ -2297,7 +2297,7 @@ impl Processor {
                             )?;
                             validator_stake_record.status.remove_transient_stake();
                         } else if stake.delegation.activation_epoch < clock.epoch {
-                            if let Some(stake::state::StakeState::Stake(_, validator_stake, _)) =
+                            if let Some(stake::state::StakeState::Stake(_, validator_stake)) =
                                 validator_stake_state
                             {
                                 if validator_stake.delegation.activation_epoch < clock.epoch {
@@ -2338,7 +2338,7 @@ impl Processor {
             )
             .ok();
             match validator_stake_state {
-                Some(stake::state::StakeState::Stake(meta, stake, _)) => {
+                Some(stake::state::StakeState::Stake(meta, stake)) => {
                     let additional_lamports = validator_stake_info
                         .lamports()
                         .saturating_sub(stake.delegation.stake)
