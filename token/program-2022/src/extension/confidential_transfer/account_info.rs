@@ -21,14 +21,12 @@ use {
 };
 
 /// Confidential transfer extension information needed to construct an `EmptyAccount` instruction.
-#[cfg(not(target_os = "solana"))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct EmptyAccountAccountInfo {
     /// The available balance
     pub(crate) available_balance: EncryptedBalance,
 }
-#[cfg(not(target_os = "solana"))]
 impl EmptyAccountAccountInfo {
     /// Create an empty account proof data.
     pub fn generate_proof_data(
