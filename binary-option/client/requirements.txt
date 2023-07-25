@@ -1,6 +1,6 @@
 attrs==21.2.0
 base58==2.1.0
-certifi==2022.12.7
+certifi==2023.7.22
 cffi==1.14.5
 chardet==4.0.0
 cheroot==8.5.2
