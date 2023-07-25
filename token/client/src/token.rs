@@ -104,6 +104,7 @@ impl PartialEq for TokenError {
             (Self::AccountInvalidMint, Self::AccountInvalidMint) => true,
             (Self::AccountInvalidAssociatedAddress, Self::AccountInvalidAssociatedAddress) => true,
             (Self::AccountInvalidAuxiliaryAddress, Self::AccountInvalidAuxiliaryAddress) => true,
+            (Self::ProofGeneration, Self::ProofGeneration) => true,
             (
                 Self::MaximumDepositTransferAmountExceeded,
                 Self::MaximumDepositTransferAmountExceeded,
