@@ -16,7 +16,7 @@ on:
       - ".github/workflows/pull-request-account-compression.yml"
 
 jobs:
-  cargo-test-sbf:
+  anchor-build-account-compression:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -27,6 +27,8 @@ jobs:
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+          source ci/anchor-cliversion.sh
+          echo "ANCHOR_CLI_VERSION=$anchor_cli_version" >> $GITHUB_ENV
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -39,7 +41,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
 
       - uses: actions/cache@v2
         with:
@@ -55,7 +57,7 @@ jobs:
       - name: Install dependencies
         run: |
           ./ci/install-build-deps.sh
-          ./ci/install-program-deps.sh
+          ./ci/program-anchor-build.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Upload programs
