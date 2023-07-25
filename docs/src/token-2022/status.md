@@ -10,11 +10,11 @@ development purposes ONLY**.
 
 Here is the general program timeline and rough ETAs:
 
-| Issue | ETA |
-| --- | --- |
-| Code-complete & final audit | Summer 2023 |
-| Mainnet recommendation | Fall 2023 (depends on v1.16) |
-| Freeze program | 2024 |
+| Issue                       | ETA                          |
+| --------------------------- | ---------------------------- |
+| Code-complete & final audit | Summer 2023                  |
+| Mainnet recommendation      | Fall 2023 (depends on v1.16) |
+| Freeze program              | 2024                         |
 
 More information: https://github.com/orgs/solana-labs/projects/34
 
@@ -29,15 +29,17 @@ More information: https://github.com/solana-labs/solana/issues/29612
 
 ### Zero-knowledge proof split
 
-To fit within the current transaction size limits, the zero knowledge proofs must
-be split into their component parts and uploaded to the chain through multiple
-transactions. Once the proofs exist, the user can issue a transfer and clean up
-the proofs.
+In order to use confidential tokens, the cluster must run at least version 1.16
+with the ZK Token proof program enabled.
 
-After splitting the proofs in the zero-knowledge token SDK, the token-2022 program
-must properly consume the new proof format.
+More information: https://github.com/solana-labs/solana/pull/32613
 
-More information: https://github.com/solana-labs/solana/pull/30816
+The ZK Token proof program was recently updated to support the splitting of
+the longer zero-knowledge proofs into smaller components. The
+token-2022 program is in the process of active development to properly process
+the new proof format.
+
+More information: https://github.com/solana-labs/solana-program-library/issues/4817
 
 ## Future work
 
