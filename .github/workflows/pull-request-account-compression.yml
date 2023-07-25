@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "account-compression/**"
+      - "libraries/concurrent-merkle-tree/**"
       - "ci/*-version.sh"
   push:
     branches: [master]
