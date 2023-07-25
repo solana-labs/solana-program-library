@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 16.x
-    needs: cargo-test-sbf
+    needs: anchor-build-account-compression
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}

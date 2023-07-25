@@ -23,7 +23,6 @@ export anchor_cli_version="$anchor_cli_version"
 if [[ -n $1 ]]; then
   case $1 in
   install)
-    echo "yeehaw"
     cargo install --git https://github.com/coral-xyz/anchor --tag $anchor_cli_version anchor-cli --locked
     anchor --version
     ;;
