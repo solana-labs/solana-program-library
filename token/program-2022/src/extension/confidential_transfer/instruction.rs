@@ -75,17 +75,19 @@ pub enum ConfidentialTransferInstruction {
     ///   * Single owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` Instructions sysvar.
-    ///   3. `[]` Context state account for `ZeroBalanceProof` (optional)
-    ///   4. `[signer]` The single source account owner.
+    ///   2. `[]` Instructions sysvar if `PubkeyValidityProof` is included in the same transaction or
+    ///      context state account if `PubkeyValidityProof` is pre-verified into a context state
+    ///      account.
+    ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` Instructions sysvar.
-    ///   3. `[]` Context state account `ZeroBalanceProof` (optional)
-    ///   4. `[]` The multisig source account owner.
-    ///   5.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   2. `[]` Instructions sysvar if `PubkeyValidityProof` is included in the same transaction or
+    ///      context state account if `PubkeyValidityProof` is pre-verified into a context state
+    ///      account.
+    ///   3. `[]` The multisig source account owner.
+    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `ConfigureAccountInstructionData`
@@ -127,16 +129,18 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar.
-    ///   2. `[]` Context state account for `ZeroBalanceProof` (optional)
-    ///   3. `[signer]` The single account owner.
+    ///   1. `[]` Instructions sysvar if `ZeroBalanceProof` is included in the same transaction or
+    ///      context state account if `ZeroBalanceProof` is pre-verified into a context state
+    ///      account.
+    ///   2. `[signer]` The single account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar.
+    ///   1. `[]` Instructions sysvar if `ZeroBalanceProof` is included in the same transaction or
+    ///      context state account if `ZeroBalanceProof` is pre-verified into a context state
+    ///      account.
     ///   2. `[]` The multisig account owner.
-    ///   3. `[]` Context state account for `ZeroBalanceProof` (optional)
-    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `EmptyAccountInstructionData`
@@ -182,17 +186,17 @@ pub enum ConfidentialTransferInstruction {
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar.
-    ///   3. `[]` Context state account for `WithdrawData` (optional)
-    ///   4. `[signer]` The single source account owner.
+    ///   2. `[]` Instructions sysvar if `WithdrawProof` is included in the same transaction or
+    ///      context state account if `WithdrawProof` is pre-verified into a context state account.
+    ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar.
-    ///   3. `[]` Context state account for `WithdrawData` (optional)
-    ///   4. `[]` The multisig  source account owner.
-    ///   5.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   2. `[]` Instructions sysvar if `WithdrawProof` is included in the same transaction or
+    ///      context state account if `WithdrawProof` is pre-verified into a context state account.
+    ///   3. `[]` The multisig  source account owner.
+    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `WithdrawInstructionData`
@@ -211,18 +215,20 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[writable]` The destination SPL Token account.
     ///   3. `[]` The token mint.
-    ///   4. `[]` Instructions sysvar.
-    ///   5. `[]` Context state account for `TransferProof` (optional)
-    ///   6. `[signer]` The single source account owner.
+    ///   4. `[]` Instructions sysvar if `TransferProof` or `TransferWithFeeProof` is included in
+    ///      the same transaction or context state account if the proof is pre-verified into a
+    ///      context state account.
+    ///   5. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[writable]` The destination SPL Token account.
     ///   3. `[]` The token mint.
-    ///   4. `[]` Instructions sysvar.
-    ///   5. `[]` Context state account for `TransferProof` (optional)
-    ///   6. `[]` The multisig  source account owner.
-    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   4. `[]` Instructions sysvar if `TransferProof` or `TransferWithFeeProof` is included in
+    ///      the same transaction or context state account if the proof is pre-verified into a
+    ///      context state account.
+    ///   5. `[]` The multisig  source account owner.
+    ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
     ///   `TransferInstructionData`
@@ -513,11 +519,13 @@ pub fn inner_configure_account(
     let mut accounts = vec![
         AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => proof_instruction_offset.into(),
+        ProofLocation::Instruction(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
         ProofLocation::ContextStateAccount(context_state_account) => {
             accounts.push(AccountMeta::new_readonly(*context_state_account, false));
             0
@@ -622,13 +630,13 @@ pub fn inner_empty_account(
     proof_data_location: ProofLocation<ZeroBalanceProofData>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*token_account, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
-    ];
+    let mut accounts = vec![AccountMeta::new(*token_account, false)];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => proof_instruction_offset.into(),
+        ProofLocation::Instruction(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
         ProofLocation::ContextStateAccount(context_state_account) => {
             accounts.push(AccountMeta::new_readonly(*context_state_account, false));
             0
@@ -738,11 +746,13 @@ pub fn inner_withdraw(
     let mut accounts = vec![
         AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => proof_instruction_offset.into(),
+        ProofLocation::Instruction(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
         ProofLocation::ContextStateAccount(context_state_account) => {
             accounts.push(AccountMeta::new_readonly(*context_state_account, false));
             0
@@ -831,11 +841,13 @@ pub fn inner_transfer(
         AccountMeta::new(*source_token_account, false),
         AccountMeta::new(*destination_token_account, false),
         AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => proof_instruction_offset.into(),
+        ProofLocation::Instruction(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
         ProofLocation::ContextStateAccount(context_state_account) => {
             accounts.push(AccountMeta::new_readonly(*context_state_account, false));
             0
@@ -921,11 +933,13 @@ pub fn inner_transfer_with_fee(
         AccountMeta::new(*source_token_account, false),
         AccountMeta::new(*destination_token_account, false),
         AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => proof_instruction_offset.into(),
+        ProofLocation::Instruction(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
         ProofLocation::ContextStateAccount(context_state_account) => {
             accounts.push(AccountMeta::new_readonly(*context_state_account, false));
             0

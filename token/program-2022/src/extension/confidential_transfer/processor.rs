@@ -101,13 +101,12 @@ fn process_configure_account(
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
-    let instructions_sysvar_info = next_account_info(account_info_iter)?;
 
-    let context_state_account_info = if proof_instruction_offset == 0 {
-        Some(next_account_info(account_info_iter)?)
-    } else {
-        None
-    };
+    // zero-knowledge proof certifies that the supplied ElGamal public key is valid
+    let proof_context = verify_configure_account_proof(
+        next_account_info(account_info_iter)?,
+        proof_instruction_offset,
+    )?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -132,28 +131,6 @@ fn process_configure_account(
     let mint_data = &mut mint_info.data.borrow();
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
-
-    // zero-knowledge proof certifies that the supplied ElGamal public key is valid
-    let proof_context = if let Some(context_state_account_info) = context_state_account_info {
-        check_zk_token_proof_program_account(context_state_account_info.owner)?;
-        let context_state_account_data = context_state_account_info.data.borrow();
-        let context_state = pod_from_bytes::<ProofContextState<PubkeyValidityProofContext>>(
-            &context_state_account_data,
-        )?;
-
-        if context_state.proof_type != ProofType::PubkeyValidity.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        context_state.proof_context
-    } else {
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-        *decode_proof_instruction_context::<PubkeyValidityData, PubkeyValidityProofContext>(
-            ProofInstruction::VerifyPubkeyValidity,
-            &zkp_instruction,
-        )?
-    };
 
     // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
@@ -184,6 +161,37 @@ fn process_configure_account(
     }
 
     Ok(())
+}
+
+/// Verify zero-knowledge proof needed for a [ConfigureAccount] instruction and return the
+/// corresponding proof context.
+fn verify_configure_account_proof(
+    account_info: &AccountInfo<'_>,
+    proof_instruction_offset: i64,
+) -> Result<PubkeyValidityProofContext, ProgramError> {
+    if proof_instruction_offset == 0 {
+        // interpret `account_info` as a context state account
+        check_zk_token_proof_program_account(account_info.owner)?;
+        let context_state_account_data = account_info.data.borrow();
+        let context_state = pod_from_bytes::<ProofContextState<PubkeyValidityProofContext>>(
+            &context_state_account_data,
+        )?;
+
+        if context_state.proof_type != ProofType::PubkeyValidity.into() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+
+        Ok(context_state.proof_context)
+    } else {
+        // interpret `account_info` as a sysvar
+        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
+        Ok(*decode_proof_instruction_context::<
+            PubkeyValidityData,
+            PubkeyValidityProofContext,
+        >(
+            ProofInstruction::VerifyPubkeyValidity, &zkp_instruction
+        )?)
+    }
 }
 
 /// Processes an [ApproveAccount] instruction.
@@ -224,13 +232,12 @@ fn process_empty_account(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
-    let instructions_sysvar_info = next_account_info(account_info_iter)?;
 
-    let context_state_account_info = if proof_instruction_offset == 0 {
-        Some(next_account_info(account_info_iter)?)
-    } else {
-        None
-    };
+    // zero-knowledge proof certifies that the available balance ciphertext holds the balance of 0.
+    let proof_context = verify_empty_account_proof(
+        next_account_info(account_info_iter)?,
+        proof_instruction_offset,
+    )?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -250,29 +257,6 @@ fn process_empty_account(
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
-    // An `EmptyAccount` instruction must be accompanied by a zero-knowledge proof instruction that
-    // certifies that the available balance ciphertext holds the balance of 0.
-    let proof_context = if let Some(context_state_account_info) = context_state_account_info {
-        check_zk_token_proof_program_account(context_state_account_info.owner)?;
-        let context_state_account_data = context_state_account_info.data.borrow();
-        let context_state = pod_from_bytes::<ProofContextState<ZeroBalanceProofContext>>(
-            &context_state_account_data,
-        )?;
-
-        if context_state.proof_type != ProofType::ZeroBalance.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        context_state.proof_context
-    } else {
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-        *decode_proof_instruction_context::<ZeroBalanceProofData, ZeroBalanceProofContext>(
-            ProofInstruction::VerifyZeroBalance,
-            &zkp_instruction,
-        )?
-    };
-
     // Check that the encryption public key and ciphertext associated with the confidential
     // extension account are consistent with those that were actually used to generate the zkp.
     if confidential_transfer_account.elgamal_pubkey != proof_context.pubkey {
@@ -289,6 +273,37 @@ fn process_empty_account(
     confidential_transfer_account.closable()?;
 
     Ok(())
+}
+
+/// Verify zero-knowledge proof needed for a [EmptyAccount] instruction and return the
+/// corresponding proof context.
+fn verify_empty_account_proof(
+    account_info: &AccountInfo<'_>,
+    proof_instruction_offset: i64,
+) -> Result<ZeroBalanceProofContext, ProgramError> {
+    if proof_instruction_offset == 0 {
+        // interpret `account_info` as a context state account
+        check_zk_token_proof_program_account(account_info.owner)?;
+        let context_state_account_data = account_info.data.borrow();
+        let context_state = pod_from_bytes::<ProofContextState<ZeroBalanceProofContext>>(
+            &context_state_account_data,
+        )?;
+
+        if context_state.proof_type != ProofType::ZeroBalance.into() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+
+        Ok(context_state.proof_context)
+    } else {
+        // interpret `account_info` as a sysvar
+        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
+        Ok(*decode_proof_instruction_context::<
+            ZeroBalanceProofData,
+            ZeroBalanceProofContext,
+        >(
+            ProofInstruction::VerifyZeroBalance, &zkp_instruction
+        )?)
+    }
 }
 
 /// Processes a [Deposit] instruction.
@@ -396,13 +411,13 @@ fn process_withdraw(
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
-    let instructions_sysvar_info = next_account_info(account_info_iter)?;
 
-    let context_state_account_info = if proof_instruction_offset == 0 {
-        Some(next_account_info(account_info_iter)?)
-    } else {
-        None
-    };
+    // zero-knowledge proof certifies that the account has enough available balance to withdraw the
+    // amount.
+    let proof_context = verify_withdraw_proof(
+        next_account_info(account_info_iter)?,
+        proof_instruction_offset,
+    )?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -446,28 +461,6 @@ fn process_withdraw(
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_source()?;
 
-    // Zero-knowledge proof certifies that the account has enough available balance to withdraw the
-    // amount.
-    let proof_context = if let Some(context_state_account_info) = context_state_account_info {
-        check_zk_token_proof_program_account(context_state_account_info.owner)?;
-        let context_state_account_data = context_state_account_info.data.borrow();
-        let context_state =
-            pod_from_bytes::<ProofContextState<WithdrawProofContext>>(&context_state_account_data)?;
-
-        if context_state.proof_type != ProofType::Withdraw.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        context_state.proof_context
-    } else {
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-        *decode_proof_instruction_context::<WithdrawData, WithdrawProofContext>(
-            ProofInstruction::VerifyWithdraw,
-            &zkp_instruction,
-        )?
-    };
-
     // Check that the encryption public key associated with the confidential extension is
     // consistent with the public key that was actually used to generate the zkp.
     if confidential_transfer_account.elgamal_pubkey != proof_context.pubkey {
@@ -497,6 +490,36 @@ fn process_withdraw(
     Ok(())
 }
 
+/// Verify zero-knowledge proof needed for a [Withdraw] instruction and return the
+/// corresponding proof context.
+fn verify_withdraw_proof(
+    account_info: &AccountInfo<'_>,
+    proof_instruction_offset: i64,
+) -> Result<WithdrawProofContext, ProgramError> {
+    if proof_instruction_offset == 0 {
+        // interpret `account_info` as a context state account
+        check_zk_token_proof_program_account(account_info.owner)?;
+        let context_state_account_data = account_info.data.borrow();
+        let context_state =
+            pod_from_bytes::<ProofContextState<WithdrawProofContext>>(&context_state_account_data)?;
+
+        if context_state.proof_type != ProofType::Withdraw.into() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+
+        Ok(context_state.proof_context)
+    } else {
+        // interpret `account_info` as a sysvar
+        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
+        Ok(*decode_proof_instruction_context::<
+            WithdrawData,
+            WithdrawProofContext,
+        >(
+            ProofInstruction::VerifyWithdraw, &zkp_instruction
+        )?)
+    }
+}
+
 /// Processes an [Transfer] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_transfer(
@@ -509,13 +532,9 @@ fn process_transfer(
     let source_account_info = next_account_info(account_info_iter)?;
     let destination_token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
-    let instructions_sysvar_info = next_account_info(account_info_iter)?;
 
-    let context_state_account_info = if proof_instruction_offset == 0 {
-        Some(next_account_info(account_info_iter)?)
-    } else {
-        None
-    };
+    // either sysvar or context state account depending on `proof_instruction_offset`
+    let proof_account_info = next_account_info(account_info_iter)?;
 
     let authority_info = next_account_info(account_info_iter)?;
 
@@ -543,24 +562,7 @@ fn process_transfer(
         // The zero-knowledge proof certifies that:
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
-        let proof_context = if let Some(context_state_account_info) = context_state_account_info {
-            check_zk_token_proof_program_account(context_state_account_info.owner)?;
-            let context_state_account_data = context_state_account_info.data.borrow();
-            let context_state = pod_from_bytes::<ProofContextState<TransferProofContext>>(
-                &context_state_account_data,
-            )?;
-            if context_state.proof_type != ProofType::Transfer.into() {
-                return Err(ProgramError::InvalidInstructionData);
-            }
-            context_state.proof_context
-        } else {
-            let zkp_instruction =
-                get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-            *decode_proof_instruction_context::<TransferData, TransferProofContext>(
-                ProofInstruction::VerifyTransfer,
-                &zkp_instruction,
-            )?
-        };
+        let proof_context = verify_transfer_proof(proof_account_info, proof_instruction_offset)?;
 
         // Check that the auditor encryption public key associated wth the confidential mint is
         // consistent with what was actually used to generate the zkp.
@@ -609,24 +611,8 @@ fn process_transfer(
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
         //   3. the transfer fee is computed correctly and encrypted in the correct form
-        let proof_context = if let Some(context_state_account_info) = context_state_account_info {
-            check_zk_token_proof_program_account(context_state_account_info.owner)?;
-            let context_state_account_data = context_state_account_info.data.borrow();
-            let context_state = pod_from_bytes::<ProofContextState<TransferWithFeeProofContext>>(
-                &context_state_account_data,
-            )?;
-            if context_state.proof_type != ProofType::Transfer.into() {
-                return Err(ProgramError::InvalidInstructionData);
-            }
-            context_state.proof_context
-        } else {
-            let zkp_instruction =
-                get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-            *decode_proof_instruction_context::<TransferWithFeeData, TransferWithFeeProofContext>(
-                ProofInstruction::VerifyTransfer,
-                &zkp_instruction,
-            )?
-        };
+        let proof_context =
+            verify_transfer_with_fee_proof(proof_account_info, proof_instruction_offset)?;
 
         // Check that the encryption public keys associated with the mint confidential transfer and
         // confidential transfer fee extensions are consistent with the keys that were used to
@@ -700,6 +686,68 @@ fn process_transfer(
     }
 
     Ok(())
+}
+
+/// Verify zero-knowledge proof needed for a [Transfer] instruction without fee and return the
+/// corresponding proof context.
+fn verify_transfer_proof(
+    account_info: &AccountInfo<'_>,
+    proof_instruction_offset: i64,
+) -> Result<TransferProofContext, ProgramError> {
+    if proof_instruction_offset == 0 {
+        // interpret `account_info` as a context state account
+        check_zk_token_proof_program_account(account_info.owner)?;
+        let context_state_account_data = account_info.data.borrow();
+        let context_state =
+            pod_from_bytes::<ProofContextState<TransferProofContext>>(&context_state_account_data)?;
+
+        if context_state.proof_type != ProofType::Transfer.into() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+
+        Ok(context_state.proof_context)
+    } else {
+        // interpret `account_info` as a sysvar
+        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
+        Ok(*decode_proof_instruction_context::<
+            TransferData,
+            TransferProofContext,
+        >(
+            ProofInstruction::VerifyTransfer, &zkp_instruction
+        )?)
+    }
+}
+
+/// Verify zero-knowledge proof needed for a [Transfer] instruction with fee and return the
+/// corresponding proof context.
+fn verify_transfer_with_fee_proof(
+    account_info: &AccountInfo<'_>,
+    proof_instruction_offset: i64,
+) -> Result<TransferWithFeeProofContext, ProgramError> {
+    if proof_instruction_offset == 0 {
+        // interpret `account_info` as a context state account
+        check_zk_token_proof_program_account(account_info.owner)?;
+        let context_state_account_data = account_info.data.borrow();
+        let context_state = pod_from_bytes::<ProofContextState<TransferWithFeeProofContext>>(
+            &context_state_account_data,
+        )?;
+
+        if context_state.proof_type != ProofType::TransferWithFee.into() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+
+        Ok(context_state.proof_context)
+    } else {
+        // interpret `account_info` as a sysvar
+        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
+        Ok(*decode_proof_instruction_context::<
+            TransferWithFeeData,
+            TransferWithFeeProofContext,
+        >(
+            ProofInstruction::VerifyTransferWithFee,
+            &zkp_instruction,
+        )?)
+    }
 }
 
 /// Extract the transfer amount ciphertext encrypted under the source ElGamal public key.
