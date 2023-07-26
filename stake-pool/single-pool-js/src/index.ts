@@ -2,7 +2,6 @@ import {
   PublicKey,
   Connection,
   TransactionInstruction,
-  LAMPORTS_PER_SOL,
   SYSVAR_RENT_PUBKEY,
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_STAKE_HISTORY_PUBKEY,
@@ -12,10 +11,17 @@ import {
   sendAndConfirmTransaction,
   SystemProgram,
   Keypair,
+  StakeAuthorizationLayout,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, MINT_SIZE } from '@solana/spl-token';
+import {
+  TOKEN_PROGRAM_ID,
+  MINT_SIZE,
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+} from '@solana/spl-token';
 import * as BufferLayout from '@solana/buffer-layout';
 import { Buffer } from 'buffer';
+import fs from 'fs';
 
 // solana-test-validator --reset --bpf-program 3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY ~/work/solana/spl/target/deploy/spl_single_validator_pool.so --bpf-program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s ~/work/solana/spl/stake-pool/program/tests/fixtures/mpl_token_metadata.so --account KRAKEnMdmT4EfM8ykTFH6yLoCd5vNLcQvJwF66Y2dag ~/vote_account.json
 
@@ -148,6 +154,7 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
 
 // FIXME why does the stake pool js want program id for the pda search fns
 // but hardcodes one for the instruction fns? seems odd
+// FIXME should i use params objects for these?
 export class SinglePoolInstruction {
   static initializePool(voteAccount: PublicKey): TransactionInstruction {
     const programId = SINGLE_POOL_PROGRAM_ID;
@@ -222,6 +229,7 @@ export class SinglePoolInstruction {
 }
 
 // XXX transaction builders
+// FIXME should i use params objects for these too??
 
 export async function initialize(connection: Connection, voteAccount: PublicKey, payer: PublicKey) {
   const transaction = new Transaction();
@@ -265,17 +273,92 @@ export async function initialize(connection: Connection, voteAccount: PublicKey,
   return transaction;
 }
 
-// XXX ugh ok im going home but next is just impl the rest of the instruction and transaction functions
+export async function deposit(
+  connection: Connection,
+  pool: PublicKey,
+  userStakeAccount: PublicKey,
+  userLamportAccount: PublicKey,
+  userTokenAccount?: PublicKey,
+  userWithdrawAuthority?: PublicKey,
+) {
+  const transaction = new Transaction();
+
+  const programId = SINGLE_POOL_PROGRAM_ID;
+  const mint = findPoolMintAddress(programId, pool);
+  const poolStakeAuthority = findPoolStakeAuthorityAddress(programId, pool);
+  const userAssociatedTokenAccount = getAssociatedTokenAddressSync(mint, userLamportAccount);
+
+  if (!userTokenAccount) {
+    userTokenAccount = getAssociatedTokenAddressSync(mint, userLamportAccount);
+  }
+
+  if (!userWithdrawAuthority) {
+    userWithdrawAuthority = userLamportAccount;
+  }
+
+  if (
+    userTokenAccount.equals(userAssociatedTokenAccount) &&
+    (await connection.getAccountInfo(userAssociatedTokenAccount)) == null
+  ) {
+    // TODO if i use param obj change this lamport acocunt to wallet and make lamport separate/optional...
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        userLamportAccount,
+        userAssociatedTokenAccount,
+        userLamportAccount,
+        mint,
+      ),
+    );
+  }
+
+  // TODO check token and stake account? (thats why i take connection and async)
+
+  transaction.add(
+    StakeProgram.authorize({
+      stakePubkey: userStakeAccount,
+      authorizedPubkey: userWithdrawAuthority,
+      newAuthorizedPubkey: poolStakeAuthority,
+      stakeAuthorizationType: StakeAuthorizationLayout.Staker,
+    }),
+  );
+
+  transaction.add(
+    StakeProgram.authorize({
+      stakePubkey: userStakeAccount,
+      authorizedPubkey: userWithdrawAuthority,
+      newAuthorizedPubkey: poolStakeAuthority,
+      stakeAuthorizationType: StakeAuthorizationLayout.Withdrawer,
+    }),
+  );
+
+  transaction.add(
+    SinglePoolInstruction.depositStake(
+      pool,
+      userStakeAccount,
+      userTokenAccount,
+      userLamportAccount,
+    ),
+  );
+
+  return transaction;
+}
 
 async function main() {
   const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
-  const payer = new Keypair();
-  const airdrop = await connection.requestAirdrop(payer.publicKey, 100 * LAMPORTS_PER_SOL);
-  await connection.confirmTransaction(airdrop);
+  const payer = Keypair.fromSecretKey(
+    Uint8Array.from(JSON.parse(fs.readFileSync('/home/hana/.config/solana/id.json', 'utf8'))),
+  );
+  console.log('payer:', payer);
+  console.log('keypair:', new Keypair());
 
   const voteAccount = new PublicKey('KRAKEnMdmT4EfM8ykTFH6yLoCd5vNLcQvJwF66Y2dag');
-  const transaction = await initialize(connection, voteAccount, payer.publicKey);
+  const stakeAccount = new PublicKey('E1QPYQPWApgDpYiG4HRiiUauUYxS3iqxXGvzzz2RVj7u');
+  const pool = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccount);
 
+  let transaction = await initialize(connection, voteAccount, payer.publicKey);
+  await sendAndConfirmTransaction(connection, transaction, [payer]);
+
+  transaction = await deposit(connection, pool, stakeAccount, payer.publicKey);
   await sendAndConfirmTransaction(connection, transaction, [payer]);
 }
 
