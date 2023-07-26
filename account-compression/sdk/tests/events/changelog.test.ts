@@ -1,20 +1,20 @@
-import NodeWallet from '@project-serum/anchor/dist/cjs/nodewallet';
-import { BN } from 'bn.js';
-import { AnchorProvider } from '@project-serum/anchor';
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
-import { bs58 } from '@project-serum/anchor/dist/cjs/utils/bytes';
-import { assert } from 'chai';
-import * as crypto from 'crypto';
+import { AnchorProvider } from "@project-serum/anchor";
+import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
+import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { BN } from "bn.js";
+import { assert } from "chai";
+import * as crypto from "crypto";
 
 import {
   createAppendIx,
   deserializeChangeLogEventV1,
   SPL_NOOP_PROGRAM_ID,
-} from '../../src';
-import { MerkleTree } from '../../src/merkle-tree';
-import { execute, createTreeOnChain } from '../utils';
+} from "../../src";
+import { MerkleTree } from "../../src/merkle-tree";
+import { createTreeOnChain,execute } from "../utils";
 
-describe('Serde tests', () => {
+describe("Serde tests", () => {
   let offChainTree: MerkleTree;
   let cmtKeypair: Keypair;
   let payerKeypair: Keypair;
@@ -29,8 +29,8 @@ describe('Serde tests', () => {
     payerKeypair = Keypair.generate();
     payer = payerKeypair.publicKey;
 
-    connection = new Connection('http://127.0.0.1:8899', {
-      commitment: 'confirmed',
+    connection = new Connection("http://127.0.0.1:8899", {
+      commitment: "confirmed",
     });
     const wallet = new NodeWallet(payerKeypair);
     provider = new AnchorProvider(connection, wallet, {
@@ -40,21 +40,21 @@ describe('Serde tests', () => {
 
     await provider.connection.confirmTransaction(
       await provider.connection.requestAirdrop(payer, 1e10),
-      'confirmed'
+      "confirmed"
     );
   });
-  describe('ChangeLogEvent tests', () => {
+  describe("ChangeLogEvent tests", () => {
     let cmt: PublicKey;
     beforeEach(async () => {
       [cmtKeypair, offChainTree] = await createTreeOnChain(
         provider,
         payerKeypair,
         0,
-        { maxDepth: MAX_DEPTH, maxBufferSize: MAX_SIZE }
+        { maxBufferSize: MAX_SIZE, maxDepth: MAX_DEPTH }
       );
       cmt = cmtKeypair.publicKey;
     });
-    it('Can deserialize a ChangeLogEvent', async () => {
+    it("Can deserialize a ChangeLogEvent", async () => {
       const newLeaf = crypto.randomBytes(32);
       const txId = await execute(
         provider,
@@ -64,7 +64,7 @@ describe('Serde tests', () => {
       offChainTree.updateLeaf(0, newLeaf);
 
       const transaction = await connection.getTransaction(txId, {
-        commitment: 'confirmed',
+        commitment: "confirmed",
         maxSupportedTransactionVersion: 2,
       });
 

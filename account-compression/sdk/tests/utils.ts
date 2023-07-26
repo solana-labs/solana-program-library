@@ -1,34 +1,15 @@
-import {
-    Connection,
-    PublicKey,
-    Transaction,
-    TransactionInstruction,
-    Keypair,
-    Signer,
-} from '@solana/web3.js';
 import { AnchorProvider } from '@project-serum/anchor';
+import { Keypair, Signer, Transaction, TransactionInstruction } from '@solana/web3.js';
 import * as crypto from 'crypto';
 
-import {
-    createInitEmptyMerkleTreeIx,
-    createAllocTreeIx,
-    createAppendIx,
-    ValidDepthSizePair,
-} from '../src';
+import { createAllocTreeIx, createAppendIx, createInitEmptyMerkleTreeIx, ValidDepthSizePair } from '../src';
 import { MerkleTree } from '../src/merkle-tree';
 
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
-export async function confirmAndLogTx(
-    provider: AnchorProvider,
-    txId: string,
-    verbose: boolean = false
-) {
+export async function confirmAndLogTx(provider: AnchorProvider, txId: string, verbose = false) {
     const tx = await provider.connection.confirmTransaction(txId, 'confirmed');
     if (tx.value.err || verbose) {
-        console.log(
-            (await provider.connection.getConfirmedTransaction(txId, 'confirmed'))!
-                .meta!.logMessages
-        );
+        console.log((await provider.connection.getConfirmedTransaction(txId, 'confirmed'))!.meta!.logMessages);
     }
     if (tx.value.err) {
         console.log('Transaction failed');
@@ -41,11 +22,11 @@ export async function execute(
     provider: AnchorProvider,
     instructions: TransactionInstruction[],
     signers: Signer[],
-    skipPreflight: boolean = false,
-    verbose: boolean = false
+    skipPreflight = false,
+    verbose = false
 ): Promise<string> {
     let tx = new Transaction();
-    instructions.map((ix) => {
+    instructions.map(ix => {
         tx = tx.add(ix);
     });
 
@@ -60,10 +41,7 @@ export async function execute(
     }
 
     if (verbose && txid) {
-        console.log(
-            (await provider.connection.getConfirmedTransaction(txid, 'confirmed'))!
-                .meta!.logMessages
-        );
+        console.log((await provider.connection.getConfirmedTransaction(txid, 'confirmed'))!.meta!.logMessages);
     }
 
     return txid;
@@ -74,7 +52,7 @@ export async function createTreeOnChain(
     payer: Keypair,
     numLeaves: number,
     depthSizePair: ValidDepthSizePair,
-    canopyDepth: number = 0
+    canopyDepth = 0
 ): Promise<[Keypair, MerkleTree]> {
     const cmtKeypair = Keypair.generate();
 
@@ -89,22 +67,19 @@ export async function createTreeOnChain(
         cmtKeypair.publicKey,
         payer.publicKey,
         depthSizePair,
-        canopyDepth,
+        canopyDepth
     );
 
-    let ixs = [
-        allocAccountIx,
-        createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair),
-    ];
+    const ixs = [allocAccountIx, createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair)];
 
-    let txId = await execute(provider, ixs, [payer, cmtKeypair]);
+    const txId = await execute(provider, ixs, [payer, cmtKeypair]);
     if (canopyDepth) {
         await confirmAndLogTx(provider, txId as string);
     }
 
     if (numLeaves) {
         const nonZeroLeaves = leaves.slice(0, numLeaves);
-        let appendIxs: TransactionInstruction[] = nonZeroLeaves.map((leaf) => {
+        let appendIxs: TransactionInstruction[] = nonZeroLeaves.map(leaf => {
             return createAppendIx(cmtKeypair.publicKey, payer.publicKey, leaf);
         });
         while (appendIxs.length) {
@@ -120,7 +95,7 @@ export async function createEmptyTreeOnChain(
     provider: AnchorProvider,
     payer: Keypair,
     depthSizePair: ValidDepthSizePair,
-    canopyDepth: number = 0
+    canopyDepth = 0
 ): Promise<Keypair> {
     const cmtKeypair = Keypair.generate();
     const allocAccountIx = await createAllocTreeIx(
@@ -128,15 +103,12 @@ export async function createEmptyTreeOnChain(
         cmtKeypair.publicKey,
         payer.publicKey,
         depthSizePair,
-        canopyDepth,
+        canopyDepth
     );
 
-    let ixs = [
-        allocAccountIx,
-        createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair),
-    ];
+    const ixs = [allocAccountIx, createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair)];
 
-    let txId = await execute(provider, ixs, [payer, cmtKeypair]);
+    const txId = await execute(provider, ixs, [payer, cmtKeypair]);
     await confirmAndLogTx(provider, txId as string);
 
     return cmtKeypair;

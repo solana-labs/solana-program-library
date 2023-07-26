@@ -14,7 +14,7 @@ import * as web3 from '@solana/web3.js';
  * @category generated
  */
 export type AppendInstructionArgs = {
-  leaf: number[] /* size: 32 */;
+    leaf: number[] /* size: 32 */;
 };
 /**
  * @category Instructions
@@ -22,15 +22,15 @@ export type AppendInstructionArgs = {
  * @category generated
  */
 export const appendStruct = new beet.BeetArgsStruct<
-  AppendInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */;
-  }
+    AppendInstructionArgs & {
+        instructionDiscriminator: number[] /* size: 8 */;
+    }
 >(
-  [
-    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
-  ],
-  'AppendInstructionArgs'
+    [
+        ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+        ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+    ],
+    'AppendInstructionArgs'
 );
 /**
  * Accounts required by the _append_ instruction
@@ -43,15 +43,13 @@ export const appendStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type AppendInstructionAccounts = {
-  merkleTree: web3.PublicKey;
-  authority: web3.PublicKey;
-  noop: web3.PublicKey;
-  anchorRemainingAccounts?: web3.AccountMeta[];
+    merkleTree: web3.PublicKey;
+    authority: web3.PublicKey;
+    noop: web3.PublicKey;
+    anchorRemainingAccounts?: web3.AccountMeta[];
 };
 
-export const appendInstructionDiscriminator = [
-  149, 120, 18, 222, 236, 225, 88, 203,
-];
+export const appendInstructionDiscriminator = [149, 120, 18, 222, 236, 225, 88, 203];
 
 /**
  * Creates a _Append_ instruction.
@@ -64,42 +62,42 @@ export const appendInstructionDiscriminator = [
  * @category generated
  */
 export function createAppendInstruction(
-  accounts: AppendInstructionAccounts,
-  args: AppendInstructionArgs,
-  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+    accounts: AppendInstructionAccounts,
+    args: AppendInstructionArgs,
+    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
-  const [data] = appendStruct.serialize({
-    instructionDiscriminator: appendInstructionDiscriminator,
-    ...args,
-  });
-  const keys: web3.AccountMeta[] = [
-    {
-      pubkey: accounts.merkleTree,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.authority,
-      isWritable: false,
-      isSigner: true,
-    },
-    {
-      pubkey: accounts.noop,
-      isWritable: false,
-      isSigner: false,
-    },
-  ];
+    const [data] = appendStruct.serialize({
+        instructionDiscriminator: appendInstructionDiscriminator,
+        ...args,
+    });
+    const keys: web3.AccountMeta[] = [
+        {
+            isSigner: false,
+            isWritable: true,
+            pubkey: accounts.merkleTree,
+        },
+        {
+            isSigner: true,
+            isWritable: false,
+            pubkey: accounts.authority,
+        },
+        {
+            isSigner: false,
+            isWritable: false,
+            pubkey: accounts.noop,
+        },
+    ];
 
-  if (accounts.anchorRemainingAccounts != null) {
-    for (const acc of accounts.anchorRemainingAccounts) {
-      keys.push(acc);
+    if (accounts.anchorRemainingAccounts != null) {
+        for (const acc of accounts.anchorRemainingAccounts) {
+            keys.push(acc);
+        }
     }
-  }
 
-  const ix = new web3.TransactionInstruction({
-    programId,
-    keys,
-    data,
-  });
-  return ix;
+    const ix = new web3.TransactionInstruction({
+        data,
+        keys,
+        programId,
+    });
+    return ix;
 }
