@@ -8,7 +8,6 @@ use program_test::*;
 use solana_program::pubkey::Pubkey;
 use spl_governance::instruction::remove_required_signatory;
 
-use crate::cookies::{GovernanceCookie, RealmCookie, TokenOwnerRecordCookie};
 use solana_sdk::signature::{Keypair, Signer};
 use spl_governance::error::GovernanceError;
 use spl_governance_tools::error::GovernanceToolsError;
@@ -167,7 +166,6 @@ pub async fn remove_required_signatory_from_governance_without_governance_signer
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
-    let signatory = Keypair::new();
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
@@ -178,7 +176,7 @@ pub async fn remove_required_signatory_from_governance_without_governance_signer
         .await
         .unwrap();
 
-    let mut governance_cookie = governance_test
+    let governance_cookie = governance_test
         .with_governance(
             &realm_cookie,
             &governed_account_cookie,

@@ -2910,6 +2910,7 @@ impl GovernanceProgramTest {
         Ok(signatory_record_cookie)
     }
 
+    #[allow(dead_code)]
     pub async fn with_governance_with_required_signatory(
         &mut self,
     ) -> (
