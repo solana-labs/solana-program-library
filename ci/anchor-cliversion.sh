@@ -1,11 +1,11 @@
 #
-# This file maintains the anchor version for use by CI.
+# This file maintains the solana versions for use by CI.
 #
 # Obtain the environment variables without any automatic updating:
-#   $ source ci/anchor-cli-version.sh
+#   $ source ci/anchor-cliversion.sh
 #
 # Obtain the environment variables and install update:
-#   $ source ci/anchor-cli-version.sh install
+#   $ source ci/anchor-cliversion.sh install
 
 # Then to access the anchor version:
 #   $ echo "$anchor_cli_version"

@@ -59,8 +59,11 @@ jobs:
       - name: Install dependencies
         run: |
           ./ci/install-build-deps.sh
-          ./ci/program-anchor-build.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Build Anchor Programs
+        run: |
+          ./ci/anchor-build.sh account-compression
 
       - name: Upload programs
         uses: actions/upload-artifact@v2
