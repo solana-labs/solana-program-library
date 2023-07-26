@@ -2,6 +2,7 @@ import {
   PublicKey,
   Connection,
   TransactionInstruction,
+  LAMPORTS_PER_SOL,
   SYSVAR_RENT_PUBKEY,
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_STAKE_HISTORY_PUBKEY,
@@ -18,6 +19,7 @@ import {
   MINT_SIZE,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
+  createApproveInstruction,
 } from '@solana/spl-token';
 import * as BufferLayout from '@solana/buffer-layout';
 import { Buffer } from 'buffer';
@@ -226,6 +228,46 @@ export class SinglePoolInstruction {
       data,
     });
   }
+
+  static withdrawStake(
+    pool: PublicKey,
+    userStakeAccount: PublicKey,
+    userStakeAuthority: PublicKey,
+    userTokenAccount: PublicKey,
+    userTokenAuthority: PublicKey,
+    tokenAmount: number | bigint,
+  ): TransactionInstruction {
+    const programId = SINGLE_POOL_PROGRAM_ID;
+
+    const keys = [
+      { pubkey: pool, isSigner: false, isWritable: false },
+      { pubkey: findPoolStakeAddress(programId, pool), isSigner: false, isWritable: true },
+      { pubkey: findPoolMintAddress(programId, pool), isSigner: false, isWritable: true },
+      {
+        pubkey: findPoolStakeAuthorityAddress(programId, pool),
+        isSigner: false,
+        isWritable: false,
+      },
+      { pubkey: findPoolMintAuthorityAddress(programId, pool), isSigner: false, isWritable: false },
+      { pubkey: userStakeAccount, isSigner: false, isWritable: true },
+      { pubkey: userTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+    ];
+
+    const type = SINGLE_POOL_INSTRUCTION_LAYOUTS.WithdrawStake;
+    const data = encodeData(type, {
+      userStakeAuthority: userStakeAuthority.toBuffer(),
+      tokenAmount,
+    });
+
+    return new TransactionInstruction({
+      programId,
+      keys,
+      data,
+    });
+  }
 }
 
 // XXX transaction builders
@@ -276,9 +318,10 @@ export async function initialize(connection: Connection, voteAccount: PublicKey,
 export async function deposit(
   connection: Connection,
   pool: PublicKey,
+  userWallet: PublicKey,
   userStakeAccount: PublicKey,
-  userLamportAccount: PublicKey,
   userTokenAccount?: PublicKey,
+  userLamportAccount?: PublicKey,
   userWithdrawAuthority?: PublicKey,
 ) {
   const transaction = new Transaction();
@@ -286,26 +329,29 @@ export async function deposit(
   const programId = SINGLE_POOL_PROGRAM_ID;
   const mint = findPoolMintAddress(programId, pool);
   const poolStakeAuthority = findPoolStakeAuthorityAddress(programId, pool);
-  const userAssociatedTokenAccount = getAssociatedTokenAddressSync(mint, userLamportAccount);
+  const userAssociatedTokenAccount = getAssociatedTokenAddressSync(mint, userWallet);
 
   if (!userTokenAccount) {
-    userTokenAccount = getAssociatedTokenAddressSync(mint, userLamportAccount);
+    userTokenAccount = userAssociatedTokenAccount;
+  }
+
+  if (!userLamportAccount) {
+    userLamportAccount = userWallet;
   }
 
   if (!userWithdrawAuthority) {
-    userWithdrawAuthority = userLamportAccount;
+    userWithdrawAuthority = userWallet;
   }
 
   if (
     userTokenAccount.equals(userAssociatedTokenAccount) &&
     (await connection.getAccountInfo(userAssociatedTokenAccount)) == null
   ) {
-    // TODO if i use param obj change this lamport acocunt to wallet and make lamport separate/optional...
     transaction.add(
       createAssociatedTokenAccountInstruction(
-        userLamportAccount,
+        userWallet,
         userAssociatedTokenAccount,
-        userLamportAccount,
+        userWallet,
         mint,
       ),
     );
@@ -343,6 +389,68 @@ export async function deposit(
   return transaction;
 }
 
+// FIXME ok i need fucking params types ugh this is a fucking mess
+export async function withdraw(
+  connection: Connection,
+  pool: PublicKey,
+  userWallet: PublicKey,
+  userStakeAccount: PublicKey,
+  tokenAmount: number | bigint,
+  createStakeAccount = false,
+  userStakeAuthority?: PublicKey,
+  userTokenAccount?: PublicKey,
+  userTokenAuthority?: PublicKey,
+) {
+  const transaction = new Transaction();
+
+  const programId = SINGLE_POOL_PROGRAM_ID;
+  const poolMintAuthority = findPoolMintAuthorityAddress(programId, pool);
+
+  if (createStakeAccount) {
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: userWallet,
+        lamports: await connection.getMinimumBalanceForRentExemption(StakeProgram.space),
+        newAccountPubkey: userStakeAccount,
+        programId: StakeProgram.programId,
+        space: StakeProgram.space,
+      }),
+    );
+  }
+
+  if (!userStakeAuthority) {
+    userStakeAuthority = userWallet;
+  }
+
+  if (!userTokenAccount) {
+    const mint = findPoolMintAddress(programId, pool);
+    userTokenAccount = getAssociatedTokenAddressSync(mint, userWallet);
+  }
+
+  if (!userTokenAuthority) {
+    userTokenAuthority = userWallet;
+  }
+
+  // TODO check token balance?
+
+  transaction.add(
+    createApproveInstruction(userTokenAccount, poolMintAuthority, userTokenAuthority, tokenAmount),
+  );
+
+  transaction.add(
+    SinglePoolInstruction.withdrawStake(
+      pool,
+      userStakeAccount,
+      userStakeAuthority,
+      userTokenAccount,
+      userTokenAuthority,
+      tokenAmount,
+    ),
+  );
+
+  return transaction;
+}
+
 async function main() {
   const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
   const payer = Keypair.fromSecretKey(
@@ -358,8 +466,19 @@ async function main() {
   let transaction = await initialize(connection, voteAccount, payer.publicKey);
   await sendAndConfirmTransaction(connection, transaction, [payer]);
 
-  transaction = await deposit(connection, pool, stakeAccount, payer.publicKey);
+  transaction = await deposit(connection, pool, payer.publicKey, stakeAccount);
   await sendAndConfirmTransaction(connection, transaction, [payer]);
+
+  const userStakeAccount = new Keypair();
+  transaction = await withdraw(
+    connection,
+    pool,
+    payer.publicKey,
+    userStakeAccount.publicKey,
+    LAMPORTS_PER_SOL * 2,
+    true,
+  );
+  await sendAndConfirmTransaction(connection, transaction, [payer, userStakeAccount]);
 }
 
 await main();
