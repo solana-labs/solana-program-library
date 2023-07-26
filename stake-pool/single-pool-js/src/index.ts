@@ -89,7 +89,6 @@ function findPda(
   baseAddress: PublicKey,
   prefix: string,
 ) {
-  console.log("HANA find", programId, baseAddress, prefix);
   const [publicKey] = PublicKey.findProgramAddressSync(
     [Buffer.from(prefix), baseAddress.toBuffer()],
     programId,
@@ -158,7 +157,7 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
     index: 2,
     layout: BufferLayout.struct<any>([
         BufferLayout.u8("instruction"),
-        // TODO i dunno what to use for pubkey, check: https://www.npmjs.com/package/@solana/buffer-layout
+        BufferLayout.seq(BufferLayout.u8(), 32, "userStakeAuthority"),
         BufferLayout.ns64("tokenAmount"),
     ]),
   },
@@ -168,10 +167,12 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
   },
   UpdateTokenMetadata: {
     index: 4,
-    layout: BufferLayout.struct<any>(
-        [BufferLayout.u8("instruction")],
-        // TODO dunno what to use for string
-    ),
+    layout: BufferLayout.struct<any>([
+        BufferLayout.u8("instruction"),
+        BufferLayout.cstr("tokenName"),
+        BufferLayout.cstr("tokenSymbol"),
+        BufferLayout.cstr("tokenUri"),
+    ]),
   },
 });
 
@@ -182,7 +183,6 @@ export class SinglePoolInstruction {
     voteAccount: PublicKey,
   ): TransactionInstruction {
       const programId = SINGLE_POOL_PROGRAM_ID;
-      console.log("HANA init pool:", voteAccount);
       const pool = findPoolAddress(programId, voteAccount);
 
       const keys = [
@@ -210,7 +210,44 @@ export class SinglePoolInstruction {
       data,
     });
   }
+
+  static depositStake(
+    pool: PublicKey,
+    userStakeAccount: PublicKey,
+    userTokenAccount: PublicKey,
+    userLamportAccount: PublicKey,
+  ): TransactionInstruction {
+      const programId = SINGLE_POOL_PROGRAM_ID;
+
+      const keys = [
+          { pubkey: pool, isSigner: false, isWritable: false },
+          { pubkey: findPoolStakeAddress(programId, pool), isSigner: false, isWritable: true },
+          { pubkey: findPoolMintAddress(programId, pool), isSigner: false, isWritable: true },
+          { pubkey: findPoolStakeAuthorityAddress(programId, pool), isSigner: false, isWritable: false },
+          { pubkey: findPoolMintAuthorityAddress(programId, pool), isSigner: false, isWritable: false },
+          { pubkey: userStakeAccount, isSigner: false, isWritable: true },
+          { pubkey: userTokenAccount, isSigner: false, isWritable: true },
+          { pubkey: userLamportAccount, isSigner: false, isWritable: true },
+          { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+          { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
+          { pubkey: TOKEN_PROGRAM_ID , isSigner: false, isWritable: false },
+          { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+      ];
+
+      const type = SINGLE_POOL_INSTRUCTION_LAYOUTS.DepositStake;
+      const data = encodeData(type);
+
+    return new TransactionInstruction({
+      programId,
+      keys,
+      data,
+    });
+  }
 }
+
+
+
+// XXX transaction builders
 
 export async function initialize(
   connection: Connection,
@@ -257,6 +294,8 @@ export async function initialize(
 
     return transaction;
 }
+
+// XXX ugh ok im going home but next is just impl the rest of the instruction and transaction functions
 
 async function main() {
     let connection = new Connection("http://127.0.0.1:8899", "confirmed");
