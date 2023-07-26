@@ -46,6 +46,7 @@ fn check_leaf_index(leaf_index: u32, max_depth: usize) -> Result<(), ConcurrentM
 /// An additional key property of ConcurrentMerkleTree is support for [append](ConcurrentMerkleTree::append) operations,
 /// which do not require any proofs to be passed. This is accomplished by keeping track of the
 /// proof to the rightmost leaf in the tree (`rightmost_proof`).
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ConcurrentMerkleTree<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> {
     pub sequence_number: u64,
