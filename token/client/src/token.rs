@@ -33,6 +33,7 @@ use {
             StateWithExtensionsOwned,
         },
         instruction, offchain,
+        proof::ProofLocation,
         solana_zk_token_sdk::{
             encryption::{
                 auth_encryption::AeKey,
@@ -1688,6 +1689,14 @@ where
                     .map_err(|_| TokenError::ProofGeneration)?,
             )
         };
+
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
+
         let decryptable_balance = aes_key.encrypt(0);
 
         self.process_ixs(
@@ -1697,10 +1706,9 @@ where
                 &self.pubkey,
                 decryptable_balance,
                 maximum_pending_balance_credit_counter,
-                context_state_account,
                 authority,
                 &multisig_signers,
-                proof_data.as_ref(),
+                proof_location,
             )?,
             signing_keypairs,
         )
@@ -1762,14 +1770,20 @@ where
             )
         };
 
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
+
         self.process_ixs(
             &confidential_transfer::instruction::empty_account(
                 &self.program_id,
                 account,
-                context_state_account,
                 authority,
                 &multisig_signers,
-                proof_data.as_ref(),
+                proof_location,
             )?,
             signing_keypairs,
         )
@@ -2024,6 +2038,13 @@ where
             )
         };
 
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
+
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(withdraw_amount, aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
@@ -2036,10 +2057,9 @@ where
                 withdraw_amount,
                 decimals,
                 new_decryptable_available_balance,
-                context_state_account,
                 authority,
                 &multisig_signers,
-                proof_data.as_ref(),
+                proof_location,
             )?,
             signing_keypairs,
         )
@@ -2136,6 +2156,13 @@ where
             )
         };
 
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
+
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
@@ -2147,10 +2174,9 @@ where
                 destination_account,
                 &self.pubkey,
                 new_decryptable_available_balance,
-                context_state_account,
                 source_authority,
                 &multisig_signers,
-                proof_data.as_ref(),
+                proof_location,
             )?,
             signing_keypairs,
         )
@@ -2207,6 +2233,13 @@ where
             )
         };
 
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
+
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
@@ -2218,10 +2251,9 @@ where
                 destination_account,
                 &self.pubkey,
                 new_decryptable_available_balance,
-                context_state_account,
                 source_authority,
                 &multisig_signers,
-                proof_data.as_ref(),
+                proof_location,
             )?,
             signing_keypairs,
         )

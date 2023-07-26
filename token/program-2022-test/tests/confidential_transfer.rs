@@ -2746,9 +2746,9 @@ async fn confidential_transfer_transfer_with_proof_context() {
         .await
         .unwrap();
 
+    // attempt to create an account with a wrong proof type context state
     let context_state_account = Keypair::new();
 
-    // create context state
     {
         let context_state_authority = Keypair::new();
         let space = size_of::<ProofContextState<WithdrawProofContext>>();
