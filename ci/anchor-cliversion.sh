@@ -18,7 +18,6 @@ else
 fi
 
 export anchor_cli_version="$anchor_cli_version"
-# export PATH="$HOME"/.local/share/solana/install/active_release/bin:"$PATH"
 
 if [[ -n $1 ]]; then
   case $1 in
