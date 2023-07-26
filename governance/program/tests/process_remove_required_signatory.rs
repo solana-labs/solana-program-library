@@ -8,7 +8,7 @@ use program_test::*;
 use solana_program::pubkey::Pubkey;
 use spl_governance::instruction::remove_required_signatory;
 
-use solana_sdk::signature::{Keypair, Signer};
+use solana_sdk::signature::Signer;
 use spl_governance::error::GovernanceError;
 use spl_governance_tools::error::GovernanceToolsError;
 

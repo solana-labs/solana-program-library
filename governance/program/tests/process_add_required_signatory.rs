@@ -10,7 +10,6 @@ use solana_program::{
     program_error::ProgramError, pubkey::Pubkey, system_instruction::SystemError,
 };
 use solana_sdk::signature::Signer;
-use solana_sdk::signer::keypair::Keypair;
 use spl_governance::error::GovernanceError;
 use spl_governance::instruction::add_required_signatory;
 
