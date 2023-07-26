@@ -26,7 +26,7 @@ if [[ -n $1 ]]; then
     anchor --version
     ;;
   *)
-    echo "solana-version.sh: Note: ignoring unknown argument: $1" >&2
+    echo "anchor-version.sh: Note: ignoring unknown argument: $1" >&2
     ;;
   esac
 fi
