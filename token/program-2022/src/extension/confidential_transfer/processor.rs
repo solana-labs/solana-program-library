@@ -1,6 +1,6 @@
 use {
     crate::{
-        check_program_account,
+        check_program_account, check_zk_token_proof_program_account,
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
@@ -135,6 +135,7 @@ fn process_configure_account(
 
     // zero-knowledge proof certifies that the supplied ElGamal public key is valid
     let proof_context = if let Some(context_state_account_info) = context_state_account_info {
+        check_zk_token_proof_program_account(context_state_account_info.owner)?;
         let context_state_account_data = context_state_account_info.data.borrow();
         let context_state = pod_from_bytes::<ProofContextState<PubkeyValidityProofContext>>(
             &context_state_account_data,
@@ -252,6 +253,7 @@ fn process_empty_account(
     // An `EmptyAccount` instruction must be accompanied by a zero-knowledge proof instruction that
     // certifies that the available balance ciphertext holds the balance of 0.
     let proof_context = if let Some(context_state_account_info) = context_state_account_info {
+        check_zk_token_proof_program_account(context_state_account_info.owner)?;
         let context_state_account_data = context_state_account_info.data.borrow();
         let context_state = pod_from_bytes::<ProofContextState<ZeroBalanceProofContext>>(
             &context_state_account_data,
@@ -447,6 +449,7 @@ fn process_withdraw(
     // Zero-knowledge proof certifies that the account has enough available balance to withdraw the
     // amount.
     let proof_context = if let Some(context_state_account_info) = context_state_account_info {
+        check_zk_token_proof_program_account(context_state_account_info.owner)?;
         let context_state_account_data = context_state_account_info.data.borrow();
         let context_state =
             pod_from_bytes::<ProofContextState<WithdrawProofContext>>(&context_state_account_data)?;
@@ -541,6 +544,7 @@ fn process_transfer(
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
         let proof_context = if let Some(context_state_account_info) = context_state_account_info {
+            check_zk_token_proof_program_account(context_state_account_info.owner)?;
             let context_state_account_data = context_state_account_info.data.borrow();
             let context_state = pod_from_bytes::<ProofContextState<TransferProofContext>>(
                 &context_state_account_data,
@@ -606,6 +610,7 @@ fn process_transfer(
         //   2. the source account has enough balance to send the transfer amount
         //   3. the transfer fee is computed correctly and encrypted in the correct form
         let proof_context = if let Some(context_state_account_info) = context_state_account_info {
+            check_zk_token_proof_program_account(context_state_account_info.owner)?;
             let context_state_account_data = context_state_account_info.data.borrow();
             let context_state = pod_from_bytes::<ProofContextState<TransferWithFeeProofContext>>(
                 &context_state_account_data,
