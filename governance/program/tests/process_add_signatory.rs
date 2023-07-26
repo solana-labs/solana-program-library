@@ -255,7 +255,7 @@ async fn test_add_signatory_for_required_signatory() {
 
     assert_eq!(signatory_account.signatory, signatory);
     assert_eq!(signatory_account.proposal, new_proposal_cookie.address);
-    assert_eq!(signatory_account.signed_off, false);
+    assert!(!signatory_account.signed_off);
 
     let new_proposal_account = governance_test
         .get_proposal_account(&new_proposal_cookie.address)
