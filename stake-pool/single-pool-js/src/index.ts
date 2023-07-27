@@ -127,12 +127,12 @@ export function decodeData(type: InstructionType, buffer: Buffer): any {
   return data;
 }
 
+// XXX UpdateTokenMetadata is omitted here because it is runtime-dependent
 export type SinglePoolInstructionType =
   | 'InitializePool'
   | 'DepositStake'
   | 'WithdrawStake'
-  | 'CreateTokenMetadata'
-  | 'UpdateTokenMetadata';
+  | 'CreateTokenMetadata';
 
 export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
   [type in SinglePoolInstructionType]: InstructionType;
@@ -157,20 +157,10 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
     index: 3,
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction')]),
   },
-  UpdateTokenMetadata: {
-    index: 4,
-    layout: BufferLayout.struct<any>([
-      BufferLayout.u8('instruction'),
-      BufferLayout.cstr('tokenName'),
-      BufferLayout.cstr('tokenSymbol'),
-      BufferLayout.cstr('tokenUri'),
-    ]),
-  },
 });
 
 // FIXME why does the stake pool js want program id for the pda search fns
 // but hardcodes one for the instruction fns? seems odd
-// FIXME should i use params objects for these?
 export class SinglePoolInstruction {
   static initializePool(voteAccount: PublicKey): TransactionInstruction {
     const programId = SINGLE_POOL_PROGRAM_ID;
@@ -307,10 +297,63 @@ export class SinglePoolInstruction {
       data,
     });
   }
+
+  static updateTokenMetadata(
+    voteAccount: PublicKey,
+    authorizedWithdrawer: PublicKey,
+    tokenName: string,
+    tokenSymbol: string,
+    tokenUri?: string,
+  ): TransactionInstruction {
+    const programId = SINGLE_POOL_PROGRAM_ID;
+    const pool = findPoolAddress(programId, voteAccount);
+
+    tokenUri = tokenUri || '';
+
+    const keys = [
+      { pubkey: voteAccount, isSigner: false, isWritable: false },
+      { pubkey: pool, isSigner: false, isWritable: false },
+      { pubkey: findPoolMplAuthorityAddress(programId, pool), isSigner: false, isWritable: false },
+      { pubkey: authorizedWithdrawer, isSigner: true, isWritable: false },
+      {
+        pubkey: findMplMetadataAddress(findPoolMintAddress(programId, pool)),
+        isSigner: false,
+        isWritable: true,
+      },
+      { pubkey: MPL_METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
+    ];
+
+    const type = {
+      index: 4,
+      layout: BufferLayout.struct<any>([
+        BufferLayout.u8('instruction'),
+        BufferLayout.u32('tokenNameLen'),
+        BufferLayout.blob(tokenName.length, 'tokenName'),
+        BufferLayout.u32('tokenSymbolLen'),
+        BufferLayout.blob(tokenSymbol.length, 'tokenSymbol'),
+        BufferLayout.u32('tokenUriLen'),
+        BufferLayout.blob(tokenUri.length, 'tokenUri'),
+      ]),
+    };
+
+    const data = encodeData(type, {
+      tokenNameLen: tokenName.length,
+      tokenName: Buffer.from(tokenName),
+      tokenSymbolLen: tokenSymbol.length,
+      tokenSymbol: Buffer.from(tokenSymbol),
+      tokenUriLen: tokenUri.length,
+      tokenUri: Buffer.from(tokenUri),
+    });
+
+    return new TransactionInstruction({
+      programId,
+      keys,
+      data,
+    });
+  }
 }
 
 // XXX transaction builders
-// FIXME should i use params objects for these too??
 
 export async function initialize(
   connection: Connection,
@@ -401,7 +444,7 @@ export async function deposit(params: DepositParams) {
     );
   }
 
-  // TODO check token and stake account? (thats why i take connection and async)
+  // TODO check token and stake account balances?
 
   transaction.add(
     StakeProgram.authorize({
@@ -499,13 +542,26 @@ export function createTokenMetadata(pool: PublicKey, payer: PublicKey) {
   return transaction;
 }
 
+export function updateTokenMetadata(
+  voteAccount: PublicKey,
+  authorizedWithdrawer: PublicKey,
+  name: string,
+  symbol: string,
+  uri?: string,
+) {
+  const transaction = new Transaction();
+  transaction.add(
+    SinglePoolInstruction.updateTokenMetadata(voteAccount, authorizedWithdrawer, name, symbol, uri),
+  );
+
+  return transaction;
+}
+
 async function main() {
   const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
   const payer = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(fs.readFileSync('/home/hana/.config/solana/id.json', 'utf8'))),
   );
-  console.log('payer:', payer);
-  console.log('keypair:', new Keypair());
 
   const voteAccount = new PublicKey('KRAKEnMdmT4EfM8ykTFH6yLoCd5vNLcQvJwF66Y2dag');
   const stakeAccount = new PublicKey('E1QPYQPWApgDpYiG4HRiiUauUYxS3iqxXGvzzz2RVj7u');
@@ -535,6 +591,11 @@ async function main() {
 
   transaction = createTokenMetadata(pool, payer.publicKey);
   await sendAndConfirmTransaction(connection, transaction, [payer]);
+
+  /* XXX this fails because authorize withdrawer mismatch but i think i got the encoding right. test later
+      transaction = updateTokenMetadata(voteAccount, payer.publicKey, "hana", "lol");
+      await sendAndConfirmTransaction(connection, transaction, [payer]);
+  */
 }
 
 await main();
