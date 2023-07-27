@@ -587,7 +587,7 @@ pub fn configure_account(
         // constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
-            return Err(ProgramError::InvalidArgument);
+            return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         instructions.push(verify_pubkey_validity(None, proof_data));
     };
@@ -689,7 +689,7 @@ pub fn empty_account(
         // arbitrary proof instruction offset, use the `inner_empty_account` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
-            return Err(ProgramError::InvalidArgument);
+            return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         instructions.push(verify_zero_balance(None, proof_data));
     };
@@ -820,7 +820,7 @@ pub fn withdraw(
         // proof instruction offset, use the `inner_withdraw` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
-            return Err(ProgramError::InvalidArgument);
+            return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         instructions.push(verify_withdraw(None, proof_data));
     };
@@ -914,7 +914,7 @@ pub fn transfer(
         // constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
-            return Err(ProgramError::InvalidArgument);
+            return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         instructions.push(verify_transfer(None, proof_data));
     };
@@ -1008,7 +1008,7 @@ pub fn transfer_with_fee(
         // constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
-            return Err(ProgramError::InvalidArgument);
+            return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         instructions.push(verify_transfer_with_fee(None, proof_data));
     };
