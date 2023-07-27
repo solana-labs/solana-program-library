@@ -4,7 +4,7 @@ set -e
 
 source ci/rust-version.sh stable
 source ci/solana-version.sh install
-source ci/anchor-cliversion.sh install
+source ci/install-anchor.sh install
 
 set -x
 

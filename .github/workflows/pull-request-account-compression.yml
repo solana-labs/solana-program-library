@@ -6,7 +6,7 @@ on:
       - "account-compression/**"
       - "libraries/concurrent-merkle-tree/**"
       - "ci/*-version.sh"
-      - "ci/anchor-cliversion.sh"
+      - "ci/install-anchor.sh"
       - ".github/workflows/pull-request-account-compression.yml"
   push:
     branches: [master]
@@ -14,7 +14,7 @@ on:
       - "account-compression/**"
       - "libraries/concurrent-merkle-tree/**"
       - "ci/*-version.sh"
-      - "ci/anchor-cliversion.sh"
+      - "ci/install-anchor.sh"
       - ".github/workflows/pull-request-account-compression.yml"
 
 jobs:
@@ -29,7 +29,7 @@ jobs:
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
-          source ci/anchor-cliversion.sh
+          source ci/install-anchor.sh
           echo "ANCHOR_CLI_VERSION=$anchor_cli_version" >> $GITHUB_ENV
 
       - uses: actions-rs/toolchain@v1
