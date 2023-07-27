@@ -1691,7 +1691,7 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
         } else {
             let context_state_account = context_state_account.unwrap();
             ProofLocation::ContextStateAccount(context_state_account)
@@ -1771,7 +1771,7 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
         } else {
             let context_state_account = context_state_account.unwrap();
             ProofLocation::ContextStateAccount(context_state_account)
@@ -2039,7 +2039,7 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
         } else {
             let context_state_account = context_state_account.unwrap();
             ProofLocation::ContextStateAccount(context_state_account)
@@ -2157,7 +2157,7 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
         } else {
             let context_state_account = context_state_account.unwrap();
             ProofLocation::ContextStateAccount(context_state_account)
@@ -2234,7 +2234,7 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::Instruction(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
         } else {
             let context_state_account = context_state_account.unwrap();
             ProofLocation::ContextStateAccount(context_state_account)
