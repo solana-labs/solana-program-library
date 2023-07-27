@@ -40,6 +40,20 @@ import fs from 'fs';
 //
 // split this shit into its own files later... just code it up
 
+// XXX mpl nonsense
+
+export const MPL_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
+
+export function findMplMetadataAddress(poolMintAddress: PublicKey) {
+  const [publicKey] = PublicKey.findProgramAddressSync(
+    [Buffer.from('metadata'), MPL_METADATA_PROGRAM_ID.toBuffer(), poolMintAddress.toBuffer()],
+    MPL_METADATA_PROGRAM_ID,
+  );
+  return publicKey;
+}
+
+// XXX our nonsense
+
 export const SINGLE_POOL_PROGRAM_ID = new PublicKey('3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY');
 
 // XXX pda fns
@@ -268,12 +282,42 @@ export class SinglePoolInstruction {
       data,
     });
   }
+
+  static createTokenMetadata(pool: PublicKey, payer: PublicKey): TransactionInstruction {
+    const programId = SINGLE_POOL_PROGRAM_ID;
+    const mint = findPoolMintAddress(programId, pool);
+
+    const keys = [
+      { pubkey: pool, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: findPoolMintAuthorityAddress(programId, pool), isSigner: false, isWritable: false },
+      { pubkey: findPoolMplAuthorityAddress(programId, pool), isSigner: false, isWritable: false },
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: findMplMetadataAddress(mint), isSigner: false, isWritable: true },
+      { pubkey: MPL_METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ];
+
+    const type = SINGLE_POOL_INSTRUCTION_LAYOUTS.CreateTokenMetadata;
+    const data = encodeData(type);
+
+    return new TransactionInstruction({
+      programId,
+      keys,
+      data,
+    });
+  }
 }
 
 // XXX transaction builders
 // FIXME should i use params objects for these too??
 
-export async function initialize(connection: Connection, voteAccount: PublicKey, payer: PublicKey) {
+export async function initialize(
+  connection: Connection,
+  voteAccount: PublicKey,
+  payer: PublicKey,
+  skipMetadata = false,
+) {
   const transaction = new Transaction();
 
   const programId = SINGLE_POOL_PROGRAM_ID;
@@ -311,6 +355,10 @@ export async function initialize(connection: Connection, voteAccount: PublicKey,
   );
 
   transaction.add(SinglePoolInstruction.initializePool(voteAccount));
+
+  if (!skipMetadata) {
+    transaction.add(SinglePoolInstruction.createTokenMetadata(pool, payer));
+  }
 
   return transaction;
 }
@@ -444,6 +492,13 @@ export async function withdraw(params: WithdrawParams) {
   return transaction;
 }
 
+export function createTokenMetadata(pool: PublicKey, payer: PublicKey) {
+  const transaction = new Transaction();
+  transaction.add(SinglePoolInstruction.createTokenMetadata(pool, payer));
+
+  return transaction;
+}
+
 async function main() {
   const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
   const payer = Keypair.fromSecretKey(
@@ -456,7 +511,7 @@ async function main() {
   const stakeAccount = new PublicKey('E1QPYQPWApgDpYiG4HRiiUauUYxS3iqxXGvzzz2RVj7u');
   const pool = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccount);
 
-  let transaction = await initialize(connection, voteAccount, payer.publicKey);
+  let transaction = await initialize(connection, voteAccount, payer.publicKey, true);
   await sendAndConfirmTransaction(connection, transaction, [payer]);
 
   transaction = await deposit({
@@ -477,6 +532,9 @@ async function main() {
     createStakeAccount: true,
   });
   await sendAndConfirmTransaction(connection, transaction, [payer, userStakeAccount]);
+
+  transaction = createTokenMetadata(pool, payer.publicKey);
+  await sendAndConfirmTransaction(connection, transaction, [payer]);
 }
 
 await main();
