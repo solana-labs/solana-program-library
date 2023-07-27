@@ -315,15 +315,19 @@ export async function initialize(connection: Connection, voteAccount: PublicKey,
   return transaction;
 }
 
-export async function deposit(
-  connection: Connection,
-  pool: PublicKey,
-  userWallet: PublicKey,
-  userStakeAccount: PublicKey,
-  userTokenAccount?: PublicKey,
-  userLamportAccount?: PublicKey,
-  userWithdrawAuthority?: PublicKey,
-) {
+interface DepositParams {
+  connection: Connection;
+  pool: PublicKey;
+  userWallet: PublicKey;
+  userStakeAccount: PublicKey;
+  userTokenAccount?: PublicKey;
+  userLamportAccount?: PublicKey;
+  userWithdrawAuthority?: PublicKey;
+}
+
+export async function deposit(params: DepositParams) {
+  const { connection, pool, userWallet, userStakeAccount } = params;
+
   const transaction = new Transaction();
 
   const programId = SINGLE_POOL_PROGRAM_ID;
@@ -331,17 +335,9 @@ export async function deposit(
   const poolStakeAuthority = findPoolStakeAuthorityAddress(programId, pool);
   const userAssociatedTokenAccount = getAssociatedTokenAddressSync(mint, userWallet);
 
-  if (!userTokenAccount) {
-    userTokenAccount = userAssociatedTokenAccount;
-  }
-
-  if (!userLamportAccount) {
-    userLamportAccount = userWallet;
-  }
-
-  if (!userWithdrawAuthority) {
-    userWithdrawAuthority = userWallet;
-  }
+  const userTokenAccount = params.userTokenAccount || userAssociatedTokenAccount;
+  const userLamportAccount = params.userLamportAccount || userWallet;
+  const userWithdrawAuthority = params.userWithdrawAuthority || userWallet;
 
   if (
     userTokenAccount.equals(userAssociatedTokenAccount) &&
@@ -389,22 +385,32 @@ export async function deposit(
   return transaction;
 }
 
-// FIXME ok i need fucking params types ugh this is a fucking mess
-export async function withdraw(
-  connection: Connection,
-  pool: PublicKey,
-  userWallet: PublicKey,
-  userStakeAccount: PublicKey,
-  tokenAmount: number | bigint,
-  createStakeAccount = false,
-  userStakeAuthority?: PublicKey,
-  userTokenAccount?: PublicKey,
-  userTokenAuthority?: PublicKey,
-) {
+interface WithdrawParams {
+  connection: Connection;
+  pool: PublicKey;
+  userWallet: PublicKey;
+  userStakeAccount: PublicKey;
+  tokenAmount: number | bigint;
+  createStakeAccount?: boolean;
+  userStakeAuthority?: PublicKey;
+  userTokenAccount?: PublicKey;
+  userTokenAuthority?: PublicKey;
+}
+
+export async function withdraw(params: WithdrawParams) {
+  const { connection, pool, userWallet, userStakeAccount, tokenAmount, createStakeAccount } =
+    params;
+
   const transaction = new Transaction();
 
   const programId = SINGLE_POOL_PROGRAM_ID;
   const poolMintAuthority = findPoolMintAuthorityAddress(programId, pool);
+
+  const userStakeAuthority = params.userStakeAuthority || userWallet;
+  const userTokenAccount =
+    params.userTokenAccount ||
+    getAssociatedTokenAddressSync(findPoolMintAddress(programId, pool), userWallet);
+  const userTokenAuthority = params.userTokenAuthority || userWallet;
 
   if (createStakeAccount) {
     transaction.add(
@@ -416,19 +422,6 @@ export async function withdraw(
         space: StakeProgram.space,
       }),
     );
-  }
-
-  if (!userStakeAuthority) {
-    userStakeAuthority = userWallet;
-  }
-
-  if (!userTokenAccount) {
-    const mint = findPoolMintAddress(programId, pool);
-    userTokenAccount = getAssociatedTokenAddressSync(mint, userWallet);
-  }
-
-  if (!userTokenAuthority) {
-    userTokenAuthority = userWallet;
   }
 
   // TODO check token balance?
@@ -466,18 +459,23 @@ async function main() {
   let transaction = await initialize(connection, voteAccount, payer.publicKey);
   await sendAndConfirmTransaction(connection, transaction, [payer]);
 
-  transaction = await deposit(connection, pool, payer.publicKey, stakeAccount);
+  transaction = await deposit({
+    connection,
+    pool,
+    userWallet: payer.publicKey,
+    userStakeAccount: stakeAccount,
+  });
   await sendAndConfirmTransaction(connection, transaction, [payer]);
 
   const userStakeAccount = new Keypair();
-  transaction = await withdraw(
+  transaction = await withdraw({
     connection,
     pool,
-    payer.publicKey,
-    userStakeAccount.publicKey,
-    LAMPORTS_PER_SOL * 2,
-    true,
-  );
+    userWallet: payer.publicKey,
+    userStakeAccount: userStakeAccount.publicKey,
+    tokenAmount: LAMPORTS_PER_SOL * 2,
+    createStakeAccount: true,
+  });
   await sendAndConfirmTransaction(connection, transaction, [payer, userStakeAccount]);
 }
 
