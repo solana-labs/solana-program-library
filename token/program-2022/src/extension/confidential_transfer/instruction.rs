@@ -522,7 +522,7 @@ pub fn inner_configure_account(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
             proof_instruction_offset.into()
         }
@@ -578,7 +578,9 @@ pub fn configure_account(
         proof_data_location,
     )?];
 
-    if let ProofLocation::Instruction(proof_instruction_offset, proof_data) = proof_data_location {
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
         // This constructor appends the proof instruction right after the `ConfigureAccount`
         // instruction. This means that the proof instruction offset must be always be 1. To
         // use an arbitrary proof instruction offset, use the `inner_configure_account`
@@ -633,7 +635,7 @@ pub fn inner_empty_account(
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
             proof_instruction_offset.into()
         }
@@ -679,7 +681,9 @@ pub fn empty_account(
         proof_data_location,
     )?];
 
-    if let ProofLocation::Instruction(proof_instruction_offset, proof_data) = proof_data_location {
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
         // This constructor appends the proof instruction right after the `EmptyAccount`
         // instruction. This means that the proof instruction offset must be always be 1. To use an
         // arbitrary proof instruction offset, use the `inner_empty_account` constructor.
@@ -749,7 +753,7 @@ pub fn inner_withdraw(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
             proof_instruction_offset.into()
         }
@@ -808,7 +812,9 @@ pub fn withdraw(
         proof_data_location,
     )?];
 
-    if let ProofLocation::Instruction(proof_instruction_offset, proof_data) = proof_data_location {
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
         // This constructor appends the proof instruction right after the `Withdraw` instruction.
         // This means that the proof instruction offset must be always be 1. To use an arbitrary
         // proof instruction offset, use the `inner_withdraw` constructor.
@@ -844,7 +850,7 @@ pub fn inner_transfer(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
             proof_instruction_offset.into()
         }
@@ -899,7 +905,9 @@ pub fn transfer(
         proof_data_location,
     )?];
 
-    if let ProofLocation::Instruction(proof_instruction_offset, proof_data) = proof_data_location {
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
         // This constructor appends the proof instruction right after the `ConfigureAccount`
         // instruction. This means that the proof instruction offset must be always be 1. To
         // use an arbitrary proof instruction offset, use the `inner_configure_account`
@@ -936,7 +944,7 @@ pub fn inner_transfer_with_fee(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::Instruction(proof_instruction_offset, _) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
             proof_instruction_offset.into()
         }
@@ -991,7 +999,9 @@ pub fn transfer_with_fee(
         proof_data_location,
     )?];
 
-    if let ProofLocation::Instruction(proof_instruction_offset, proof_data) = proof_data_location {
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
         // This constructor appends the proof instruction right after the `TransferWithFee`
         // instruction. This means that the proof instruction offset must be always be 1. To
         // use an arbitrary proof instruction offset, use the `inner_transfer_with_fee`

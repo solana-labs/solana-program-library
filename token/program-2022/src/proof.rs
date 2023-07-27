@@ -49,7 +49,7 @@ impl From<NonZeroI8> for i8 {
 #[derive(Clone, Copy)]
 pub enum ProofLocation<'a, T> {
     /// The proof is included in the same transaction of a corresponding token-2022 instruction.
-    Instruction(NonZeroI8, &'a T),
+    InstructionOffset(NonZeroI8, &'a T),
     /// The proof is pre-verified into a context state account.
     ContextStateAccount(&'a Pubkey),
 }
