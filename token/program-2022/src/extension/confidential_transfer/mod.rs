@@ -182,6 +182,14 @@ impl ConfidentialTransferAccount {
         Ok(())
     }
 
+    /// Return the account information needed to construct an `EmptyAccount` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn empty_account_account_info(&self) -> EmptyAccountAccountInfo {
+        let available_balance = self.available_balance;
+
+        EmptyAccountAccountInfo { available_balance }
+    }
+
     /// Return the account information needed to construct an `ApplyPendingBalance` instruction.
     #[cfg(not(target_os = "solana"))]
     pub fn apply_pending_balance_account_info(&self) -> ApplyPendingBalanceAccountInfo {

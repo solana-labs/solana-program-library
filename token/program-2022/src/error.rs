@@ -210,6 +210,11 @@ pub enum TokenError {
     /// Failed to generate a zero-knowledge proof needed for a token instruction
     #[error("Failed to generate proof")]
     ProofGeneration,
+
+    // 55
+    /// An invalid proof instruction offset was provided
+    #[error("An invalid proof instruction offset was provided ")]
+    InvalidProofInstructionOffset,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -366,6 +371,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::ProofGeneration => {
                 msg!("Failed to generate proof")
+            }
+            TokenError::InvalidProofInstructionOffset => {
+                msg!("An invalid proof instruction offset was provided")
             }
         }
     }

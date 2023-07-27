@@ -1,11 +1,14 @@
 #[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
-pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
+pub use solana_zk_token_sdk::{
+    zk_token_proof_instruction::*, zk_token_proof_state::ProofContextState,
+};
 use {
     crate::{
         check_program_account,
         extension::confidential_transfer::*,
         instruction::{encode_instruction, TokenInstruction},
+        proof::ProofLocation,
     },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -72,14 +75,18 @@ pub enum ConfidentialTransferInstruction {
     ///   * Single owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` Instructions sysvar.
+    ///   2. `[]` Instructions sysvar if `PubkeyValidityProof` is included in the same transaction or
+    ///      context state account if `PubkeyValidityProof` is pre-verified into a context state
+    ///      account.
     ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` The multisig source account owner.
-    ///   3. `[]` Instructions sysvar.
+    ///   2. `[]` Instructions sysvar if `PubkeyValidityProof` is included in the same transaction or
+    ///      context state account if `PubkeyValidityProof` is pre-verified into a context state
+    ///      account.
+    ///   3. `[]` The multisig source account owner.
     ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
     /// Data expected by this instruction:
@@ -122,12 +129,16 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar.
+    ///   1. `[]` Instructions sysvar if `ZeroBalanceProof` is included in the same transaction or
+    ///      context state account if `ZeroBalanceProof` is pre-verified into a context state
+    ///      account.
     ///   2. `[signer]` The single account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar.
+    ///   1. `[]` Instructions sysvar if `ZeroBalanceProof` is included in the same transaction or
+    ///      context state account if `ZeroBalanceProof` is pre-verified into a context state
+    ///      account.
     ///   2. `[]` The multisig account owner.
     ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
@@ -175,13 +186,15 @@ pub enum ConfidentialTransferInstruction {
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar.
+    ///   2. `[]` Instructions sysvar if `WithdrawProof` is included in the same transaction or
+    ///      context state account if `WithdrawProof` is pre-verified into a context state account.
     ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar.
+    ///   2. `[]` Instructions sysvar if `WithdrawProof` is included in the same transaction or
+    ///      context state account if `WithdrawProof` is pre-verified into a context state account.
     ///   3. `[]` The multisig  source account owner.
     ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
@@ -202,14 +215,18 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[writable]` The destination SPL Token account.
     ///   3. `[]` The token mint.
-    ///   4. `[]` Instructions sysvar.
+    ///   4. `[]` Instructions sysvar if `TransferProof` or `TransferWithFeeProof` is included in
+    ///      the same transaction or context state account if the proof is pre-verified into a
+    ///      context state account.
     ///   5. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[writable]` The destination SPL Token account.
     ///   3. `[]` The token mint.
-    ///   4. `[]` Instructions sysvar.
+    ///   4. `[]` Instructions sysvar if `TransferProof` or `TransferWithFeeProof` is included in
+    ///      the same transaction or context state account if the proof is pre-verified into a
+    ///      context state account.
     ///   5. `[]` The multisig  source account owner.
     ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
@@ -362,8 +379,9 @@ pub struct ConfigureAccountInstructionData {
     /// The maximum number of despots and transfers that an account can receiver before the
     /// `ApplyPendingBalance` is executed
     pub maximum_pending_balance_credit_counter: PodU64,
-    /// Relative location of the `ProofInstruction::VerifyPubkey` instruction to the
-    /// `ConfigureAccount` instruction in the transaction
+    /// Relative location of the `ProofInstruction::ZeroBalanceProof` instruction to the
+    /// `ConfigureAccount` instruction in the transaction. If the offset is `0`, then use a context
+    /// state account for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -372,7 +390,8 @@ pub struct ConfigureAccountInstructionData {
 #[repr(C)]
 pub struct EmptyAccountInstructionData {
     /// Relative location of the `ProofInstruction::VerifyCloseAccount` instruction to the
-    /// `EmptyAccount` instruction in the transaction
+    /// `EmptyAccount` instruction in the transaction. If the offset is `0`, then use a context
+    /// state account for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -397,7 +416,8 @@ pub struct WithdrawInstructionData {
     /// The new decryptable balance if the withdrawal succeeds
     pub new_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyWithdraw` instruction to the `Withdraw`
-    /// instruction in the transaction
+    /// instruction in the transaction. If the offset is `0`, then use a context state account for
+    /// the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -408,7 +428,8 @@ pub struct TransferInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     pub new_source_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyTransfer` instruction to the
-    /// `Transfer` instruction in the transaction
+    /// `Transfer` instruction in the transaction. If the offset is `0`, then use a context state
+    /// account for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -491,15 +512,30 @@ pub fn inner_configure_account(
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_instruction_offset: i8,
+    proof_data_location: ProofLocation<PubkeyValidityData>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
+
     let mut accounts = vec![
         AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
+
+    let proof_instruction_offset = match proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
@@ -529,21 +565,34 @@ pub fn configure_account(
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &PubkeyValidityData,
+    proof_data_location: ProofLocation<PubkeyValidityData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_configure_account(
-            token_program_id,
-            token_account,
-            mint,
-            decryptable_zero_balance,
-            maximum_pending_balance_credit_counter,
-            authority,
-            multisig_signers,
-            1,
-        )?,
-        verify_pubkey_validity(None, proof_data),
-    ])
+    let mut instructions = vec![inner_configure_account(
+        token_program_id,
+        token_account,
+        mint,
+        decryptable_zero_balance,
+        maximum_pending_balance_credit_counter,
+        authority,
+        multisig_signers,
+        proof_data_location,
+    )?];
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
+        // This constructor appends the proof instruction right after the `ConfigureAccount`
+        // instruction. This means that the proof instruction offset must be always be 1. To
+        // use an arbitrary proof instruction offset, use the `inner_configure_account`
+        // constructor.
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 1 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        instructions.push(verify_pubkey_validity(None, proof_data));
+    };
+
+    Ok(instructions)
 }
 
 /// Create an `ApproveAccount` instruction
@@ -580,14 +629,26 @@ pub fn inner_empty_account(
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_instruction_offset: i8,
+    proof_data_location: ProofLocation<ZeroBalanceProofData>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*token_account, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
-    ];
+    let mut accounts = vec![AccountMeta::new(*token_account, false)];
+
+    let proof_instruction_offset = match proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
@@ -610,18 +671,30 @@ pub fn empty_account(
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &ZeroBalanceProofData,
+    proof_data_location: ProofLocation<ZeroBalanceProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_empty_account(
-            token_program_id,
-            token_account,
-            authority,
-            multisig_signers,
-            1,
-        )?, // calls check_program_account
-        verify_zero_balance(None, proof_data),
-    ])
+    let mut instructions = vec![inner_empty_account(
+        token_program_id,
+        token_account,
+        authority,
+        multisig_signers,
+        proof_data_location,
+    )?];
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
+        // This constructor appends the proof instruction right after the `EmptyAccount`
+        // instruction. This means that the proof instruction offset must be always be 1. To use an
+        // arbitrary proof instruction offset, use the `inner_empty_account` constructor.
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 1 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        instructions.push(verify_zero_balance(None, proof_data));
+    };
+
+    Ok(instructions)
 }
 
 /// Create a `Deposit` instruction
@@ -671,15 +744,29 @@ pub fn inner_withdraw(
     new_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_instruction_offset: i8,
+    proof_data_location: ProofLocation<WithdrawData>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
+
+    let proof_instruction_offset = match proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
@@ -711,22 +798,34 @@ pub fn withdraw(
     new_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &WithdrawData,
+    proof_data_location: ProofLocation<WithdrawData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_withdraw(
-            token_program_id,
-            token_account,
-            mint,
-            amount,
-            decimals,
-            new_decryptable_available_balance.into(),
-            authority,
-            multisig_signers,
-            1,
-        )?, // calls check_program_account
-        verify_withdraw(None, proof_data),
-    ])
+    let mut instructions = vec![inner_withdraw(
+        token_program_id,
+        token_account,
+        mint,
+        amount,
+        decimals,
+        new_decryptable_available_balance.into(),
+        authority,
+        multisig_signers,
+        proof_data_location,
+    )?];
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
+        // This constructor appends the proof instruction right after the `Withdraw` instruction.
+        // This means that the proof instruction offset must be always be 1. To use an arbitrary
+        // proof instruction offset, use the `inner_withdraw` constructor.
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 1 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        instructions.push(verify_withdraw(None, proof_data));
+    };
+
+    Ok(instructions)
 }
 
 /// Create a inner `Transfer` instruction
@@ -741,16 +840,30 @@ pub fn inner_transfer(
     new_source_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_instruction_offset: i8,
+    proof_data_location: ProofLocation<TransferData>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*source_token_account, false),
         AccountMeta::new(*destination_token_account, false),
         AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
+
+    let proof_instruction_offset = match proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
 
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
@@ -779,21 +892,87 @@ pub fn transfer(
     new_source_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &TransferData,
+    proof_data_location: ProofLocation<TransferData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_transfer(
-            token_program_id,
-            source_token_account,
-            destination_token_account,
-            mint,
-            new_source_decryptable_available_balance.into(),
-            authority,
-            multisig_signers,
-            1,
-        )?, // calls check_program_account
-        verify_transfer(None, proof_data),
-    ])
+    let mut instructions = vec![inner_transfer(
+        token_program_id,
+        source_token_account,
+        destination_token_account,
+        mint,
+        new_source_decryptable_available_balance.into(),
+        authority,
+        multisig_signers,
+        proof_data_location,
+    )?];
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
+        // This constructor appends the proof instruction right after the `ConfigureAccount`
+        // instruction. This means that the proof instruction offset must be always be 1. To
+        // use an arbitrary proof instruction offset, use the `inner_configure_account`
+        // constructor.
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 1 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        instructions.push(verify_transfer(None, proof_data));
+    };
+
+    Ok(instructions)
+}
+
+/// Create a inner `TransferWithFee` instruction
+///
+/// This instruction is suitable for use with a cross-program `invoke`
+#[allow(clippy::too_many_arguments)]
+pub fn inner_transfer_with_fee(
+    token_program_id: &Pubkey,
+    source_token_account: &Pubkey,
+    destination_token_account: &Pubkey,
+    mint: &Pubkey,
+    new_source_decryptable_available_balance: DecryptableBalance,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+    proof_data_location: ProofLocation<TransferWithFeeData>,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let mut accounts = vec![
+        AccountMeta::new(*source_token_account, false),
+        AccountMeta::new(*destination_token_account, false),
+        AccountMeta::new_readonly(*mint, false),
+    ];
+
+    let proof_instruction_offset = match proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
+            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
+
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
+
+    Ok(encode_instruction(
+        token_program_id,
+        accounts,
+        TokenInstruction::ConfidentialTransferExtension,
+        ConfidentialTransferInstruction::Transfer,
+        &TransferInstructionData {
+            new_source_decryptable_available_balance,
+            proof_instruction_offset,
+        },
+    ))
 }
 
 /// Create a `Transfer` instruction with fee proof
@@ -807,21 +986,34 @@ pub fn transfer_with_fee(
     new_source_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data: &TransferWithFeeData,
+    proof_data_location: ProofLocation<TransferWithFeeData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_transfer(
-            token_program_id,
-            source_token_account,
-            destination_token_account,
-            mint,
-            new_source_decryptable_available_balance.into(),
-            authority,
-            multisig_signers,
-            1,
-        )?, // calls check_program_account
-        verify_transfer_with_fee(None, proof_data),
-    ])
+    let mut instructions = vec![inner_transfer_with_fee(
+        token_program_id,
+        source_token_account,
+        destination_token_account,
+        mint,
+        new_source_decryptable_available_balance.into(),
+        authority,
+        multisig_signers,
+        proof_data_location,
+    )?];
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        proof_data_location
+    {
+        // This constructor appends the proof instruction right after the `TransferWithFee`
+        // instruction. This means that the proof instruction offset must be always be 1. To
+        // use an arbitrary proof instruction offset, use the `inner_transfer_with_fee`
+        // constructor.
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 1 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        instructions.push(verify_transfer_with_fee(None, proof_data));
+    };
+
+    Ok(instructions)
 }
 
 /// Create a inner `ApplyPendingBalance` instruction

@@ -109,6 +109,14 @@ pub fn check_spl_token_program_account(spl_token_program_id: &Pubkey) -> Program
     Ok(())
 }
 
+/// Checks that the supplied program ID is correct for the ZK Token proof program
+pub fn check_zk_token_proof_program_account(zk_token_proof_program_id: &Pubkey) -> ProgramResult {
+    if zk_token_proof_program_id != &solana_zk_token_sdk::zk_token_proof_program::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    Ok(())
+}
+
 /// Checks two pubkeys for equality in a computationally cheap way using
 /// `sol_memcmp`
 pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {

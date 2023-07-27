@@ -15,9 +15,33 @@ use {
         instruction::{
             transfer::{FeeParameters, TransferData, TransferWithFeeData},
             withdraw::WithdrawData,
+            zero_balance::ZeroBalanceProofData,
         },
     },
 };
+
+/// Confidential transfer extension information needed to construct an `EmptyAccount` instruction.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct EmptyAccountAccountInfo {
+    /// The available balance
+    pub(crate) available_balance: EncryptedBalance,
+}
+impl EmptyAccountAccountInfo {
+    /// Create an empty account proof data.
+    pub fn generate_proof_data(
+        &self,
+        elgamal_keypair: &ElGamalKeypair,
+    ) -> Result<ZeroBalanceProofData, TokenError> {
+        let available_balance = self
+            .available_balance
+            .try_into()
+            .map_err(|_| TokenError::AccountDecryption)?;
+
+        ZeroBalanceProofData::new(elgamal_keypair, &available_balance)
+            .map_err(|_| TokenError::ProofGeneration)
+    }
+}
 
 /// Confidential Transfer extension information needed to construct an `ApplyPendingBalance`
 /// instruction.

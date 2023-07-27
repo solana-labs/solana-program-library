@@ -23,7 +23,8 @@ use {
             confidential_transfer::{
                 self,
                 account_info::{
-                    ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
+                    ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo, TransferAccountInfo,
+                    WithdrawAccountInfo,
                 },
                 ConfidentialTransferAccount,
             },
@@ -32,6 +33,7 @@ use {
             StateWithExtensionsOwned,
         },
         instruction, offchain,
+        proof::ProofLocation,
         solana_zk_token_sdk::{
             encryption::{
                 auth_encryption::AeKey,
@@ -1660,10 +1662,12 @@ where
     /// Configures confidential transfers for a token account. If the maximum pending balance
     /// credit counter for the extension is not provided, then it is set to be a default value of
     /// `2^16`.
+    #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_configure_token_account<S: Signers>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
         maximum_pending_balance_credit_counter: Option<u64>,
         elgamal_keypair: &ElGamalKeypair,
         aes_key: &AeKey,
@@ -1677,9 +1681,22 @@ where
         let maximum_pending_balance_credit_counter = maximum_pending_balance_credit_counter
             .unwrap_or(DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER);
 
-        let proof_data =
-            confidential_transfer::instruction::PubkeyValidityData::new(elgamal_keypair)
-                .map_err(|_| TokenError::ProofGeneration)?;
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                confidential_transfer::instruction::PubkeyValidityData::new(elgamal_keypair)
+                    .map_err(|_| TokenError::ProofGeneration)?,
+            )
+        };
+
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
+
         let decryptable_balance = aes_key.encrypt(0);
 
         self.process_ixs(
@@ -1691,7 +1708,7 @@ where
                 maximum_pending_balance_credit_counter,
                 authority,
                 &multisig_signers,
-                &proof_data,
+                proof_location,
             )?,
             signing_keypairs,
         )
@@ -1726,21 +1743,39 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
+        account_info: Option<EmptyAccountAccountInfo>,
         elgamal_keypair: &ElGamalKeypair,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let state = self.get_account_info(account).await.unwrap();
-        let extension =
-            state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
+        let account_info = if let Some(account_info) = account_info {
+            account_info
+        } else {
+            self.get_account_info(account)
+                .await?
+                .get_extension::<ConfidentialTransferAccount>()?
+                .empty_account_account_info()
+        };
 
-        let proof_data = confidential_transfer::instruction::ZeroBalanceProofData::new(
-            elgamal_keypair,
-            &extension.available_balance.try_into().unwrap(),
-        )
-        .map_err(|_| TokenError::ProofGeneration)?;
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                account_info
+                    .generate_proof_data(elgamal_keypair)
+                    .map_err(|_| TokenError::ProofGeneration)?,
+            )
+        };
+
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
 
         self.process_ixs(
             &confidential_transfer::instruction::empty_account(
@@ -1748,7 +1783,7 @@ where
                 account,
                 authority,
                 &multisig_signers,
-                &proof_data,
+                proof_location,
             )?,
             signing_keypairs,
         )
@@ -1973,6 +2008,7 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
         withdraw_amount: u64,
         decimals: u8,
         account_info: Option<WithdrawAccountInfo>,
@@ -1992,9 +2028,22 @@ where
                 .withdraw_account_info()
         };
 
-        let proof_data = account_info
-            .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
-            .map_err(|_| TokenError::ProofGeneration)?;
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                account_info
+                    .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
+                    .map_err(|_| TokenError::ProofGeneration)?,
+            )
+        };
+
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(withdraw_amount, aes_key)
@@ -2010,7 +2059,7 @@ where
                 new_decryptable_available_balance,
                 authority,
                 &multisig_signers,
-                &proof_data,
+                proof_location,
             )?,
             signing_keypairs,
         )
@@ -2070,6 +2119,7 @@ where
         source_account: &Pubkey,
         destination_account: &Pubkey,
         source_authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
@@ -2090,15 +2140,28 @@ where
                 .transfer_account_info()
         };
 
-        let proof_data = account_info
-            .generate_transfer_proof_data(
-                transfer_amount,
-                source_elgamal_keypair,
-                source_aes_key,
-                destination_elgamal_pubkey,
-                auditor_elgamal_pubkey,
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                account_info
+                    .generate_transfer_proof_data(
+                        transfer_amount,
+                        source_elgamal_keypair,
+                        source_aes_key,
+                        destination_elgamal_pubkey,
+                        auditor_elgamal_pubkey,
+                    )
+                    .map_err(|_| TokenError::ProofGeneration)?,
             )
-            .map_err(|_| TokenError::ProofGeneration)?;
+        };
+
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
@@ -2113,7 +2176,7 @@ where
                 new_decryptable_available_balance,
                 source_authority,
                 &multisig_signers,
-                &proof_data,
+                proof_location,
             )?,
             signing_keypairs,
         )
@@ -2127,6 +2190,7 @@ where
         source_account: &Pubkey,
         destination_account: &Pubkey,
         source_authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
@@ -2150,18 +2214,31 @@ where
                 .transfer_account_info()
         };
 
-        let proof_data = account_info
-            .generate_transfer_with_fee_proof_data(
-                transfer_amount,
-                source_elgamal_keypair,
-                source_aes_key,
-                destination_elgamal_pubkey,
-                auditor_elgamal_pubkey,
-                withdraw_withheld_authority_elgamal_pubkey,
-                fee_rate_basis_points,
-                maximum_fee,
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                account_info
+                    .generate_transfer_with_fee_proof_data(
+                        transfer_amount,
+                        source_elgamal_keypair,
+                        source_aes_key,
+                        destination_elgamal_pubkey,
+                        auditor_elgamal_pubkey,
+                        withdraw_withheld_authority_elgamal_pubkey,
+                        fee_rate_basis_points,
+                        maximum_fee,
+                    )
+                    .map_err(|_| TokenError::ProofGeneration)?,
             )
-            .map_err(|_| TokenError::ProofGeneration)?;
+        };
+
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
@@ -2176,7 +2253,7 @@ where
                 new_decryptable_available_balance,
                 source_authority,
                 &multisig_signers,
-                &proof_data,
+                proof_location,
             )?,
             signing_keypairs,
         )
