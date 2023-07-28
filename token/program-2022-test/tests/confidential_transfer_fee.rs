@@ -1,3 +1,49 @@
+#![cfg(all(feature = "test-sbf"))]
+#![cfg(twoxtx)]
+
+mod program_test;
+use {
+    program_test::{TestContext, TokenContext},
+    solana_program_test::tokio,
+    solana_sdk::{
+        instruction::InstructionError,
+        pubkey::Pubkey,
+        signature::Signer,
+        signer::keypair::Keypair,
+        system_instruction,
+        transaction::{Transaction, TransactionError},
+        transport::TransportError,
+    },
+    spl_token_2022::{
+        error::TokenError,
+        extension::{
+            confidential_transfer::{
+                self, ConfidentialTransferAccount, ConfidentialTransferMint,
+                MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
+            },
+            BaseStateWithExtensions, ExtensionType,
+        },
+        instruction,
+        solana_zk_token_sdk::{
+            encryption::{auth_encryption::*, elgamal::*},
+            zk_token_elgamal::pod::{self, Zeroable},
+            zk_token_proof_instruction::*,
+            zk_token_proof_program,
+            zk_token_proof_state::ProofContextState,
+        },
+    },
+    spl_token_client::{
+        client::{SendTransaction, SimulateTransaction},
+        token::{ExtensionInitializationParams, Token, TokenError as TokenClientError},
+    },
+    std::{convert::TryInto, mem::size_of},
+};
+
+#[cfg(feature = "zk-ops")]
+const TEST_MAXIMUM_FEE: u64 = 100;
+#[cfg(feature = "zk-ops")]
+const TEST_FEE_BASIS_POINTS: u16 = 250;
+
 #[cfg(all(feature = "zk-ops", feature = "proof-program"))]
 async fn check_withheld_amount_in_mint<T>(
     token: &Token<T>,
@@ -13,6 +59,143 @@ async fn check_withheld_amount_in_mint<T>(
         .decrypt(&withdraw_withheld_authority_elgamal_keypair.secret)
         .unwrap();
     assert_eq!(decrypted_amount, expected);
+}
+
+#[cfg(feature = "zk-ops")]
+#[tokio::test]
+async fn confidential_transfer_fee_config() {
+    let transfer_fee_authority = Keypair::new();
+    let withdraw_withheld_authority = Keypair::new();
+
+    let confidential_transfer_authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
+    let confidential_transfer_fee_authority = Keypair::new();
+    let withdraw_withheld_authority_elgamal_keypair = ElGamalKeypair::new_rand();
+    let withdraw_withheld_authority_elgamal_pubkey =
+        (*withdraw_withheld_authority_elgamal_keypair.pubkey()).into();
+
+    let mut context = TestContext::new().await;
+
+    // Try invalid combinations of extensions
+    let err = context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(confidential_transfer_authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+        ])
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                3,
+                InstructionError::Custom(TokenError::InvalidExtensionCombination as u32),
+            )
+        )))
+    );
+
+    let err = context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(confidential_transfer_authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                authority: Some(confidential_transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority_elgamal_pubkey,
+            },
+        ])
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                3,
+                InstructionError::Custom(TokenError::InvalidExtensionCombination as u32),
+            )
+        )))
+    );
+
+    let err = context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                authority: Some(confidential_transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority_elgamal_pubkey,
+            },
+            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                authority: Some(confidential_transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority_elgamal_pubkey,
+            },
+        ])
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                3,
+                InstructionError::Custom(TokenError::InvalidExtensionCombination as u32),
+            )
+        )))
+    );
+
+    let err = context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                authority: Some(confidential_transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority_elgamal_pubkey,
+            },
+        ])
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                2,
+                InstructionError::Custom(TokenError::InvalidExtensionCombination as u32),
+            )
+        )))
+    );
+
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            },
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(confidential_transfer_authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                authority: Some(confidential_transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority_elgamal_pubkey,
+            },
+        ])
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
