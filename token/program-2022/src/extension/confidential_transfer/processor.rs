@@ -554,9 +554,7 @@ fn process_transfer(
     //   transfer fee is not required.
     //   - If the mint is extended for fees and the instruction is not a self-transfer, then
     //   transfer fee is required.
-    if mint.get_extension::<TransferFeeConfig>().is_err()
-        || source_account_info.key == destination_token_account_info.key
-    {
+    if mint.get_extension::<TransferFeeConfig>().is_err() {
         // Transfer fee is not required. Decode the zero-knowledge proof as `TransferData`.
         //
         // The zero-knowledge proof certifies that:
@@ -672,16 +670,22 @@ fn process_transfer(
         let destination_transfer_amount_hi =
             transfer_amount_destination_ciphertext(&proof_context.ciphertext_hi);
 
+        let fee_ciphertext = if source_account_info.key != destination_token_account_info.key {
+            Some((
+                &proof_context.fee_ciphertext_lo,
+                &proof_context.fee_ciphertext_hi,
+            ))
+        } else {
+            None
+        };
+
         process_destination_for_transfer(
             destination_token_account_info,
             mint_info,
             &proof_context.transfer_with_fee_pubkeys.destination,
             &destination_transfer_amount_lo,
             &destination_transfer_amount_hi,
-            Some((
-                &proof_context.fee_ciphertext_lo,
-                &proof_context.fee_ciphertext_hi,
-            )),
+            fee_ciphertext,
         )?;
     }
 
