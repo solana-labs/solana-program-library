@@ -39,27 +39,10 @@ use {
     std::{convert::TryInto, mem::size_of},
 };
 
-#[cfg(all(feature = "zk-ops", feature = "proof-program"))]
-use solana_sdk::epoch_info::EpochInfo;
-
-#[cfg(all(feature = "zk-ops", feature = "proof-program"))]
+#[cfg(feature = "zk-ops")]
 const TEST_MAXIMUM_FEE: u64 = 100;
-#[cfg(all(feature = "zk-ops", feature = "proof-program"))]
+#[cfg(feature = "zk-ops")]
 const TEST_FEE_BASIS_POINTS: u16 = 250;
-#[cfg(feature = "proof-program")]
-const TEST_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER: u64 = 2;
-
-#[cfg(all(feature = "zk-ops", feature = "proof-program"))]
-fn test_epoch_info() -> EpochInfo {
-    EpochInfo {
-        epoch: 0,
-        slot_index: 0,
-        slots_in_epoch: 0,
-        absolute_slot: 0,
-        block_height: 0,
-        transaction_count: None,
-    }
-}
 
 struct ConfidentialTokenAccountMeta {
     token_account: Pubkey,
@@ -1329,32 +1312,39 @@ async fn confidential_transfer_transfer() {
         .await;
 }
 
-#[cfg(all(feature = "zk-ops", feature = "proof-program"))]
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
-async fn ct_transfer_with_fee() {
-    let ConfidentialTransferMintWithKeypairs {
-        ct_mint,
-        ct_mint_transfer_auditor_elgamal_keypair,
-        ct_mint_withdraw_withheld_authority_elgamal_keypair,
-        ..
-    } = ConfidentialTransferMintWithKeypairs::new();
+async fn confidential_transfer_transfer_with_fee() {
+    let transfer_fee_authority = Keypair::new();
+    let withdraw_withheld_authority = Keypair::new();
+
+    let confidential_transfer_authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
+    let confidential_transfer_fee_authority = Keypair::new();
+    let withdraw_withheld_authority_elgamal_keypair = ElGamalKeypair::new_rand();
+    let withdraw_withheld_authority_elgamal_pubkey =
+        (*withdraw_withheld_authority_elgamal_keypair.pubkey()).into();
 
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(Pubkey::new_unique()),
-                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
                 transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: ct_mint.authority.into(),
-                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
-                auditor_elgamal_pubkey: ct_mint.auditor_elgamal_pubkey.into(),
-                withdraw_withheld_authority_elgamal_pubkey: ct_mint
-                    .withdraw_withheld_authority_elgamal_pubkey
-                    .into(),
+                authority: Some(confidential_transfer_authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                authority: Some(confidential_transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority_elgamal_pubkey,
             },
         ])
         .await
@@ -1369,41 +1359,37 @@ async fn ct_transfer_with_fee() {
         ..
     } = context.token_context.unwrap();
 
-    let epoch_info = test_epoch_info();
-
-    let alice_meta = ConfidentialTokenAccountMeta::with_tokens(
+    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
         &token,
         &alice,
         None,
         false,
-        false,
+        true,
         &mint_authority,
         100,
         decimals,
     )
     .await;
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, true).await;
 
     // Self-transfer of 0 tokens
     token
-        .confidential_transfer_transfer(
+        .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
             &alice_meta.token_account,
-            &alice,
+            &alice.pubkey(),
             None,
-            0, // amount
-            100,
-            &extension.available_balance.try_into().unwrap(),
-            &alice_meta.elgamal_keypair.public,
-            Some(ct_mint_transfer_auditor_elgamal_keypair.public),
+            0,
+            None,
+            &alice_meta.elgamal_keypair,
+            &alice_meta.aes_key,
+            alice_meta.elgamal_keypair.pubkey(),
+            Some(auditor_elgamal_keypair.pubkey()),
+            withdraw_withheld_authority_elgamal_keypair.pubkey(),
+            TEST_FEE_BASIS_POINTS,
+            TEST_MAXIMUM_FEE,
+            &[&alice],
         )
         .await
         .unwrap();
@@ -1420,26 +1406,23 @@ async fn ct_transfer_with_fee() {
         )
         .await;
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-
     // Self-transfers does not incur a fee
     token
-        .confidential_transfer_transfer(
+        .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
             &alice_meta.token_account,
-            &alice,
+            &alice.pubkey(),
             None,
-            100, // amount
             100,
-            &extension.available_balance.try_into().unwrap(),
-            &alice_meta.elgamal_keypair.public,
-            Some(ct_mint_transfer_auditor_elgamal_keypair.public),
+            None,
+            &alice_meta.elgamal_keypair,
+            &alice_meta.aes_key,
+            alice_meta.elgamal_keypair.pubkey(),
+            Some(auditor_elgamal_keypair.pubkey()),
+            withdraw_withheld_authority_elgamal_keypair.pubkey(),
+            TEST_FEE_BASIS_POINTS,
+            TEST_MAXIMUM_FEE,
+            &[&alice],
         )
         .await
         .unwrap();
@@ -1457,7 +1440,14 @@ async fn ct_transfer_with_fee() {
         .await;
 
     token
-        .confidential_transfer_apply_pending_balance(&alice_meta.token_account, &alice, 0, 100, 2)
+        .confidential_transfer_apply_pending_balance(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            None,
+            alice_meta.elgamal_keypair.secret(),
+            &alice_meta.aes_key,
+            &[&alice],
+        )
         .await
         .unwrap();
 
@@ -1473,27 +1463,22 @@ async fn ct_transfer_with_fee() {
         )
         .await;
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-
     token
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
             &bob_meta.token_account,
-            &alice,
+            &alice.pubkey(),
             None,
             100,
-            100,
-            &extension.available_balance.try_into().unwrap(),
-            &bob_meta.elgamal_keypair.public,
-            Some(ct_mint_transfer_auditor_elgamal_keypair.public),
-            &ct_mint_withdraw_withheld_authority_elgamal_keypair.public,
-            &epoch_info,
+            None,
+            &alice_meta.elgamal_keypair,
+            &alice_meta.aes_key,
+            bob_meta.elgamal_keypair.pubkey(),
+            Some(auditor_elgamal_keypair.pubkey()),
+            withdraw_withheld_authority_elgamal_keypair.pubkey(),
+            TEST_FEE_BASIS_POINTS,
+            TEST_MAXIMUM_FEE,
+            &[&alice],
         )
         .await
         .unwrap();
@@ -1510,14 +1495,27 @@ async fn ct_transfer_with_fee() {
         )
         .await;
 
-    // Alice account cannot be closed since there are withheld fees from self-transfer
     token
-        .confidential_transfer_empty_account(&alice_meta.token_account, &alice)
+        .confidential_transfer_empty_account(
+            &alice_meta.token_account,
+            &alice.pubkey(),
+            None,
+            None,
+            &alice_meta.elgamal_keypair,
+            &[&alice],
+        )
         .await
         .unwrap();
 
     let err = token
-        .confidential_transfer_empty_account(&bob_meta.token_account, &bob)
+        .confidential_transfer_empty_account(
+            &bob_meta.token_account,
+            &bob.pubkey(),
+            None,
+            None,
+            &bob_meta.elgamal_keypair,
+            &[&bob],
+        )
         .await
         .unwrap_err();
 
@@ -1544,7 +1542,14 @@ async fn ct_transfer_with_fee() {
         .await;
 
     token
-        .confidential_transfer_apply_pending_balance(&bob_meta.token_account, &bob, 0, 97, 1)
+        .confidential_transfer_apply_pending_balance(
+            &bob_meta.token_account,
+            &bob.pubkey(),
+            None,
+            bob_meta.elgamal_keypair.secret(),
+            &bob_meta.aes_key,
+            &[&bob],
+        )
         .await
         .unwrap();
 
@@ -1981,32 +1986,39 @@ async fn confidential_transfer_transfer_memo() {
         .await;
 }
 
-#[cfg(all(feature = "zk-ops", feature = "proof-program"))]
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
-async fn ct_transfer_with_fee_memo() {
-    let ConfidentialTransferMintWithKeypairs {
-        ct_mint,
-        ct_mint_transfer_auditor_elgamal_keypair,
-        ct_mint_withdraw_withheld_authority_elgamal_keypair,
-        ..
-    } = ConfidentialTransferMintWithKeypairs::new();
+async fn confidential_transfer_transfer_with_fee_and_memo() {
+    let transfer_fee_authority = Keypair::new();
+    let withdraw_withheld_authority = Keypair::new();
+
+    let confidential_transfer_authority = Keypair::new();
+    let auto_approve_new_accounts = true;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
+    let confidential_transfer_fee_authority = Keypair::new();
+    let withdraw_withheld_authority_elgamal_keypair = ElGamalKeypair::new_rand();
+    let withdraw_withheld_authority_elgamal_pubkey =
+        (*withdraw_withheld_authority_elgamal_keypair.pubkey()).into();
 
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(Pubkey::new_unique()),
-                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
                 transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
                 maximum_fee: TEST_MAXIMUM_FEE,
             },
             ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: ct_mint.authority.into(),
-                auto_approve_new_accounts: ct_mint.auto_approve_new_accounts.try_into().unwrap(),
-                auditor_elgamal_pubkey: ct_mint.auditor_elgamal_pubkey.into(),
-                withdraw_withheld_authority_elgamal_pubkey: ct_mint
-                    .withdraw_withheld_authority_elgamal_pubkey
-                    .into(),
+                authority: Some(confidential_transfer_authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                authority: Some(confidential_transfer_fee_authority.pubkey()),
+                withdraw_withheld_authority_elgamal_pubkey,
             },
         ])
         .await
@@ -2021,42 +2033,36 @@ async fn ct_transfer_with_fee_memo() {
         ..
     } = context.token_context.unwrap();
 
-    let epoch_info = test_epoch_info();
-
-    let alice_meta = ConfidentialTokenAccountMeta::with_tokens(
+    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
         &token,
         &alice,
         None,
         false,
-        false,
+        true,
         &mint_authority,
         100,
         decimals,
     )
     .await;
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, true, false).await;
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, true, true).await;
 
     let err = token
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
             &bob_meta.token_account,
-            &alice,
+            &alice.pubkey(),
             None,
             100,
-            100,
-            &extension.available_balance.try_into().unwrap(),
-            &bob_meta.elgamal_keypair.public,
-            Some(ct_mint_transfer_auditor_elgamal_keypair.public),
-            &ct_mint_withdraw_withheld_authority_elgamal_keypair.public,
-            &epoch_info,
+            None,
+            &alice_meta.elgamal_keypair,
+            &alice_meta.aes_key,
+            bob_meta.elgamal_keypair.pubkey(),
+            Some(auditor_elgamal_keypair.pubkey()),
+            withdraw_withheld_authority_elgamal_keypair.pubkey(),
+            TEST_FEE_BASIS_POINTS,
+            TEST_MAXIMUM_FEE,
+            &[&alice],
         )
         .await
         .unwrap_err();
@@ -2076,15 +2082,18 @@ async fn ct_transfer_with_fee_memo() {
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
             &bob_meta.token_account,
-            &alice,
+            &alice.pubkey(),
             None,
             100,
-            100,
-            &extension.available_balance.try_into().unwrap(),
-            &bob_meta.elgamal_keypair.public,
-            Some(ct_mint_transfer_auditor_elgamal_keypair.public),
-            &ct_mint_withdraw_withheld_authority_elgamal_keypair.public,
-            &epoch_info,
+            None,
+            &alice_meta.elgamal_keypair,
+            &alice_meta.aes_key,
+            bob_meta.elgamal_keypair.pubkey(),
+            Some(auditor_elgamal_keypair.pubkey()),
+            withdraw_withheld_authority_elgamal_keypair.pubkey(),
+            TEST_FEE_BASIS_POINTS,
+            TEST_MAXIMUM_FEE,
+            &[&alice],
         )
         .await
         .unwrap();
