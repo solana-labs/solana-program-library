@@ -68,102 +68,31 @@ struct ConfidentialTokenAccountMeta {
 }
 
 impl ConfidentialTokenAccountMeta {
-    async fn new<T>(token: &Token<T>, owner: &Keypair) -> Self
-    where
-        T: SendTransaction + SimulateTransaction,
-    {
-        let token_account_keypair = Keypair::new();
-        token
-            .create_auxiliary_token_account_with_extension_space(
-                &token_account_keypair,
-                &owner.pubkey(),
-                vec![ExtensionType::ConfidentialTransferAccount],
-            )
-            .await
-            .unwrap();
-        let token_account = token_account_keypair.pubkey();
-
-        let elgamal_keypair =
-            ElGamalKeypair::new_from_signer(owner, &token_account.to_bytes()).unwrap();
-        let aes_key = AeKey::new_from_signer(owner, &token_account.to_bytes()).unwrap();
-
-        token
-            .confidential_transfer_configure_token_account(
-                &token_account,
-                &owner.pubkey(),
-                None,
-                None,
-                &elgamal_keypair,
-                &aes_key,
-                &[owner],
-            )
-            .await
-            .unwrap();
-
-        Self {
-            token_account,
-            elgamal_keypair,
-            aes_key,
-        }
-    }
-
-    async fn new_with_maximum_pending_balance_credit_counter<T>(
+    async fn new<T>(
         token: &Token<T>,
         owner: &Keypair,
-        maximum_pending_balance_credit_counter: u64,
+        maximum_pending_balance_credit_counter: Option<u64>,
+        require_memo: bool,
+        require_fee: bool,
     ) -> Self
     where
         T: SendTransaction + SimulateTransaction,
     {
         let token_account_keypair = Keypair::new();
-        token
-            .create_auxiliary_token_account_with_extension_space(
-                &token_account_keypair,
-                &owner.pubkey(),
-                vec![ExtensionType::ConfidentialTransferAccount],
-            )
-            .await
-            .unwrap();
-        let token_account = token_account_keypair.pubkey();
 
-        let elgamal_keypair =
-            ElGamalKeypair::new_from_signer(owner, &token_account.to_bytes()).unwrap();
-        let aes_key = AeKey::new_from_signer(owner, &token_account.to_bytes()).unwrap();
-
-        token
-            .confidential_transfer_configure_token_account(
-                &token_account,
-                &owner.pubkey(),
-                None,
-                Some(maximum_pending_balance_credit_counter),
-                &elgamal_keypair,
-                &aes_key,
-                &[owner],
-            )
-            .await
-            .unwrap();
-
-        Self {
-            token_account,
-            elgamal_keypair,
-            aes_key,
+        let mut extensions = vec![ExtensionType::ConfidentialTransferAccount];
+        if require_memo {
+            extensions.push(ExtensionType::MemoTransfer);
         }
-    }
+        if require_fee {
+            extensions.push(ExtensionType::ConfidentialTransferFeeAmount);
+        }
 
-    #[cfg(feature = "zk-ops")]
-    async fn new_with_required_memo_transfers<T>(token: &Token<T>, owner: &Keypair) -> Self
-    where
-        T: SendTransaction + SimulateTransaction,
-    {
-        let token_account_keypair = Keypair::new();
         token
             .create_auxiliary_token_account_with_extension_space(
                 &token_account_keypair,
                 &owner.pubkey(),
-                vec![
-                    ExtensionType::ConfidentialTransferAccount,
-                    ExtensionType::MemoTransfer,
-                ],
+                extensions,
             )
             .await
             .unwrap();
@@ -178,7 +107,7 @@ impl ConfidentialTokenAccountMeta {
                 &token_account,
                 &owner.pubkey(),
                 None,
-                None,
+                maximum_pending_balance_credit_counter,
                 &elgamal_keypair,
                 &aes_key,
                 &[owner],
@@ -186,10 +115,12 @@ impl ConfidentialTokenAccountMeta {
             .await
             .unwrap();
 
-        token
-            .enable_required_transfer_memos(&token_account, &owner.pubkey(), &[owner])
-            .await
-            .unwrap();
+        if require_memo {
+            token
+                .enable_required_transfer_memos(&token_account, &owner.pubkey(), &[owner])
+                .await
+                .unwrap();
+        }
 
         Self {
             token_account,
@@ -202,6 +133,9 @@ impl ConfidentialTokenAccountMeta {
     async fn new_with_tokens<T>(
         token: &Token<T>,
         owner: &Keypair,
+        maximum_pending_balance_credit_counter: Option<u64>,
+        require_memo: bool,
+        require_fee: bool,
         mint_authority: &Keypair,
         amount: u64,
         decimals: u8,
@@ -209,7 +143,14 @@ impl ConfidentialTokenAccountMeta {
     where
         T: SendTransaction + SimulateTransaction,
     {
-        let meta = Self::new(token, owner).await;
+        let meta = Self::new(
+            token,
+            owner,
+            maximum_pending_balance_credit_counter,
+            require_memo,
+            require_fee,
+        )
+        .await;
 
         token
             .mint_to(
@@ -470,7 +411,7 @@ async fn confidential_transfer_configure_token_account() {
         .unwrap();
 
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
-    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
     let alice_elgamal_pubkey = (*alice_meta.elgamal_keypair.pubkey()).into();
 
     let state = token
@@ -560,7 +501,7 @@ async fn confidential_transfer_enable_disable_confidential_credits() {
         decimals,
         ..
     } = context.token_context.unwrap();
-    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
 
     token
         .confidential_transfer_disable_confidential_credits(
@@ -667,8 +608,8 @@ async fn confidential_transfer_enable_disable_non_confidential_credits() {
         mint_authority,
         ..
     } = context.token_context.unwrap();
-    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
 
     token
         .mint_to(
@@ -770,7 +711,7 @@ async fn confidential_transfer_empty_account() {
         .unwrap();
 
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
-    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
 
     token
         .confidential_transfer_empty_account(
@@ -812,10 +753,7 @@ async fn confidential_transfer_deposit() {
         decimals,
         ..
     } = context.token_context.unwrap();
-    let alice_meta = ConfidentialTokenAccountMeta::new_with_maximum_pending_balance_credit_counter(
-        &token, &alice, 2,
-    )
-    .await;
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, Some(2), false, false).await;
 
     token
         .mint_to(
@@ -1034,6 +972,9 @@ async fn confidential_transfer_withdraw() {
     let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
         &token,
         &alice,
+        None,
+        false,
+        false,
         &mint_authority,
         42,
         decimals,
@@ -1181,16 +1122,16 @@ async fn confidential_transfer_transfer() {
     let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
         &token,
         &alice,
+        None,
+        false,
+        false,
         &mint_authority,
         42,
         decimals,
     )
     .await;
 
-    let bob_meta = ConfidentialTokenAccountMeta::new_with_maximum_pending_balance_credit_counter(
-        &token, &bob, 2,
-    )
-    .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, Some(2), false, false).await;
 
     // Self-transfer of 0 tokens
     token
@@ -1430,10 +1371,18 @@ async fn ct_transfer_with_fee() {
 
     let epoch_info = test_epoch_info();
 
-    let alice_meta =
-        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 100, decimals)
-            .await;
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+    let alice_meta = ConfidentialTokenAccountMeta::with_tokens(
+        &token,
+        &alice,
+        None,
+        false,
+        false,
+        &mint_authority,
+        100,
+        decimals,
+    )
+    .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
 
     let state = token
         .get_account_info(&alice_meta.token_account)
@@ -1656,10 +1605,18 @@ async fn ct_withdraw_withheld_tokens_from_mint() {
 
     let epoch_info = test_epoch_info();
 
-    let alice_meta =
-        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 100, decimals)
-            .await;
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+    let alice_meta = ConfidentialTokenAccountMeta::with_tokens(
+        &token,
+        &alice,
+        None,
+        false,
+        false,
+        &mint_authority,
+        100,
+        decimals,
+    )
+    .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
 
     token
         .confidential_transfer_withdraw_withheld_tokens_from_mint_with_key(
@@ -1817,10 +1774,18 @@ async fn ct_withdraw_withheld_tokens_from_accounts() {
 
     let epoch_info = test_epoch_info();
 
-    let alice_meta =
-        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 100, decimals)
-            .await;
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+    let alice_meta = ConfidentialTokenAccountMeta::with_tokens(
+        &token,
+        &alice,
+        None,
+        false,
+        false,
+        &mint_authority,
+        100,
+        decimals,
+    )
+    .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
 
     let state = token
         .get_account_info(&alice_meta.token_account)
@@ -1933,14 +1898,16 @@ async fn confidential_transfer_transfer_memo() {
     let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
         &token,
         &alice,
+        None,
+        false,
+        false,
         &mint_authority,
         42,
         decimals,
     )
     .await;
 
-    let bob_meta =
-        ConfidentialTokenAccountMeta::new_with_required_memo_transfers(&token, &bob).await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, true, false).await;
 
     // transfer without memo
     let err = token
@@ -2056,11 +2023,18 @@ async fn ct_transfer_with_fee_memo() {
 
     let epoch_info = test_epoch_info();
 
-    let alice_meta =
-        ConfidentialTokenAccountMeta::with_tokens(&token, &alice, &mint_authority, 100, decimals)
-            .await;
-    let bob_meta =
-        ConfidentialTokenAccountMeta::new_with_required_memo_transfers(&token, &bob).await;
+    let alice_meta = ConfidentialTokenAccountMeta::with_tokens(
+        &token,
+        &alice,
+        None,
+        false,
+        false,
+        &mint_authority,
+        100,
+        decimals,
+    )
+    .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, true, false).await;
 
     let state = token
         .get_account_info(&alice_meta.token_account)
@@ -2344,7 +2318,7 @@ async fn confidential_transfer_empty_account_with_proof_context() {
         token, alice, bob, ..
     } = context.token_context.unwrap();
 
-    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice).await;
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
     let context_state_account = Keypair::new();
 
     // create context state
@@ -2401,7 +2375,7 @@ async fn confidential_transfer_empty_account_with_proof_context() {
         .unwrap();
 
     // attempt to create an account with a wrong proof type context state
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
     let context_state_account = Keypair::new();
 
     {
@@ -2491,6 +2465,9 @@ async fn confidential_transfer_withdraw_with_proof_context() {
     let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
         &token,
         &alice,
+        None,
+        false,
+        false,
         &mint_authority,
         42,
         decimals,
@@ -2567,7 +2544,7 @@ async fn confidential_transfer_withdraw_with_proof_context() {
         .unwrap();
 
     // attempt to create an account with a wrong proof type context state
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob).await;
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
     let context_state_account = Keypair::new();
 
     {
@@ -2662,15 +2639,26 @@ async fn confidential_transfer_transfer_with_proof_context() {
     let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
         &token,
         &alice,
+        None,
+        false,
+        false,
         &mint_authority,
         42,
         decimals,
     )
     .await;
 
-    let bob_meta =
-        ConfidentialTokenAccountMeta::new_with_tokens(&token, &bob, &mint_authority, 0, decimals)
-            .await;
+    let bob_meta = ConfidentialTokenAccountMeta::new_with_tokens(
+        &token,
+        &bob,
+        None,
+        false,
+        false,
+        &mint_authority,
+        0,
+        decimals,
+    )
+    .await;
 
     let context_state_account = Keypair::new();
 
