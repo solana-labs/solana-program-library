@@ -28,9 +28,9 @@ use {
                 },
                 ConfidentialTransferAccount,
             },
-            cpi_guard, default_account_state, interest_bearing_mint, memo_transfer,
-            metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
-            StateWithExtensionsOwned,
+            confidential_transfer_fee, cpi_guard, default_account_state, interest_bearing_mint,
+            memo_transfer, metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions,
+            ExtensionType, StateWithExtensionsOwned,
         },
         instruction, offchain,
         proof::ProofLocation,
@@ -157,6 +157,10 @@ pub enum ExtensionInitializationParams {
         authority: Option<Pubkey>,
         metadata_address: Option<Pubkey>,
     },
+    ConfidentialTransferFeeConfig {
+        authority: Option<Pubkey>,
+        withdraw_withheld_authority_elgamal_pubkey: PodElGamalPubkey,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -171,6 +175,9 @@ impl ExtensionInitializationParams {
             Self::PermanentDelegate { .. } => ExtensionType::PermanentDelegate,
             Self::TransferHook { .. } => ExtensionType::TransferHook,
             Self::MetadataPointer { .. } => ExtensionType::MetadataPointer,
+            Self::ConfidentialTransferFeeConfig { .. } => {
+                ExtensionType::ConfidentialTransferFeeConfig
+            }
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -251,6 +258,17 @@ impl ExtensionInitializationParams {
                 authority,
                 metadata_address,
             ),
+            Self::ConfidentialTransferFeeConfig {
+                authority,
+                withdraw_withheld_authority_elgamal_pubkey,
+            } => {
+                confidential_transfer_fee::instruction::initialize_confidential_transfer_fee_config(
+                    token_program_id,
+                    mint,
+                    authority,
+                    withdraw_withheld_authority_elgamal_pubkey,
+                )
+            }
         }
     }
 }
