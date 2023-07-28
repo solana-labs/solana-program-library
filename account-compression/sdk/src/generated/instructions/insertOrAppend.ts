@@ -14,9 +14,9 @@ import * as web3 from '@solana/web3.js';
  * @category generated
  */
 export type InsertOrAppendInstructionArgs = {
-  root: number[] /* size: 32 */;
-  leaf: number[] /* size: 32 */;
-  index: number;
+    root: number[] /* size: 32 */;
+    leaf: number[] /* size: 32 */;
+    index: number;
 };
 /**
  * @category Instructions
@@ -24,17 +24,17 @@ export type InsertOrAppendInstructionArgs = {
  * @category generated
  */
 export const insertOrAppendStruct = new beet.BeetArgsStruct<
-  InsertOrAppendInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */;
-  }
+    InsertOrAppendInstructionArgs & {
+        instructionDiscriminator: number[] /* size: 8 */;
+    }
 >(
-  [
-    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
-    ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
-    ['index', beet.u32],
-  ],
-  'InsertOrAppendInstructionArgs'
+    [
+        ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+        ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['index', beet.u32],
+    ],
+    'InsertOrAppendInstructionArgs'
 );
 /**
  * Accounts required by the _insertOrAppend_ instruction
@@ -47,15 +47,13 @@ export const insertOrAppendStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type InsertOrAppendInstructionAccounts = {
-  merkleTree: web3.PublicKey;
-  authority: web3.PublicKey;
-  noop: web3.PublicKey;
-  anchorRemainingAccounts?: web3.AccountMeta[];
+    merkleTree: web3.PublicKey;
+    authority: web3.PublicKey;
+    noop: web3.PublicKey;
+    anchorRemainingAccounts?: web3.AccountMeta[];
 };
 
-export const insertOrAppendInstructionDiscriminator = [
-  6, 42, 50, 190, 51, 109, 178, 168,
-];
+export const insertOrAppendInstructionDiscriminator = [6, 42, 50, 190, 51, 109, 178, 168];
 
 /**
  * Creates a _InsertOrAppend_ instruction.
@@ -68,42 +66,42 @@ export const insertOrAppendInstructionDiscriminator = [
  * @category generated
  */
 export function createInsertOrAppendInstruction(
-  accounts: InsertOrAppendInstructionAccounts,
-  args: InsertOrAppendInstructionArgs,
-  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+    accounts: InsertOrAppendInstructionAccounts,
+    args: InsertOrAppendInstructionArgs,
+    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
-  const [data] = insertOrAppendStruct.serialize({
-    instructionDiscriminator: insertOrAppendInstructionDiscriminator,
-    ...args,
-  });
-  const keys: web3.AccountMeta[] = [
-    {
-      pubkey: accounts.merkleTree,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.authority,
-      isWritable: false,
-      isSigner: true,
-    },
-    {
-      pubkey: accounts.noop,
-      isWritable: false,
-      isSigner: false,
-    },
-  ];
+    const [data] = insertOrAppendStruct.serialize({
+        instructionDiscriminator: insertOrAppendInstructionDiscriminator,
+        ...args,
+    });
+    const keys: web3.AccountMeta[] = [
+        {
+            isSigner: false,
+            isWritable: true,
+            pubkey: accounts.merkleTree,
+        },
+        {
+            isSigner: true,
+            isWritable: false,
+            pubkey: accounts.authority,
+        },
+        {
+            isSigner: false,
+            isWritable: false,
+            pubkey: accounts.noop,
+        },
+    ];
 
-  if (accounts.anchorRemainingAccounts != null) {
-    for (const acc of accounts.anchorRemainingAccounts) {
-      keys.push(acc);
+    if (accounts.anchorRemainingAccounts != null) {
+        for (const acc of accounts.anchorRemainingAccounts) {
+            keys.push(acc);
+        }
     }
-  }
 
-  const ix = new web3.TransactionInstruction({
-    programId,
-    keys,
-    data,
-  });
-  return ix;
+    const ix = new web3.TransactionInstruction({
+        data,
+        keys,
+        programId,
+    });
+    return ix;
 }

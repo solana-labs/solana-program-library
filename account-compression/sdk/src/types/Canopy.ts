@@ -5,7 +5,7 @@ import * as beet from '@metaplex-foundation/beet';
  * for a {@link ConcurrentMerkleTreeAccount}
  */
 export type Canopy = {
-  canopyBytes: number[];
+    canopyBytes: number[];
 };
 
 /**
@@ -24,16 +24,8 @@ export type Canopy = {
  * @returns
  */
 export const canopyBeetFactory = (canopyDepth: number) => {
-  return new beet.BeetArgsStruct<Canopy>(
-    [
-      [
-        'canopyBytes',
-        beet.uniformFixedSizeArray(
-          beet.u8,
-          Math.max(((1 << (canopyDepth + 1)) - 2) * 32, 0)
-        ),
-      ],
-    ],
-    'Canopy'
-  );
+    return new beet.BeetArgsStruct<Canopy>(
+        [['canopyBytes', beet.uniformFixedSizeArray(beet.u8, Math.max(((1 << (canopyDepth + 1)) - 2) * 32, 0))]],
+        'Canopy'
+    );
 };

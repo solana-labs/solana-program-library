@@ -1,5 +1,5 @@
 {
-  "version": "0.1.4",
+  "version": "0.2.0",
   "name": "spl_account_compression",
   "instructions": [
     {
@@ -37,9 +37,7 @@
           "name": "noop",
           "isMut": false,
           "isSigner": false,
-          "docs": [
-            "Program used to emit changelogs as cpi instruction data."
-          ]
+          "docs": ["Program used to emit changelogs as cpi instruction data."]
         }
       ],
       "args": [
@@ -88,37 +86,26 @@
           "name": "noop",
           "isMut": false,
           "isSigner": false,
-          "docs": [
-            "Program used to emit changelogs as cpi instruction data."
-          ]
+          "docs": ["Program used to emit changelogs as cpi instruction data."]
         }
       ],
       "args": [
         {
           "name": "root",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "previousLeaf",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "newLeaf",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
@@ -129,10 +116,7 @@
     },
     {
       "name": "transferAuthority",
-      "docs": [
-        "Transfers `authority`.",
-        "Requires `authority` to sign"
-      ],
+      "docs": ["Transfers `authority`.", "Requires `authority` to sign"],
       "accounts": [
         {
           "name": "merkleTree",
@@ -173,19 +157,13 @@
         {
           "name": "root",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "leaf",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
@@ -223,19 +201,14 @@
           "name": "noop",
           "isMut": false,
           "isSigner": false,
-          "docs": [
-            "Program used to emit changelogs as cpi instruction data."
-          ]
+          "docs": ["Program used to emit changelogs as cpi instruction data."]
         }
       ],
       "args": [
         {
           "name": "leaf",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         }
       ]
@@ -267,28 +240,20 @@
           "name": "noop",
           "isMut": false,
           "isSigner": false,
-          "docs": [
-            "Program used to emit changelogs as cpi instruction data."
-          ]
+          "docs": ["Program used to emit changelogs as cpi instruction data."]
         }
       ],
       "args": [
         {
           "name": "root",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "leaf",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
@@ -309,9 +274,7 @@
           "name": "authority",
           "isMut": false,
           "isSigner": true,
-          "docs": [
-            "Authority that controls write-access to the tree"
-          ]
+          "docs": ["Authority that controls write-access to the tree"]
         },
         {
           "name": "recipient",
@@ -342,16 +305,12 @@
         "fields": [
           {
             "name": "id",
-            "docs": [
-              "Public key of the ConcurrentMerkleTree"
-            ],
+            "docs": ["Public key of the ConcurrentMerkleTree"],
             "type": "publicKey"
           },
           {
             "name": "path",
-            "docs": [
-              "Nodes of off-chain merkle tree needed by indexer"
-            ],
+            "docs": ["Nodes of off-chain merkle tree needed by indexer"],
             "type": {
               "vec": {
                 "defined": "PathNode"
@@ -368,9 +327,7 @@
           },
           {
             "name": "index",
-            "docs": [
-              "Bitmap of node parity (used when hashing)"
-            ],
+            "docs": ["Bitmap of node parity (used when hashing)"],
             "type": "u32"
           }
         ]
@@ -397,18 +354,14 @@
         "fields": [
           {
             "name": "accountType",
-            "docs": [
-              "Account type"
-            ],
+            "docs": ["Account type"],
             "type": {
               "defined": "CompressionAccountType"
             }
           },
           {
             "name": "header",
-            "docs": [
-              "Versioned header"
-            ],
+            "docs": ["Versioned header"],
             "type": {
               "defined": "ConcurrentMerkleTreeHeaderData"
             }
@@ -461,10 +414,7 @@
               "8-byte alignment is necessary to zero-copy the SPL ConcurrentMerkleTree"
             ],
             "type": {
-              "array": [
-                "u8",
-                6
-              ]
+              "array": ["u8", 6]
             }
           }
         ]
@@ -478,10 +428,7 @@
           {
             "name": "node",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {

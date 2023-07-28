@@ -11,14 +11,15 @@ import * as beet from '@metaplex-foundation/beet';
  * @category generated
  */
 export enum CompressionAccountType {
-  Uninitialized,
-  ConcurrentMerkleTree,
+    Uninitialized,
+    ConcurrentMerkleTree,
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const compressionAccountTypeBeet = beet.fixedScalarEnum(
-  CompressionAccountType
-) as beet.FixedSizeBeet<CompressionAccountType, CompressionAccountType>;
+export const compressionAccountTypeBeet = beet.fixedScalarEnum(CompressionAccountType) as beet.FixedSizeBeet<
+    CompressionAccountType,
+    CompressionAccountType
+>;

@@ -1,20 +1,15 @@
-import {
-  Connection,
-  PublicKey,
-  SystemProgram,
-  TransactionInstruction,
-} from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, TransactionInstruction } from '@solana/web3.js';
 
-import { SPL_NOOP_PROGRAM_ID, ValidDepthSizePair } from '../constants';
 import { getConcurrentMerkleTreeAccountSize } from '../accounts';
+import { SPL_NOOP_PROGRAM_ID, ValidDepthSizePair } from '../constants';
 import {
-  createReplaceLeafInstruction,
-  createAppendInstruction,
-  createTransferAuthorityInstruction,
-  createVerifyLeafInstruction,
-  PROGRAM_ID,
-  createInitEmptyMerkleTreeInstruction,
-  createCloseEmptyTreeInstruction,
+    createAppendInstruction,
+    createCloseEmptyTreeInstruction,
+    createInitEmptyMerkleTreeInstruction,
+    createReplaceLeafInstruction,
+    createTransferAuthorityInstruction,
+    createVerifyLeafInstruction,
+    PROGRAM_ID,
 } from '../generated';
 import { MerkleTreeProof } from '../merkle-tree';
 
@@ -22,20 +17,17 @@ import { MerkleTreeProof } from '../merkle-tree';
  * Helper function that adds proof nodes to a TransactionInstruction
  * by adding extra keys to the transaction
  */
-export function addProof(
-  instruction: TransactionInstruction,
-  nodeProof: Buffer[]
-): TransactionInstruction {
-  instruction.keys = instruction.keys.concat(
-    nodeProof.map((node) => {
-      return {
-        pubkey: new PublicKey(node),
-        isSigner: false,
-        isWritable: false,
-      };
-    })
-  );
-  return instruction;
+export function addProof(instruction: TransactionInstruction, nodeProof: Buffer[]): TransactionInstruction {
+    instruction.keys = instruction.keys.concat(
+        nodeProof.map(node => {
+            return {
+                isSigner: false,
+                isWritable: false,
+                pubkey: new PublicKey(node),
+            };
+        })
+    );
+    return instruction;
 }
 
 /**
@@ -47,18 +39,18 @@ export function addProof(
  * @returns
  */
 export function createInitEmptyMerkleTreeIx(
-  merkleTree: PublicKey,
-  authority: PublicKey,
-  depthSizePair: ValidDepthSizePair
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    depthSizePair: ValidDepthSizePair
 ): TransactionInstruction {
-  return createInitEmptyMerkleTreeInstruction(
-    {
-      merkleTree,
-      authority: authority,
-      noop: SPL_NOOP_PROGRAM_ID,
-    },
-    depthSizePair
-  );
+    return createInitEmptyMerkleTreeInstruction(
+        {
+            authority: authority,
+            merkleTree,
+            noop: SPL_NOOP_PROGRAM_ID,
+        },
+        depthSizePair
+    );
 }
 
 /**
@@ -70,27 +62,27 @@ export function createInitEmptyMerkleTreeIx(
  * @returns
  */
 export function createReplaceIx(
-  merkleTree: PublicKey,
-  authority: PublicKey,
-  newLeaf: Buffer,
-  proof: MerkleTreeProof
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    newLeaf: Buffer,
+    proof: MerkleTreeProof
 ): TransactionInstruction {
-  return addProof(
-    createReplaceLeafInstruction(
-      {
-        merkleTree,
-        authority: authority,
-        noop: SPL_NOOP_PROGRAM_ID,
-      },
-      {
-        root: Array.from(proof.root),
-        previousLeaf: Array.from(proof.leaf),
-        newLeaf: Array.from(newLeaf),
-        index: proof.leafIndex,
-      }
-    ),
-    proof.proof
-  );
+    return addProof(
+        createReplaceLeafInstruction(
+            {
+                authority: authority,
+                merkleTree,
+                noop: SPL_NOOP_PROGRAM_ID,
+            },
+            {
+                index: proof.leafIndex,
+                newLeaf: Array.from(newLeaf),
+                previousLeaf: Array.from(proof.leaf),
+                root: Array.from(proof.root),
+            }
+        ),
+        proof.proof
+    );
 }
 
 /**
@@ -101,20 +93,20 @@ export function createReplaceIx(
  * @returns
  */
 export function createAppendIx(
-  merkleTree: PublicKey,
-  authority: PublicKey,
-  newLeaf: Buffer | ArrayLike<number>
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    newLeaf: Buffer | ArrayLike<number>
 ): TransactionInstruction {
-  return createAppendInstruction(
-    {
-      merkleTree,
-      authority: authority,
-      noop: SPL_NOOP_PROGRAM_ID,
-    },
-    {
-      leaf: Array.from(newLeaf),
-    }
-  );
+    return createAppendInstruction(
+        {
+            authority: authority,
+            merkleTree,
+            noop: SPL_NOOP_PROGRAM_ID,
+        },
+        {
+            leaf: Array.from(newLeaf),
+        }
+    );
 }
 
 /**
@@ -125,19 +117,19 @@ export function createAppendIx(
  * @returns
  */
 export function createTransferAuthorityIx(
-  merkleTree: PublicKey,
-  authority: PublicKey,
-  newAuthority: PublicKey
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    newAuthority: PublicKey
 ): TransactionInstruction {
-  return createTransferAuthorityInstruction(
-    {
-      merkleTree,
-      authority: authority,
-    },
-    {
-      newAuthority,
-    }
-  );
+    return createTransferAuthorityInstruction(
+        {
+            authority: authority,
+            merkleTree,
+        },
+        {
+            newAuthority,
+        }
+    );
 }
 
 /**
@@ -146,23 +138,20 @@ export function createTransferAuthorityIx(
  * @param proof
  * @returns
  */
-export function createVerifyLeafIx(
-  merkleTree: PublicKey,
-  proof: MerkleTreeProof
-): TransactionInstruction {
-  return addProof(
-    createVerifyLeafInstruction(
-      {
-        merkleTree,
-      },
-      {
-        root: Array.from(proof.root),
-        leaf: Array.from(proof.leaf),
-        index: proof.leafIndex,
-      }
-    ),
-    proof.proof
-  );
+export function createVerifyLeafIx(merkleTree: PublicKey, proof: MerkleTreeProof): TransactionInstruction {
+    return addProof(
+        createVerifyLeafInstruction(
+            {
+                merkleTree,
+            },
+            {
+                index: proof.leafIndex,
+                leaf: Array.from(proof.leaf),
+                root: Array.from(proof.root),
+            }
+        ),
+        proof.proof
+    );
 }
 
 /**
@@ -178,24 +167,24 @@ export function createVerifyLeafIx(
  * @returns
  */
 export async function createAllocTreeIx(
-  connection: Connection,
-  merkleTree: PublicKey,
-  payer: PublicKey,
-  depthSizePair: ValidDepthSizePair,
-  canopyDepth: number
+    connection: Connection,
+    merkleTree: PublicKey,
+    payer: PublicKey,
+    depthSizePair: ValidDepthSizePair,
+    canopyDepth: number
 ): Promise<TransactionInstruction> {
-  const requiredSpace = getConcurrentMerkleTreeAccountSize(
-    depthSizePair.maxDepth,
-    depthSizePair.maxBufferSize,
-    canopyDepth ?? 0
-  );
-  return SystemProgram.createAccount({
-    fromPubkey: payer,
-    newAccountPubkey: merkleTree,
-    lamports: await connection.getMinimumBalanceForRentExemption(requiredSpace),
-    space: requiredSpace,
-    programId: PROGRAM_ID,
-  });
+    const requiredSpace = getConcurrentMerkleTreeAccountSize(
+        depthSizePair.maxDepth,
+        depthSizePair.maxBufferSize,
+        canopyDepth ?? 0
+    );
+    return SystemProgram.createAccount({
+        fromPubkey: payer,
+        lamports: await connection.getMinimumBalanceForRentExemption(requiredSpace),
+        newAccountPubkey: merkleTree,
+        programId: PROGRAM_ID,
+        space: requiredSpace,
+    });
 }
 
 /**
@@ -206,13 +195,13 @@ export async function createAllocTreeIx(
  * @returns
  */
 export function createCloseEmptyTreeIx(
-  merkleTree: PublicKey,
-  authority: PublicKey,
-  recipient: PublicKey
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    recipient: PublicKey
 ): TransactionInstruction {
-  return createCloseEmptyTreeInstruction({
-    merkleTree,
-    authority,
-    recipient,
-  });
+    return createCloseEmptyTreeInstruction({
+        authority,
+        merkleTree,
+        recipient,
+    });
 }

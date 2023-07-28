@@ -1,16 +1,16 @@
-import { PublicKey } from '@solana/web3.js';
-import * as beetSolana from '@metaplex-foundation/beet-solana';
 import * as beet from '@metaplex-foundation/beet';
+import * as beetSolana from '@metaplex-foundation/beet-solana';
+import { PublicKey } from '@solana/web3.js';
 
 /**
  * Canopy fields necessary for deserializing an on-chain Path
  * used in an {@link ConcurrentMerkleTree}
  */
 export type Path = {
-  proof: PublicKey[];
-  leaf: PublicKey;
-  index: number; // u32
-  _padding: number; // u32
+    proof: PublicKey[];
+    leaf: PublicKey;
+    index: number; // u32
+    _padding: number; // u32
 };
 
 /**
@@ -21,13 +21,13 @@ export type Path = {
  * @returns
  */
 export const pathBeetFactory = (maxDepth: number) => {
-  return new beet.BeetArgsStruct<Path>(
-    [
-      ['proof', beet.uniformFixedSizeArray(beetSolana.publicKey, maxDepth)],
-      ['leaf', beetSolana.publicKey],
-      ['index', beet.u32],
-      ['_padding', beet.u32],
-    ],
-    'Path'
-  );
+    return new beet.BeetArgsStruct<Path>(
+        [
+            ['proof', beet.uniformFixedSizeArray(beetSolana.publicKey, maxDepth)],
+            ['leaf', beetSolana.publicKey],
+            ['index', beet.u32],
+            ['_padding', beet.u32],
+        ],
+        'Path'
+    );
 };

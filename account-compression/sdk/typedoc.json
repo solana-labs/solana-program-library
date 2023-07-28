@@ -1,8 +1,5 @@
 {
-  "entryPoints": [
-    "src/index.ts",
-    "src/merkle-tree/index.ts"
-  ],
+  "entryPoints": ["src/index.ts", "src/merkle-tree/index.ts"],
   "excludeInternal": true,
   "excludePrivate": false,
   "out": "doc"
