@@ -184,7 +184,7 @@ impl ExtraAccountMetas {
 mod tests {
     use {
         super::*,
-        crate::seeds::{InstructionArgType, Seed},
+        crate::seeds::Seed,
         solana_program::{clock::Epoch, instruction::AccountMeta, pubkey::Pubkey},
         spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     };
@@ -229,7 +229,74 @@ mod tests {
     }
 
     #[test]
-    fn init_with_metas_and_seeds() {
+    fn init_with_infos() {
+        let pubkey1 = Pubkey::new_unique();
+        let mut lamports1 = 0;
+        let mut data1 = [];
+        let pubkey2 = Pubkey::new_unique();
+        let mut lamports2 = 0;
+        let mut data2 = [];
+        let pubkey3 = Pubkey::new_unique();
+        let mut lamports3 = 0;
+        let mut data3 = [];
+        let owner = Pubkey::new_unique();
+        let account_infos = [
+            AccountInfo::new(
+                &pubkey1,
+                false,
+                true,
+                &mut lamports1,
+                &mut data1,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &pubkey2,
+                true,
+                false,
+                &mut lamports2,
+                &mut data2,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &pubkey3,
+                false,
+                false,
+                &mut lamports3,
+                &mut data3,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+        ];
+        let account_size = ExtraAccountMetas::size_of(account_infos.len()).unwrap();
+        let mut buffer = vec![0; account_size];
+
+        ExtraAccountMetas::init_with_account_infos::<TestInstruction>(&mut buffer, &account_infos)
+            .unwrap();
+
+        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
+        ExtraAccountMetas::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
+            .unwrap();
+
+        assert_eq!(
+            instruction
+                .accounts
+                .iter()
+                .map(PodAccountMeta::from)
+                .collect::<Vec<_>>(),
+            account_infos
+                .iter()
+                .map(PodAccountMeta::from)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn init_with_required_accounts() {
         let program_id = Pubkey::new_unique();
 
         let extra_meta3_literal_str = "seed_prefix";
@@ -246,7 +313,7 @@ mod tests {
                 },
                 Seed::InstructionArg {
                     index: 1,
-                    ty: InstructionArgType::U8,
+                    length: 1, // u8
                 },
                 Seed::AccountKey { index: 0 },
                 Seed::AccountKey { index: 2 },
@@ -268,6 +335,8 @@ mod tests {
         let account_size = ExtraAccountMetas::size_of(metas.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
+        // Notice we use `init_with_required_accounts` instead of
+        // `init_with_account_metas`
         ExtraAccountMetas::init_with_required_accounts::<TestInstruction>(&mut buffer, &metas)
             .unwrap();
 
@@ -312,53 +381,6 @@ mod tests {
 
     #[test]
     fn init_multiple() {
-        let metas = [
-            AccountMeta::new(Pubkey::new_unique(), false),
-            AccountMeta::new(Pubkey::new_unique(), true),
-            AccountMeta::new_readonly(Pubkey::new_unique(), true),
-            AccountMeta::new_readonly(Pubkey::new_unique(), false),
-        ];
-        let other_metas = [AccountMeta::new(Pubkey::new_unique(), false)];
-        let account_size = ExtraAccountMetas::size_of(metas.len()).unwrap()
-            + ExtraAccountMetas::size_of(other_metas.len()).unwrap();
-        let mut buffer = vec![0; account_size];
-
-        ExtraAccountMetas::init_with_account_metas::<TestInstruction>(&mut buffer, &metas).unwrap();
-        ExtraAccountMetas::init_with_account_metas::<TestOtherInstruction>(
-            &mut buffer,
-            &other_metas,
-        )
-        .unwrap();
-
-        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
-        ExtraAccountMetas::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
-            .unwrap();
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(PodAccountMeta::from)
-                .collect::<Vec<_>>(),
-            metas.iter().map(PodAccountMeta::from).collect::<Vec<_>>()
-        );
-        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
-        ExtraAccountMetas::add_to_instruction::<TestOtherInstruction>(&mut instruction, &buffer)
-            .unwrap();
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(PodAccountMeta::from)
-                .collect::<Vec<_>>(),
-            other_metas
-                .iter()
-                .map(PodAccountMeta::from)
-                .collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
-    fn init_multiple_with_seeds() {
         let extra_meta5_literal_str = "seed_prefix";
         let extra_meta5_literal_u32 = 4u32;
         let other_meta2_literal_str = "other_seed_prefix";
@@ -377,7 +399,7 @@ mod tests {
                 },
                 Seed::InstructionArg {
                     index: 5,
-                    ty: InstructionArgType::U8,
+                    length: 1, // u8
                 },
                 Seed::AccountKey { index: 2 },
             ],
@@ -393,7 +415,7 @@ mod tests {
                 },
                 Seed::InstructionArg {
                     index: 1,
-                    ty: InstructionArgType::U32,
+                    length: 4, // u32
                 },
                 Seed::AccountKey { index: 0 },
             ],
@@ -509,96 +531,6 @@ mod tests {
 
     #[test]
     fn init_mixed() {
-        // annoying to setup, but need to test this!
-        let pubkey1 = Pubkey::new_unique();
-        let mut lamports1 = 0;
-        let mut data1 = [];
-        let pubkey2 = Pubkey::new_unique();
-        let mut lamports2 = 0;
-        let mut data2 = [];
-        let pubkey3 = Pubkey::new_unique();
-        let mut lamports3 = 0;
-        let mut data3 = [];
-        let owner = Pubkey::new_unique();
-        let account_infos = [
-            AccountInfo::new(
-                &pubkey1,
-                false,
-                true,
-                &mut lamports1,
-                &mut data1,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-            AccountInfo::new(
-                &pubkey2,
-                true,
-                false,
-                &mut lamports2,
-                &mut data2,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-            AccountInfo::new(
-                &pubkey3,
-                false,
-                false,
-                &mut lamports3,
-                &mut data3,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-        ];
-        let metas = [
-            AccountMeta::new(Pubkey::new_unique(), false),
-            AccountMeta::new(Pubkey::new_unique(), true),
-            AccountMeta::new_readonly(Pubkey::new_unique(), true),
-            AccountMeta::new_readonly(Pubkey::new_unique(), false),
-            AccountMeta::new_readonly(Pubkey::new_unique(), false),
-            AccountMeta::new_readonly(Pubkey::new_unique(), false),
-        ];
-        let account_size = ExtraAccountMetas::size_of(account_infos.len()).unwrap()
-            + ExtraAccountMetas::size_of(metas.len()).unwrap();
-        let mut buffer = vec![0; account_size];
-
-        ExtraAccountMetas::init_with_account_infos::<TestInstruction>(&mut buffer, &account_infos)
-            .unwrap();
-        ExtraAccountMetas::init_with_account_metas::<TestOtherInstruction>(&mut buffer, &metas)
-            .unwrap();
-
-        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
-        ExtraAccountMetas::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
-            .unwrap();
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(PodAccountMeta::from)
-                .collect::<Vec<_>>(),
-            account_infos
-                .iter()
-                .map(PodAccountMeta::from)
-                .collect::<Vec<_>>()
-        );
-
-        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
-        ExtraAccountMetas::add_to_instruction::<TestOtherInstruction>(&mut instruction, &buffer)
-            .unwrap();
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(PodAccountMeta::from)
-                .collect::<Vec<_>>(),
-            metas.iter().map(PodAccountMeta::from).collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
-    fn init_mixed_with_seeds() {
         let extra_meta5_literal_str = "seed_prefix";
         let extra_meta6_literal_u64 = 28u64;
 
@@ -656,11 +588,11 @@ mod tests {
                 },
                 Seed::InstructionArg {
                     index: 1,
-                    ty: InstructionArgType::U8Array(8),
+                    length: 8, // [u8; 8]
                 },
                 Seed::InstructionArg {
                     index: 9,
-                    ty: InstructionArgType::Pubkey,
+                    length: 32, // Pubkey
                 },
                 Seed::AccountKey { index: 2 },
             ],
@@ -783,7 +715,6 @@ mod tests {
         // This will be our program. Let's ignore the account info
         // for the other program in this example.
         let program_id = Pubkey::new_unique();
-
         let owner = Pubkey::new_unique();
 
         // First let's build a list of account infos for the CPI
@@ -868,20 +799,71 @@ mod tests {
             ),
         ];
 
-        // The program to CPI to has 2 account metas and 3 extra account metas.
+        // Let's also add 2 required PDAs to the extra required accounts.
 
-        // Now we set up the validation account data with the extra account metas
-        let account_size = ExtraAccountMetas::size_of(extra_account_infos.len()).unwrap();
+        let required_pda1_literal_string = "required_pda1";
+        let required_pda2_literal_u32 = 4u32;
+
+        let required_pda1 = RequiredAccount::Pda {
+            seeds: vec![
+                Seed::Literal {
+                    bytes: required_pda1_literal_string.as_bytes().to_vec(),
+                },
+                Seed::InstructionArg {
+                    index: 1,
+                    length: 8, // [u8; 8]
+                },
+                Seed::AccountKey { index: 1 },
+            ],
+            is_signer: false,
+            is_writable: true,
+        };
+        let required_pda2 = RequiredAccount::Pda {
+            seeds: vec![
+                Seed::Literal {
+                    bytes: required_pda2_literal_u32.to_le_bytes().to_vec(),
+                },
+                Seed::InstructionArg {
+                    index: 9,
+                    length: 8, // u64
+                },
+                Seed::AccountKey { index: 5 },
+            ],
+            is_signer: false,
+            is_writable: true,
+        };
+
+        // The program to CPI to has 2 account metas and
+        // 5 extra required accounts (3 metas, 2 PDAs).
+
+        // Now we set up the validation account data
+
+        let mut required_accounts = extra_account_infos
+            .iter()
+            .map(RequiredAccount::from)
+            .collect::<Vec<_>>();
+        required_accounts.push(required_pda1);
+        required_accounts.push(required_pda2);
+
+        let account_size = ExtraAccountMetas::size_of(required_accounts.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetas::init_with_account_infos::<TestInstruction>(
+        ExtraAccountMetas::init_with_required_accounts::<TestInstruction>(
             &mut buffer,
-            &extra_account_infos,
+            &required_accounts,
         )
         .unwrap();
 
         // Make an instruction to check later
-        let mut instruction = Instruction::new_with_bytes(program_id, &[], ix_accounts.clone());
+        // We'll also check the instruction seed components later
+        let instruction_u8array_arg = [1, 2, 3, 4, 5, 6, 7, 8];
+        let instruction_u64_arg = 208u64;
+        let mut instruction_data = vec![0];
+        instruction_data.extend_from_slice(&instruction_u8array_arg);
+        instruction_data.extend_from_slice(instruction_u64_arg.to_le_bytes().as_ref());
+
+        let mut instruction =
+            Instruction::new_with_bytes(program_id, &instruction_data, ix_accounts.clone());
         ExtraAccountMetas::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
             .unwrap();
 
@@ -898,6 +880,54 @@ mod tests {
 
         // Next add the extra account infos.
         messed_account_infos.extend(extra_account_infos.iter().cloned());
+
+        // Also add the extra PDAs with their actual addresses.
+        let check_required_pda1_pubkey = Pubkey::find_program_address(
+            &[
+                required_pda1_literal_string.as_bytes(),
+                &instruction_u8array_arg,
+                ix_account_infos.get(1).unwrap().key.as_ref(), // The second account
+            ],
+            &program_id,
+        )
+        .0;
+        let check_required_pda2_pubkey = Pubkey::find_program_address(
+            &[
+                required_pda2_literal_u32.to_le_bytes().as_ref(),
+                instruction_u64_arg.to_le_bytes().as_ref(),
+                check_required_pda1_pubkey.as_ref(), // The first PDA should be at index 5
+            ],
+            &program_id,
+        )
+        .0;
+
+        let mut lamports_pda1 = 0;
+        let mut data_pda1 = [];
+        let extra_pda_info1 = AccountInfo::new(
+            &check_required_pda1_pubkey,
+            false,
+            true,
+            &mut lamports_pda1,
+            &mut data_pda1,
+            &owner,
+            false,
+            Epoch::default(),
+        );
+        messed_account_infos.push(extra_pda_info1.clone());
+
+        let mut lamports_pda2 = 0;
+        let mut data_pda2 = [];
+        let extra_pda_info2 = AccountInfo::new(
+            &check_required_pda2_pubkey,
+            false,
+            true,
+            &mut lamports_pda2,
+            &mut data_pda2,
+            &owner,
+            false,
+            Epoch::default(),
+        );
+        messed_account_infos.push(extra_pda_info2.clone());
 
         // Now throw in a few extras that might be just for our program.
         let pubkey4 = Pubkey::new_unique();
@@ -932,10 +962,10 @@ mod tests {
         messed_account_infos.swap(1, 2);
         messed_account_infos.swap(3, 4);
 
-        let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[], ix_accounts);
-        let mut cpi_account_infos = ix_account_infos.to_vec();
-
         // Perform the account resolution.
+        let mut cpi_instruction =
+            Instruction::new_with_bytes(program_id, &instruction_data, ix_accounts);
+        let mut cpi_account_infos = ix_account_infos.to_vec();
         ExtraAccountMetas::add_to_cpi_instruction::<TestInstruction>(
             &mut cpi_instruction,
             &mut cpi_account_infos,
@@ -952,211 +982,11 @@ mod tests {
         // and they should be in the correct order.
         let mut all_account_infos = ix_account_infos.to_vec();
         all_account_infos.extend(extra_account_infos.iter().cloned());
+        all_account_infos.push(extra_pda_info1);
+        all_account_infos.push(extra_pda_info2);
 
         assert_eq!(cpi_account_infos.len(), all_account_infos.len());
         for (a, b) in std::iter::zip(cpi_account_infos, all_account_infos) {
-            assert_eq!(a.key, b.key);
-            assert_eq!(a.is_signer, b.is_signer);
-            assert_eq!(a.is_writable, b.is_writable);
-        }
-    }
-
-    #[test]
-    fn cpi_instruction_with_seeds() {
-        let required_pda1_literal_string = "required_pda1";
-        let required_pda2_literal_u32 = 4u32;
-
-        let pubkey1 = Pubkey::new_unique();
-        let mut lamports1 = 0;
-        let mut data1 = [];
-        let pubkey2 = Pubkey::new_unique();
-        let mut lamports2 = 0;
-        let mut data2 = [];
-        let pubkey3 = Pubkey::new_unique();
-        let mut lamports3 = 0;
-        let mut data3 = [];
-        let owner = Pubkey::new_unique();
-        let account_infos = [
-            AccountInfo::new(
-                &pubkey1,
-                false,
-                true,
-                &mut lamports1,
-                &mut data1,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-            AccountInfo::new(
-                &pubkey2,
-                true,
-                false,
-                &mut lamports2,
-                &mut data2,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-            AccountInfo::new(
-                &pubkey3,
-                false,
-                false,
-                &mut lamports3,
-                &mut data3,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-        ];
-
-        let required_pda1 = RequiredAccount::Pda {
-            seeds: vec![
-                Seed::Literal {
-                    bytes: required_pda1_literal_string.as_bytes().to_vec(),
-                },
-                Seed::InstructionArg {
-                    index: 1,
-                    ty: InstructionArgType::U8Array(8),
-                },
-                Seed::AccountKey { index: 1 },
-            ],
-            is_signer: false,
-            is_writable: true,
-        };
-        let required_pda2 = RequiredAccount::Pda {
-            seeds: vec![
-                Seed::Literal {
-                    bytes: required_pda2_literal_u32.to_le_bytes().to_vec(),
-                },
-                Seed::InstructionArg {
-                    index: 9,
-                    ty: InstructionArgType::U64,
-                },
-                Seed::AccountKey { index: 3 },
-            ],
-            is_signer: false,
-            is_writable: true,
-        };
-
-        let mut required_accounts = account_infos
-            .iter()
-            .map(RequiredAccount::from)
-            .collect::<Vec<_>>();
-        required_accounts.push(required_pda1);
-        required_accounts.push(required_pda2);
-
-        let account_size = ExtraAccountMetas::size_of(required_accounts.len()).unwrap();
-        let mut buffer = vec![0; account_size];
-
-        ExtraAccountMetas::init_with_required_accounts::<TestInstruction>(
-            &mut buffer,
-            &required_accounts,
-        )
-        .unwrap();
-
-        // make an instruction to check later
-        let program_id = Pubkey::new_unique();
-        let instruction_u8array_arg = [1, 2, 3, 4, 5, 6, 7, 8];
-        let instruction_u64_arg = 208u64;
-        let mut instruction_data = vec![0];
-        instruction_data.extend_from_slice(&instruction_u8array_arg);
-        instruction_data.extend_from_slice(instruction_u64_arg.to_le_bytes().as_ref());
-        let mut instruction = Instruction::new_with_bytes(program_id, &instruction_data, vec![]);
-        ExtraAccountMetas::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
-            .unwrap();
-
-        // mess around with the account infos to make it harder
-        let mut messed_account_infos = account_infos.to_vec();
-        let pubkey4 = Pubkey::new_unique();
-        let mut lamports4 = 0;
-        let mut data4 = [];
-        messed_account_infos.push(AccountInfo::new(
-            &pubkey4,
-            false,
-            true,
-            &mut lamports4,
-            &mut data4,
-            &owner,
-            false,
-            Epoch::default(),
-        ));
-        let pubkey5 = Pubkey::new_unique();
-        let mut lamports5 = 0;
-        let mut data5 = [];
-        messed_account_infos.push(AccountInfo::new(
-            &pubkey5,
-            false,
-            true,
-            &mut lamports5,
-            &mut data5,
-            &owner,
-            false,
-            Epoch::default(),
-        ));
-        messed_account_infos.swap(0, 4);
-        messed_account_infos.swap(1, 2);
-
-        // Add the PDAs as account infos
-
-        let check_required_pda1_pubkey = Pubkey::find_program_address(
-            &[
-                required_pda1_literal_string.as_bytes(),
-                &instruction_u8array_arg,
-                account_infos.get(1).unwrap().key.as_ref(),
-            ],
-            &program_id,
-        )
-        .0;
-        let check_required_pda2_pubkey = Pubkey::find_program_address(
-            &[
-                required_pda2_literal_u32.to_le_bytes().as_ref(),
-                instruction_u64_arg.to_le_bytes().as_ref(),
-                check_required_pda1_pubkey.as_ref(), // The first PDA should be at index 3
-            ],
-            &program_id,
-        )
-        .0;
-
-        let mut lamports_pda1 = 0;
-        let mut data_pda1 = [];
-        messed_account_infos.push(AccountInfo::new(
-            &check_required_pda1_pubkey,
-            false,
-            true,
-            &mut lamports_pda1,
-            &mut data_pda1,
-            &owner,
-            false,
-            Epoch::default(),
-        ));
-        let mut lamports_pda2 = 0;
-        let mut data_pda2 = [];
-        messed_account_infos.push(AccountInfo::new(
-            &check_required_pda2_pubkey,
-            false,
-            true,
-            &mut lamports_pda2,
-            &mut data_pda2,
-            &owner,
-            false,
-            Epoch::default(),
-        ));
-        messed_account_infos.swap(1, 5);
-
-        let mut cpi_instruction =
-            Instruction::new_with_bytes(program_id, &instruction_data, vec![]);
-        let mut cpi_account_infos = vec![];
-        ExtraAccountMetas::add_to_cpi_instruction::<TestInstruction>(
-            &mut cpi_instruction,
-            &mut cpi_account_infos,
-            &buffer,
-            &messed_account_infos,
-        )
-        .unwrap();
-
-        assert_eq!(cpi_instruction, instruction);
-        assert_eq!(cpi_account_infos.len(), required_accounts.len());
-        for (a, b) in std::iter::zip(cpi_account_infos, account_infos) {
             assert_eq!(a.key, b.key);
             assert_eq!(a.is_signer, b.is_signer);
             assert_eq!(a.is_writable, b.is_writable);

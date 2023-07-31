@@ -8,6 +8,8 @@ use {crate::error::AccountResolutionError, solana_program::program_error::Progra
 /// Enum to describe a required seed for a Program-Derived Address
 #[derive(Clone, Debug, PartialEq)]
 pub enum Seed {
+    /// Uninitialized configuration byte space
+    Uninitialized,
     /// A literal hard-coded argument
     Literal {
         /// The literal value repesented as a vector of bytes.
@@ -21,8 +23,10 @@ pub enum Seed {
     InstructionArg {
         /// The index where the bytes of an instruction argument begin
         index: u8,
-        /// The type of instruction argument to resolve
-        ty: InstructionArgType,
+        /// The length of the instruction argument (number of bytes)
+        ///
+        /// Note: Max seed length is 32 bytes, so `u8` is appropriate here
+        length: u8,
     },
     /// The public key of an account from the entire accounts list.
     /// Note: This includes an extra accounts required.
@@ -35,178 +39,134 @@ impl Seed {
     /// Get the size of a seed configuration
     pub fn tlv_size(&self) -> u8 {
         match &self {
+            // 1 byte for the discriminator
+            Self::Uninitialized => 0,
             // 1 byte for the discriminator, 1 byte for the length of the bytes, then the raw bytes
-            Seed::Literal { bytes } => 1 + 1 + bytes.len() as u8,
-            // 1 byte for the discriminator, 1 byte for the index, 2 bytes for the type
-            Seed::InstructionArg { .. } => 1 + 1 + InstructionArgType::TLV_SIZE,
+            Self::Literal { bytes } => 1 + 1 + bytes.len() as u8,
+            // 1 byte for the discriminator, 1 byte for the index, 1 byte for the length
+            Self::InstructionArg { .. } => 1 + 1 + 1,
             // 1 byte for the discriminator, 1 byte for the index
-            Seed::AccountKey { .. } => 1 + 1,
+            Self::AccountKey { .. } => 1 + 1,
         }
     }
 
-    /// Packs a seed configuration into a byte vector
-    pub fn pack(&self) -> Vec<u8> {
-        // We have to start at 1 since configurations may not use the whole
-        // 32-byte array of an `AccountMetaPda` (empty = 0)
+    /// Packs a seed configuration into a slice
+    pub fn pack(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
+        if dst.len() != self.tlv_size() as usize {
+            return Err(AccountResolutionError::IncorrectAccount.into());
+        }
         match &self {
-            Seed::Literal { bytes } => {
-                let mut packed = vec![1];
-                packed.push(bytes.len() as u8);
-                packed.extend_from_slice(bytes);
-                packed
+            Self::Uninitialized => {
+                dst[0] = 0;
             }
-            Seed::InstructionArg { index, ty } => {
-                let mut packed = vec![2, *index];
-                packed.extend_from_slice(&ty.pack());
-                packed
+            Self::Literal { bytes } => {
+                dst[0] = 1;
+                dst[1] = bytes.len() as u8;
+                dst[2..].copy_from_slice(bytes);
             }
-            Seed::AccountKey { index } => {
-                vec![3, *index]
+            Self::InstructionArg { index, length } => {
+                dst[0] = 2;
+                dst[1] = *index;
+                dst[2] = *length;
+            }
+            Self::AccountKey { index } => {
+                dst[0] = 3;
+                dst[1] = *index;
             }
         }
+        Ok(())
     }
 
     /// Packs a vector of seed configurations into a 32-byte array,
-    /// filling the rest with 0s. Fails if overflows.
+    /// filling the rest with 0s. Errors if it overflows.
     pub fn pack_into_array(seeds: &[Self]) -> Result<[u8; 32], ProgramError> {
-        let mut packed = vec![0u8; 32];
+        let mut packed = [0u8; 32];
         let mut i: usize = 0;
         for seed in seeds {
             let seed_size = seed.tlv_size() as usize;
-            if i + seed_size > 32 {
+            let slice_end = i + seed_size;
+            if slice_end > 32 {
                 return Err(AccountResolutionError::SeedConfigsTooLarge.into());
             }
-            packed[i..i + seed_size].copy_from_slice(&seed.pack());
-            i += seed_size;
+            seed.pack(&mut packed[i..slice_end])?;
+            i = slice_end;
         }
-        Ok(packed.try_into().unwrap())
+        Ok(packed)
     }
 
-    /// Unpacks a seed configuration from a buffer
+    /// Unpacks a seed configuration from a slice
     pub fn unpack(bytes: &[u8]) -> Result<Self, ProgramError> {
-        // We have to start at 1 since configurations may not use the whole
-        // 32-byte array of an `AccountMetaPda` (empty = 0)
-        match bytes[0] {
-            1 => {
-                let bytes_length = bytes[1] as usize;
-                Ok(Seed::Literal {
-                    bytes: bytes[2..2 + bytes_length].to_vec(),
-                })
-            }
-            2 => Ok(Seed::InstructionArg {
-                index: bytes[1],
-                ty: InstructionArgType::unpack(&bytes[2..4])?,
-            }),
-            3 => Ok(Seed::AccountKey { index: bytes[1] }),
+        let (discrim, rest) = bytes
+            .split_first()
+            .ok_or::<ProgramError>(ProgramError::InvalidAccountData)?;
+        match discrim {
+            0 => Ok(Self::Uninitialized),
+            1 => unpack_seed_literal(rest),
+            2 => unpack_seed_instruction_arg(rest),
+            3 => unpack_seed_account_key(rest),
             _ => Err(ProgramError::InvalidAccountData),
         }
     }
 
-    /// Unpacks all seed configurations from a 32-byte array
+    /// Unpacks all seed configurations from a 32-byte array.
+    /// Stops when it hits uninitialized data (0s).
     pub fn unpack_array(bytes: &[u8; 32]) -> Result<Vec<Self>, ProgramError> {
         let mut seeds = vec![];
         let mut i = 0;
-        while i < 32 && bytes[i] != 0 {
-            let seed = match bytes[i] {
-                1 => {
-                    let bytes_length = bytes[i + 1] as usize;
-                    Seed::Literal {
-                        bytes: bytes[i + 2..i + 2 + bytes_length].to_vec(),
-                    }
-                }
-                2 => Seed::InstructionArg {
-                    index: bytes[i + 1],
-                    ty: InstructionArgType::unpack(&bytes[i + 2..i + 4])?,
-                },
-                3 => Seed::AccountKey {
-                    index: bytes[i + 1],
-                },
-                _ => return Err(ProgramError::InvalidAccountData),
-            };
-            let tlv_size = seed.tlv_size() as usize;
+        while i < 32 {
+            let seed = Self::unpack(&bytes[i..])?;
+            let seed_size = seed.tlv_size() as usize;
+            i += seed_size;
+            if seed == Self::Uninitialized {
+                break;
+            }
             seeds.push(seed);
-            i += tlv_size;
         }
         Ok(seeds)
     }
 
     /// Get all indices references by an `AccountKey` configuration
-    pub fn get_account_key_indices(seed_configs: &[Self]) -> Vec<usize> {
+    pub fn get_account_key_indices(seed_configs: &[Self]) -> Vec<u8> {
         seed_configs
             .iter()
             .filter_map(|seed_config| match seed_config {
-                Seed::AccountKey { index } => Some(*index as usize),
+                Self::AccountKey { index } => Some(*index),
                 _ => None,
             })
             .collect::<Vec<_>>()
     }
 }
 
-/// Enum to describe the type of instruction argument to resolve
-#[derive(Clone, Debug, PartialEq)]
-pub enum InstructionArgType {
-    /// A `u8` argument
-    U8,
-    /// A `u16` argument
-    U16,
-    /// A `u8` argument
-    U32,
-    /// A `u64` argument
-    U64,
-    /// A `u128` argument
-    U128,
-    /// A `Pubkey` argument
-    Pubkey,
-    /// A `[u8]` argument.
-    /// Max seed length is 32, so `u8` for size is OK.
-    /// Strings should be converted to bytes and use this.
-    U8Array(u8),
+fn unpack_seed_literal(bytes: &[u8]) -> Result<Seed, ProgramError> {
+    let (length, rest) = bytes
+        .split_first()
+        // Should be at least 1 byte
+        .ok_or::<ProgramError>(AccountResolutionError::NotEnoughBytesForSeed.into())?;
+    let length = *length as usize;
+    if rest.len() < length {
+        // Should be at least `length` bytes
+        return Err(AccountResolutionError::NotEnoughBytesForSeed.into());
+    }
+    Ok(Seed::Literal {
+        bytes: rest[..length].to_vec(),
+    })
 }
-impl InstructionArgType {
-    /// The size of the TLV for an instruction argument type
-    const TLV_SIZE: u8 = 2;
 
-    /// Get the size of an instruction argument type
-    pub fn arg_size(&self) -> u8 {
-        match self {
-            InstructionArgType::U8 => 1,
-            InstructionArgType::U16 => 2,
-            InstructionArgType::U32 => 4,
-            InstructionArgType::U64 => 8,
-            InstructionArgType::U128 => 16,
-            InstructionArgType::Pubkey => 32,
-            InstructionArgType::U8Array(size) => *size,
-        }
+fn unpack_seed_instruction_arg(bytes: &[u8]) -> Result<Seed, ProgramError> {
+    if bytes.len() < 2 {
+        // Should be at least 2 bytes
+        return Err(AccountResolutionError::NotEnoughBytesForSeed.into());
     }
+    Ok(Seed::InstructionArg {
+        index: bytes[0],
+        length: bytes[1],
+    })
+}
 
-    /// Packs an instruction argument type into a byte vector
-    /// Uses two bytes to describe the type and length of the arg
-    pub fn pack(&self) -> Vec<u8> {
-        match self {
-            InstructionArgType::U8 => vec![0, 0],
-            InstructionArgType::U16 => vec![0, 1],
-            InstructionArgType::U32 => vec![0, 2],
-            InstructionArgType::U64 => vec![0, 3],
-            InstructionArgType::U128 => vec![0, 4],
-            InstructionArgType::Pubkey => vec![0, 5],
-            InstructionArgType::U8Array(size) => vec![1, *size],
-        }
+fn unpack_seed_account_key(bytes: &[u8]) -> Result<Seed, ProgramError> {
+    if bytes.is_empty() {
+        // Should be at least 1 byte
+        return Err(AccountResolutionError::NotEnoughBytesForSeed.into());
     }
-
-    /// Unpacks an instruction argument type from a buffer
-    pub fn unpack(bytes: &[u8]) -> Result<Self, ProgramError> {
-        match bytes[0] {
-            0 => match bytes[1] {
-                0 => Ok(InstructionArgType::U8),
-                1 => Ok(InstructionArgType::U16),
-                2 => Ok(InstructionArgType::U32),
-                3 => Ok(InstructionArgType::U64),
-                4 => Ok(InstructionArgType::U128),
-                5 => Ok(InstructionArgType::Pubkey),
-                _ => Err(ProgramError::InvalidAccountData),
-            },
-            1 => Ok(InstructionArgType::U8Array(bytes[1])),
-            _ => Err(ProgramError::InvalidAccountData),
-        }
-    }
+    Ok(Seed::AccountKey { index: bytes[0] })
 }

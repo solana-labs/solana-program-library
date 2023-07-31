@@ -22,15 +22,15 @@ use {
 #[derive(Clone, Debug, PartialEq)]
 struct Node {
     /// The index of the account in the total accounts list
-    index: usize,
+    index: u8,
     /// The indices of the accounts whose keys this account's
     /// PDA depends on (if any)
-    dependencies: Vec<usize>,
+    dependencies: Vec<u8>,
     /// The required account itself as a `RequiredAccount`
     required_account: RequiredAccount,
 }
 impl Node {
-    fn new(index: usize, dependencies: Vec<usize>, required_account: RequiredAccount) -> Self {
+    fn new(index: u8, dependencies: Vec<u8>, required_account: RequiredAccount) -> Self {
         Self {
             index,
             dependencies,
@@ -38,7 +38,7 @@ impl Node {
         }
     }
 
-    fn has_dependency(&self, index: usize) -> bool {
+    fn has_dependency(&self, index: u8) -> bool {
         self.dependencies.contains(&index)
     }
 }
@@ -80,7 +80,7 @@ impl AccountResolutionStack {
         self.0.as_mut().unwrap().1.as_mut()
     }
 
-    fn has_dependency(&self, index: usize) -> bool {
+    fn has_dependency(&self, index: u8) -> bool {
         if let Some((node, _)) = &self.0 {
             node.has_dependency(index)
         } else {
@@ -88,7 +88,7 @@ impl AccountResolutionStack {
         }
     }
 
-    fn search(&self, indices: &[usize]) -> bool {
+    fn search(&self, indices: &[u8]) -> bool {
         if indices.is_empty() {
             return false;
         }
@@ -154,11 +154,7 @@ impl AccountResolutionStack {
     }
 
     /// Insert a required account and preserve proper ordering of the stack
-    fn insert(
-        &mut self,
-        index: usize,
-        required_account: RequiredAccount,
-    ) -> Result<(), ProgramError> {
+    fn insert(&mut self, index: u8, required_account: RequiredAccount) -> Result<(), ProgramError> {
         let dependencies = match &required_account {
             RequiredAccount::Account { .. } => vec![],
             RequiredAccount::Pda { seeds, .. } => Seed::get_account_key_indices(seeds),
@@ -196,7 +192,7 @@ impl AccountResolutionStack {
     /// Resolve a program-derived address (PDA) from the instruction data
     /// and the accounts that have already been resolved
     fn resolve_pda(
-        resolved_metas: &BTreeMap<usize, AccountMeta>,
+        resolved_metas: &BTreeMap<u8, AccountMeta>,
         instruction_data: &[u8],
         program_id: &Pubkey,
         seeds: &[Seed],
@@ -204,14 +200,15 @@ impl AccountResolutionStack {
         let mut pda_seeds: Vec<&[u8]> = vec![];
         for config in seeds {
             match config {
+                Seed::Uninitialized => continue,
                 Seed::Literal { bytes } => pda_seeds.push(bytes),
-                Seed::InstructionArg { index, ty } => {
+                Seed::InstructionArg { index, length } => {
                     let arg_start = *index as usize;
-                    let arg_end = arg_start + ty.arg_size() as usize;
+                    let arg_end = arg_start + *length as usize;
                     pda_seeds.push(&instruction_data[arg_start..arg_end]);
                 }
                 Seed::AccountKey { index } => {
-                    let account_index = *index as usize;
+                    let account_index = *index;
                     let account_meta = resolved_metas
                         .get(&account_index)
                         .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?;
@@ -268,12 +265,15 @@ impl AccountResolutionStack {
         let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
 
         for (index, ix_account_meta) in instruction.accounts.iter().enumerate() {
-            stack.insert(index, RequiredAccount::from(ix_account_meta))?;
+            stack.insert(
+                index.try_into().unwrap(),
+                RequiredAccount::from(ix_account_meta),
+            )?;
         }
 
         for (index, account_meta) in extra_account_metas.data().iter().enumerate() {
             stack.insert(
-                index + instruction.accounts.len(),
+                (index + instruction.accounts.len()).try_into().unwrap(),
                 RequiredAccount::try_from(account_meta)?,
             )?;
         }
