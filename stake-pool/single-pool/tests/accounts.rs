@@ -33,8 +33,8 @@ async fn build_instructions(
     test_mode: TestMode,
 ) -> (Vec<Instruction>, usize) {
     let initialize_instructions = if test_mode == TestMode::Initialize {
-        let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-        context.warp_to_slot(first_normal_slot).unwrap();
+        let slot = context.genesis_config().epoch_schedule.first_normal_slot + 1;
+        context.warp_to_slot(slot).unwrap();
 
         create_vote(
             &mut context.banks_client,
