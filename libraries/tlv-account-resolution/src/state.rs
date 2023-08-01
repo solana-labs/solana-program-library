@@ -4,12 +4,13 @@ use {
     crate::{
         account::{PodAccountMeta, RequiredAccount},
         error::AccountResolutionError,
-        stack::AccountResolutionStack,
+        seeds::Seed,
     },
     solana_program::{
         account_info::AccountInfo,
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
+        pubkey::Pubkey,
     },
     spl_discriminator::SplDiscriminate,
     spl_type_length_value::{
@@ -145,12 +146,96 @@ impl ExtraAccountMetas {
             .saturating_add(PodSlice::<PodAccountMeta>::size_of(num_items)?))
     }
 
+    /// De-escalate an account meta if necessary
+    fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[AccountMeta]) {
+        // This is a little tricky to read, but the idea is to see if
+        // this account is marked as writable or signer anywhere in
+        // the instruction at the start. If so, DON'T escalate it to
+        // be a writer or signer in the CPI
+        let maybe_highest_privileges = account_metas
+            .iter()
+            .filter(|&x| x.pubkey == account_meta.pubkey)
+            .map(|x| (x.is_signer, x.is_writable))
+            .reduce(|acc, x| (acc.0 || x.0, acc.1 || x.1));
+        // If `Some`, then the account was found somewhere in the instruction
+        if let Some((is_signer, is_writable)) = maybe_highest_privileges {
+            if !is_signer && is_signer != account_meta.is_signer {
+                // Existing account is *NOT* a signer already, but the CPI
+                // wants it to be, so de-escalate to not be a signer
+                account_meta.is_signer = false;
+            }
+            if !is_writable && is_writable != account_meta.is_writable {
+                // Existing account is *NOT* writable already, but the CPI
+                // wants it to be, so de-escalate to not be writable
+                account_meta.is_writable = false;
+            }
+        }
+    }
+
+    /// Resolve a program-derived address (PDA) from the instruction data
+    /// and the accounts that have already been resolved
+    fn resolve_pda(
+        resolved_metas: &[AccountMeta],
+        instruction_data: &[u8],
+        program_id: &Pubkey,
+        seeds: &[Seed],
+    ) -> Result<Pubkey, ProgramError> {
+        let mut pda_seeds: Vec<&[u8]> = vec![];
+        for config in seeds {
+            match config {
+                Seed::Uninitialized => continue,
+                Seed::Literal { bytes } => pda_seeds.push(bytes),
+                Seed::InstructionArg { index, length } => {
+                    let arg_start = *index as usize;
+                    let arg_end = arg_start + *length as usize;
+                    pda_seeds.push(&instruction_data[arg_start..arg_end]);
+                }
+                Seed::AccountKey { index } => {
+                    let account_index = *index as usize;
+                    let account_meta = resolved_metas
+                        .get(account_index)
+                        .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?;
+                    pda_seeds.push(account_meta.pubkey.as_ref());
+                }
+            }
+        }
+        Ok(Pubkey::find_program_address(&pda_seeds, program_id).0)
+    }
+
     /// Add the additional account metas to an existing instruction
     pub fn add_to_instruction<T: SplDiscriminate>(
         instruction: &mut Instruction,
         data: &[u8],
     ) -> Result<(), ProgramError> {
-        AccountResolutionStack::resolve::<T>(instruction, data)
+        let state = TlvStateBorrowed::unpack(data)?;
+        let bytes = state.get_bytes::<T>()?;
+        let extra_required_accounts = PodSlice::<PodAccountMeta>::unpack(bytes)?;
+
+        for required_account in extra_required_accounts.data().iter() {
+            let mut account_meta = if let RequiredAccount::Pda {
+                seeds,
+                is_signer,
+                is_writable,
+            } = RequiredAccount::try_from(required_account)?
+            {
+                AccountMeta {
+                    pubkey: Self::resolve_pda(
+                        &instruction.accounts,
+                        &instruction.data,
+                        &instruction.program_id,
+                        &seeds,
+                    )?,
+                    is_signer,
+                    is_writable,
+                }
+            } else {
+                AccountMeta::try_from(required_account)?
+            };
+            Self::de_escalate_account_meta(&mut account_meta, &instruction.accounts);
+            instruction.accounts.push(account_meta);
+        }
+
+        Ok(())
     }
 
     /// Add the additional account metas and account infos for a CPI
@@ -162,7 +247,7 @@ impl ExtraAccountMetas {
     ) -> Result<(), ProgramError> {
         let initial_instruction_metas = cpi_instruction.accounts.clone();
 
-        AccountResolutionStack::resolve::<T>(cpi_instruction, data)?;
+        Self::add_to_instruction::<T>(cpi_instruction, data)?;
 
         for account_meta in cpi_instruction.accounts.iter().filter(|&x| {
             !initial_instruction_metas
@@ -991,219 +1076,5 @@ mod tests {
             assert_eq!(a.is_signer, b.is_signer);
             assert_eq!(a.is_writable, b.is_writable);
         }
-    }
-
-    #[test]
-    fn test_stack() {
-        // Adding highly-complex PDA configurations to test account resolution stack
-        let program_id = Pubkey::new_unique();
-
-        let extra_meta7_literal_str = "seed_prefix";
-
-        let ix_account_a = AccountMeta::new(Pubkey::new_unique(), false);
-        let ix_account_b = AccountMeta::new(Pubkey::new_unique(), true);
-
-        let extra_meta_c = AccountMeta::new(Pubkey::new_unique(), false);
-        let extra_meta_d = AccountMeta::new(Pubkey::new_unique(), true);
-
-        let extra_meta_e = RequiredAccount::Pda {
-            seeds: vec![Seed::AccountKey { index: 3 }, Seed::AccountKey { index: 8 }],
-            is_signer: false,
-            is_writable: true,
-        };
-        let extra_meta_f = RequiredAccount::Pda {
-            seeds: vec![
-                Seed::AccountKey { index: 1 },
-                Seed::AccountKey { index: 2 },
-                Seed::AccountKey { index: 4 },
-                Seed::AccountKey { index: 6 },
-                Seed::AccountKey { index: 11 },
-            ],
-            is_signer: false,
-            is_writable: true,
-        };
-        let extra_meta_g = RequiredAccount::Pda {
-            seeds: vec![
-                Seed::AccountKey { index: 4 },
-                Seed::AccountKey { index: 8 },
-                Seed::AccountKey { index: 10 },
-            ],
-            is_signer: false,
-            is_writable: true,
-        };
-        let extra_meta_h = RequiredAccount::Pda {
-            seeds: vec![
-                Seed::AccountKey { index: 4 },
-                Seed::AccountKey { index: 8 },
-                Seed::AccountKey { index: 10 },
-            ],
-            is_signer: false,
-            is_writable: true,
-        };
-        let extra_meta_i = RequiredAccount::Pda {
-            seeds: vec![Seed::Literal {
-                bytes: extra_meta7_literal_str.as_bytes().to_vec(),
-            }],
-            is_signer: false,
-            is_writable: true,
-        };
-        let extra_meta_j = RequiredAccount::Pda {
-            seeds: vec![Seed::AccountKey { index: 6 }],
-            is_signer: false,
-            is_writable: true,
-        };
-        let extra_meta_k = RequiredAccount::Pda {
-            seeds: vec![Seed::AccountKey { index: 0 }, Seed::AccountKey { index: 8 }],
-            is_signer: false,
-            is_writable: true,
-        };
-        let extra_meta_l = RequiredAccount::Pda {
-            seeds: vec![Seed::AccountKey { index: 3 }, Seed::AccountKey { index: 4 }],
-            is_signer: false,
-            is_writable: true,
-        };
-
-        let metas = [
-            RequiredAccount::from(&extra_meta_c),
-            RequiredAccount::from(&extra_meta_d),
-            extra_meta_e,
-            extra_meta_f,
-            extra_meta_g,
-            extra_meta_h,
-            extra_meta_i,
-            extra_meta_j,
-            extra_meta_k,
-            extra_meta_l,
-        ];
-
-        let ix_accounts = vec![ix_account_a.clone(), ix_account_b.clone()];
-        let mut instruction = Instruction::new_with_bytes(program_id, &[], ix_accounts);
-
-        let account_size = ExtraAccountMetas::size_of(metas.len()).unwrap();
-        let mut buffer = vec![0; account_size];
-
-        ExtraAccountMetas::init_with_required_accounts::<TestInstruction>(&mut buffer, &metas)
-            .unwrap();
-
-        ExtraAccountMetas::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
-            .unwrap();
-
-        let check_extra_meta_e_pda = Pubkey::find_program_address(
-            &[
-                &instruction.accounts.get(3).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(8).unwrap().pubkey.to_bytes(),
-            ],
-            &program_id,
-        )
-        .0;
-        assert_eq!(
-            check_extra_meta_e_pda,
-            instruction.accounts.get(4).unwrap().pubkey
-        );
-
-        let check_extra_meta_f_pda = Pubkey::find_program_address(
-            &[
-                &instruction.accounts.get(1).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(2).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(4).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(6).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(11).unwrap().pubkey.to_bytes(),
-            ],
-            &program_id,
-        )
-        .0;
-        assert_eq!(
-            check_extra_meta_f_pda,
-            instruction.accounts.get(5).unwrap().pubkey
-        );
-
-        let check_extra_meta_g_pda = Pubkey::find_program_address(
-            &[
-                &instruction.accounts.get(4).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(8).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(10).unwrap().pubkey.to_bytes(),
-            ],
-            &program_id,
-        )
-        .0;
-        assert_eq!(
-            check_extra_meta_g_pda,
-            instruction.accounts.get(6).unwrap().pubkey
-        );
-
-        let check_extra_meta_h_pda = Pubkey::find_program_address(
-            &[
-                &instruction.accounts.get(4).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(8).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(10).unwrap().pubkey.to_bytes(),
-            ],
-            &program_id,
-        )
-        .0;
-        assert_eq!(
-            check_extra_meta_h_pda,
-            instruction.accounts.get(7).unwrap().pubkey
-        );
-
-        let check_extra_meta_i_pda =
-            Pubkey::find_program_address(&[extra_meta7_literal_str.as_bytes()], &program_id).0;
-        assert_eq!(
-            check_extra_meta_i_pda,
-            instruction.accounts.get(8).unwrap().pubkey
-        );
-
-        let check_extra_meta_j_pda = Pubkey::find_program_address(
-            &[&instruction.accounts.get(6).unwrap().pubkey.to_bytes()],
-            &program_id,
-        )
-        .0;
-        assert_eq!(
-            check_extra_meta_j_pda,
-            instruction.accounts.get(9).unwrap().pubkey
-        );
-
-        let check_extra_meta_k_pda = Pubkey::find_program_address(
-            &[
-                &instruction.accounts.get(0).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(8).unwrap().pubkey.to_bytes(),
-            ],
-            &program_id,
-        )
-        .0;
-        assert_eq!(
-            check_extra_meta_k_pda,
-            instruction.accounts.get(10).unwrap().pubkey
-        );
-
-        let check_extra_meta_l_pda = Pubkey::find_program_address(
-            &[
-                &instruction.accounts.get(3).unwrap().pubkey.to_bytes(),
-                &instruction.accounts.get(4).unwrap().pubkey.to_bytes(),
-            ],
-            &program_id,
-        )
-        .0;
-        assert_eq!(
-            check_extra_meta_l_pda,
-            instruction.accounts.get(11).unwrap().pubkey
-        );
-
-        let check_accounts = vec![
-            ix_account_a,
-            ix_account_b,
-            extra_meta_c,
-            extra_meta_d,
-            AccountMeta::new(check_extra_meta_e_pda, false),
-            AccountMeta::new(check_extra_meta_f_pda, false),
-            AccountMeta::new(check_extra_meta_g_pda, false),
-            AccountMeta::new(check_extra_meta_h_pda, false),
-            AccountMeta::new(check_extra_meta_i_pda, false),
-            AccountMeta::new(check_extra_meta_j_pda, false),
-            AccountMeta::new(check_extra_meta_k_pda, false),
-            AccountMeta::new(check_extra_meta_l_pda, false),
-        ];
-
-        assert_eq!(instruction.accounts.len(), 12);
-        assert_eq!(instruction.accounts, check_accounts);
     }
 }

@@ -47,9 +47,6 @@ pub enum AccountResolutionError {
     /// The provided bytes are not valid for a seed configuration
     #[error("The provided bytes are not valid for a seed configuration")]
     InvalidBytesForSeed,
-    /// Circular reference in validation account PDA configuration
-    #[error("Circular reference in validation account PDA configuration")]
-    CircularReference,
     /// Could not find account at specified index
     #[error("Could not find account at specified index")]
     AccountNotFound,
