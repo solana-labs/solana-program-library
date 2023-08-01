@@ -32,7 +32,10 @@ impl<'data> BigVec<'data> {
     }
 
     /// Retain all elements that match the provided function, discard all others
-    pub fn retain<T: Pack>(&mut self, predicate: fn(&[u8]) -> bool) -> Result<(), ProgramError> {
+    pub fn retain<T: Pack, F: Fn(&[u8]) -> bool>(
+        &mut self,
+        predicate: F,
+    ) -> Result<(), ProgramError> {
         let mut vec_len = self.len();
         let mut removals_found = 0;
         let mut dst_start_index = 0;
@@ -307,7 +310,7 @@ mod tests {
 
         let mut data = [0u8; 4 + 8 * 4];
         let mut v = from_slice(&mut data, &[1, 2, 3, 4]);
-        v.retain::<TestStruct>(mod_2_predicate).unwrap();
+        v.retain::<TestStruct, _>(mod_2_predicate).unwrap();
         check_big_vec_eq(&v, &[2, 4]);
     }
 
