@@ -275,9 +275,9 @@
     buffer "~6.0.3"
 
 "@solana/web3.js@^1.11.0":
-  version "1.78.1"
-  resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.78.1.tgz#1b1023f81aa98f53ef45eaec642be11c0a0877f3"
-  integrity sha512-r0WZAYwCfVElfONP/dmWkEfw6wufL+u7lWojEsNecn9PyIIYq+r4eb0h2MRiJ3xkctvTN76G0T6FTGcTJhXh3Q==
+  version "1.78.2"
+  resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.78.2.tgz#ae976ce2f793077aa104ab455f9f75be86a3e2a4"
+  integrity sha512-oF+TmBZCt3eAEl4Meu3GO2p6G8wdyoKgXgTKzQpIUIhpMGA/dVQzyMFpKjCgoTU1Kx+/UF3gXUdsZOxQukGbvQ==
   dependencies:
     "@babel/runtime" "^7.22.6"
     "@noble/curves" "^1.0.0"
@@ -285,7 +285,7 @@
     "@solana/buffer-layout" "^4.0.0"
     agentkeepalive "^4.2.1"
     bigint-buffer "^1.1.5"
-    bn.js "^5.0.0"
+    bn.js "^5.2.1"
     borsh "^0.7.0"
     bs58 "^4.0.1"
     buffer "6.0.3"
@@ -782,7 +782,7 @@ bluebird@3.7.2:
   resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.7.2.tgz#9f229c15be272454ffa973ace0dbee79a1b0c36f"
   integrity sha512-XpNj6GDQzdfW+r2Wnn7xiSAd7TM3jzkxGXBGTtWKuSXv1xUV+azxAm8jdWZN06QTQk+2N2XB9jRDkvbmQmcRtg==
 
-bn.js@^5.0.0, bn.js@^5.1.3, bn.js@^5.2.0:
+bn.js@^5.1.3, bn.js@^5.2.0, bn.js@^5.2.1:
   version "5.2.1"
   resolved "https://registry.yarnpkg.com/bn.js/-/bn.js-5.2.1.tgz#0bc527a6a0d18d0aa8d5b0538ce4a77dccfa7b70"
   integrity sha512-eXRvHzWyYPBuB4NBy0cmYQjGitUrtqwbvlzP3G6VFnNRbsZQIxQ10PbKKHt8gZ/HW/D/747aDl+QkDqg3KQLMQ==
