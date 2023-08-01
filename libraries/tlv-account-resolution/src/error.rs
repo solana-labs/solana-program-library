@@ -41,9 +41,12 @@ pub enum AccountResolutionError {
     /// Provided list of seed configurations too large for a validation account
     #[error("Provided list of seed configurations too large for a validation account")]
     SeedConfigsTooLarge,
-    /// Not enough bytes for seed configuration
-    #[error("Not enough bytes for seed configuration")]
+    /// Not enough bytes available to pack seed configuration
+    #[error("Not enough bytes available to pack seed configuration")]
     NotEnoughBytesForSeed,
+    /// The provided bytes are not valid for a seed configuration
+    #[error("The provided bytes are not valid for a seed configuration")]
+    InvalidBytesForSeed,
     /// Circular reference in validation account PDA configuration
     #[error("Circular reference in validation account PDA configuration")]
     CircularReference,
