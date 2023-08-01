@@ -26,11 +26,14 @@ use {
                     ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo, TransferAccountInfo,
                     WithdrawAccountInfo,
                 },
-                ConfidentialTransferAccount,
+                ConfidentialTransferAccount, DecryptableBalance,
             },
-            confidential_transfer_fee, cpi_guard, default_account_state, interest_bearing_mint,
-            memo_transfer, metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions,
-            ExtensionType, StateWithExtensionsOwned,
+            confidential_transfer_fee::{
+                self, account_info::WithheldTokensInfo, ConfidentialTransferFeeConfig,
+            },
+            cpi_guard, default_account_state, interest_bearing_mint, memo_transfer,
+            metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
+            StateWithExtensionsOwned,
         },
         instruction, offchain,
         proof::ProofLocation,
@@ -2415,61 +2418,63 @@ where
         .await
     }
 
-    /// Withdraw withheld confidential tokens from mint using the uniquely derived decryption key
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint<S: Signer>(
+    /// Withdraw withheld confidential tokens from mint
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint<S: Signers>(
         &self,
-        withdraw_withheld_authority: &S,
-        destination_token_account: &Pubkey,
-        destination_elgamal_pubkey: &ElGamalPubkey,
-        withheld_amount: u64,
-        withheld_amount_ciphertext: &ElGamalCiphertext,
-    ) -> TokenResult<T::Output> {
-        // derive withheld authority elgamal key
-        let withdraw_withheld_authority_elgamal_keypair =
-            ElGamalKeypair::new(withdraw_withheld_authority, &self.pubkey)
-                .map_err(TokenError::Key)?;
-
-        self.confidential_transfer_withdraw_withheld_tokens_from_mint_with_key(
-            withdraw_withheld_authority,
-            destination_token_account,
-            destination_elgamal_pubkey,
-            withheld_amount,
-            withheld_amount_ciphertext,
-            &withdraw_withheld_authority_elgamal_keypair,
-        )
-        .await
-    }
-
-    /// Withdraw withheld confidential tokens from mint using a custom decryption key
-    #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_key<S: Signer>(
-        &self,
-        withdraw_withheld_authority: &S,
-        destination_token_account: &Pubkey,
-        destination_elgamal_pubkey: &ElGamalPubkey,
-        withheld_amount: u64,
-        withheld_amount_ciphertext: &ElGamalCiphertext,
+        destination_account: &Pubkey,
+        withdraw_withheld_authority: &Pubkey,
+        context_state_account: Option<&Pubkey>,
+        account_info: Option<WithheldTokensInfo>,
         withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
+        destination_elgamal_pubkey: &ElGamalPubkey,
+        new_decryptable_available_balance: &DecryptableBalance,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let proof_data = confidential_transfer::instruction::WithdrawWithheldTokensData::new(
-            withdraw_withheld_authority_elgamal_keypair,
-            destination_elgamal_pubkey,
-            withheld_amount_ciphertext,
-            withheld_amount,
-        )
-        .map_err(TokenError::Proof)?;
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers =
+            self.get_multisig_signers(withdraw_withheld_authority, &signing_pubkeys);
+
+        let account_info = if let Some(account_info) = account_info {
+            account_info
+        } else {
+            self.get_mint_info()
+                .await?
+                .get_extension::<ConfidentialTransferFeeConfig>()?
+                .withheld_tokens_info()
+        };
+
+        let proof_data = if context_state_account.is_some() {
+            None
+        } else {
+            Some(
+                account_info
+                    .generate_proof_data(
+                        withdraw_withheld_authority_elgamal_keypair,
+                        destination_elgamal_pubkey,
+                    )
+                    .map_err(|_| TokenError::ProofGeneration)?,
+            )
+        };
+
+        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
+            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+        } else {
+            let context_state_account = context_state_account.unwrap();
+            ProofLocation::ContextStateAccount(context_state_account)
+        };
 
         self.process_ixs(
-            &confidential_transfer::instruction::withdraw_withheld_tokens_from_mint(
+            &confidential_transfer_fee::instruction::withdraw_withheld_tokens_from_mint(
                 &self.program_id,
                 &self.pubkey,
-                destination_token_account,
-                &withdraw_withheld_authority.pubkey(),
-                &[],
-                &proof_data,
+                destination_account,
+                new_decryptable_available_balance,
+                withdraw_withheld_authority,
+                &multisig_signers,
+                proof_location,
             )?,
-            &[withdraw_withheld_authority],
+            signing_keypairs,
         )
         .await
     }

@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "solana"))]
+use crate::extension::confidential_transfer_fee::account_info::*;
 use {
     crate::{
         error::TokenError,
@@ -14,6 +16,10 @@ pub mod instruction;
 
 /// Confidential transfer fee extension processor
 pub mod processor;
+
+/// Confidential Transfer Fee extension account information needed for instructions
+#[cfg(not(target_os = "solana"))]
+pub mod account_info;
 
 /// ElGamal ciphertext containing a transfer fee
 pub type EncryptedFee = FeeEncryption;
@@ -40,6 +46,17 @@ pub struct ConfidentialTransferFeeConfig {
 
 impl Extension for ConfidentialTransferFeeConfig {
     const TYPE: ExtensionType = ExtensionType::ConfidentialTransferFeeConfig;
+}
+
+impl ConfidentialTransferFeeConfig {
+    /// Return the account information needed to construct a `WithdrawWithheldTokensFromMint`
+    /// instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn withheld_tokens_info(&self) -> WithheldTokensInfo {
+        WithheldTokensInfo {
+            withheld_amount: self.withheld_amount,
+        }
+    }
 }
 
 /// Confidential transfer fee
