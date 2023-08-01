@@ -165,7 +165,7 @@ async fn success() {
     }
 
     // Update epoch
-    let slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slot = context.genesis_config().epoch_schedule.first_normal_slot + 1;
     context.warp_to_slot(slot).unwrap();
 
     let last_blockhash = context
@@ -279,7 +279,7 @@ async fn success_absorbing_extra_lamports() {
     let expected_fee = stake_pool.calc_epoch_fee_amount(extra_lamports).unwrap();
 
     // Update epoch
-    let slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slot = context.genesis_config().epoch_schedule.first_normal_slot + 1;
     context.warp_to_slot(slot).unwrap();
     let last_blockhash = context
         .banks_client

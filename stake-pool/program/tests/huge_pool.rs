@@ -107,7 +107,7 @@ async fn setup(
 
     let mut context = program_test.start_with_context().await;
     let epoch_schedule = context.genesis_config().epoch_schedule;
-    let slot = epoch_schedule.first_normal_slot + epoch_schedule.slots_per_epoch;
+    let slot = epoch_schedule.first_normal_slot + epoch_schedule.slots_per_epoch + 1;
     context.warp_to_slot(slot).unwrap();
 
     let vote_pubkey = vote_account_pubkeys[max_validators as usize - 1];
@@ -635,7 +635,7 @@ async fn withdraw(max_validators: u32) {
             &pool_account_pubkey,
             &stake_address,
             &user.pubkey(),
-            STAKE_AMOUNT,
+            TEST_STAKE_AMOUNT,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);

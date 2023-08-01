@@ -2379,12 +2379,14 @@ pub fn add_validator_stake_account(
         credits_observed: 0,
     };
 
+    let mut data = bincode::serialize::<stake::state::StakeState>(
+        &stake::state::StakeState::Stake(meta, stake),
+    )
+    .unwrap();
+    data.extend_from_slice(&[0, 0, 0, 0]);
     let stake_account = SolanaAccount::create(
         stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
-        bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Stake(
-            meta, stake,
-        ))
-        .unwrap(),
+        data,
         stake::program::id(),
         false,
         Epoch::default(),
