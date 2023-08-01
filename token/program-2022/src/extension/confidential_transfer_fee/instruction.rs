@@ -416,7 +416,7 @@ pub fn harvest_withheld_tokens_to_mint(
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        TokenInstruction::ConfidentialTransferExtension,
+        TokenInstruction::ConfidentialTransferFeeExtension,
         ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint,
         &(),
     ))

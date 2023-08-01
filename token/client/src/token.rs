@@ -2555,14 +2555,13 @@ where
     }
 
     /// Harvest withheld confidential tokens to mint
-    #[cfg(feature = "proof-program")]
     pub async fn confidential_transfer_harvest_withheld_tokens_to_mint(
         &self,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
         self.process_ixs::<[&dyn Signer; 0]>(
             &[
-                confidential_transfer::instruction::harvest_withheld_tokens_to_mint(
+                confidential_transfer_fee::instruction::harvest_withheld_tokens_to_mint(
                     &self.program_id,
                     &self.pubkey,
                     sources,
