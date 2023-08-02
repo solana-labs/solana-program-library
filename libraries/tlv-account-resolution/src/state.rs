@@ -1,11 +1,7 @@
 //! State transition types
 
 use {
-    crate::{
-        account::{PodAccountMeta, RequiredAccount},
-        error::AccountResolutionError,
-        seeds::Seed,
-    },
+    crate::{error::AccountResolutionError, pod::PodAccountMeta, seeds::Seed},
     solana_program::{
         account_info::AccountInfo,
         instruction::{AccountMeta, Instruction},
@@ -80,22 +76,20 @@ pub struct ExtraAccountMetas;
 impl ExtraAccountMetas {
     /// Initialize pod slice data for the given instruction and any type
     /// convertible to account metas
-    pub fn init<'a, T: SplDiscriminate, M>(
+    pub fn init<'a, T: SplDiscriminate, F, M>(
         data: &mut [u8],
         convertible_account_metas: &'a [M],
+        conversion_fn: F,
     ) -> Result<(), ProgramError>
     where
-        PodAccountMeta: TryFrom<&'a M>,
+        F: Fn(&'a M) -> PodAccountMeta,
     {
         let mut state = TlvStateMut::unpack(data).unwrap();
         let tlv_size = PodSlice::<PodAccountMeta>::size_of(convertible_account_metas.len())?;
         let (bytes, _) = state.alloc::<T>(tlv_size, false)?;
         let mut extra_account_metas = PodSliceMut::init(bytes)?;
         for account_meta in convertible_account_metas {
-            extra_account_metas
-                .push(PodAccountMeta::try_from(account_meta).map_err(|_| {
-                    ProgramError::from(AccountResolutionError::InvalidAccountType)
-                })?)?;
+            extra_account_metas.push(conversion_fn(account_meta))?;
         }
         Ok(())
     }
@@ -106,7 +100,32 @@ impl ExtraAccountMetas {
         data: &mut [u8],
         account_infos: &[AccountInfo<'_>],
     ) -> Result<(), ProgramError> {
-        Self::init::<T, AccountInfo>(data, account_infos)
+        Self::init::<T, _, AccountInfo>(data, account_infos, |account_info| {
+            PodAccountMeta::from(account_info)
+        })
+    }
+
+    /// Initialize a TLV entry for the given discriminator, populating the data
+    /// with the given account metas
+    pub fn init_with_account_metas<T: SplDiscriminate>(
+        data: &mut [u8],
+        account_metas: &[AccountMeta],
+    ) -> Result<(), ProgramError> {
+        Self::init::<T, _, AccountMeta>(data, account_metas, |account_meta| {
+            PodAccountMeta::from(account_meta)
+        })
+    }
+
+    /// Initialize a TLV entry for the given discriminator, populating the data
+    /// with the given required accounts - which can be standard `AccountMeta`s
+    /// or PDAs
+    pub fn init_with_pod_account_metas<T: SplDiscriminate>(
+        data: &mut [u8],
+        pod_account_metas: &[PodAccountMeta],
+    ) -> Result<(), ProgramError> {
+        Self::init::<T, _, PodAccountMeta>(data, pod_account_metas, |pod_account_meta| {
+            *pod_account_meta
+        })
     }
 
     /// Get the underlying `PodSlice<PodAccountMeta>` from an unpacked TLV
@@ -119,25 +138,6 @@ impl ExtraAccountMetas {
     ) -> Result<PodSlice<'a, PodAccountMeta>, ProgramError> {
         let bytes = tlv_state.get_first_bytes::<T>()?;
         PodSlice::<PodAccountMeta>::unpack(bytes)
-    }
-
-    /// Initialize a TLV entry for the given discriminator, populating the data
-    /// with the given account metas
-    pub fn init_with_account_metas<T: SplDiscriminate>(
-        data: &mut [u8],
-        account_metas: &[AccountMeta],
-    ) -> Result<(), ProgramError> {
-        Self::init::<T, AccountMeta>(data, account_metas)
-    }
-
-    /// Initialize a TLV entry for the given discriminator, populating the data
-    /// with the given required accounts - which can be standard `AccountMeta`s
-    /// or PDAs
-    pub fn init_with_required_accounts<T: SplDiscriminate>(
-        data: &mut [u8],
-        required_accounts: &[RequiredAccount],
-    ) -> Result<(), ProgramError> {
-        Self::init::<T, RequiredAccount>(data, required_accounts)
     }
 
     /// Get the byte size required to hold `num_items` items
@@ -208,28 +208,26 @@ impl ExtraAccountMetas {
         data: &[u8],
     ) -> Result<(), ProgramError> {
         let state = TlvStateBorrowed::unpack(data)?;
-        let bytes = state.get_bytes::<T>()?;
-        let extra_required_accounts = PodSlice::<PodAccountMeta>::unpack(bytes)?;
+        let bytes = state.get_first_bytes::<T>()?;
+        let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
 
-        for required_account in extra_required_accounts.data().iter() {
-            let mut account_meta = if let RequiredAccount::Pda {
-                seeds,
-                is_signer,
-                is_writable,
-            } = RequiredAccount::try_from(required_account)?
-            {
-                AccountMeta {
-                    pubkey: Self::resolve_pda(
-                        &instruction.accounts,
-                        &instruction.data,
-                        &instruction.program_id,
-                        &seeds,
-                    )?,
-                    is_signer,
-                    is_writable,
+        for extra_meta in extra_account_metas.data().iter() {
+            let mut account_meta = match extra_meta.discriminator {
+                0 => AccountMeta::try_from(extra_meta)?,
+                1 => {
+                    let seeds = Seed::unpack_array(&extra_meta.address_config)?;
+                    AccountMeta {
+                        pubkey: Self::resolve_pda(
+                            &instruction.accounts,
+                            &instruction.data,
+                            &instruction.program_id,
+                            &seeds,
+                        )?,
+                        is_signer: extra_meta.is_signer.into(),
+                        is_writable: extra_meta.is_writable.into(),
+                    }
                 }
-            } else {
-                AccountMeta::try_from(required_account)?
+                _ => return Err(ProgramError::InvalidAccountData),
             };
             Self::de_escalate_account_meta(&mut account_meta, &instruction.accounts);
             instruction.accounts.push(account_meta);
@@ -381,7 +379,7 @@ mod tests {
     }
 
     #[test]
-    fn init_with_required_accounts() {
+    fn init_with_pod_account_metas() {
         let program_id = Pubkey::new_unique();
 
         let extra_meta3_literal_str = "seed_prefix";
@@ -391,8 +389,8 @@ mod tests {
 
         let extra_meta1 = AccountMeta::new(Pubkey::new_unique(), false);
         let extra_meta2 = AccountMeta::new(Pubkey::new_unique(), true);
-        let extra_meta3 = RequiredAccount::Pda {
-            seeds: vec![
+        let extra_meta3 = PodAccountMeta::new_with_seeds(
+            &[
                 Seed::Literal {
                     bytes: extra_meta3_literal_str.as_bytes().to_vec(),
                 },
@@ -403,13 +401,14 @@ mod tests {
                 Seed::AccountKey { index: 0 },
                 Seed::AccountKey { index: 2 },
             ],
-            is_signer: false,
-            is_writable: true,
-        };
+            false,
+            true,
+        )
+        .unwrap();
 
         let metas = [
-            RequiredAccount::from(&extra_meta1),
-            RequiredAccount::from(&extra_meta2),
+            PodAccountMeta::from(&extra_meta1),
+            PodAccountMeta::from(&extra_meta2),
             extra_meta3,
         ];
 
@@ -422,7 +421,7 @@ mod tests {
 
         // Notice we use `init_with_required_accounts` instead of
         // `init_with_account_metas`
-        ExtraAccountMetas::init_with_required_accounts::<TestInstruction>(&mut buffer, &metas)
+        ExtraAccountMetas::init_with_pod_account_metas::<TestInstruction>(&mut buffer, &metas)
             .unwrap();
 
         ExtraAccountMetas::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
@@ -474,8 +473,8 @@ mod tests {
         let extra_meta2 = AccountMeta::new(Pubkey::new_unique(), true);
         let extra_meta3 = AccountMeta::new_readonly(Pubkey::new_unique(), true);
         let extra_meta4 = AccountMeta::new_readonly(Pubkey::new_unique(), false);
-        let extra_meta5 = RequiredAccount::Pda {
-            seeds: vec![
+        let extra_meta5 = PodAccountMeta::new_with_seeds(
+            &[
                 Seed::Literal {
                     bytes: extra_meta5_literal_str.as_bytes().to_vec(),
                 },
@@ -488,13 +487,14 @@ mod tests {
                 },
                 Seed::AccountKey { index: 2 },
             ],
-            is_signer: false,
-            is_writable: true,
-        };
+            false,
+            true,
+        )
+        .unwrap();
 
         let other_meta1 = AccountMeta::new(Pubkey::new_unique(), false);
-        let other_meta2 = RequiredAccount::Pda {
-            seeds: vec![
+        let other_meta2 = PodAccountMeta::new_with_seeds(
+            &[
                 Seed::Literal {
                     bytes: other_meta2_literal_str.as_bytes().to_vec(),
                 },
@@ -504,26 +504,27 @@ mod tests {
                 },
                 Seed::AccountKey { index: 0 },
             ],
-            is_signer: false,
-            is_writable: true,
-        };
+            false,
+            true,
+        )
+        .unwrap();
 
         let metas = [
-            RequiredAccount::from(&extra_meta1),
-            RequiredAccount::from(&extra_meta2),
-            RequiredAccount::from(&extra_meta3),
-            RequiredAccount::from(&extra_meta4),
+            PodAccountMeta::from(&extra_meta1),
+            PodAccountMeta::from(&extra_meta2),
+            PodAccountMeta::from(&extra_meta3),
+            PodAccountMeta::from(&extra_meta4),
             extra_meta5,
         ];
-        let other_metas = [RequiredAccount::from(&other_meta1), other_meta2];
+        let other_metas = [PodAccountMeta::from(&other_meta1), other_meta2];
 
         let account_size = ExtraAccountMetas::size_of(metas.len()).unwrap()
             + ExtraAccountMetas::size_of(other_metas.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetas::init_with_required_accounts::<TestInstruction>(&mut buffer, &metas)
+        ExtraAccountMetas::init_with_pod_account_metas::<TestInstruction>(&mut buffer, &metas)
             .unwrap();
-        ExtraAccountMetas::init_with_required_accounts::<TestOtherInstruction>(
+        ExtraAccountMetas::init_with_pod_account_metas::<TestOtherInstruction>(
             &mut buffer,
             &other_metas,
         )
@@ -666,8 +667,8 @@ mod tests {
         let extra_meta2 = AccountMeta::new(Pubkey::new_unique(), true);
         let extra_meta3 = AccountMeta::new_readonly(Pubkey::new_unique(), true);
         let extra_meta4 = AccountMeta::new_readonly(Pubkey::new_unique(), false);
-        let extra_meta5 = RequiredAccount::Pda {
-            seeds: vec![
+        let extra_meta5 = PodAccountMeta::new_with_seeds(
+            &[
                 Seed::Literal {
                     bytes: extra_meta5_literal_str.as_bytes().to_vec(),
                 },
@@ -681,26 +682,28 @@ mod tests {
                 },
                 Seed::AccountKey { index: 2 },
             ],
-            is_signer: false,
-            is_writable: true,
-        };
-        let extra_meta6 = RequiredAccount::Pda {
-            seeds: vec![
+            false,
+            true,
+        )
+        .unwrap();
+        let extra_meta6 = PodAccountMeta::new_with_seeds(
+            &[
                 Seed::Literal {
                     bytes: extra_meta6_literal_u64.to_le_bytes().to_vec(),
                 },
                 Seed::AccountKey { index: 1 },
                 Seed::AccountKey { index: 4 },
             ],
-            is_signer: false,
-            is_writable: true,
-        };
+            false,
+            true,
+        )
+        .unwrap();
 
         let metas = [
-            RequiredAccount::from(&extra_meta1),
-            RequiredAccount::from(&extra_meta2),
-            RequiredAccount::from(&extra_meta3),
-            RequiredAccount::from(&extra_meta4),
+            PodAccountMeta::from(&extra_meta1),
+            PodAccountMeta::from(&extra_meta2),
+            PodAccountMeta::from(&extra_meta3),
+            PodAccountMeta::from(&extra_meta4),
             extra_meta5,
             extra_meta6,
         ];
@@ -711,7 +714,7 @@ mod tests {
 
         ExtraAccountMetas::init_with_account_infos::<TestInstruction>(&mut buffer, &account_infos)
             .unwrap();
-        ExtraAccountMetas::init_with_required_accounts::<TestOtherInstruction>(&mut buffer, &metas)
+        ExtraAccountMetas::init_with_pod_account_metas::<TestOtherInstruction>(&mut buffer, &metas)
             .unwrap();
 
         let program_id = Pubkey::new_unique();
@@ -889,8 +892,8 @@ mod tests {
         let required_pda1_literal_string = "required_pda1";
         let required_pda2_literal_u32 = 4u32;
 
-        let required_pda1 = RequiredAccount::Pda {
-            seeds: vec![
+        let required_pda1 = PodAccountMeta::new_with_seeds(
+            &[
                 Seed::Literal {
                     bytes: required_pda1_literal_string.as_bytes().to_vec(),
                 },
@@ -900,11 +903,12 @@ mod tests {
                 },
                 Seed::AccountKey { index: 1 },
             ],
-            is_signer: false,
-            is_writable: true,
-        };
-        let required_pda2 = RequiredAccount::Pda {
-            seeds: vec![
+            false,
+            true,
+        )
+        .unwrap();
+        let required_pda2 = PodAccountMeta::new_with_seeds(
+            &[
                 Seed::Literal {
                     bytes: required_pda2_literal_u32.to_le_bytes().to_vec(),
                 },
@@ -914,9 +918,10 @@ mod tests {
                 },
                 Seed::AccountKey { index: 5 },
             ],
-            is_signer: false,
-            is_writable: true,
-        };
+            false,
+            true,
+        )
+        .unwrap();
 
         // The program to CPI to has 2 account metas and
         // 5 extra required accounts (3 metas, 2 PDAs).
@@ -925,7 +930,7 @@ mod tests {
 
         let mut required_accounts = extra_account_infos
             .iter()
-            .map(RequiredAccount::from)
+            .map(PodAccountMeta::from)
             .collect::<Vec<_>>();
         required_accounts.push(required_pda1);
         required_accounts.push(required_pda2);
@@ -933,7 +938,7 @@ mod tests {
         let account_size = ExtraAccountMetas::size_of(required_accounts.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetas::init_with_required_accounts::<TestInstruction>(
+        ExtraAccountMetas::init_with_pod_account_metas::<TestInstruction>(
             &mut buffer,
             &required_accounts,
         )
