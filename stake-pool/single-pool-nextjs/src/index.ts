@@ -1,6 +1,8 @@
 import {
   Base58EncodedAddress,
   getBase58EncodedAddressCodec,
+createDefaultRpcTransport,
+createSolanaRpc,
   generateKeyPair,
   getBase58EncodedAddressFromPublicKey,
   Transaction,
@@ -282,7 +284,7 @@ export class SinglePoolInstruction {
 // XXX txn builders
 
 export async function initialize(
-  // TODO figure out how to do this --> connection: Connection,
+  rpc: any, // XXX not exported: Rpc<SolanaRpcMethods>,
   voteAccount: VoteAccountAddress,
   payer: Base58EncodedAddress,
   skipMetadata = false,
@@ -338,15 +340,21 @@ export async function initialize(
 // XXX test fn
 
 async function main() {
+  const transport = createDefaultRpcTransport({ url: 'http://127.0.0.1:8899' });
+  const rpc = createSolanaRpc({ transport });
+
   const payer = await generateKeyPair();
-  // TODO airdrop
+  const payerAddress = await getBase58EncodedAddressFromPublicKey(payer.publicKey);
+  console.log('payer:', payerAddress);
+  let res = await rpc.requestAirdrop(payerAddress, BigInt(100000000000) as any).send();
+  console.log('res:', res);
 
   const voteAccount = 'KRAKEnMdmT4EfM8ykTFH6yLoCd5vNLcQvJwF66Y2dag' as VoteAccountAddress;
-  console.log('address:', await findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccount));
 
   const transaction = await initialize(
+    rpc,
     voteAccount,
-    await getBase58EncodedAddressFromPublicKey(payer.publicKey),
+    payerAddress,
   );
   console.log('transaction:', transaction);
 }
