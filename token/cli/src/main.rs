@@ -144,6 +144,7 @@ pub enum CommandName {
     EnableCpiGuard,
     DisableCpiGuard,
     UpdateDefaultAccountState,
+    UpdateMetadataAddress,
     WithdrawWithheldTokens,
     SetTransferFee,
     WithdrawExcessLamports,
@@ -2302,6 +2303,33 @@ async fn command_cpi_guard(
     })
 }
 
+async fn command_update_metadata_pointer_address(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    authority: Pubkey,
+    new_metadata_address: Option<Pubkey>,
+    bulk_signers: BulkSigners,
+) -> CommandResult {
+    if config.sign_only {
+        panic!("Config can not be sign-only for updating metadata pointer address.");
+    }
+
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let res = token
+        .update_metadata_address(&authority, new_metadata_address, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 async fn command_update_default_account_state(
     config: &Config<'_>,
     token_pubkey: Pubkey,
@@ -3625,6 +3653,49 @@ fn app<'a, 'b>(
                 .offline_args(),
         )
         .subcommand(
+            SubCommand::with_name(CommandName::UpdateMetadataAddress.into())
+                .about("Updates metadata pointer address for the mint. Requires the metadata pointer extension.")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token mint to update the metadata pointer address"),
+                )
+                .arg(
+                    Arg::with_name("metadata_address")
+                        .index(2)
+                        .validator(is_valid_pubkey)
+                        .value_name("METADATA_ADDRESS")
+                        .takes_value(true)
+                        .required_unless("disable")
+                        .help("Specify address that stores token's metadata-pointer"),
+                )
+                .arg(
+                    Arg::with_name("disable")
+                        .long("disable")
+                        .takes_value(false)
+                        .conflicts_with("metadata_address")
+                        .help("Unset metadata pointer address.")
+                )
+                .arg(
+                    Arg::with_name("authority")
+                        .long("authority")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the token's metadata-pointer authority. \
+                            This may be a keypair file or the ASK keyword. \
+                            Defaults to the client keypair.",
+                        ),
+                )
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
             SubCommand::with_name(CommandName::WithdrawWithheldTokens.into())
                 .about("Withdraw withheld transfer fee tokens from mint and / or account(s)")
                 .arg(
@@ -4387,6 +4458,28 @@ async fn process_command<'a>(
             )
             .await
         }
+        (CommandName::UpdateMetadataAddress, arg_matches) => {
+            // Since account is required argument it will always be present
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+
+            let (authority_signer, authority) =
+                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(authority_signer, &mut bulk_signers);
+            }
+            let metadata_address = value_t!(arg_matches, "metadata_address", Pubkey).ok();
+
+            command_update_metadata_pointer_address(
+                config,
+                token,
+                authority,
+                metadata_address,
+                bulk_signers,
+            )
+            .await
+        }
         (CommandName::WithdrawWithheldTokens, arg_matches) => {
             let (authority_signer, authority) = config.signer_or_default(
                 arg_matches,
@@ -4504,6 +4597,10 @@ async fn finish_tx<'a>(
             Ok(TransactionReturnData::CliSignature(CliSignature {
                 signature: signature.to_string(),
             }))
+        }
+        RpcClientResponse::Simulation(_) => {
+            // Implement this once the CLI supports dry-running / simulation
+            unreachable!()
         }
     }
 }
@@ -7488,6 +7585,55 @@ mod tests {
         assert_eq!(
             extension.metadata_address,
             Some(metadata_address).try_into().unwrap()
+        );
+
+        let new_metadata_address = Pubkey::new_unique();
+
+        let _new_result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::UpdateMetadataAddress.into(),
+                &mint.to_string(),
+                &new_metadata_address.to_string(),
+            ],
+        )
+        .await;
+
+        let new_account = config.rpc_client.get_account(&mint).await.unwrap();
+        let new_mint_state = StateWithExtensionsOwned::<Mint>::unpack(new_account.data).unwrap();
+
+        let new_extension = new_mint_state.get_extension::<MetadataPointer>().unwrap();
+
+        assert_eq!(
+            new_extension.metadata_address,
+            Some(new_metadata_address).try_into().unwrap()
+        );
+
+        let _result_with_disable = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::UpdateMetadataAddress.into(),
+                &mint.to_string(),
+                "--disable",
+            ],
+        )
+        .await;
+
+        let new_account_disbale = config.rpc_client.get_account(&mint).await.unwrap();
+        let new_mint_state_disable =
+            StateWithExtensionsOwned::<Mint>::unpack(new_account_disbale.data).unwrap();
+
+        let new_extension_disable = new_mint_state_disable
+            .get_extension::<MetadataPointer>()
+            .unwrap();
+
+        assert_eq!(
+            new_extension_disable.metadata_address,
+            None.try_into().unwrap()
         );
     }
 }

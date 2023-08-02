@@ -14,9 +14,9 @@ walkdir = "2"
 [dependencies]
 clap = "2.33.3"
 console = "0.15.7"
-serde = "1.0.168"
+serde = "1.0.180"
 serde_derive = "1.0.103"
-serde_json = "1.0.102"
+serde_json = "1.0.104"
 solana-account-decoder = "=1.16.3"
 solana-clap-utils = "=1.16.3"
 solana-cli-config = "=1.16.3"
@@ -37,9 +37,9 @@ tokio = "1.14"
 
 [dev-dependencies]
 solana-test-validator = "=1.16.3"
-assert_cmd = "2.0.11"
+assert_cmd = "2.0.12"
 serial_test = "2.0.0"
-tempfile = "3.6.0"
+tempfile = "3.7.0"
 
 [[bin]]
 name = "spl-token"

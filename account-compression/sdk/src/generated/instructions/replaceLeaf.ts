@@ -14,10 +14,10 @@ import * as web3 from '@solana/web3.js';
  * @category generated
  */
 export type ReplaceLeafInstructionArgs = {
-  root: number[] /* size: 32 */;
-  previousLeaf: number[] /* size: 32 */;
-  newLeaf: number[] /* size: 32 */;
-  index: number;
+    root: number[] /* size: 32 */;
+    previousLeaf: number[] /* size: 32 */;
+    newLeaf: number[] /* size: 32 */;
+    index: number;
 };
 /**
  * @category Instructions
@@ -25,18 +25,18 @@ export type ReplaceLeafInstructionArgs = {
  * @category generated
  */
 export const replaceLeafStruct = new beet.BeetArgsStruct<
-  ReplaceLeafInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */;
-  }
+    ReplaceLeafInstructionArgs & {
+        instructionDiscriminator: number[] /* size: 8 */;
+    }
 >(
-  [
-    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
-    ['previousLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
-    ['newLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
-    ['index', beet.u32],
-  ],
-  'ReplaceLeafInstructionArgs'
+    [
+        ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+        ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['previousLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['newLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['index', beet.u32],
+    ],
+    'ReplaceLeafInstructionArgs'
 );
 /**
  * Accounts required by the _replaceLeaf_ instruction
@@ -49,15 +49,13 @@ export const replaceLeafStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type ReplaceLeafInstructionAccounts = {
-  merkleTree: web3.PublicKey;
-  authority: web3.PublicKey;
-  noop: web3.PublicKey;
-  anchorRemainingAccounts?: web3.AccountMeta[];
+    merkleTree: web3.PublicKey;
+    authority: web3.PublicKey;
+    noop: web3.PublicKey;
+    anchorRemainingAccounts?: web3.AccountMeta[];
 };
 
-export const replaceLeafInstructionDiscriminator = [
-  204, 165, 76, 100, 73, 147, 0, 128,
-];
+export const replaceLeafInstructionDiscriminator = [204, 165, 76, 100, 73, 147, 0, 128];
 
 /**
  * Creates a _ReplaceLeaf_ instruction.
@@ -70,42 +68,42 @@ export const replaceLeafInstructionDiscriminator = [
  * @category generated
  */
 export function createReplaceLeafInstruction(
-  accounts: ReplaceLeafInstructionAccounts,
-  args: ReplaceLeafInstructionArgs,
-  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+    accounts: ReplaceLeafInstructionAccounts,
+    args: ReplaceLeafInstructionArgs,
+    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
-  const [data] = replaceLeafStruct.serialize({
-    instructionDiscriminator: replaceLeafInstructionDiscriminator,
-    ...args,
-  });
-  const keys: web3.AccountMeta[] = [
-    {
-      pubkey: accounts.merkleTree,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.authority,
-      isWritable: false,
-      isSigner: true,
-    },
-    {
-      pubkey: accounts.noop,
-      isWritable: false,
-      isSigner: false,
-    },
-  ];
+    const [data] = replaceLeafStruct.serialize({
+        instructionDiscriminator: replaceLeafInstructionDiscriminator,
+        ...args,
+    });
+    const keys: web3.AccountMeta[] = [
+        {
+            isSigner: false,
+            isWritable: true,
+            pubkey: accounts.merkleTree,
+        },
+        {
+            isSigner: true,
+            isWritable: false,
+            pubkey: accounts.authority,
+        },
+        {
+            isSigner: false,
+            isWritable: false,
+            pubkey: accounts.noop,
+        },
+    ];
 
-  if (accounts.anchorRemainingAccounts != null) {
-    for (const acc of accounts.anchorRemainingAccounts) {
-      keys.push(acc);
+    if (accounts.anchorRemainingAccounts != null) {
+        for (const acc of accounts.anchorRemainingAccounts) {
+            keys.push(acc);
+        }
     }
-  }
 
-  const ix = new web3.TransactionInstruction({
-    programId,
-    keys,
-    data,
-  });
-  return ix;
+    const ix = new web3.TransactionInstruction({
+        data,
+        keys,
+        programId,
+    });
+    return ix;
 }

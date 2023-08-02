@@ -23,7 +23,8 @@ pub fn pod_slice_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut [T], Pr
     bytemuck::try_cast_slice_mut(bytes).map_err(|_| ProgramError::InvalidArgument)
 }
 
-/// Simple macro for implementing conversion functions between Pod* ints and standard ints.
+/// Simple macro for implementing conversion functions between Pod* ints and
+/// standard ints.
 ///
 /// The standard int types can cause alignment issues when placed in a `Pod`,
 /// so these replacements are usable in all `Pod`s.

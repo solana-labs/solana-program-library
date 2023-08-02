@@ -28,7 +28,7 @@
     "doc": "yarn typedoc src/index.ts",
     "test": "yarn test:unit && yarn test:e2e",
     "test:unit": "mocha test/unit",
-    "test:e2e": "start-server-and-test 'solana-test-validator --bpf-program namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX ../../target/deploy/spl_name_service.so --reset --quiet' http://localhost:8899/health 'mocha test/e2e'"
+    "test:e2e": "start-server-and-test 'solana-test-validator --bpf-program namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX ../../target/deploy/spl_name_service.so --reset --quiet' http://127.0.0.1:8899/health 'mocha test/e2e'"
   },
   "prettier": {
     "singleQuote": true

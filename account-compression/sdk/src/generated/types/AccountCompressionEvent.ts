@@ -7,11 +7,8 @@
 
 import * as beet from '@metaplex-foundation/beet';
 
+import { ApplicationDataEvent, applicationDataEventBeet } from './ApplicationDataEvent';
 import { ChangeLogEvent, changeLogEventBeet } from './ChangeLogEvent';
-import {
-  ApplicationDataEvent,
-  applicationDataEventBeet,
-} from './ApplicationDataEvent';
 /**
  * This type is used to derive the {@link AccountCompressionEvent} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link AccountCompressionEvent} type instead.
@@ -22,8 +19,8 @@ import {
  * @private
  */
 export type AccountCompressionEventRecord = {
-  ChangeLog: { fields: [ChangeLogEvent] };
-  ApplicationData: { fields: [ApplicationDataEvent] };
+    ChangeLog: { fields: [ChangeLogEvent] };
+    ApplicationData: { fields: [ApplicationDataEvent] };
 };
 
 /**
@@ -37,40 +34,32 @@ export type AccountCompressionEventRecord = {
  * @category enums
  * @category generated
  */
-export type AccountCompressionEvent =
-  beet.DataEnumKeyAsKind<AccountCompressionEventRecord>;
+export type AccountCompressionEvent = beet.DataEnumKeyAsKind<AccountCompressionEventRecord>;
 
 export const isAccountCompressionEventChangeLog = (
-  x: AccountCompressionEvent
-): x is AccountCompressionEvent & { __kind: 'ChangeLog' } =>
-  x.__kind === 'ChangeLog';
+    x: AccountCompressionEvent
+): x is AccountCompressionEvent & { __kind: 'ChangeLog' } => x.__kind === 'ChangeLog';
 export const isAccountCompressionEventApplicationData = (
-  x: AccountCompressionEvent
-): x is AccountCompressionEvent & { __kind: 'ApplicationData' } =>
-  x.__kind === 'ApplicationData';
+    x: AccountCompressionEvent
+): x is AccountCompressionEvent & { __kind: 'ApplicationData' } => x.__kind === 'ApplicationData';
 
 /**
  * @category userTypes
  * @category generated
  */
-export const accountCompressionEventBeet =
-  beet.dataEnum<AccountCompressionEventRecord>([
+export const accountCompressionEventBeet = beet.dataEnum<AccountCompressionEventRecord>([
     [
-      'ChangeLog',
-      new beet.FixableBeetArgsStruct<
-        AccountCompressionEventRecord['ChangeLog']
-      >(
-        [['fields', beet.tuple([changeLogEventBeet])]],
-        'AccountCompressionEventRecord["ChangeLog"]'
-      ),
+        'ChangeLog',
+        new beet.FixableBeetArgsStruct<AccountCompressionEventRecord['ChangeLog']>(
+            [['fields', beet.tuple([changeLogEventBeet])]],
+            'AccountCompressionEventRecord["ChangeLog"]'
+        ),
     ],
     [
-      'ApplicationData',
-      new beet.FixableBeetArgsStruct<
-        AccountCompressionEventRecord['ApplicationData']
-      >(
-        [['fields', beet.tuple([applicationDataEventBeet])]],
-        'AccountCompressionEventRecord["ApplicationData"]'
-      ),
+        'ApplicationData',
+        new beet.FixableBeetArgsStruct<AccountCompressionEventRecord['ApplicationData']>(
+            [['fields', beet.tuple([applicationDataEventBeet])]],
+            'AccountCompressionEventRecord["ApplicationData"]'
+        ),
     ],
-  ]) as beet.FixableBeet<AccountCompressionEvent>;
+]) as beet.FixableBeet<AccountCompressionEvent>;

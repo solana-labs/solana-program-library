@@ -8,8 +8,8 @@
 import * as beet from '@metaplex-foundation/beet';
 
 import {
-  ConcurrentMerkleTreeHeaderDataV1,
-  concurrentMerkleTreeHeaderDataV1Beet,
+    ConcurrentMerkleTreeHeaderDataV1,
+    concurrentMerkleTreeHeaderDataV1Beet,
 } from './ConcurrentMerkleTreeHeaderDataV1';
 /**
  * This type is used to derive the {@link ConcurrentMerkleTreeHeaderData} type as well as the de/serializer.
@@ -21,7 +21,7 @@ import {
  * @private
  */
 export type ConcurrentMerkleTreeHeaderDataRecord = {
-  V1: { fields: [ConcurrentMerkleTreeHeaderDataV1] };
+    V1: { fields: [ConcurrentMerkleTreeHeaderDataV1] };
 };
 
 /**
@@ -35,29 +35,22 @@ export type ConcurrentMerkleTreeHeaderDataRecord = {
  * @category enums
  * @category generated
  */
-export type ConcurrentMerkleTreeHeaderData =
-  beet.DataEnumKeyAsKind<ConcurrentMerkleTreeHeaderDataRecord>;
+export type ConcurrentMerkleTreeHeaderData = beet.DataEnumKeyAsKind<ConcurrentMerkleTreeHeaderDataRecord>;
 
 export const isConcurrentMerkleTreeHeaderDataV1 = (
-  x: ConcurrentMerkleTreeHeaderData
+    x: ConcurrentMerkleTreeHeaderData
 ): x is ConcurrentMerkleTreeHeaderData & { __kind: 'V1' } => x.__kind === 'V1';
 
 /**
  * @category userTypes
  * @category generated
  */
-export const concurrentMerkleTreeHeaderDataBeet =
-  beet.dataEnum<ConcurrentMerkleTreeHeaderDataRecord>([
+export const concurrentMerkleTreeHeaderDataBeet = beet.dataEnum<ConcurrentMerkleTreeHeaderDataRecord>([
     [
-      'V1',
-      new beet.BeetArgsStruct<ConcurrentMerkleTreeHeaderDataRecord['V1']>(
-        [
-          [
-            'fields',
-            beet.fixedSizeTuple([concurrentMerkleTreeHeaderDataV1Beet]),
-          ],
-        ],
-        'ConcurrentMerkleTreeHeaderDataRecord["V1"]'
-      ),
+        'V1',
+        new beet.BeetArgsStruct<ConcurrentMerkleTreeHeaderDataRecord['V1']>(
+            [['fields', beet.fixedSizeTuple([concurrentMerkleTreeHeaderDataV1Beet])]],
+            'ConcurrentMerkleTreeHeaderDataRecord["V1"]'
+        ),
     ],
-  ]) as beet.FixableBeet<ConcurrentMerkleTreeHeaderData>;
+]) as beet.FixableBeet<ConcurrentMerkleTreeHeaderData>;

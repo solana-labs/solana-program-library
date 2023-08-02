@@ -1,0 +1,97 @@
+name: Account Compression Pull Request
+
+on:
+  pull_request:
+    paths:
+      - "account-compression/**"
+      - "libraries/concurrent-merkle-tree/**"
+      - "ci/*-version.sh"
+      - "ci/install-anchor.sh"
+      - ".github/workflows/pull-request-account-compression.yml"
+  push:
+    branches: [master]
+    paths:
+      - "account-compression/**"
+      - "libraries/concurrent-merkle-tree/**"
+      - "ci/*-version.sh"
+      - "ci/install-anchor.sh"
+      - ".github/workflows/pull-request-account-compression.yml"
+
+jobs:
+  anchor-build-account-compression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+          source ci/install-anchor.sh
+          echo "ANCHOR_CLI_VERSION=$anchor_cli_version" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/rustfilt
+          key: cargo-sbf-bins-${{ runner.os }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/solana
+          key: solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Build Anchor Programs
+        run: |
+          ./ci/anchor-build.sh account-compression
+
+      - name: Upload programs
+        uses: actions/upload-artifact@v2
+        with:
+          name: account-compression-programs
+          path: "account-compression/target/deploy/*.so"
+          if-no-files-found: error
+
+  js-test-account-compression:
+    runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: 16.x
+    needs: anchor-build-account-compression
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/yarn
+          key: node-${{ hashFiles('account-compression/sdk/yarn.lock') }}
+          restore-keys: |
+            node-
+      - name: Download programs
+        uses: actions/download-artifact@v2
+        with:
+          name: account-compression-programs
+          path: account-compression/target/deploy
+      - run: ./ci/js-test-account-compression.sh

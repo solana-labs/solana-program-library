@@ -21,7 +21,7 @@ import {
 } from '../../src';
 
 chai.use(chaiAsPromised);
-const url = 'http://localhost:8899';
+const url = 'http://127.0.0.1:8899';
 
 describe('Name Service Program', async () => {
   const connection = new Connection(url, 'confirmed');

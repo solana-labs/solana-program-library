@@ -7,8 +7,8 @@ export * from './Canopy';
 export * from './ConcurrentMerkleTree';
 
 export type ChangeLogEventV1 = {
-  treeId: PublicKey;
-  path: PathNode[];
-  seq: BN;
-  index: number;
+    treeId: PublicKey;
+    path: PathNode[];
+    seq: BN;
+    index: number;
 };

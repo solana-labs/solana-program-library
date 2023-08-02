@@ -14,12 +14,13 @@ use {
     },
 };
 
-/// Stateless helper for storing additional accounts required for an instruction.
+/// Stateless helper for storing additional accounts required for an
+/// instruction.
 ///
 /// This struct works with any `SplDiscriminate`, and stores the extra accounts
-/// needed for that specific instruction, using the given `ArrayDiscriminator` as the
-/// type-length-value `ArrayDiscriminator`, and then storing all of the given
-/// `AccountMeta`s as a zero-copy slice.
+/// needed for that specific instruction, using the given `ArrayDiscriminator`
+/// as the type-length-value `ArrayDiscriminator`, and then storing all of the
+/// given `AccountMeta`s as a zero-copy slice.
 ///
 /// Sample usage:
 ///
@@ -83,7 +84,7 @@ impl ExtraAccountMetas {
     {
         let mut state = TlvStateMut::unpack(data).unwrap();
         let tlv_size = PodSlice::<PodAccountMeta>::size_of(convertible_account_metas.len())?;
-        let bytes = state.alloc::<T>(tlv_size)?;
+        let (bytes, _) = state.alloc::<T>(tlv_size, false)?;
         let mut extra_account_metas = PodSliceMut::init(bytes)?;
         for account_metas in convertible_account_metas {
             extra_account_metas.push(PodAccountMeta::from(account_metas))?;
@@ -108,7 +109,7 @@ impl ExtraAccountMetas {
     pub fn unpack_with_tlv_state<'a, T: SplDiscriminate>(
         tlv_state: &'a TlvStateBorrowed,
     ) -> Result<PodSlice<'a, PodAccountMeta>, ProgramError> {
-        let bytes = tlv_state.get_bytes::<T>()?;
+        let bytes = tlv_state.get_first_bytes::<T>()?;
         PodSlice::<PodAccountMeta>::unpack(bytes)
     }
 
@@ -163,7 +164,7 @@ impl ExtraAccountMetas {
         data: &[u8],
     ) -> Result<(), ProgramError> {
         let state = TlvStateBorrowed::unpack(data)?;
-        let bytes = state.get_bytes::<T>()?;
+        let bytes = state.get_first_bytes::<T>()?;
         let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
         let initial_instruction_length = account_metas.len();
         for mut account_meta in extra_account_metas.data().iter().map(AccountMeta::from) {
@@ -198,7 +199,7 @@ impl ExtraAccountMetas {
         account_infos: &[AccountInfo<'a>],
     ) -> Result<(), ProgramError> {
         let state = TlvStateBorrowed::unpack(data)?;
-        let bytes = state.get_bytes::<T>()?;
+        let bytes = state.get_first_bytes::<T>()?;
         let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
 
         let initial_cpi_instruction_length = cpi_instruction.accounts.len();

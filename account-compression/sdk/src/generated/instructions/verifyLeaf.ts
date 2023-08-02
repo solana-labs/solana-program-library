@@ -14,9 +14,9 @@ import * as web3 from '@solana/web3.js';
  * @category generated
  */
 export type VerifyLeafInstructionArgs = {
-  root: number[] /* size: 32 */;
-  leaf: number[] /* size: 32 */;
-  index: number;
+    root: number[] /* size: 32 */;
+    leaf: number[] /* size: 32 */;
+    index: number;
 };
 /**
  * @category Instructions
@@ -24,17 +24,17 @@ export type VerifyLeafInstructionArgs = {
  * @category generated
  */
 export const verifyLeafStruct = new beet.BeetArgsStruct<
-  VerifyLeafInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */;
-  }
+    VerifyLeafInstructionArgs & {
+        instructionDiscriminator: number[] /* size: 8 */;
+    }
 >(
-  [
-    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
-    ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
-    ['index', beet.u32],
-  ],
-  'VerifyLeafInstructionArgs'
+    [
+        ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+        ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['index', beet.u32],
+    ],
+    'VerifyLeafInstructionArgs'
 );
 /**
  * Accounts required by the _verifyLeaf_ instruction
@@ -45,13 +45,11 @@ export const verifyLeafStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type VerifyLeafInstructionAccounts = {
-  merkleTree: web3.PublicKey;
-  anchorRemainingAccounts?: web3.AccountMeta[];
+    merkleTree: web3.PublicKey;
+    anchorRemainingAccounts?: web3.AccountMeta[];
 };
 
-export const verifyLeafInstructionDiscriminator = [
-  124, 220, 22, 223, 104, 10, 250, 224,
-];
+export const verifyLeafInstructionDiscriminator = [124, 220, 22, 223, 104, 10, 250, 224];
 
 /**
  * Creates a _VerifyLeaf_ instruction.
@@ -64,32 +62,32 @@ export const verifyLeafInstructionDiscriminator = [
  * @category generated
  */
 export function createVerifyLeafInstruction(
-  accounts: VerifyLeafInstructionAccounts,
-  args: VerifyLeafInstructionArgs,
-  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+    accounts: VerifyLeafInstructionAccounts,
+    args: VerifyLeafInstructionArgs,
+    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
-  const [data] = verifyLeafStruct.serialize({
-    instructionDiscriminator: verifyLeafInstructionDiscriminator,
-    ...args,
-  });
-  const keys: web3.AccountMeta[] = [
-    {
-      pubkey: accounts.merkleTree,
-      isWritable: false,
-      isSigner: false,
-    },
-  ];
+    const [data] = verifyLeafStruct.serialize({
+        instructionDiscriminator: verifyLeafInstructionDiscriminator,
+        ...args,
+    });
+    const keys: web3.AccountMeta[] = [
+        {
+            isSigner: false,
+            isWritable: false,
+            pubkey: accounts.merkleTree,
+        },
+    ];
 
-  if (accounts.anchorRemainingAccounts != null) {
-    for (const acc of accounts.anchorRemainingAccounts) {
-      keys.push(acc);
+    if (accounts.anchorRemainingAccounts != null) {
+        for (const acc of accounts.anchorRemainingAccounts) {
+            keys.push(acc);
+        }
     }
-  }
 
-  const ix = new web3.TransactionInstruction({
-    programId,
-    keys,
-    data,
-  });
-  return ix;
+    const ix = new web3.TransactionInstruction({
+        data,
+        keys,
+        programId,
+    });
+    return ix;
 }

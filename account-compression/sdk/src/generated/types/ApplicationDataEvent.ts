@@ -7,10 +7,7 @@
 
 import * as beet from '@metaplex-foundation/beet';
 
-import {
-  ApplicationDataEventV1,
-  applicationDataEventV1Beet,
-} from './ApplicationDataEventV1';
+import { ApplicationDataEventV1, applicationDataEventV1Beet } from './ApplicationDataEventV1';
 /**
  * This type is used to derive the {@link ApplicationDataEvent} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link ApplicationDataEvent} type instead.
@@ -21,7 +18,7 @@ import {
  * @private
  */
 export type ApplicationDataEventRecord = {
-  V1: { fields: [ApplicationDataEventV1] };
+    V1: { fields: [ApplicationDataEventV1] };
 };
 
 /**
@@ -35,24 +32,21 @@ export type ApplicationDataEventRecord = {
  * @category enums
  * @category generated
  */
-export type ApplicationDataEvent =
-  beet.DataEnumKeyAsKind<ApplicationDataEventRecord>;
+export type ApplicationDataEvent = beet.DataEnumKeyAsKind<ApplicationDataEventRecord>;
 
-export const isApplicationDataEventV1 = (
-  x: ApplicationDataEvent
-): x is ApplicationDataEvent & { __kind: 'V1' } => x.__kind === 'V1';
+export const isApplicationDataEventV1 = (x: ApplicationDataEvent): x is ApplicationDataEvent & { __kind: 'V1' } =>
+    x.__kind === 'V1';
 
 /**
  * @category userTypes
  * @category generated
  */
-export const applicationDataEventBeet =
-  beet.dataEnum<ApplicationDataEventRecord>([
+export const applicationDataEventBeet = beet.dataEnum<ApplicationDataEventRecord>([
     [
-      'V1',
-      new beet.FixableBeetArgsStruct<ApplicationDataEventRecord['V1']>(
-        [['fields', beet.tuple([applicationDataEventV1Beet])]],
-        'ApplicationDataEventRecord["V1"]'
-      ),
+        'V1',
+        new beet.FixableBeetArgsStruct<ApplicationDataEventRecord['V1']>(
+            [['fields', beet.tuple([applicationDataEventV1Beet])]],
+            'ApplicationDataEventRecord["V1"]'
+        ),
     ],
-  ]) as beet.FixableBeet<ApplicationDataEvent>;
+]) as beet.FixableBeet<ApplicationDataEvent>;

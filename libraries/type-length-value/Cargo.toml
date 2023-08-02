@@ -8,11 +8,15 @@ license = "Apache-2.0"
 edition = "2021"
 exclude = ["js/**"]
 
+[features]
+derive = ["dep:spl-type-length-value-derive"]
+
 [dependencies]
 bytemuck = { version = "1.13.1", features = ["derive"] }
 solana-program = "1.16.3"
 spl-discriminator = { version = "0.1.0", path = "../discriminator" }
 spl-program-error = { version = "0.2.0", path = "../program-error" }
+spl-type-length-value-derive = { version = "0.1.0", path = "./derive", optional = true }
 
 [lib]
 crate-type = ["cdylib", "lib"]

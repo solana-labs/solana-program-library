@@ -5,9 +5,9 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js';
-import * as beetSolana from '@metaplex-foundation/beet-solana';
 import * as beet from '@metaplex-foundation/beet';
+import * as beetSolana from '@metaplex-foundation/beet-solana';
+import * as web3 from '@solana/web3.js';
 
 /**
  * @category Instructions
@@ -15,7 +15,7 @@ import * as beet from '@metaplex-foundation/beet';
  * @category generated
  */
 export type TransferAuthorityInstructionArgs = {
-  newAuthority: web3.PublicKey;
+    newAuthority: web3.PublicKey;
 };
 /**
  * @category Instructions
@@ -23,15 +23,15 @@ export type TransferAuthorityInstructionArgs = {
  * @category generated
  */
 export const transferAuthorityStruct = new beet.BeetArgsStruct<
-  TransferAuthorityInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */;
-  }
+    TransferAuthorityInstructionArgs & {
+        instructionDiscriminator: number[] /* size: 8 */;
+    }
 >(
-  [
-    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['newAuthority', beetSolana.publicKey],
-  ],
-  'TransferAuthorityInstructionArgs'
+    [
+        ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+        ['newAuthority', beetSolana.publicKey],
+    ],
+    'TransferAuthorityInstructionArgs'
 );
 /**
  * Accounts required by the _transferAuthority_ instruction
@@ -43,14 +43,12 @@ export const transferAuthorityStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type TransferAuthorityInstructionAccounts = {
-  merkleTree: web3.PublicKey;
-  authority: web3.PublicKey;
-  anchorRemainingAccounts?: web3.AccountMeta[];
+    merkleTree: web3.PublicKey;
+    authority: web3.PublicKey;
+    anchorRemainingAccounts?: web3.AccountMeta[];
 };
 
-export const transferAuthorityInstructionDiscriminator = [
-  48, 169, 76, 72, 229, 180, 55, 161,
-];
+export const transferAuthorityInstructionDiscriminator = [48, 169, 76, 72, 229, 180, 55, 161];
 
 /**
  * Creates a _TransferAuthority_ instruction.
@@ -63,37 +61,37 @@ export const transferAuthorityInstructionDiscriminator = [
  * @category generated
  */
 export function createTransferAuthorityInstruction(
-  accounts: TransferAuthorityInstructionAccounts,
-  args: TransferAuthorityInstructionArgs,
-  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+    accounts: TransferAuthorityInstructionAccounts,
+    args: TransferAuthorityInstructionArgs,
+    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
-  const [data] = transferAuthorityStruct.serialize({
-    instructionDiscriminator: transferAuthorityInstructionDiscriminator,
-    ...args,
-  });
-  const keys: web3.AccountMeta[] = [
-    {
-      pubkey: accounts.merkleTree,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.authority,
-      isWritable: false,
-      isSigner: true,
-    },
-  ];
+    const [data] = transferAuthorityStruct.serialize({
+        instructionDiscriminator: transferAuthorityInstructionDiscriminator,
+        ...args,
+    });
+    const keys: web3.AccountMeta[] = [
+        {
+            isSigner: false,
+            isWritable: true,
+            pubkey: accounts.merkleTree,
+        },
+        {
+            isSigner: true,
+            isWritable: false,
+            pubkey: accounts.authority,
+        },
+    ];
 
-  if (accounts.anchorRemainingAccounts != null) {
-    for (const acc of accounts.anchorRemainingAccounts) {
-      keys.push(acc);
+    if (accounts.anchorRemainingAccounts != null) {
+        for (const acc of accounts.anchorRemainingAccounts) {
+            keys.push(acc);
+        }
     }
-  }
 
-  const ix = new web3.TransactionInstruction({
-    programId,
-    keys,
-    data,
-  });
-  return ix;
+    const ix = new web3.TransactionInstruction({
+        data,
+        keys,
+        programId,
+    });
+    return ix;
 }
