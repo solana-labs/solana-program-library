@@ -414,13 +414,13 @@ pub(crate) fn process_instruction(
         ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts => {
             msg!("ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts");
             let data = decode_instruction_data::<WithdrawWithheldTokensFromAccountsData>(input)?;
-            return process_withdraw_withheld_tokens_from_accounts(
+            process_withdraw_withheld_tokens_from_accounts(
                 program_id,
                 accounts,
                 data.num_token_accounts,
                 &data.new_decryptable_available_balance,
                 data.proof_instruction_offset as i64,
-            );
+            )
         }
         ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint => {
             msg!("ConfidentialTransferInstruction::HarvestWithheldTokensToMint");
