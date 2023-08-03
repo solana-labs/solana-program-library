@@ -28,6 +28,7 @@ use solana_cli_output::{
 use solana_client::rpc_request::TokenAccountsFilter;
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
 use solana_sdk::{
+    instruction::AccountMeta,
     native_token::*,
     program_option::COption,
     pubkey::Pubkey,
@@ -153,6 +154,52 @@ pub enum CommandName {
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
+#[strum(serialize_all = "kebab-case")]
+pub enum AccountMetaRole {
+    Readonly,
+    Writable,
+    ReadonlySigner,
+    WritableSigner,
+}
+impl fmt::Display for AccountMetaRole {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+fn parse_transfer_hook_account<T>(string: T) -> Result<AccountMeta, String>
+where
+    T: AsRef<str> + Display,
+{
+    match string.as_ref().split(':').collect::<Vec<_>>().as_slice() {
+        [address, role] => {
+            let address = Pubkey::from_str(address).map_err(|e| format!("{e}"))?;
+            let meta = match AccountMetaRole::from_str(role).map_err(|e| format!("{e}"))? {
+                AccountMetaRole::Readonly => AccountMeta::new_readonly(address, false),
+                AccountMetaRole::Writable => AccountMeta::new(address, false),
+                AccountMetaRole::ReadonlySigner => AccountMeta::new_readonly(address, true),
+                AccountMetaRole::WritableSigner => AccountMeta::new(address, true),
+            };
+            Ok(meta)
+        }
+        _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
+    }
+}
+fn validate_transfer_hook_account<T>(string: T) -> Result<(), String>
+where
+    T: AsRef<str> + Display,
+{
+    match string.as_ref().split(':').collect::<Vec<_>>().as_slice() {
+        [address, role] => {
+            is_valid_pubkey(address)?;
+            AccountMetaRole::from_str(role)
+                .map(|_| ())
+                .map_err(|e| format!("{e}"))
+        }
+        _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
     }
 }
 
@@ -1104,7 +1151,7 @@ async fn command_transfer(
     bulk_signers: BulkSigners,
     no_wait: bool,
     allow_non_system_account_recipient: bool,
-    transfer_hook_accounts: Option<Vec<Pubkey>>,
+    transfer_hook_accounts: Option<Vec<AccountMeta>>,
 ) -> CommandResult {
     let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
 
@@ -3104,12 +3151,12 @@ fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("transfer_hook_account")
                         .long("transfer-hook-account")
-                        .validator(is_valid_pubkey)
-                        .value_name("PUBKEY")
+                        .validator(validate_transfer_hook_account)
+                        .value_name("PUBKEY:ROLE")
                         .takes_value(true)
                         .multiple(true)
                         .min_values(0u64)
-                        .help("Additional pubkey(s) required for a transfer hook. Used for offline transaction creation and signing.")
+                        .help("Additional pubkey(s) required for a transfer hook and their role. The role must be \"readonly\", \"writable\". \"readonly-signer\", or \"wrUsed for offline transaction creation and signing.")
                 )
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
@@ -4203,7 +4250,7 @@ async fn process_command<'a>(
             let memo = value_t!(arg_matches, "memo", String).ok();
             let transfer_hook_accounts = arg_matches.values_of("transfer_hook_account").map(|v| {
                 v.into_iter()
-                    .map(|s| Pubkey::from_str(s).unwrap_or_else(print_error_and_exit))
+                    .map(|s| parse_transfer_hook_account(s).unwrap())
                     .collect::<Vec<_>>()
             });
 

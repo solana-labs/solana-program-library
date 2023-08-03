@@ -281,7 +281,7 @@ pub struct Token<T> {
     nonce_authority: Option<Arc<dyn Signer>>,
     nonce_blockhash: Option<Hash>,
     memo: Arc<RwLock<Option<TokenMemo>>>,
-    transfer_hook_accounts: Option<Vec<Pubkey>>,
+    transfer_hook_accounts: Option<Vec<AccountMeta>>,
 }
 
 impl<T> fmt::Debug for Token<T> {
@@ -389,7 +389,7 @@ where
         self
     }
 
-    pub fn with_transfer_hook_accounts(mut self, transfer_hook_accounts: Vec<Pubkey>) -> Self {
+    pub fn with_transfer_hook_accounts(mut self, transfer_hook_accounts: Vec<AccountMeta>) -> Self {
         self.transfer_hook_accounts = Some(transfer_hook_accounts);
         self
     }
@@ -879,10 +879,7 @@ where
             )?
         };
         if let Some(transfer_hook_accounts) = &self.transfer_hook_accounts {
-            let additional_account_metas = transfer_hook_accounts
-                .iter()
-                .map(|p| AccountMeta::new_readonly(*p, false));
-            instruction.accounts.extend(additional_account_metas);
+            instruction.accounts.extend(transfer_hook_accounts.clone());
         } else {
             offchain::get_extra_transfer_account_metas(
                 &mut instruction.accounts,
