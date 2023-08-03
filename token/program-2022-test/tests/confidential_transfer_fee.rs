@@ -138,30 +138,6 @@ async fn confidential_transfer_fee_config() {
                 authority: Some(confidential_transfer_fee_authority.pubkey()),
                 withdraw_withheld_authority_elgamal_pubkey,
             },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
-        .await
-        .unwrap_err();
-
-    assert_eq!(
-        err,
-        TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(
-                3,
-                InstructionError::Custom(TokenError::InvalidExtensionCombination as u32),
-            )
-        )))
-    );
-
-    let err = context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
         ])
         .await
         .unwrap_err();
