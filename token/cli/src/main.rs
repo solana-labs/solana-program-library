@@ -3156,7 +3156,10 @@ fn app<'a, 'b>(
                         .takes_value(true)
                         .multiple(true)
                         .min_values(0u64)
-                        .help("Additional pubkey(s) required for a transfer hook and their role. The role must be \"readonly\", \"writable\". \"readonly-signer\", or \"wrUsed for offline transaction creation and signing.")
+                        .help("Additional pubkey(s) required for a transfer hook and their \
+                            role, in the format \"<PUBKEY>:<ROLE>\". The role must be \
+                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\".\
+                            Used for offline transaction creation and signing.")
                 )
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
