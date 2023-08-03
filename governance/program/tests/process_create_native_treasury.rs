@@ -74,7 +74,11 @@ async fn test_execute_transfer_from_native_treasury() {
         .unwrap();
 
     let signatory_record_cookie = governance_test
-        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .with_signatory(
+            &proposal_cookie,
+            &governance_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 

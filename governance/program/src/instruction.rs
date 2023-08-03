@@ -18,6 +18,7 @@ use crate::{
         },
         realm::{GoverningTokenConfigArgs, SetRealmAuthorityAction},
         realm_config::get_realm_config_address,
+        required_signatory::get_required_signatory_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
         vote_record::{get_vote_record_address, Vote},
@@ -65,7 +66,7 @@ pub enum GovernanceInstruction {
         name: String,
 
         #[allow(dead_code)]
-        /// Realm config args     
+        /// Realm config args
         config_args: RealmConfigArgs,
     },
 
@@ -122,7 +123,7 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
     ///   2. `[]` Account governed by this Governance
-    ///       Note: The account doesn't have to exist and can be only used as a unique identifier for the Governance account  
+    ///       Note: The account doesn't have to exist and can be only used as a unique identifier for the Governance account
     ///   3. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
@@ -208,31 +209,24 @@ pub enum GovernanceInstruction {
 
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
     ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   3. `[writable]` Signatory Record Account
-    ///   4. `[signer]` Payer
-    ///   5. `[]` System program
-    ///   6. `[]` Rent sysvar
+    ///   0. `[]` Governance account
+    ///   1. `[writable]` Proposal account associated with the governance
+    ///   2. `[writable]` Signatory Record Account
+    ///   3. `[signer]` Payer
+    ///   4. `[]` System program
+    ///   Either:
+    ///      - 5. `[]` TokenOwnerRecord account of the Proposal owner
+    ///        6. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///
+    ///      - 5. `[]` RequiredSignatory account associated with the governance.
     AddSignatory {
         #[allow(dead_code)]
         /// Signatory to add to the Proposal
         signatory: Pubkey,
     },
 
-    /// Removes a Signatory from the Proposal
-    ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   3. `[writable]` Signatory Record Account
-    ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed Signatory Record Account
-    RemoveSignatory {
-        #[allow(dead_code)]
-        /// Signatory to remove from the Proposal
-        signatory: Pubkey,
-    },
+    /// Formerly RemoveSignatory. Exists for backwards-compatibility.
+    Legacy1,
 
     /// Inserts Transaction with a set of instructions for the Proposal at the given index position
     /// New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index
@@ -324,10 +318,10 @@ pub enum GovernanceInstruction {
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
     ///
-    ///   0. `[]` Realm account    
+    ///   0. `[]` Realm account
     ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
-    ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
+    ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
     ///   4. `[]` Governing Token Mint
     ///   5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///   6. `[]` Optional Max Voter Weight Record
@@ -363,11 +357,11 @@ pub enum GovernanceInstruction {
 
     /// Creates Mint Governance account which governs a mint
     ///
-    ///   0. `[]` Realm account the created Governance belongs to    
+    ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]
     ///   2. `[writable]` Mint governed by this Governance account
     ///   3. `[signer]` Current Mint authority (MintTokens and optionally FreezeAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)   
+    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
@@ -389,18 +383,18 @@ pub enum GovernanceInstruction {
 
     /// Creates Token Governance account which governs a token account
     ///
-    ///   0. `[]` Realm account the created Governance belongs to    
+    ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Token Governance account. PDA seeds: ['token-governance', realm, governed_token]
     ///   2. `[writable]` Token account governed by this Governance account
     ///   3. `[signer]` Current token account authority (AccountOwner and optionally CloseAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)       
+    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
     ///   9. `[signer]` Governance authority
     ///   10. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
-    ///   11. `[]` Optional Voter Weight Record   
+    ///   11. `[]` Optional Voter Weight Record
     CreateTokenGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -415,7 +409,7 @@ pub enum GovernanceInstruction {
 
     /// Sets GovernanceConfig for a Governance
     ///
-    ///   0. `[]` Realm account the Governance account belongs to    
+    ///   0. `[]` Realm account the Governance account belongs to
     ///   1. `[writable, signer]` The Governance account the config is for
     SetGovernanceConfig {
         #[allow(dead_code)]
@@ -430,14 +424,14 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[writable]` ProposalTransaction account to flag
     FlagTransactionError,
 
     /// Sets new Realm authority
     ///
     ///   0. `[writable]` Realm account
-    ///   1. `[signer]` Current Realm authority    
+    ///   1. `[signer]` Current Realm authority
     ///   2. `[]` New realm authority. Must be one of the realm governances when set
     SetRealmAuthority {
         #[allow(dead_code)]
@@ -447,7 +441,7 @@ pub enum GovernanceInstruction {
 
     /// Sets realm config
     ///   0. `[writable]` Realm account
-    ///   1. `[signer]`  Realm authority    
+    ///   1. `[signer]`  Realm authority
     ///   2. `[]` Council Token Mint - optional
     ///       Note: In the current version it's only possible to remove council mint (set it to None)
     ///       After setting council to None it won't be possible to withdraw the tokens from the Realm any longer
@@ -457,11 +451,11 @@ pub enum GovernanceInstruction {
     ///   4. `[]` System
     ///   5. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
     ///
-    ///   6. `[]` Optional Community Voter Weight Addin Program Id    
-    ///   7. `[]` Optional Max Community Voter Weight Addin Program Id    
+    ///   6. `[]` Optional Community Voter Weight Addin Program Id
+    ///   7. `[]` Optional Max Community Voter Weight Addin Program Id
     ///
-    ///   8. `[]` Optional Council Voter Weight Addin Program Id    
-    ///   9. `[]` Optional Max Council Voter Weight Addin Program Id    
+    ///   8. `[]` Optional Council Voter Weight Addin Program Id
+    ///   9. `[]` Optional Max Council Voter Weight Addin Program Id
     ///
     ///   10. `[signer]` Optional Payer. Required if RealmConfig doesn't exist and needs to be created
     SetRealmConfig {
@@ -476,7 +470,7 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account
     ///   1. `[]` Governing Token Owner account
     ///   2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   3. `[]` Governing Token Mint   
+    ///   3. `[]` Governing Token Mint
     ///   4. `[signer]` Payer
     ///   5. `[]` System
     CreateTokenOwnerRecord {},
@@ -534,6 +528,25 @@ pub enum GovernanceInstruction {
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` CompleteProposal authority (Token Owner or Delegate)
     CompleteProposal {},
+
+    /// Adds a required signatory to the Governance, which will be applied to all proposals created with it
+    ///
+    ///   0. `[writable, signer]` The Governance account the config is for
+    ///   1. `[writable]` RequiredSignatory Account
+    ///   2. `[signer]` Payer
+    ///   3. `[]` System program
+    AddRequiredSignatory {
+        #[allow(dead_code)]
+        /// Required signatory to add to the Governance
+        signatory: Pubkey,
+    },
+
+    /// Removes a required signatory from the Governance
+    ///
+    ///  0. `[writable, signer]` The Governance account the config is for
+    ///  1. `[writable]` RequiredSignatory Account
+    ///  2. `[writable]` Beneficiary Account which would receive lamports from the disposed RequiredSignatory Account
+    RemoveRequiredSignatory,
 }
 
 /// Creates CreateRealm instruction
@@ -970,23 +983,38 @@ pub fn create_proposal(
 pub fn add_signatory(
     program_id: &Pubkey,
     // Accounts
+    governance: &Pubkey,
     proposal: &Pubkey,
-    token_owner_record: &Pubkey,
-    governance_authority: &Pubkey,
+    add_signatory_authority: &AddSignatoryAuthority,
     payer: &Pubkey,
     // Args
     signatory: &Pubkey,
 ) -> Instruction {
     let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
 
-    let accounts = vec![
+    let mut accounts = vec![
+        AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
-        AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(signatory_record_address, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
+
+    match add_signatory_authority {
+        AddSignatoryAuthority::ProposalOwner {
+            governance_authority,
+            token_owner_record,
+        } => {
+            accounts.push(AccountMeta::new_readonly(*token_owner_record, false));
+            accounts.push(AccountMeta::new_readonly(*governance_authority, true));
+        }
+        AddSignatoryAuthority::None => {
+            accounts.push(AccountMeta::new_readonly(
+                get_required_signatory_address(program_id, governance, signatory),
+                false,
+            ));
+        }
+    };
 
     let instruction = GovernanceInstruction::AddSignatory {
         signatory: *signatory,
@@ -999,35 +1027,18 @@ pub fn add_signatory(
     }
 }
 
-/// Creates RemoveSignatory instruction
-pub fn remove_signatory(
-    program_id: &Pubkey,
-    // Accounts
-    proposal: &Pubkey,
-    token_owner_record: &Pubkey,
-    governance_authority: &Pubkey,
-    signatory: &Pubkey,
-    beneficiary: &Pubkey,
-) -> Instruction {
-    let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
-
-    let accounts = vec![
-        AccountMeta::new(*proposal, false),
-        AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(signatory_record_address, false),
-        AccountMeta::new(*beneficiary, false),
-    ];
-
-    let instruction = GovernanceInstruction::RemoveSignatory {
-        signatory: *signatory,
-    };
-
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: instruction.try_to_vec().unwrap(),
-    }
+#[derive(Debug, Copy, Clone)]
+/// Enum to specify the authority by which the instruction should add a signatory
+pub enum AddSignatoryAuthority {
+    /// Proposal owners can add optional signatories to a proposal
+    ProposalOwner {
+        /// Token owner or its delegate
+        governance_authority: Pubkey,
+        /// Token owner record of the Proposal owner
+        token_owner_record: Pubkey,
+    },
+    /// Anyone can add signatories that are required by the governance to a proposal
+    None,
 }
 
 /// Creates SignOffProposal instruction
@@ -1606,6 +1617,62 @@ pub fn revoke_governing_tokens(
     ];
 
     let instruction = GovernanceInstruction::RevokeGoverningTokens { amount };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates AddRequiredSignatory instruction
+pub fn add_required_signatory(
+    program_id: &Pubkey,
+    // Accounts
+    governance: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    signatory: &Pubkey,
+) -> Instruction {
+    let required_signatory_address =
+        get_required_signatory_address(program_id, governance, signatory);
+
+    let accounts = vec![
+        AccountMeta::new(*governance, true),
+        AccountMeta::new(required_signatory_address, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::AddRequiredSignatory {
+        signatory: *signatory,
+    };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates RemoveRequiredSignatory instruction
+pub fn remove_required_signatory(
+    program_id: &Pubkey,
+    // Accounts
+    governance: &Pubkey,
+    signatory: &Pubkey,
+    beneficiary: &Pubkey,
+) -> Instruction {
+    let required_signatory_address =
+        get_required_signatory_address(program_id, governance, signatory);
+
+    let accounts = vec![
+        AccountMeta::new(*governance, true),
+        AccountMeta::new(required_signatory_address, false),
+        AccountMeta::new(*beneficiary, false),
+    ];
+
+    let instruction = GovernanceInstruction::RemoveRequiredSignatory;
 
     Instruction {
         program_id: *program_id,

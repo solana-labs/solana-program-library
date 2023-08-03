@@ -91,6 +91,9 @@ pub enum GovernanceAccountType {
 
     /// Proposal deposit account
     ProposalDeposit,
+
+    /// Required signatory account
+    RequiredSignatory,
 }
 
 /// What state a Proposal is in

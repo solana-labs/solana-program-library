@@ -14,7 +14,7 @@ use crate::{
         bpf_loader_upgradeable::{
             assert_program_upgrade_authority_is_signer, set_program_upgrade_authority,
         },
-        structs::Reserved120,
+        structs::Reserved119,
     },
 };
 use solana_program::{
@@ -72,7 +72,8 @@ pub fn process_create_program_governance(
         governed_account: *governed_program_info.key,
         config,
         reserved1: 0,
-        reserved_v2: Reserved120::default(),
+        reserved_v2: Reserved119::default(),
+        required_signatories_count: 0,
         active_proposal_count: 0,
     };
 
