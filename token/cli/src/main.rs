@@ -7853,4 +7853,123 @@ mod tests {
             None.try_into().unwrap()
         );
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn transfer_hook() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = spl_token_2022::id();
+        let mut config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        let transfer_hook_program_id = Pubkey::new_unique();
+
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                "--program-id",
+                &program_id.to_string(),
+                "--transfer-hook",
+                &transfer_hook_program_id.to_string(),
+            ],
+        )
+        .await;
+
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = mint_state.get_extension::<TransferHook>().unwrap();
+
+        assert_eq!(
+            extension.program_id,
+            Some(transfer_hook_program_id).try_into().unwrap()
+        );
+
+        let new_transfer_hook_program_id = Pubkey::new_unique();
+
+        let _new_result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::SetTransferHookProgram.into(),
+                &mint.to_string(),
+                &new_transfer_hook_program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = mint_state.get_extension::<TransferHook>().unwrap();
+
+        assert_eq!(
+            extension.program_id,
+            Some(new_transfer_hook_program_id).try_into().unwrap()
+        );
+
+        // Make sure that parsing transfer hook accounts works
+        let real_program_client = config.program_client;
+        let blockhash = Hash::default();
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+            ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
+        );
+        config.program_client = program_client;
+        let _result = exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                &mint.to_string(),
+                "10",
+                &Pubkey::new_unique().to_string(),
+                "--blockhash",
+                &blockhash.to_string(),
+                "--nonce",
+                &Pubkey::new_unique().to_string(),
+                "--nonce-authority",
+                &Pubkey::new_unique().to_string(),
+                "--sign-only",
+                "--mint-decimals",
+                &format!("{}", TEST_DECIMALS),
+                "--from",
+                &Pubkey::new_unique().to_string(),
+                "--owner",
+                &Pubkey::new_unique().to_string(),
+                "--transfer-hook-account",
+                &format!("{}:readonly", Pubkey::new_unique()),
+                "--transfer-hook-account",
+                &format!("{}:writable", Pubkey::new_unique()),
+                "--transfer-hook-account",
+                &format!("{}:readonly-signer", Pubkey::new_unique()),
+                "--transfer-hook-account",
+                &format!("{}:writable-signer", Pubkey::new_unique()),
+            ],
+        )
+        .await
+        .unwrap();
+
+        config.program_client = real_program_client;
+        let _result_with_disable = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::SetTransferHookProgram.into(),
+                &mint.to_string(),
+                "--disable",
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = mint_state.get_extension::<TransferHook>().unwrap();
+
+        assert_eq!(extension.program_id, None.try_into().unwrap());
+    }
 }
