@@ -28,6 +28,7 @@ use solana_cli_output::{
 use solana_client::rpc_request::TokenAccountsFilter;
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
 use solana_sdk::{
+    instruction::AccountMeta,
     native_token::*,
     program_option::COption,
     pubkey::Pubkey,
@@ -148,10 +149,57 @@ pub enum CommandName {
     WithdrawWithheldTokens,
     SetTransferFee,
     WithdrawExcessLamports,
+    SetTransferHookProgram,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
+#[strum(serialize_all = "kebab-case")]
+pub enum AccountMetaRole {
+    Readonly,
+    Writable,
+    ReadonlySigner,
+    WritableSigner,
+}
+impl fmt::Display for AccountMetaRole {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+fn parse_transfer_hook_account<T>(string: T) -> Result<AccountMeta, String>
+where
+    T: AsRef<str> + Display,
+{
+    match string.as_ref().split(':').collect::<Vec<_>>().as_slice() {
+        [address, role] => {
+            let address = Pubkey::from_str(address).map_err(|e| format!("{e}"))?;
+            let meta = match AccountMetaRole::from_str(role).map_err(|e| format!("{e}"))? {
+                AccountMetaRole::Readonly => AccountMeta::new_readonly(address, false),
+                AccountMetaRole::Writable => AccountMeta::new(address, false),
+                AccountMetaRole::ReadonlySigner => AccountMeta::new_readonly(address, true),
+                AccountMetaRole::WritableSigner => AccountMeta::new(address, true),
+            };
+            Ok(meta)
+        }
+        _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
+    }
+}
+fn validate_transfer_hook_account<T>(string: T) -> Result<(), String>
+where
+    T: AsRef<str> + Display,
+{
+    match string.as_ref().split(':').collect::<Vec<_>>().as_slice() {
+        [address, role] => {
+            is_valid_pubkey(address)?;
+            AccountMetaRole::from_str(role)
+                .map(|_| ())
+                .map_err(|e| format!("{e}"))
+        }
+        _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
     }
 }
 
@@ -421,6 +469,7 @@ async fn command_create_token(
     default_account_state: Option<AccountState>,
     transfer_fee: Option<(u16, u64)>,
     confidential_transfer_auto_approve: Option<bool>,
+    transfer_hook_program_id: Option<Pubkey>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(
@@ -482,6 +531,13 @@ async fn command_create_token(
             authority: Some(authority),
             auto_approve_new_accounts: auto_approve,
             auditor_elgamal_pubkey: None,
+        });
+    }
+
+    if let Some(program_id) = transfer_hook_program_id {
+        extensions.push(ExtensionInitializationParams::TransferHook {
+            authority: Some(authority),
+            program_id: Some(program_id),
         });
     }
 
@@ -567,6 +623,68 @@ async fn command_set_interest_rate(
 
     let res = token
         .update_interest_rate(&rate_authority, rate_bps, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+async fn command_set_transfer_hook_program(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    authority: Pubkey,
+    new_program_id: Option<Pubkey>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    if !config.sign_only {
+        let mint_account = config.get_account_checked(&token_pubkey).await?;
+
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
+            .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+
+        if let Ok(extension) = mint_state.get_extension::<TransferHook>() {
+            let authority_pubkey = Option::<Pubkey>::from(extension.authority);
+
+            if authority_pubkey != Some(authority) {
+                return Err(format!(
+                    "Mint {} has transfer hook authority {}, but {} was provided",
+                    token_pubkey,
+                    authority_pubkey
+                        .map(|pubkey| pubkey.to_string())
+                        .unwrap_or_else(|| "disabled".to_string()),
+                    authority
+                )
+                .into());
+            }
+        } else {
+            return Err(
+                format!("Mint {} does not have permissioned-transfers", token_pubkey).into(),
+            );
+        }
+    }
+
+    println_display(
+        config,
+        format!(
+            "Setting Transfer Hook Program id for {} to {}",
+            token_pubkey,
+            new_program_id
+                .map(|pubkey| pubkey.to_string())
+                .unwrap_or_else(|| "disabled".to_string())
+        ),
+    );
+
+    let res = token
+        .update_transfer_hook_program_id(&authority, new_program_id, &bulk_signers)
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -872,11 +990,11 @@ async fn command_authorize(
                     }
                 }
                 AuthorityType::TransferHookProgramId => {
-                    if let Ok(transfer_hook) = mint.get_extension::<TransferHook>() {
-                        Ok(COption::<Pubkey>::from(transfer_hook.authority))
+                    if let Ok(extension) = mint.get_extension::<TransferHook>() {
+                        Ok(COption::<Pubkey>::from(extension.authority))
                     } else {
                         Err(format!(
-                            "Mint `{}` does not support a transfer hook",
+                            "Mint `{}` does not support a transfer hook program",
                             account
                         ))
                     }
@@ -1033,6 +1151,7 @@ async fn command_transfer(
     bulk_signers: BulkSigners,
     no_wait: bool,
     allow_non_system_account_recipient: bool,
+    transfer_hook_accounts: Option<Vec<AccountMeta>>,
 ) -> CommandResult {
     let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
 
@@ -1060,7 +1179,12 @@ async fn command_transfer(
         Some(mint_info.decimals)
     };
 
-    let token = token_client_from_config(config, &token_pubkey, decimals)?;
+    let token = if let Some(transfer_hook_accounts) = transfer_hook_accounts {
+        token_client_from_config(config, &token_pubkey, decimals)?
+            .with_transfer_hook_accounts(transfer_hook_accounts)
+    } else {
+        token_client_from_config(config, &token_pubkey, decimals)?
+    };
 
     // pubkey of the actual account we are sending from
     let sender = if let Some(sender) = sender {
@@ -2714,6 +2838,14 @@ fn app<'a, 'b>(
                             before it can make confidential transfers."
                         )
                 )
+                .arg(
+                    Arg::with_name("transfer_hook")
+                        .long("transfer-hook")
+                        .value_name("TRANSFER_HOOK_PROGRAM_ID")
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Enable the mint authority to set the transfer hook program for this mint"),
+                )
                 .nonce_args(true)
                 .arg(memo_arg())
         )
@@ -2745,6 +2877,43 @@ fn app<'a, 'b>(
                         "Specify the rate authority keypair. \
                         Defaults to the client keypair address."
                     )
+                )
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::SetTransferHookProgram.into())
+                .about("Set the transfer hook program id for a token")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The token address with an existing transfer hook"),
+                )
+                .arg(
+                    Arg::with_name("new_program_id")
+                        .validator(is_valid_pubkey)
+                        .value_name("NEW_PROGRAM_ID")
+                        .takes_value(true)
+                        .required_unless("disable")
+                        .index(2)
+                        .help("The new transfer hook program id to set for this mint"),
+                )
+                .arg(
+                    Arg::with_name("disable")
+                        .long("disable")
+                        .takes_value(false)
+                        .conflicts_with("new_program_id")
+                        .help("Disable transfer hook functionality by setting the program id to None.")
+                )
+                .arg(
+                    Arg::with_name("program_authority")
+                    .long("program-authority")
+                    .validator(is_valid_signer)
+                    .value_name("SIGNER")
+                    .takes_value(true)
+                    .help("Specify the authority keypair. Defaults to the client keypair address.")
                 )
         )
         .subcommand(
@@ -2838,7 +3007,8 @@ fn app<'a, 'b>(
                         .possible_values(&[
                             "mint", "freeze", "owner", "close",
                             "close-mint", "transfer-fee-config", "withheld-withdraw",
-                            "interest-rate", "permanent-delegate", "confidential-transfer-mint"
+                            "interest-rate", "permanent-delegate", "confidential-transfer-mint",
+                            "transfer-hook",
                         ])
                         .index(2)
                         .required(true)
@@ -2977,6 +3147,19 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .help("Expected fee amount collected during the transfer"),
+                )
+                .arg(
+                    Arg::with_name("transfer_hook_account")
+                        .long("transfer-hook-account")
+                        .validator(validate_transfer_hook_account)
+                        .value_name("PUBKEY:ROLE")
+                        .takes_value(true)
+                        .multiple(true)
+                        .min_values(0u64)
+                        .help("Additional pubkey(s) required for a transfer hook and their \
+                            role, in the format \"<PUBKEY>:<ROLE>\". The role must be \
+                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\".\
+                            Used for offline transaction creation and signing.")
                 )
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
@@ -3887,6 +4070,8 @@ async fn process_command<'a>(
                         "frozen" => AccountState::Frozen,
                         _ => unreachable!(),
                     });
+            let transfer_hook_program_id =
+                pubkey_of_signer(arg_matches, "transfer_hook", &mut wallet_manager).unwrap();
 
             let confidential_transfer_auto_approve = arg_matches
                 .value_of("enable_confidential_transfers")
@@ -3907,6 +4092,7 @@ async fn process_command<'a>(
                 default_account_state,
                 transfer_fee,
                 confidential_transfer_auto_approve,
+                transfer_hook_program_id,
                 bulk_signers,
             )
             .await
@@ -3925,6 +4111,25 @@ async fn process_command<'a>(
                 token_pubkey,
                 rate_authority_pubkey,
                 rate_bps,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::SetTransferHookProgram, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let new_program_id =
+                pubkey_of_signer(arg_matches, "new_program_id", &mut wallet_manager).unwrap();
+            let (authority_signer, authority_pubkey) =
+                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+            let bulk_signers = vec![authority_signer];
+
+            command_set_transfer_hook_program(
+                config,
+                token_pubkey,
+                authority_pubkey,
+                new_program_id,
                 bulk_signers,
             )
             .await
@@ -4042,6 +4247,11 @@ async fn process_command<'a>(
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
             let memo = value_t!(arg_matches, "memo", String).ok();
+            let transfer_hook_accounts = arg_matches.values_of("transfer_hook_account").map(|v| {
+                v.into_iter()
+                    .map(|s| parse_transfer_hook_account(s).unwrap())
+                    .collect::<Vec<_>>()
+            });
 
             command_transfer(
                 config,
@@ -4060,6 +4270,7 @@ async fn process_command<'a>(
                 bulk_signers,
                 arg_matches.is_present("no_wait"),
                 arg_matches.is_present("allow_non_system_account_recipient"),
+                transfer_hook_accounts,
             )
             .await
         }
@@ -4785,6 +4996,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -4814,6 +5026,7 @@ mod tests {
             None,
             None,
             Some(rate_bps),
+            None,
             None,
             None,
             None,
@@ -6203,6 +6416,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -6249,6 +6463,7 @@ mod tests {
             false,
             false,
             true,
+            None,
             None,
             None,
             None,
@@ -6325,6 +6540,7 @@ mod tests {
             false,
             false,
             true,
+            None,
             None,
             None,
             None,
@@ -6688,6 +6904,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             bulk_signers,
         )
         .await
@@ -6744,6 +6961,7 @@ mod tests {
             None,
             None,
             Some(AccountState::Frozen),
+            None,
             None,
             None,
             bulk_signers,
@@ -6816,6 +7034,7 @@ mod tests {
             None,
             None,
             Some((transfer_fee_basis_points, maximum_fee)),
+            None,
             None,
             bulk_signers,
         )
@@ -7087,6 +7306,7 @@ mod tests {
             None,
             None,
             Some(auto_approve),
+            None,
             bulk_signers,
         )
         .await
@@ -7635,5 +7855,124 @@ mod tests {
             new_extension_disable.metadata_address,
             None.try_into().unwrap()
         );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn transfer_hook() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = spl_token_2022::id();
+        let mut config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        let transfer_hook_program_id = Pubkey::new_unique();
+
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                "--program-id",
+                &program_id.to_string(),
+                "--transfer-hook",
+                &transfer_hook_program_id.to_string(),
+            ],
+        )
+        .await;
+
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = mint_state.get_extension::<TransferHook>().unwrap();
+
+        assert_eq!(
+            extension.program_id,
+            Some(transfer_hook_program_id).try_into().unwrap()
+        );
+
+        let new_transfer_hook_program_id = Pubkey::new_unique();
+
+        let _new_result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::SetTransferHookProgram.into(),
+                &mint.to_string(),
+                &new_transfer_hook_program_id.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = mint_state.get_extension::<TransferHook>().unwrap();
+
+        assert_eq!(
+            extension.program_id,
+            Some(new_transfer_hook_program_id).try_into().unwrap()
+        );
+
+        // Make sure that parsing transfer hook accounts works
+        let real_program_client = config.program_client;
+        let blockhash = Hash::default();
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+            ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
+        );
+        config.program_client = program_client;
+        let _result = exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                &mint.to_string(),
+                "10",
+                &Pubkey::new_unique().to_string(),
+                "--blockhash",
+                &blockhash.to_string(),
+                "--nonce",
+                &Pubkey::new_unique().to_string(),
+                "--nonce-authority",
+                &Pubkey::new_unique().to_string(),
+                "--sign-only",
+                "--mint-decimals",
+                &format!("{}", TEST_DECIMALS),
+                "--from",
+                &Pubkey::new_unique().to_string(),
+                "--owner",
+                &Pubkey::new_unique().to_string(),
+                "--transfer-hook-account",
+                &format!("{}:readonly", Pubkey::new_unique()),
+                "--transfer-hook-account",
+                &format!("{}:writable", Pubkey::new_unique()),
+                "--transfer-hook-account",
+                &format!("{}:readonly-signer", Pubkey::new_unique()),
+                "--transfer-hook-account",
+                &format!("{}:writable-signer", Pubkey::new_unique()),
+            ],
+        )
+        .await
+        .unwrap();
+
+        config.program_client = real_program_client;
+        let _result_with_disable = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::SetTransferHookProgram.into(),
+                &mint.to_string(),
+                "--disable",
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = mint_state.get_extension::<TransferHook>().unwrap();
+
+        assert_eq!(extension.program_id, None.try_into().unwrap());
     }
 }
