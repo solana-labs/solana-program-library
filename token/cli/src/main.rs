@@ -2892,9 +2892,9 @@ fn app<'a, 'b>(
                         .help("The token address with an existing transfer hook"),
                 )
                 .arg(
-                    Arg::with_name("new_transfer_hook_program_id")
+                    Arg::with_name("new_program_id")
                         .validator(is_valid_pubkey)
-                        .value_name("NEW_TRANSFER_HOOK_PROGRAM_ID")
+                        .value_name("NEW_PROGRAM_ID")
                         .takes_value(true)
                         .required_unless("disable")
                         .index(2)
@@ -2904,7 +2904,7 @@ fn app<'a, 'b>(
                     Arg::with_name("disable")
                         .long("disable")
                         .takes_value(false)
-                        .conflicts_with("new_transfer_hook_program_id")
+                        .conflicts_with("new_program_id")
                         .help("Disable transfer hook functionality by setting the program id to None.")
                 )
                 .arg(
@@ -4116,12 +4116,8 @@ async fn process_command<'a>(
             let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let new_transfer_hook_program_id = pubkey_of_signer(
-                arg_matches,
-                "new_transfer_hook_program_id",
-                &mut wallet_manager,
-            )
-            .unwrap();
+            let new_program_id =
+                pubkey_of_signer(arg_matches, "new_program_id", &mut wallet_manager).unwrap();
             let (authority_signer, authority_pubkey) =
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
             let bulk_signers = vec![authority_signer];
@@ -4130,7 +4126,7 @@ async fn process_command<'a>(
                 config,
                 token_pubkey,
                 authority_pubkey,
-                new_transfer_hook_program_id,
+                new_program_id,
                 bulk_signers,
             )
             .await
