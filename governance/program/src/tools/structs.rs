@@ -23,23 +23,23 @@ impl Default for Reserved110 {
     }
 }
 
-/// Reserved 120 bytes
+/// Reserved 119 bytes
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct Reserved120 {
+pub struct Reserved119 {
     /// Reserved 64 bytes
     pub reserved64: [u8; 64],
     /// Reserved 32 bytes
     pub reserved32: [u8; 32],
-    /// Reserved 4 bytes
-    pub reserved24: [u8; 24],
+    /// Reserved 19 bytes
+    pub reserved23: [u8; 23],
 }
 
-impl Default for Reserved120 {
+impl Default for Reserved119 {
     fn default() -> Self {
         Self {
             reserved64: [0; 64],
             reserved32: [0; 32],
-            reserved24: [0; 24],
+            reserved23: [0; 23],
         }
     }
 }

@@ -73,24 +73,25 @@ pub enum ConfidentialTransferInstruction {
     /// `DisableConfidentialCredits` and `DisableNonConfidentialCredits` instructions to disable.
     ///
     /// In order for this instruction to be successfully processed, it must be accompanied by the
-    /// `VerifyPubkey` instruction of the `zk_token_proof` program in the same transaction.
+    /// `VerifyPubkeyValidityProof` instruction of the `zk_token_proof` program in the same
+    /// transaction or the address of a context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` Instructions sysvar if `PubkeyValidityProof` is included in the same transaction or
-    ///      context state account if `PubkeyValidityProof` is pre-verified into a context state
-    ///      account.
+    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidityProof` is included in the same
+    ///      transaction or context state account if `VerifyPubkeyValidityProof` is pre-verified
+    ///      into a context state account.
     ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` Instructions sysvar if `PubkeyValidityProof` is included in the same transaction or
-    ///      context state account if `PubkeyValidityProof` is pre-verified into a context state
-    ///      account.
+    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidityProof` is included in the same
+    ///      transaction or context state account if `VerifyPubkeyValidityProof` is pre-verified
+    ///      into a context state account.
     ///   3. `[]` The multisig source account owner.
     ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
@@ -130,20 +131,21 @@ pub enum ConfidentialTransferInstruction {
     /// `ConfidentialTransferInstruction::ConfigureAccount` have affected the token account.
     ///
     /// In order for this instruction to be successfully processed, it must be accompanied by the
-    /// `VerifyCloseAccount` instruction of the `zk_token_proof` program in the same transaction.
+    /// `VerifyZeroBalanceProof` instruction of the `zk_token_proof` program in the same
+    /// transaction or the address of a context state account for the proof must be provided.
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar if `ZeroBalanceProof` is included in the same transaction or
-    ///      context state account if `ZeroBalanceProof` is pre-verified into a context state
-    ///      account.
+    ///   1. `[]` Instructions sysvar if `VerifyZeroBalanceProof` is included in the same
+    ///      transaction or context state account if `VerifyZeroBalanceProof` is pre-verified into
+    ///      a context state account.
     ///   2. `[signer]` The single account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar if `ZeroBalanceProof` is included in the same transaction or
-    ///      context state account if `ZeroBalanceProof` is pre-verified into a context state
-    ///      account.
+    ///   1. `[]` Instructions sysvar if `VerifyZeroBalanceProof` is included in the same
+    ///      transaction or context state account if `VerifyZeroBalanceProof` is pre-verified into
+    ///      a context state account.
     ///   2. `[]` The multisig account owner.
     ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
@@ -184,22 +186,25 @@ pub enum ConfidentialTransferInstruction {
     /// Fails if the associated mint is extended as `NonTransferable`.
     ///
     /// In order for this instruction to be successfully processed, it must be accompanied by the
-    /// `VerifyWithdraw` instruction of the `zk_token_proof` program in the same transaction.
+    /// `VerifyWithdraw` instruction of the `zk_token_proof` program in the same transaction or the
+    /// address of a context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar if `WithdrawProof` is included in the same transaction or
-    ///      context state account if `WithdrawProof` is pre-verified into a context state account.
+    ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the same transaction or
+    ///      context state account if `VerifyWithdraw` is pre-verified into a context state
+    ///      account.
     ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar if `WithdrawProof` is included in the same transaction or
-    ///      context state account if `WithdrawProof` is pre-verified into a context state account.
+    ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the same transaction or
+    ///      context state account if `VerifyWithdraw` is pre-verified into a context state
+    ///      account.
     ///   3. `[]` The multisig  source account owner.
     ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
@@ -212,7 +217,8 @@ pub enum ConfidentialTransferInstruction {
     ///
     /// In order for this instruction to be successfully processed, it must be accompanied by
     /// either the `VerifyTransfer` or `VerifyTransferWithFee` instruction of the `zk_token_proof`
-    /// program in the same transaction.
+    /// program in the same transaction or the address of a context state account for the proof
+    /// must be provided.
     ///
     /// Fails if the associated mint is extended as `NonTransferable`.
     ///
@@ -220,7 +226,7 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[writable]` The destination SPL Token account.
     ///   3. `[]` The token mint.
-    ///   4. `[]` Instructions sysvar if `TransferProof` or `TransferWithFeeProof` is included in
+    ///   4. `[]` Instructions sysvar if `VerifyTransfer` or `VerifyTransferWithFee` is included in
     ///      the same transaction or context state account if the proof is pre-verified into a
     ///      context state account.
     ///   5. `[signer]` The single source account owner.
@@ -229,7 +235,7 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[writable]` The destination SPL Token account.
     ///   3. `[]` The token mint.
-    ///   4. `[]` Instructions sysvar if `TransferProof` or `TransferWithFeeProof` is included in
+    ///   4. `[]` Instructions sysvar if `VerifyTransfer` or `VerifyTransferWithFee` is included in
     ///      the same transaction or context state account if the proof is pre-verified into a
     ///      context state account.
     ///   5. `[]` The multisig  source account owner.
