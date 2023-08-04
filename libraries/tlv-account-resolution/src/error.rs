@@ -38,6 +38,9 @@ pub enum AccountResolutionError {
     /// The provided bytes are not valid for a seed configuration
     #[error("The provided bytes are not valid for a seed configuration")]
     InvalidBytesForSeed,
+    /// Tried to pack an invalid seed configuration
+    #[error("Tried to pack an invalid seed configuration")]
+    InvalidSeedConfig,
     /// Could not find account at specified index
     #[error("Could not find account at specified index")]
     AccountNotFound,

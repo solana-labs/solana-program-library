@@ -30,8 +30,13 @@ pub enum Seed {
     /// Uninitialized configuration byte space
     Uninitialized,
     /// A literal hard-coded argument
+    /// Packed as:
+    ///     * 1 - Discriminator
+    ///     * 1 - Length of literal
+    ///     * N - Literal bytes themselves
     Literal {
         /// The literal value repesented as a vector of bytes.
+        ///
         /// For example, if a literal value is a string literal,
         /// such as "my-seed", this value would be
         /// `"my-seed".as_bytes().to_vec()`.
@@ -39,6 +44,10 @@ pub enum Seed {
     },
     /// An instruction-provided argument, to be resolved from the instruction
     /// data
+    /// Packed as:
+    ///     * 1 - Discriminator
+    ///     * 1 - Index of instruction data
+    ///     * 1 - Length of instruction data starting at index
     InstructionData {
         /// The index where the bytes of an instruction argument begin
         index: u8,
@@ -49,6 +58,10 @@ pub enum Seed {
     },
     /// The public key of an account from the entire accounts list.
     /// Note: This includes an extra accounts required.
+    ///
+    /// Packed as:
+    ///     * 1 - Discriminator
+    ///     * 1 - Index of account in accounts list
     AccountKey {
         /// The index of the account in the entire accounts list
         index: u8,
@@ -78,9 +91,7 @@ impl Seed {
             return Err(AccountResolutionError::SeedConfigsTooLarge.into());
         }
         match &self {
-            Self::Uninitialized => {
-                dst[0] = 0;
-            }
+            Self::Uninitialized => return Err(AccountResolutionError::InvalidSeedConfig.into()),
             Self::Literal { bytes } => {
                 dst[0] = 1;
                 dst[1] = bytes.len() as u8;
@@ -206,6 +217,14 @@ mod tests {
         assert_eq!(
             seed.pack(&mut packed).unwrap_err(),
             AccountResolutionError::NotEnoughBytesForSeed.into()
+        );
+
+        // Can't pack a `Seed::Uninitialized`
+        let seed = Seed::Uninitialized;
+        let mut packed = vec![0u8; seed.tlv_size() as usize];
+        assert_eq!(
+            seed.pack(&mut packed).unwrap_err(),
+            AccountResolutionError::InvalidSeedConfig.into()
         );
     }
 
