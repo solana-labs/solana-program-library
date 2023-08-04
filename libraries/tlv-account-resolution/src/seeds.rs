@@ -311,34 +311,6 @@ mod tests {
             ProgramError::InvalidAccountData
         );
 
-        // !! Jon I had a question about this:
-        // The way this unpacking is written, if you define the length of the
-        // first seed config and then fumble the literal, like below, then
-        // the following byte (2) would be interpreted as part of the literal.
-        // Then this mucks the whole thing up.
-        // It would happen for any value, not just 0, like another discriminator.
-        //
-        // As far as I can tell, spl-type-length-value doesn't
-        // handle this case either (?).
-        //
-        // I guess my question is: How can you? Is there a better way to tell
-        // if a byte is somehow not belonging to the current seed config?
-        //
-        // // Should fail if bytes are malformed ?
-        // let bytes = [
-        //     1, // Discrim (Literal)
-        //     4, // Length
-        //     1, 1, 1, // Incorrect length
-        //     2, // Discrim (InstructionData) ** Byte in question **
-        //     2, // Index
-        //     4, // Length
-        //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        // ];
-        // assert_eq!(
-        //     Seed::unpack_address_config(&bytes).unwrap_err(),
-        //     AccountResolutionError::InvalidBytesForSeed.into()
-        // );
-
         // Should fail if 32nd byte is not zero, but it would be the
         // start of a config
         //
