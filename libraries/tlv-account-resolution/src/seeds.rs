@@ -135,7 +135,7 @@ impl Seed {
     pub fn unpack_address_config(bytes: &[u8; 32]) -> Result<Vec<Self>, ProgramError> {
         let mut seeds = vec![];
         let mut i = 0;
-        while i <= 32 {
+        while i < 32 {
             let seed = Self::unpack(&bytes[i..])?;
             let seed_size = seed.tlv_size() as usize;
             i += seed_size;
@@ -186,15 +186,6 @@ fn unpack_seed_account_key(bytes: &[u8]) -> Result<Seed, ProgramError> {
 mod tests {
     use super::*;
 
-    fn test_pack_unpack_seed(seed: Seed, mixed: &mut Vec<Seed>) {
-        let tlv_size = seed.tlv_size() as usize;
-        let mut packed = vec![0u8; tlv_size];
-        seed.pack(&mut packed).unwrap();
-        let unpacked = Seed::unpack(&packed).unwrap();
-        assert_eq!(seed, unpacked);
-        mixed.push(seed);
-    }
-
     #[test]
     fn test_pack() {
         // Seed too large
@@ -215,6 +206,27 @@ mod tests {
         assert_eq!(
             seed.pack(&mut packed).unwrap_err(),
             AccountResolutionError::NotEnoughBytesForSeed.into()
+        );
+    }
+
+    #[test]
+    fn test_pack_address_config() {
+        // Should fail if one seed is too large
+        let seed = Seed::Literal { bytes: vec![1; 36] };
+        assert_eq!(
+            Seed::pack_into_address_config(&[seed]).unwrap_err(),
+            AccountResolutionError::SeedConfigsTooLarge.into()
+        );
+
+        // Should fail if the combination of all seeds is too large
+        let seed1 = Seed::Literal { bytes: vec![1; 30] }; // 30 bytes
+        let seed2 = Seed::InstructionData {
+            index: 0,
+            length: 4,
+        }; // 3 bytes
+        assert_eq!(
+            Seed::pack_into_address_config(&[seed1, seed2]).unwrap_err(),
+            AccountResolutionError::SeedConfigsTooLarge.into()
         );
     }
 
@@ -261,6 +273,125 @@ mod tests {
             Seed::unpack(&bytes).unwrap_err(),
             AccountResolutionError::InvalidBytesForSeed.into()
         );
+    }
+
+    #[test]
+    fn test_unpack_address_config() {
+        // Should fail if bytes are malformed
+        let bytes = [
+            1, // Discrim (Literal)
+            4, // Length
+            1, 1, 1, 1, // 4
+            4, // Discrim (Invalid)
+            2, // Index
+            1, // Length
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        assert_eq!(
+            Seed::unpack_address_config(&bytes).unwrap_err(),
+            ProgramError::InvalidAccountData
+        );
+
+        // !! Jon I had a question about this:
+        // The way this unpacking is written, if you define the length of the
+        // first seed config and then fumble the literal, like below, then
+        // the following byte (2) would be interpreted as part of the literal.
+        // Then this mucks the whole thing up.
+        // It would happen for any value, not just 0, like another discriminator.
+        //
+        // As far as I can tell, spl-type-length-value doesn't
+        // handle this case either (?).
+        //
+        // I guess my question is: How can you? Is there a better way to tell
+        // if a byte is somehow not belonging to the current seed config?
+        //
+        // // Should fail if bytes are malformed ?
+        // let bytes = [
+        //     1, // Discrim (Literal)
+        //     4, // Length
+        //     1, 1, 1, // Incorrect length
+        //     2, // Discrim (InstructionData) ** Byte in question **
+        //     2, // Index
+        //     4, // Length
+        //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        // ];
+        // assert_eq!(
+        //     Seed::unpack_address_config(&bytes).unwrap_err(),
+        //     AccountResolutionError::InvalidBytesForSeed.into()
+        // );
+
+        // Should fail if 32nd byte is not zero, but it would be the
+        // start of a config
+        //
+        // Namely, if a seed config is unpacked and leaves 1 byte remaining,
+        // it has to be 0, since no valid seed config can be 1 byte long
+        let bytes = [
+            1,  // Discrim (Literal)
+            16, // Length
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // 16
+            1,  // Discrim (Literal)
+            11, // Length
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 11
+            2, // Non-zero byte
+        ];
+        assert_eq!(
+            Seed::unpack_address_config(&bytes).unwrap_err(),
+            AccountResolutionError::InvalidBytesForSeed.into(),
+        );
+
+        // Should pass if 31st byte is not zero, but it would be
+        // the start of a config
+        //
+        // Similar to above, however we now have 2 bytes to work with,
+        // which could be a valid seed config
+        let bytes = [
+            1,  // Discrim (Literal)
+            16, // Length
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // 16
+            1,  // Discrim (Literal)
+            10, // Length
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 10
+            3, // Non-zero byte - Discrim (AccountKey)
+            0, // Index
+        ];
+        assert_eq!(
+            Seed::unpack_address_config(&bytes).unwrap(),
+            vec![
+                Seed::Literal {
+                    bytes: vec![1u8; 16]
+                },
+                Seed::Literal {
+                    bytes: vec![1u8; 10]
+                },
+                Seed::AccountKey { index: 0 }
+            ],
+        );
+
+        // Should fail if 31st byte is not zero and a valid seed config
+        // discriminator, but the seed config requires more than 2 bytes
+        let bytes = [
+            1,  // Discrim (Literal)
+            16, // Length
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // 16
+            1,  // Discrim (Literal)
+            10, // Length
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 10
+            2, // Non-zero byte - Discrim (InstructionData)
+            0, // Index (Length missing)
+        ];
+        assert_eq!(
+            Seed::unpack_address_config(&bytes).unwrap_err(),
+            AccountResolutionError::InvalidBytesForSeed.into(),
+        );
+    }
+
+    fn test_pack_unpack_seed(seed: Seed, mixed: &mut Vec<Seed>) {
+        let tlv_size = seed.tlv_size() as usize;
+        let mut packed = vec![0u8; tlv_size];
+        seed.pack(&mut packed).unwrap();
+        let unpacked = Seed::unpack(&packed).unwrap();
+        assert_eq!(seed, unpacked);
+        mixed.push(seed);
     }
 
     #[test]
