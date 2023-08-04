@@ -23,21 +23,12 @@ pub enum AccountResolutionError {
     /// Failed to parse `Pubkey` from bytes
     #[error("Failed to parse `Pubkey` from bytes")]
     InvalidPubkey,
-    /// Invalid account type
-    #[error("Invalid account type")]
-    InvalidAccountType,
-    /// Attempted to deserialize an `AccountMeta` but the underlying type was
-    /// `AccountMetaPda`
+    /// Attempted to deserialize an `AccountMeta` but the underlying type has
+    /// PDA configs rather than a fixed address
     #[error(
-        "Attempted to deserialize an `AccountMeta` but the underlying type was `AccountMetaPda`"
+        "Attempted to deserialize an `AccountMeta` but the underlying type has PDA configs rather than a fixed address"
     )]
-    RequiredAccountNotAccountMeta,
-    /// Attempted to deserialize an `AccountMetaPda` but the underlying type was
-    /// `AccountMeta`
-    #[error(
-        "Attempted to deserialize an `AccountMetaPda` but the underlying type was `AccountMeta`"
-    )]
-    RequiredAccountNotPda,
+    AccountTypeNotAccountMeta,
     /// Provided list of seed configurations too large for a validation account
     #[error("Provided list of seed configurations too large for a validation account")]
     SeedConfigsTooLarge,

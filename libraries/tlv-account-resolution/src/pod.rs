@@ -56,7 +56,7 @@ impl PodAccountMeta {
     ) -> Result<Self, ProgramError> {
         Ok(Self {
             discriminator: 1,
-            address_config: Seed::pack_into_array(seeds)?,
+            address_config: Seed::pack_into_address_config(seeds)?,
             is_signer: is_signer.into(),
             is_writable: is_writable.into(),
         })
@@ -98,7 +98,7 @@ impl TryFrom<&PodAccountMeta> for AccountMeta {
                 is_writable: pod.is_writable.into(),
             })
         } else {
-            Err(AccountResolutionError::RequiredAccountNotAccountMeta.into())
+            Err(AccountResolutionError::AccountTypeNotAccountMeta.into())
         }
     }
 }

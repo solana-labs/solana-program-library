@@ -1,7 +1,26 @@
 //! Types for managing seed configurations in TLV Account Resolution
 //!
-//! The largest possible seed configuration is 3 bytes (`InstructionArg`).
-//! This means that an `AccountMetaPda` can store up to 10 seed configurations.
+//! As determined by the `address_config` field of `PodAccountMeta`,
+//! seed configurations are limited to a maximum of 32 bytes.
+//! This means that the maximum number of seed configurations that can be
+//! packed into a single `PodAccountMeta` will depend directly on the size
+//! of the seed configurations themselves.
+//!
+//! Sizes are as follows:
+//!     * `Seed::Literal`: 1 + 1 + N
+//!         * 1 - Discriminator
+//!         * 1 - Length of literal
+//!         * N - Literal bytes themselves
+//!     * `Seed::InstructionData`: 1 + 1 + 1 = 3
+//!         * 1 - Discriminator
+//!         * 1 - Index of instruction data
+//!         * 1 - Length of instruction data starting at index
+//!     * `Seed::AccountKey` - 1 + 1 = 2
+//!         * 1 - Discriminator
+//!         * 1 - Index of account in accounts list
+//!
+//! No matter which types of seeds you choose, the total size of all seed
+//! configurations must be less than or equal to 32 bytes.
 
 use {crate::error::AccountResolutionError, solana_program::program_error::ProgramError};
 
@@ -20,7 +39,7 @@ pub enum Seed {
     },
     /// An instruction-provided argument, to be resolved from the instruction
     /// data
-    InstructionArg {
+    InstructionData {
         /// The index where the bytes of an instruction argument begin
         index: u8,
         /// The length of the instruction argument (number of bytes)
@@ -44,7 +63,7 @@ impl Seed {
             // 1 byte for the discriminator, 1 byte for the length of the bytes, then the raw bytes
             Self::Literal { bytes } => 1 + 1 + bytes.len() as u8,
             // 1 byte for the discriminator, 1 byte for the index, 1 byte for the length
-            Self::InstructionArg { .. } => 1 + 1 + 1,
+            Self::InstructionData { .. } => 1 + 1 + 1,
             // 1 byte for the discriminator, 1 byte for the index
             Self::AccountKey { .. } => 1 + 1,
         }
@@ -67,7 +86,7 @@ impl Seed {
                 dst[1] = bytes.len() as u8;
                 dst[2..].copy_from_slice(bytes);
             }
-            Self::InstructionArg { index, length } => {
+            Self::InstructionData { index, length } => {
                 dst[0] = 2;
                 dst[1] = *index;
                 dst[2] = *length;
@@ -82,7 +101,7 @@ impl Seed {
 
     /// Packs a vector of seed configurations into a 32-byte array,
     /// filling the rest with 0s. Errors if it overflows.
-    pub fn pack_into_array(seeds: &[Self]) -> Result<[u8; 32], ProgramError> {
+    pub fn pack_into_address_config(seeds: &[Self]) -> Result<[u8; 32], ProgramError> {
         let mut packed = [0u8; 32];
         let mut i: usize = 0;
         for seed in seeds {
@@ -113,7 +132,7 @@ impl Seed {
 
     /// Unpacks all seed configurations from a 32-byte array.
     /// Stops when it hits uninitialized data (0s).
-    pub fn unpack_array(bytes: &[u8; 32]) -> Result<Vec<Self>, ProgramError> {
+    pub fn unpack_address_config(bytes: &[u8; 32]) -> Result<Vec<Self>, ProgramError> {
         let mut seeds = vec![];
         let mut i = 0;
         while i <= 32 {
@@ -126,17 +145,6 @@ impl Seed {
             seeds.push(seed);
         }
         Ok(seeds)
-    }
-
-    /// Get all indices references by an `AccountKey` configuration
-    pub fn get_account_key_indices(seed_configs: &[Self]) -> Vec<u8> {
-        seed_configs
-            .iter()
-            .filter_map(|seed_config| match seed_config {
-                Self::AccountKey { index } => Some(*index),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
     }
 }
 
@@ -160,7 +168,7 @@ fn unpack_seed_instruction_arg(bytes: &[u8]) -> Result<Seed, ProgramError> {
         // Should be at least 2 bytes
         return Err(AccountResolutionError::InvalidBytesForSeed.into());
     }
-    Ok(Seed::InstructionArg {
+    Ok(Seed::InstructionData {
         index: bytes[0],
         length: bytes[1],
     })
@@ -197,7 +205,7 @@ mod tests {
             AccountResolutionError::SeedConfigsTooLarge.into()
         );
         assert_eq!(
-            Seed::pack_into_array(&[seed]).unwrap_err(),
+            Seed::pack_into_address_config(&[seed]).unwrap_err(),
             AccountResolutionError::SeedConfigsTooLarge.into()
         );
 
@@ -214,7 +222,7 @@ mod tests {
     fn test_unpack() {
         // Can unpack zeroes
         let zeroes = [0u8; 32];
-        let seeds = Seed::unpack_array(&zeroes).unwrap();
+        let seeds = Seed::unpack_address_config(&zeroes).unwrap();
         assert_eq!(seeds, vec![]);
 
         // Should fail for empty bytes
@@ -237,7 +245,7 @@ mod tests {
 
         // Should fail if bytes are malformed for literal seed
         let bytes = [
-            2, // Discrim (InstructionArg)
+            2, // Discrim (InstructionData)
             2, // Index (Length missing)
         ];
         assert_eq!(
@@ -281,13 +289,13 @@ mod tests {
 
         // Instruction args
 
-        let seed = Seed::InstructionArg {
+        let seed = Seed::InstructionData {
             index: 0,
             length: 0,
         };
         test_pack_unpack_seed(seed, &mut mixed);
 
-        let seed = Seed::InstructionArg {
+        let seed = Seed::InstructionData {
             index: 6,
             length: 9,
         };
@@ -303,8 +311,8 @@ mod tests {
 
         // Arrays
 
-        let packed_array = Seed::pack_into_array(&mixed).unwrap();
-        let unpacked_array = Seed::unpack_array(&packed_array).unwrap();
+        let packed_array = Seed::pack_into_address_config(&mixed).unwrap();
+        let unpacked_array = Seed::unpack_address_config(&packed_array).unwrap();
         assert_eq!(mixed, unpacked_array);
 
         let mut shuffled_mixed = mixed.clone();
@@ -313,8 +321,8 @@ mod tests {
         shuffled_mixed.swap(3, 6);
         shuffled_mixed.swap(3, 0);
 
-        let packed_array = Seed::pack_into_array(&shuffled_mixed).unwrap();
-        let unpacked_array = Seed::unpack_array(&packed_array).unwrap();
+        let packed_array = Seed::pack_into_address_config(&shuffled_mixed).unwrap();
+        let unpacked_array = Seed::unpack_address_config(&packed_array).unwrap();
         assert_eq!(shuffled_mixed, unpacked_array);
     }
 }

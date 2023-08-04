@@ -76,7 +76,7 @@ pub struct ExtraAccountMetas;
 impl ExtraAccountMetas {
     /// Initialize pod slice data for the given instruction and any type
     /// convertible to account metas
-    pub fn init<'a, T: SplDiscriminate, F, M>(
+    fn init<'a, T: SplDiscriminate, F, M>(
         data: &mut [u8],
         convertible_account_metas: &'a [M],
         conversion_fn: F,
@@ -183,9 +183,9 @@ impl ExtraAccountMetas {
         let mut pda_seeds: Vec<&[u8]> = vec![];
         for config in seeds {
             match config {
-                Seed::Uninitialized => continue,
+                Seed::Uninitialized => (),
                 Seed::Literal { bytes } => pda_seeds.push(bytes),
-                Seed::InstructionArg { index, length } => {
+                Seed::InstructionData { index, length } => {
                     let arg_start = *index as usize;
                     let arg_end = arg_start + *length as usize;
                     pda_seeds.push(&instruction_data[arg_start..arg_end]);
@@ -215,7 +215,7 @@ impl ExtraAccountMetas {
             let mut account_meta = match extra_meta.discriminator {
                 0 => AccountMeta::try_from(extra_meta)?,
                 1 => {
-                    let seeds = Seed::unpack_array(&extra_meta.address_config)?;
+                    let seeds = Seed::unpack_address_config(&extra_meta.address_config)?;
                     AccountMeta {
                         pubkey: Self::resolve_pda(
                             &instruction.accounts,
@@ -257,7 +257,7 @@ impl ExtraAccountMetas {
                 .find(|&x| *x.key == account_meta.pubkey)
                 .ok_or(AccountResolutionError::IncorrectAccount)?
                 .clone();
-            cpi_account_infos.push(account_info.clone());
+            cpi_account_infos.push(account_info);
         }
         Ok(())
     }
@@ -394,7 +394,7 @@ mod tests {
                 Seed::Literal {
                     bytes: extra_meta3_literal_str.as_bytes().to_vec(),
                 },
-                Seed::InstructionArg {
+                Seed::InstructionData {
                     index: 1,
                     length: 1, // u8
                 },
@@ -481,7 +481,7 @@ mod tests {
                 Seed::Literal {
                     bytes: extra_meta5_literal_u32.to_le_bytes().to_vec(),
                 },
-                Seed::InstructionArg {
+                Seed::InstructionData {
                     index: 5,
                     length: 1, // u8
                 },
@@ -498,7 +498,7 @@ mod tests {
                 Seed::Literal {
                     bytes: other_meta2_literal_str.as_bytes().to_vec(),
                 },
-                Seed::InstructionArg {
+                Seed::InstructionData {
                     index: 1,
                     length: 4, // u32
                 },
@@ -672,11 +672,11 @@ mod tests {
                 Seed::Literal {
                     bytes: extra_meta5_literal_str.as_bytes().to_vec(),
                 },
-                Seed::InstructionArg {
+                Seed::InstructionData {
                     index: 1,
                     length: 8, // [u8; 8]
                 },
-                Seed::InstructionArg {
+                Seed::InstructionData {
                     index: 9,
                     length: 32, // Pubkey
                 },
@@ -897,7 +897,7 @@ mod tests {
                 Seed::Literal {
                     bytes: required_pda1_literal_string.as_bytes().to_vec(),
                 },
-                Seed::InstructionArg {
+                Seed::InstructionData {
                     index: 1,
                     length: 8, // [u8; 8]
                 },
@@ -912,7 +912,7 @@ mod tests {
                 Seed::Literal {
                     bytes: required_pda2_literal_u32.to_le_bytes().to_vec(),
                 },
-                Seed::InstructionArg {
+                Seed::InstructionData {
                     index: 9,
                     length: 8, // u64
                 },
