@@ -243,15 +243,15 @@ impl ExtraAccountMetas {
         data: &[u8],
         account_infos: &[AccountInfo<'a>],
     ) -> Result<(), ProgramError> {
-        let initial_instruction_metas = cpi_instruction.accounts.clone();
+        let initial_instruction_metas_len = cpi_instruction.accounts.len();
 
         Self::add_to_instruction::<T>(cpi_instruction, data)?;
 
-        for account_meta in cpi_instruction.accounts.iter().filter(|&x| {
-            !initial_instruction_metas
-                .iter()
-                .any(|y| y.pubkey == x.pubkey)
-        }) {
+        for account_meta in cpi_instruction
+            .accounts
+            .iter()
+            .skip(initial_instruction_metas_len)
+        {
             let account_info = account_infos
                 .iter()
                 .find(|&x| *x.key == account_meta.pubkey)
