@@ -2572,6 +2572,54 @@ where
         .await
     }
 
+    /// Enable harvest of confidential fees to mint
+    pub async fn confidential_transfer_enable_harvest_to_mint<S: Signers>(
+        &self,
+        withdraw_withheld_authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers =
+            self.get_multisig_signers(withdraw_withheld_authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[
+                confidential_transfer_fee::instruction::enable_harvest_to_mint(
+                    &self.program_id,
+                    &self.pubkey,
+                    withdraw_withheld_authority,
+                    &multisig_signers,
+                )?,
+            ],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Disable harvest of confidential fees to mint
+    pub async fn confidential_transfer_disable_harvest_to_mint<S: Signers>(
+        &self,
+        withdraw_withheld_authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers =
+            self.get_multisig_signers(withdraw_withheld_authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[
+                confidential_transfer_fee::instruction::disable_harvest_to_mint(
+                    &self.program_id,
+                    &self.pubkey,
+                    withdraw_withheld_authority,
+                    &multisig_signers,
+                )?,
+            ],
+            signing_keypairs,
+        )
+        .await
+    }
+
     pub async fn withdraw_excess_lamports<S: Signers>(
         &self,
         source: &Pubkey,

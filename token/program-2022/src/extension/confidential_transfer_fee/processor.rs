@@ -60,6 +60,7 @@ fn process_initialize_confidential_transfer_fee_config(
     extension.authority = *authority;
     extension.withdraw_withheld_authority_elgamal_pubkey =
         *withdraw_withheld_authority_elgamal_pubkey;
+    extension.harvest_to_mint_disabled = false.into();
     extension.withheld_amount = EncryptedWithheldAmount::zeroed();
 
     Ok(())
@@ -363,6 +364,13 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
     let confidential_transfer_fee_mint =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
 
+    if confidential_transfer_fee_mint
+        .harvest_to_mint_disabled
+        .into()
+    {
+        return Err(TokenError::HarvestToMintDisabled.into());
+    }
+
     for token_account_info in token_account_infos {
         match harvest_from_account(mint_account_info.key, token_account_info) {
             Ok(withheld_amount) => {
@@ -382,6 +390,64 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
     Ok(())
 }
 
+/// Process a [EnableHarvestToMint] instruction.
+fn process_enable_harvest_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let mint_info = next_account_info(account_info_iter)?;
+    let authority_info = next_account_info(account_info_iter)?;
+
+    check_program_account(mint_info.owner)?;
+    let mint_data = &mut mint_info.data.borrow_mut();
+    let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
+    let confidential_transfer_fee_mint =
+        mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
+
+    let maybe_confidential_transfer_fee_authority: Option<Pubkey> =
+        confidential_transfer_fee_mint.authority.into();
+    let confidential_transfer_fee_authority =
+        maybe_confidential_transfer_fee_authority.ok_or(TokenError::NoAuthorityExists)?;
+
+    if !authority_info.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    if confidential_transfer_fee_authority != *authority_info.key {
+        return Err(TokenError::OwnerMismatch.into());
+    }
+
+    confidential_transfer_fee_mint.harvest_to_mint_disabled = false.into();
+    Ok(())
+}
+
+/// Process a [DisableHarvestToMint] instruction.
+fn process_disable_harvest_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let mint_info = next_account_info(account_info_iter)?;
+    let authority_info = next_account_info(account_info_iter)?;
+
+    check_program_account(mint_info.owner)?;
+    let mint_data = &mut mint_info.data.borrow_mut();
+    let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
+    let confidential_transfer_fee_mint =
+        mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
+
+    let maybe_confidential_transfer_fee_authority: Option<Pubkey> =
+        confidential_transfer_fee_mint.authority.into();
+    let confidential_transfer_fee_authority =
+        maybe_confidential_transfer_fee_authority.ok_or(TokenError::NoAuthorityExists)?;
+
+    if !authority_info.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    if confidential_transfer_fee_authority != *authority_info.key {
+        return Err(TokenError::OwnerMismatch.into());
+    }
+
+    confidential_transfer_fee_mint.harvest_to_mint_disabled = true.into();
+    Ok(())
+}
+
 #[allow(dead_code)]
 pub(crate) fn process_instruction(
     program_id: &Pubkey,
@@ -392,7 +458,7 @@ pub(crate) fn process_instruction(
 
     match decode_instruction_type(input)? {
         ConfidentialTransferFeeInstruction::InitializeConfidentialTransferFeeConfig => {
-            msg!("ConfidentialTransferInstruction::InitializeConfidentialTransferFeeConfig");
+            msg!("ConfidentialTransferFeeInstruction::InitializeConfidentialTransferFeeConfig");
             let data =
                 decode_instruction_data::<InitializeConfidentialTransferFeeConfigData>(input)?;
             process_initialize_confidential_transfer_fee_config(
@@ -402,7 +468,7 @@ pub(crate) fn process_instruction(
             )
         }
         ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint => {
-            msg!("ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint");
+            msg!("ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint");
             let data = decode_instruction_data::<WithdrawWithheldTokensFromMintData>(input)?;
             process_withdraw_withheld_tokens_from_mint(
                 program_id,
@@ -412,7 +478,7 @@ pub(crate) fn process_instruction(
             )
         }
         ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts => {
-            msg!("ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts");
+            msg!("ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts");
             let data = decode_instruction_data::<WithdrawWithheldTokensFromAccountsData>(input)?;
             process_withdraw_withheld_tokens_from_accounts(
                 program_id,
@@ -423,7 +489,7 @@ pub(crate) fn process_instruction(
             )
         }
         ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint => {
-            msg!("ConfidentialTransferInstruction::HarvestWithheldTokensToMint");
+            msg!("ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint");
             #[cfg(feature = "zk-ops")]
             {
                 process_harvest_withheld_tokens_to_mint(accounts)
@@ -432,6 +498,14 @@ pub(crate) fn process_instruction(
             {
                 Err(ProgramError::InvalidInstructionData)
             }
+        }
+        ConfidentialTransferFeeInstruction::EnableHarvestToMint => {
+            msg!("ConfidentialTransferFeeInstruction::EnableHarvestToMint");
+            process_enable_harvest_to_mint(accounts)
+        }
+        ConfidentialTransferFeeInstruction::DisableHarvestToMint => {
+            msg!("ConfidentialTransferFeeInstruction::DisableHarvestToMint");
+            process_disable_harvest_to_mint(accounts)
         }
     }
 }

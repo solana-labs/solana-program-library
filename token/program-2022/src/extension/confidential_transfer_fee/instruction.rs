@@ -153,6 +153,40 @@ pub enum ConfidentialTransferFeeInstruction {
     ///   None
     ///
     HarvestWithheldTokensToMint,
+
+    /// Configure a confidential transfer fee mint to accept harvested confidential fees.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[signer]` The confidential transfer fee authority.
+    ///
+    ///   *Multisignature owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[]` The confidential transfer fee multisig authority,
+    ///   2. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    EnableHarvestToMint,
+
+    /// Configure a confidential transfer fee mint to reject any harvested confidential fees.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[signer]` The confidential transfer fee authority.
+    ///
+    ///   *Multisignature owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[]` The confidential transfer fee multisig authority,
+    ///   2. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    DisableHarvestToMint,
 }
 
 /// Data expected by `InitializeConfidentialTransferFeeConfig`
@@ -418,6 +452,58 @@ pub fn harvest_withheld_tokens_to_mint(
         accounts,
         TokenInstruction::ConfidentialTransferFeeExtension,
         ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint,
+        &(),
+    ))
+}
+
+/// Create an `EnableHarvestToMint` instruction
+pub fn enable_harvest_to_mint(
+    token_program_id: &Pubkey,
+    mint: &Pubkey,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let mut accounts = vec![
+        AccountMeta::new(*mint, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
+    ];
+
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
+
+    Ok(encode_instruction(
+        token_program_id,
+        accounts,
+        TokenInstruction::ConfidentialTransferFeeExtension,
+        ConfidentialTransferFeeInstruction::EnableHarvestToMint,
+        &(),
+    ))
+}
+
+/// Create a `DisableHarvestToMint` instruction
+pub fn disable_harvest_to_mint(
+    token_program_id: &Pubkey,
+    mint: &Pubkey,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let mut accounts = vec![
+        AccountMeta::new(*mint, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
+    ];
+
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
+
+    Ok(encode_instruction(
+        token_program_id,
+        accounts,
+        TokenInstruction::ConfidentialTransferFeeExtension,
+        ConfidentialTransferFeeInstruction::DisableHarvestToMint,
         &(),
     ))
 }
