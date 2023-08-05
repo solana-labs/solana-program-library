@@ -9,6 +9,7 @@
 
 pub mod error;
 pub mod pod;
+pub mod seeds;
 pub mod state;
 
 // Export current sdk types for downstream users building with a different sdk

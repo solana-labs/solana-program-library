@@ -58,6 +58,11 @@ impl From<bool> for PodBool {
         Self(if b { 1 } else { 0 })
     }
 }
+impl From<&bool> for PodBool {
+    fn from(b: &bool) -> Self {
+        Self(if *b { 1 } else { 0 })
+    }
+}
 impl From<&PodBool> for bool {
     fn from(b: &PodBool) -> Self {
         b.0 != 0
