@@ -43,10 +43,7 @@ async fn fail_remove_validator() {
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + slots_per_epoch)
-        .unwrap();
+    context.warp_to_slot(first_normal_slot + 1).unwrap();
 
     // update to merge deactivated stake into reserve
     stake_pool_accounts
@@ -146,10 +143,7 @@ async fn success_remove_validator(multiple: u64) {
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + slots_per_epoch)
-        .unwrap();
+    context.warp_to_slot(first_normal_slot + 1).unwrap();
 
     let last_blockhash = context
         .banks_client
@@ -262,10 +256,7 @@ async fn fail_with_reserve() {
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + slots_per_epoch)
-        .unwrap();
+    context.warp_to_slot(first_normal_slot + 1).unwrap();
 
     // update to merge deactivated stake into reserve
     stake_pool_accounts
@@ -335,10 +326,7 @@ async fn success_with_reserve() {
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + slots_per_epoch)
-        .unwrap();
+    context.warp_to_slot(first_normal_slot + 1).unwrap();
 
     // update to merge deactivated stake into reserve
     stake_pool_accounts
@@ -834,10 +822,7 @@ async fn success_with_small_preferred_withdraw() {
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + slots_per_epoch)
-        .unwrap();
+    context.warp_to_slot(first_normal_slot + 1).unwrap();
 
     // update to merge deactivated stake into reserve
     stake_pool_accounts

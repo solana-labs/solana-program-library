@@ -80,10 +80,8 @@ async fn success() {
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-
-    context
-        .warp_to_slot(first_normal_slot + slots_per_epoch)
-        .unwrap();
+    let slot = first_normal_slot + 1;
+    context.warp_to_slot(slot).unwrap();
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -108,9 +106,7 @@ async fn success() {
         .get_new_latest_blockhash(&context.last_blockhash)
         .await
         .unwrap();
-    context
-        .warp_to_slot(first_normal_slot + 2 * slots_per_epoch)
-        .unwrap();
+    context.warp_to_slot(slot + slots_per_epoch).unwrap();
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -220,10 +216,7 @@ async fn fail_not_updated() {
 
     // move forward so an update is required
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + slots_per_epoch)
-        .unwrap();
+    context.warp_to_slot(first_normal_slot + 1).unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_fee(

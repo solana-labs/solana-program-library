@@ -83,9 +83,9 @@ async fn setup(
     .await
     .unwrap();
 
-    let mut slot = 0;
+    let mut slot = 1;
     if do_warp {
-        slot = context.genesis_config().epoch_schedule.first_normal_slot;
+        slot += context.genesis_config().epoch_schedule.first_normal_slot;
         context.warp_to_slot(slot).unwrap();
         stake_pool_accounts
             .update_all(
