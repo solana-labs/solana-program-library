@@ -1,9 +1,14 @@
 import {
   Base58EncodedAddress,
+  setTransactionFeePayer,
+  appendTransactionInstruction,
+signTransaction,
   getBase58EncodedAddressCodec,
+  setTransactionLifetimeUsingBlockhash,
 createDefaultRpcTransport,
 createSolanaRpc,
   generateKeyPair,
+  getBase64EncodedWireTransaction,
   getBase58EncodedAddressFromPublicKey,
   Transaction,
   TransactionVersion,
@@ -22,32 +27,39 @@ import fs from 'fs';
 
 //
 //
-// XXX bother luscher to add these to the library
+// XXX bother luscher to add this stuff to the web3 library
 
+const SYSTEM_PROGRAM_ID = '11111111111111111111111111111111' as Base58EncodedAddress;
+const STAKE_PROGRAM_ID = 'Stake11111111111111111111111111111111111111' as Base58EncodedAddress;
 const SYSVAR_RENT_ID = 'SysvarRent111111111111111111111111111111111' as Base58EncodedAddress;
 const SYSVAR_CLOCK_ID = 'SysvarC1ock11111111111111111111111111111111' as Base58EncodedAddress;
 const SYSVAR_STAKE_HISTORY_ID =
   'SysvarStakeHistory1111111111111111111111111' as Base58EncodedAddress;
 const STAKE_CONFIG_ID = 'StakeConfig11111111111111111111111111111111' as Base58EncodedAddress;
-const SYSTEM_PROGRAM_ID = '11111111111111111111111111111111' as Base58EncodedAddress;
-const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' as Base58EncodedAddress;
-const STAKE_PROGRAM_ID = 'Stake11111111111111111111111111111111111111' as Base58EncodedAddress;
 
+const STAKE_ACCOUNT_SIZE = BigInt(200);
+
+// i could pr the system instructions but i have no idea what opinions luscher has about bufferlayout
 class SystemInstruction {
-  static transfer(params: any): Instruction {
+  static transfer(params: { from: Base58EncodedAddress, to: Base58EncodedAddress, lamports: bigint }): Instruction {
     const type = {
       index: 2,
       layout: BufferLayout.struct<{ instruction: number; lamports: bigint }>([
         BufferLayout.u32('instruction'),
-        BufferLayout.ns64('lamports'),
+        BufferLayout.nu64('lamports'),
       ]),
     };
 
-    const data = encodeData(type, { lamports: params.lamports });
+    // XXX TODO FIXME wow i hate this i think bufferlayout doesnt support bigint at all?
+    // it literally does this:
+    // node_modules/@solana/buffer-layout/lib/Layout.js:626
+    //    const hi32 = Math.floor(src / V2E32);
+    // TypeError: Cannot mix BigInt and other types, use explicit conversions
+    const data = encodeData(type, { lamports: Number(params.lamports) });
 
     const accounts = [
-      { address: params.fromPubkey, role: AccountRole.WRITABLE_SIGNER },
-      { address: params.toPubkey, role: AccountRole.WRITABLE },
+      { address: params.from, role: AccountRole.WRITABLE_SIGNER },
+      { address: params.to, role: AccountRole.WRITABLE },
     ];
 
     return {
@@ -60,10 +72,20 @@ class SystemInstruction {
 
 //
 //
+// XXX other non-us non-web3 nonsense
+
+const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' as Base58EncodedAddress;
+const MINT_SIZE = BigInt(82);
+
+//
+//
 // XXX our nonsense
 
 export const SINGLE_POOL_PROGRAM_ID =
   '3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY' as Base58EncodedAddress;
+
+// FIXME get pool buffer size via js layout span 
+const POOL_ACCOUNT_SIZE = BigInt(33);
 
 //
 //
@@ -214,6 +236,8 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
 // XXX ixn definitions
 
 /* XXX this stuff seems useless, consult with luscher
+   also it forces me to put accouts directly in the three-property object???
+   when i try to use an intermediate variable it bitches about some type shit
 type InitializePoolInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
   IInstructionWithAccounts<
     [
@@ -289,44 +313,46 @@ export async function initialize(
   payer: Base58EncodedAddress,
   skipMetadata = false,
 ): Promise<Transaction> {
-  const transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
+  let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
 
   const programAddress = SINGLE_POOL_PROGRAM_ID;
   const pool = await findPoolAddress(programAddress, voteAccount);
   const stake = await findPoolStakeAddress(programAddress, pool);
   const mint = await findPoolMintAddress(programAddress, pool);
 
-  // TODO fetch from chain with connection
-  const poolRent = 69;
-  const stakeRent = 420;
-  const mintRent = 666;
-  const minimumDelegation = 9000;
+  const poolRent = await rpc.getMinimumBalanceForRentExemption(POOL_ACCOUNT_SIZE).send();
+  const stakeRent = await rpc.getMinimumBalanceForRentExemption(STAKE_ACCOUNT_SIZE).send();
+  const mintRent = await rpc.getMinimumBalanceForRentExemption(MINT_SIZE).send();
+  const minimumDelegation = (await rpc.getStakeMinimumDelegation().send()).value;
 
-  transaction.instructions.push(
+  transaction = appendTransactionInstruction(
     SystemInstruction.transfer({
-      fromPubkey: payer,
-      toPubkey: pool,
+      from: payer,
+      to: pool,
       lamports: poolRent,
     }),
+    transaction,
   );
 
-  transaction.instructions.push(
+  transaction = appendTransactionInstruction(
     SystemInstruction.transfer({
-      fromPubkey: payer,
-      toPubkey: stake,
+      from: payer,
+      to: stake,
       lamports: stakeRent + minimumDelegation,
     }),
+    transaction,
   );
 
-  transaction.instructions.push(
+  transaction = appendTransactionInstruction(
     SystemInstruction.transfer({
-      fromPubkey: payer,
-      toPubkey: mint,
+      from: payer,
+      to: mint,
       lamports: mintRent,
     }),
+    transaction,
   );
 
-  transaction.instructions.push(await SinglePoolInstruction.initializePool(voteAccount));
+  transaction = appendTransactionInstruction(await SinglePoolInstruction.initializePool(voteAccount), transaction);
 
   if (!skipMetadata) {
     // TODO
@@ -345,18 +371,30 @@ async function main() {
 
   const payer = await generateKeyPair();
   const payerAddress = await getBase58EncodedAddressFromPublicKey(payer.publicKey);
-  console.log('payer:', payerAddress);
-  let res = await rpc.requestAirdrop(payerAddress, BigInt(100000000000) as any).send();
-  console.log('res:', res);
+  await rpc.requestAirdrop(payerAddress, BigInt(100000000000) as any).send();
+
+  await new Promise(r => setTimeout(r, 3000));
 
   const voteAccount = 'KRAKEnMdmT4EfM8ykTFH6yLoCd5vNLcQvJwF66Y2dag' as VoteAccountAddress;
 
-  const transaction = await initialize(
+  const transaction0 = await initialize(
     rpc,
     voteAccount,
     payerAddress,
   );
-  console.log('transaction:', transaction);
+  const transaction1 = setTransactionFeePayer(payerAddress, transaction0);
+  const blockhash = (await rpc.getLatestBlockhash().send()).value;
+  const transaction2 = setTransactionLifetimeUsingBlockhash(blockhash, transaction1);
+  const transaction3 = await signTransaction(payer, transaction2);
+  console.log('transaction:', transaction3);
+  for (let i = 0; i < 4; i++) {
+    console.log(`\ninstruction ${i} accounts:`, transaction3.instructions[i].accounts);
+  }
+
+  const rawTransaction = getBase64EncodedWireTransaction(transaction3);
+  console.log('\nraw transaction:', rawTransaction);
+
+  await rpc.sendTransaction(rawTransaction, { encoding: "base64", preflightCommitment: 'confirmed' }).send();
 }
 
 await main();

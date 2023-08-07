@@ -10,10 +10,10 @@ dependencies:
     version: 4.0.1
   '@solana/spl-token':
     specifier: ^0.3.8
-    version: 0.3.8(@solana/web3.js@2.0.0-experimental.f3eba18)
+    version: 0.3.8(@solana/web3.js@2.0.0-experimental.7539d42)
   '@solana/web3.js':
-    specifier: 2.0.0-experimental.f3eba18
-    version: 2.0.0-experimental.f3eba18
+    specifier: 2.0.0-experimental.7539d42
+    version: 2.0.0-experimental.7539d42
 
 devDependencies:
   '@typescript-eslint/eslint-plugin':
@@ -180,15 +180,15 @@ packages:
       tslib: 2.6.1
     dev: true
 
-  /@solana/addresses@2.0.0-experimental.f3eba18:
-    resolution: {integrity: sha512-jD/45CfKF/NN+FWddasDcy/D5gF7H2OceQEMqV+M4of0fK+lHRiIj+7qoCq34Wv7f+c/DMn0wzHhvALpUWEoFQ==}
+  /@solana/addresses@2.0.0-experimental.7539d42:
+    resolution: {integrity: sha512-cAuj0q5kFcM8HZQjR1cuZSuHu5k92JjFtfBZBbKfkiehGqSw1COyflo/NKtNjrmDzkWvcYhLCtWJsarFUmUDWQ==}
     dependencies:
       '@metaplex-foundation/umi-serializers': 0.8.5
-      '@solana/assertions': 2.0.0-experimental.f3eba18
+      '@solana/assertions': 2.0.0-experimental.7539d42
     dev: false
 
-  /@solana/assertions@2.0.0-experimental.f3eba18:
-    resolution: {integrity: sha512-euLDr722RvqFTaKQHQRnGerd7o6Vexf+mi3LnHLrO+Oed/LavY93c8bMntl7ET5ZkzYCFtLrD21fXwbJhrVpWg==}
+  /@solana/assertions@2.0.0-experimental.7539d42:
+    resolution: {integrity: sha512-NFZgxtRkp1pWQiiwtvA1PDnWZOoOtpVgpnYCLX6Fi+DR8sZG1Xg/+1jPXtQcRt+3K9hf7onjEjSav2xAmyuD3g==}
     dev: false
 
   /@solana/buffer-layout-utils@0.2.0:
@@ -213,27 +213,27 @@ packages:
       buffer: 6.0.3
     dev: false
 
-  /@solana/instructions@2.0.0-experimental.f3eba18:
-    resolution: {integrity: sha512-QjIdDdDnhmZ20XazToF7E1BmZ3J+n5qtK+H0Hd74e84UyliyueYMjM5ZagN8QPP9O37/9X++IbTEh6grNZqK7g==}
+  /@solana/instructions@2.0.0-experimental.7539d42:
+    resolution: {integrity: sha512-XJBNCzD8li4q9HR01WijEsjXHTbVLYyCaciOSCJp8YFVGsABXr6quSW5R9EsqP+VOoL9zSuHoWQDAXrw3/KJGg==}
     dev: false
 
-  /@solana/keys@2.0.0-experimental.f3eba18:
-    resolution: {integrity: sha512-9BThEOxxTQTaTmwddyvHWxoKzF6mOt6w0/ptBzZnn/HX26eXaVaETR8ZREemEWmwcueVjmL22FXOY5cRd8uDHQ==}
+  /@solana/keys@2.0.0-experimental.7539d42:
+    resolution: {integrity: sha512-314mqgVAcmBlJnX26z1cv94TK+DArfZWoDQB57U6qyXTuHQnNiO21sxyth6IVcW1KFkHtW19hsfPIpkJ1FUuKw==}
     dependencies:
-      '@solana/assertions': 2.0.0-experimental.f3eba18
+      '@solana/assertions': 2.0.0-experimental.7539d42
     dev: false
 
-  /@solana/rpc-core@2.0.0-experimental.f3eba18:
-    resolution: {integrity: sha512-VfvGWoBYmblz/Liq0N9Hz+33ENuiinvqVwCvuzq664QQwFk8JLxgHgHRWZEeDeKsDc6pkiyidSj9Yiw99Kp4LQ==}
+  /@solana/rpc-core@2.0.0-experimental.7539d42:
+    resolution: {integrity: sha512-7wQc6ZzM55/mbtts0/QWq/A8Arz9AwD/ONF/i6CW/aieb1bin2rBJ/4I6hzTTJtp7ftCOyDc72XXMK+jjGmOmQ==}
     dependencies:
       '@metaplex-foundation/umi-serializers': 0.8.5
     dev: false
 
-  /@solana/rpc-transport@2.0.0-experimental.f3eba18:
-    resolution: {integrity: sha512-s3OTjNBlCGEDRlj1E+Sm4c9Ygwyqw7w2g3N8qIdoi6OtF3KSPYc16eRdqC5t3NsYkDXzj6GV3W67wsdfk2CzdA==}
+  /@solana/rpc-transport@2.0.0-experimental.7539d42:
+    resolution: {integrity: sha512-0NMmE/4241DjOQJHPiFZy4Ty1KhkbOGiob8vyv8KWEzZ6n0kp9BGDzo3kJF2cbPy0MeIK/CdbsA2hlb5EE09CA==}
     dev: false
 
-  /@solana/spl-token@0.3.8(@solana/web3.js@2.0.0-experimental.f3eba18):
+  /@solana/spl-token@0.3.8(@solana/web3.js@2.0.0-experimental.7539d42):
     resolution: {integrity: sha512-ogwGDcunP9Lkj+9CODOWMiVJEdRtqHAtX2rWF62KxnnSWtMZtV9rDhTrZFshiyJmxDnRL/1nKE1yJHg4jjs3gg==}
     engines: {node: '>=16'}
     peerDependencies:
@@ -241,7 +241,7 @@ packages:
     dependencies:
       '@solana/buffer-layout': 4.0.1
       '@solana/buffer-layout-utils': 0.2.0
-      '@solana/web3.js': 2.0.0-experimental.f3eba18
+      '@solana/web3.js': 2.0.0-experimental.7539d42
       buffer: 6.0.3
     transitivePeerDependencies:
       - bufferutil
@@ -250,12 +250,12 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@solana/transactions@2.0.0-experimental.f3eba18:
-    resolution: {integrity: sha512-Di934FITP5L9ClOHyfKsJ7MDM1oKBJYpypIwrqwPaYW52n7gW8I98c47sZQs0/pufDMqFOKtBH8xvmvsJRX7mw==}
+  /@solana/transactions@2.0.0-experimental.7539d42:
+    resolution: {integrity: sha512-dj8fMui7tP0cWHA2QyTzvi5tPPcH4cnFTr59gkVwEBn4Hh+fCuhxBxUCa/pDSdhMWzLBt7rBxXt6i14IuW49ig==}
     dependencies:
       '@metaplex-foundation/umi-serializers': 0.8.5
-      '@solana/addresses': 2.0.0-experimental.f3eba18
-      '@solana/keys': 2.0.0-experimental.f3eba18
+      '@solana/addresses': 2.0.0-experimental.7539d42
+      '@solana/keys': 2.0.0-experimental.7539d42
     dev: false
 
   /@solana/web3.js@1.78.2:
@@ -283,15 +283,15 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@solana/web3.js@2.0.0-experimental.f3eba18:
-    resolution: {integrity: sha512-tfvRn4f+AVpt2yA6CIlJ4NZzg75PK2wZEe8Qa4vKhRyQp3y9nW0diVm3WW3pjEuNL6DbSMQbKmgC2mHzgYSYSg==}
+  /@solana/web3.js@2.0.0-experimental.7539d42:
+    resolution: {integrity: sha512-sWGEFQ6BJsxJdgx1y+9LOLrsYTBhlKMtt5Z1QRvI68f3t6afKygcdJ3B1tmdtHnV7cAmTq9IwpgJlgU+NfWOrw==}
     dependencies:
-      '@solana/addresses': 2.0.0-experimental.f3eba18
-      '@solana/instructions': 2.0.0-experimental.f3eba18
-      '@solana/keys': 2.0.0-experimental.f3eba18
-      '@solana/rpc-core': 2.0.0-experimental.f3eba18
-      '@solana/rpc-transport': 2.0.0-experimental.f3eba18
-      '@solana/transactions': 2.0.0-experimental.f3eba18
+      '@solana/addresses': 2.0.0-experimental.7539d42
+      '@solana/instructions': 2.0.0-experimental.7539d42
+      '@solana/keys': 2.0.0-experimental.7539d42
+      '@solana/rpc-core': 2.0.0-experimental.7539d42
+      '@solana/rpc-transport': 2.0.0-experimental.7539d42
+      '@solana/transactions': 2.0.0-experimental.7539d42
       fast-stable-stringify: 1.0.0
     dev: false
 
