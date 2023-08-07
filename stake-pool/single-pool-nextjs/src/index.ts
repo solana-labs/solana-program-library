@@ -2,11 +2,11 @@ import {
   Base58EncodedAddress,
   setTransactionFeePayer,
   appendTransactionInstruction,
-signTransaction,
+  signTransaction,
   getBase58EncodedAddressCodec,
   setTransactionLifetimeUsingBlockhash,
-createDefaultRpcTransport,
-createSolanaRpc,
+  createDefaultRpcTransport,
+  createSolanaRpc,
   generateKeyPair,
   getBase64EncodedWireTransaction,
   getBase58EncodedAddressFromPublicKey,
@@ -29,19 +29,26 @@ import fs from 'fs';
 //
 // XXX bother luscher to add this stuff to the web3 library
 
-const SYSTEM_PROGRAM_ID = '11111111111111111111111111111111' as Base58EncodedAddress;
-const STAKE_PROGRAM_ID = 'Stake11111111111111111111111111111111111111' as Base58EncodedAddress;
-const SYSVAR_RENT_ID = 'SysvarRent111111111111111111111111111111111' as Base58EncodedAddress;
-const SYSVAR_CLOCK_ID = 'SysvarC1ock11111111111111111111111111111111' as Base58EncodedAddress;
-const SYSVAR_STAKE_HISTORY_ID =
-  'SysvarStakeHistory1111111111111111111111111' as Base58EncodedAddress;
-const STAKE_CONFIG_ID = 'StakeConfig11111111111111111111111111111111' as Base58EncodedAddress;
+function address<TAddress extends string>(string: TAddress): Base58EncodedAddress<TAddress> {
+  return string as Base58EncodedAddress<TAddress>;
+}
+
+const SYSTEM_PROGRAM_ID = address('11111111111111111111111111111111');
+const STAKE_PROGRAM_ID = address('Stake11111111111111111111111111111111111111');
+const SYSVAR_RENT_ID = address('SysvarRent111111111111111111111111111111111');
+const SYSVAR_CLOCK_ID = address('SysvarC1ock11111111111111111111111111111111');
+const SYSVAR_STAKE_HISTORY_ID = address('SysvarStakeHistory1111111111111111111111111');
+const STAKE_CONFIG_ID = address('StakeConfig11111111111111111111111111111111');
 
 const STAKE_ACCOUNT_SIZE = BigInt(200);
 
 // i could pr the system instructions but i have no idea what opinions luscher has about bufferlayout
 class SystemInstruction {
-  static transfer(params: { from: Base58EncodedAddress, to: Base58EncodedAddress, lamports: bigint }): Instruction {
+  static transfer(params: {
+    from: Base58EncodedAddress;
+    to: Base58EncodedAddress;
+    lamports: bigint;
+  }): Instruction {
     const type = {
       index: 2,
       layout: BufferLayout.struct<{ instruction: number; lamports: bigint }>([
@@ -74,17 +81,16 @@ class SystemInstruction {
 //
 // XXX other non-us non-web3 nonsense
 
-const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' as Base58EncodedAddress;
+const TOKEN_PROGRAM_ID = address('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const MINT_SIZE = BigInt(82);
 
 //
 //
 // XXX our nonsense
 
-export const SINGLE_POOL_PROGRAM_ID =
-  '3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY' as Base58EncodedAddress;
+export const SINGLE_POOL_PROGRAM_ID = address('3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY');
 
-// FIXME get pool buffer size via js layout span 
+// FIXME get pool buffer size via js layout span
 const POOL_ACCOUNT_SIZE = BigInt(33);
 
 //
@@ -235,9 +241,6 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
 //
 // XXX ixn definitions
 
-/* XXX this stuff seems useless, consult with luscher
-   also it forces me to put accouts directly in the three-property object???
-   when i try to use an intermediate variable it bitches about some type shit
 type InitializePoolInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
   IInstructionWithAccounts<
     [
@@ -257,7 +260,6 @@ type InitializePoolInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
     ]
   > &
   IInstructionWithData<Buffer>;
-*/
 
 type Instruction = IInstruction<string>;
 
@@ -266,38 +268,37 @@ type Instruction = IInstruction<string>;
 // XXX ixn builders
 
 export class SinglePoolInstruction {
-  static async initializePool(voteAccount: VoteAccountAddress): Promise<Instruction> {
+  static async initializePool(voteAccount: VoteAccountAddress): Promise<InitializePoolInstruction> {
     const programAddress = SINGLE_POOL_PROGRAM_ID;
     const pool = await findPoolAddress(programAddress, voteAccount);
 
     const type = SINGLE_POOL_INSTRUCTION_LAYOUTS.InitializePool;
     const data = encodeData(type);
 
-    const accounts = [
-      { address: voteAccount, role: AccountRole.READONLY },
-      { address: pool, role: AccountRole.WRITABLE },
-      { address: await findPoolStakeAddress(programAddress, pool), role: AccountRole.WRITABLE },
-      { address: await findPoolMintAddress(programAddress, pool), role: AccountRole.WRITABLE },
-      {
-        address: await findPoolStakeAuthorityAddress(programAddress, pool),
-        role: AccountRole.READONLY,
-      },
-      {
-        address: await findPoolMintAuthorityAddress(programAddress, pool),
-        role: AccountRole.READONLY,
-      },
-      { address: SYSVAR_RENT_ID, role: AccountRole.READONLY },
-      { address: SYSVAR_CLOCK_ID, role: AccountRole.READONLY },
-      { address: SYSVAR_STAKE_HISTORY_ID, role: AccountRole.READONLY },
-      { address: STAKE_CONFIG_ID, role: AccountRole.READONLY },
-      { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
-      { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
-      { address: STAKE_PROGRAM_ID, role: AccountRole.READONLY },
-    ];
-
     return {
       data,
-      accounts,
+      accounts: [
+        { address: voteAccount, role: AccountRole.READONLY },
+        { address: pool, role: AccountRole.WRITABLE },
+        { address: await findPoolStakeAddress(programAddress, pool), role: AccountRole.WRITABLE },
+        { address: await findPoolMintAddress(programAddress, pool), role: AccountRole.WRITABLE },
+        {
+          address: await findPoolStakeAuthorityAddress(programAddress, pool),
+          role: AccountRole.READONLY,
+        },
+        {
+          address: await findPoolMintAuthorityAddress(programAddress, pool),
+          role: AccountRole.READONLY,
+        },
+        { address: SYSVAR_RENT_ID, role: AccountRole.READONLY },
+        { address: SYSVAR_CLOCK_ID, role: AccountRole.READONLY },
+        { address: SYSVAR_STAKE_HISTORY_ID, role: AccountRole.READONLY },
+        { address: STAKE_CONFIG_ID, role: AccountRole.READONLY },
+        { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
+        { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+        { address: STAKE_PROGRAM_ID, role: AccountRole.READONLY },
+      ],
+
       programAddress,
     };
   }
@@ -352,7 +353,10 @@ export async function initialize(
     transaction,
   );
 
-  transaction = appendTransactionInstruction(await SinglePoolInstruction.initializePool(voteAccount), transaction);
+  transaction = appendTransactionInstruction(
+    await SinglePoolInstruction.initializePool(voteAccount),
+    transaction,
+  );
 
   if (!skipMetadata) {
     // TODO
@@ -373,15 +377,11 @@ async function main() {
   const payerAddress = await getBase58EncodedAddressFromPublicKey(payer.publicKey);
   await rpc.requestAirdrop(payerAddress, BigInt(100000000000) as any).send();
 
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise((r) => setTimeout(r, 3000));
 
   const voteAccount = 'KRAKEnMdmT4EfM8ykTFH6yLoCd5vNLcQvJwF66Y2dag' as VoteAccountAddress;
 
-  const transaction0 = await initialize(
-    rpc,
-    voteAccount,
-    payerAddress,
-  );
+  const transaction0 = await initialize(rpc, voteAccount, payerAddress);
   const transaction1 = setTransactionFeePayer(payerAddress, transaction0);
   const blockhash = (await rpc.getLatestBlockhash().send()).value;
   const transaction2 = setTransactionLifetimeUsingBlockhash(blockhash, transaction1);
@@ -394,7 +394,7 @@ async function main() {
   const rawTransaction = getBase64EncodedWireTransaction(transaction3);
   console.log('\nraw transaction:', rawTransaction);
 
-  await rpc.sendTransaction(rawTransaction, { encoding: "base64", preflightCommitment: 'confirmed' }).send();
+  //await rpc.sendTransaction(rawTransaction, { encoding: "base64", preflightCommitment: 'confirmed' }).send();
 }
 
 await main();
