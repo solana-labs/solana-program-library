@@ -11,11 +11,11 @@ use {
         solana_zk_token_sdk::{
             encryption::elgamal::{
                 ElGamalPubkey as ElGamalPubkeyDecoded,
-                ElGamalKeypair as ElGamalKeypairDecoded,
+                ElGamalSecretKey as ElGamalSecretKeyDecoded,
             },
             zk_token_elgamal::pod::ElGamalPubkey as ElGamalPubkeyPod,
         },
-        pod::{OptionalNonZeroPubkey, OptionalNonZeroElGamalPubkey},
+        pod::{OptionalNonZeroPubkey, OptionalNonZeroElGamalPubkey, PodBool},
     },
     std::str::FromStr,
 };
@@ -56,7 +56,8 @@ fn token_program_extension_serde() {
     let authority_option: Option<Pubkey> = Some(Pubkey::from_str("4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM").unwrap());
     let authority: OptionalNonZeroPubkey = authority_option.try_into().unwrap();
 
-    let elgamal_pubkey: ElGamalPubkeyDecoded = ElGamalKeypairDecoded::new_rand().public;
+    let elgamal_secretkey: ElGamalSecretKeyDecoded = ElGamalSecretKeyDecoded::new_rand();
+    let elgamal_pubkey: ElGamalPubkeyDecoded = ElGamalPubkeyDecoded::new(&elgamal_secretkey);
     let elgamal_pubkey_pod: ElGamalPubkeyPod = ElGamalPubkeyPod::from(elgamal_pubkey);
     let elgamal_pubkey_pod_option: Option<ElGamalPubkeyPod> = Some(elgamal_pubkey_pod);
     let auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey = elgamal_pubkey_pod_option.try_into().unwrap();
@@ -72,5 +73,25 @@ fn token_program_extension_serde() {
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized = serde_json::from_str::<confidential_transfer::instruction::InitializeMintData>(&serialized).unwrap();
+    assert_eq!(inst, deserialized);
+}
+
+#[test]
+fn token_program_extension_serde_with_none() {
+    let authority: OptionalNonZeroPubkey = None.try_into().unwrap();
+
+    let auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey = OptionalNonZeroElGamalPubkey::default();
+
+    let inst = confidential_transfer::instruction::InitializeMintData {
+        authority,
+        auto_approve_new_accounts: false.into(),
+        auditor_elgamal_pubkey,
+    };
+
+    let serialized = serde_json::to_string(&inst).unwrap();
+    let serialized_expected = &format!("{{\"authority\":null,\"auto_approve_new_accounts\":false,\"auditor_elgamal_pubkey\":null}}");
+    assert_eq!(&serialized, serialized_expected);
+
+    let deserialized = serde_json::from_str::<confidential_transfer::instruction::InitializeMintData>(&serialized_expected).unwrap();
     assert_eq!(inst, deserialized);
 }

@@ -3,7 +3,7 @@ use {
     bytemuck::{Pod, Zeroable},
     solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
     solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
-    std::convert::TryFrom,
+    std::{convert::TryFrom, str::FromStr}
 };
 
 #[cfg(feature = "serde-traits")]
@@ -11,7 +11,7 @@ use {
     base64::{prelude::BASE64_STANDARD, Engine},
     serde::{
         Deserialize, Serialize, Deserializer, Serializer,
-        de::{self, Visitor},
+        de::{Error, Unexpected, self, Visitor},
     },
     serde_with::{As, DisplayFromStr},
     std::fmt,
@@ -19,11 +19,9 @@ use {
 
 /// A Pubkey that encodes `None` as all `0`, meant to be usable as a Pod type,
 /// similar to all NonZero* number types from the bytemuck library.
-#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct OptionalNonZeroPubkey(
-    #[cfg_attr(feature = "serde-traits", serde(with = "As::<DisplayFromStr>"))]
     Pubkey
 );
 impl TryFrom<Option<Pubkey>> for OptionalNonZeroPubkey {
@@ -125,13 +123,11 @@ impl Serialize for OptionalNonZeroElGamalPubkey {
 }
 
 #[cfg(feature = "serde-traits")]
-struct OptionalNonZeroElGamalPubkeyVisitor;
-#[cfg(feature = "serde-traits")]
-impl<'de> Visitor<'de> for OptionalNonZeroElGamalPubkeyVisitor {
+impl<'de> Visitor<'de> for OptionalNonZeroElGamalPubkey {
     type Value = OptionalNonZeroElGamalPubkey;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("an ElGamal public key as base64")
+        formatter.write_str("an ElGamal public key as base64 or `null`")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -146,10 +142,16 @@ impl<'de> Visitor<'de> for OptionalNonZeroElGamalPubkeyVisitor {
 
         let mut array = [0; 32];
         array.copy_from_slice(&bytes[0..32]);
-
         let elgamal_pubkey = ElGamalPubkey(array);
 
         OptionalNonZeroElGamalPubkey::try_from(Some(elgamal_pubkey)).map_err(de::Error::custom)
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+    {
+        Ok(OptionalNonZeroElGamalPubkey::default())
     }
 }
 #[cfg(feature = "serde-traits")]
@@ -158,12 +160,14 @@ impl<'de> Deserialize<'de> for OptionalNonZeroElGamalPubkey {
         where
             D: Deserializer<'de>,
     {
-        deserializer.deserialize_str(OptionalNonZeroElGamalPubkeyVisitor)
+        deserializer.deserialize_any(OptionalNonZeroElGamalPubkey::default())
     }
 }
 
 /// The standard `bool` is not a `Pod`, define a replacement that is
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(from = "bool", into = "bool"))]
 #[repr(transparent)]
 pub struct PodBool(u8);
 
@@ -184,31 +188,6 @@ impl From<PodBool> for bool {
         b.0 != 0
     }
 }
-
-#[cfg(feature = "serde-traits")]
-impl Serialize for PodBool {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-    {
-        let serde_bool = bool::from(self);
-        serde_bool.serialize(serializer)
-    }
-}
-
-#[cfg(feature = "serde-traits")]
-impl<'de> Deserialize<'de> for PodBool {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
-    {
-        let serde_bool = bool::deserialize(deserializer)?;
-        Ok(PodBool::from(serde_bool))
-    }
-}
-
-
-
 
 /// Simple macro for implementing conversion functions between Pod* ints and standard ints.
 ///
