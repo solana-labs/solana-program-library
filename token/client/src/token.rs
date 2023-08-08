@@ -899,8 +899,8 @@ where
         if let Some(transfer_hook_accounts) = &self.transfer_hook_accounts {
             instruction.accounts.extend(transfer_hook_accounts.clone());
         } else {
-            offchain::get_extra_transfer_account_metas(
-                &mut instruction.accounts,
+            offchain::resolve_extra_transfer_account_metas(
+                &mut instruction,
                 |address| {
                     self.client
                         .get_account(address)

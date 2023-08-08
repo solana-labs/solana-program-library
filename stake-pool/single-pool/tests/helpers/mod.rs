@@ -213,8 +213,8 @@ impl SinglePoolAccounts {
     // creates a vote account and stake pool for it. also sets up two users with sol and token accounts
     // note this leaves the pool in an activating state. caller can advance to next epoch if they please
     pub async fn initialize(&self, context: &mut ProgramTestContext) -> u64 {
-        let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-        context.warp_to_slot(first_normal_slot).unwrap();
+        let slot = context.genesis_config().epoch_schedule.first_normal_slot + 1;
+        context.warp_to_slot(slot).unwrap();
 
         create_vote(
             &mut context.banks_client,
