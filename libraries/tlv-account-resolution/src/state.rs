@@ -72,6 +72,76 @@ use {
 ///     &remaining_account_infos,
 /// );
 /// ```
+///
+/// Sample usage with PDAs:
+///
+/// ```
+/// use {
+///     solana_program::{
+///         account_info::AccountInfo, instruction::{AccountMeta, Instruction},
+///         pubkey::Pubkey
+///     },
+///     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
+///     spl_tlv_account_resolution::{
+///         pod::PodAccountMeta,
+///         seeds::Seed,
+///         state::ExtraAccountMetas,
+///    },
+/// };
+///
+/// struct MyInstruction;
+/// impl SplDiscriminate for MyInstruction {
+///     // Give it a unique discriminator, can also be generated using a hash function
+///     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
+/// }
+///
+/// // Create a list of required additional accounts for your program.
+/// // This time, you'll have to use `PodAccountMeta`
+/// let extra_accounts = [
+///     PodAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
+///     PodAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
+///     PodAccountMeta::new_with_seeds(
+///         &[
+///             Seed::Literal {
+///                 bytes: b"my_prefix".to_vec(),
+///             },
+///             Seed::InstructionData {
+///                 index: 0,
+///                 length: 8,
+///             },
+///             Seed::AccountKey { index: 0 },
+///         ],
+///         false,
+///         true,
+///     ).unwrap(),
+/// ];
+///
+/// // This time you'll use `init_with_pod_account_metas(..)`
+/// let account_size = ExtraAccountMetas::size_of(extra_accounts.len()).unwrap();
+/// let mut buffer = vec![0; account_size];
+/// ExtraAccountMetas::init_with_pod_account_metas::<MyInstruction>(&mut buffer, &extra_accounts).unwrap();
+///
+/// // We'll want to include instruction data this time
+/// let instruction_data = vec![1; 12];
+/// let program_id = Pubkey::new_unique();
+///
+/// // The rest is the same as the other example!
+///
+/// // Off-chain
+/// let mut instruction = Instruction::new_with_bytes(program_id, &instruction_data, vec![]);
+/// ExtraAccountMetas::add_to_instruction::<MyInstruction>(&mut instruction, &buffer).unwrap();
+///
+/// // On-chain
+/// let mut cpi_instruction = Instruction::new_with_bytes(program_id, &instruction_data, vec![]);
+/// let mut cpi_account_infos = vec![]; // assume the other required account infos are already included
+/// let remaining_account_infos: &[AccountInfo<'_>] = &[]; // these are the account infos provided to the instruction that are *not* part of any other known interface
+/// ExtraAccountMetas::add_to_cpi_instruction::<MyInstruction>(
+///     &mut cpi_instruction,
+///     &mut cpi_account_infos,
+///     &buffer,
+///     &remaining_account_infos,
+/// );
+/// ```
 pub struct ExtraAccountMetas;
 impl ExtraAccountMetas {
     /// Initialize pod slice data for the given instruction and any type
@@ -174,12 +244,15 @@ impl ExtraAccountMetas {
 
     /// Resolve a program-derived address (PDA) from the instruction data
     /// and the accounts that have already been resolved
-    fn resolve_pda(
-        resolved_metas: &[AccountMeta],
+    pub fn resolve_pda<M>(
+        seeds: &[Seed],
+        resolved_metas: &[M],
         instruction_data: &[u8],
         program_id: &Pubkey,
-        seeds: &[Seed],
-    ) -> Result<Pubkey, ProgramError> {
+    ) -> Result<Pubkey, ProgramError>
+    where
+        M: ToPubkey,
+    {
         let mut pda_seeds: Vec<&[u8]> = vec![];
         for config in seeds {
             match config {
@@ -195,11 +268,35 @@ impl ExtraAccountMetas {
                     let account_meta = resolved_metas
                         .get(account_index)
                         .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?;
-                    pda_seeds.push(account_meta.pubkey.as_ref());
+                    pda_seeds.push(account_meta.to_pubkey().as_ref());
                 }
             }
         }
         Ok(Pubkey::find_program_address(&pda_seeds, program_id).0)
+    }
+
+    /// Resolve a `PodAccountMeta` into an `AccountMeta`, potentially
+    /// resolving a program-derived address (PDA) if necessary
+    pub fn resolve_account_meta<M>(
+        pod_account_meta: &PodAccountMeta,
+        resolved_metas: &[M],
+        instruction_data: &[u8],
+        program_id: &Pubkey,
+    ) -> Result<AccountMeta, ProgramError>
+    where
+        M: ToPubkey,
+    {
+        let account_meta = if pod_account_meta.is_pda() {
+            let seeds = Seed::unpack_address_config(&pod_account_meta.address_config)?;
+            AccountMeta {
+                pubkey: Self::resolve_pda(&seeds, resolved_metas, instruction_data, program_id)?,
+                is_signer: pod_account_meta.is_signer.into(),
+                is_writable: pod_account_meta.is_writable.into(),
+            }
+        } else {
+            AccountMeta::try_from(pod_account_meta)?
+        };
+        Ok(account_meta)
     }
 
     /// Add the additional account metas to an existing instruction
@@ -212,23 +309,12 @@ impl ExtraAccountMetas {
         let extra_account_metas = PodSlice::<PodAccountMeta>::unpack(bytes)?;
 
         for extra_meta in extra_account_metas.data().iter() {
-            let mut account_meta = match extra_meta.discriminator {
-                0 => AccountMeta::try_from(extra_meta)?,
-                1 => {
-                    let seeds = Seed::unpack_address_config(&extra_meta.address_config)?;
-                    AccountMeta {
-                        pubkey: Self::resolve_pda(
-                            &instruction.accounts,
-                            &instruction.data,
-                            &instruction.program_id,
-                            &seeds,
-                        )?,
-                        is_signer: extra_meta.is_signer.into(),
-                        is_writable: extra_meta.is_writable.into(),
-                    }
-                }
-                _ => return Err(ProgramError::InvalidAccountData),
-            };
+            let mut account_meta = Self::resolve_account_meta::<AccountMeta>(
+                extra_meta,
+                &instruction.accounts,
+                &instruction.data,
+                &instruction.program_id,
+            )?;
             Self::de_escalate_account_meta(&mut account_meta, &instruction.accounts);
             instruction.accounts.push(account_meta);
         }
@@ -260,6 +346,23 @@ impl ExtraAccountMetas {
             cpi_account_infos.push(account_info);
         }
         Ok(())
+    }
+}
+
+/// Trait for getting the pubkey of an account regardless of whether it's an
+/// `AccountMeta` or `AccountInfo`
+pub trait ToPubkey {
+    /// Returns the pubkey of the account
+    fn to_pubkey(&self) -> &Pubkey;
+}
+impl ToPubkey for AccountMeta {
+    fn to_pubkey(&self) -> &Pubkey {
+        &self.pubkey
+    }
+}
+impl ToPubkey for AccountInfo<'_> {
+    fn to_pubkey(&self) -> &Pubkey {
+        self.key
     }
 }
 

@@ -45,16 +45,28 @@ pub fn process_instruction(
         ExtraAccountMetas::unpack_with_tlv_state::<ExecuteInstruction>(&state)?;
 
     // If incorrect number of accounts is provided, error
-    let extra_account_infos = account_info_iter.as_slice();
-    let account_metas = extra_account_metas.data();
-    if extra_account_infos.len() != account_metas.len() {
-        return Err(ProgramError::InvalidInstructionData);
+    let provided_extra_account_infos = account_info_iter.as_slice();
+    let required_extra_account_metas = extra_account_metas.data();
+    if provided_extra_account_infos.len() != required_extra_account_metas.len() {
+        return Err(TransferHookError::IncorrectAccount.into());
     }
 
     // Let's require that they're provided in the correct order
-    for (i, account_info) in extra_account_infos.iter().enumerate() {
-        if &account_metas[i] != account_info {
-            return Err(ProgramError::InvalidInstructionData);
+    for pod_meta in required_extra_account_metas {
+        let meta = ExtraAccountMetas::resolve_account_meta::<AccountInfo>(
+            pod_meta,
+            accounts,
+            input,
+            program_id,
+        )?;
+        if !provided_extra_account_infos.iter().any(|info| {
+            if info.key == &meta.pubkey {
+                info.is_signer == meta.is_signer && info.is_writable == meta.is_writable
+            } else {
+                false
+            }
+        }) {
+            return Err(TransferHookError::IncorrectAccount.into());
         }
     }
 
@@ -104,3 +116,32 @@ accounts required. See
 for usage on-chain, and
 [offchain.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/src/offchain.rs)
 for fetching the additional required account metas.
+
+### Types of Required Accounts
+
+Implementers of this interface are encouraged to make use of the SPL library
+[spl-tlv-account-resolution](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md)
+to manage the additional required accounts for their transfer hook program.
+
+This library is capable of storing configurations for two types of additional
+required accounts: accounts with fixed addresses known at the time the
+configuration is written to state, and accounts with a **Program-Derived Address**,
+which can be comprised of seeds that may come from any combination of the
+following:
+
+- Hard-coded values, such as string literals or integers
+- A slice of the instruction data provided to the program
+- The address of another account in the total list of accounts
+
+When you store configurations for a Program-Derived Address within the
+additional required accounts, the PDA itself is evaluated (or resolved) at the
+time of instruction invocation using data from the instruction itself. This
+occurs in the offchain and onchain helpers mentioned above, which leverage
+the SPL TLV Account Resolution library to perform this resolution
+automatically.
+
+For more information on storing seed configurations for additional required
+accounts for a program, you can check out the
+[Transfer Hook Example Program](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-example)
+or the
+[TLV Account Resolution library itself](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md).

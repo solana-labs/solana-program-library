@@ -1361,6 +1361,35 @@ address!
 More information in the
 [spl-transfer-hook-interface README](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/README.md).
 
+#### Types of Required Accounts
+
+Implementers of this interface are encouraged to make use of the SPL library
+[spl-tlv-account-resolution](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md)
+to manage the additional required accounts for their transfer hook program.
+
+This library is capable of storing configurations for two types of additional
+required accounts: accounts with fixed addresses known at the time the
+configuration is written to state, and accounts with a **Program-Derived Address**,
+which can be comprised of seeds that may come from any combination of the
+following:
+
+- Hard-coded values, such as string literals or integers
+- A slice of the instruction data provided to the program
+- The address of another account in the total list of accounts
+
+When you store configurations for a Program-Derived Address within the
+additional required accounts, the PDA itself is evaluated (or resolved) at the
+time of instruction invocation using data from the instruction itself. This
+occurs in the offchain and onchain helpers mentioned below, which leverage
+the SPL TLV Account Resolution library to perform this resolution
+automatically.
+
+For more information on storing seed configurations for additional required
+accounts for a program, you can check out the
+[Transfer Hook Example Program](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-example)
+or the
+[TLV Account Resolution library itself](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md).
+
 #### Utilities
 
 The `spl-transfer-hook-interface` library provides offchain and onchain helpers
