@@ -13,7 +13,7 @@ test-sbf = []
 
 [dependencies]
 solana-program = "1.16.3"
-spl-token-2022 = { version = "0.7", path = "../../token/program-2022" }
+spl-token-2022 = { version = "0.8", path = "../../token/program-2022" }
 spl-token-metadata-interface = { version = "0.1.0", path = "../interface" }
 spl-type-length-value = { version = "0.2.0" , path = "../../libraries/type-length-value" }
 

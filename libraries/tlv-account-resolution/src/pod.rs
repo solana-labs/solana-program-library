@@ -61,6 +61,17 @@ impl PodAccountMeta {
             is_writable: is_writable.into(),
         })
     }
+
+    /// Returns `true` if this `PodAccountMeta` represents a standard
+    /// `AccountMeta`
+    pub fn is_account_meta(&self) -> bool {
+        self.discriminator == 0
+    }
+
+    /// Returns `true` if this `PodAccountMeta` represents a PDA
+    pub fn is_pda(&self) -> bool {
+        self.discriminator == 1
+    }
 }
 
 // Conversions to `PodAccountMeta`

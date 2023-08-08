@@ -12,7 +12,8 @@ pub mod instruction;
 pub mod offchain;
 pub mod onchain;
 
-// Export current sdk types for downstream users building with a different sdk version
+// Export current sdk types for downstream users building with a different sdk
+// version
 pub use solana_program;
 use solana_program::pubkey::Pubkey;
 

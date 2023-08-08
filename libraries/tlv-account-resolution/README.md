@@ -83,7 +83,7 @@ uses static account data.
 
 For example, let's imagine there's a `Transferable` interface, along with a
 `transfer` instruction. Some programs that implement `transfer` may need more
-accounts than just the ones defined in the interface. How does a an on-chain or
+accounts than just the ones defined in the interface. How does an on-chain or
 off-chain client figure out the additional required accounts?
 
 The "static" approach requires programs to write the extra required accounts to
@@ -99,13 +99,58 @@ instruction and give the correct account infos.
 
 This approach could also be called a "state interface".
 
+### Types of Required Accounts
+
+This library actually provides support for two different "types" of additional
+required accounts, which can be resolved by the on-chain and off-chain helpers.
+
+The first type of account is any account with a fixed address that can be
+represented by the traditional type [`AccountMeta`](https://docs.rs/solana-program/latest/solana_program/instruction/struct.AccountMeta.html):
+
+```rust
+struct AccountMeta {
+    pubkey: Pubkey,
+    is_signer: bool,
+    is_writable: bool,
+}
+```
+
+These accounts are considered to have "fixed" addresses because, at the time
+of account resolution, they are loaded as `AccountMeta` data and are expected
+to have a valid Solana address associated with them, however they may be
+stored.
+
+The second type of account is any account that uses a Program-Derived Address
+(PDA). As one might infer, these accounts may or may not have an address
+that is known at the time of creation of the configuration data. In other
+words, one may not be able to identify what the address for a required PDA
+should be without having access to instruction data at the time of program
+invocation.
+
+TLV Account Resolution allows on-chain programs to configure required accounts
+that can have a Program-Derived Address (PDA) whose **seeds** are comprised
+of various information contained within an instruction
+_at the time the program is invoked_. These seeds can be any of the following:
+
+- Hard-coded values, such as string literals or integers
+- A slice of the instruction data provided to the program
+- The address of another account in the total list of accounts
+
+Note: Since accounts that have PDAs are stored in the same data as their
+`AccountMeta` counterparts, a `u8` discriminator is used to differentiate
+between 32 bytes of a valid Solana address and 32 bytes of seed configurations.
+For more information see `PodAccountMeta` in `src/pod.rs`.
+
 ## How it works
 
 This library uses `spl-type-length-value` to read and write required instruction
 accounts from account data.
 
 Interface instructions must have an 8-byte discriminator, so that the exposed
-`ExtraAccountMetas` type can use the instruction discriminator as a `ArrayDiscriminator`.
+`ExtraAccountMetas` type can use the instruction discriminator as an
+`ArrayDiscriminator`, which allows that discriminator to serve as a unique TLV
+discriminator for identifying entries that correspond to that particular
+instruction.
 
 This can be confusing. Typically, a type implements `SplDiscriminate`, so that
 the type can be written into TLV data. In this case, `ExtraAccountMetas` is

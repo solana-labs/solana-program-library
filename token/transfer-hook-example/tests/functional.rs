@@ -153,6 +153,10 @@ async fn success_execute() {
 
     let extra_account_metas = get_extra_account_metas_address(&mint_address, &program_id);
 
+    let required_pda =
+        Pubkey::find_program_address(&[b"transfer-hook-example", source.as_ref()], &program_id).0;
+
+    // PDA omitted for initialization
     let extra_account_pubkeys = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
@@ -161,7 +165,8 @@ async fn success_execute() {
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
+        // 3 metas, 1 PDA
+        rent.minimum_balance(ExtraAccountMetas::size_of(4).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
@@ -188,7 +193,7 @@ async fn success_execute() {
         .await
         .unwrap();
 
-    // fail with missing account
+    // fail with missing account (PDA not yet added)
     {
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
@@ -198,7 +203,7 @@ async fn success_execute() {
                 &destination,
                 &wallet.pubkey(),
                 &extra_account_metas,
-                &extra_account_pubkeys[..2],
+                &extra_account_pubkeys,
                 0,
             )],
             Some(&context.payer.pubkey()),
@@ -225,7 +230,8 @@ async fn success_execute() {
         let extra_account_pubkeys = [
             AccountMeta::new_readonly(sysvar::instructions::id(), false),
             AccountMeta::new_readonly(mint_authority_pubkey, true),
-            AccountMeta::new(wallet.pubkey(), false),
+            AccountMeta::new(wallet.pubkey(), false), // NOT the PDA
+            AccountMeta::new(extra_account_metas, false),
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
@@ -262,6 +268,7 @@ async fn success_execute() {
         let extra_account_pubkeys = [
             AccountMeta::new_readonly(sysvar::instructions::id(), false),
             AccountMeta::new_readonly(mint_authority_pubkey, false),
+            AccountMeta::new_readonly(required_pda, false),
             AccountMeta::new(extra_account_metas, false),
         ];
         let transaction = Transaction::new_signed_with_payer(
@@ -296,6 +303,12 @@ async fn success_execute() {
 
     // success with correct params
     {
+        let extra_account_pubkeys = [
+            AccountMeta::new_readonly(sysvar::instructions::id(), false),
+            AccountMeta::new_readonly(mint_authority_pubkey, true),
+            AccountMeta::new_readonly(required_pda, false),
+            AccountMeta::new(extra_account_metas, false),
+        ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
                 &program_id,
@@ -347,9 +360,17 @@ async fn fail_incorrect_derivation() {
     // wrong derivation
     let extra_account_metas = get_extra_account_metas_address(&program_id, &mint_address);
 
+    // PDA omitted for initialization
+    let extra_account_pubkeys = [
+        AccountMeta::new_readonly(sysvar::instructions::id(), false),
+        AccountMeta::new_readonly(mint_authority_pubkey, true),
+        AccountMeta::new(extra_account_metas, false),
+    ];
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent.minimum_balance(ExtraAccountMetas::size_of(0).unwrap());
+    let rent_lamports =
+        // 3 metas, 1 PDA
+        rent.minimum_balance(ExtraAccountMetas::size_of(4).unwrap());
 
     let transaction = Transaction::new_signed_with_payer(
         &[
@@ -363,7 +384,7 @@ async fn fail_incorrect_derivation() {
                 &extra_account_metas,
                 &mint_address,
                 &mint_authority_pubkey,
-                &[],
+                &extra_account_pubkeys,
             ),
         ],
         Some(&context.payer.pubkey()),
@@ -433,7 +454,15 @@ async fn success_on_chain_invoke() {
 
     let extra_account_metas = get_extra_account_metas_address(&mint_address, &hook_program_id);
 
+    let required_pda = Pubkey::find_program_address(
+        &[b"transfer-hook-example", source.as_ref()],
+        &hook_program_id,
+    )
+    .0;
+
     let writable_pubkey = Pubkey::new_unique();
+
+    // PDA omitted for initialization
     let extra_account_pubkeys = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
@@ -442,7 +471,8 @@ async fn success_on_chain_invoke() {
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
+       // 3 metas, 1 PDA
+       rent.minimum_balance(ExtraAccountMetas::size_of(4).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
@@ -468,6 +498,14 @@ async fn success_on_chain_invoke() {
         .process_transaction(transaction)
         .await
         .unwrap();
+
+    // PDA added
+    let extra_account_pubkeys = [
+        AccountMeta::new_readonly(sysvar::instructions::id(), false),
+        AccountMeta::new_readonly(mint_authority_pubkey, true),
+        AccountMeta::new_readonly(required_pda, false),
+        AccountMeta::new(writable_pubkey, false),
+    ];
 
     // easier to hack this up!
     let mut test_instruction = execute_with_extra_account_metas(
@@ -523,11 +561,21 @@ async fn fail_without_transferring_flag() {
     );
 
     let extra_account_metas = get_extra_account_metas_address(&mint_address, &program_id);
-    let extra_account_pubkeys = [];
+
+    let required_pda =
+        Pubkey::find_program_address(&[b"transfer-hook-example", source.as_ref()], &program_id).0;
+
+    // PDA omitted for initialization
+    let extra_account_pubkeys = [
+        AccountMeta::new_readonly(sysvar::instructions::id(), false),
+        AccountMeta::new_readonly(mint_authority_pubkey, true),
+        AccountMeta::new(extra_account_metas, false),
+    ];
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
+        // 3 metas, 1 PDA
+        rent.minimum_balance(ExtraAccountMetas::size_of(4).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
@@ -553,6 +601,15 @@ async fn fail_without_transferring_flag() {
         .process_transaction(transaction)
         .await
         .unwrap();
+
+    // PDA added
+    let extra_account_pubkeys = [
+        AccountMeta::new_readonly(sysvar::instructions::id(), false),
+        AccountMeta::new_readonly(mint_authority_pubkey, true),
+        AccountMeta::new_readonly(required_pda, false),
+        AccountMeta::new(extra_account_metas, false),
+    ];
+
     let transaction = Transaction::new_signed_with_payer(
         &[execute_with_extra_account_metas(
             &program_id,
@@ -565,7 +622,7 @@ async fn fail_without_transferring_flag() {
             0,
         )],
         Some(&context.payer.pubkey()),
-        &[&context.payer],
+        &[&context.payer, &mint_authority],
         context.last_blockhash,
     );
     let error = context

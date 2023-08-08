@@ -14,7 +14,8 @@ use {
 /// Type representing the output of an account fetching function, for easy
 /// chaining between APIs
 pub type AccountDataResult = Result<Option<Vec<u8>>, AccountFetchError>;
-/// Generic error type that can come out of any client while fetching account data
+/// Generic error type that can come out of any client while fetching account
+/// data
 pub type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
 
 /// Offchain helper to get all additional required account metas for a mint

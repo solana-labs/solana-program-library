@@ -1,10 +1,10 @@
 //! Program state processor
 
 use {
+    crate::state::TransferHookExampleExtraAccounts,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
-        instruction::AccountMeta,
         msg,
         program::invoke_signed,
         program_error::ProgramError,
@@ -69,27 +69,25 @@ pub fn process_execute(
         ExtraAccountMetas::unpack_with_tlv_state::<ExecuteInstruction>(&state)?;
 
     // if incorrect number of are provided, error
-    let extra_account_infos = account_info_iter.as_slice();
-    let account_metas = extra_account_metas.data();
-    if extra_account_infos.len() != account_metas.len() {
+    let provided_extra_account_infos = account_info_iter.as_slice();
+    let required_extra_account_metas = extra_account_metas.data();
+    if provided_extra_account_infos.len() != required_extra_account_metas.len() {
         return Err(TransferHookError::IncorrectAccount.into());
     }
 
-    // Let's assume that they're provided in the correct order
-    for (i, account_info) in extra_account_infos.iter().enumerate() {
-        let meta = AccountMeta::try_from(&account_metas[i])?;
-        if !(&meta.pubkey == account_info.key
-            && meta.is_signer == account_info.is_signer
-            && meta.is_writable == account_info.is_writable)
-        {
-            return Err(TransferHookError::IncorrectAccount.into());
-        }
-    }
+    // Validate all required accounts were provided.
+    // One could instead place custom logic here
+    TransferHookExampleExtraAccounts::validate_extra_provided_accounts(
+        accounts,
+        required_extra_account_metas,
+        program_id,
+    )?;
 
     Ok(())
 }
 
-/// Processes a [InitializeExtraAccountMetas](enum.TransferHookInstruction.html) instruction.
+/// Processes a [InitializeExtraAccountMetas](enum.TransferHookInstruction.html)
+/// instruction.
 pub fn process_initialize_extra_account_metas(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -127,8 +125,11 @@ pub fn process_initialize_extra_account_metas(
     // Create the account
     let bump_seed = [bump_seed];
     let signer_seeds = collect_extra_account_metas_signer_seeds(mint_info.key, &bump_seed);
-    let extra_account_infos = account_info_iter.as_slice();
-    let length = extra_account_infos.len();
+    let extra_required_accounts = TransferHookExampleExtraAccounts::create_validation_data(
+        account_info_iter.as_slice(),
+        &mint_authority,
+    )?;
+    let length = extra_required_accounts.len();
     let account_size = ExtraAccountMetas::size_of(length)?;
     invoke_signed(
         &system_instruction::allocate(extra_account_metas_info.key, account_size as u64),
@@ -143,9 +144,9 @@ pub fn process_initialize_extra_account_metas(
 
     // Write the data
     let mut data = extra_account_metas_info.try_borrow_mut_data()?;
-    ExtraAccountMetas::init_with_account_infos::<ExecuteInstruction>(
+    ExtraAccountMetas::init_with_pod_account_metas::<ExecuteInstruction>(
         &mut data,
-        extra_account_infos,
+        &extra_required_accounts,
     )?;
 
     Ok(())

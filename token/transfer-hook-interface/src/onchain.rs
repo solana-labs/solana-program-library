@@ -1,4 +1,5 @@
-//! On-chain program invoke helper to perform on-chain `execute` with correct accounts
+//! On-chain program invoke helper to perform on-chain `execute` with correct
+//! accounts
 
 use {
     crate::{error::TransferHookError, get_extra_account_metas_address, instruction},
@@ -53,8 +54,8 @@ pub fn invoke_execute<'a>(
     invoke(&cpi_instruction, &cpi_account_infos)
 }
 
-/// Helper to add accounts required for the transfer-hook program on-chain, looking
-/// through the additional account infos to add the proper accounts
+/// Helper to add accounts required for the transfer-hook program on-chain,
+/// looking through the additional account infos to add the proper accounts
 pub fn add_cpi_accounts_for_execute<'a>(
     cpi_instruction: &mut Instruction,
     cpi_account_infos: &mut Vec<AccountInfo<'a>>,
