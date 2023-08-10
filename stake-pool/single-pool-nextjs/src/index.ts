@@ -241,6 +241,8 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
 //
 // XXX ixn definitions
 
+type Instruction = IInstruction<string>;
+
 type InitializePoolInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
   IInstructionWithAccounts<
     [
@@ -260,8 +262,6 @@ type InitializePoolInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
     ]
   > &
   IInstructionWithData<Buffer>;
-
-type Instruction = IInstruction<string>;
 
 //
 //
@@ -369,15 +369,27 @@ export async function initialize(
 //
 // XXX test fn
 
+async function getPayer() {
+  const header = [
+    0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20,
+  ];
+  const keyBytes = JSON.parse(fs.readFileSync('/home/hana/.config/solana/id.json', 'utf8'));
+
+  const privkey = Uint8Array.from([].concat(header as any, keyBytes.slice(0, 32) as any));
+  const pubkey = Uint8Array.from(keyBytes.slice(32));
+
+  const privateKey = await crypto.subtle.importKey('pkcs8', privkey, 'Ed25519', true, ['sign']);
+  const publicKey = await crypto.subtle.importKey('raw', pubkey, 'Ed25519', true, ['verify']);
+
+  return { privateKey, publicKey };
+}
+
 async function main() {
   const transport = createDefaultRpcTransport({ url: 'http://127.0.0.1:8899' });
   const rpc = createSolanaRpc({ transport });
 
-  const payer = await generateKeyPair();
+  const payer = await getPayer();
   const payerAddress = await getBase58EncodedAddressFromPublicKey(payer.publicKey);
-  await rpc.requestAirdrop(payerAddress, BigInt(100000000000) as any).send();
-
-  await new Promise((r) => setTimeout(r, 3000));
 
   const voteAccount = 'KRAKEnMdmT4EfM8ykTFH6yLoCd5vNLcQvJwF66Y2dag' as VoteAccountAddress;
 
@@ -394,7 +406,9 @@ async function main() {
   const rawTransaction = getBase64EncodedWireTransaction(transaction3);
   console.log('\nraw transaction:', rawTransaction);
 
-  //await rpc.sendTransaction(rawTransaction, { encoding: "base64", preflightCommitment: 'confirmed' }).send();
+  await rpc
+    .sendTransaction(rawTransaction, { encoding: 'base64', preflightCommitment: 'confirmed' })
+    .send();
 }
 
 await main();
