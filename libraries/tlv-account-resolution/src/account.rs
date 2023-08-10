@@ -7,11 +7,65 @@ use {
     crate::{error::AccountResolutionError, seeds::Seed},
     bytemuck::{Pod, Zeroable},
     solana_program::{
-        account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
+        account_info::AccountInfo,
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
         pubkey::Pubkey,
     },
     spl_type_length_value::pod::PodBool,
 };
+
+/// De-escalate an account meta if necessary
+fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[AccountMeta]) {
+    // This is a little tricky to read, but the idea is to see if
+    // this account is marked as writable or signer anywhere in
+    // the instruction at the start. If so, DON'T escalate it to
+    // be a writer or signer in the CPI
+    let maybe_highest_privileges = account_metas
+        .iter()
+        .filter(|&x| x.pubkey == account_meta.pubkey)
+        .map(|x| (x.is_signer, x.is_writable))
+        .reduce(|acc, x| (acc.0 || x.0, acc.1 || x.1));
+    // If `Some`, then the account was found somewhere in the instruction
+    if let Some((is_signer, is_writable)) = maybe_highest_privileges {
+        if !is_signer && is_signer != account_meta.is_signer {
+            // Existing account is *NOT* a signer already, but the CPI
+            // wants it to be, so de-escalate to not be a signer
+            account_meta.is_signer = false;
+        }
+        if !is_writable && is_writable != account_meta.is_writable {
+            // Existing account is *NOT* writable already, but the CPI
+            // wants it to be, so de-escalate to not be writable
+            account_meta.is_writable = false;
+        }
+    }
+}
+
+/// Resolve a program-derived address (PDA) from the instruction data
+/// and the accounts that have already been resolved
+fn resolve_pda(seeds: &[Seed], instruction: &Instruction) -> Result<Pubkey, ProgramError> {
+    let mut pda_seeds: Vec<&[u8]> = vec![];
+    for config in seeds {
+        match config {
+            Seed::Uninitialized => (),
+            Seed::Literal { bytes } => pda_seeds.push(bytes),
+            Seed::InstructionData { index, length } => {
+                let arg_start = *index as usize;
+                let arg_end = arg_start + *length as usize;
+                pda_seeds.push(&instruction.data[arg_start..arg_end]);
+            }
+            Seed::AccountKey { index } => {
+                let account_index = *index as usize;
+                let account_meta = instruction
+                    .accounts
+                    .get(account_index)
+                    .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?;
+                pda_seeds.push(account_meta.pubkey.as_ref());
+            }
+        }
+    }
+    Ok(Pubkey::find_program_address(&pda_seeds, &instruction.program_id).0)
+}
 
 /// `Pod` type for defining a required account in a validation account.
 ///
@@ -60,6 +114,23 @@ impl ExtraAccountMeta {
             is_signer: is_signer.into(),
             is_writable: is_writable.into(),
         })
+    }
+
+    /// Resolve an `ExtraAccountMeta` into an `AccountMeta`, potentially
+    /// resolving a program-derived address (PDA) if necessary
+    pub fn resolve(&self, instruction: &Instruction) -> Result<AccountMeta, ProgramError> {
+        let mut account_meta = if self.discriminator == 1 {
+            let seeds = Seed::unpack_address_config(&self.address_config)?;
+            AccountMeta {
+                pubkey: resolve_pda(&seeds, instruction)?,
+                is_signer: self.is_signer.into(),
+                is_writable: self.is_writable.into(),
+            }
+        } else {
+            AccountMeta::try_from(self)?
+        };
+        de_escalate_account_meta(&mut account_meta, &instruction.accounts);
+        Ok(account_meta)
     }
 }
 

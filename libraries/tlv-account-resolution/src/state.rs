@@ -1,12 +1,11 @@
 //! State transition types
 
 use {
-    crate::{account::ExtraAccountMeta, error::AccountResolutionError, seeds::Seed},
+    crate::{account::ExtraAccountMeta, error::AccountResolutionError},
     solana_program::{
         account_info::AccountInfo,
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
-        pubkey::Pubkey,
     },
     spl_discriminator::SplDiscriminate,
     spl_type_length_value::{
@@ -146,62 +145,6 @@ impl ExtraAccountMetaList {
             .saturating_add(PodSlice::<ExtraAccountMeta>::size_of(num_items)?))
     }
 
-    /// De-escalate an account meta if necessary
-    fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[AccountMeta]) {
-        // This is a little tricky to read, but the idea is to see if
-        // this account is marked as writable or signer anywhere in
-        // the instruction at the start. If so, DON'T escalate it to
-        // be a writer or signer in the CPI
-        let maybe_highest_privileges = account_metas
-            .iter()
-            .filter(|&x| x.pubkey == account_meta.pubkey)
-            .map(|x| (x.is_signer, x.is_writable))
-            .reduce(|acc, x| (acc.0 || x.0, acc.1 || x.1));
-        // If `Some`, then the account was found somewhere in the instruction
-        if let Some((is_signer, is_writable)) = maybe_highest_privileges {
-            if !is_signer && is_signer != account_meta.is_signer {
-                // Existing account is *NOT* a signer already, but the CPI
-                // wants it to be, so de-escalate to not be a signer
-                account_meta.is_signer = false;
-            }
-            if !is_writable && is_writable != account_meta.is_writable {
-                // Existing account is *NOT* writable already, but the CPI
-                // wants it to be, so de-escalate to not be writable
-                account_meta.is_writable = false;
-            }
-        }
-    }
-
-    /// Resolve a program-derived address (PDA) from the instruction data
-    /// and the accounts that have already been resolved
-    fn resolve_pda(
-        resolved_metas: &[AccountMeta],
-        instruction_data: &[u8],
-        program_id: &Pubkey,
-        seeds: &[Seed],
-    ) -> Result<Pubkey, ProgramError> {
-        let mut pda_seeds: Vec<&[u8]> = vec![];
-        for config in seeds {
-            match config {
-                Seed::Uninitialized => (),
-                Seed::Literal { bytes } => pda_seeds.push(bytes),
-                Seed::InstructionData { index, length } => {
-                    let arg_start = *index as usize;
-                    let arg_end = arg_start + *length as usize;
-                    pda_seeds.push(&instruction_data[arg_start..arg_end]);
-                }
-                Seed::AccountKey { index } => {
-                    let account_index = *index as usize;
-                    let account_meta = resolved_metas
-                        .get(account_index)
-                        .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?;
-                    pda_seeds.push(account_meta.pubkey.as_ref());
-                }
-            }
-        }
-        Ok(Pubkey::find_program_address(&pda_seeds, program_id).0)
-    }
-
     /// Add the additional account metas to an existing instruction
     pub fn add_to_instruction<T: SplDiscriminate>(
         instruction: &mut Instruction,
@@ -212,27 +155,8 @@ impl ExtraAccountMetaList {
         let extra_account_metas = PodSlice::<ExtraAccountMeta>::unpack(bytes)?;
 
         for extra_meta in extra_account_metas.data().iter() {
-            let mut account_meta = match extra_meta.discriminator {
-                0 => AccountMeta::try_from(extra_meta)?,
-                1 => {
-                    let seeds = Seed::unpack_address_config(&extra_meta.address_config)?;
-                    AccountMeta {
-                        pubkey: Self::resolve_pda(
-                            &instruction.accounts,
-                            &instruction.data,
-                            &instruction.program_id,
-                            &seeds,
-                        )?,
-                        is_signer: extra_meta.is_signer.into(),
-                        is_writable: extra_meta.is_writable.into(),
-                    }
-                }
-                _ => return Err(ProgramError::InvalidAccountData),
-            };
-            Self::de_escalate_account_meta(&mut account_meta, &instruction.accounts);
-            instruction.accounts.push(account_meta);
+            instruction.accounts.push(extra_meta.resolve(instruction)?);
         }
-
         Ok(())
     }
 
