@@ -1,4 +1,4 @@
-// #![cfg(feature = "test-sbf")]
+#![cfg(feature = "test-sbf")]
 
 use {
     solana_program::instruction::InstructionError,
@@ -13,7 +13,7 @@ use {
     },
     spl_feature_gate::{
         error::FeatureGateError,
-        instruction::{activate, revoke},
+        instruction::{activate, activate_with_rent_transfer, revoke},
     },
 };
 
@@ -21,21 +21,14 @@ async fn setup_feature(
     context: &mut ProgramTestContext,
     feature_keypair: &Keypair,
     authority_keypair: &Keypair,
-    rent_lamports: u64,
 ) {
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            system_instruction::transfer(
-                &context.payer.pubkey(),
-                &feature_keypair.pubkey(),
-                rent_lamports,
-            ),
-            activate(
-                &spl_feature_gate::id(),
-                &feature_keypair.pubkey(),
-                &authority_keypair.pubkey(),
-            ),
-        ],
+        &activate_with_rent_transfer(
+            &spl_feature_gate::id(),
+            &feature_keypair.pubkey(),
+            &authority_keypair.pubkey(),
+            &context.payer.pubkey(),
+        ),
         Some(&context.payer.pubkey()),
         &[&context.payer, feature_keypair, authority_keypair],
         context.last_blockhash,
@@ -243,15 +236,9 @@ async fn test_revoke() {
 
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent.minimum_balance(Feature::size_of());
+    let rent_lamports = rent.minimum_balance(Feature::size_of()); // For checking account balance later
 
-    setup_feature(
-        &mut context,
-        &feature_keypair,
-        &authority_keypair,
-        rent_lamports,
-    )
-    .await;
+    setup_feature(&mut context, &feature_keypair, &authority_keypair).await;
 
     // Revoke: Fail authority not signer
     let mut revoke_ix = revoke(

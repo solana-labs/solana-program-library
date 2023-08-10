@@ -3,9 +3,11 @@
 use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
+        feature::Feature,
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
-        system_program,
+        rent::Rent,
+        system_instruction, system_program,
     },
 };
 
@@ -49,6 +51,22 @@ pub fn activate(program_id: &Pubkey, feature: &Pubkey, authority: &Pubkey) -> In
         accounts,
         data: FeatureGateInstruction::Activate.try_to_vec().unwrap(),
     }
+}
+
+/// Creates a set of two instructions:
+///   * One to fund the feature account with rent-exempt lamports
+///   * Another is the Feature Gate Program's 'Activate' instruction
+pub fn activate_with_rent_transfer(
+    program_id: &Pubkey,
+    feature: &Pubkey,
+    authority: &Pubkey,
+    payer: &Pubkey,
+) -> [Instruction; 2] {
+    let lamports = Rent::default().minimum_balance(Feature::size_of());
+    [
+        system_instruction::transfer(payer, feature, lamports),
+        activate(program_id, feature, authority),
+    ]
 }
 
 /// Creates a 'RevokePendingActivation' instruction.
