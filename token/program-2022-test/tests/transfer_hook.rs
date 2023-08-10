@@ -176,23 +176,25 @@ fn setup_program_test(program_id: &Pubkey) -> ProgramTest {
 
 fn add_validation_account(program_test: &mut ProgramTest, mint: &Pubkey, program_id: &Pubkey) {
     let validation_address = get_extra_account_metas_address(mint, program_id);
-    let account_metas = vec![
+    let extra_account_metas = vec![
         AccountMeta {
             pubkey: Pubkey::new_unique(),
             is_signer: false,
             is_writable: false,
-        },
+        }
+        .into(),
         AccountMeta {
             pubkey: Pubkey::new_unique(),
             is_signer: false,
             is_writable: false,
-        },
+        }
+        .into(),
     ];
     program_test.add_account(
         validation_address,
         Account {
             lamports: 1_000_000_000, // a lot, just to be safe
-            data: spl_transfer_hook_example::state::example_data(&account_metas).unwrap(),
+            data: spl_transfer_hook_example::state::example_data(&extra_account_metas).unwrap(),
             owner: *program_id,
             ..Account::default()
         },
@@ -565,23 +567,25 @@ async fn success_downgrade_writable_and_signer_accounts() {
     let alice = Keypair::new();
     let alice_account = Keypair::new();
     let validation_address = get_extra_account_metas_address(&mint.pubkey(), &program_id);
-    let account_metas = vec![
+    let extra_account_metas = vec![
         AccountMeta {
             pubkey: alice_account.pubkey(),
             is_signer: false,
             is_writable: true,
-        },
+        }
+        .into(),
         AccountMeta {
             pubkey: alice.pubkey(),
             is_signer: true,
             is_writable: false,
-        },
+        }
+        .into(),
     ];
     program_test.add_account(
         validation_address,
         Account {
             lamports: 1_000_000_000, // a lot, just to be safe
-            data: spl_transfer_hook_example::state::example_data(&account_metas).unwrap(),
+            data: spl_transfer_hook_example::state::example_data(&extra_account_metas).unwrap(),
             owner: program_id,
             ..Account::default()
         },

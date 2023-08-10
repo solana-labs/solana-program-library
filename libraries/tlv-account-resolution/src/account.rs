@@ -136,7 +136,6 @@ impl ExtraAccountMeta {
     }
 }
 
-// Conversions to `ExtraAccountMeta`
 impl From<&AccountMeta> for ExtraAccountMeta {
     fn from(meta: &AccountMeta) -> Self {
         Self {
@@ -145,6 +144,11 @@ impl From<&AccountMeta> for ExtraAccountMeta {
             is_signer: meta.is_signer.into(),
             is_writable: meta.is_writable.into(),
         }
+    }
+}
+impl From<AccountMeta> for ExtraAccountMeta {
+    fn from(meta: AccountMeta) -> Self {
+        ExtraAccountMeta::from(&meta)
     }
 }
 impl From<&AccountInfo<'_>> for ExtraAccountMeta {
@@ -157,8 +161,12 @@ impl From<&AccountInfo<'_>> for ExtraAccountMeta {
         }
     }
 }
+impl From<AccountInfo<'_>> for ExtraAccountMeta {
+    fn from(account_info: AccountInfo) -> Self {
+        ExtraAccountMeta::from(&account_info)
+    }
+}
 
-// Conversions from `ExtraAccountMeta`
 impl TryFrom<&ExtraAccountMeta> for AccountMeta {
     type Error = ProgramError;
 

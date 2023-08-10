@@ -11,7 +11,7 @@ use {
         pubkey::Pubkey,
         system_instruction,
     },
-    spl_tlv_account_resolution::state::ExtraAccountMetaList,
+    spl_tlv_account_resolution::{account::ExtraAccountMeta, state::ExtraAccountMetaList},
     spl_token_2022::{
         extension::{
             transfer_hook::TransferHookAccount, BaseStateWithExtensions, StateWithExtensions,
@@ -143,9 +143,12 @@ pub fn process_initialize_extra_account_metas(
 
     // Write the data
     let mut data = extra_account_metas_info.try_borrow_mut_data()?;
-    ExtraAccountMetaList::init_with_account_infos::<ExecuteInstruction>(
+    ExtraAccountMetaList::init::<ExecuteInstruction>(
         &mut data,
-        extra_account_infos,
+        &extra_account_infos
+            .iter()
+            .map(ExtraAccountMeta::from)
+            .collect::<Vec<_>>(),
     )?;
 
     Ok(())
