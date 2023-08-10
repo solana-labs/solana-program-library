@@ -191,7 +191,7 @@ mod tests {
                 .iter()
                 .map(ExtraAccountMeta::from)
                 .collect::<Vec<_>>(),
-            metas.to_vec()
+            metas
         );
     }
 
@@ -257,12 +257,12 @@ mod tests {
                 .iter()
                 .map(ExtraAccountMeta::from)
                 .collect::<Vec<_>>(),
-            account_infos.to_vec()
+            account_infos
         );
     }
 
     #[test]
-    fn init_with_pod_account_metas() {
+    fn init_with_extra_account_metas() {
         let program_id = Pubkey::new_unique();
 
         let extra_meta3_literal_str = "seed_prefix";
@@ -603,7 +603,7 @@ mod tests {
                 .iter()
                 .map(ExtraAccountMeta::from)
                 .collect::<Vec<_>>(),
-            account_infos.to_vec()
+            account_infos
         );
 
         let program_id = Pubkey::new_unique();
