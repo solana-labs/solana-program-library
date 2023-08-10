@@ -2,7 +2,6 @@
 
 use {
     crate::{error::FeatureGateError, instruction::FeatureGateInstruction},
-    borsh::BorshDeserialize,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -82,7 +81,7 @@ pub fn process_revoke(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramR
 
 /// Processes an [Instruction](enum.Instruction.html).
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-    let instruction = FeatureGateInstruction::try_from_slice(input)?;
+    let instruction = FeatureGateInstruction::unpack(input)?;
     match instruction {
         FeatureGateInstruction::Activate => {
             msg!("Instruction: Activate");

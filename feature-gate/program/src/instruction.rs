@@ -1,18 +1,16 @@
 //! Program instructions
 
-use {
-    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{
-        feature::Feature,
-        instruction::{AccountMeta, Instruction},
-        pubkey::Pubkey,
-        rent::Rent,
-        system_instruction, system_program,
-    },
+use solana_program::{
+    feature::Feature,
+    instruction::{AccountMeta, Instruction},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    rent::Rent,
+    system_instruction, system_program,
 };
 
 /// Feature Gate program instructions
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, BorshSchema, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum FeatureGateInstruction {
     /// Submit a feature for activation.
     ///
@@ -37,6 +35,29 @@ pub enum FeatureGateInstruction {
     ///   2. `[s]` Authority
     RevokePendingActivation,
 }
+impl FeatureGateInstruction {
+    /// Unpacks a byte buffer into a
+    /// [FeatureGateInstruction](enum.FeatureGateInstruction.html).
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+        if input.is_empty() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+        match input[0] {
+            0 => Ok(Self::Activate),
+            1 => Ok(Self::RevokePendingActivation),
+            _ => Err(ProgramError::InvalidInstructionData),
+        }
+    }
+
+    /// Packs a [FeatureGateInstruction](enum.FeatureGateInstruction.html) into
+    /// a byte buffer.
+    pub fn pack(&self) -> Vec<u8> {
+        match self {
+            Self::Activate => vec![0],
+            Self::RevokePendingActivation => vec![1],
+        }
+    }
+}
 
 /// Creates an 'Activate' instruction.
 pub fn activate(program_id: &Pubkey, feature: &Pubkey, authority: &Pubkey) -> Instruction {
@@ -46,10 +67,12 @@ pub fn activate(program_id: &Pubkey, feature: &Pubkey, authority: &Pubkey) -> In
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
+    let data = FeatureGateInstruction::Activate.pack();
+
     Instruction {
         program_id: *program_id,
         accounts,
-        data: FeatureGateInstruction::Activate.try_to_vec().unwrap(),
+        data,
     }
 }
 
@@ -82,12 +105,12 @@ pub fn revoke(
         AccountMeta::new_readonly(*authority, false),
     ];
 
+    let data = FeatureGateInstruction::RevokePendingActivation.pack();
+
     Instruction {
         program_id: *program_id,
         accounts,
-        data: FeatureGateInstruction::RevokePendingActivation
-            .try_to_vec()
-            .unwrap(),
+        data,
     }
 }
 
@@ -96,8 +119,8 @@ mod test {
     use super::*;
 
     fn test_pack_unpack(instruction: &FeatureGateInstruction) {
-        let packed = instruction.try_to_vec().unwrap();
-        let unpacked = FeatureGateInstruction::try_from_slice(&packed).unwrap();
+        let packed = instruction.pack();
+        let unpacked = FeatureGateInstruction::unpack(&packed).unwrap();
         assert_eq!(instruction, &unpacked);
     }
 
