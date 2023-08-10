@@ -6,11 +6,12 @@
 # ONLY RUNS IN CI.
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 if [[ -n "$CI" ]]; then
+  set -e
   # Clears 4GB
   sudo docker rmi $(docker image ls -aq)
   # Clears 12GB
   sudo rm -rf /usr/local/lib/android
-  # Clears 6GB
+  # Clears 7GB
   sudo apt purge azure-cli \
     dotnet-sdk-* \
     firefox \
