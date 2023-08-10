@@ -119,15 +119,17 @@ impl ExtraAccountMeta {
     /// Resolve an `ExtraAccountMeta` into an `AccountMeta`, potentially
     /// resolving a program-derived address (PDA) if necessary
     pub fn resolve(&self, instruction: &Instruction) -> Result<AccountMeta, ProgramError> {
-        let mut account_meta = if self.discriminator == 1 {
-            let seeds = Seed::unpack_address_config(&self.address_config)?;
-            AccountMeta {
-                pubkey: resolve_pda(&seeds, instruction)?,
-                is_signer: self.is_signer.into(),
-                is_writable: self.is_writable.into(),
+        let mut account_meta = match self.discriminator {
+            0 => AccountMeta::try_from(self)?,
+            1 => {
+                let seeds = Seed::unpack_address_config(&self.address_config)?;
+                AccountMeta {
+                    pubkey: resolve_pda(&seeds, instruction)?,
+                    is_signer: self.is_signer.into(),
+                    is_writable: self.is_writable.into(),
+                }
             }
-        } else {
-            AccountMeta::try_from(self)?
+            _ => return Err(ProgramError::InvalidAccountData),
         };
         de_escalate_account_meta(&mut account_meta, &instruction.accounts);
         Ok(account_meta)
