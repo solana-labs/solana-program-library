@@ -391,10 +391,11 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
 }
 
 /// Process a [EnableHarvestToMint] instruction.
-fn process_enable_harvest_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
+fn process_enable_harvest_to_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
+    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
@@ -407,23 +408,24 @@ fn process_enable_harvest_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
     let confidential_transfer_fee_authority =
         maybe_confidential_transfer_fee_authority.ok_or(TokenError::NoAuthorityExists)?;
 
-    if !authority_info.is_signer {
-        return Err(ProgramError::MissingRequiredSignature);
-    }
-
-    if confidential_transfer_fee_authority != *authority_info.key {
-        return Err(TokenError::OwnerMismatch.into());
-    }
+    Processor::validate_owner(
+        program_id,
+        &confidential_transfer_fee_authority,
+        authority_info,
+        authority_info_data_len,
+        account_info_iter.as_slice(),
+    )?;
 
     confidential_transfer_fee_mint.harvest_to_mint_enabled = true.into();
     Ok(())
 }
 
 /// Process a [DisableHarvestToMint] instruction.
-fn process_disable_harvest_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
+fn process_disable_harvest_to_mint(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
+    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
@@ -436,13 +438,13 @@ fn process_disable_harvest_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
     let confidential_transfer_fee_authority =
         maybe_confidential_transfer_fee_authority.ok_or(TokenError::NoAuthorityExists)?;
 
-    if !authority_info.is_signer {
-        return Err(ProgramError::MissingRequiredSignature);
-    }
-
-    if confidential_transfer_fee_authority != *authority_info.key {
-        return Err(TokenError::OwnerMismatch.into());
-    }
+    Processor::validate_owner(
+        program_id,
+        &confidential_transfer_fee_authority,
+        authority_info,
+        authority_info_data_len,
+        account_info_iter.as_slice(),
+    )?;
 
     confidential_transfer_fee_mint.harvest_to_mint_enabled = false.into();
     Ok(())
@@ -508,11 +510,11 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferFeeInstruction::EnableHarvestToMint => {
             msg!("ConfidentialTransferFeeInstruction::EnableHarvestToMint");
-            process_enable_harvest_to_mint(accounts)
+            process_enable_harvest_to_mint(program_id, accounts)
         }
         ConfidentialTransferFeeInstruction::DisableHarvestToMint => {
             msg!("ConfidentialTransferFeeInstruction::DisableHarvestToMint");
-            process_disable_harvest_to_mint(accounts)
+            process_disable_harvest_to_mint(program_id, accounts)
         }
     }
 }
