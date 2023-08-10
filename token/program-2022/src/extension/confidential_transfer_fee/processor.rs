@@ -60,7 +60,7 @@ fn process_initialize_confidential_transfer_fee_config(
     extension.authority = *authority;
     extension.withdraw_withheld_authority_elgamal_pubkey =
         *withdraw_withheld_authority_elgamal_pubkey;
-    extension.harvest_to_mint_disabled = false.into();
+    extension.harvest_to_mint_enabled = true.into();
     extension.withheld_amount = EncryptedWithheldAmount::zeroed();
 
     Ok(())

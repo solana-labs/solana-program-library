@@ -24,7 +24,7 @@ impl WithheldTokensInfo {
         Self { withheld_amount }
     }
 
-    /// Create an empty account proof data.
+    /// Create withdraw withheld proof data.
     pub fn generate_proof_data(
         &self,
         withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,

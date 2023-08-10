@@ -41,7 +41,7 @@ pub struct ConfidentialTransferFeeConfig {
     pub withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
 
     /// If `false`, the harvest of withheld tokens to mint is rejected.
-    pub harvest_to_mint_disabled: PodBool,
+    pub harvest_to_mint_enabled: PodBool,
 
     /// Withheld confidential transfer fee tokens that have been moved to the mint for withdrawal.
     pub withheld_amount: EncryptedWithheldAmount,
