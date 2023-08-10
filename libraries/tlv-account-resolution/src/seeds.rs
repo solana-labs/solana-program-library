@@ -1,9 +1,9 @@
 //! Types for managing seed configurations in TLV Account Resolution
 //!
-//! As determined by the `address_config` field of `PodAccountMeta`,
+//! As determined by the `address_config` field of `ExtraAccountMeta`,
 //! seed configurations are limited to a maximum of 32 bytes.
 //! This means that the maximum number of seed configurations that can be
-//! packed into a single `PodAccountMeta` will depend directly on the size
+//! packed into a single `ExtraAccountMeta` will depend directly on the size
 //! of the seed configurations themselves.
 //!
 //! Sizes are as follows:

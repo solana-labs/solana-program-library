@@ -12,7 +12,7 @@ into a TLV entry in an account, you can do the following:
 use {
     solana_program::{account_info::AccountInfo, instruction::{AccountMeta, Instruction}, pubkey::Pubkey},
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_tlv_account_resolution::state::ExtraAccountMetaList,
 };
 
 struct MyInstruction;
@@ -30,16 +30,16 @@ let extra_metas = [
 ];
 
 // Assume that this buffer is actually account data, already allocated to `account_size`
-let account_size = ExtraAccountMetas::size_of(extra_metas.len()).unwrap();
+let account_size = ExtraAccountMetaList::size_of(extra_metas.len()).unwrap();
 let mut buffer = vec![0; account_size];
 
 // Initialize the structure for your instruction
-ExtraAccountMetas::init_with_account_metas::<MyInstruction>(&mut buffer, &extra_metas).unwrap();
+ExtraAccountMetaList::init_with_account_metas::<MyInstruction>(&mut buffer, &extra_metas).unwrap();
 
 // Off-chain, you can add the additional accounts directly from the account data
 let program_id = Pubkey::new_unique();
 let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
-ExtraAccountMetas::add_to_instruction::<MyInstruction>(&mut instruction, &buffer).unwrap();
+ExtraAccountMetaList::add_to_instruction::<MyInstruction>(&mut instruction, &buffer).unwrap();
 
 // On-chain, you can add the additional accounts *and* account infos
 let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
@@ -49,7 +49,7 @@ let mut cpi_account_infos = vec![];
 
 // Provide all "remaining_account_infos" that are *not* part of any other known interface
 let remaining_account_infos = &[]; 
-ExtraAccountMetas::add_to_cpi_instruction::<MyInstruction>(
+ExtraAccountMetaList::add_to_cpi_instruction::<MyInstruction>(
     &mut cpi_instruction,
     &mut cpi_account_infos,
     &buffer,
@@ -57,7 +57,7 @@ ExtraAccountMetas::add_to_cpi_instruction::<MyInstruction>(
 ).unwrap();
 ```
 
-For ease of use on-chain, `ExtraAccountMetas::init_with_account_infos` is also
+For ease of use on-chain, `ExtraAccountMetaList::init_with_account_infos` is also
 provided to initialize directly from a set of given accounts.
 
 ## Motivation
@@ -105,12 +105,12 @@ This library uses `spl-type-length-value` to read and write required instruction
 accounts from account data.
 
 Interface instructions must have an 8-byte discriminator, so that the exposed
-`ExtraAccountMetas` type can use the instruction discriminator as a `ArrayDiscriminator`.
+`ExtraAccountMetaList` type can use the instruction discriminator as a `ArrayDiscriminator`.
 
 This can be confusing. Typically, a type implements `SplDiscriminate`, so that
-the type can be written into TLV data. In this case, `ExtraAccountMetas` is
+the type can be written into TLV data. In this case, `ExtraAccountMetaList` is
 generic over `SplDiscriminate`, meaning that a program can write many different instances of
-`ExtraAccountMetas` into one account, using different `ArrayDiscriminator`s.
+`ExtraAccountMetaList` into one account, using different `ArrayDiscriminator`s.
 
 Also, it's reusing an instruction discriminator as a TLV discriminator. For example,
 if the `transfer` instruction has a discriminator of `[1, 2, 3, 4, 5, 6, 7, 8]`,

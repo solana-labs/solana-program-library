@@ -1,4 +1,4 @@
-//! Structs/enums for managing "required account state", ie. defining accounts
+//! Struct for managing extra required account configs, ie. defining accounts
 //! required for your interface program, which can be  `AccountMeta`s - which
 //! have fixed addresses - or PDAs - which have addresses derived from a
 //! collection of seeds
@@ -19,7 +19,7 @@ use {
 /// Can be used in TLV-encoded data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct PodAccountMeta {
+pub struct ExtraAccountMeta {
     /// Discriminator to tell whether this represents a standard
     /// `AccountMeta` or a PDA
     pub discriminator: u8,
@@ -31,8 +31,8 @@ pub struct PodAccountMeta {
     /// Whether the account should be writable
     pub is_writable: PodBool,
 }
-impl PodAccountMeta {
-    /// Create a `PodAccountMeta` from a public key,
+impl ExtraAccountMeta {
+    /// Create a `ExtraAccountMeta` from a public key,
     /// thus representing a standard `AccountMeta`
     pub fn new_with_pubkey(
         pubkey: &Pubkey,
@@ -47,7 +47,7 @@ impl PodAccountMeta {
         })
     }
 
-    /// Create a `PodAccountMeta` from a list of seed configurations,
+    /// Create a `ExtraAccountMeta` from a list of seed configurations,
     /// thus representing a PDA
     pub fn new_with_seeds(
         seeds: &[Seed],
@@ -63,8 +63,8 @@ impl PodAccountMeta {
     }
 }
 
-// Conversions to `PodAccountMeta`
-impl From<&AccountMeta> for PodAccountMeta {
+// Conversions to `ExtraAccountMeta`
+impl From<&AccountMeta> for ExtraAccountMeta {
     fn from(meta: &AccountMeta) -> Self {
         Self {
             discriminator: 0,
@@ -74,7 +74,7 @@ impl From<&AccountMeta> for PodAccountMeta {
         }
     }
 }
-impl From<&AccountInfo<'_>> for PodAccountMeta {
+impl From<&AccountInfo<'_>> for ExtraAccountMeta {
     fn from(account_info: &AccountInfo) -> Self {
         Self {
             discriminator: 0,
@@ -85,11 +85,11 @@ impl From<&AccountInfo<'_>> for PodAccountMeta {
     }
 }
 
-// Conversions from `PodAccountMeta`
-impl TryFrom<&PodAccountMeta> for AccountMeta {
+// Conversions from `ExtraAccountMeta`
+impl TryFrom<&ExtraAccountMeta> for AccountMeta {
     type Error = ProgramError;
 
-    fn try_from(pod: &PodAccountMeta) -> Result<Self, Self::Error> {
+    fn try_from(pod: &ExtraAccountMeta) -> Result<Self, Self::Error> {
         if pod.discriminator == 0 {
             Ok(AccountMeta {
                 pubkey: Pubkey::try_from(pod.address_config)
