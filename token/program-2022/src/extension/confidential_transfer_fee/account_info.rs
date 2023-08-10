@@ -20,8 +20,10 @@ pub struct WithheldTokensInfo {
 }
 impl WithheldTokensInfo {
     /// Create a `WithheldTokensInfo` from an ElGamal ciphertext.
-    pub fn new(withheld_amount: EncryptedWithheldAmount) -> Self {
-        Self { withheld_amount }
+    pub fn new(withheld_amount: &EncryptedWithheldAmount) -> Self {
+        Self {
+            withheld_amount: *withheld_amount,
+        }
     }
 
     /// Create withdraw withheld proof data.

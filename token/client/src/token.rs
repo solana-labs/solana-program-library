@@ -2440,10 +2440,10 @@ where
         let account_info = if let Some(account_info) = withheld_tokens_info {
             account_info
         } else {
-            self.get_mint_info()
-                .await?
-                .get_extension::<ConfidentialTransferFeeConfig>()?
-                .withheld_tokens_info()
+            let mint_info = self.get_mint_info().await?;
+            let confidential_transfer_fee_config =
+                mint_info.get_extension::<ConfidentialTransferFeeConfig>()?;
+            WithheldTokensInfo::new(&confidential_transfer_fee_config.withheld_amount)
         };
 
         let proof_data = if context_state_account.is_some() {
@@ -2515,7 +2515,7 @@ where
                 aggregate_withheld_amount = aggregate_withheld_amount + withheld_amount;
             }
 
-            WithheldTokensInfo::new(aggregate_withheld_amount.into())
+            WithheldTokensInfo::new(&aggregate_withheld_amount.into())
         };
 
         let proof_data = if context_state_account.is_some() {

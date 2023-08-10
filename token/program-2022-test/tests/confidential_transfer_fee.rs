@@ -844,7 +844,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_proof_con
         let extension = state
             .get_extension::<ConfidentialTransferFeeConfig>()
             .unwrap();
-        let withheld_tokens_info = extension.withheld_tokens_info();
+        let withheld_tokens_info = WithheldTokensInfo::new(&extension.withheld_amount);
 
         let proof_data = withheld_tokens_info
             .generate_proof_data(
@@ -1010,7 +1010,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_proof
             .get_extension::<ConfidentialTransferFeeAmount>()
             .unwrap()
             .withheld_amount;
-        let withheld_tokens_info = WithheldTokensInfo::new(withheld_amount);
+        let withheld_tokens_info = WithheldTokensInfo::new(&withheld_amount);
 
         let proof_data = withheld_tokens_info
             .generate_proof_data(
