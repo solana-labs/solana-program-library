@@ -11,4 +11,7 @@ pub enum FeatureGateError {
     /// Feature account must be a system account
     #[error("Feature account must be a system account")]
     FeatureNotSystemAccount,
+    /// Feature not inactive
+    #[error("Feature not inactive")]
+    FeatureNotInactive,
 }

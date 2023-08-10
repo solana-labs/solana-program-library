@@ -59,6 +59,13 @@ pub fn process_revoke(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramR
         return Err(ProgramError::IllegalOwner);
     }
 
+    if Feature::from_account_info(feature_info)?
+        .activated_at
+        .is_some()
+    {
+        return Err(FeatureGateError::FeatureNotInactive.into());
+    }
+
     let new_destination_lamports = feature_info
         .lamports()
         .checked_add(destination_info.lamports())

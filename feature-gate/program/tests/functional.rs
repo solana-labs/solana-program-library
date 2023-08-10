@@ -1,4 +1,4 @@
-#![cfg(feature = "test-sbf")]
+// #![cfg(feature = "test-sbf")]
 
 use {
     solana_program::instruction::InstructionError,
@@ -210,6 +210,7 @@ async fn test_revoke() {
     let feature_keypair = Keypair::new();
     let authority_keypair = Keypair::new();
     let destination = Pubkey::new_unique();
+    let mock_active_feature_keypair = Keypair::new();
 
     let mut program_test = ProgramTest::new(
         "spl_feature_gate",
@@ -222,6 +223,20 @@ async fn test_revoke() {
         authority_keypair.pubkey(),
         SolanaAccount {
             lamports: 500_000_000,
+            ..SolanaAccount::default()
+        },
+    );
+
+    // Add a mock feature that might be active for testing later
+    program_test.add_account(
+        mock_active_feature_keypair.pubkey(),
+        SolanaAccount {
+            lamports: 500_000_000,
+            owner: spl_feature_gate::id(),
+            data: vec![
+                1, // `Some()`
+                45, 0, 0, 0, 0, 0, 0, 0, // Random slot `u64`
+            ],
             ..SolanaAccount::default()
         },
     );
@@ -261,6 +276,32 @@ async fn test_revoke() {
     assert_eq!(
         error,
         TransactionError::InstructionError(0, InstructionError::MissingRequiredSignature)
+    );
+
+    // Revoke: Fail feature not inactive
+    let transaction = Transaction::new_signed_with_payer(
+        &[revoke(
+            &spl_feature_gate::id(),
+            &mock_active_feature_keypair.pubkey(),
+            &destination,
+            &authority_keypair.pubkey(),
+        )],
+        Some(&authority_keypair.pubkey()),
+        &[&authority_keypair],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(FeatureGateError::FeatureNotInactive as u32)
+        )
     );
 
     // Revoke a feature activation
