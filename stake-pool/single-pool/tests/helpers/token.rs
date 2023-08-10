@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use {
-    mpl_token_metadata::{pda::find_metadata_account, state::Metadata},
+    borsh::BorshDeserialize,
     solana_program_test::BanksClient,
     solana_sdk::{
         borsh::try_from_slice_unchecked,
@@ -12,6 +12,7 @@ use {
         transaction::Transaction,
     },
     spl_associated_token_account as atoken,
+    spl_single_validator_pool::inline_mpl_token_metadata::pda::find_metadata_account,
     spl_token::state::{Account, Mint},
 };
 
@@ -48,6 +49,20 @@ pub async fn get_token_supply(banks_client: &mut BanksClient, mint: &Pubkey) -> 
     let mint_account = banks_client.get_account(*mint).await.unwrap().unwrap();
     let account_info = Mint::unpack_from_slice(&mint_account.data).unwrap();
     account_info.supply
+}
+
+#[derive(Clone, BorshDeserialize, Debug, PartialEq, Eq)]
+pub struct Metadata {
+    pub key: u8,
+    pub update_authority: Pubkey,
+    pub mint: Pubkey,
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
+    pub seller_fee_basis_points: u16,
+    pub creators: Option<Vec<u8>>,
+    pub primary_sale_happened: bool,
+    pub is_mutable: bool,
 }
 
 pub async fn get_metadata_account(banks_client: &mut BanksClient, token_mint: &Pubkey) -> Metadata {

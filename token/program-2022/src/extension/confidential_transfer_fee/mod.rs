@@ -6,7 +6,7 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod::{ElGamalCiphertext, FeeEncryption},
+    solana_zk_token_sdk::zk_token_elgamal::pod::{ElGamalCiphertext, ElGamalPubkey, FeeEncryption},
 };
 
 /// Confidential transfer fee extension instructions
@@ -24,7 +24,7 @@ pub type EncryptedWithheldAmount = ElGamalCiphertext;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferFeeConfig {
-    /// Optional authority to set the withdraw withheld authority encryption key
+    /// Optional authority to set the withdraw withheld authority ElGamal key
     pub authority: OptionalNonZeroPubkey,
 
     /// Withheld fees from accounts must be encrypted with this ElGamal key.
@@ -32,7 +32,7 @@ pub struct ConfidentialTransferFeeConfig {
     /// Note that whoever holds the ElGamal private key for this ElGamal public key has the ability
     /// to decode any withheld fee amount that are associated with accounts. When combined with the
     /// fee parameters, the withheld fee amounts can reveal information about transfer amounts.
-    pub withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
+    pub withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
 
     /// Withheld confidential transfer fee tokens that have been moved to the mint for withdrawal.
     pub withheld_amount: EncryptedWithheldAmount,

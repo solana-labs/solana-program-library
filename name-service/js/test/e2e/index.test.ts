@@ -21,7 +21,7 @@ import {
 } from '../../src';
 
 chai.use(chaiAsPromised);
-const url = 'http://localhost:8899';
+const url = 'http://127.0.0.1:8899';
 
 describe('Name Service Program', async () => {
   const connection = new Connection(url, 'confirmed');
@@ -33,7 +33,7 @@ describe('Name Service Program', async () => {
   before(async () => {
     const airdropSignature = await connection.requestAirdrop(
       payer.publicKey,
-      LAMPORTS_PER_SOL
+      LAMPORTS_PER_SOL,
     );
     await connection.confirmTransaction({
       signature: airdropSignature,
@@ -45,7 +45,7 @@ describe('Name Service Program', async () => {
     name = Math.random().toString() + '.sol';
     nameKey = await getNameKey(name);
     const lamports = await connection.getMinimumBalanceForRentExemption(
-      space + NameRegistryState.HEADER_LEN
+      space + NameRegistryState.HEADER_LEN,
     );
     const inst = await createNameRegistry(
       connection,
@@ -53,7 +53,7 @@ describe('Name Service Program', async () => {
       space,
       payer.publicKey,
       owner.publicKey,
-      lamports
+      lamports,
     );
     const tx = new Transaction().add(inst);
     await sendAndConfirmTransaction(connection, tx, [payer]);
@@ -77,7 +77,7 @@ describe('Name Service Program', async () => {
     const inst = await transferNameOwnership(
       connection,
       name,
-      newOwner.publicKey
+      newOwner.publicKey,
     );
     const tx = new Transaction().add(inst);
     await sendAndConfirmTransaction(connection, tx, [payer, owner]);
@@ -89,7 +89,7 @@ describe('Name Service Program', async () => {
       connection,
       name,
       space + 10,
-      payer.publicKey
+      payer.publicKey,
     );
     const tx = new Transaction().add(inst);
     await sendAndConfirmTransaction(connection, tx, [payer, owner]);
@@ -101,7 +101,7 @@ describe('Name Service Program', async () => {
       connection,
       name,
       space - 10,
-      payer.publicKey
+      payer.publicKey,
     );
     const tx = new Transaction().add(inst);
     await sendAndConfirmTransaction(connection, tx, [payer, owner]);
@@ -120,13 +120,13 @@ describe('Name Service Program', async () => {
 const getNameKey = async (
   name: string,
   nameClass?: PublicKey,
-  parentName?: PublicKey
+  parentName?: PublicKey,
 ) => {
   const hashedName = await getHashedName(name);
   const nameAccountKey = await getNameAccountKey(
     hashedName,
     nameClass,
-    parentName
+    parentName,
   );
   return nameAccountKey;
 };

@@ -80,8 +80,8 @@ mod tests {
         let root = sqrt(radicand).unwrap();
         let lower_bound = root.saturating_sub(1).checked_pow(2).unwrap();
         let upper_bound = root.checked_add(1).unwrap().checked_pow(2).unwrap();
-        assert!(radicand as u128 <= upper_bound);
-        assert!(radicand as u128 >= lower_bound);
+        assert!(radicand <= upper_bound);
+        assert!(radicand >= lower_bound);
     }
 
     #[test]
@@ -110,7 +110,7 @@ mod tests {
     fn test_normal_cdf_f32_min_max() {
         let test_arguments: [f32; 2] = [f32::MIN, f32::MAX];
         for i in test_arguments.iter() {
-            check_normal_cdf_f32(*i as f32)
+            check_normal_cdf_f32(*i)
         }
     }
 

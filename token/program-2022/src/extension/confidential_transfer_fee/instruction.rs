@@ -6,7 +6,8 @@ use {
     crate::{
         check_program_account,
         instruction::{encode_instruction, TokenInstruction},
-        pod::{EncryptionPubkey, OptionalNonZeroPubkey},
+        pod::OptionalNonZeroPubkey,
+        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
     },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -144,7 +145,7 @@ pub struct InitializeConfidentialTransferFeeConfigData {
     pub authority: OptionalNonZeroPubkey,
 
     /// ElGamal public key used to encrypt withheld fees.
-    pub withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
+    pub withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
 }
 
 /// Data expected by `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint`
@@ -172,7 +173,7 @@ pub fn initialize_confidential_transfer_fee_config(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: Option<Pubkey>,
-    withdraw_withheld_authority_encryption_pubkey: EncryptionPubkey,
+    withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -184,7 +185,7 @@ pub fn initialize_confidential_transfer_fee_config(
         ConfidentialTransferFeeInstruction::InitializeConfidentialTransferFeeConfig,
         &InitializeConfidentialTransferFeeConfigData {
             authority: authority.try_into()?,
-            withdraw_withheld_authority_encryption_pubkey,
+            withdraw_withheld_authority_elgamal_pubkey,
         },
     ))
 }

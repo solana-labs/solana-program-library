@@ -3,7 +3,6 @@
         "target": "esnext",
         "emitDeclarationOnly": true,
         "outDir": "lib",
-        "typeRoots": ["node_modules/@types", "types"],
         "module": "esnext",
         "esModuleInterop": true,
         "resolveJsonModule": true,

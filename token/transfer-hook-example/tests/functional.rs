@@ -1,4 +1,5 @@
-// Mark this test as SBF-only due to current `ProgramTest` limitations when CPIing into the system program
+// Mark this test as SBF-only due to current `ProgramTest` limitations when
+// CPIing into the system program
 #![cfg(feature = "test-sbf")]
 
 use {
@@ -15,7 +16,7 @@ use {
         system_instruction, sysvar,
         transaction::{Transaction, TransactionError},
     },
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_tlv_account_resolution::state::ExtraAccountMetaList,
     spl_token_2022::{
         extension::{transfer_hook::TransferHookAccount, ExtensionType, StateWithExtensionsMut},
         state::{Account, AccountState, Mint},
@@ -60,7 +61,7 @@ fn setup_token_accounts(
 ) {
     // add mint, source, and destination accounts by hand to always force
     // the "transferring" flag to true
-    let mint_size = ExtensionType::get_account_len::<Mint>(&[]);
+    let mint_size = ExtensionType::try_calculate_account_len::<Mint>(&[]).unwrap();
     let mut mint_data = vec![0; mint_size];
     let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data).unwrap();
     let token_amount = 1_000_000_000_000;
@@ -83,7 +84,8 @@ fn setup_token_accounts(
     );
 
     let account_size =
-        ExtensionType::get_account_len::<Account>(&[ExtensionType::TransferHookAccount]);
+        ExtensionType::try_calculate_account_len::<Account>(&[ExtensionType::TransferHookAccount])
+            .unwrap();
     let mut account_data = vec![0; account_size];
     let mut state =
         StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut account_data).unwrap();
@@ -159,7 +161,7 @@ async fn success_execute() {
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
+        rent.minimum_balance(ExtraAccountMetaList::size_of(extra_account_pubkeys.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
@@ -347,7 +349,7 @@ async fn fail_incorrect_derivation() {
 
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent.minimum_balance(ExtraAccountMetas::size_of(0).unwrap());
+    let rent_lamports = rent.minimum_balance(ExtraAccountMetaList::size_of(0).unwrap());
 
     let transaction = Transaction::new_signed_with_payer(
         &[
@@ -440,7 +442,7 @@ async fn success_on_chain_invoke() {
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
+        rent.minimum_balance(ExtraAccountMetaList::size_of(extra_account_pubkeys.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
@@ -525,7 +527,7 @@ async fn fail_without_transferring_flag() {
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
+        rent.minimum_balance(ExtraAccountMetaList::size_of(extra_account_pubkeys.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(

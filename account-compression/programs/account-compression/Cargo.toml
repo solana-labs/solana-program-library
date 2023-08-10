@@ -1,6 +1,6 @@
 [package]
 name = "spl-account-compression"
-version = "0.1.10"
+version = "0.2.0"
 description = "Solana Program Library Account Compression Program"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -18,10 +18,10 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.26.0"
-bytemuck = "1.8.0"
-spl-concurrent-merkle-tree = { version="0.1.2", path="../../../libraries/concurrent-merkle-tree", features = [ "sol-log" ]}
-spl-noop = { version = "0.1.3", path="../noop", features = [ "no-entrypoint" ]}
+anchor-lang = "0.28.0"
+bytemuck = "1.13"
+spl-concurrent-merkle-tree = { version="0.2.0", path="../../../libraries/concurrent-merkle-tree", features = [ "sol-log" ]}
+spl-noop = { version = "0.2.0", path="../noop", features = [ "no-entrypoint" ]}
 
 [profile.release]
 overflow-checks = true

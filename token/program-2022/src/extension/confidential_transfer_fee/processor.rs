@@ -14,7 +14,8 @@ use {
             BaseStateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
-        pod::{EncryptionPubkey, OptionalNonZeroPubkey},
+        pod::OptionalNonZeroPubkey,
+        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
         state::{Account, Mint},
     },
     bytemuck::Zeroable,
@@ -53,7 +54,7 @@ use {
 fn process_initialize_confidential_transfer_fee_config(
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
-    withdraw_withheld_authority_encryption_pubkey: &EncryptionPubkey,
+    withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -62,8 +63,8 @@ fn process_initialize_confidential_transfer_fee_config(
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
     let extension = mint.init_extension::<ConfidentialTransferFeeConfig>(true)?;
     extension.authority = *authority;
-    extension.withdraw_withheld_authority_encryption_pubkey =
-        *withdraw_withheld_authority_encryption_pubkey;
+    extension.withdraw_withheld_authority_elgamal_pubkey =
+        *withdraw_withheld_authority_elgamal_pubkey;
     extension.withheld_amount = EncryptedWithheldAmount::zeroed();
 
     Ok(())
@@ -132,17 +133,16 @@ fn process_withdraw_withheld_tokens_from_mint(
         ProofInstruction::VerifyWithdrawWithheldTokens,
         &zkp_instruction,
     )?;
-    // Check that the withdraw authority encryption public key associated with the mint is
+    // Check that the withdraw authority ElGamal public key associated with the mint is
     // consistent with what was actually used to generate the zkp.
     if proof_data.withdraw_withheld_authority_pubkey
-        != confidential_transfer_fee_config.withdraw_withheld_authority_encryption_pubkey
+        != confidential_transfer_fee_config.withdraw_withheld_authority_elgamal_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-    // Check that the encryption public key associated with the destination account is consistent
+    // Check that the ElGamal public key associated with the destination account is consistent
     // with what was actually used to generate the zkp.
-    if proof_data.destination_pubkey != destination_confidential_transfer_account.encryption_pubkey
-    {
+    if proof_data.destination_pubkey != destination_confidential_transfer_account.elgamal_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Check that the withheld amount ciphertext is consistent with the ciphertext data that was
@@ -259,19 +259,18 @@ fn process_withdraw_withheld_tokens_from_accounts(
         ProofInstruction::VerifyWithdrawWithheldTokens,
         &zkp_instruction,
     )?;
-    // Checks that the withdraw authority encryption public key associated with the mint is
+    // Checks that the withdraw authority ElGamal public key associated with the mint is
     // consistent with what was actually used to generate the zkp.
     let confidential_transfer_fee_config =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
     if proof_data.withdraw_withheld_authority_pubkey
-        != confidential_transfer_fee_config.withdraw_withheld_authority_encryption_pubkey
+        != confidential_transfer_fee_config.withdraw_withheld_authority_elgamal_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-    // Checks that the encryption public key associated with the destination account is consistent
+    // Checks that the ElGamal public key associated with the destination account is consistent
     // with what was actually used to generate the zkp.
-    if proof_data.destination_pubkey != destination_confidential_transfer_account.encryption_pubkey
-    {
+    if proof_data.destination_pubkey != destination_confidential_transfer_account.elgamal_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Checks that the withheld amount ciphertext is consistent with the ciphertext data that was
@@ -294,9 +293,9 @@ fn process_withdraw_withheld_tokens_from_accounts(
 }
 
 #[cfg(feature = "zk-ops")]
-fn harvest_from_account<'a, 'b>(
+fn harvest_from_account<'b>(
     mint_key: &'b Pubkey,
-    token_account_info: &'b AccountInfo<'a>,
+    token_account_info: &'b AccountInfo<'_>,
 ) -> Result<EncryptedWithheldAmount, TokenError> {
     let mut token_account_data = token_account_info.data.borrow_mut();
     let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)
@@ -364,7 +363,7 @@ pub(crate) fn process_instruction(
             process_initialize_confidential_transfer_fee_config(
                 accounts,
                 &data.authority,
-                &data.withdraw_withheld_authority_encryption_pubkey,
+                &data.withdraw_withheld_authority_elgamal_pubkey,
             )
         }
         ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint => {

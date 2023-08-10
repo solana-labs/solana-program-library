@@ -684,7 +684,7 @@ async fn success_transfers_using_onchain_helper() {
     let (source_b_account, destination_b_account) =
         setup_accounts(&token_b_context, Keypair::new(), Keypair::new(), amount).await;
     let authority_b = token_b_context.alice;
-    let mut account_metas = vec![
+    let account_metas = vec![
         AccountMeta::new(source_a_account, false),
         AccountMeta::new_readonly(mint_a, false),
         AccountMeta::new(destination_a_account, false),
@@ -696,8 +696,11 @@ async fn success_transfers_using_onchain_helper() {
         AccountMeta::new_readonly(authority_b.pubkey(), true),
         AccountMeta::new_readonly(spl_token_2022::id(), false),
     ];
-    offchain::get_extra_transfer_account_metas(
-        &mut account_metas,
+
+    let mut instruction = Instruction::new_with_bytes(swap_program_id, &[], account_metas);
+
+    offchain::resolve_extra_transfer_account_metas(
+        &mut instruction,
         |address| {
             token_a
                 .get_account(address)
@@ -708,8 +711,8 @@ async fn success_transfers_using_onchain_helper() {
     )
     .await
     .unwrap();
-    offchain::get_extra_transfer_account_metas(
-        &mut account_metas,
+    offchain::resolve_extra_transfer_account_metas(
+        &mut instruction,
         |address| {
             token_a
                 .get_account(address)
@@ -722,14 +725,7 @@ async fn success_transfers_using_onchain_helper() {
     .unwrap();
 
     token_a
-        .process_ixs(
-            &[Instruction::new_with_bytes(
-                swap_program_id,
-                &[],
-                account_metas,
-            )],
-            &[&authority_a, &authority_b],
-        )
+        .process_ixs(&[instruction], &[&authority_a, &authority_b])
         .await
         .unwrap();
 }

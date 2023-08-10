@@ -13,6 +13,7 @@ pub mod offchain;
 pub mod onchain;
 pub mod pod;
 pub mod processor;
+pub mod proof;
 #[cfg(feature = "serde-traits")]
 pub mod serialization;
 pub mod state;
@@ -103,6 +104,14 @@ pub fn check_program_account(spl_token_program_id: &Pubkey) -> ProgramResult {
 /// Checks that the supplied program ID is corect for spl-token or spl-token-2022
 pub fn check_spl_token_program_account(spl_token_program_id: &Pubkey) -> ProgramResult {
     if spl_token_program_id != &id() && spl_token_program_id != &spl_token::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    Ok(())
+}
+
+/// Checks that the supplied program ID is correct for the ZK Token proof program
+pub fn check_zk_token_proof_program_account(zk_token_proof_program_id: &Pubkey) -> ProgramResult {
+    if zk_token_proof_program_id != &solana_zk_token_sdk::zk_token_proof_program::id() {
         return Err(ProgramError::IncorrectProgramId);
     }
     Ok(())

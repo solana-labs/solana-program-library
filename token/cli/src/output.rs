@@ -423,11 +423,8 @@ impl VerboseDisplay for CliTokenAccounts {
                     .map(|d| d.amount)
                     .unwrap_or_else(|| "".to_string());
 
-                let maybe_close_authority = account
-                    .account
-                    .close_authority
-                    .clone()
-                    .unwrap_or_else(|| "".to_string());
+                let maybe_close_authority =
+                    account.account.close_authority.clone().unwrap_or_default();
 
                 if self.explicit_token {
                     writeln!(

@@ -18,7 +18,7 @@ import { ChangeLogEventV1, changeLogEventV1Beet } from './ChangeLogEventV1';
  * @private
  */
 export type ChangeLogEventRecord = {
-  V1: { fields: [ChangeLogEventV1] };
+    V1: { fields: [ChangeLogEventV1] };
 };
 
 /**
@@ -34,20 +34,18 @@ export type ChangeLogEventRecord = {
  */
 export type ChangeLogEvent = beet.DataEnumKeyAsKind<ChangeLogEventRecord>;
 
-export const isChangeLogEventV1 = (
-  x: ChangeLogEvent
-): x is ChangeLogEvent & { __kind: 'V1' } => x.__kind === 'V1';
+export const isChangeLogEventV1 = (x: ChangeLogEvent): x is ChangeLogEvent & { __kind: 'V1' } => x.__kind === 'V1';
 
 /**
  * @category userTypes
  * @category generated
  */
 export const changeLogEventBeet = beet.dataEnum<ChangeLogEventRecord>([
-  [
-    'V1',
-    new beet.FixableBeetArgsStruct<ChangeLogEventRecord['V1']>(
-      [['fields', beet.tuple([changeLogEventV1Beet])]],
-      'ChangeLogEventRecord["V1"]'
-    ),
-  ],
+    [
+        'V1',
+        new beet.FixableBeetArgsStruct<ChangeLogEventRecord['V1']>(
+            [['fields', beet.tuple([changeLogEventV1Beet])]],
+            'ChangeLogEventRecord["V1"]'
+        ),
+    ],
 ]) as beet.FixableBeet<ChangeLogEvent>;

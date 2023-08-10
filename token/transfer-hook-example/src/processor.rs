@@ -4,13 +4,14 @@ use {
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
+        instruction::AccountMeta,
         msg,
         program::invoke_signed,
         program_error::ProgramError,
         pubkey::Pubkey,
         system_instruction,
     },
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_tlv_account_resolution::state::ExtraAccountMetaList,
     spl_token_2022::{
         extension::{
             transfer_hook::TransferHookAccount, BaseStateWithExtensions, StateWithExtensions,
@@ -65,7 +66,7 @@ pub fn process_execute(
     let data = extra_account_metas_info.try_borrow_data()?;
     let state = TlvStateBorrowed::unpack(&data).unwrap();
     let extra_account_metas =
-        ExtraAccountMetas::unpack_with_tlv_state::<ExecuteInstruction>(&state)?;
+        ExtraAccountMetaList::unpack_with_tlv_state::<ExecuteInstruction>(&state)?;
 
     // if incorrect number of are provided, error
     let extra_account_infos = account_info_iter.as_slice();
@@ -76,7 +77,11 @@ pub fn process_execute(
 
     // Let's assume that they're provided in the correct order
     for (i, account_info) in extra_account_infos.iter().enumerate() {
-        if &account_metas[i] != account_info {
+        let meta = AccountMeta::try_from(&account_metas[i])?;
+        if !(&meta.pubkey == account_info.key
+            && meta.is_signer == account_info.is_signer
+            && meta.is_writable == account_info.is_writable)
+        {
             return Err(TransferHookError::IncorrectAccount.into());
         }
     }
@@ -84,7 +89,7 @@ pub fn process_execute(
     Ok(())
 }
 
-/// Processes a [InitializeExtraAccountMetas](enum.TransferHookInstruction.html) instruction.
+/// Processes a [InitializeExtraAccountMetaList](enum.TransferHookInstruction.html) instruction.
 pub fn process_initialize_extra_account_metas(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -124,7 +129,7 @@ pub fn process_initialize_extra_account_metas(
     let signer_seeds = collect_extra_account_metas_signer_seeds(mint_info.key, &bump_seed);
     let extra_account_infos = account_info_iter.as_slice();
     let length = extra_account_infos.len();
-    let account_size = ExtraAccountMetas::size_of(length)?;
+    let account_size = ExtraAccountMetaList::size_of(length)?;
     invoke_signed(
         &system_instruction::allocate(extra_account_metas_info.key, account_size as u64),
         &[extra_account_metas_info.clone()],
@@ -138,7 +143,7 @@ pub fn process_initialize_extra_account_metas(
 
     // Write the data
     let mut data = extra_account_metas_info.try_borrow_mut_data()?;
-    ExtraAccountMetas::init_with_account_infos::<ExecuteInstruction>(
+    ExtraAccountMetaList::init_with_account_infos::<ExecuteInstruction>(
         &mut data,
         extra_account_infos,
     )?;
@@ -155,8 +160,8 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> P
             msg!("Instruction: Execute");
             process_execute(program_id, accounts, amount)
         }
-        TransferHookInstruction::InitializeExtraAccountMetas => {
-            msg!("Instruction: InitializeExtraAccountMetas");
+        TransferHookInstruction::InitializeExtraAccountMetaList => {
+            msg!("Instruction: InitializeExtraAccountMetaList");
             process_initialize_extra_account_metas(program_id, accounts)
         }
     }

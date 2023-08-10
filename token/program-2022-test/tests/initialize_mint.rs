@@ -22,7 +22,7 @@ use {
             ExtensionType,
         },
         instruction, native_mint,
-        pod::EncryptionPubkey,
+        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
         state::Mint,
     },
     spl_token_client::token::ExtensionInitializationParams,
@@ -110,7 +110,9 @@ async fn fail_extension_after_mint_init() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+    let space =
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -194,7 +196,9 @@ async fn fail_init_overallocated_mint() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+    let space =
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -240,9 +244,10 @@ async fn fail_account_init_after_mint_extension() {
     let mint_authority_pubkey = Pubkey::new_unique();
     let token_account = Keypair::new();
 
-    let mint_space = ExtensionType::get_account_len::<Mint>(&[]);
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[]).unwrap();
     let account_space =
-        ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -310,7 +315,7 @@ async fn fail_account_init_after_mint_init() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let mint_space = ExtensionType::get_account_len::<Mint>(&[]);
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[]).unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -362,7 +367,9 @@ async fn fail_account_init_after_mint_init_with_extension() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let mint_space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+    let mint_space =
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::MintCloseAuthority])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -420,7 +427,9 @@ async fn fail_fee_init_after_mint_init() {
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
 
-    let space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]);
+    let space =
+        ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::TransferFeeConfig])
+            .unwrap();
     let instructions = vec![
         system_instruction::create_account(
             &ctx.payer.pubkey(),
@@ -514,7 +523,7 @@ async fn fail_invalid_extensions_combination() {
             &spl_token_2022::id(),
             &mint_account.pubkey(),
             Some(Pubkey::new_unique()),
-            EncryptionPubkey::default(),
+            ElGamalPubkey::default(),
         )
         .unwrap();
 
@@ -528,10 +537,11 @@ async fn fail_invalid_extensions_combination() {
     .unwrap();
 
     // initialize transfer fee and confidential transfers, but no confidential transfer fee
-    let mint_space = ExtensionType::get_account_len::<Mint>(&[
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
-    ]);
+    ])
+    .unwrap();
     let create_account_instruction = system_instruction::create_account(
         &ctx.payer.pubkey(),
         &mint_account.pubkey(),
@@ -568,10 +578,11 @@ async fn fail_invalid_extensions_combination() {
     );
 
     // initialize transfer fee and confidential transfer fees, but no confidential transfers
-    let mint_space = ExtensionType::get_account_len::<Mint>(&[
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferFeeConfig,
-    ]);
+    ])
+    .unwrap();
     let create_account_instruction = system_instruction::create_account(
         &ctx.payer.pubkey(),
         &mint_account.pubkey(),
@@ -609,11 +620,12 @@ async fn fail_invalid_extensions_combination() {
 
     // initialize all of transfer fee, confidential transfers, and confidential transfer fees
     // (success case)
-    let mint_space = ExtensionType::get_account_len::<Mint>(&[
+    let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
         ExtensionType::ConfidentialTransferFeeConfig,
-    ]);
+    ])
+    .unwrap();
     let create_account_instruction = system_instruction::create_account(
         &ctx.payer.pubkey(),
         &mint_account.pubkey(),

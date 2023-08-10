@@ -14,12 +14,14 @@ use {
     },
     solana_vote_program::{
         self, vote_instruction,
-        vote_state::{VoteInit, VoteState},
+        vote_state::{VoteInit, VoteState, VoteStateVersions},
     },
     spl_associated_token_account as atoken,
     spl_single_validator_pool::{
-        find_pool_authority_address, find_pool_mint_address, find_pool_stake_address, id,
-        instruction, processor::Processor,
+        find_pool_address, find_pool_mint_address, find_pool_mint_authority_address,
+        find_pool_mpl_authority_address, find_pool_stake_address,
+        find_pool_stake_authority_address, id, inline_mpl_token_metadata, instruction,
+        processor::Processor,
     },
 };
 
@@ -34,7 +36,7 @@ pub const USER_STARTING_LAMPORTS: u64 = 10_000_000_000_000; // 10k sol
 
 pub fn program_test() -> ProgramTest {
     let mut program_test = ProgramTest::default();
-    program_test.add_program("mpl_token_metadata", mpl_token_metadata::id(), None);
+    program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
 
     program_test.add_program(
         "spl_single_validator_pool",
@@ -52,9 +54,12 @@ pub struct SinglePoolAccounts {
     pub voter: Keypair,
     pub withdrawer: Keypair,
     pub vote_account: Keypair,
+    pub pool: Pubkey,
     pub stake_account: Pubkey,
-    pub authority: Pubkey,
     pub mint: Pubkey,
+    pub stake_authority: Pubkey,
+    pub mint_authority: Pubkey,
+    pub mpl_authority: Pubkey,
     pub alice: Keypair,
     pub bob: Keypair,
     pub alice_stake: Keypair,
@@ -83,7 +88,7 @@ impl SinglePoolAccounts {
 
         let instructions = instruction::deposit(
             &id(),
-            &self.vote_account.pubkey(),
+            &self.pool,
             &self.alice_stake.pubkey(),
             &self.alice_token,
             &self.alice.pubkey(),
@@ -114,7 +119,7 @@ impl SinglePoolAccounts {
         if maybe_bob_amount.is_some() {
             let instructions = instruction::deposit(
                 &id(),
-                &self.vote_account.pubkey(),
+                &self.pool,
                 &self.bob_stake.pubkey(),
                 &self.bob_token,
                 &self.bob.pubkey(),
@@ -208,8 +213,8 @@ impl SinglePoolAccounts {
     // creates a vote account and stake pool for it. also sets up two users with sol and token accounts
     // note this leaves the pool in an activating state. caller can advance to next epoch if they please
     pub async fn initialize(&self, context: &mut ProgramTestContext) -> u64 {
-        let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-        context.warp_to_slot(first_normal_slot).unwrap();
+        let slot = context.genesis_config().epoch_schedule.first_normal_slot + 1;
+        context.warp_to_slot(slot).unwrap();
 
         create_vote(
             &mut context.banks_client,
@@ -294,15 +299,19 @@ impl Default for SinglePoolAccounts {
         let vote_account = Keypair::new();
         let alice = Keypair::new();
         let bob = Keypair::new();
-        let mint = find_pool_mint_address(&id(), &vote_account.pubkey());
+        let pool = find_pool_address(&id(), &vote_account.pubkey());
+        let mint = find_pool_mint_address(&id(), &pool);
 
         Self {
             validator: Keypair::new(),
             voter: Keypair::new(),
             withdrawer: Keypair::new(),
-            authority: find_pool_authority_address(&id(), &vote_account.pubkey()),
-            stake_account: find_pool_stake_address(&id(), &vote_account.pubkey()),
+            stake_account: find_pool_stake_address(&id(), &pool),
+            pool,
             mint,
+            stake_authority: find_pool_stake_authority_address(&id(), &pool),
+            mint_authority: find_pool_mint_authority_address(&id(), &pool),
+            mpl_authority: find_pool_mpl_authority_address(&id(), &pool),
             vote_account,
             alice_stake: Keypair::new(),
             bob_stake: Keypair::new(),
@@ -356,7 +365,7 @@ pub async fn create_vote(
         0,
         &system_program::id(),
     )];
-    instructions.append(&mut vote_instruction::create_account(
+    instructions.append(&mut vote_instruction::create_account_with_config(
         &payer.pubkey(),
         &vote_account.pubkey(),
         &VoteInit {
@@ -366,6 +375,10 @@ pub async fn create_vote(
             ..VoteInit::default()
         },
         rent_voter,
+        vote_instruction::CreateVoteAccountConfig {
+            space: VoteStateVersions::vote_state_size_of(true) as u64,
+            ..Default::default()
+        },
     ));
 
     let transaction = Transaction::new_signed_with_payer(

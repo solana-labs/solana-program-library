@@ -178,9 +178,10 @@ impl Pack for Account {
 
 /// Account state.
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, TryFromPrimitive)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, TryFromPrimitive)]
 pub enum AccountState {
     /// Account is not yet initialized
+    #[default]
     Uninitialized,
     /// Account is initialized; the account owner and/or delegate may perform permitted operations
     /// on this account
@@ -188,12 +189,6 @@ pub enum AccountState {
     /// Account has been frozen by the mint freeze authority. Neither the account owner nor
     /// the delegate are able to perform operations on this account.
     Frozen,
-}
-
-impl Default for AccountState {
-    fn default() -> Self {
-        AccountState::Uninitialized
-    }
 }
 
 /// Multisignature data.
@@ -232,7 +227,7 @@ impl Pack for Multisig {
             signers: [Pubkey::new_from_array([0u8; 32]); MAX_SIGNERS],
         };
         for (src, dst) in signers_flat.chunks(32).zip(result.signers.iter_mut()) {
-            *dst = Pubkey::new(src);
+            *dst = Pubkey::try_from(src).map_err(|_| ProgramError::InvalidAccountData)?;
         }
         Ok(result)
     }

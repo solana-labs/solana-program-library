@@ -81,7 +81,7 @@ async fn setup(
     .await;
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    context.warp_to_slot(first_normal_slot).unwrap();
+    context.warp_to_slot(first_normal_slot + 1).unwrap();
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,

@@ -52,7 +52,7 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
     if prior_deposit {
         let instructions = instruction::deposit(
             &id(),
-            &accounts.vote_account.pubkey(),
+            &accounts.pool,
             &accounts.bob_stake.pubkey(),
             &accounts.bob_token,
             &accounts.bob.pubkey(),
@@ -93,7 +93,7 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
 
     let instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice_stake.pubkey(),
         &accounts.alice_token,
         &accounts.alice.pubkey(),
@@ -169,13 +169,12 @@ async fn success_with_seed(activate: bool) {
     let accounts = SinglePoolAccounts::default();
     let rent = context.banks_client.get_rent().await.unwrap();
     let minimum_stake = accounts.initialize(&mut context).await;
-    let alice_default_stake = find_default_deposit_account_address(
-        &accounts.vote_account.pubkey(),
-        &accounts.alice.pubkey(),
-    );
+    let alice_default_stake =
+        find_default_deposit_account_address(&accounts.pool, &accounts.alice.pubkey());
 
     let instructions = instruction::create_and_delegate_user_stake(
         &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice.pubkey(),
         &rent,
         minimum_stake,
@@ -203,7 +202,7 @@ async fn success_with_seed(activate: bool) {
 
     let instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &alice_default_stake,
         &accounts.alice_token,
         &accounts.alice.pubkey(),
@@ -269,8 +268,8 @@ async fn fail_uninitialized(activate: bool) {
     let accounts = SinglePoolAccounts::default();
     let stake_account = Keypair::new();
 
-    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    context.warp_to_slot(first_normal_slot).unwrap();
+    let slot = context.genesis_config().epoch_schedule.first_normal_slot + 1;
+    context.warp_to_slot(slot).unwrap();
 
     create_vote(
         &mut context.banks_client,
@@ -314,7 +313,7 @@ async fn fail_uninitialized(activate: bool) {
 
     let instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &stake_account.pubkey(),
         &token_account,
         &context.payer.pubkey(),
@@ -327,13 +326,12 @@ async fn fail_uninitialized(activate: bool) {
         context.last_blockhash,
     );
 
-    // this gives a random borsh error upon attempting to deserialize the mint
-    // TODO perhaps in a separate pr, wrap this for all processors with a more helpful error
-    context
+    let e = context
         .banks_client
         .process_transaction(transaction)
         .await
         .unwrap_err();
+    check_error(e, SinglePoolError::InvalidPoolAccount);
 }
 
 #[test_case(true, true; "activated_automorph")]
@@ -350,7 +348,7 @@ async fn fail_bad_account(activate: bool, automorph: bool) {
 
     let instruction = instruction::deposit_stake(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &if automorph {
             accounts.stake_account
         } else {
@@ -377,7 +375,7 @@ async fn fail_bad_account(activate: bool, automorph: bool) {
         .unwrap_err();
 
     if automorph {
-        check_error(e, SinglePoolError::InvalidPoolAccountUsage);
+        check_error(e, SinglePoolError::InvalidPoolStakeAccountUsage);
     } else {
         check_error::<InstructionError>(e, StakeError::MergeMismatch.into());
     }
@@ -442,7 +440,7 @@ async fn fail_activation_mismatch(pool_first: bool) {
 
     let instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice_stake.pubkey(),
         &accounts.alice_token,
         &accounts.alice.pubkey(),

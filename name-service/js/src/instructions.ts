@@ -13,7 +13,7 @@ export function createInstruction(
   space: Numberu32,
   nameClassKey?: PublicKey,
   nameParent?: PublicKey,
-  nameParentOwner?: PublicKey
+  nameParentOwner?: PublicKey,
 ): TransactionInstruction {
   const buffers = [
     Buffer.from(Int8Array.from([0])),
@@ -95,7 +95,7 @@ export function updateInstruction(
   offset: Numberu32,
   input_data: Buffer,
   nameUpdateSigner: PublicKey,
-  parentNameKey: PublicKey | undefined
+  parentNameKey: PublicKey | undefined,
 ): TransactionInstruction {
   const buffers = [
     Buffer.from(Int8Array.from([1])),
@@ -139,7 +139,7 @@ export function transferInstruction(
   newOwnerKey: PublicKey,
   currentNameOwnerKey: PublicKey,
   nameClassKey?: PublicKey,
-  nameParent?: PublicKey
+  nameParent?: PublicKey,
 ): TransactionInstruction {
   const buffers = [Buffer.from(Int8Array.from([2])), newOwnerKey.toBuffer()];
 
@@ -185,7 +185,7 @@ export function deleteInstruction(
   nameProgramId: PublicKey,
   nameAccountKey: PublicKey,
   refundTargetKey: PublicKey,
-  nameOwnerKey: PublicKey
+  nameOwnerKey: PublicKey,
 ): TransactionInstruction {
   const buffers = [Buffer.from(Int8Array.from([3]))];
 
@@ -221,7 +221,7 @@ export function reallocInstruction(
   payerKey: PublicKey,
   nameAccountKey: PublicKey,
   nameOwnerKey: PublicKey,
-  space: Numberu32
+  space: Numberu32,
 ): TransactionInstruction {
   const buffers = [Buffer.from(Int8Array.from([4])), space.toBuffer()];
 

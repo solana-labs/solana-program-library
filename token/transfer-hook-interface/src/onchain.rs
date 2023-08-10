@@ -9,7 +9,7 @@ use {
         program::invoke,
         pubkey::Pubkey,
     },
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_tlv_account_resolution::state::ExtraAccountMetaList,
 };
 /// Helper to CPI into a transfer-hook program on-chain, looking through the
 /// additional account infos to create the proper instruction
@@ -44,7 +44,7 @@ pub fn invoke_execute<'a>(
         authority_info,
         validation_info.clone(),
     ];
-    ExtraAccountMetas::add_to_cpi_instruction::<instruction::ExecuteInstruction>(
+    ExtraAccountMetaList::add_to_cpi_instruction::<instruction::ExecuteInstruction>(
         &mut cpi_instruction,
         &mut cpi_account_infos,
         &validation_info.try_borrow_data()?,
@@ -73,7 +73,7 @@ pub fn add_cpi_accounts_for_execute<'a>(
         .find(|&x| x.key == program_id)
         .ok_or(TransferHookError::IncorrectAccount)?;
 
-    ExtraAccountMetas::add_to_cpi_instruction::<instruction::ExecuteInstruction>(
+    ExtraAccountMetaList::add_to_cpi_instruction::<instruction::ExecuteInstruction>(
         cpi_instruction,
         cpi_account_infos,
         &validation_info.try_borrow_data()?,

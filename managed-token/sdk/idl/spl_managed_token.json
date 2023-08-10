@@ -24,18 +24,22 @@
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "System program"
+          "docs": [
+            "System program"
+          ]
         },
         {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "Token program"
+          "docs": [
+            "Token program"
+          ]
         }
       ],
       "args": [
         {
-          "name": "instructionArgs",
+          "name": "decimals",
           "type": "u8"
         }
       ],
@@ -81,19 +85,25 @@
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "System program"
+          "docs": [
+            "System program"
+          ]
         },
         {
           "name": "associatedTokenProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "Associated Token program"
+          "docs": [
+            "Associated Token program"
+          ]
         },
         {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "Token program"
+          "docs": [
+            "Token program"
+          ]
         }
       ],
       "args": [],
@@ -139,12 +149,14 @@
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "Token program"
+          "docs": [
+            "Token program"
+          ]
         }
       ],
       "args": [
         {
-          "name": "instructionArgs",
+          "name": "amount",
           "type": "u64"
         }
       ],
@@ -180,12 +192,14 @@
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "Token program"
+          "docs": [
+            "Token program"
+          ]
         }
       ],
       "args": [
         {
-          "name": "instructionArgs",
+          "name": "amount",
           "type": "u64"
         }
       ],
@@ -226,12 +240,14 @@
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "Token program"
+          "docs": [
+            "Token program"
+          ]
         }
       ],
       "args": [
         {
-          "name": "instructionArgs",
+          "name": "amount",
           "type": "u64"
         }
       ],
@@ -277,7 +293,9 @@
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "Token program"
+          "docs": [
+            "Token program"
+          ]
         }
       ],
       "args": [],
@@ -323,12 +341,14 @@
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "Token program"
+          "docs": [
+            "Token program"
+          ]
         }
       ],
       "args": [
         {
-          "name": "instructionArgs",
+          "name": "amount",
           "type": "u64"
         }
       ],
@@ -369,7 +389,9 @@
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false,
-          "desc": "Token program"
+          "docs": [
+            "Token program"
+          ]
         }
       ],
       "args": [],
@@ -381,8 +403,6 @@
   ],
   "metadata": {
     "origin": "shank",
-    "address": "mTok58Lg4YfcmwqyrDHpf7ogp599WRhzb6PxjaBqAxS",
-    "binaryVersion": "0.0.5",
-    "libVersion": "^0.0.5"
+    "address": "mTok58Lg4YfcmwqyrDHpf7ogp599WRhzb6PxjaBqAxS"
   }
 }

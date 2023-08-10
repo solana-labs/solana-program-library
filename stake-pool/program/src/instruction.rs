@@ -7,11 +7,11 @@ use {
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
         find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
+        inline_mpl_token_metadata::{self, pda::find_metadata_account},
         state::{Fee, FeeType, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    mpl_token_metadata::pda::find_metadata_account,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
@@ -2228,7 +2228,7 @@ pub fn update_token_metadata(
         AccountMeta::new_readonly(*manager, true),
         AccountMeta::new_readonly(stake_pool_withdraw_authority, false),
         AccountMeta::new(token_metadata, false),
-        AccountMeta::new_readonly(mpl_token_metadata::id(), false),
+        AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
     ];
 
     Instruction {
@@ -2263,7 +2263,7 @@ pub fn create_token_metadata(
         AccountMeta::new_readonly(*pool_mint, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new(token_metadata, false),
-        AccountMeta::new_readonly(mpl_token_metadata::id(), false),
+        AccountMeta::new_readonly(inline_mpl_token_metadata::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 

@@ -10,6 +10,11 @@ impl fmt::Display for RpcClientResponse {
                 writeln!(f, "Transaction:")?;
                 writeln_transaction(f, &transaction.clone().into(), None, "  ", None, None)
             }
+            RpcClientResponse::Simulation(result) => {
+                writeln!(f, "Simulation:")?;
+                // maybe implement another formatter on simulation result?
+                writeln!(f, "{result:?}")
+            }
         }
     }
 }

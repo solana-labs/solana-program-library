@@ -10,8 +10,8 @@ This simple examples defines a zero-copy type with its discriminator.
 use {
     borsh::{BorshSerialize, BorshDeserialize},
     bytemuck::{Pod, Zeroable},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate}
     spl_type_length_value::{
-        discriminator::{Discriminator, TlvDiscriminator},
         state::{TlvState, TlvStateBorrowed, TlvStateMut}
     },
 };
@@ -21,9 +21,9 @@ use {
 struct MyPodValue {
     data: [u8; 32],
 }
-impl TlvDiscriminator for MyPodValue {
+impl SpleDiscriminates for MyPodValue {
     // Give it a unique discriminator, can also be generated using a hash function
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([1; Discriminator::LENGTH]);
+    const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 }
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -38,9 +38,9 @@ impl Default for MyOtherPodValue {
         }
     }
 }
-impl TlvDiscriminator for MyOtherPodValue {
+impl SplDiscriminate for MyOtherPodValue {
     // Some other unique discriminator
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([2; Discriminator::LENGTH]);
+    const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
 }
 
 // Account will have two sets of `get_base_len()` (8-byte discriminator and 4-byte length),
@@ -97,7 +97,7 @@ scheme facilitates this exact case.
 This library allows for holding multiple disparate types within the same account
 by encoding the type, then length, then value.
 
-The type is an 8-byte `Discriminator`, which can be set to anything.
+The type is an 8-byte `ArrayDiscriminator`, which can be set to anything.
 
 The length is a little-endian `u32`.
 
@@ -109,22 +109,40 @@ If not, it reads the next 4-byte length. If the discriminator matches, it return
 the next `length` bytes. If not, it jumps ahead `length` bytes and reads the
 next 8-byte discriminator.
 
-## Borsh integration
+## Serialization of variable-length types
 
 The initial example works using the `bytemuck` crate for zero-copy serialization
-and deserialization. It's possible to use Borsh by activating the `borsh` feature.
+and deserialization. It's possible to use Borsh by implementing the `VariableLenPack`
+trait on your type.
 
 ```rust
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    spl_type_length_value::state::{TlvState, TlvStateMut},
+    solana_program::borsh::{get_instance_packed_len, try_from_slice_unchecked},
+    spl_type_length_value::{
+        state::{TlvState, TlvStateMut},
+        variable_len_pack::VariableLenPack
+    },
 };
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
-struct MyBorsh {
+struct MyVariableLenType {
     data: String, // variable length type
 }
-impl TlvDiscriminator for MyBorsh {
-    const TLV_DISCRIMINATOR: Discriminator = Discriminator::new([5; Discriminator::LENGTH]);
+impl SplDiscriminate for MyVariableLenType {
+    const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([5; ArrayDiscriminator::LENGTH]);
+}
+impl VariableLenPack for MyVariableLenType {
+    fn pack_into_slice(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
+        borsh::to_writer(&mut dst[..], self).map_err(Into::into)
+    }
+
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+        try_from_slice_unchecked(src).map_err(Into::into)
+    }
+
+    fn get_packed_len(&self) -> Result<usize, ProgramError> {
+        get_instance_packed_len(self).map_err(Into::into)
+    }
 }
 let initial_data = "This is a pretty cool test!";
 // Allocate exactly the right size for the string, can go bigger if desired
@@ -137,11 +155,11 @@ let mut buffer = vec![0; account_size];
 let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
 // No need to hold onto the bytes since we'll serialize back into the right place
-let _ = state.allocate::<MyBorsh>(tlv_size).unwrap();
-let my_borsh = MyBorsh {
+let _ = state.allocate::<MyVariableLenType>(tlv_size).unwrap();
+let my_variable_len = MyVariableLenType {
     data: initial_data.to_string()
 };
-state.borsh_serialize(&my_borsh).unwrap();
-let deser = state.borsh_deserialize::<MyBorsh>().unwrap();
-assert_eq!(deser, my_borsh);
+state.pack_variable_len_value(&my_variable_len).unwrap();
+let deser = state.get_variable_len_value::<MyVariableLenType>().unwrap();
+assert_eq!(deser, my_variable_len);
 ```

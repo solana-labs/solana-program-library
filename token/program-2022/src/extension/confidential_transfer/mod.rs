@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "solana"))]
+use crate::extension::confidential_transfer::account_info::*;
 use {
     crate::{
         error::TokenError,
@@ -6,18 +8,16 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod,
+    solana_zk_token_sdk::zk_token_elgamal::pod::{AeCiphertext, ElGamalCiphertext, ElGamalPubkey},
 };
 
 /// Maximum bit length of any deposit or transfer amount
 ///
 /// Any deposit or transfer amount must be less than 2^48
-pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT_BIT_LENGTH: usize = 48;
+pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT: u64 = (u16::MAX as u64) + (1 << 16) * (u32::MAX as u64);
 
 /// Bit length of the low bits of pending balance plaintext
-pub const PENDING_BALANCE_LO_BIT_LENGTH: usize = 16;
-/// Bit length of the high bits of pending balance plaintext
-pub const PENDING_BALANCE_HI_BIT_LENGTH: usize = 48;
+pub const PENDING_BALANCE_LO_BIT_LENGTH: u32 = 16;
 
 /// Confidential Transfer Extension instructions
 pub mod instruction;
@@ -25,10 +25,14 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
+/// Confidential Transfer Extension account information needed for instructions
+#[cfg(not(target_os = "solana"))]
+pub mod account_info;
+
 /// ElGamal ciphertext containing an account balance
-pub type EncryptedBalance = pod::ElGamalCiphertext;
+pub type EncryptedBalance = ElGamalCiphertext;
 /// Authenticated encryption containing an account balance
-pub type DecryptableBalance = pod::AeCiphertext;
+pub type DecryptableBalance = AeCiphertext;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
@@ -49,7 +53,7 @@ pub struct ConfidentialTransferMint {
     pub auto_approve_new_accounts: PodBool,
 
     /// Authority to decode any transfer amount in a confidential transafer.
-    pub auditor_encryption_pubkey: OptionalNonZeroEncryptionPubkey,
+    pub auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
 }
 
 impl Extension for ConfidentialTransferMint {
@@ -65,12 +69,12 @@ pub struct ConfidentialTransferAccount {
     pub approved: PodBool,
 
     /// The public key associated with ElGamal encryption
-    pub encryption_pubkey: EncryptionPubkey,
+    pub elgamal_pubkey: ElGamalPubkey,
 
-    /// The low 16 bits of the pending balance (encrypted by `encryption_pubkey`)
+    /// The low 16 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance_lo: EncryptedBalance,
 
-    /// The high 48 bits of the pending balance (encrypted by `encryption_pubkey`)
+    /// The high 48 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance_hi: EncryptedBalance,
 
     /// The available balance (encrypted by `encrypiton_pubkey`)
@@ -176,5 +180,53 @@ impl ConfidentialTransferAccount {
             .ok_or(TokenError::Overflow)?)
         .into();
         Ok(())
+    }
+
+    /// Return the account information needed to construct an `EmptyAccount` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn empty_account_account_info(&self) -> EmptyAccountAccountInfo {
+        let available_balance = self.available_balance;
+
+        EmptyAccountAccountInfo { available_balance }
+    }
+
+    /// Return the account information needed to construct an `ApplyPendingBalance` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn apply_pending_balance_account_info(&self) -> ApplyPendingBalanceAccountInfo {
+        let pending_balance_credit_counter = self.pending_balance_credit_counter;
+        let pending_balance_lo = self.pending_balance_lo;
+        let pending_balance_hi = self.pending_balance_hi;
+        let decryptable_available_balance = self.decryptable_available_balance;
+
+        ApplyPendingBalanceAccountInfo {
+            pending_balance_credit_counter,
+            pending_balance_lo,
+            pending_balance_hi,
+            decryptable_available_balance,
+        }
+    }
+
+    /// Return the account information needed to construct a `Withdraw` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn withdraw_account_info(&self) -> WithdrawAccountInfo {
+        let available_balance = self.available_balance;
+        let decryptable_available_balance = self.decryptable_available_balance;
+
+        WithdrawAccountInfo {
+            available_balance,
+            decryptable_available_balance,
+        }
+    }
+
+    /// Return the account information needed to construct a `Transfer` instruction.
+    #[cfg(not(target_os = "solana"))]
+    pub fn transfer_account_info(&self) -> TransferAccountInfo {
+        let available_balance = self.available_balance;
+        let decryptable_available_balance = self.decryptable_available_balance;
+
+        TransferAccountInfo {
+            available_balance,
+            decryptable_available_balance,
+        }
     }
 }

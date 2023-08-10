@@ -11,17 +11,17 @@ edition = "2021"
 test-sbf = []
 
 [dependencies]
-num-derive = "0.3"
+num-derive = "0.4"
 num-traits = "0.2"
-solana-program = "1.14.12"
-spl-token = { version = "3.5", path = "../../token/program", features = [ "no-entrypoint" ] }
+solana-program = "1.16.3"
+spl-token = { version = "4.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 uint = "0.9"
-borsh = "0.9.1"
+borsh = "0.10"
 
 [dev-dependencies]
-solana-program-test = "1.14.12"
-solana-sdk = "1.14.12"
+solana-program-test = "1.16.3"
+solana-sdk = "1.16.3"
 
 [lib]
 crate-type = ["cdylib", "lib"]

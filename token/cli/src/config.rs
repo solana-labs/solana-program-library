@@ -281,9 +281,9 @@ impl<'a> Config<'a> {
             Ok(default_signer.clone())
         } else {
             Err("default signer is required, please specify a valid default signer by identifying a \
-                 valid configuration file using the --config-file argument, or by creating a valid \
-                 config at the default location of ~/.config/solana/cli/config.yml using the solana \
-                 config command".to_string().into())
+                 valid configuration file using the --config argument, or by creating a valid config \
+                 at the default location of ~/.config/solana/cli/config.yml using the solana config \
+                 command".to_string().into())
         }
     }
 
@@ -292,10 +292,10 @@ impl<'a> Config<'a> {
         if let Some(fee_payer) = &self.fee_payer {
             Ok(fee_payer.clone())
         } else {
-            Err("fee payer is required, please specify a valid fee payer using the --fee_payer argument, \
-                 or by identifying a valid configuration file using the --config-file argument, or by \
-                 creating a valid config at the default location of ~/.config/solana/cli/config.yml using \
-                 the solana config command".to_string().into())
+            Err("fee payer is required, please specify a valid fee payer using the --fee-payer argument, \
+                 or by identifying a valid configuration file using the --config argument, or by creating \
+                 a valid config at the default location of ~/.config/solana/cli/config.yml using the solana \
+                 config command".to_string().into())
         }
     }
 

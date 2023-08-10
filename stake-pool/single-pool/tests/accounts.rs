@@ -10,7 +10,11 @@ use {
         instruction::Instruction, program_error::ProgramError, pubkey::Pubkey, signature::Signer,
         stake, system_program, transaction::Transaction,
     },
-    spl_single_validator_pool::{error::SinglePoolError, id, instruction},
+    spl_single_validator_pool::{
+        error::SinglePoolError,
+        id,
+        instruction::{self, SinglePoolInstruction},
+    },
     test_case::test_case,
 };
 
@@ -21,14 +25,16 @@ enum TestMode {
     Withdraw,
 }
 
+// build a full transaction for initialize, deposit, and withdraw
+// this is used to test knocking out individual accounts, for the sake of confirming the pubkeys are checked
 async fn build_instructions(
     context: &mut ProgramTestContext,
     accounts: &SinglePoolAccounts,
     test_mode: TestMode,
 ) -> (Vec<Instruction>, usize) {
     let initialize_instructions = if test_mode == TestMode::Initialize {
-        let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-        context.warp_to_slot(first_normal_slot).unwrap();
+        let slot = context.genesis_config().epoch_schedule.first_normal_slot + 1;
+        context.warp_to_slot(slot).unwrap();
 
         create_vote(
             &mut context.banks_client,
@@ -76,7 +82,7 @@ async fn build_instructions(
 
     let deposit_instructions = instruction::deposit(
         &id(),
-        &accounts.vote_account.pubkey(),
+        &accounts.pool,
         &accounts.alice_stake.pubkey(),
         &accounts.alice_token,
         &accounts.alice.pubkey(),
@@ -108,7 +114,7 @@ async fn build_instructions(
 
         instruction::withdraw(
             &id(),
-            &accounts.vote_account.pubkey(),
+            &accounts.pool,
             &accounts.alice_stake.pubkey(),
             &accounts.alice.pubkey(),
             &accounts.alice_token,
@@ -120,7 +126,7 @@ async fn build_instructions(
     };
 
     let (instructions, i) = match test_mode {
-        TestMode::Initialize => (initialize_instructions, 2),
+        TestMode::Initialize => (initialize_instructions, 3),
         TestMode::Deposit => (deposit_instructions, 2),
         TestMode::Withdraw => (withdraw_instructions, 1),
     };
@@ -131,6 +137,7 @@ async fn build_instructions(
     (instructions, i)
 }
 
+// test that account addresses are checked properly
 #[test_case(TestMode::Initialize; "initialize")]
 #[test_case(TestMode::Deposit; "deposit")]
 #[test_case(TestMode::Withdraw; "withdraw")]
@@ -167,10 +174,16 @@ async fn fail_account_checks(test_mode: TestMode) {
             .unwrap_err();
 
         // these ones we can also make sure we hit the explicit check, before we use it
-        if prev_pubkey == accounts.stake_account {
+        if prev_pubkey == accounts.pool {
+            check_error(e, SinglePoolError::InvalidPoolAccount)
+        } else if prev_pubkey == accounts.stake_account {
             check_error(e, SinglePoolError::InvalidPoolStakeAccount)
-        } else if prev_pubkey == accounts.authority {
-            check_error(e, SinglePoolError::InvalidPoolAuthority)
+        } else if prev_pubkey == accounts.stake_authority {
+            check_error(e, SinglePoolError::InvalidPoolStakeAuthority)
+        } else if prev_pubkey == accounts.mint_authority {
+            check_error(e, SinglePoolError::InvalidPoolMintAuthority)
+        } else if prev_pubkey == accounts.mpl_authority {
+            check_error(e, SinglePoolError::InvalidPoolMplAuthority)
         } else if prev_pubkey == accounts.mint {
             check_error(e, SinglePoolError::InvalidPoolMint)
         } else if [system_program::id(), spl_token::id(), stake::program::id()]
@@ -178,5 +191,105 @@ async fn fail_account_checks(test_mode: TestMode) {
         {
             check_error(e, ProgramError::IncorrectProgramId)
         }
+    }
+}
+
+// make an individual instruction for all program instructions
+// the match is just so this will error if new instructions are added
+fn make_basic_instruction(
+    accounts: &SinglePoolAccounts,
+    instruction_type: SinglePoolInstruction,
+) -> Instruction {
+    match instruction_type {
+        SinglePoolInstruction::InitializePool => {
+            instruction::initialize_pool(&id(), &accounts.vote_account.pubkey())
+        }
+        SinglePoolInstruction::DepositStake => instruction::deposit_stake(
+            &id(),
+            &accounts.pool,
+            &Pubkey::default(),
+            &Pubkey::default(),
+            &Pubkey::default(),
+        ),
+        SinglePoolInstruction::WithdrawStake { .. } => instruction::withdraw_stake(
+            &id(),
+            &accounts.pool,
+            &Pubkey::default(),
+            &Pubkey::default(),
+            &Pubkey::default(),
+            0,
+        ),
+        SinglePoolInstruction::CreateTokenMetadata => {
+            instruction::create_token_metadata(&id(), &accounts.pool, &Pubkey::default())
+        }
+        SinglePoolInstruction::UpdateTokenMetadata { .. } => instruction::update_token_metadata(
+            &id(),
+            &accounts.vote_account.pubkey(),
+            &accounts.withdrawer.pubkey(),
+            "".to_string(),
+            "".to_string(),
+            "".to_string(),
+        ),
+    }
+}
+
+// advanced technology
+fn is_sorted<T>(data: &[T]) -> bool
+where
+    T: Ord,
+{
+    data.windows(2).all(|w| w[0] <= w[1])
+}
+
+// check that major accounts always show up in the same order, to spare developer confusion
+#[test]
+fn consistent_account_order() {
+    let accounts = SinglePoolAccounts::default();
+
+    let ordering = vec![
+        accounts.vote_account.pubkey(),
+        accounts.pool,
+        accounts.stake_account,
+        accounts.mint,
+        accounts.stake_authority,
+        accounts.mint_authority,
+        accounts.mpl_authority,
+    ];
+
+    let instructions = vec![
+        make_basic_instruction(&accounts, SinglePoolInstruction::InitializePool),
+        make_basic_instruction(&accounts, SinglePoolInstruction::DepositStake),
+        make_basic_instruction(
+            &accounts,
+            SinglePoolInstruction::WithdrawStake {
+                user_stake_authority: Pubkey::default(),
+                token_amount: 0,
+            },
+        ),
+        make_basic_instruction(&accounts, SinglePoolInstruction::CreateTokenMetadata),
+        make_basic_instruction(
+            &accounts,
+            SinglePoolInstruction::UpdateTokenMetadata {
+                name: "".to_string(),
+                symbol: "".to_string(),
+                uri: "".to_string(),
+            },
+        ),
+    ];
+
+    for instruction in instructions {
+        let mut indexes = vec![];
+
+        for target in &ordering {
+            if let Some(i) = instruction
+                .accounts
+                .iter()
+                .position(|meta| meta.pubkey == *target)
+            {
+                indexes.push(i);
+            }
+        }
+
+        assert!(is_sorted(&indexes));
     }
 }

@@ -1,17 +1,9 @@
 //! Error types
 
-use {
-    num_derive::FromPrimitive,
-    solana_program::{
-        decode_error::DecodeError,
-        msg,
-        program_error::{PrintProgramError, ProgramError},
-    },
-    thiserror::Error,
-};
+use spl_program_error::*;
 
 /// Errors that may be returned by the Account Resolution library.
-#[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
+#[spl_program_error]
 pub enum AccountResolutionError {
     /// Incorrect account provided
     #[error("Incorrect account provided")]
@@ -25,48 +17,31 @@ pub enum AccountResolutionError {
     /// Some value initialized in TLV data
     #[error("Some value initialized in TLV data")]
     TlvInitialized,
-    /// Provided byte buffer too small for validation pubkeys
-    #[error("Provided byte buffer too small for validation pubkeys")]
-    BufferTooSmall,
-    /// Error in checked math operation
-    #[error("Error in checked math operation")]
-    CalculationFailure,
     /// Too many pubkeys provided
     #[error("Too many pubkeys provided")]
     TooManyPubkeys,
-    /// Provided byte buffer too large for expected type
-    #[error("Provided byte buffer too large for expected type")]
-    BufferTooLarge,
-}
-impl From<AccountResolutionError> for ProgramError {
-    fn from(e: AccountResolutionError) -> Self {
-        ProgramError::Custom(e as u32)
-    }
-}
-impl<T> DecodeError<T> for AccountResolutionError {
-    fn type_of() -> &'static str {
-        "AccountResolutionError"
-    }
-}
-
-impl PrintProgramError for AccountResolutionError {
-    fn print<E>(&self)
-    where
-        E: 'static
-            + std::error::Error
-            + DecodeError<E>
-            + PrintProgramError
-            + num_traits::FromPrimitive,
-    {
-        match self {
-            Self::IncorrectAccount => msg!("Incorrect account provided"),
-            Self::NotEnoughAccounts => msg!("Not enough accounts provided"),
-            Self::TlvUninitialized => msg!("No value initialized in TLV data"),
-            Self::TlvInitialized => msg!("Some value initialized in TLV data"),
-            Self::BufferTooSmall => msg!("Provided byte buffer too small for validation pubkeys"),
-            Self::CalculationFailure => msg!("Error in checked math operation"),
-            Self::TooManyPubkeys => msg!("Too many pubkeys provided"),
-            Self::BufferTooLarge => msg!("Provided byte buffer too large for expected type"),
-        }
-    }
+    /// Failed to parse `Pubkey` from bytes
+    #[error("Failed to parse `Pubkey` from bytes")]
+    InvalidPubkey,
+    /// Attempted to deserialize an `AccountMeta` but the underlying type has
+    /// PDA configs rather than a fixed address
+    #[error(
+        "Attempted to deserialize an `AccountMeta` but the underlying type has PDA configs rather than a fixed address"
+    )]
+    AccountTypeNotAccountMeta,
+    /// Provided list of seed configurations too large for a validation account
+    #[error("Provided list of seed configurations too large for a validation account")]
+    SeedConfigsTooLarge,
+    /// Not enough bytes available to pack seed configuration
+    #[error("Not enough bytes available to pack seed configuration")]
+    NotEnoughBytesForSeed,
+    /// The provided bytes are not valid for a seed configuration
+    #[error("The provided bytes are not valid for a seed configuration")]
+    InvalidBytesForSeed,
+    /// Tried to pack an invalid seed configuration
+    #[error("Tried to pack an invalid seed configuration")]
+    InvalidSeedConfig,
+    /// Could not find account at specified index
+    #[error("Could not find account at specified index")]
+    AccountNotFound,
 }

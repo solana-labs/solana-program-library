@@ -2,8 +2,12 @@
 
 use {
     crate::{get_extra_account_metas_address, instruction::ExecuteInstruction},
-    solana_program::{instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey},
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        pubkey::Pubkey,
+    },
+    spl_tlv_account_resolution::state::ExtraAccountMetaList,
     std::future::Future,
 };
 
@@ -36,8 +40,8 @@ pub type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
 ///     &program_id,
 /// ).await?;
 /// ```
-pub async fn get_extra_account_metas<F, Fut>(
-    account_metas: &mut Vec<AccountMeta>,
+pub async fn resolve_extra_account_metas<F, Fut>(
+    instruction: &mut Instruction,
     get_account_data_fn: F,
     mint: &Pubkey,
     permissioned_transfer_program_id: &Pubkey,
@@ -51,14 +55,19 @@ where
     let validation_account_data = get_account_data_fn(validation_address)
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
-    ExtraAccountMetas::add_to_vec::<ExecuteInstruction>(account_metas, &validation_account_data)?;
+    ExtraAccountMetaList::add_to_instruction::<ExecuteInstruction>(
+        instruction,
+        &validation_account_data,
+    )?;
     // The onchain helpers pull out the required accounts from an opaque
     // slice by pubkey, so the order doesn't matter here!
-    account_metas.push(AccountMeta::new_readonly(
+    instruction.accounts.push(AccountMeta::new_readonly(
         *permissioned_transfer_program_id,
         false,
     ));
-    account_metas.push(AccountMeta::new_readonly(validation_address, false));
+    instruction
+        .accounts
+        .push(AccountMeta::new_readonly(validation_address, false));
 
     Ok(())
 }

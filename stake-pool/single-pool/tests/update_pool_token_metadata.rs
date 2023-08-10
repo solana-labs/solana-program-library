@@ -4,10 +4,6 @@ mod helpers;
 
 use {
     helpers::*,
-    mpl_token_metadata::{
-        state::{MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH},
-        utils::puffed_out_string,
-    },
     solana_program_test::*,
     solana_sdk::{signature::Signer, transaction::Transaction},
     spl_single_validator_pool::{error::SinglePoolError, id, instruction},
@@ -23,10 +19,6 @@ async fn success_update_pool_token_metadata() {
     let mut context = program_test().start_with_context().await;
     let accounts = SinglePoolAccounts::default();
     accounts.initialize(&mut context).await;
-
-    let puffed_name = puffed_out_string(UPDATED_NAME, MAX_NAME_LENGTH);
-    let puffed_symbol = puffed_out_string(UPDATED_SYMBOL, MAX_SYMBOL_LENGTH);
-    let puffed_uri = puffed_out_string(UPDATED_URI, MAX_URI_LENGTH);
 
     let instruction = instruction::update_token_metadata(
         &id(),
@@ -52,9 +44,9 @@ async fn success_update_pool_token_metadata() {
 
     let metadata = get_metadata_account(&mut context.banks_client, &accounts.mint).await;
 
-    assert_eq!(metadata.data.name, puffed_name);
-    assert_eq!(metadata.data.symbol, puffed_symbol);
-    assert_eq!(metadata.data.uri, puffed_uri);
+    assert!(metadata.name.starts_with(UPDATED_NAME));
+    assert!(metadata.symbol.starts_with(UPDATED_SYMBOL));
+    assert!(metadata.uri.starts_with(UPDATED_URI));
 }
 
 #[tokio::test]
@@ -71,8 +63,8 @@ async fn fail_no_signature() {
         UPDATED_SYMBOL.to_string(),
         UPDATED_URI.to_string(),
     );
-    assert_eq!(instruction.accounts[2].pubkey, accounts.withdrawer.pubkey());
-    instruction.accounts[2].is_signer = false;
+    assert_eq!(instruction.accounts[3].pubkey, accounts.withdrawer.pubkey());
+    instruction.accounts[3].is_signer = false;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],

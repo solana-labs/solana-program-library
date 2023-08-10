@@ -118,6 +118,7 @@ To get started with Token-2022:
 - [Extension Guide](token-2022/extensions.mdx)
 - [Wallet Guide](token-2022/wallet.md)
 - [On-Chain Program Guide](token-2022/onchain.md)
+- [Presentation about Token-2022](token-2022/presentation.md)
 
 For existing functionality in the Token Program, see the [token docs](token.mdx).
 The Token functionality will always apply to Token-2022.

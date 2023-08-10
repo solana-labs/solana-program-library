@@ -1940,6 +1940,7 @@ fn main() {
                 .value_name("URL")
                 .takes_value(true)
                 .validator(is_url)
+                .global(true)
                 .help("JSON RPC URL for the cluster.  Default from the configuration file."),
         )
         .arg(
@@ -1948,6 +1949,7 @@ fn main() {
                 .value_name("KEYPAIR")
                 .validator(is_valid_signer)
                 .takes_value(true)
+                .global(true)
                 .help("Stake pool staker. [default: cli config keypair]"),
         )
         .arg(
@@ -1956,6 +1958,7 @@ fn main() {
                 .value_name("KEYPAIR")
                 .validator(is_valid_signer)
                 .takes_value(true)
+                .global(true)
                 .help("Stake pool manager. [default: cli config keypair]"),
         )
         .arg(
@@ -1964,6 +1967,7 @@ fn main() {
                 .value_name("KEYPAIR")
                 .validator(is_valid_signer)
                 .takes_value(true)
+                .global(true)
                 .help("Stake pool funding authority for deposits or withdrawals. [default: cli config keypair]"),
         )
         .arg(
@@ -1972,6 +1976,7 @@ fn main() {
                 .value_name("KEYPAIR")
                 .validator(is_valid_signer)
                 .takes_value(true)
+                .global(true)
                 .help("Owner of pool token account [default: cli config keypair]"),
         )
         .arg(
@@ -1980,6 +1985,7 @@ fn main() {
                 .value_name("KEYPAIR")
                 .validator(is_valid_signer)
                 .takes_value(true)
+                .global(true)
                 .help("Transaction fee payer account [default: cli config keypair]"),
         )
         .subcommand(SubCommand::with_name("create-pool")

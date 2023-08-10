@@ -46,6 +46,7 @@ fn check_leaf_index(leaf_index: u32, max_depth: usize) -> Result<(), ConcurrentM
 /// An additional key property of ConcurrentMerkleTree is support for [append](ConcurrentMerkleTree::append) operations,
 /// which do not require any proofs to be passed. This is accomplished by keeping track of the
 /// proof to the rightmost leaf in the tree (`rightmost_proof`).
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ConcurrentMerkleTree<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> {
     pub sequence_number: u64,
@@ -178,7 +179,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     pub fn get_change_log(&self) -> Box<ChangeLog<MAX_DEPTH>> {
         if !self.is_initialized() {
             solana_logging!("Tree is not initialized, returning default change log");
-            return Box::new(ChangeLog::default());
+            return Box::<ChangeLog<MAX_DEPTH>>::default();
         }
         Box::new(self.change_logs[self.active_index as usize])
     }
@@ -527,7 +528,7 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         let root = change_log.replace_and_recompute_path(index, start, proof);
         // Update rightmost path if possible
         if self.rightmost_proof.index < (1 << MAX_DEPTH) {
-            if index < self.rightmost_proof.index as u32 {
+            if index < self.rightmost_proof.index {
                 change_log.update_proof_or_leaf(
                     self.rightmost_proof.index - 1,
                     &mut self.rightmost_proof.proof,

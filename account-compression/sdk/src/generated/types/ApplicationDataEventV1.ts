@@ -7,15 +7,14 @@
 
 import * as beet from '@metaplex-foundation/beet';
 export type ApplicationDataEventV1 = {
-  applicationData: Uint8Array;
+    applicationData: Uint8Array;
 };
 
 /**
  * @category userTypes
  * @category generated
  */
-export const applicationDataEventV1Beet =
-  new beet.FixableBeetArgsStruct<ApplicationDataEventV1>(
+export const applicationDataEventV1Beet = new beet.FixableBeetArgsStruct<ApplicationDataEventV1>(
     [['applicationData', beet.bytes]],
     'ApplicationDataEventV1'
-  );
+);

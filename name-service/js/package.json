@@ -28,7 +28,7 @@
     "doc": "yarn typedoc src/index.ts",
     "test": "yarn test:unit && yarn test:e2e",
     "test:unit": "mocha test/unit",
-    "test:e2e": "start-server-and-test 'solana-test-validator --bpf-program namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX ../../target/deploy/spl_name_service.so --reset --quiet' http://localhost:8899/health 'mocha test/e2e'"
+    "test:e2e": "start-server-and-test 'solana-test-validator --bpf-program namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX ../../target/deploy/spl_name_service.so --reset --quiet' http://127.0.0.1:8899/health 'mocha test/e2e'"
   },
   "prettier": {
     "singleQuote": true
@@ -46,12 +46,12 @@
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
     "eslint": "^7.8.0",
-    "eslint-config-prettier": "^8.8.0",
+    "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-eslint-comments": "^3.2.0",
     "eslint-plugin-functional": "^3.0.2",
     "eslint-plugin-import": "^2.22.0",
     "mocha": "^10.2.0",
-    "prettier": "^2.2.1",
+    "prettier": "^3.0.0",
     "start-server-and-test": "^2.0.0",
     "ts-node": "^10.9.1",
     "typedoc": "^0.24.7",

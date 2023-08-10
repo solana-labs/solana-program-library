@@ -5,11 +5,6 @@ mod helpers;
 
 use {
     helpers::*,
-    mpl_token_metadata::{
-        state::Metadata,
-        state::{MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH},
-        utils::puffed_out_string,
-    },
     solana_program_test::*,
     solana_sdk::{
         instruction::InstructionError, pubkey::Pubkey, signature::Signer,
@@ -22,11 +17,9 @@ fn assert_metadata(vote_account: &Pubkey, metadata: &Metadata) {
     let vote_address_str = vote_account.to_string();
     let name = format!("SPL Single Pool {}", &vote_address_str[0..15]);
     let symbol = format!("st{}", &vote_address_str[0..7]);
-    let puffy_name = puffed_out_string(&name, MAX_NAME_LENGTH);
-    let puffy_symbol = puffed_out_string(&symbol, MAX_SYMBOL_LENGTH);
 
-    assert_eq!(metadata.data.name, puffy_name);
-    assert_eq!(metadata.data.symbol, puffy_symbol);
+    assert!(metadata.name.starts_with(&name));
+    assert!(metadata.symbol.starts_with(&symbol));
 }
 
 #[tokio::test]
@@ -46,11 +39,8 @@ async fn fail_double_init() {
     accounts.initialize(&mut context).await;
     refresh_blockhash(&mut context).await;
 
-    let instruction = instruction::create_token_metadata(
-        &id(),
-        &accounts.vote_account.pubkey(),
-        &context.payer.pubkey(),
-    );
+    let instruction =
+        instruction::create_token_metadata(&id(), &accounts.pool, &context.payer.pubkey());
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
         Some(&context.payer.pubkey()),

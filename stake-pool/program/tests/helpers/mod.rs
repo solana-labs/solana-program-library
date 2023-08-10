@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 
 use {
-    borsh::BorshSerialize,
-    mpl_token_metadata::{pda::find_metadata_account, state::Metadata},
+    borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
@@ -28,7 +27,9 @@ use {
     spl_stake_pool::{
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
         find_stake_program_address, find_transient_stake_program_address,
-        find_withdraw_authority_program_address, id, instruction, minimum_delegation,
+        find_withdraw_authority_program_address, id,
+        inline_mpl_token_metadata::{self, pda::find_metadata_account},
+        instruction, minimum_delegation,
         processor::Processor,
         state::{self, FeeType, FutureEpoch, StakePool, ValidatorList},
         MINIMUM_RESERVE_LAMPORTS,
@@ -62,7 +63,7 @@ pub fn program_test() -> ProgramTest {
 pub fn program_test_with_metadata_program() -> ProgramTest {
     let mut program_test = ProgramTest::default();
     program_test.add_program("spl_stake_pool", id(), processor!(Processor::process));
-    program_test.add_program("mpl_token_metadata", mpl_token_metadata::id(), None);
+    program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
     program_test.prefer_bpf(false);
     program_test.add_program(
         "spl_token_2022",
@@ -93,7 +94,7 @@ pub async fn create_mint(
 ) -> Result<(), TransportError> {
     assert!(extension_types.is_empty() || program_id != &spl_token::id());
     let rent = banks_client.get_rent().await.unwrap();
-    let space = ExtensionType::get_account_len::<Mint>(extension_types);
+    let space = ExtensionType::try_calculate_account_len::<Mint>(extension_types).unwrap();
     let mint_rent = rent.minimum_balance(space);
     let mint_pubkey = pool_mint.pubkey();
 
@@ -224,7 +225,7 @@ pub async fn create_token_account(
     extensions: &[ExtensionType],
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
-    let space = ExtensionType::get_account_len::<Account>(extensions);
+    let space = ExtensionType::try_calculate_account_len::<Account>(extensions).unwrap();
     let account_rent = rent.minimum_balance(space);
 
     let mut instructions = vec![system_instruction::create_account(
@@ -430,6 +431,20 @@ pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -
     account_info.base.amount
 }
 
+#[derive(Clone, BorshDeserialize, Debug, PartialEq, Eq)]
+pub struct Metadata {
+    pub key: u8,
+    pub update_authority: Pubkey,
+    pub mint: Pubkey,
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
+    pub seller_fee_basis_points: u16,
+    pub creators: Option<Vec<u8>>,
+    pub primary_sale_happened: bool,
+    pub is_mutable: bool,
+}
+
 pub async fn get_metadata_account(banks_client: &mut BanksClient, token_mint: &Pubkey) -> Metadata {
     let (token_metadata, _) = find_metadata_account(token_mint);
     let token_metadata_account = banks_client
@@ -600,7 +615,7 @@ pub async fn create_vote(
         0,
         &system_program::id(),
     )];
-    instructions.append(&mut vote_instruction::create_account(
+    instructions.append(&mut vote_instruction::create_account_with_config(
         &payer.pubkey(),
         &vote.pubkey(),
         &VoteInit {
@@ -609,6 +624,10 @@ pub async fn create_vote(
             ..VoteInit::default()
         },
         rent_voter,
+        vote_instruction::CreateVoteAccountConfig {
+            space: VoteStateVersions::vote_state_size_of(true) as u64,
+            ..Default::default()
+        },
     ));
 
     let transaction = Transaction::new_signed_with_payer(
@@ -2360,12 +2379,12 @@ pub fn add_validator_stake_account(
         credits_observed: 0,
     };
 
+    let mut data = vec![0u8; std::mem::size_of::<stake::state::StakeState>()];
+    let stake_data = bincode::serialize(&stake::state::StakeState::Stake(meta, stake)).unwrap();
+    data[..stake_data.len()].copy_from_slice(&stake_data);
     let stake_account = SolanaAccount::create(
         stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
-        bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Stake(
-            meta, stake,
-        ))
-        .unwrap(),
+        data,
         stake::program::id(),
         false,
         Epoch::default(),

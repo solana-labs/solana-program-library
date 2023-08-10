@@ -6,7 +6,9 @@
 pull_request_rules:
   - name: label changes from community
     conditions:
-      - author≠@core-contributors
+      - author≠@spl-maintainers
+      - author≠@spl-triage
+      - author≠@spl-write
       - author≠mergify[bot]
       - author≠dependabot[bot]
     actions:

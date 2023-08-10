@@ -1,6 +1,6 @@
 [package]
 name = "spl-noop"
-version = "0.1.3"
+version = "0.2.0"
 description = "Solana Program Library No-op Program"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -16,4 +16,4 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-solana-program = "1.13.5"
+solana-program = "1.16.3"
