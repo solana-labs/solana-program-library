@@ -469,24 +469,31 @@ pub(crate) fn process_instruction(
         }
         ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint => {
             msg!("ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint");
-            let data = decode_instruction_data::<WithdrawWithheldTokensFromMintData>(input)?;
-            process_withdraw_withheld_tokens_from_mint(
-                program_id,
-                accounts,
-                &data.new_decryptable_available_balance,
-                data.proof_instruction_offset as i64,
-            )
+            #[cfg(feature = "zk-ops")]
+            {
+                let data = decode_instruction_data::<WithdrawWithheldTokensFromMintData>(input)?;
+                process_withdraw_withheld_tokens_from_mint(
+                    program_id,
+                    accounts,
+                    &data.new_decryptable_available_balance,
+                    data.proof_instruction_offset as i64,
+                )
+            }
         }
         ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts => {
             msg!("ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts");
-            let data = decode_instruction_data::<WithdrawWithheldTokensFromAccountsData>(input)?;
-            process_withdraw_withheld_tokens_from_accounts(
-                program_id,
-                accounts,
-                data.num_token_accounts,
-                &data.new_decryptable_available_balance,
-                data.proof_instruction_offset as i64,
-            )
+            #[cfg(feature = "zk-ops")]
+            {
+                let data =
+                    decode_instruction_data::<WithdrawWithheldTokensFromAccountsData>(input)?;
+                process_withdraw_withheld_tokens_from_accounts(
+                    program_id,
+                    accounts,
+                    data.num_token_accounts,
+                    &data.new_decryptable_available_balance,
+                    data.proof_instruction_offset as i64,
+                )
+            }
         }
         ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint => {
             msg!("ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint");

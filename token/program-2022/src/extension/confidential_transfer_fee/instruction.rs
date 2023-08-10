@@ -159,11 +159,11 @@ pub enum ConfidentialTransferFeeInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The SPL Token account.
+    ///   0. `[writable]` The token mint.
     ///   1. `[signer]` The confidential transfer fee authority.
     ///
     ///   *Multisignature owner/delegate
-    ///   0. `[writable]` The SPL Token account.
+    ///   0. `[writable]` The token mint.
     ///   1. `[]` The confidential transfer fee multisig authority,
     ///   2. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
@@ -176,11 +176,11 @@ pub enum ConfidentialTransferFeeInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The SPL Token account.
+    ///   0. `[writable]` The token mint.
     ///   1. `[signer]` The confidential transfer fee authority.
     ///
     ///   *Multisignature owner/delegate
-    ///   0. `[writable]` The SPL Token account.
+    ///   0. `[writable]` The token mint.
     ///   1. `[]` The confidential transfer fee multisig authority,
     ///   2. `[signer]` Required M signer accounts for the SPL Token Multisig account.
     ///
