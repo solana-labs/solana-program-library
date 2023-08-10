@@ -364,10 +364,10 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
     let confidential_transfer_fee_mint =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
 
-    if confidential_transfer_fee_mint
-        .harvest_to_mint_disabled
-        .into()
-    {
+    let harvest_to_mint_enabled: bool = confidential_transfer_fee_mint
+        .harvest_to_mint_enabled
+        .into();
+    if !harvest_to_mint_enabled {
         return Err(TokenError::HarvestToMintDisabled.into());
     }
 
@@ -415,7 +415,7 @@ fn process_enable_harvest_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
         return Err(TokenError::OwnerMismatch.into());
     }
 
-    confidential_transfer_fee_mint.harvest_to_mint_disabled = false.into();
+    confidential_transfer_fee_mint.harvest_to_mint_enabled = true.into();
     Ok(())
 }
 
@@ -444,7 +444,7 @@ fn process_disable_harvest_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
         return Err(TokenError::OwnerMismatch.into());
     }
 
-    confidential_transfer_fee_mint.harvest_to_mint_disabled = true.into();
+    confidential_transfer_fee_mint.harvest_to_mint_enabled = false.into();
     Ok(())
 }
 
