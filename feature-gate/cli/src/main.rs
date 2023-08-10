@@ -1,10 +1,10 @@
-#![allow(clippy::integer_arithmetic)]
+//! Feature gate CLI
 
 use {
     clap::{crate_description, crate_name, crate_version, App, AppSettings, Arg, SubCommand},
     solana_clap_utils::{
         input_parsers::{keypair_of, pubkey_of},
-        input_validators::{is_keypair, is_url, is_valid_pubkey},
+        input_validators::{is_keypair, is_url, is_valid_pubkey, is_valid_signer},
     },
     solana_client::rpc_client::RpcClient,
     solana_sdk::{
@@ -19,13 +19,9 @@ use {
     spl_feature_gate::instruction::{activate, revoke},
 };
 
-fn keypair_clone(kp: &Keypair) -> Keypair {
-    Keypair::from_bytes(&kp.to_bytes()).expect("failed to copy keypair")
-}
-
 #[allow(dead_code)]
 struct Config {
-    keypair: Keypair,
+    keypair: Box<dyn Signer>,
     json_rpc_url: String,
     verbose: bool,
 }
@@ -53,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::with_name("keypair")
                 .long("keypair")
                 .value_name("KEYPAIR")
-                .validator(is_keypair)
+                .validator(is_valid_signer)
                 .takes_value(true)
                 .global(true)
                 .help("Filepath or URL to a keypair [default: client keypair]"),
@@ -147,11 +143,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .value_of("json_rpc_url")
                 .unwrap_or(&cli_config.json_rpc_url)
                 .to_string(),
-            keypair: read_keypair_file(
+            keypair: Box::new(read_keypair_file(
                 matches
                     .value_of("keypair")
                     .unwrap_or(&cli_config.keypair_path),
-            )?,
+            )?),
             verbose: matches.is_present("verbose"),
         }
     };
@@ -164,7 +160,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let feature_keypair = keypair_of(arg_matches, "feature_keypair").unwrap();
             let authority_keypair = keypair_of(arg_matches, "authority_keypair").unwrap();
             let payer_keypair = keypair_of(arg_matches, "payer_keypair")
-                .unwrap_or(keypair_clone(&authority_keypair));
+                .unwrap_or(authority_keypair.insecure_clone());
 
             process_activate(
                 &rpc_client,
