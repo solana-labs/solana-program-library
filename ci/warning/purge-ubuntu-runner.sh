@@ -21,7 +21,7 @@ if [[ -n "$CI" ]]; then
     mercurial \
     mono-complete \
     mysql-client libmysqlclient-dev mysql-server \
-    mssql-tools unixodbc-dev libxft-dev \
+    mssql-tools unixodbc-dev \
     libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
     shim-signed \
     nginx \
@@ -34,4 +34,10 @@ if [[ -n "$CI" ]]; then
     -yq --allow-remove-essential
   sudo apt autopurge -y
   sudo apt autoclean -y
+  # Clear extra dirs
+  sudo rm -rf /usr/share/dotnet \
+    /usr/share/php \
+    /etc/mono \
+    /usr/lib/mono \
+    /etc/mysql
 fi
