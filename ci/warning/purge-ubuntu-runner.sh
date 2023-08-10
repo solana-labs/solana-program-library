@@ -11,28 +11,27 @@ if [[ -n "$CI" ]]; then
   # Clears 12GB
   sudo rm -rf /usr/local/lib/android
   # Clears 6GB
-  sudo apt update
-  sudo apt purge ansible \
-    azure-cli \
+  sudo apt purge azure-cli \
     dotnet-sdk-* \
     firefox \
     g++-9 \
     gfortran-9 \
     google-chrome-stable google-cloud-sdk \
     ant ant-optional \
-    imagemagick* \
     mercurial \
     mono-complete \
     mysql-client libmysqlclient-dev mysql-server \
     mssql-tools unixodbc-dev libxft-dev \
     libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
+    shim-signed \
     nginx \
     php* \
-    libpq-dev postgresql-client \
+    libpq-dev \
     powershell \
     ruby-full \
     sphinxsearch \
-    -yq
+    subversion \
+    -yq --allow-remove-essential
   sudo apt autopurge -y
   sudo apt autoclean -y
 fi
