@@ -7,13 +7,9 @@ use {
     helpers::*,
     solana_program_test::*,
     solana_sdk::{
-        instruction::InstructionError,
         signature::Signer,
         signer::keypair::Keypair,
-        stake::{
-            instruction::StakeError,
-            state::{Authorized, Lockup},
-        },
+        stake::state::{Authorized, Lockup},
         transaction::Transaction,
     },
     spl_associated_token_account as atoken,
@@ -377,7 +373,7 @@ async fn fail_bad_account(activate: bool, automorph: bool) {
     if automorph {
         check_error(e, SinglePoolError::InvalidPoolStakeAccountUsage);
     } else {
-        check_error::<InstructionError>(e, StakeError::MergeMismatch.into());
+        check_error(e, SinglePoolError::WrongStakeState);
     }
 }
 

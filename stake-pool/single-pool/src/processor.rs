@@ -754,9 +754,11 @@ impl Processor {
         msg!("Available stake pre merge {}", pre_pool_stake);
 
         // user can deposit active stake into an active pool or inactive stake into an activating pool
-        let (_, user_stake_state) = get_stake_state(user_stake_info)?;
-        if is_stake_active_without_history(&pool_stake_state, clock.epoch)
-            != is_stake_active_without_history(&user_stake_state, clock.epoch)
+        let (user_stake_meta, user_stake_state) = get_stake_state(user_stake_info)?;
+        if user_stake_meta.authorized
+            != stake::state::Authorized::auto(pool_stake_authority_info.key)
+            || is_stake_active_without_history(&pool_stake_state, clock.epoch)
+                != is_stake_active_without_history(&user_stake_state, clock.epoch)
         {
             return Err(SinglePoolError::WrongStakeState.into());
         }
