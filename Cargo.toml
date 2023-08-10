@@ -13,6 +13,8 @@ members = [
   "examples/rust/sysvar",
   "examples/rust/transfer-lamports",
   "examples/rust/transfer-tokens",
+  "feature-gate/cli",
+  "feature-gate/program",
   "feature-proposal/program",
   "feature-proposal/cli",
   "governance/addin-mock/program",

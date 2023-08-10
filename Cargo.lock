@@ -6524,6 +6524,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-feature-gate"
+version = "0.0.1"
+dependencies = [
+ "borsh 0.10.3",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-program-error",
+]
+
+[[package]]
+name = "spl-feature-gate-cli"
+version = "1.2.0"
+dependencies = [
+ "clap 2.34.0",
+ "solana-clap-utils",
+ "solana-cli-config",
+ "solana-client",
+ "solana-logger",
+ "solana-sdk",
+ "spl-feature-gate",
+]
+
+[[package]]
 name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
