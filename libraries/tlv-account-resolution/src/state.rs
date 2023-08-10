@@ -3,9 +3,7 @@
 use {
     crate::{account::ExtraAccountMeta, error::AccountResolutionError},
     solana_program::{
-        account_info::AccountInfo,
-        instruction::{AccountMeta, Instruction},
-        program_error::ProgramError,
+        account_info::AccountInfo, instruction::Instruction, program_error::ProgramError,
     },
     spl_discriminator::SplDiscriminate,
     spl_type_length_value::{
@@ -42,10 +40,10 @@ use {
 ///
 /// // actually put it in the additional required account keys and signer / writable
 /// let extra_metas = [
-///     AccountMeta::new(Pubkey::new_unique(), false),
-///     AccountMeta::new(Pubkey::new_unique(), true),
-///     AccountMeta::new_readonly(Pubkey::new_unique(), true),
-///     AccountMeta::new_readonly(Pubkey::new_unique(), false),
+///     AccountMeta::new(Pubkey::new_unique(), false).into(),
+///     AccountMeta::new(Pubkey::new_unique(), true).into(),
+///     AccountMeta::new_readonly(Pubkey::new_unique(), true).into(),
+///     AccountMeta::new_readonly(Pubkey::new_unique(), false).into(),
 /// ];
 ///
 /// // assume that this buffer is actually account data, already allocated to `account_size`
@@ -53,7 +51,7 @@ use {
 /// let mut buffer = vec![0; account_size];
 ///
 /// // Initialize the structure for your instruction
-/// ExtraAccountMetaList::init_with_account_metas::<MyInstruction>(&mut buffer, &extra_metas).unwrap();
+/// ExtraAccountMetaList::init::<MyInstruction>(&mut buffer, &extra_metas).unwrap();
 ///
 /// // Off-chain, you can add the additional accounts directly from the account data
 /// let program_id = Pubkey::new_unique();
@@ -73,58 +71,20 @@ use {
 /// ```
 pub struct ExtraAccountMetaList;
 impl ExtraAccountMetaList {
-    /// Initialize pod slice data for the given instruction and any type
-    /// convertible to account metas
-    fn init<'a, T: SplDiscriminate, F, M>(
+    /// Initialize pod slice data for the given instruction and its required
+    /// list of `ExtraAccountMeta`s
+    pub fn init<T: SplDiscriminate>(
         data: &mut [u8],
-        convertible_account_metas: &'a [M],
-        conversion_fn: F,
-    ) -> Result<(), ProgramError>
-    where
-        F: Fn(&'a M) -> ExtraAccountMeta,
-    {
+        extra_account_metas: &[ExtraAccountMeta],
+    ) -> Result<(), ProgramError> {
         let mut state = TlvStateMut::unpack(data).unwrap();
-        let tlv_size = PodSlice::<ExtraAccountMeta>::size_of(convertible_account_metas.len())?;
+        let tlv_size = PodSlice::<ExtraAccountMeta>::size_of(extra_account_metas.len())?;
         let (bytes, _) = state.alloc::<T>(tlv_size, false)?;
-        let mut extra_account_metas = PodSliceMut::init(bytes)?;
-        for account_meta in convertible_account_metas {
-            extra_account_metas.push(conversion_fn(account_meta))?;
+        let mut validation_data = PodSliceMut::init(bytes)?;
+        for meta in extra_account_metas {
+            validation_data.push(*meta)?;
         }
         Ok(())
-    }
-
-    /// Initialize a TLV entry for the given discriminator, populating the data
-    /// with the given account infos
-    pub fn init_with_account_infos<T: SplDiscriminate>(
-        data: &mut [u8],
-        account_infos: &[AccountInfo<'_>],
-    ) -> Result<(), ProgramError> {
-        Self::init::<T, _, AccountInfo>(data, account_infos, |account_info| {
-            ExtraAccountMeta::from(account_info)
-        })
-    }
-
-    /// Initialize a TLV entry for the given discriminator, populating the data
-    /// with the given account metas
-    pub fn init_with_account_metas<T: SplDiscriminate>(
-        data: &mut [u8],
-        account_metas: &[AccountMeta],
-    ) -> Result<(), ProgramError> {
-        Self::init::<T, _, AccountMeta>(data, account_metas, |account_meta| {
-            ExtraAccountMeta::from(account_meta)
-        })
-    }
-
-    /// Initialize a TLV entry for the given discriminator, populating the data
-    /// with the given required accounts - which can be standard `AccountMeta`s
-    /// or PDAs
-    pub fn init_with_pod_account_metas<T: SplDiscriminate>(
-        data: &mut [u8],
-        pod_account_metas: &[ExtraAccountMeta],
-    ) -> Result<(), ProgramError> {
-        Self::init::<T, _, ExtraAccountMeta>(data, pod_account_metas, |pod_account_meta| {
-            *pod_account_meta
-        })
     }
 
     /// Get the underlying `PodSlice<ExtraAccountMeta>` from an unpacked TLV
@@ -211,16 +171,15 @@ mod tests {
     #[test]
     fn init_with_metas() {
         let metas = [
-            AccountMeta::new(Pubkey::new_unique(), false),
-            AccountMeta::new(Pubkey::new_unique(), true),
-            AccountMeta::new_readonly(Pubkey::new_unique(), true),
-            AccountMeta::new_readonly(Pubkey::new_unique(), false),
+            AccountMeta::new(Pubkey::new_unique(), false).into(),
+            AccountMeta::new(Pubkey::new_unique(), true).into(),
+            AccountMeta::new_readonly(Pubkey::new_unique(), true).into(),
+            AccountMeta::new_readonly(Pubkey::new_unique(), false).into(),
         ];
         let account_size = ExtraAccountMetaList::size_of(metas.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetaList::init_with_account_metas::<TestInstruction>(&mut buffer, &metas)
-            .unwrap();
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &metas).unwrap();
 
         let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
         ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
@@ -232,7 +191,7 @@ mod tests {
                 .iter()
                 .map(ExtraAccountMeta::from)
                 .collect::<Vec<_>>(),
-            metas.iter().map(ExtraAccountMeta::from).collect::<Vec<_>>()
+            metas.to_vec()
         );
     }
 
@@ -258,7 +217,8 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            ),
+            )
+            .into(),
             AccountInfo::new(
                 &pubkey2,
                 true,
@@ -268,7 +228,8 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            ),
+            )
+            .into(),
             AccountInfo::new(
                 &pubkey3,
                 false,
@@ -278,16 +239,13 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            ),
+            )
+            .into(),
         ];
         let account_size = ExtraAccountMetaList::size_of(account_infos.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetaList::init_with_account_infos::<TestInstruction>(
-            &mut buffer,
-            &account_infos,
-        )
-        .unwrap();
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &account_infos).unwrap();
 
         let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
         ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
@@ -299,10 +257,7 @@ mod tests {
                 .iter()
                 .map(ExtraAccountMeta::from)
                 .collect::<Vec<_>>(),
-            account_infos
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>()
+            account_infos.to_vec()
         );
     }
 
@@ -347,10 +302,7 @@ mod tests {
         let account_size = ExtraAccountMetaList::size_of(metas.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        // Notice we use `init_with_required_accounts` instead of
-        // `init_with_account_metas`
-        ExtraAccountMetaList::init_with_pod_account_metas::<TestInstruction>(&mut buffer, &metas)
-            .unwrap();
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &metas).unwrap();
 
         ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
             .unwrap();
@@ -450,13 +402,8 @@ mod tests {
             + ExtraAccountMetaList::size_of(other_metas.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetaList::init_with_pod_account_metas::<TestInstruction>(&mut buffer, &metas)
-            .unwrap();
-        ExtraAccountMetaList::init_with_pod_account_metas::<TestOtherInstruction>(
-            &mut buffer,
-            &other_metas,
-        )
-        .unwrap();
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &metas).unwrap();
+        ExtraAccountMetaList::init::<TestOtherInstruction>(&mut buffer, &other_metas).unwrap();
 
         let program_id = Pubkey::new_unique();
         let ix_data = vec![0, 0, 0, 0, 0, 7, 0, 0];
@@ -568,7 +515,8 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            ),
+            )
+            .into(),
             AccountInfo::new(
                 &pubkey2,
                 true,
@@ -578,7 +526,8 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            ),
+            )
+            .into(),
             AccountInfo::new(
                 &pubkey3,
                 false,
@@ -588,7 +537,8 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            ),
+            )
+            .into(),
         ];
 
         let extra_meta1 = AccountMeta::new(Pubkey::new_unique(), false);
@@ -640,16 +590,8 @@ mod tests {
             + ExtraAccountMetaList::size_of(metas.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetaList::init_with_account_infos::<TestInstruction>(
-            &mut buffer,
-            &account_infos,
-        )
-        .unwrap();
-        ExtraAccountMetaList::init_with_pod_account_metas::<TestOtherInstruction>(
-            &mut buffer,
-            &metas,
-        )
-        .unwrap();
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &account_infos).unwrap();
+        ExtraAccountMetaList::init::<TestOtherInstruction>(&mut buffer, &metas).unwrap();
 
         let program_id = Pubkey::new_unique();
         let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
@@ -661,10 +603,7 @@ mod tests {
                 .iter()
                 .map(ExtraAccountMeta::from)
                 .collect::<Vec<_>>(),
-            account_infos
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>()
+            account_infos.to_vec()
         );
 
         let program_id = Pubkey::new_unique();
@@ -872,11 +811,7 @@ mod tests {
         let account_size = ExtraAccountMetaList::size_of(required_accounts.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetaList::init_with_pod_account_metas::<TestInstruction>(
-            &mut buffer,
-            &required_accounts,
-        )
-        .unwrap();
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &required_accounts).unwrap();
 
         // Make an instruction to check later
         // We'll also check the instruction seed components later

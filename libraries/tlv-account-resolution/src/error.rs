@@ -26,7 +26,8 @@ pub enum AccountResolutionError {
     /// Attempted to deserialize an `AccountMeta` but the underlying type has
     /// PDA configs rather than a fixed address
     #[error(
-        "Attempted to deserialize an `AccountMeta` but the underlying type has PDA configs rather than a fixed address"
+        "Attempted to deserialize an `AccountMeta` but the underlying type has PDA configs rather \
+         than a fixed address"
     )]
     AccountTypeNotAccountMeta,
     /// Provided list of seed configurations too large for a validation account

@@ -23,10 +23,10 @@ impl SplDiscriminate for MyInstruction {
 
 // Actually put it in the additional required account keys and signer / writable
 let extra_metas = [
-    AccountMeta::new(Pubkey::new_unique(), false),
-    AccountMeta::new(Pubkey::new_unique(), true),
-    AccountMeta::new_readonly(Pubkey::new_unique(), true),
-    AccountMeta::new_readonly(Pubkey::new_unique(), false),
+    AccountMeta::new(Pubkey::new_unique(), false).into(),
+    AccountMeta::new(Pubkey::new_unique(), true).into(),
+    AccountMeta::new_readonly(Pubkey::new_unique(), true).into(),
+    AccountMeta::new_readonly(Pubkey::new_unique(), false).into(),
 ];
 
 // Assume that this buffer is actually account data, already allocated to `account_size`
@@ -34,7 +34,7 @@ let account_size = ExtraAccountMetaList::size_of(extra_metas.len()).unwrap();
 let mut buffer = vec![0; account_size];
 
 // Initialize the structure for your instruction
-ExtraAccountMetaList::init_with_account_metas::<MyInstruction>(&mut buffer, &extra_metas).unwrap();
+ExtraAccountMetaList::init::<MyInstruction>(&mut buffer, &extra_metas).unwrap();
 
 // Off-chain, you can add the additional accounts directly from the account data
 let program_id = Pubkey::new_unique();
