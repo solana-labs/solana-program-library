@@ -2,7 +2,7 @@
 
 use {
     solana_program::instruction::InstructionError,
-    solana_program_test::{processor, tokio, ProgramTest},
+    solana_program_test::{processor, tokio, ProgramTest, ProgramTestContext},
     solana_sdk::{
         account::Account as SolanaAccount,
         feature::Feature,
@@ -17,12 +17,42 @@ use {
     },
 };
 
+async fn setup_feature(
+    context: &mut ProgramTestContext,
+    feature_keypair: &Keypair,
+    authority_keypair: &Keypair,
+    rent_lamports: u64,
+) {
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                &feature_keypair.pubkey(),
+                rent_lamports,
+            ),
+            activate(
+                &spl_feature_gate::id(),
+                &feature_keypair.pubkey(),
+                &authority_keypair.pubkey(),
+            ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, feature_keypair, authority_keypair],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+}
+
 #[tokio::test]
-async fn test_functional() {
+async fn test_activate() {
     let mock_feature_keypair = Keypair::new();
     let feature_keypair = Keypair::new();
     let authority_keypair = Keypair::new();
-    let destination = Pubkey::new_unique();
 
     let mut program_test = ProgramTest::new(
         "spl_feature_gate",
@@ -173,6 +203,40 @@ async fn test_functional() {
         .unwrap()
         .unwrap();
     assert_eq!(feature_account.owner, spl_feature_gate::id());
+}
+
+#[tokio::test]
+async fn test_revoke() {
+    let feature_keypair = Keypair::new();
+    let authority_keypair = Keypair::new();
+    let destination = Pubkey::new_unique();
+
+    let mut program_test = ProgramTest::new(
+        "spl_feature_gate",
+        spl_feature_gate::id(),
+        processor!(spl_feature_gate::processor::process),
+    );
+
+    // Create the authority account with some lamports for transaction fees
+    program_test.add_account(
+        authority_keypair.pubkey(),
+        SolanaAccount {
+            lamports: 500_000_000,
+            ..SolanaAccount::default()
+        },
+    );
+
+    let mut context = program_test.start_with_context().await;
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let rent_lamports = rent.minimum_balance(Feature::size_of());
+
+    setup_feature(
+        &mut context,
+        &feature_keypair,
+        &authority_keypair,
+        rent_lamports,
+    )
+    .await;
 
     // Revoke: Fail authority not signer
     let mut revoke_ix = revoke(

@@ -14,11 +14,17 @@ use {
 pub enum FeatureGateInstruction {
     /// Submit a feature for activation.
     ///
+    /// Note: This instruction expects the account to exist and be owned by the
+    /// system program. The account should also have enough rent-exempt lamports
+    /// to cover the cost of the account creation for a
+    /// `solana_program::feature::Feature` state prior to invoking this
+    /// instruction.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[ws]` Feature account (must be a system account)
     ///   1. `[s]` Authority
-    ///   3. `[]` System program
+    ///   2. `[]` System program
     Activate,
     /// Revoke a pending feature activation.
     ///
@@ -27,7 +33,7 @@ pub enum FeatureGateInstruction {
     ///   0. `[w]` Feature account
     ///   1. `[w]` Destination (for rent lamports)
     ///   2. `[s]` Authority
-    Revoke,
+    RevokePendingActivation,
 }
 
 /// Creates an 'Activate' instruction.
@@ -45,7 +51,7 @@ pub fn activate(program_id: &Pubkey, feature: &Pubkey, authority: &Pubkey) -> In
     }
 }
 
-/// Creates a 'Revoke' instruction.
+/// Creates a 'RevokePendingActivation' instruction.
 pub fn revoke(
     program_id: &Pubkey,
     feature: &Pubkey,
@@ -61,7 +67,9 @@ pub fn revoke(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: FeatureGateInstruction::Revoke.try_to_vec().unwrap(),
+        data: FeatureGateInstruction::RevokePendingActivation
+            .try_to_vec()
+            .unwrap(),
     }
 }
 
@@ -82,6 +90,6 @@ mod test {
 
     #[test]
     fn test_pack_unpack_revoke() {
-        test_pack_unpack(&FeatureGateInstruction::Revoke);
+        test_pack_unpack(&FeatureGateInstruction::RevokePendingActivation);
     }
 }

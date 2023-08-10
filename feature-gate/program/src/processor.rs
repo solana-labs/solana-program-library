@@ -81,8 +81,8 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> P
             msg!("Instruction: Activate");
             process_activate(program_id, accounts)
         }
-        FeatureGateInstruction::Revoke => {
-            msg!("Instruction: Revoke");
+        FeatureGateInstruction::RevokePendingActivation => {
+            msg!("Instruction: RevokePendingActivation");
             process_revoke(program_id, accounts)
         }
     }
