@@ -41,10 +41,10 @@ pub enum TransferHookInstruction {
     ///   3. `[]` System program
     ///   4..4+M `[]` `M` additional accounts, to be written to validation data
     ///
-    InitializeExtraAccountMetas,
+    InitializeExtraAccountMetaState,
 }
 /// TLV instruction type only used to define the discriminator. The actual data
-/// is entirely managed by `ExtraAccountMetas`, and it is the only data contained
+/// is entirely managed by `ExtraAccountMetaState`, and it is the only data contained
 /// by this type.
 #[derive(SplDiscriminate)]
 #[discriminator_hash_input("spl-transfer-hook-interface:execute")]
@@ -54,7 +54,7 @@ pub struct ExecuteInstruction;
 /// for the transfer hook
 #[derive(SplDiscriminate)]
 #[discriminator_hash_input("spl-transfer-hook-interface:initialize-extra-account-metas")]
-pub struct InitializeExtraAccountMetasInstruction;
+pub struct InitializeExtraAccountMetaStateInstruction;
 
 impl TransferHookInstruction {
     /// Unpacks a byte buffer into a [TransferHookInstruction](enum.TransferHookInstruction.html).
@@ -72,8 +72,8 @@ impl TransferHookInstruction {
                     .ok_or(ProgramError::InvalidInstructionData)?;
                 Self::Execute { amount }
             }
-            InitializeExtraAccountMetasInstruction::SPL_DISCRIMINATOR_SLICE => {
-                Self::InitializeExtraAccountMetas
+            InitializeExtraAccountMetaStateInstruction::SPL_DISCRIMINATOR_SLICE => {
+                Self::InitializeExtraAccountMetaState
             }
             _ => return Err(ProgramError::InvalidInstructionData),
         })
@@ -87,9 +87,9 @@ impl TransferHookInstruction {
                 buf.extend_from_slice(ExecuteInstruction::SPL_DISCRIMINATOR_SLICE);
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
-            Self::InitializeExtraAccountMetas => {
+            Self::InitializeExtraAccountMetaState => {
                 buf.extend_from_slice(
-                    InitializeExtraAccountMetasInstruction::SPL_DISCRIMINATOR_SLICE,
+                    InitializeExtraAccountMetaStateInstruction::SPL_DISCRIMINATOR_SLICE,
                 );
             }
         };
@@ -149,7 +149,7 @@ pub fn execute(
     }
 }
 
-/// Creates a `InitializeExtraAccountMetas` instruction.
+/// Creates a `InitializeExtraAccountMetaState` instruction.
 pub fn initialize_extra_account_metas(
     program_id: &Pubkey,
     extra_account_metas_pubkey: &Pubkey,
@@ -157,7 +157,7 @@ pub fn initialize_extra_account_metas(
     authority_pubkey: &Pubkey,
     additional_accounts: &[AccountMeta],
 ) -> Instruction {
-    let data = TransferHookInstruction::InitializeExtraAccountMetas.pack();
+    let data = TransferHookInstruction::InitializeExtraAccountMetaState.pack();
 
     let mut accounts = vec![
         AccountMeta::new(*extra_account_metas_pubkey, false),
@@ -197,7 +197,7 @@ mod test {
 
     #[test]
     fn initialize_validation_pubkeys_packing() {
-        let check = TransferHookInstruction::InitializeExtraAccountMetas;
+        let check = TransferHookInstruction::InitializeExtraAccountMetaState;
         let packed = check.pack();
         // Please use INITIALIZE_EXTRA_ACCOUNT_METAS_DISCRIMINATOR in your program,
         // the following is just for test purposes

@@ -9,7 +9,7 @@ program-derived address defined by the interface.
 ```rust
 use {
     solana_program::{entrypoint::ProgramResult, program_error::ProgramError},
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_tlv_account_resolution::state::ExtraAccountMetaState,
     spl_transfer_hook_interface::instruction::{ExecuteInstruction, TransferHookInstruction},
     spl_type_length_value::state::TlvStateBorrowed,
 };
@@ -42,7 +42,7 @@ pub fn process_instruction(
     let data = extra_account_metas_info.try_borrow_data()?;
     let state = TlvStateBorrowed::unpack(&data).unwrap();
     let extra_account_metas = 
-        ExtraAccountMetas::unpack_with_tlv_state::<ExecuteInstruction>(&state)?;
+        ExtraAccountMetaState::unpack_with_tlv_state::<ExecuteInstruction>(&state)?;
 
     // If incorrect number of accounts is provided, error
     let extra_account_infos = account_info_iter.as_slice();
@@ -90,10 +90,10 @@ call happens after all other transfer logic, so the accounts reflect the *end*
 state of the transfer.
 
 A developer must implement the `Execute` instruction, and the
-`InitializeExtraAccountMetas` instruction to write the required additional account
+`InitializeExtraAccountMetaState` instruction to write the required additional account
 pubkeys into the program-derived address defined by the mint and program id.
 
-Side note: it's technically not required to implement `InitializeExtraAccountMetas`
+Side note: it's technically not required to implement `InitializeExtraAccountMetaState`
 at that instruction descriminator. Your program may implement multiple interfaces,
 so any other instruction in your program can create the account at the program-derived
 address!

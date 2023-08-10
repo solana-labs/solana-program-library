@@ -16,7 +16,7 @@ use {
         system_instruction, sysvar,
         transaction::{Transaction, TransactionError},
     },
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_tlv_account_resolution::state::ExtraAccountMetaState,
     spl_token_2022::{
         extension::{transfer_hook::TransferHookAccount, ExtensionType, StateWithExtensionsMut},
         state::{Account, AccountState, Mint},
@@ -161,7 +161,7 @@ async fn success_execute() {
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
+        rent.minimum_balance(ExtraAccountMetaState::size_of(extra_account_pubkeys.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
@@ -349,7 +349,7 @@ async fn fail_incorrect_derivation() {
 
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent.minimum_balance(ExtraAccountMetas::size_of(0).unwrap());
+    let rent_lamports = rent.minimum_balance(ExtraAccountMetaState::size_of(0).unwrap());
 
     let transaction = Transaction::new_signed_with_payer(
         &[
@@ -442,7 +442,7 @@ async fn success_on_chain_invoke() {
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
+        rent.minimum_balance(ExtraAccountMetaState::size_of(extra_account_pubkeys.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
@@ -527,7 +527,7 @@ async fn fail_without_transferring_flag() {
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetas::size_of(extra_account_pubkeys.len()).unwrap());
+        rent.minimum_balance(ExtraAccountMetaState::size_of(extra_account_pubkeys.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
