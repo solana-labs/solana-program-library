@@ -81,34 +81,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .index(1)
                         .required(true)
                         .help("Path to keypair of the feature"),
-                )
-                .arg(
-                    Arg::with_name("authority_keypair")
-                        .value_name("AUTHORITY_KEYPAIR")
-                        .validator(is_keypair)
-                        .required(true)
-                        .help("Path to keypair of the authority"),
-                )
-                .arg(
-                    Arg::with_name("payer_keypair")
-                        .value_name("PAYER_KEYPAIR")
-                        .validator(is_keypair)
-                        .help(
-                            "Path to keypair of the payer to fund the feature account (defaults \
-                             to authority)",
-                        ),
                 ),
         )
         .subcommand(
             SubCommand::with_name("revoke")
                 .about("Revoke a pending feature activation")
                 .arg(
-                    Arg::with_name("feature_id")
-                        .value_name("FEATURE_ID")
-                        .validator(is_valid_pubkey)
+                    Arg::with_name("feature_keypair")
+                        .value_name("FEATURE_KEYPAIR")
+                        .validator(is_keypair)
                         .index(1)
                         .required(true)
-                        .help("The address of the feature (feature ID)"),
+                        .help("Path to keypair of the feature"),
                 )
                 .arg(
                     Arg::with_name("destination")
@@ -117,13 +101,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .index(2)
                         .required(true)
                         .help("The address of the destination for the refunded lamports"),
-                )
-                .arg(
-                    Arg::with_name("authority_keypair")
-                        .value_name("AUTHORITY_KEYPAIR")
-                        .validator(is_keypair)
-                        .required(true)
-                        .help("Path to keypair of the authority"),
                 ),
         )
         .get_matches();
@@ -158,30 +135,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match (sub_command, sub_matches) {
         ("activate", Some(arg_matches)) => {
             let feature_keypair = keypair_of(arg_matches, "feature_keypair").unwrap();
-            let authority_keypair = keypair_of(arg_matches, "authority_keypair").unwrap();
-            let payer_keypair = keypair_of(arg_matches, "payer_keypair")
-                .unwrap_or(authority_keypair.insecure_clone());
 
-            process_activate(
-                &rpc_client,
-                &config,
-                &feature_keypair,
-                &payer_keypair,
-                &authority_keypair,
-            )
+            process_activate(&rpc_client, &config, &feature_keypair)
         }
         ("revoke", Some(arg_matches)) => {
-            let feature_id = pubkey_of(arg_matches, "feature_id").unwrap();
+            let feature_keypair = keypair_of(arg_matches, "feature_keypair").unwrap();
             let destination = pubkey_of(arg_matches, "destination").unwrap();
-            let authority_keypair = keypair_of(arg_matches, "authority_keypair").unwrap();
 
-            process_revoke(
-                &rpc_client,
-                &config,
-                &feature_id,
-                &destination,
-                &authority_keypair,
-            )
+            process_revoke(&rpc_client, &config, &feature_keypair, &destination)
         }
         _ => unreachable!(),
     }
@@ -191,14 +152,10 @@ fn process_activate(
     rpc_client: &RpcClient,
     config: &Config,
     feature_keypair: &Keypair,
-    payer_keypair: &Keypair,
-    authority_keypair: &Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("Activating feature...");
     println!("Feature ID: {}", feature_keypair.pubkey());
-    println!("Payer: {}", payer_keypair.pubkey());
-    println!("Authority: {}", authority_keypair.pubkey());
     println!();
     println!("JSON RPC URL: {}", config.json_rpc_url);
     println!();
@@ -208,18 +165,14 @@ fn process_activate(
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
-                &payer_keypair.pubkey(),
+                &config.keypair.pubkey(),
                 &feature_keypair.pubkey(),
                 rent_lamports,
             ),
-            activate(
-                &spl_feature_gate::id(),
-                &feature_keypair.pubkey(),
-                &authority_keypair.pubkey(),
-            ),
+            activate(&spl_feature_gate::id(), &feature_keypair.pubkey()),
         ],
-        Some(&payer_keypair.pubkey()),
-        &[payer_keypair, feature_keypair, authority_keypair],
+        Some(&config.keypair.pubkey()),
+        &[config.keypair.as_ref(), feature_keypair],
         rpc_client.get_latest_blockhash()?,
     );
     rpc_client.send_and_confirm_transaction_with_spinner(&transaction)?;
@@ -232,15 +185,13 @@ fn process_activate(
 fn process_revoke(
     rpc_client: &RpcClient,
     config: &Config,
-    feature_id: &Pubkey,
+    feature_keypair: &Keypair,
     destination: &Pubkey,
-    authority_keypair: &Keypair,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("Revoking feature...");
-    println!("Feature ID: {}", feature_id);
+    println!("Feature ID: {}", feature_keypair.pubkey());
     println!("Destination: {}", destination);
-    println!("Authority: {}", authority_keypair.pubkey());
     println!();
     println!("JSON RPC URL: {}", config.json_rpc_url);
     println!();
@@ -248,12 +199,11 @@ fn process_revoke(
     let transaction = Transaction::new_signed_with_payer(
         &[revoke(
             &spl_feature_gate::id(),
-            feature_id,
+            &feature_keypair.pubkey(),
             destination,
-            &authority_keypair.pubkey(),
         )],
-        Some(&authority_keypair.pubkey()),
-        &[authority_keypair],
+        Some(&config.keypair.pubkey()),
+        &[config.keypair.as_ref()],
         rpc_client.get_latest_blockhash()?,
     );
     rpc_client.send_and_confirm_transaction_with_spinner(&transaction)?;

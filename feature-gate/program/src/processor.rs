@@ -19,10 +19,9 @@ pub fn process_activate(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
     let account_info_iter = &mut accounts.iter();
 
     let feature_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
     let _system_program_info = next_account_info(account_info_iter)?;
 
-    if !feature_info.is_signer || !authority_info.is_signer {
+    if !feature_info.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
 
@@ -48,9 +47,8 @@ pub fn process_revoke(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramR
 
     let feature_info = next_account_info(account_info_iter)?;
     let destination_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
 
-    if !authority_info.is_signer {
+    if !feature_info.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
 

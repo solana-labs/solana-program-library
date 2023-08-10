@@ -22,17 +22,15 @@ pub enum FeatureGateInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[ws]` Feature account (must be a system account)
-    ///   1. `[s]` Authority
-    ///   2. `[]` System program
+    ///   0. `[w+s]` Feature account (must be a system account)
+    ///   1. `[]` System program
     Activate,
     /// Revoke a pending feature activation.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[w]` Feature account
+    ///   0. `[w+s]` Feature account
     ///   1. `[w]` Destination (for rent lamports)
-    ///   2. `[s]` Authority
     RevokePendingActivation,
 }
 impl FeatureGateInstruction {
@@ -60,10 +58,9 @@ impl FeatureGateInstruction {
 }
 
 /// Creates an 'Activate' instruction.
-pub fn activate(program_id: &Pubkey, feature: &Pubkey, authority: &Pubkey) -> Instruction {
+pub fn activate(program_id: &Pubkey, feature: &Pubkey) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*feature, true),
-        AccountMeta::new_readonly(*authority, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
@@ -82,27 +79,20 @@ pub fn activate(program_id: &Pubkey, feature: &Pubkey, authority: &Pubkey) -> In
 pub fn activate_with_rent_transfer(
     program_id: &Pubkey,
     feature: &Pubkey,
-    authority: &Pubkey,
     payer: &Pubkey,
 ) -> [Instruction; 2] {
     let lamports = Rent::default().minimum_balance(Feature::size_of());
     [
         system_instruction::transfer(payer, feature, lamports),
-        activate(program_id, feature, authority),
+        activate(program_id, feature),
     ]
 }
 
 /// Creates a 'RevokePendingActivation' instruction.
-pub fn revoke(
-    program_id: &Pubkey,
-    feature: &Pubkey,
-    destination: &Pubkey,
-    authority: &Pubkey,
-) -> Instruction {
+pub fn revoke(program_id: &Pubkey, feature: &Pubkey, destination: &Pubkey) -> Instruction {
     let accounts = vec![
-        AccountMeta::new(*feature, false),
+        AccountMeta::new(*feature, true),
         AccountMeta::new(*destination, false),
-        AccountMeta::new_readonly(*authority, false),
     ];
 
     let data = FeatureGateInstruction::RevokePendingActivation.pack();
