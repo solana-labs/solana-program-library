@@ -101,10 +101,8 @@ fn process_configure_account(
     let mint_info = next_account_info(account_info_iter)?;
 
     // zero-knowledge proof certifies that the supplied ElGamal public key is valid
-    let proof_context = verify_configure_account_proof(
-        next_account_info(account_info_iter)?,
-        proof_instruction_offset,
-    )?;
+    let proof_context =
+        verify_configure_account_proof(account_info_iter, proof_instruction_offset)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -201,10 +199,7 @@ fn process_empty_account(
     let token_account_info = next_account_info(account_info_iter)?;
 
     // zero-knowledge proof certifies that the available balance ciphertext holds the balance of 0.
-    let proof_context = verify_empty_account_proof(
-        next_account_info(account_info_iter)?,
-        proof_instruction_offset,
-    )?;
+    let proof_context = verify_empty_account_proof(account_info_iter, proof_instruction_offset)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -350,10 +345,7 @@ fn process_withdraw(
 
     // zero-knowledge proof certifies that the account has enough available balance to withdraw the
     // amount.
-    let proof_context = verify_withdraw_proof(
-        next_account_info(account_info_iter)?,
-        proof_instruction_offset,
-    )?;
+    let proof_context = verify_withdraw_proof(account_info_iter, proof_instruction_offset)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -433,16 +425,12 @@ fn process_transfer(
     accounts: &[AccountInfo],
     new_source_decryptable_available_balance: DecryptableBalance,
     proof_instruction_offset: i64,
+    split_proof_context_state_accounts: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let source_account_info = next_account_info(account_info_iter)?;
     let destination_token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
-
-    // either sysvar or context state account depending on `proof_instruction_offset`
-    let proof_account_info = next_account_info(account_info_iter)?;
-
-    let authority_info = next_account_info(account_info_iter)?;
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
@@ -466,7 +454,13 @@ fn process_transfer(
         // The zero-knowledge proof certifies that:
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
-        let proof_context = verify_transfer_proof(proof_account_info, proof_instruction_offset)?;
+        let proof_context = verify_transfer_proof(
+            account_info_iter,
+            proof_instruction_offset,
+            split_proof_context_state_accounts,
+        )?;
+
+        let authority_info = next_account_info(account_info_iter)?;
 
         // Check that the auditor encryption public key associated wth the confidential mint is
         // consistent with what was actually used to generate the zkp.
@@ -515,8 +509,13 @@ fn process_transfer(
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
         //   3. the transfer fee is computed correctly and encrypted in the correct form
-        let proof_context =
-            verify_transfer_with_fee_proof(proof_account_info, proof_instruction_offset)?;
+        let proof_context = verify_transfer_with_fee_proof(
+            account_info_iter,
+            proof_instruction_offset,
+            split_proof_context_state_accounts,
+        )?;
+
+        let authority_info = next_account_info(account_info_iter)?;
 
         // Check that the encryption public keys associated with the mint confidential transfer and
         // confidential transfer fee extensions are consistent with the keys that were used to
@@ -1041,6 +1040,7 @@ pub(crate) fn process_instruction(
                 accounts,
                 data.new_source_decryptable_available_balance,
                 data.proof_instruction_offset as i64,
+                data.split_proof_context_state_accounts.into(),
             )
         }
         ConfidentialTransferInstruction::ApplyPendingBalance => {
