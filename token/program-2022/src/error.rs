@@ -213,8 +213,11 @@ pub enum TokenError {
 
     // 55
     /// An invalid proof instruction offset was provided
-    #[error("An invalid proof instruction offset was provided ")]
+    #[error("An invalid proof instruction offset was provided")]
     InvalidProofInstructionOffset,
+    /// Harvest of withheld tokens to mint is disabled
+    #[error("Harvest of withheld tokens to mint is disabled")]
+    HarvestToMintDisabled,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -374,6 +377,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::InvalidProofInstructionOffset => {
                 msg!("An invalid proof instruction offset was provided")
+            }
+            TokenError::HarvestToMintDisabled => {
+                msg!("Harvest of withheld tokens to mint is disabled")
             }
         }
     }
