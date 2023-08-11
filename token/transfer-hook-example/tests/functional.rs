@@ -16,7 +16,7 @@ use {
         system_instruction, sysvar,
         transaction::{Transaction, TransactionError},
     },
-    spl_tlv_account_resolution::state::ExtraAccountMetaList,
+    spl_tlv_account_resolution::{account::ExtraAccountMeta, state::ExtraAccountMetaList},
     spl_token_2022::{
         extension::{transfer_hook::TransferHookAccount, ExtensionType, StateWithExtensionsMut},
         state::{Account, AccountState, Mint},
@@ -24,7 +24,7 @@ use {
     spl_transfer_hook_interface::{
         error::TransferHookError,
         get_extra_account_metas_address,
-        instruction::{execute_with_extra_account_metas, initialize_extra_account_metas},
+        instruction::{execute_with_extra_account_metas, initialize_extra_account_meta_list},
         onchain,
     },
 };
@@ -151,30 +151,35 @@ async fn success_execute() {
         true,
     );
 
-    let extra_account_metas = get_extra_account_metas_address(&mint_address, &program_id);
+    let extra_account_metas_address = get_extra_account_metas_address(&mint_address, &program_id);
 
-    let extra_account_pubkeys = [
+    let extra_account_metas = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
-        AccountMeta::new(extra_account_metas, false),
+        AccountMeta::new(extra_account_metas_address, false),
     ];
+    let init_extra_account_metas = extra_account_metas
+        .iter()
+        .map(ExtraAccountMeta::from)
+        .collect::<Vec<_>>();
+
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetaList::size_of(extra_account_pubkeys.len()).unwrap());
+    let rent_lamports = rent
+        .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
                 &context.payer.pubkey(),
-                &extra_account_metas,
+                &extra_account_metas_address,
                 rent_lamports,
             ),
-            initialize_extra_account_metas(
+            initialize_extra_account_meta_list(
                 &program_id,
-                &extra_account_metas,
+                &extra_account_metas_address,
                 &mint_address,
                 &mint_authority_pubkey,
-                &extra_account_pubkeys,
+                &init_extra_account_metas,
             ),
         ],
         Some(&context.payer.pubkey()),
@@ -197,8 +202,8 @@ async fn success_execute() {
                 &mint_address,
                 &destination,
                 &wallet.pubkey(),
-                &extra_account_metas,
-                &extra_account_pubkeys[..2],
+                &extra_account_metas_address,
+                &extra_account_metas[..2],
                 0,
             )],
             Some(&context.payer.pubkey()),
@@ -222,7 +227,7 @@ async fn success_execute() {
 
     // fail with wrong account
     {
-        let extra_account_pubkeys = [
+        let extra_account_metas = [
             AccountMeta::new_readonly(sysvar::instructions::id(), false),
             AccountMeta::new_readonly(mint_authority_pubkey, true),
             AccountMeta::new(wallet.pubkey(), false),
@@ -234,8 +239,8 @@ async fn success_execute() {
                 &mint_address,
                 &destination,
                 &wallet.pubkey(),
+                &extra_account_metas_address,
                 &extra_account_metas,
-                &extra_account_pubkeys,
                 0,
             )],
             Some(&context.payer.pubkey()),
@@ -259,10 +264,10 @@ async fn success_execute() {
 
     // fail with not signer
     {
-        let extra_account_pubkeys = [
+        let extra_account_metas = [
             AccountMeta::new_readonly(sysvar::instructions::id(), false),
             AccountMeta::new_readonly(mint_authority_pubkey, false),
-            AccountMeta::new(extra_account_metas, false),
+            AccountMeta::new(extra_account_metas_address, false),
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
@@ -271,8 +276,8 @@ async fn success_execute() {
                 &mint_address,
                 &destination,
                 &wallet.pubkey(),
+                &extra_account_metas_address,
                 &extra_account_metas,
-                &extra_account_pubkeys,
                 0,
             )],
             Some(&context.payer.pubkey()),
@@ -303,8 +308,8 @@ async fn success_execute() {
                 &mint_address,
                 &destination,
                 &wallet.pubkey(),
+                &extra_account_metas_address,
                 &extra_account_metas,
-                &extra_account_pubkeys,
                 0,
             )],
             Some(&context.payer.pubkey()),
@@ -358,7 +363,7 @@ async fn fail_incorrect_derivation() {
                 &extra_account_metas,
                 rent_lamports,
             ),
-            initialize_extra_account_metas(
+            initialize_extra_account_meta_list(
                 &program_id,
                 &extra_account_metas,
                 &mint_address,
@@ -431,31 +436,37 @@ async fn success_on_chain_invoke() {
         true,
     );
 
-    let extra_account_metas = get_extra_account_metas_address(&mint_address, &hook_program_id);
+    let extra_account_metas_address =
+        get_extra_account_metas_address(&mint_address, &hook_program_id);
 
     let writable_pubkey = Pubkey::new_unique();
-    let extra_account_pubkeys = [
+    let extra_account_metas = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
         AccountMeta::new(writable_pubkey, false),
     ];
+    let init_extra_account_metas = extra_account_metas
+        .iter()
+        .map(ExtraAccountMeta::from)
+        .collect::<Vec<_>>();
+
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetaList::size_of(extra_account_pubkeys.len()).unwrap());
+    let rent_lamports = rent
+        .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
                 &context.payer.pubkey(),
-                &extra_account_metas,
+                &extra_account_metas_address,
                 rent_lamports,
             ),
-            initialize_extra_account_metas(
+            initialize_extra_account_meta_list(
                 &hook_program_id,
-                &extra_account_metas,
+                &extra_account_metas_address,
                 &mint_address,
                 &mint_authority_pubkey,
-                &extra_account_pubkeys,
+                &init_extra_account_metas,
             ),
         ],
         Some(&context.payer.pubkey()),
@@ -476,8 +487,8 @@ async fn success_on_chain_invoke() {
         &mint_address,
         &destination,
         &wallet.pubkey(),
+        &extra_account_metas_address,
         &extra_account_metas,
-        &extra_account_pubkeys,
         0,
     );
     test_instruction
@@ -522,25 +533,26 @@ async fn fail_without_transferring_flag() {
         false,
     );
 
-    let extra_account_metas = get_extra_account_metas_address(&mint_address, &program_id);
-    let extra_account_pubkeys = [];
+    let extra_account_metas_address = get_extra_account_metas_address(&mint_address, &program_id);
+    let extra_account_metas = [];
+    let init_extra_account_metas = [];
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports =
-        rent.minimum_balance(ExtraAccountMetaList::size_of(extra_account_pubkeys.len()).unwrap());
+    let rent_lamports = rent
+        .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::transfer(
                 &context.payer.pubkey(),
-                &extra_account_metas,
+                &extra_account_metas_address,
                 rent_lamports,
             ),
-            initialize_extra_account_metas(
+            initialize_extra_account_meta_list(
                 &program_id,
-                &extra_account_metas,
+                &extra_account_metas_address,
                 &mint_address,
                 &mint_authority_pubkey,
-                &extra_account_pubkeys,
+                &init_extra_account_metas,
             ),
         ],
         Some(&context.payer.pubkey()),
@@ -560,8 +572,8 @@ async fn fail_without_transferring_flag() {
             &mint_address,
             &destination,
             &wallet.pubkey(),
+            &extra_account_metas_address,
             &extra_account_metas,
-            &extra_account_pubkeys,
             0,
         )],
         Some(&context.payer.pubkey()),
