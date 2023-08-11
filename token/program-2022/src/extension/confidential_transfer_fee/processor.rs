@@ -481,6 +481,10 @@ pub(crate) fn process_instruction(
                     data.proof_instruction_offset as i64,
                 )
             }
+            #[cfg(not(feature = "zk-ops"))]
+            {
+                Err(ProgramError::InvalidInstructionData)
+            }
         }
         ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts => {
             msg!("ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts");
@@ -495,6 +499,10 @@ pub(crate) fn process_instruction(
                     &data.new_decryptable_available_balance,
                     data.proof_instruction_offset as i64,
                 )
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            {
+                Err(ProgramError::InvalidInstructionData)
             }
         }
         ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint => {
