@@ -23,6 +23,9 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
+/// Helper functions to verify zero-knowledge proofs in the Confidential Transfer Extension
+pub mod verify_proof;
+
 /// Confidential Transfer Extension account information needed for instructions
 #[cfg(not(target_os = "solana"))]
 pub mod account_info;
