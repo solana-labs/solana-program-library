@@ -38,11 +38,32 @@ fn check_token_account_is_transferring(account_info: &AccountInfo) -> Result<(),
     }
 }
 
+fn check_extra_meta(
+    account_info: &AccountInfo,
+    extra_meta: &AccountMeta,
+) -> Result<(), ProgramError> {
+    if !(&extra_meta.pubkey == account_info.key
+        && extra_meta.is_signer == account_info.is_signer
+        && extra_meta.is_writable == account_info.is_writable)
+    {
+        return Err(TransferHookError::IncorrectAccount.into());
+    }
+    Ok(())
+}
+
+fn next_extra_account_meta<'a>(
+    extra_account_metas_iter: &mut impl Iterator<Item = &'a ExtraAccountMeta>,
+) -> Result<&'a ExtraAccountMeta, ProgramError> {
+    extra_account_metas_iter
+        .next()
+        .ok_or(ProgramError::NotEnoughAccountKeys)
+}
+
 /// Processes an [Execute](enum.TransferHookInstruction.html) instruction.
 pub fn process_execute(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    _amount: u64,
+    amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -67,24 +88,53 @@ pub fn process_execute(
     let state = TlvStateBorrowed::unpack(&data).unwrap();
     let extra_account_metas =
         ExtraAccountMetaList::unpack_with_tlv_state::<ExecuteInstruction>(&state)?;
+    let account_metas = extra_account_metas.data();
 
     // if incorrect number of are provided, error
-    let extra_account_infos = account_info_iter.as_slice();
-    let account_metas = extra_account_metas.data();
-    if extra_account_infos.len() != account_metas.len() {
+    if account_metas.len() != account_info_iter.len() {
         return Err(TransferHookError::IncorrectAccount.into());
     }
 
     // Let's assume that they're provided in the correct order
-    for (i, account_info) in extra_account_infos.iter().enumerate() {
-        let meta = AccountMeta::try_from(&account_metas[i])?;
-        if !(&meta.pubkey == account_info.key
-            && meta.is_signer == account_info.is_signer
-            && meta.is_writable == account_info.is_writable)
-        {
-            return Err(TransferHookError::IncorrectAccount.into());
-        }
-    }
+    let extra_account_metas_iter = &mut account_metas.iter();
+    check_extra_meta(
+        next_account_info(account_info_iter)?,
+        &AccountMeta::try_from(next_extra_account_meta(extra_account_metas_iter)?)?,
+    )?;
+    check_extra_meta(
+        next_account_info(account_info_iter)?,
+        &AccountMeta::try_from(next_extra_account_meta(extra_account_metas_iter)?)?,
+    )?;
+    let next_config = next_extra_account_meta(extra_account_metas_iter)?;
+    check_extra_meta(
+        next_account_info(account_info_iter)?,
+        &AccountMeta {
+            pubkey: Pubkey::find_program_address(
+                &[b"seed-prefix", source_account_info.key.as_ref()],
+                program_id,
+            )
+            .0,
+            is_signer: bool::from(next_config.is_signer),
+            is_writable: bool::from(next_config.is_writable),
+        },
+    )?;
+    let next_config = next_extra_account_meta(extra_account_metas_iter)?;
+    check_extra_meta(
+        next_account_info(account_info_iter)?,
+        &AccountMeta {
+            pubkey: Pubkey::find_program_address(
+                &[&amount.to_le_bytes(), destination_account_info.key.as_ref()],
+                program_id,
+            )
+            .0,
+            is_signer: bool::from(next_config.is_signer),
+            is_writable: bool::from(next_config.is_writable),
+        },
+    )?;
+    check_extra_meta(
+        next_account_info(account_info_iter)?,
+        &AccountMeta::try_from(next_extra_account_meta(extra_account_metas_iter)?)?,
+    )?;
 
     Ok(())
 }
