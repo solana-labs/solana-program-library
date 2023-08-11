@@ -15,7 +15,14 @@ use {
     std::convert::TryInto,
 };
 
+#[cfg(feature = "serde-traits")]
+use {
+    serde::{Deserialize, Serialize},
+};
+
+
 /// Interesting-bearing mint extension instructions
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum InterestBearingMintInstruction {
@@ -57,6 +64,7 @@ pub enum InterestBearingMintInstruction {
 }
 
 /// Data expected by `InterestBearing::Initialize`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeInstructionData {

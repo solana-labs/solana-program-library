@@ -20,7 +20,16 @@ use {
     std::convert::TryFrom,
 };
 
+#[cfg(feature = "serde-traits")]
+use {
+    crate::serialization::{
+        elgamalpubkey_fromstr
+    },
+    serde::{Deserialize, Serialize},
+};
+
 /// Confidential Transfer extension instructions
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum ConfidentialTransferFeeInstruction {
@@ -138,6 +147,7 @@ pub enum ConfidentialTransferFeeInstruction {
 }
 
 /// Data expected by `InitializeConfidentialTransferFeeConfig`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeConfidentialTransferFeeConfigData {
@@ -145,10 +155,12 @@ pub struct InitializeConfidentialTransferFeeConfigData {
     pub authority: OptionalNonZeroPubkey,
 
     /// ElGamal public key used to encrypt withheld fees.
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalpubkey_fromstr"))]
     pub withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
 }
 
 /// Data expected by `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromMintData {
@@ -158,6 +170,7 @@ pub struct WithdrawWithheldTokensFromMintData {
 }
 
 /// Data expected by `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromAccountsData {

@@ -14,7 +14,13 @@ use {
     std::convert::TryInto,
 };
 
+#[cfg(feature = "serde-traits")]
+use {
+    serde::{Deserialize, Serialize},
+};
+
 /// Metadata pointer extension instructions
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum MetadataPointerInstruction {

@@ -22,10 +22,12 @@ use {
 
 #[cfg(feature = "serde-traits")]
 use {
+    crate::serialization::aeciphertext_fromstr,
     serde::{Deserialize, Serialize},
 };
 
 /// Confidential Transfer extension instructions
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum ConfidentialTransferInstruction {
@@ -372,6 +374,7 @@ pub struct InitializeMintData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::UpdateMint`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct UpdateMintData {
@@ -383,10 +386,12 @@ pub struct UpdateMintData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::ConfigureAccount`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ConfigureAccountInstructionData {
     /// The decryptable balance (always 0) once the configure account succeeds
+    #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub decryptable_zero_balance: DecryptableBalance,
     /// The maximum number of despots and transfers that an account can receiver before the
     /// `ApplyPendingBalance` is executed
@@ -398,6 +403,7 @@ pub struct ConfigureAccountInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::EmptyAccount`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct EmptyAccountInstructionData {
@@ -408,6 +414,7 @@ pub struct EmptyAccountInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Deposit`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct DepositInstructionData {
@@ -418,6 +425,7 @@ pub struct DepositInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Withdraw`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawInstructionData {
@@ -426,6 +434,7 @@ pub struct WithdrawInstructionData {
     /// Expected number of base 10 digits to the right of the decimal place
     pub decimals: u8,
     /// The new decryptable balance if the withdrawal succeeds
+    #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyWithdraw` instruction to the `Withdraw`
     /// instruction in the transaction. If the offset is `0`, then use a context state account for
@@ -434,10 +443,12 @@ pub struct WithdrawInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Transfer`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct TransferInstructionData {
     /// The new source decryptable balance if the transfer succeeds
+    #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_source_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyTransfer` instruction to the
     /// `Transfer` instruction in the transaction. If the offset is `0`, then use a context state
@@ -446,6 +457,7 @@ pub struct TransferInstructionData {
 }
 
 /// Data expected by `ConfidentialTransferInstruction::ApplyPendingBalance`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ApplyPendingBalanceData {
@@ -453,6 +465,7 @@ pub struct ApplyPendingBalanceData {
     /// `ApplyPendingBalance` instruction
     pub expected_pending_balance_credit_counter: PodU64,
     /// The new decryptable balance if the pending balance is applied successfully
+    #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
 }
 

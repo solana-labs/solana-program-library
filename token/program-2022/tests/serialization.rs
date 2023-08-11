@@ -2,25 +2,26 @@
 
 use {
     solana_program::program_option::COption,
-    solana_sdk::{
-        pubkey::Pubkey,
-    },
+    solana_sdk::pubkey::Pubkey,
     spl_token_2022::{
         extension::{confidential_transfer},
         instruction,
-        solana_zk_token_sdk::{
-            encryption::elgamal::{
-                ElGamalPubkey as ElGamalPubkeyDecoded,
-                ElGamalSecretKey as ElGamalSecretKeyDecoded,
-            },
-            zk_token_elgamal::pod::ElGamalPubkey as ElGamalPubkeyPod,
+        pod::{
+            OptionalNonZeroElGamalPubkey,
+            OptionalNonZeroPubkey,
         },
-        pod::{OptionalNonZeroPubkey, OptionalNonZeroElGamalPubkey, PodBool},
+        solana_zk_token_sdk::{
+            zk_token_elgamal::pod::{
+                AeCiphertext,
+                ElGamalPubkey,
+            },
+        },
     },
     std::str::FromStr,
 };
 
 #[test]
+// tests serde of ix containing COption and Pubkey
 fn token_program_serde() {
     let inst = instruction::TokenInstruction::InitializeMint2 {
         decimals: 0,
@@ -37,6 +38,7 @@ fn token_program_serde() {
 }
 
 #[test]
+// tests serde of ix containing COption with None
 fn token_program_serde_with_none() {
     let inst = instruction::TokenInstruction::InitializeMintCloseAuthority {
         close_authority: COption::None,
@@ -52,14 +54,14 @@ fn token_program_serde_with_none() {
 }
 
 #[test]
+// tests serde of ix containing OptionalNonZeroPubkey, PodBool and OptionalNonZeroElGamalPubkey
 fn token_program_extension_serde() {
     let authority_option: Option<Pubkey> = Some(Pubkey::from_str("4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM").unwrap());
     let authority: OptionalNonZeroPubkey = authority_option.try_into().unwrap();
 
-    let elgamal_secretkey: ElGamalSecretKeyDecoded = ElGamalSecretKeyDecoded::new_rand();
-    let elgamal_pubkey: ElGamalPubkeyDecoded = ElGamalPubkeyDecoded::new(&elgamal_secretkey);
-    let elgamal_pubkey_pod: ElGamalPubkeyPod = ElGamalPubkeyPod::from(elgamal_pubkey);
-    let elgamal_pubkey_pod_option: Option<ElGamalPubkeyPod> = Some(elgamal_pubkey_pod);
+    let elgamal_pubkey_pod_option: Option<ElGamalPubkey> = Some(ElGamalPubkey([162, 23, 108,
+        36, 130, 143, 18, 219, 196, 134, 242, 145, 179, 49, 229, 193, 74, 64, 3, 158, 68, 235, 124,
+        88, 247, 144, 164, 254, 228, 12, 173, 85]));
     let auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey = elgamal_pubkey_pod_option.try_into().unwrap();
 
     let inst = confidential_transfer::instruction::InitializeMintData {
@@ -69,14 +71,17 @@ fn token_program_extension_serde() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    let serialized_expected = &format!("{{\"authority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\",\"auto_approve_new_accounts\":false,\"auditor_elgamal_pubkey\":\"{}\"}}", elgamal_pubkey.to_string());
+    let serialized_expected = &format!("{{\"authority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\",\"auto_approve_new_accounts\":false,\"auditor_elgamal_pubkey\":\"ohdsJIKPEtvEhvKRszHlwUpAA55E63xY95Ck/uQMrVU=\"}}");
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized = serde_json::from_str::<confidential_transfer::instruction::InitializeMintData>(&serialized).unwrap();
     assert_eq!(inst, deserialized);
 }
 
+
 #[test]
+// tests serde of ix containing OptionalNonZeroPubkey, PodBool and OptionalNonZeroElGamalPubkey with
+// null values
 fn token_program_extension_serde_with_none() {
     let authority: OptionalNonZeroPubkey = None.try_into().unwrap();
 
@@ -94,4 +99,68 @@ fn token_program_extension_serde_with_none() {
 
     let deserialized = serde_json::from_str::<confidential_transfer::instruction::InitializeMintData>(&serialized_expected).unwrap();
     assert_eq!(inst, deserialized);
+}
+
+#[test]
+// tests serde of ix containing DecryptableBalance and PodU64
+fn token_program_extension_serde_config_account() {
+    let decryptable_zero_balance = AeCiphertext([56, 22, 102, 48, 112, 106, 58, 25, 25, 244, 194,
+        217, 73, 137, 73, 38, 24, 26, 36, 25, 235, 234, 68, 181, 11, 82, 170, 163, 89, 205, 113,
+        160, 55, 16, 35, 151]);
+
+    let inst = confidential_transfer::instruction::ConfigureAccountInstructionData {
+        decryptable_zero_balance,
+        maximum_pending_balance_credit_counter: 1099.into(),
+        proof_instruction_offset: 100,
+    };
+
+    let serialized = serde_json::to_string(&inst).unwrap();
+    let serialized_expected = &format!("{{\"decryptable_zero_balance\":\"OBZmMHBqOhkZ9MLZSYlJJhgaJBnr6kS1C1Kqo1nNcaA3ECOX\",\"maximum_pending_balance_credit_counter\":1099,\"proof_instruction_offset\":100}}");
+    assert_eq!(&serialized, serialized_expected);
+
+    let deserialized = serde_json::from_str::<confidential_transfer::instruction::ConfigureAccountInstructionData>(&serialized_expected).unwrap();
+    assert_eq!(inst, deserialized);
+}
+
+#[test]
+// tests serde of ix containing pod::ElGamalPubkey
+fn token_program_extension_serde_config_data() {
+    use spl_token_2022::extension::confidential_transfer_fee::{
+        instruction::InitializeConfidentialTransferFeeConfigData
+    };
+
+    let withdraw_withheld_authority_elgamal_pubkey = ElGamalPubkey([162, 23, 108, 36, 130, 143,
+        18, 219, 196, 134, 242, 145, 179, 49, 229, 193, 74, 64, 3, 158, 68, 235, 124, 88, 247, 144,
+        164, 254, 228, 12, 173, 85]);
+
+    let inst = InitializeConfidentialTransferFeeConfigData {
+        authority: Default::default(),
+        withdraw_withheld_authority_elgamal_pubkey,
+    };
+
+    let serialized = serde_json::to_string(&inst).unwrap();
+    let serialized_expected = "{\"authority\":null,\"withdraw_withheld_authority_elgamal_pubkey\":\"ohdsJIKPEtvEhvKRszHlwUpAA55E63xY95Ck/uQMrVU=\"}";
+    assert_eq!(&serialized, serialized_expected);
+
+    let deserialized = serde_json::from_str::<InitializeConfidentialTransferFeeConfigData>(&serialized_expected).unwrap();
+    assert_eq!(inst, deserialized);
+}
+
+#[test]
+// tests serde of ix containing BasisPoints
+fn token_program_extension_serde_interest_bearing() {
+    use spl_token_2022::extension::interest_bearing_mint::{
+        instruction::InitializeInstructionData
+    };
+
+    let inst = InitializeInstructionData {
+        rate_authority: OptionalNonZeroPubkey::default(),
+        rate: 127.into(),
+    };
+
+    let serialized = serde_json::to_string(&inst).unwrap();
+    let serialized_expected = "{\"rate_authority\":null,\"rate\":127}";
+    assert_eq!(&serialized, serialized_expected);
+
+    serde_json::from_str::<InitializeInstructionData>(&serialized_expected).unwrap();
 }
