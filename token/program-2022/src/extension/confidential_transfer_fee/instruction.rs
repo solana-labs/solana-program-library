@@ -27,7 +27,8 @@ use {
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::{
-        elgamalpubkey_fromstr
+        elgamalpubkey_fromstr,
+        aeciphertext_fromstr,
     },
     serde::{Deserialize, Serialize},
 };
@@ -221,6 +222,7 @@ pub struct WithdrawWithheldTokensFromMintData {
     /// use a context state account for the proof.
     pub proof_instruction_offset: i8,
     /// The new decryptable balance in the destination token account.
+    #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
 }
 
@@ -236,6 +238,7 @@ pub struct WithdrawWithheldTokensFromAccountsData {
     /// `0`, then use a context state account for the proof.
     pub proof_instruction_offset: i8,
     /// The new decryptable balance in the destination token account.
+    #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
 }
 
