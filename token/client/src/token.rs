@@ -1774,10 +1774,10 @@ where
         let account_info = if let Some(account_info) = account_info {
             account_info
         } else {
-            self.get_account_info(account)
-                .await?
-                .get_extension::<ConfidentialTransferAccount>()?
-                .empty_account_account_info()
+            let account = self.get_account_info(account).await?;
+            let confidential_transfer_account =
+                account.get_extension::<ConfidentialTransferAccount>()?;
+            EmptyAccountAccountInfo::new(confidential_transfer_account)
         };
 
         let proof_data = if context_state_account.is_some() {
@@ -2042,10 +2042,10 @@ where
         let account_info = if let Some(account_info) = account_info {
             account_info
         } else {
-            self.get_account_info(account)
-                .await?
-                .get_extension::<ConfidentialTransferAccount>()?
-                .withdraw_account_info()
+            let account = self.get_account_info(account).await?;
+            let confidential_transfer_account =
+                account.get_extension::<ConfidentialTransferAccount>()?;
+            WithdrawAccountInfo::new(confidential_transfer_account)
         };
 
         let proof_data = if context_state_account.is_some() {
@@ -2154,10 +2154,10 @@ where
         let account_info = if let Some(account_info) = account_info {
             account_info
         } else {
-            self.get_account_info(source_account)
-                .await?
-                .get_extension::<ConfidentialTransferAccount>()?
-                .transfer_account_info()
+            let account = self.get_account_info(source_account).await?;
+            let confidential_transfer_account =
+                account.get_extension::<ConfidentialTransferAccount>()?;
+            TransferAccountInfo::new(confidential_transfer_account)
         };
 
         let proof_data = if context_state_account.is_some() {
@@ -2228,10 +2228,10 @@ where
         let account_info = if let Some(account_info) = account_info {
             account_info
         } else {
-            self.get_account_info(source_account)
-                .await?
-                .get_extension::<ConfidentialTransferAccount>()?
-                .transfer_account_info()
+            let account = self.get_account_info(source_account).await?;
+            let confidential_transfer_account =
+                account.get_extension::<ConfidentialTransferAccount>()?;
+            TransferAccountInfo::new(confidential_transfer_account)
         };
 
         let proof_data = if context_state_account.is_some() {
@@ -2296,10 +2296,10 @@ where
         let account_info = if let Some(account_info) = account_info {
             account_info
         } else {
-            self.get_account_info(account)
-                .await?
-                .get_extension::<ConfidentialTransferAccount>()?
-                .apply_pending_balance_account_info()
+            let account = self.get_account_info(account).await?;
+            let confidential_transfer_account =
+                account.get_extension::<ConfidentialTransferAccount>()?;
+            ApplyPendingBalanceAccountInfo::new(confidential_transfer_account)
         };
 
         let expected_pending_balance_credit_counter = account_info.pending_balance_credit_counter();
