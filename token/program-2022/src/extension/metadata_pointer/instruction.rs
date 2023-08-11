@@ -62,6 +62,7 @@ pub enum MetadataPointerInstruction {
 }
 
 /// Data expected by `Initialize`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeInstructionData {
@@ -72,6 +73,7 @@ pub struct InitializeInstructionData {
 }
 
 /// Data expected by `Update`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct UpdateInstructionData {

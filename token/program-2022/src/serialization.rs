@@ -102,8 +102,8 @@ pub mod aeciphertext_fromstr {
             de::{Error, Visitor},
             Deserializer, Serializer,
         },
-        std::fmt,
         solana_zk_token_sdk::zk_token_elgamal::pod::AeCiphertext,
+        std::fmt,
     };
 
     const AE_CIPHERTEXT_LEN: usize = 36;
@@ -151,8 +151,8 @@ pub mod elgamalpubkey_fromstr {
             de::{Error, Visitor},
             Deserializer, Serializer,
         },
-        std::fmt,
         solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
+        std::fmt,
     };
 
     const ELGAMAL_PUBKEY_LEN: usize = 32;
@@ -200,11 +200,11 @@ pub mod visitors {
             pod::OptionalNonZeroPubkey,
         },
         serde::{
-            de::{Error, Unexpected, self, Visitor},
+            de::{Error, Unexpected, Visitor},
         },
         solana_program::{pubkey::Pubkey},
         solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
-        std::{fmt, convert::TryFrom, str::FromStr}
+        std::{convert::TryFrom, fmt, str::FromStr}
     };
 
     /// Visitor for deserializing OptionalNonZeroPubkey

@@ -420,6 +420,7 @@ pub enum TokenInstruction<'a> {
     ///   2. `[]` Rent sysvar
     InitializeAccount2 {
         /// The new account's owner/multisignature.
+        #[cfg_attr(feature = "serde-traits", serde(with = "As::<DisplayFromStr>"))]
         owner: Pubkey,
     },
     /// Given a wrapped / native token account (a token account containing SOL)
@@ -440,6 +441,7 @@ pub enum TokenInstruction<'a> {
     ///   1. `[]` The mint this account will be associated with.
     InitializeAccount3 {
         /// The new account's owner/multisignature.
+        #[cfg_attr(feature = "serde-traits", serde(with = "As::<DisplayFromStr>"))]
         owner: Pubkey,
     },
     /// Like InitializeMultisig, but does not require the Rent sysvar to be provided
@@ -635,6 +637,7 @@ pub enum TokenInstruction<'a> {
     ///
     InitializePermanentDelegate {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
+        #[cfg_attr(feature = "serde-traits", serde(with = "As::<DisplayFromStr>"))]
         delegate: Pubkey,
     },
     /// The common instruction prefix for transfer hook extension instructions.
