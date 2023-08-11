@@ -1,5 +1,3 @@
-#[cfg(not(target_os = "solana"))]
-use crate::extension::confidential_transfer::account_info::*;
 use {
     crate::{
         error::TokenError,
@@ -180,53 +178,5 @@ impl ConfidentialTransferAccount {
             .ok_or(TokenError::Overflow)?)
         .into();
         Ok(())
-    }
-
-    /// Return the account information needed to construct an `EmptyAccount` instruction.
-    #[cfg(not(target_os = "solana"))]
-    pub fn empty_account_account_info(&self) -> EmptyAccountAccountInfo {
-        let available_balance = self.available_balance;
-
-        EmptyAccountAccountInfo { available_balance }
-    }
-
-    /// Return the account information needed to construct an `ApplyPendingBalance` instruction.
-    #[cfg(not(target_os = "solana"))]
-    pub fn apply_pending_balance_account_info(&self) -> ApplyPendingBalanceAccountInfo {
-        let pending_balance_credit_counter = self.pending_balance_credit_counter;
-        let pending_balance_lo = self.pending_balance_lo;
-        let pending_balance_hi = self.pending_balance_hi;
-        let decryptable_available_balance = self.decryptable_available_balance;
-
-        ApplyPendingBalanceAccountInfo {
-            pending_balance_credit_counter,
-            pending_balance_lo,
-            pending_balance_hi,
-            decryptable_available_balance,
-        }
-    }
-
-    /// Return the account information needed to construct a `Withdraw` instruction.
-    #[cfg(not(target_os = "solana"))]
-    pub fn withdraw_account_info(&self) -> WithdrawAccountInfo {
-        let available_balance = self.available_balance;
-        let decryptable_available_balance = self.decryptable_available_balance;
-
-        WithdrawAccountInfo {
-            available_balance,
-            decryptable_available_balance,
-        }
-    }
-
-    /// Return the account information needed to construct a `Transfer` instruction.
-    #[cfg(not(target_os = "solana"))]
-    pub fn transfer_account_info(&self) -> TransferAccountInfo {
-        let available_balance = self.available_balance;
-        let decryptable_available_balance = self.decryptable_available_balance;
-
-        TransferAccountInfo {
-            available_balance,
-            decryptable_available_balance,
-        }
     }
 }

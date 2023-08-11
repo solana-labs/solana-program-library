@@ -7,7 +7,7 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
     },
-    spl_tlv_account_resolution::state::ExtraAccountMetas,
+    spl_tlv_account_resolution::state::ExtraAccountMetaList,
     std::future::Future,
 };
 
@@ -55,7 +55,7 @@ where
     let validation_account_data = get_account_data_fn(validation_address)
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
-    ExtraAccountMetas::add_to_instruction::<ExecuteInstruction>(
+    ExtraAccountMetaList::add_to_instruction::<ExecuteInstruction>(
         instruction,
         &validation_account_data,
     )?;

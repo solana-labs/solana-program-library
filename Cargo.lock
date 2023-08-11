@@ -6607,7 +6607,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-chat"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -7046,6 +7046,7 @@ name = "spl-token-client"
 version = "0.5.1"
 dependencies = [
  "async-trait",
+ "futures 0.3.28",
  "futures-util",
  "solana-banks-interface",
  "solana-cli-output",

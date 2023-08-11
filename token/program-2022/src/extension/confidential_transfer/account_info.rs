@@ -2,7 +2,8 @@ use {
     crate::{
         error::TokenError,
         extension::confidential_transfer::{
-            DecryptableBalance, EncryptedBalance, PENDING_BALANCE_LO_BIT_LENGTH,
+            ConfidentialTransferAccount, DecryptableBalance, EncryptedBalance,
+            PENDING_BALANCE_LO_BIT_LENGTH,
         },
         pod::*,
     },
@@ -28,6 +29,13 @@ pub struct EmptyAccountAccountInfo {
     pub(crate) available_balance: EncryptedBalance,
 }
 impl EmptyAccountAccountInfo {
+    /// Create the `EmptyAccount` instruction account information from `ConfidentialTransferAccount`.
+    pub fn new(account: &ConfidentialTransferAccount) -> Self {
+        Self {
+            available_balance: account.available_balance,
+        }
+    }
+
     /// Create an empty account proof data.
     pub fn generate_proof_data(
         &self,
@@ -59,6 +67,17 @@ pub struct ApplyPendingBalanceAccountInfo {
     pub(crate) decryptable_available_balance: DecryptableBalance,
 }
 impl ApplyPendingBalanceAccountInfo {
+    /// Create the `ApplyPendingBalance` instruction account information from
+    /// `ConfidentialTransferAccount`.
+    pub fn new(account: &ConfidentialTransferAccount) -> Self {
+        Self {
+            pending_balance_credit_counter: account.pending_balance_credit_counter,
+            pending_balance_lo: account.pending_balance_lo,
+            pending_balance_hi: account.pending_balance_hi,
+            decryptable_available_balance: account.decryptable_available_balance,
+        }
+    }
+
     /// Return the pending balance credit counter of the account.
     pub fn pending_balance_credit_counter(&self) -> u64 {
         self.pending_balance_credit_counter.into()
@@ -130,6 +149,15 @@ pub struct WithdrawAccountInfo {
     pub decryptable_available_balance: DecryptableBalance,
 }
 impl WithdrawAccountInfo {
+    /// Create the `ApplyPendingBalance` instruction account information from
+    /// `ConfidentialTransferAccount`.
+    pub fn new(account: &ConfidentialTransferAccount) -> Self {
+        Self {
+            available_balance: account.available_balance,
+            decryptable_available_balance: account.decryptable_available_balance,
+        }
+    }
+
     fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
         let decryptable_available_balance = self
             .decryptable_available_balance
@@ -187,6 +215,14 @@ pub struct TransferAccountInfo {
     pub decryptable_available_balance: DecryptableBalance,
 }
 impl TransferAccountInfo {
+    /// Create the `Transfer` instruction account information from `ConfidentialTransferAccount`.
+    pub fn new(account: &ConfidentialTransferAccount) -> Self {
+        Self {
+            available_balance: account.available_balance,
+            decryptable_available_balance: account.decryptable_available_balance,
+        }
+    }
+
     fn decrypted_available_balance(&self, aes_key: &AeKey) -> Result<u64, TokenError> {
         let decryptable_available_balance = self
             .decryptable_available_balance

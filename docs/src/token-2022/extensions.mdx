@@ -1350,10 +1350,10 @@ the transfer hook interface.
 #### How to use
 
 Developers must implement the `Execute` instruction, and optionally the
-`InitializeExtraAccountMetas` instruction to write the required additional account
+`InitializeExtraAccountMetaList` instruction to write the required additional account
 pubkeys into the program-derived address defined by the mint and program id.
 
-Note: it's technically not required to implement `InitializeExtraAccountMetas`
+Note: it's technically not required to implement `InitializeExtraAccountMetaList`
 at that instruction descriminator. Your program may implement multiple interfaces,
 so any other instruction in your program can create the account at the program-derived
 address!

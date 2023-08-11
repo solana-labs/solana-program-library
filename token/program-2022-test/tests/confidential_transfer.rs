@@ -18,12 +18,10 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{
-                self, ConfidentialTransferAccount, ConfidentialTransferMint,
-                MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
+                self, ConfidentialTransferAccount, MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
             },
             BaseStateWithExtensions, ExtensionType,
         },
-        instruction,
         solana_zk_token_sdk::{
             encryption::{auth_encryption::*, elgamal::*},
             zk_token_elgamal::pod::{self, Zeroable},

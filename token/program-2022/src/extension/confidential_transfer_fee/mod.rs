@@ -15,6 +15,10 @@ pub mod instruction;
 /// Confidential transfer fee extension processor
 pub mod processor;
 
+/// Confidential Transfer Fee extension account information needed for instructions
+#[cfg(not(target_os = "solana"))]
+pub mod account_info;
+
 /// ElGamal ciphertext containing a transfer fee
 pub type EncryptedFee = FeeEncryption;
 /// ElGamal ciphertext containing a withheld fee in an account
@@ -33,6 +37,9 @@ pub struct ConfidentialTransferFeeConfig {
     /// to decode any withheld fee amount that are associated with accounts. When combined with the
     /// fee parameters, the withheld fee amounts can reveal information about transfer amounts.
     pub withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
+
+    /// If `false`, the harvest of withheld tokens to mint is rejected.
+    pub harvest_to_mint_enabled: PodBool,
 
     /// Withheld confidential transfer fee tokens that have been moved to the mint for withdrawal.
     pub withheld_amount: EncryptedWithheldAmount,

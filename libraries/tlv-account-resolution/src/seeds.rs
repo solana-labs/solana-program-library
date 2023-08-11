@@ -1,9 +1,9 @@
 //! Types for managing seed configurations in TLV Account Resolution
 //!
-//! As determined by the `address_config` field of `PodAccountMeta`,
+//! As determined by the `address_config` field of `ExtraAccountMeta`,
 //! seed configurations are limited to a maximum of 32 bytes.
 //! This means that the maximum number of seed configurations that can be
-//! packed into a single `PodAccountMeta` will depend directly on the size
+//! packed into a single `ExtraAccountMeta` will depend directly on the size
 //! of the seed configurations themselves.
 //!
 //! Sizes are as follows:
@@ -143,11 +143,11 @@ impl Seed {
 
     /// Unpacks all seed configurations from a 32-byte array.
     /// Stops when it hits uninitialized data (0s).
-    pub fn unpack_address_config(bytes: &[u8; 32]) -> Result<Vec<Self>, ProgramError> {
+    pub fn unpack_address_config(address_config: &[u8; 32]) -> Result<Vec<Self>, ProgramError> {
         let mut seeds = vec![];
         let mut i = 0;
         while i < 32 {
-            let seed = Self::unpack(&bytes[i..])?;
+            let seed = Self::unpack(&address_config[i..])?;
             let seed_size = seed.tlv_size() as usize;
             i += seed_size;
             if seed == Self::Uninitialized {
