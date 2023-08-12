@@ -30,6 +30,11 @@ pub mod verify_proof;
 #[cfg(not(target_os = "solana"))]
 pub mod account_info;
 
+/// Ciphertext extraction and proof related helper logic
+///
+/// This submodule should be removed with the next upgrade to the Solana program
+pub mod ciphertext_extraction;
+
 /// ElGamal ciphertext containing an account balance
 pub type EncryptedBalance = ElGamalCiphertext;
 /// Authenticated encryption containing an account balance

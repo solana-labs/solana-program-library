@@ -3,7 +3,7 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
-            confidential_transfer::{instruction::*, verify_proof::*, *},
+            confidential_transfer::{ciphertext_extraction::*, instruction::*, verify_proof::*, *},
             confidential_transfer_fee::{
                 ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig, EncryptedFee,
                 EncryptedWithheldAmount,
@@ -14,7 +14,6 @@ use {
         },
         instruction::{decode_instruction_data, decode_instruction_type},
         processor::Processor,
-        solana_zk_token_sdk::zk_token_elgamal::pod::TransferAmountCiphertext,
         state::{Account, Mint},
     },
     solana_program::{
@@ -595,103 +594,6 @@ fn process_transfer(
     }
 
     Ok(())
-}
-
-/// Extract the transfer amount ciphertext encrypted under the source ElGamal public key.
-///
-/// A transfer amount ciphertext consists of the following 32-byte components that are serialized
-/// in order:
-///   1. The `commitment` component that encodes the transfer amount.
-///   2. The `decryption handle` component with respect to the source public key.
-///   3. The `decryption handle` component with respect to the destination public key.
-///   4. The `decryption handle` component with respect to the auditor public key.
-///
-/// An ElGamal ciphertext for the source consists of the `commitment` component and the `decryption
-/// handle` component with respect to the source.
-#[cfg(feature = "zk-ops")]
-fn transfer_amount_source_ciphertext(
-    transfer_amount_ciphertext: &TransferAmountCiphertext,
-) -> ElGamalCiphertext {
-    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
-
-    let mut source_ciphertext_bytes = [0u8; 64];
-    source_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
-    source_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[32..64]);
-
-    ElGamalCiphertext(source_ciphertext_bytes)
-}
-
-/// Extract the transfer amount ciphertext encrypted under the destination ElGamal public key.
-///
-/// A transfer amount ciphertext consists of the following 32-byte components that are serialized
-/// in order:
-///   1. The `commitment` component that encodes the transfer amount.
-///   2. The `decryption handle` component with respect to the source public key.
-///   3. The `decryption handle` component with respect to the destination public key.
-///   4. The `decryption handle` component with respect to the auditor public key.
-///
-/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
-/// `decryption handle` component with respect to the destination public key.
-#[cfg(feature = "zk-ops")]
-fn transfer_amount_destination_ciphertext(
-    transfer_amount_ciphertext: &TransferAmountCiphertext,
-) -> ElGamalCiphertext {
-    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
-
-    let mut destination_ciphertext_bytes = [0u8; 64];
-    destination_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
-    destination_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[64..96]);
-
-    ElGamalCiphertext(destination_ciphertext_bytes)
-}
-
-/// Extract the fee amount ciphertext encrypted under the destination ElGamal public key.
-///
-/// A fee encryption amount consists of the following 32-byte components that are serialized in
-/// order:
-///   1. The `commitment` component that encodes the fee amount.
-///   2. The `decryption handle` component with respect to the destination public key.
-///   3. The `decryption handle` component with respect to the withdraw withheld authority public
-///      key.
-///
-/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
-/// `decryption handle` component with respect to the destination public key.
-#[cfg(feature = "zk-ops")]
-fn fee_amount_destination_ciphertext(
-    transfer_amount_ciphertext: &EncryptedFee,
-) -> ElGamalCiphertext {
-    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
-
-    let mut source_ciphertext_bytes = [0u8; 64];
-    source_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
-    source_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[32..64]);
-
-    ElGamalCiphertext(source_ciphertext_bytes)
-}
-
-/// Extract the transfer amount ciphertext encrypted under the withdraw withheld authority ElGamal
-/// public key.
-///
-/// A fee encryption amount consists of the following 32-byte components that are serialized in
-/// order:
-///   1. The `commitment` component that encodes the fee amount.
-///   2. The `decryption handle` component with respect to the destination public key.
-///   3. The `decryption handle` component with respect to the withdraw withheld authority public
-///      key.
-///
-/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
-/// `decryption handle` component with respect to the withdraw withheld authority public key.
-#[cfg(feature = "zk-ops")]
-fn fee_amount_withdraw_withheld_authority_ciphertext(
-    transfer_amount_ciphertext: &EncryptedFee,
-) -> ElGamalCiphertext {
-    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
-
-    let mut destination_ciphertext_bytes = [0u8; 64];
-    destination_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
-    destination_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[64..96]);
-
-    ElGamalCiphertext(destination_ciphertext_bytes)
 }
 
 #[allow(clippy::too_many_arguments)]
