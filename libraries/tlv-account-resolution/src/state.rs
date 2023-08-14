@@ -3,7 +3,10 @@
 use {
     crate::{account::ExtraAccountMeta, error::AccountResolutionError},
     solana_program::{
-        account_info::AccountInfo, instruction::Instruction, program_error::ProgramError,
+        account_info::AccountInfo,
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        pubkey::Pubkey,
     },
     spl_discriminator::SplDiscriminate,
     spl_type_length_value::{
@@ -11,6 +14,41 @@ use {
         state::{TlvState, TlvStateBorrowed, TlvStateMut},
     },
 };
+
+/// De-escalate an account meta if necessary
+fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[AccountMeta]) {
+    // This is a little tricky to read, but the idea is to see if
+    // this account is marked as writable or signer anywhere in
+    // the instruction at the start. If so, DON'T escalate it to
+    // be a writer or signer in the CPI
+    let maybe_highest_privileges = account_metas
+        .iter()
+        .filter(|&x| x.pubkey == account_meta.pubkey)
+        .map(|x| (x.is_signer, x.is_writable))
+        .reduce(|acc, x| (acc.0 || x.0, acc.1 || x.1));
+    // If `Some`, then the account was found somewhere in the instruction
+    if let Some((is_signer, is_writable)) = maybe_highest_privileges {
+        if !is_signer && is_signer != account_meta.is_signer {
+            // Existing account is *NOT* a signer already, but the CPI
+            // wants it to be, so de-escalate to not be a signer
+            account_meta.is_signer = false;
+        }
+        if !is_writable && is_writable != account_meta.is_writable {
+            // Existing account is *NOT* writable already, but the CPI
+            // wants it to be, so de-escalate to not be writable
+            account_meta.is_writable = false;
+        }
+    }
+}
+
+/// Helper to convert an `AccountInfo` to an `AccountMeta`
+fn account_meta_from_info(account_info: &AccountInfo) -> AccountMeta {
+    AccountMeta {
+        pubkey: *account_info.key,
+        is_signer: account_info.is_signer,
+        is_writable: account_info.is_writable,
+    }
+}
 
 /// Stateless helper for storing additional accounts required for an
 /// instruction.
@@ -105,6 +143,35 @@ impl ExtraAccountMetaList {
             .saturating_add(PodSlice::<ExtraAccountMeta>::size_of(num_items)?))
     }
 
+    /// Checks provided account infos against validation data, using
+    /// instruction data and program ID to resolve any dynamic PDAs
+    /// if necessary.
+    pub fn check_account_infos<T: SplDiscriminate>(
+        account_infos: &[AccountInfo],
+        instruction_data: &[u8],
+        program_id: &Pubkey,
+        data: &[u8],
+    ) -> Result<(), ProgramError> {
+        let state = TlvStateBorrowed::unpack(data).unwrap();
+        let extra_meta_list = ExtraAccountMetaList::unpack_with_tlv_state::<T>(&state)?;
+        let extra_account_metas = extra_meta_list.data();
+
+        let provided_metas = account_infos
+            .iter()
+            .map(account_meta_from_info)
+            .collect::<Vec<_>>();
+
+        for config in extra_account_metas.iter() {
+            let meta = config.resolve(&provided_metas, instruction_data, program_id)?;
+            provided_metas
+                .iter()
+                .find(|&x| *x == meta)
+                .ok_or(AccountResolutionError::IncorrectAccount)?;
+        }
+
+        Ok(())
+    }
+
     /// Add the additional account metas to an existing instruction
     pub fn add_to_instruction<T: SplDiscriminate>(
         instruction: &mut Instruction,
@@ -115,7 +182,13 @@ impl ExtraAccountMetaList {
         let extra_account_metas = PodSlice::<ExtraAccountMeta>::unpack(bytes)?;
 
         for extra_meta in extra_account_metas.data().iter() {
-            instruction.accounts.push(extra_meta.resolve(instruction)?);
+            let mut meta = extra_meta.resolve(
+                &instruction.accounts,
+                &instruction.data,
+                &instruction.program_id,
+            )?;
+            de_escalate_account_meta(&mut meta, &instruction.accounts);
+            instruction.accounts.push(meta);
         }
         Ok(())
     }

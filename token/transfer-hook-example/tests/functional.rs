@@ -157,6 +157,8 @@ async fn success_execute() {
 
     let extra_account_metas_address = get_extra_account_metas_address(&mint_address, &program_id);
 
+    let writable_pubkey = Pubkey::new_unique();
+
     let init_extra_account_metas = [
         ExtraAccountMeta::new_with_pubkey(&sysvar::instructions::id(), false, false).unwrap(),
         ExtraAccountMeta::new_with_pubkey(&mint_authority_pubkey, true, false).unwrap(),
@@ -183,7 +185,7 @@ async fn success_execute() {
             true,
         )
         .unwrap(),
-        ExtraAccountMeta::new_with_pubkey(&extra_account_metas_address, false, true).unwrap(),
+        ExtraAccountMeta::new_with_pubkey(&writable_pubkey, false, true).unwrap(),
     ];
 
     let extra_pda_1 = Pubkey::find_program_address(
@@ -208,7 +210,7 @@ async fn success_execute() {
         AccountMeta::new_readonly(mint_authority_pubkey, true),
         AccountMeta::new(extra_pda_1, false),
         AccountMeta::new(extra_pda_2, false),
-        AccountMeta::new(extra_account_metas_address, false),
+        AccountMeta::new(writable_pubkey, false),
     ];
 
     let mut context = program_test.start_with_context().await;
@@ -280,7 +282,7 @@ async fn success_execute() {
             AccountMeta::new_readonly(mint_authority_pubkey, true),
             AccountMeta::new(extra_pda_1, false),
             AccountMeta::new(extra_pda_2, false),
-            AccountMeta::new(wallet.pubkey(), false),
+            AccountMeta::new(Pubkey::new_unique(), false),
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
@@ -327,7 +329,7 @@ async fn success_execute() {
             AccountMeta::new_readonly(mint_authority_pubkey, true),
             AccountMeta::new(extra_pda_1, false),
             AccountMeta::new(wrong_pda_2, false),
-            AccountMeta::new(extra_account_metas_address, false),
+            AccountMeta::new(writable_pubkey, false),
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
@@ -366,7 +368,7 @@ async fn success_execute() {
             AccountMeta::new_readonly(mint_authority_pubkey, false),
             AccountMeta::new(extra_pda_1, false),
             AccountMeta::new(extra_pda_2, false),
-            AccountMeta::new(extra_account_metas_address, false),
+            AccountMeta::new(writable_pubkey, false),
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
