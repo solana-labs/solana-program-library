@@ -146,6 +146,9 @@ impl ExtraAccountMetaList {
     /// Checks provided account infos against validation data, using
     /// instruction data and program ID to resolve any dynamic PDAs
     /// if necessary.
+    ///
+    /// Note: this function will also verify all extra required accounts
+    /// have been provided in the correct order
     pub fn check_account_infos<T: SplDiscriminate>(
         account_infos: &[AccountInfo],
         instruction_data: &[u8],
@@ -156,17 +159,21 @@ impl ExtraAccountMetaList {
         let extra_meta_list = ExtraAccountMetaList::unpack_with_tlv_state::<T>(&state)?;
         let extra_account_metas = extra_meta_list.data();
 
+        let initial_accounts_len = account_infos.len() - extra_account_metas.len();
+
         let provided_metas = account_infos
             .iter()
             .map(account_meta_from_info)
             .collect::<Vec<_>>();
 
-        for config in extra_account_metas.iter() {
+        for (i, config) in extra_account_metas.iter().enumerate() {
             let meta = config.resolve(&provided_metas, instruction_data, program_id)?;
-            provided_metas
-                .iter()
-                .find(|&x| *x == meta)
-                .ok_or(AccountResolutionError::IncorrectAccount)?;
+            let expected_index = i
+                .checked_add(initial_accounts_len)
+                .ok_or::<ProgramError>(AccountResolutionError::CalculationFailure.into())?;
+            if provided_metas.get(expected_index) != Some(&meta) {
+                return Err(AccountResolutionError::IncorrectAccount.into());
+            }
         }
 
         Ok(())
@@ -1023,5 +1030,148 @@ mod tests {
             assert_eq!(a.is_signer, b.is_signer);
             assert_eq!(a.is_writable, b.is_writable);
         }
+    }
+
+    #[test]
+    fn check_account_infos_test() {
+        let program_id = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+
+        // Create a list of required account metas
+        let pubkey1 = Pubkey::new_unique();
+        let pubkey2 = Pubkey::new_unique();
+        let required_accounts = [
+            ExtraAccountMeta::new_with_pubkey(&pubkey1, false, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&pubkey2, false, false).unwrap(),
+            ExtraAccountMeta::new_with_seeds(
+                &[
+                    Seed::Literal {
+                        bytes: b"lit_seed".to_vec(),
+                    },
+                    Seed::InstructionData {
+                        index: 0,
+                        length: 4,
+                    },
+                    Seed::AccountKey { index: 0 },
+                ],
+                false,
+                true,
+            )
+            .unwrap(),
+        ];
+
+        // Create the validation data
+        let account_size = ExtraAccountMetaList::size_of(required_accounts.len()).unwrap();
+        let mut buffer = vec![0; account_size];
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &required_accounts).unwrap();
+
+        // Create the instruction data
+        let instruction_data = vec![0, 1, 2, 3, 4, 5, 6, 7];
+
+        // Set up a list of the required accounts as account infos,
+        // with two instruction accounts
+        let pubkey_ix_1 = Pubkey::new_unique();
+        let mut lamports_ix_1 = 0;
+        let mut data_ix_1 = [];
+        let pubkey_ix_2 = Pubkey::new_unique();
+        let mut lamports_ix_2 = 0;
+        let mut data_ix_2 = [];
+        let mut lamports1 = 0;
+        let mut data1 = [];
+        let mut lamports2 = 0;
+        let mut data2 = [];
+        let mut lamports3 = 0;
+        let mut data3 = [];
+        let pda = Pubkey::find_program_address(
+            &[b"lit_seed", &instruction_data[..4], pubkey_ix_1.as_ref()],
+            &program_id,
+        )
+        .0;
+        let account_infos = [
+            // Instruction account 1
+            AccountInfo::new(
+                &pubkey_ix_1,
+                false,
+                true,
+                &mut lamports_ix_1,
+                &mut data_ix_1,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            // Instruction account 2
+            AccountInfo::new(
+                &pubkey_ix_2,
+                false,
+                true,
+                &mut lamports_ix_2,
+                &mut data_ix_2,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            // Required account 1
+            AccountInfo::new(
+                &pubkey1,
+                false,
+                true,
+                &mut lamports1,
+                &mut data1,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            // Required account 2
+            AccountInfo::new(
+                &pubkey2,
+                false,
+                false,
+                &mut lamports2,
+                &mut data2,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            // Required account 3 (PDA)
+            AccountInfo::new(
+                &pda,
+                false,
+                true,
+                &mut lamports3,
+                &mut data3,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+        ];
+
+        // Create another list of account infos to intentionally mess up
+        let mut messed_account_infos = account_infos.clone().to_vec();
+        messed_account_infos.swap(0, 2);
+        messed_account_infos.swap(1, 4);
+        messed_account_infos.swap(3, 2);
+
+        // Account info check should fail for the messed list
+        assert_eq!(
+            ExtraAccountMetaList::check_account_infos::<TestInstruction>(
+                &messed_account_infos,
+                &instruction_data,
+                &program_id,
+                &buffer,
+            )
+            .unwrap_err(),
+            AccountResolutionError::IncorrectAccount.into(),
+        );
+
+        // Account info check should pass for the correct list
+        assert_eq!(
+            ExtraAccountMetaList::check_account_infos::<TestInstruction>(
+                &account_infos,
+                &instruction_data,
+                &program_id,
+                &buffer,
+            ),
+            Ok(()),
+        );
     }
 }
