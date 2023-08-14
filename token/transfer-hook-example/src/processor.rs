@@ -36,27 +36,6 @@ fn check_token_account_is_transferring(account_info: &AccountInfo) -> Result<(),
     }
 }
 
-fn check_extra_meta(
-    account_info: &AccountInfo,
-    extra_meta: &AccountMeta,
-) -> Result<(), ProgramError> {
-    if !(&extra_meta.pubkey == account_info.key
-        && extra_meta.is_signer == account_info.is_signer
-        && extra_meta.is_writable == account_info.is_writable)
-    {
-        return Err(TransferHookError::IncorrectAccount.into());
-    }
-    Ok(())
-}
-
-fn next_extra_account_meta<'a>(
-    extra_account_metas_iter: &mut impl Iterator<Item = &'a ExtraAccountMeta>,
-) -> Result<&'a ExtraAccountMeta, ProgramError> {
-    extra_account_metas_iter
-        .next()
-        .ok_or(ProgramError::NotEnoughAccountKeys)
-}
-
 /// Processes an [Execute](enum.TransferHookInstruction.html) instruction.
 pub fn process_execute(
     program_id: &Pubkey,
