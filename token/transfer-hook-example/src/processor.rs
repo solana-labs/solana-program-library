@@ -90,9 +90,10 @@ pub fn process_execute(
 }
 
 /// Processes a [InitializeExtraAccountMetaList](enum.TransferHookInstruction.html) instruction.
-pub fn process_initialize_extra_account_metas(
+pub fn process_initialize_extra_account_meta_list(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    extra_account_metas: &[ExtraAccountMeta],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -127,8 +128,7 @@ pub fn process_initialize_extra_account_metas(
     // Create the account
     let bump_seed = [bump_seed];
     let signer_seeds = collect_extra_account_metas_signer_seeds(mint_info.key, &bump_seed);
-    let extra_account_infos = account_info_iter.as_slice();
-    let length = extra_account_infos.len();
+    let length = extra_account_metas.len();
     let account_size = ExtraAccountMetaList::size_of(length)?;
     invoke_signed(
         &system_instruction::allocate(extra_account_metas_info.key, account_size as u64),
@@ -143,13 +143,7 @@ pub fn process_initialize_extra_account_metas(
 
     // Write the data
     let mut data = extra_account_metas_info.try_borrow_mut_data()?;
-    ExtraAccountMetaList::init::<ExecuteInstruction>(
-        &mut data,
-        &extra_account_infos
-            .iter()
-            .map(ExtraAccountMeta::from)
-            .collect::<Vec<_>>(),
-    )?;
+    ExtraAccountMetaList::init::<ExecuteInstruction>(&mut data, extra_account_metas)?;
 
     Ok(())
 }
@@ -163,9 +157,11 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> P
             msg!("Instruction: Execute");
             process_execute(program_id, accounts, amount)
         }
-        TransferHookInstruction::InitializeExtraAccountMetaList => {
+        TransferHookInstruction::InitializeExtraAccountMetaList {
+            extra_account_metas,
+        } => {
             msg!("Instruction: InitializeExtraAccountMetaList");
-            process_initialize_extra_account_metas(program_id, accounts)
+            process_initialize_extra_account_meta_list(program_id, accounts, &extra_account_metas)
         }
     }
 }

@@ -22,6 +22,10 @@ pub fn pod_slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], ProgramError> 
 pub fn pod_slice_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut [T], ProgramError> {
     bytemuck::try_cast_slice_mut(bytes).map_err(|_| ProgramError::InvalidArgument)
 }
+/// Convert a pod slice into its raw bytes
+pub fn pod_slice_to_bytes<T: Pod>(slice: &[T]) -> &[u8] {
+    bytemuck::cast_slice(slice)
+}
 
 /// Simple macro for implementing conversion functions between Pod* ints and
 /// standard ints.
