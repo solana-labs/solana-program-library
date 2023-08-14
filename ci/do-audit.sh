@@ -16,9 +16,9 @@ cargo_audit_ignores=(
   # https://github.com/solana-labs/solana/issues/29586
   --ignore RUSTSEC-2023-0001
 
-  # openssl: `openssl` `X509VerifyParamRef::set_host` buffer over-read
+  # ed25519-dalek: Double Public Key Signing Function Oracle Attack
   #
-  # Remove once SPL upgrades to Solana v1.16.2 or greater
-  --ignore RUSTSEC-2023-0044
+  # Remove once SPL upgrades to Solana v1.17 or greater
+  --ignore RUSTSEC-2022-0093
 )
 cargo +"$rust_stable" audit "${cargo_audit_ignores[@]}"
