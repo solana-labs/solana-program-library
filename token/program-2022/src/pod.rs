@@ -3,27 +3,22 @@ use {
     bytemuck::{Pod, Zeroable},
     solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
     solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
-    std::{convert::TryFrom}
+    std::convert::TryFrom,
 };
 
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::visitors::{
-        OptionalNonZeroElGamalPubkeyVisitor,
-        OptionalNonZeroPubkeyVisitor
+        OptionalNonZeroElGamalPubkeyVisitor, OptionalNonZeroPubkeyVisitor,
     },
-    serde::{
-        Deserialize, Deserializer, Serialize, Serializer,
-    },
+    serde::{Deserialize, Deserializer, Serialize, Serializer},
 };
 
 /// A Pubkey that encodes `None` as all `0`, meant to be usable as a Pod type,
 /// similar to all NonZero* number types from the bytemuck library.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct OptionalNonZeroPubkey(
-    Pubkey
-);
+pub struct OptionalNonZeroPubkey(Pubkey);
 impl TryFrom<Option<Pubkey>> for OptionalNonZeroPubkey {
     type Error = ProgramError;
     fn try_from(p: Option<Pubkey>) -> Result<Self, Self::Error> {
@@ -76,8 +71,8 @@ impl From<OptionalNonZeroPubkey> for COption<Pubkey> {
 #[cfg(feature = "serde-traits")]
 impl Serialize for OptionalNonZeroPubkey {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         if self.0 == Pubkey::default() {
             s.serialize_none()
@@ -90,8 +85,8 @@ impl Serialize for OptionalNonZeroPubkey {
 #[cfg(feature = "serde-traits")]
 impl<'de> Deserialize<'de> for OptionalNonZeroPubkey {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         deserializer.deserialize_any(OptionalNonZeroPubkeyVisitor)
     }
@@ -135,8 +130,8 @@ impl From<OptionalNonZeroElGamalPubkey> for Option<ElGamalPubkey> {
 #[cfg(feature = "serde-traits")]
 impl Serialize for OptionalNonZeroElGamalPubkey {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         if self.0 == ElGamalPubkey::default() {
             s.serialize_none()
@@ -149,8 +144,8 @@ impl Serialize for OptionalNonZeroElGamalPubkey {
 #[cfg(feature = "serde-traits")]
 impl<'de> Deserialize<'de> for OptionalNonZeroElGamalPubkey {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         deserializer.deserialize_any(OptionalNonZeroElGamalPubkeyVisitor)
     }

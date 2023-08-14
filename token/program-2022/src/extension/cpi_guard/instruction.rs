@@ -12,10 +12,7 @@ use {
 };
 
 #[cfg(feature = "serde-traits")]
-use {
-    serde::{Deserialize, Serialize},
-};
-
+use serde::{Deserialize, Serialize};
 
 /// CPI Guard extension instructions
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]

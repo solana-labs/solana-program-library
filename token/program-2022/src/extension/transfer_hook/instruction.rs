@@ -15,9 +15,7 @@ use {
 };
 
 #[cfg(feature = "serde-traits")]
-use {
-    serde::{Deserialize, Serialize},
-};
+use serde::{Deserialize, Serialize};
 
 /// Transfer hook extension instructions
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]

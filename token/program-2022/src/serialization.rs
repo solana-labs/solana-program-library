@@ -1,8 +1,8 @@
 //! serialization module - contains helpers for serde types from other crates, deserialization visitors
 
 use {
-    base64::{Engine, prelude::BASE64_STANDARD},
-    serde::de::Error
+    base64::{prelude::BASE64_STANDARD, Engine},
+    serde::de::Error,
 };
 
 /// helper function to convert base64 encoded string into a bytes array
@@ -10,7 +10,10 @@ fn base64_to_bytes<const N: usize, E: Error>(v: &str) -> Result<[u8; N], E> {
     let bytes = BASE64_STANDARD.decode(v).map_err(Error::custom)?;
 
     if bytes.len() != N {
-        return Err(Error::custom(format!("Length of base64 decoded bytes is not {}", N)));
+        return Err(Error::custom(format!(
+            "Length of base64 decoded bytes is not {}",
+            N
+        )));
     }
 
     let mut array = [0; N];
@@ -110,8 +113,8 @@ pub mod aeciphertext_fromstr {
 
     /// serialize AeCiphertext values supporting Display trait
     pub fn serialize<S>(x: &AeCiphertext, s: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         s.serialize_str(&x.to_string())
     }
@@ -126,8 +129,8 @@ pub mod aeciphertext_fromstr {
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-            where
-                E: Error,
+        where
+            E: Error,
         {
             let array = super::base64_to_bytes::<AE_CIPHERTEXT_LEN, E>(v)?;
             Ok(AeCiphertext(array))
@@ -136,13 +139,12 @@ pub mod aeciphertext_fromstr {
 
     /// deserialize AeCiphertext values from str
     pub fn deserialize<'de, D>(d: D) -> Result<AeCiphertext, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         d.deserialize_str(AeCiphertextVisitor)
     }
 }
-
 
 /// helper to ser/deser pod::ElGamalPubkey values
 pub mod elgamalpubkey_fromstr {
@@ -159,8 +161,8 @@ pub mod elgamalpubkey_fromstr {
 
     /// serialize ElGamalPubkey values supporting Display trait
     pub fn serialize<S>(x: &ElGamalPubkey, s: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         s.serialize_str(&x.to_string())
     }
@@ -175,8 +177,8 @@ pub mod elgamalpubkey_fromstr {
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-            where
-                E: Error,
+        where
+            E: Error,
         {
             let array = super::base64_to_bytes::<ELGAMAL_PUBKEY_LEN, E>(v)?;
             Ok(ElGamalPubkey(array))
@@ -185,8 +187,8 @@ pub mod elgamalpubkey_fromstr {
 
     /// deserialize ElGamalPubkey values from str
     pub fn deserialize<'de, D>(d: D) -> Result<ElGamalPubkey, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         d.deserialize_str(ElGamalPubkeyVisitor)
     }
@@ -195,16 +197,11 @@ pub mod elgamalpubkey_fromstr {
 /// deserialization Visitors for local types
 pub mod visitors {
     use {
-        crate::{
-            pod::OptionalNonZeroElGamalPubkey,
-            pod::OptionalNonZeroPubkey,
-        },
-        serde::{
-            de::{Error, Unexpected, Visitor},
-        },
-        solana_program::{pubkey::Pubkey},
+        crate::{pod::OptionalNonZeroElGamalPubkey, pod::OptionalNonZeroPubkey},
+        serde::de::{Error, Unexpected, Visitor},
+        solana_program::pubkey::Pubkey,
         solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
-        std::{convert::TryFrom, fmt, str::FromStr}
+        std::{convert::TryFrom, fmt, str::FromStr},
     };
 
     /// Visitor for deserializing OptionalNonZeroPubkey
@@ -218,28 +215,27 @@ pub mod visitors {
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-            where
-                E: Error,
+        where
+            E: Error,
         {
             let pkey = Pubkey::from_str(&v)
-                    .map_err(|_| Error::invalid_value(Unexpected::Str(v), &"value string"))?;
+                .map_err(|_| Error::invalid_value(Unexpected::Str(v), &"value string"))?;
 
             OptionalNonZeroPubkey::try_from(Some(pkey))
                 .map_err(|_| Error::custom("Failed to convert from pubkey"))
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
-            where
-                E: Error,
+        where
+            E: Error,
         {
-            OptionalNonZeroPubkey::try_from(None)
-                .map_err(|e| Error::custom(e.to_string()))
+            OptionalNonZeroPubkey::try_from(None).map_err(|e| Error::custom(e.to_string()))
         }
     }
 
     /// Visitor for deserializing OptionalNonZeroElGamalPubkey
     pub(crate) struct OptionalNonZeroElGamalPubkeyVisitor;
-    const OPTIONAL_NZ_ELG_LEN: usize = 32;
+    const OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN: usize = 32;
 
     impl<'de> Visitor<'de> for OptionalNonZeroElGamalPubkeyVisitor {
         type Value = OptionalNonZeroElGamalPubkey;
@@ -249,17 +245,17 @@ pub mod visitors {
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-            where
-                E: Error,
+        where
+            E: Error,
         {
-            let array = super::base64_to_bytes::<OPTIONAL_NZ_ELG_LEN, E>(v)?;
+            let array = super::base64_to_bytes::<OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN, E>(v)?;
             let elgamal_pubkey = ElGamalPubkey(array);
             OptionalNonZeroElGamalPubkey::try_from(Some(elgamal_pubkey)).map_err(Error::custom)
         }
 
         fn visit_unit<E>(self) -> Result<Self::Value, E>
-            where
-                E: Error,
+        where
+            E: Error,
         {
             Ok(OptionalNonZeroElGamalPubkey::default())
         }
