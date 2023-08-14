@@ -6,7 +6,7 @@ pub use solana_zk_token_sdk::{
 use {
     crate::{
         check_program_account,
-        extension::confidential_transfer::*,
+        extension::confidential_transfer::{ciphertext_extraction::SourceDecryptHandles, *},
         instruction::{encode_instruction, TokenInstruction},
         proof::ProofLocation,
     },
@@ -464,6 +464,12 @@ pub struct TransferInstructionData {
     pub proof_instruction_offset: i8,
     /// Split the transfer proof into smaller components that are verified individually.
     pub split_proof_context_state_accounts: PodBool,
+    /// The ElGamal decryption handle pertaining to the low and high bits of the transfer amount.
+    /// This field is used when the transfer proofs are split and verified as smaller components.
+    /// If the transfer proof is not split, this field should be zeroed out.
+    ///
+    /// NOTE: This field is to be removed in the next Solana upgrade.
+    pub source_decrypt_handles: SourceDecryptHandles,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::ApplyPendingBalance`
@@ -885,6 +891,7 @@ pub fn inner_transfer(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data_location: ProofLocation<TransferData>,
+    source_decrypt_handles: Option<&SourceDecryptHandles>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -927,6 +934,12 @@ pub fn inner_transfer(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
+    let source_decrypt_handles = if let Some(source_decrypt_handles) = source_decrypt_handles {
+        *source_decrypt_handles
+    } else {
+        SourceDecryptHandles::zeroed()
+    };
+
     Ok(encode_instruction(
         token_program_id,
         accounts,
@@ -936,6 +949,7 @@ pub fn inner_transfer(
             new_source_decryptable_available_balance,
             proof_instruction_offset,
             split_proof_context_state_accounts: split_proof_context_state_accounts.into(),
+            source_decrypt_handles,
         },
     ))
 }
@@ -952,6 +966,7 @@ pub fn transfer(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data_location: ProofLocation<TransferData>,
+    source_decrypt_handles: Option<&SourceDecryptHandles>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     let mut instructions = vec![inner_transfer(
         token_program_id,
@@ -962,6 +977,7 @@ pub fn transfer(
         authority,
         multisig_signers,
         proof_data_location,
+        source_decrypt_handles,
     )?];
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
@@ -994,6 +1010,7 @@ pub fn inner_transfer_with_fee(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data_location: ProofLocation<TransferWithFeeData>,
+    source_decrypt_handles: Option<&SourceDecryptHandles>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -1037,6 +1054,12 @@ pub fn inner_transfer_with_fee(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
+    let source_decrypt_handles = if let Some(source_decrypt_handles) = source_decrypt_handles {
+        *source_decrypt_handles
+    } else {
+        SourceDecryptHandles::zeroed()
+    };
+
     Ok(encode_instruction(
         token_program_id,
         accounts,
@@ -1046,6 +1069,7 @@ pub fn inner_transfer_with_fee(
             new_source_decryptable_available_balance,
             proof_instruction_offset,
             split_proof_context_state_accounts: split_proof_context_state_accounts.into(),
+            source_decrypt_handles,
         },
     ))
 }
@@ -1062,6 +1086,7 @@ pub fn transfer_with_fee(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data_location: ProofLocation<TransferWithFeeData>,
+    source_decrypt_handles: Option<&SourceDecryptHandles>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     let mut instructions = vec![inner_transfer_with_fee(
         token_program_id,
@@ -1072,6 +1097,7 @@ pub fn transfer_with_fee(
         authority,
         multisig_signers,
         proof_data_location,
+        source_decrypt_handles,
     )?];
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =

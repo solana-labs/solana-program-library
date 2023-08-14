@@ -119,6 +119,7 @@ pub fn verify_transfer_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
     split_proof_context_state_accounts: bool,
+    source_decrypt_handles: &SourceDecryptHandles,
 ) -> Result<TransferProofContextInfo, ProgramError> {
     if proof_instruction_offset == 0 && split_proof_context_state_accounts {
         let equality_proof_context_state_account_info = next_account_info(account_info_iter)?;
@@ -137,6 +138,7 @@ pub fn verify_transfer_proof(
             &equality_proof_context,
             &ciphertext_validity_proof_context,
             &range_proof_context,
+            source_decrypt_handles,
         )?)
     } else if proof_instruction_offset == 0 && !split_proof_context_state_accounts {
         // interpret `account_info` as a context state account

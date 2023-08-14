@@ -192,6 +192,7 @@ impl TransferProofContextInfo {
         equality_proof_context: &CiphertextCommitmentEqualityProofContext,
         ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
         range_proof_context: &BatchedRangeProofContext,
+        source_decrypt_handles: &SourceDecryptHandles,
     ) -> Result<Self, ProgramError> {
         // The equality proof context consists of the source ElGamal public key, the new source
         // available balance ciphertext, and the new source available commitment. The public key
@@ -272,11 +273,38 @@ impl TransferProofContextInfo {
             auditor: *auditor_pubkey,
         };
 
+        let transfer_amount_ciphertext_lo = transfer_amount_encryption_from_decrypt_handle(
+            &source_decrypt_handles.lo,
+            transfer_amount_ciphertext_lo,
+        );
+
+        let transfer_amount_ciphertext_hi = transfer_amount_encryption_from_decrypt_handle(
+            &source_decrypt_handles.hi,
+            transfer_amount_ciphertext_hi,
+        );
+
         Ok(Self {
-            ciphertext_lo: *transfer_amount_ciphertext_lo,
-            ciphertext_hi: *transfer_amount_ciphertext_hi,
+            ciphertext_lo: transfer_amount_ciphertext_lo,
+            ciphertext_hi: transfer_amount_ciphertext_hi,
             transfer_pubkeys,
             new_source_ciphertext: *new_source_ciphertext,
         })
     }
+}
+
+/// The ElGamal ciphertext decryption handle pertaining to the low and high bits of the transfer
+/// amount under the source public key of the transfer.
+///
+/// The `TransferProofContext` contains decryption handles for the low and high bits of the
+/// transfer amount. Howver, these decryption handles were (mistakenly) removed from the split
+/// proof contexts as a form of optimization. These components should be added back into these
+/// split proofs in `zk-token-sdk`. Until this modifications is made, include `SourceDecryptHandle`
+/// in the transfer instruction data.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub struct SourceDecryptHandles {
+    /// The ElGamal decryption handle pertaining to the low 16 bits of the transfer amount.
+    pub lo: DecryptHandle,
+    /// The ElGamal decryption handle pertaining to the low 32 bits of the transfer amount.
+    pub hi: DecryptHandle,
 }

@@ -425,6 +425,7 @@ fn process_transfer(
     new_source_decryptable_available_balance: DecryptableBalance,
     proof_instruction_offset: i64,
     split_proof_context_state_accounts: bool,
+    source_decrypt_handles: &SourceDecryptHandles,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let source_account_info = next_account_info(account_info_iter)?;
@@ -457,6 +458,7 @@ fn process_transfer(
             account_info_iter,
             proof_instruction_offset,
             split_proof_context_state_accounts,
+            source_decrypt_handles,
         )?;
 
         let authority_info = next_account_info(account_info_iter)?;
@@ -943,6 +945,7 @@ pub(crate) fn process_instruction(
                 data.new_source_decryptable_available_balance,
                 data.proof_instruction_offset as i64,
                 data.split_proof_context_state_accounts.into(),
+                &data.source_decrypt_handles,
             )
         }
         ConfidentialTransferInstruction::ApplyPendingBalance => {
