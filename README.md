@@ -28,6 +28,11 @@ the Solana Mainnet Beta. Currently, this includes:
 | [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program) | Not audited | [0.3.0](https://github.com/solana-labs/solana-program-library/releases/tag/name-service-v0.3.0) |
 | [memo](https://github.com/solana-labs/solana-program-library/tree/master/memo/program) | Not audited | [3.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/memo-v3.0.0) |
 
+In addition, one program is planned for deployment to Solana Mainnet Beta:
+| Program | Last Audit Date | Version |
+| --- | --- | --- |
+| [single-pool](https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program) | 2023-08-08 | n/a |
+
 All other programs may be updated from time to time. These programs are not
 audited, so fork and deploy them at your own risk. Here is the full list of
 unaudited programs:
