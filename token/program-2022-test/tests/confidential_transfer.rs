@@ -18,7 +18,8 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{
-                self, ConfidentialTransferAccount, MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
+                self, instruction::TransferContextStateAccounts, ConfidentialTransferAccount,
+                MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
             },
             BaseStateWithExtensions, ExtensionType,
         },
@@ -972,6 +973,7 @@ async fn confidential_transfer_transfer() {
             alice_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -1002,6 +1004,7 @@ async fn confidential_transfer_transfer() {
             alice_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -1055,6 +1058,7 @@ async fn confidential_transfer_transfer() {
             bob_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -1096,6 +1100,7 @@ async fn confidential_transfer_transfer() {
             bob_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
             &[&bob],
+            None,
         )
         .await
         .unwrap();
@@ -1113,6 +1118,7 @@ async fn confidential_transfer_transfer() {
             bob_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
             &[&bob],
+            None,
         )
         .await
         .unwrap_err();
@@ -1232,6 +1238,7 @@ async fn confidential_transfer_transfer_with_fee() {
             TEST_FEE_BASIS_POINTS,
             TEST_MAXIMUM_FEE,
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -1265,6 +1272,7 @@ async fn confidential_transfer_transfer_with_fee() {
             TEST_FEE_BASIS_POINTS,
             TEST_MAXIMUM_FEE,
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -1321,6 +1329,7 @@ async fn confidential_transfer_transfer_with_fee() {
             TEST_FEE_BASIS_POINTS,
             TEST_MAXIMUM_FEE,
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -1465,6 +1474,7 @@ async fn confidential_transfer_transfer_memo() {
             bob_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
             &[&alice],
+            None,
         )
         .await
         .unwrap_err();
@@ -1494,6 +1504,7 @@ async fn confidential_transfer_transfer_memo() {
             bob_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -1600,6 +1611,7 @@ async fn confidential_transfer_transfer_with_fee_and_memo() {
             TEST_FEE_BASIS_POINTS,
             TEST_MAXIMUM_FEE,
             &[&alice],
+            None,
         )
         .await
         .unwrap_err();
@@ -1631,6 +1643,7 @@ async fn confidential_transfer_transfer_with_fee_and_memo() {
             TEST_FEE_BASIS_POINTS,
             TEST_MAXIMUM_FEE,
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -2268,7 +2281,9 @@ async fn confidential_transfer_transfer_with_proof_context() {
             &alice_meta.token_account,
             &bob_meta.token_account,
             &alice.pubkey(),
-            Some(&context_state_account.pubkey()),
+            Some(TransferContextStateAccounts::SingleAccount(
+                &context_state_account.pubkey(),
+            )),
             42,
             None,
             &alice_meta.elgamal_keypair,
@@ -2276,6 +2291,7 @@ async fn confidential_transfer_transfer_with_proof_context() {
             bob_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -2339,7 +2355,9 @@ async fn confidential_transfer_transfer_with_proof_context() {
             &alice_meta.token_account,
             &bob_meta.token_account,
             &alice.pubkey(),
-            Some(&context_state_account.pubkey()),
+            Some(TransferContextStateAccounts::SingleAccount(
+                &context_state_account.pubkey(),
+            )),
             0,
             None,
             &alice_meta.elgamal_keypair,
@@ -2347,6 +2365,7 @@ async fn confidential_transfer_transfer_with_proof_context() {
             bob_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
             &[&alice],
+            None,
         )
         .await
         .unwrap_err();

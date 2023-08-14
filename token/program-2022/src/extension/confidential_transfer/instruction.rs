@@ -485,6 +485,26 @@ pub struct ApplyPendingBalanceData {
     pub new_decryptable_available_balance: DecryptableBalance,
 }
 
+/// Type for transfer instruction proof context state account addresses intended to be used as
+/// parameters to functions.
+pub enum TransferContextStateAccounts<'a> {
+    /// The context state account address for a single transfer proof context.
+    SingleAccount(&'a Pubkey),
+    /// The context state account addresses for the context states of a split transfer proof.
+    SplitAccounts(TransferSplitContextStateAccounts<'a>),
+}
+
+/// Type for split transfer instruction proof context state account addresses intended to be used
+/// as parameters to functions.
+pub struct TransferSplitContextStateAccounts<'a> {
+    /// The context state account address for an equality proof needed for a transfer.
+    pub equality_proof: &'a Pubkey,
+    /// The context state account address for a ciphertext validity proof needed for a transfer.
+    pub ciphertext_validity_proof: &'a Pubkey,
+    /// The context state account address for a range proof needed for a transfer.
+    pub range_proof: &'a Pubkey,
+}
+
 /// Create a `InitializeMint` instruction
 #[cfg(not(target_os = "solana"))]
 pub fn initialize_mint(
