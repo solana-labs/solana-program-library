@@ -34,6 +34,7 @@ module.exports = {
         "stake-pool/cli",
       ],
     },
+    "single-pool",
     "feature-proposal",
     {
       type: "category",
