@@ -319,7 +319,7 @@ fn process_deposit(
 /// Verifies that a deposit amount is a 48-bit number and returns the least significant 16 bits and
 /// most significant 32 bits of the amount.
 #[cfg(feature = "zk-ops")]
-fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError> {
+pub(crate) fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError> {
     if amount > MAXIMUM_DEPOSIT_TRANSFER_AMOUNT {
         return Err(TokenError::MaximumDepositAmountExceeded);
     }

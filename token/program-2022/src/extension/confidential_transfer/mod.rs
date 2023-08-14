@@ -26,6 +26,13 @@ pub mod processor;
 /// Helper functions to verify zero-knowledge proofs in the Confidential Transfer Extension
 pub mod verify_proof;
 
+/// Helper functions to generate split zero-knowledge proofs for confidential transfers in the
+/// Confidential Transfer Extension.
+///
+/// The logic in this submodule should belong to the `solana-zk-token-sdk` and will be removed with
+/// the next upgrade to the Solana program.
+pub mod split_proof_generation;
+
 /// Confidential Transfer Extension account information needed for instructions
 #[cfg(not(target_os = "solana"))]
 pub mod account_info;

@@ -6,17 +6,13 @@ use crate::{
     extension::{confidential_transfer::*, confidential_transfer_fee::EncryptedFee},
     solana_program::program_error::ProgramError,
     solana_zk_token_sdk::{
-        encryption::pedersen::Pedersen,
         instruction::{
             transfer::TransferProofContext, BatchedGroupedCiphertext2HandlesValidityProofContext,
             BatchedRangeProofContext, CiphertextCommitmentEqualityProofContext,
         },
-        zk_token_elgamal::{
-            ops::subtract,
-            pod::{
-                DecryptHandle, GroupedElGamalCiphertext2Handles, GroupedElGamalCiphertext3Handles,
-                PedersenCommitment, TransferAmountCiphertext,
-            },
+        zk_token_elgamal::pod::{
+            DecryptHandle, GroupedElGamalCiphertext2Handles, GroupedElGamalCiphertext3Handles,
+            PedersenCommitment, TransferAmountCiphertext,
         },
     },
 };

@@ -2,8 +2,9 @@ use {
     crate::{
         error::TokenError,
         extension::confidential_transfer::{
-            ConfidentialTransferAccount, DecryptableBalance, EncryptedBalance,
-            PENDING_BALANCE_LO_BIT_LENGTH,
+            ciphertext_extraction::SourceDecryptHandles,
+            split_proof_generation::transfer_split_proof_data, ConfidentialTransferAccount,
+            DecryptableBalance, EncryptedBalance, PENDING_BALANCE_LO_BIT_LENGTH,
         },
         pod::*,
     },
@@ -17,6 +18,8 @@ use {
             transfer::{FeeParameters, TransferData, TransferWithFeeData},
             withdraw::WithdrawData,
             zero_balance::ZeroBalanceProofData,
+            BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU128Data,
+            CiphertextCommitmentEqualityProofData,
         },
     },
 };
@@ -262,6 +265,39 @@ impl TransferAccountInfo {
             (destination_elgamal_pubkey, auditor_elgamal_pubkey),
         )
         .map_err(|_| TokenError::ProofGeneration)
+    }
+
+    /// Create a transfer proof data that is split into equality, ciphertext validity, and range
+    /// proofs.
+    pub fn generate_split_transfer_proof_data(
+        &self,
+        transfer_amount: u64,
+        source_elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+        destination_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
+    ) -> Result<
+        (
+            CiphertextCommitmentEqualityProofData,
+            BatchedGroupedCiphertext2HandlesValidityProofData,
+            BatchedRangeProofU128Data,
+            SourceDecryptHandles,
+        ),
+        TokenError,
+    > {
+        let current_available_balance = self.available_balance.try_into().unwrap(); // TODO:
+        let current_decryptable_available_balance =
+            self.decryptable_available_balance.try_into().unwrap(); // TODO: replace with a
+                                                                    // suitable error type
+        transfer_split_proof_data(
+            &current_available_balance,
+            &current_decryptable_available_balance,
+            transfer_amount,
+            source_elgamal_keypair,
+            aes_key,
+            destination_elgamal_pubkey,
+            auditor_elgamal_pubkey,
+        )
     }
 
     /// Create a transfer with fee proof data
