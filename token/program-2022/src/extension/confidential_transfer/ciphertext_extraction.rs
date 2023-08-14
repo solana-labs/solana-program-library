@@ -132,7 +132,7 @@ pub(crate) fn transfer_amount_encryption_from_decrypt_handle(
 
     let mut transfer_amount_ciphertext_bytes = [0u8; 128];
     transfer_amount_ciphertext_bytes[..32].copy_from_slice(&grouped_ciphertext_bytes[..32]);
-    transfer_amount_ciphertext_bytes[32..64].copy_from_slice(&source_decrypt_handle_bytes);
+    transfer_amount_ciphertext_bytes[32..64].copy_from_slice(source_decrypt_handle_bytes);
     transfer_amount_ciphertext_bytes[64..128].copy_from_slice(&grouped_ciphertext_bytes[32..96]);
 
     TransferAmountCiphertext(GroupedElGamalCiphertext3Handles(

@@ -113,6 +113,7 @@ impl ConfidentialTokenAccountMeta {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[cfg(feature = "zk-ops")]
     async fn new_with_tokens<T>(
         token: &Token<T>,
@@ -2439,7 +2440,7 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
     let extension = state
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
-    let transfer_account_info = TransferAccountInfo::new(&extension);
+    let transfer_account_info = TransferAccountInfo::new(extension);
 
     let (
         equality_proof_data,
