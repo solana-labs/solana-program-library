@@ -3,7 +3,7 @@ name: Single-Validator Stake Pool Pull Request
 on:
   pull_request:
     paths:
-    - 'stake-pool/single-pool/**'
+    - 'single-pool/**'
     - 'token/**'
     - 'associated-token-account/**'
     - 'ci/*-version.sh'
@@ -11,7 +11,7 @@ on:
   push:
     branches: [master]
     paths:
-    - 'stake-pool/single-pool/**'
+    - 'single-pool/**'
     - 'token/**'
     - 'associated-token-account/**'
     - 'ci/*-version.sh'
@@ -61,7 +61,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test
-        run: ./ci/cargo-test-sbf.sh stake-pool/single-pool
+        run: ./ci/cargo-test-sbf.sh single-pool/program
 
       - name: Upload programs
         uses: actions/upload-artifact@v2
@@ -110,9 +110,9 @@ jobs:
         run: |
           cargo build-sbf --manifest-path=token/program/Cargo.toml
           cargo build-sbf --manifest-path=associated-token-account/program/Cargo.toml
-          cargo build-sbf --manifest-path=stake-pool/single-pool/Cargo.toml
+          cargo build-sbf --manifest-path=single-pool/program/Cargo.toml
 
       - name: Build and test
         run: |
-          cargo build --manifest-path ./stake-pool/single-pool-cli/Cargo.toml
-          cargo test --manifest-path ./stake-pool/single-pool-cli/Cargo.toml
+          cargo build --manifest-path ./single-pool/cli/Cargo.toml
+          cargo test --manifest-path ./single-pool/cli/Cargo.toml

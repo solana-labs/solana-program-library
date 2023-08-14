@@ -127,7 +127,7 @@ async fn start_validator() -> (TestValidator, Keypair) {
         UpgradeableProgramInfo {
             program_id: Pubkey::from_str("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s").unwrap(),
             loader: bpf_loader_upgradeable::id(),
-            program_path: PathBuf::from("../single-pool/tests/fixtures/mpl_token_metadata.so"),
+            program_path: PathBuf::from("../program/tests/fixtures/mpl_token_metadata.so"),
             upgrade_authority: Pubkey::default(),
         },
         UpgradeableProgramInfo {
