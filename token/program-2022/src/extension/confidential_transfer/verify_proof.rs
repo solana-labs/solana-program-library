@@ -1,7 +1,7 @@
 use {
     crate::{
         check_zk_token_proof_program_account,
-        extension::confidential_transfer::{instruction::*, *},
+        extension::confidential_transfer::{ciphertext_extraction::*, instruction::*, *},
         proof::decode_proof_instruction_context,
     },
     solana_program::{
@@ -119,10 +119,25 @@ pub fn verify_transfer_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
     split_proof_context_state_accounts: bool,
-) -> Result<TransferProofContext, ProgramError> {
+) -> Result<TransferProofContextInfo, ProgramError> {
     if proof_instruction_offset == 0 && split_proof_context_state_accounts {
-        // TODO: decode each context state accounts and check consistency between them
-        unimplemented!()
+        let equality_proof_context_state_account_info = next_account_info(account_info_iter)?;
+        let equality_proof_context =
+            verify_equality_proof(equality_proof_context_state_account_info)?;
+
+        let ciphertext_validity_proof_context_state_account_info =
+            next_account_info(account_info_iter)?;
+        let ciphertext_validity_proof_context =
+            verify_ciphertext_validity_proof(ciphertext_validity_proof_context_state_account_info)?;
+
+        let range_proof_context_state_account_info = next_account_info(account_info_iter)?;
+        let range_proof_context = verify_range_proof(range_proof_context_state_account_info)?;
+
+        Ok(TransferProofContextInfo::new(
+            &equality_proof_context,
+            &ciphertext_validity_proof_context,
+            &range_proof_context,
+        )?)
     } else if proof_instruction_offset == 0 && !split_proof_context_state_accounts {
         // interpret `account_info` as a context state account
         let context_state_account_info = next_account_info(account_info_iter)?;
@@ -135,18 +150,19 @@ pub fn verify_transfer_proof(
             return Err(ProgramError::InvalidInstructionData);
         }
 
-        Ok(context_state.proof_context)
+        Ok(context_state.proof_context.into())
     } else {
         // interpret `account_info` as sysvar
         let sysvar_account_info = next_account_info(account_info_iter)?;
         let zkp_instruction =
             get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        Ok(*decode_proof_instruction_context::<
-            TransferData,
-            TransferProofContext,
-        >(
-            ProofInstruction::VerifyTransfer, &zkp_instruction
-        )?)
+        Ok(
+            (*decode_proof_instruction_context::<TransferData, TransferProofContext>(
+                ProofInstruction::VerifyTransfer,
+                &zkp_instruction,
+            )?)
+            .into(),
+        )
     }
 }
 
@@ -187,4 +203,56 @@ pub fn verify_transfer_with_fee_proof(
             &zkp_instruction,
         )?)
     }
+}
+
+/// Verify and process equality proof for [Transfer] and [TransferWithFee] instructions.
+fn verify_equality_proof(
+    account_info: &AccountInfo<'_>,
+) -> Result<CiphertextCommitmentEqualityProofContext, ProgramError> {
+    check_zk_token_proof_program_account(account_info.owner)?;
+    let context_state_account_data = account_info.data.borrow();
+    let equality_proof_context_state = pod_from_bytes::<
+        ProofContextState<CiphertextCommitmentEqualityProofContext>,
+    >(&context_state_account_data)?;
+
+    if equality_proof_context_state.proof_type != ProofType::CiphertextCommitmentEquality.into() {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    Ok(equality_proof_context_state.proof_context)
+}
+
+/// Verify and process ciphertext validity proof for [Transfer] and [TransferWithFee] instructions.
+fn verify_ciphertext_validity_proof(
+    account_info: &AccountInfo<'_>,
+) -> Result<BatchedGroupedCiphertext2HandlesValidityProofContext, ProgramError> {
+    check_zk_token_proof_program_account(account_info.owner)?;
+    let context_state_account_data = account_info.data.borrow();
+    let ciphertext_validity_proof_context_state = pod_from_bytes::<
+        ProofContextState<BatchedGroupedCiphertext2HandlesValidityProofContext>,
+    >(&context_state_account_data)?;
+
+    if ciphertext_validity_proof_context_state.proof_type
+        != ProofType::BatchedGroupedCiphertext2HandlesValidity.into()
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    Ok(ciphertext_validity_proof_context_state.proof_context)
+}
+
+/// Verify and process range proof for [Transfer] and [TransferWithFee] instructions.
+fn verify_range_proof(
+    account_info: &AccountInfo<'_>,
+) -> Result<BatchedRangeProofContext, ProgramError> {
+    check_zk_token_proof_program_account(account_info.owner)?;
+    let context_state_account_data = account_info.data.borrow();
+    let range_proof_context_state =
+        pod_from_bytes::<ProofContextState<BatchedRangeProofContext>>(&context_state_account_data)?;
+
+    if range_proof_context_state.proof_type != ProofType::BatchedRangeProofU128.into() {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    Ok(range_proof_context_state.proof_context)
 }
