@@ -6,35 +6,21 @@
 # ONLY RUNS IN CI.
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 if [[ -n "$CI" ]]; then
-  # Clears 4GB
-  sudo docker rmi $(docker image ls -aq)
-  # Clears 12GB
+  set -e
+
+  sudo rm -rf /usr/share/dotnet
+  sudo rm -rf /usr/share/swift
+  sudo rm -rf /usr/share/mysql
+  sudo rm -rf /usr/share/az_*
+  sudo rm -rf /usr/share/postgresql-common
+
+  sudo rm -rf /opt/ghc
+  sudo rm -rf /opt/az
+  sudo rm -rf /opt/pipx
+  sudo rm -rf /opt/microsoft
+  sudo rm -rf /opt/google
+  sudo rm -rf /opt/hostedtoolcache
+
   sudo rm -rf /usr/local/lib/android
-  # Clears 6GB
-  #sudo apt purge aria2 \
-  #  ansible \
-  #  azure-cli \
-  #  xorriso \
-  #  dotnet-sdk-* \
-  #  firefox \
-  #  g++-9 \
-  #  gfortran-9 \
-  #  google-chrome-stable google-cloud-sdk \
-  #  ant ant-optional \
-  #  mercurial \
-  #  mono-complete \
-  #  mysql-client libmysqlclient-dev mysql-server \
-  #  mssql-tools unixodbc-dev libxft-dev \
-  #  libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
-  #  nginx \
-  #  shim-signed \
-  #  php* \
-  #  libpq-dev postgresql-client \
-  #  powershell \
-  #  ruby-full \
-  #  sphinxsearch \
-  #  subversion \
-  #  -yq --allow-remove-essential
-  #sudo apt autopurge -y
-  #sudo apt autoclean -y
+  sudo rm -rf /usr/local/lib/heroku
 fi
