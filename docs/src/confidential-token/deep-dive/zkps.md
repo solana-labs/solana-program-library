@@ -177,7 +177,7 @@ components associated with fees.
 
 If a mint is extended for fees, then transfers of tokens that pertains to the
 mint requires a transfer fee that is calculated as a percentage of the transfer
-amount. Specifically, a transaction fee is determined by two paramters:
+amount. Specifically, a transaction fee is determined by two parameters:
 
 - `bp`: The base point representing the fee rate. It is a positive integer that
   represents a percentage rate that is two points to the right of the decimal
@@ -284,7 +284,7 @@ the following notes.
 
 [[Notes]](./validity_proof.pdf)
 
-Validity proofs is required for the `Withdraw`, `Transfer`, and
+Validity proofs are required for the `Withdraw`, `Transfer`, and
 `TransferWithFee` instructions. These instructions require the client to include
 twisted ElGamal ciphertexts as part of the instruction data. Validity proofs
 that are attached with these instructions certify that these ElGamal ciphertexts
@@ -318,7 +318,7 @@ specified in the following notes.
 [[Notes]](./equality_proof.pdf).
 
 Ciphertext-commitment equality proofs are required for the `Transfer` and
-`TransferWithFee` instructions. Ciphertext-ciphertext equaltiy proofs are
+`TransferWithFee` instructions. Ciphertext-ciphertext equality proofs are
 required for the `WithdrawWithheldTokensFromMint` and
 `WithdrawWithheldTokensFromAccounts` instructions.
 
