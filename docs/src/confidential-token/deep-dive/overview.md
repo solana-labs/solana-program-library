@@ -9,8 +9,8 @@ confidential extension. We refer to the previous section for a quick start
 guide.
 
 We note that this overview exists mainly to provide the design intuition behind
-the underlying cryptography that is used in the confidential extension. Some of
-the descriptions of the protocol in the overview could differ from the actual
+the underlying cryptography that is used in the confidential extension. Some parts of
+the description of the protocol in the overview could differ from the actual
 implementation. We refer to the subsequent subsections, the [source
 code](https://github.com/solana-labs/solana-program-library), and the
 documentation within for the precise details of the underlying cryptography.
