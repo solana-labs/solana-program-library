@@ -83,7 +83,7 @@ await sendAndConfirmTransaction(connection, tx, [payer]);
 
 4. Replace a leaf in the tree, using a 3rd party indexer
 
-This example assumes that some 3rd party service is indexing the the tree at `cmtKeypair.publicKey` for you, and providing MerkleProofs via some REST endpoint.
+This example assumes that some 3rd party service is indexing the tree at `cmtKeypair.publicKey` for you, and providing MerkleProofs via some REST endpoint.
 The `getProofFromAnIndexer` function is a **placeholder** to exemplify this relationship.
 
 ```typescript
