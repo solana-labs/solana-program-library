@@ -234,7 +234,7 @@ impl TransferProofContextInfo {
             // the fourth dummy commitment can be any commitment
         ];
 
-        if range_proof_commitments
+        if !range_proof_commitments
             .iter()
             .zip(expected_commitments.iter())
             .all(|(proof_commitment, expected_commitment)| proof_commitment == expected_commitment)
@@ -255,7 +255,7 @@ impl TransferProofContextInfo {
         ]
         .iter();
 
-        if range_proof_bit_lengths
+        if !range_proof_bit_lengths
             .iter()
             .zip(expected_bit_lengths)
             .all(|(proof_len, expected_len)| proof_len == expected_len)
