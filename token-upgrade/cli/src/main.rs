@@ -504,32 +504,12 @@ mod test {
     async fn new_validator_for_test() -> (TestValidator, Keypair) {
         solana_logger::setup();
         let mut test_validator_genesis = TestValidatorGenesis::default();
-        test_validator_genesis.add_upgradeable_programs_with_path(&[
-            UpgradeableProgramInfo {
-                program_id: spl_token::id(),
-                loader: bpf_loader_upgradeable::id(),
-                program_path: PathBuf::from("../../target/deploy/spl_token.so"),
-                upgrade_authority: Pubkey::new_unique(),
-            },
-            UpgradeableProgramInfo {
-                program_id: spl_associated_token_account::id(),
-                loader: bpf_loader_upgradeable::id(),
-                program_path: PathBuf::from("../../target/deploy/spl_associated_token_account.so"),
-                upgrade_authority: Pubkey::new_unique(),
-            },
-            UpgradeableProgramInfo {
-                program_id: spl_token_2022::id(),
-                loader: bpf_loader_upgradeable::id(),
-                program_path: PathBuf::from("../../target/deploy/spl_token_2022.so"),
-                upgrade_authority: Pubkey::new_unique(),
-            },
-            UpgradeableProgramInfo {
-                program_id: spl_token_upgrade::id(),
-                loader: bpf_loader_upgradeable::id(),
-                program_path: PathBuf::from("../../target/deploy/spl_token_upgrade.so"),
-                upgrade_authority: Pubkey::new_unique(),
-            },
-        ]);
+        test_validator_genesis.add_upgradeable_programs_with_path(&[UpgradeableProgramInfo {
+            program_id: spl_token_upgrade::id(),
+            loader: bpf_loader_upgradeable::id(),
+            program_path: PathBuf::from("../../target/deploy/spl_token_upgrade.so"),
+            upgrade_authority: Pubkey::new_unique(),
+        }]);
         test_validator_genesis.start_async().await
     }
 
