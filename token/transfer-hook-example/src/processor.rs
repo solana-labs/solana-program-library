@@ -4,7 +4,6 @@ use {
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
-        instruction::AccountMeta,
         msg,
         program::invoke_signed,
         program_error::ProgramError,
@@ -24,7 +23,6 @@ use {
         get_extra_account_metas_address, get_extra_account_metas_address_and_bump_seed,
         instruction::{ExecuteInstruction, TransferHookInstruction},
     },
-    spl_type_length_value::state::TlvStateBorrowed,
 };
 
 fn check_token_account_is_transferring(account_info: &AccountInfo) -> Result<(), ProgramError> {
@@ -42,7 +40,7 @@ fn check_token_account_is_transferring(account_info: &AccountInfo) -> Result<(),
 pub fn process_execute(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    _amount: u64,
+    amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -64,27 +62,13 @@ pub fn process_execute(
     }
 
     let data = extra_account_metas_info.try_borrow_data()?;
-    let state = TlvStateBorrowed::unpack(&data).unwrap();
-    let extra_account_metas =
-        ExtraAccountMetaList::unpack_with_tlv_state::<ExecuteInstruction>(&state)?;
 
-    // if incorrect number of are provided, error
-    let extra_account_infos = account_info_iter.as_slice();
-    let account_metas = extra_account_metas.data();
-    if extra_account_infos.len() != account_metas.len() {
-        return Err(TransferHookError::IncorrectAccount.into());
-    }
-
-    // Let's assume that they're provided in the correct order
-    for (i, account_info) in extra_account_infos.iter().enumerate() {
-        let meta = AccountMeta::try_from(&account_metas[i])?;
-        if !(&meta.pubkey == account_info.key
-            && meta.is_signer == account_info.is_signer
-            && meta.is_writable == account_info.is_writable)
-        {
-            return Err(TransferHookError::IncorrectAccount.into());
-        }
-    }
+    ExtraAccountMetaList::check_account_infos::<ExecuteInstruction>(
+        accounts,
+        &TransferHookInstruction::Execute { amount }.pack(),
+        program_id,
+        &data,
+    )?;
 
     Ok(())
 }

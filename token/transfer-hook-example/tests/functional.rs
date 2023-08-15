@@ -9,6 +9,7 @@ use {
         account_info::AccountInfo,
         entrypoint::ProgramResult,
         instruction::{AccountMeta, InstructionError},
+        program_error::ProgramError,
         program_option::COption,
         pubkey::Pubkey,
         signature::Signer,
@@ -16,7 +17,9 @@ use {
         system_instruction, sysvar,
         transaction::{Transaction, TransactionError},
     },
-    spl_tlv_account_resolution::{account::ExtraAccountMeta, state::ExtraAccountMetaList},
+    spl_tlv_account_resolution::{
+        account::ExtraAccountMeta, seeds::Seed, state::ExtraAccountMetaList,
+    },
     spl_token_2022::{
         extension::{transfer_hook::TransferHookAccount, ExtensionType, StateWithExtensionsMut},
         state::{Account, AccountState, Mint},
@@ -138,6 +141,7 @@ async fn success_execute() {
     let source = Pubkey::new_unique();
     let destination = Pubkey::new_unique();
     let decimals = 2;
+    let amount = 0u64;
 
     setup_token_accounts(
         &mut program_test,
@@ -153,15 +157,61 @@ async fn success_execute() {
 
     let extra_account_metas_address = get_extra_account_metas_address(&mint_address, &program_id);
 
+    let writable_pubkey = Pubkey::new_unique();
+
+    let init_extra_account_metas = [
+        ExtraAccountMeta::new_with_pubkey(&sysvar::instructions::id(), false, false).unwrap(),
+        ExtraAccountMeta::new_with_pubkey(&mint_authority_pubkey, true, false).unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::Literal {
+                    bytes: b"seed-prefix".to_vec(),
+                },
+                Seed::AccountKey { index: 0 },
+            ],
+            false,
+            true,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::InstructionData {
+                    index: 8,  // After instruction discriminator
+                    length: 8, // `u64` (amount)
+                },
+                Seed::AccountKey { index: 2 },
+            ],
+            false,
+            true,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_pubkey(&writable_pubkey, false, true).unwrap(),
+    ];
+
+    let extra_pda_1 = Pubkey::find_program_address(
+        &[
+            b"seed-prefix",  // Literal prefix
+            source.as_ref(), // Account at index 0
+        ],
+        &program_id,
+    )
+    .0;
+    let extra_pda_2 = Pubkey::find_program_address(
+        &[
+            &amount.to_le_bytes(), // Instruction data bytes 8 to 16
+            destination.as_ref(),  // Account at index 2
+        ],
+        &program_id,
+    )
+    .0;
+
     let extra_account_metas = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
-        AccountMeta::new(extra_account_metas_address, false),
+        AccountMeta::new(extra_pda_1, false),
+        AccountMeta::new(extra_pda_2, false),
+        AccountMeta::new(writable_pubkey, false),
     ];
-    let init_extra_account_metas = extra_account_metas
-        .iter()
-        .map(ExtraAccountMeta::from)
-        .collect::<Vec<_>>();
 
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
@@ -204,7 +254,7 @@ async fn success_execute() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &extra_account_metas[..2],
-                0,
+                amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer, &mint_authority],
@@ -230,7 +280,9 @@ async fn success_execute() {
         let extra_account_metas = [
             AccountMeta::new_readonly(sysvar::instructions::id(), false),
             AccountMeta::new_readonly(mint_authority_pubkey, true),
-            AccountMeta::new(wallet.pubkey(), false),
+            AccountMeta::new(extra_pda_1, false),
+            AccountMeta::new(extra_pda_2, false),
+            AccountMeta::new(Pubkey::new_unique(), false),
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
@@ -241,7 +293,54 @@ async fn success_execute() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &extra_account_metas,
+                amount,
+            )],
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &mint_authority],
+            context.last_blockhash,
+        );
+        let error = context
+            .banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap();
+        assert_eq!(
+            error,
+            TransactionError::InstructionError(
                 0,
+                InstructionError::Custom(TransferHookError::IncorrectAccount as u32),
+            )
+        );
+    }
+
+    // fail with wrong PDA
+    let wrong_pda_2 = Pubkey::find_program_address(
+        &[
+            &99u64.to_le_bytes(), // Wrong data
+            destination.as_ref(),
+        ],
+        &program_id,
+    )
+    .0;
+    {
+        let extra_account_metas = [
+            AccountMeta::new_readonly(sysvar::instructions::id(), false),
+            AccountMeta::new_readonly(mint_authority_pubkey, true),
+            AccountMeta::new(extra_pda_1, false),
+            AccountMeta::new(wrong_pda_2, false),
+            AccountMeta::new(writable_pubkey, false),
+        ];
+        let transaction = Transaction::new_signed_with_payer(
+            &[execute_with_extra_account_metas(
+                &program_id,
+                &source,
+                &mint_address,
+                &destination,
+                &wallet.pubkey(),
+                &extra_account_metas_address,
+                &extra_account_metas,
+                amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer, &mint_authority],
@@ -267,7 +366,9 @@ async fn success_execute() {
         let extra_account_metas = [
             AccountMeta::new_readonly(sysvar::instructions::id(), false),
             AccountMeta::new_readonly(mint_authority_pubkey, false),
-            AccountMeta::new(extra_account_metas_address, false),
+            AccountMeta::new(extra_pda_1, false),
+            AccountMeta::new(extra_pda_2, false),
+            AccountMeta::new(writable_pubkey, false),
         ];
         let transaction = Transaction::new_signed_with_payer(
             &[execute_with_extra_account_metas(
@@ -278,7 +379,7 @@ async fn success_execute() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &extra_account_metas,
-                0,
+                amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer],
@@ -310,7 +411,7 @@ async fn success_execute() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &extra_account_metas,
-                0,
+                amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer, &mint_authority],
@@ -391,16 +492,21 @@ async fn fail_incorrect_derivation() {
 pub fn process_instruction(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
-    _input: &[u8],
+    input: &[u8],
 ) -> ProgramResult {
+    let amount = input
+        .get(8..16)
+        .and_then(|slice| slice.try_into().ok())
+        .map(u64::from_le_bytes)
+        .ok_or(ProgramError::InvalidInstructionData)?;
     onchain::invoke_execute(
         accounts[0].key,
         accounts[1].clone(),
         accounts[2].clone(),
         accounts[3].clone(),
         accounts[4].clone(),
-        &accounts[4..],
-        0,
+        &accounts[5..],
+        amount,
     )
 }
 
@@ -423,6 +529,7 @@ async fn success_on_chain_invoke() {
     let source = Pubkey::new_unique();
     let destination = Pubkey::new_unique();
     let decimals = 2;
+    let amount = 0u64;
 
     setup_token_accounts(
         &mut program_test,
@@ -438,17 +545,61 @@ async fn success_on_chain_invoke() {
 
     let extra_account_metas_address =
         get_extra_account_metas_address(&mint_address, &hook_program_id);
-
     let writable_pubkey = Pubkey::new_unique();
+
+    let init_extra_account_metas = [
+        ExtraAccountMeta::new_with_pubkey(&sysvar::instructions::id(), false, false).unwrap(),
+        ExtraAccountMeta::new_with_pubkey(&mint_authority_pubkey, true, false).unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::Literal {
+                    bytes: b"seed-prefix".to_vec(),
+                },
+                Seed::AccountKey { index: 0 },
+            ],
+            false,
+            true,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::InstructionData {
+                    index: 8,  // After instruction discriminator
+                    length: 8, // `u64` (amount)
+                },
+                Seed::AccountKey { index: 2 },
+            ],
+            false,
+            true,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_pubkey(&writable_pubkey, false, true).unwrap(),
+    ];
+
+    let extra_pda_1 = Pubkey::find_program_address(
+        &[
+            b"seed-prefix",  // Literal prefix
+            source.as_ref(), // Account at index 0
+        ],
+        &hook_program_id,
+    )
+    .0;
+    let extra_pda_2 = Pubkey::find_program_address(
+        &[
+            &amount.to_le_bytes(), // Instruction data bytes 8 to 16
+            destination.as_ref(),  // Account at index 2
+        ],
+        &hook_program_id,
+    )
+    .0;
+
     let extra_account_metas = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
+        AccountMeta::new(extra_pda_1, false),
+        AccountMeta::new(extra_pda_2, false),
         AccountMeta::new(writable_pubkey, false),
     ];
-    let init_extra_account_metas = extra_account_metas
-        .iter()
-        .map(ExtraAccountMeta::from)
-        .collect::<Vec<_>>();
 
     let mut context = program_test.start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
@@ -489,7 +640,7 @@ async fn success_on_chain_invoke() {
         &wallet.pubkey(),
         &extra_account_metas_address,
         &extra_account_metas,
-        0,
+        amount,
     );
     test_instruction
         .accounts
@@ -521,6 +672,7 @@ async fn fail_without_transferring_flag() {
     let source = Pubkey::new_unique();
     let destination = Pubkey::new_unique();
     let decimals = 2;
+
     setup_token_accounts(
         &mut program_test,
         &token_program_id,
