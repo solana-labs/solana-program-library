@@ -47,7 +47,7 @@ impl EmptyAccountAccountInfo {
         let available_balance = self
             .available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
 
         ZeroBalanceProofData::new(elgamal_keypair, &available_balance)
             .map_err(|_| TokenError::ProofGeneration)
@@ -93,7 +93,7 @@ impl ApplyPendingBalanceAccountInfo {
         let pending_balance_lo = self
             .pending_balance_lo
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         elgamal_secret_key
             .decrypt_u32(&pending_balance_lo)
             .ok_or(TokenError::AccountDecryption)
@@ -106,7 +106,7 @@ impl ApplyPendingBalanceAccountInfo {
         let pending_balance_hi = self
             .pending_balance_hi
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         elgamal_secret_key
             .decrypt_u32(&pending_balance_hi)
             .ok_or(TokenError::AccountDecryption)
@@ -116,7 +116,7 @@ impl ApplyPendingBalanceAccountInfo {
         let decryptable_available_balance = self
             .decryptable_available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         aes_key
             .decrypt(&decryptable_available_balance)
             .ok_or(TokenError::AccountDecryption)
@@ -165,7 +165,7 @@ impl WithdrawAccountInfo {
         let decryptable_available_balance = self
             .decryptable_available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         aes_key
             .decrypt(&decryptable_available_balance)
             .ok_or(TokenError::AccountDecryption)
@@ -181,7 +181,7 @@ impl WithdrawAccountInfo {
         let current_available_balance = self
             .available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
 
         WithdrawData::new(
@@ -230,7 +230,7 @@ impl TransferAccountInfo {
         let decryptable_available_balance = self
             .decryptable_available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         aes_key
             .decrypt(&decryptable_available_balance)
             .ok_or(TokenError::AccountDecryption)
@@ -248,7 +248,7 @@ impl TransferAccountInfo {
         let current_source_available_balance = self
             .available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         let current_source_decrypted_available_balance =
             self.decrypted_available_balance(aes_key)?;
 
@@ -285,10 +285,15 @@ impl TransferAccountInfo {
         ),
         TokenError,
     > {
-        let current_available_balance = self.available_balance.try_into().unwrap(); // TODO:
-        let current_decryptable_available_balance =
-            self.decryptable_available_balance.try_into().unwrap(); // TODO: replace with a
-                                                                    // suitable error type
+        let current_available_balance = self
+            .available_balance
+            .try_into()
+            .map_err(|_| TokenError::MalformedCiphertext)?;
+        let current_decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::MalformedCiphertext)?;
+
         transfer_split_proof_data(
             &current_available_balance,
             &current_decryptable_available_balance,
@@ -316,7 +321,7 @@ impl TransferAccountInfo {
         let current_source_available_balance = self
             .available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         let current_source_decrypted_available_balance =
             self.decrypted_available_balance(aes_key)?;
 

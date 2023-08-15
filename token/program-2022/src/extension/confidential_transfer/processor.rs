@@ -303,12 +303,12 @@ fn process_deposit(
     if amount_lo > 0 {
         confidential_transfer_account.pending_balance_lo =
             syscall::add_to(&confidential_transfer_account.pending_balance_lo, amount_lo)
-                .ok_or(ProgramError::InvalidInstructionData)?;
+                .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
     if amount_hi > 0 {
         confidential_transfer_account.pending_balance_hi =
             syscall::add_to(&confidential_transfer_account.pending_balance_hi, amount_hi)
-                .ok_or(ProgramError::InvalidInstructionData)?;
+                .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
 
     confidential_transfer_account.increment_pending_balance_credit_counter()?;
@@ -398,7 +398,7 @@ fn process_withdraw(
     if amount > 0 {
         confidential_transfer_account.available_balance =
             syscall::subtract_from(&confidential_transfer_account.available_balance, amount)
-                .ok_or(ProgramError::InvalidInstructionData)?;
+                .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
     // Check that the final available balance ciphertext is consistent with the actual ciphertext
     // for which the zero-knowledge proof was generated for.
@@ -648,7 +648,7 @@ fn process_source_for_transfer(
         source_transfer_amount_lo,
         source_transfer_amount_hi,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     // Check that the computed available balance is consistent with what was actually used to
     // generate the zkp on the client side.
@@ -701,13 +701,13 @@ fn process_destination_for_transfer(
         &destination_confidential_transfer_account.pending_balance_lo,
         destination_transfer_amount_lo,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     destination_confidential_transfer_account.pending_balance_hi = syscall::add(
         &destination_confidential_transfer_account.pending_balance_hi,
         destination_transfer_amount_hi,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     destination_confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
@@ -722,12 +722,12 @@ fn process_destination_for_transfer(
             &destination_confidential_transfer_account.pending_balance_lo,
             &destination_fee_lo,
         )
-        .ok_or(ProgramError::InvalidInstructionData)?;
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
         destination_confidential_transfer_account.pending_balance_hi = syscall::subtract(
             &destination_confidential_transfer_account.pending_balance_hi,
             &destination_fee_hi,
         )
-        .ok_or(ProgramError::InvalidInstructionData)?;
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
         // Decode lo and hi fee amounts encrypted under the withdraw authority encryption public
         // key
@@ -745,7 +745,7 @@ fn process_destination_for_transfer(
             &withdraw_withheld_authority_fee_lo,
             &withdraw_withheld_authority_fee_hi,
         )
-        .ok_or(ProgramError::InvalidInstructionData)?;
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
 
     Ok(())
@@ -786,7 +786,7 @@ fn process_apply_pending_balance(
         &confidential_transfer_account.pending_balance_lo,
         &confidential_transfer_account.pending_balance_hi,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     confidential_transfer_account.actual_pending_balance_credit_counter =
         confidential_transfer_account.pending_balance_credit_counter;

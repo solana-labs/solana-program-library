@@ -93,9 +93,10 @@ pub fn transfer_split_proof_data(
         &transfer_amount_source_ciphertext_lo,
         &transfer_amount_source_ciphertext_hi,
     )
-    .unwrap(); // TODO: replace with a suitable error type
-    let new_available_balance_ciphertext: ElGamalCiphertext =
-        new_available_balance_ciphertext.try_into().unwrap(); // TODO: replace with a suitable error type
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
+    let new_available_balance_ciphertext: ElGamalCiphertext = new_available_balance_ciphertext
+        .try_into()
+        .map_err(|_| TokenError::MalformedCiphertext)?;
 
     // generate equality proof data
     let equality_proof_data = CiphertextCommitmentEqualityProofData::new(

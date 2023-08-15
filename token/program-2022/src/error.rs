@@ -224,6 +224,14 @@ pub enum TokenError {
     /// Not enough proof context state accounts provided
     #[error("Not enough proof context state accounts provided")]
     NotEnoughProofContextStateAccounts,
+    /// Ciphertext is malformed
+    #[error("Ciphertext is malformed")]
+    MalformedCiphertext,
+
+    // 60
+    /// Ciphertext arithmetic failed
+    #[error("Ciphertext arithmetic failed")]
+    CiphertextArithmeticFailed,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -392,6 +400,12 @@ impl PrintProgramError for TokenError {
             }
             TokenError::NotEnoughProofContextStateAccounts => {
                 msg!("Not enough proof context state accounts provided")
+            }
+            TokenError::MalformedCiphertext => {
+                msg!("Ciphertext is malformed")
+            }
+            TokenError::CiphertextArithmeticFailed => {
+                msg!("Ciphertext arithmetic failed")
             }
         }
     }
