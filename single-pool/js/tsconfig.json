@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
     "module": "esnext",
-    "target": "es2019",
+    "target": "es2020",
     "baseUrl": "./src",
     "outDir": "dist",
     "declaration": true,
     "declarationDir": "dist",
-    //"emitDeclarationOnly": true,
+    "emitDeclarationOnly": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,

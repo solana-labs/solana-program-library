@@ -127,7 +127,7 @@ export function decodeData(type: InstructionType, buffer: Buffer): any {
   return data;
 }
 
-// XXX UpdateTokenMetadata is omitted here because it is runtime-dependent
+// UpdateTokenMetadata is omitted here because its size is runtime-dependent
 export type SinglePoolInstructionType =
   | 'InitializePool'
   | 'DepositStake'
@@ -158,6 +158,25 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction')]),
   },
 });
+
+export function updateTokenMetadataLayout(
+  nameLength: number,
+  symbolLength: number,
+  uriLength: number,
+) {
+  return {
+    index: 4,
+    layout: BufferLayout.struct<any>([
+      BufferLayout.u8('instruction'),
+      BufferLayout.u32('tokenNameLen'),
+      BufferLayout.blob(nameLength, 'tokenName'),
+      BufferLayout.u32('tokenSymbolLen'),
+      BufferLayout.blob(symbolLength, 'tokenSymbol'),
+      BufferLayout.u32('tokenUriLen'),
+      BufferLayout.blob(uriLength, 'tokenUri'),
+    ]),
+  };
+}
 
 // FIXME why does the stake pool js want program id for the pda search fns
 // but hardcodes one for the instruction fns? seems odd
@@ -323,18 +342,9 @@ export class SinglePoolInstruction {
       { pubkey: MPL_METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
     ];
 
-    const type = {
-      index: 4,
-      layout: BufferLayout.struct<any>([
-        BufferLayout.u8('instruction'),
-        BufferLayout.u32('tokenNameLen'),
-        BufferLayout.blob(tokenName.length, 'tokenName'),
-        BufferLayout.u32('tokenSymbolLen'),
-        BufferLayout.blob(tokenSymbol.length, 'tokenSymbol'),
-        BufferLayout.u32('tokenUriLen'),
-        BufferLayout.blob(tokenUri.length, 'tokenUri'),
-      ]),
-    };
+    // TODO check name/sym/uri length...
+
+    const type = updateTokenMetadataLayout(tokenName.length, tokenSymbol.length, tokenUri.length);
 
     const data = encodeData(type, {
       tokenNameLen: tokenName.length,
@@ -557,6 +567,7 @@ export function updateTokenMetadata(
   return transaction;
 }
 
+/*
 async function main() {
   const connection = new Connection('http://127.0.0.1:8899', 'confirmed');
   const payer = Keypair.fromSecretKey(
@@ -592,10 +603,12 @@ async function main() {
   transaction = createTokenMetadata(pool, payer.publicKey);
   await sendAndConfirmTransaction(connection, transaction, [payer]);
 
-  /* XXX this fails because authorize withdrawer mismatch but i think i got the encoding right. test later
-      transaction = updateTokenMetadata(voteAccount, payer.publicKey, "hana", "lol");
-      await sendAndConfirmTransaction(connection, transaction, [payer]);
-  */
+  // XXX this fails because authorize withdrawer mismatch but i think i got the encoding right. test later
+  //    transaction = updateTokenMetadata(voteAccount, payer.publicKey, "hana", "lol");
+  //    await sendAndConfirmTransaction(connection, transaction, [payer]);
+
+  console.log("success");
 }
 
 await main();
+*/
