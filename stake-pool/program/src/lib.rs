@@ -37,9 +37,7 @@ const EPHEMERAL_STAKE_SEED_PREFIX: &[u8] = b"ephemeral";
 pub const MINIMUM_ACTIVE_STAKE: u64 = 1_000_000;
 
 /// Minimum amount of lamports in the reserve
-/// NOTE: This can be changed to 0 once the `stake_allow_zero_undelegated_amount`
-/// feature is enabled on all clusters
-pub const MINIMUM_RESERVE_LAMPORTS: u64 = 1;
+pub const MINIMUM_RESERVE_LAMPORTS: u64 = 0;
 
 /// Maximum amount of validator stake accounts to update per
 /// `UpdateValidatorListBalance` instruction, based on compute limits

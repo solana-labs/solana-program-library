@@ -676,7 +676,7 @@ pub async fn create_blank_stake_account(
     stake: &Keypair,
 ) -> u64 {
     let rent = banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>()) + 1;
+    let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
     let transaction = Transaction::new_signed_with_payer(
         &[system_instruction::create_account(
