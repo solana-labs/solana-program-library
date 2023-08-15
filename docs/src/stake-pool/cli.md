@@ -178,7 +178,8 @@ with epoch 102, the manager will earn 10%.
 
 Additionally, to prevent a malicious manager from immediately setting the withdrawal
 fee to a very high amount, making it practically impossible for users to withdraw,
-the stake pool program currently enforces a limit of 1.5x increase per epoch.
+the stake pool program currently enforces a limit of 1.5x increase every two
+epoch boundaries.
 
 For example, if the current withdrawal fee is 2.5%, the maximum settable fee is
 3.75%, and will take effect after two epoch boundaries.
