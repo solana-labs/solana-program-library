@@ -108,8 +108,6 @@ jobs:
 
       - name: Build dependent programs
         run: |
-          cargo build-sbf --manifest-path=token/program/Cargo.toml
-          cargo build-sbf --manifest-path=associated-token-account/program/Cargo.toml
           cargo build-sbf --manifest-path=single-pool/program/Cargo.toml
 
       - name: Build and test
