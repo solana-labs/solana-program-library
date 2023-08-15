@@ -6697,6 +6697,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-interface-base"
+version = "0.1.0"
+dependencies = [
+ "borsh 0.10.3",
+ "solana-program",
+ "spl-discriminator",
+ "spl-tlv-account-resolution",
+ "spl-type-length-value",
+]
+
+[[package]]
 name = "spl-managed-token"
 version = "0.1.0"
 dependencies = [
@@ -7081,6 +7092,37 @@ dependencies = [
  "spl-token-metadata-interface",
  "spl-transfer-hook-interface",
  "thiserror",
+]
+
+[[package]]
+name = "spl-token-group-example"
+version = "0.1.0"
+dependencies = [
+ "borsh 0.10.3",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-discriminator",
+ "spl-tlv-account-resolution",
+ "spl-token-2022 0.7.0",
+ "spl-token-client",
+ "spl-token-group-interface",
+ "spl-token-metadata-interface",
+ "spl-type-length-value",
+ "test-case",
+]
+
+[[package]]
+name = "spl-token-group-interface"
+version = "0.1.0"
+dependencies = [
+ "borsh 0.10.3",
+ "solana-program",
+ "spl-discriminator",
+ "spl-interface-base",
+ "spl-program-error",
+ "spl-tlv-account-resolution",
+ "spl-type-length-value",
 ]
 
 [[package]]
