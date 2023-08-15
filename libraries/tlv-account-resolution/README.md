@@ -21,7 +21,7 @@ impl SplDiscriminate for MyInstruction {
     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 }
 
-// Actually put it in the additional required account keys and signer / writable
+// Prepare the additional required account keys and signer / writable
 let extra_metas = [
     AccountMeta::new(Pubkey::new_unique(), false).into(),
     AccountMeta::new(Pubkey::new_unique(), true).into(),
@@ -29,7 +29,7 @@ let extra_metas = [
     AccountMeta::new_readonly(Pubkey::new_unique(), false).into(),
 ];
 
-// Assume that this buffer is actually account data, already allocated to `account_size`
+// Allocate a new buffer with the proper `account_size`
 let account_size = ExtraAccountMetaList::size_of(extra_metas.len()).unwrap();
 let mut buffer = vec![0; account_size];
 
@@ -57,7 +57,7 @@ ExtraAccountMetaList::add_to_cpi_instruction::<MyInstruction>(
 ).unwrap();
 ```
 
-For ease of use on-chain, `ExtraAccountMetaList::init_with_account_infos` is also
+For ease of use on-chain, `ExtraAccountMetaList::init` is also
 provided to initialize directly from a set of given accounts.
 
 ## Motivation
@@ -83,7 +83,7 @@ uses static account data.
 
 For example, let's imagine there's a `Transferable` interface, along with a
 `transfer` instruction. Some programs that implement `transfer` may need more
-accounts than just the ones defined in the interface. How does a an on-chain or
+accounts than just the ones defined in the interface. How does an on-chain or
 off-chain client figure out the additional required accounts?
 
 The "static" approach requires programs to write the extra required accounts to
@@ -99,13 +99,35 @@ instruction and give the correct account infos.
 
 This approach could also be called a "state interface".
 
+### Types of Required Accounts
+
+This library is capable of storing two types of configurations for additional
+required accounts:
+
+- Accounts with a fixed address
+- Accounts with a **dynamic program-derived address** derived from seeds that
+may come from any combination of the following:
+  - Hard-coded values, such as string literals or integers
+  - A slice of the instruction data provided to the transfer-hook program
+  - The address of another account in the total list of accounts
+
+When you store configurations for a dynamic Program-Derived Address within the
+additional required accounts, the PDA itself is evaluated (or resolved) at the
+time of instruction invocation using the instruction itself. This
+occurs in the offchain and onchain helpers mentioned below, which leverage
+the SPL TLV Account Resolution library to perform this resolution
+automatically.
+
 ## How it works
 
 This library uses `spl-type-length-value` to read and write required instruction
 accounts from account data.
 
 Interface instructions must have an 8-byte discriminator, so that the exposed
-`ExtraAccountMetaList` type can use the instruction discriminator as a `ArrayDiscriminator`.
+`ExtraAccountMetaList` type can use the instruction discriminator as an
+`ArrayDiscriminator`, which allows that discriminator to serve as a unique TLV
+discriminator for identifying entries that correspond to that particular
+instruction.
 
 This can be confusing. Typically, a type implements `SplDiscriminate`, so that
 the type can be written into TLV data. In this case, `ExtraAccountMetaList` is

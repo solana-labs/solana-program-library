@@ -1347,6 +1347,10 @@ A usable example program exists at
 Token-2022 uses this example program in tests to ensure that it properly uses
 the transfer hook interface.
 
+The example program and the interface are powered by the
+[spl-tlv-account-resolution](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md)
+library, which is explained a bit more below.
+
 #### How to use
 
 Developers must implement the `Execute` instruction, and optionally the
@@ -1358,8 +1362,66 @@ at that instruction descriminator. Your program may implement multiple interface
 so any other instruction in your program can create the account at the program-derived
 address!
 
-More information in the
-[spl-transfer-hook-interface README](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/README.md).
+When your program stores configurations for extra required accounts in the
+well-defined program-derived address, it's possible to send an instruction -
+such as `Execute` (transfer) - to your program with only accounts required
+for the interface instruction, and all extra required accounts are
+automatically resolved!
+
+#### Account Resolution
+
+Implementers of the transfer-hook interface are encouraged to make use of the
+[spl-tlv-account-resolution](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md)
+library to manage the additional required accounts for their transfer hook
+program.
+
+This library is capable of storing two types of configurations for additional
+required accounts:
+
+- Accounts with a fixed address
+- Accounts with a **dynamic program-derived address** derived from seeds that
+may come from any combination of the following:
+  - Hard-coded values, such as string literals or integers
+  - A slice of the instruction data provided to the transfer-hook program
+  - The address of another account in the total list of accounts
+
+When you store configurations for a dynamic Program-Derived Address within the
+additional required accounts, the PDA itself is evaluated (or resolved) at the
+time of instruction invocation using the instruction itself. This
+occurs in the offchain and onchain helpers mentioned below, which leverage
+the SPL TLV Account Resolution library to perform this resolution
+automatically.
+
+#### An Example
+
+You have created a DAO to govern a community. Your DAO's authority is a
+multisig account, and you want to ensure that any transfer of your token is
+approved by the DAO. You also want to make sure that someone who intends to
+transfer your token has the proper permissions to do so.
+
+Let's assume the DAO multisig has some **fixed address**. And let's assume that
+in order to have the `can_transfer` permission, a user must have this 
+**dynamic program-derived address** associated with their wallet via the
+following seeds: `"can_transfer" + <wallet_address>`.
+
+Using the transfer-hook interface, you can store these configurations in the
+well-defined program-derived address for your mint and program id.
+
+When a user attempts to transfer your token, they might provide to Token-2022:
+
+```rust
+[source, mint, destination, owner/delegate]
+```
+
+Token-2022 will then call into your program,
+**resolving the extra required accounts automatically** from your stored
+configurations, to result in the following accounts being provided to your
+program:
+
+```rust
+[source, mint, destination, owner/delegate, dao_authority, can_transfer_pda]
+```
+
 
 #### Utilities
 
