@@ -11,7 +11,7 @@ STAKE_POOL_PROGRAM_ID: PublicKey = PublicKey("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41
 MAX_VALIDATORS_TO_UPDATE: int = 5
 """Maximum number of validators to update during UpdateValidatorListBalance."""
 
-MINIMUM_RESERVE_LAMPORTS: int = 1
+MINIMUM_RESERVE_LAMPORTS: int = 0
 """Minimum balance required in the stake pool reserve"""
 
 MINIMUM_ACTIVE_STAKE: int = MINIMUM_DELEGATION
