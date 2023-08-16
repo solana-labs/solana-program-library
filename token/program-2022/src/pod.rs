@@ -6,6 +6,14 @@ use {
     std::convert::TryFrom,
 };
 
+#[cfg(feature = "serde-traits")]
+use {
+    crate::serialization::visitors::{
+        OptionalNonZeroElGamalPubkeyVisitor, OptionalNonZeroPubkeyVisitor,
+    },
+    serde::{Deserialize, Deserializer, Serialize, Serializer},
+};
+
 /// A Pubkey that encodes `None` as all `0`, meant to be usable as a Pod type,
 /// similar to all NonZero* number types from the bytemuck library.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -60,6 +68,30 @@ impl From<OptionalNonZeroPubkey> for COption<Pubkey> {
     }
 }
 
+#[cfg(feature = "serde-traits")]
+impl Serialize for OptionalNonZeroPubkey {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.0 == Pubkey::default() {
+            s.serialize_none()
+        } else {
+            s.serialize_some(&self.0.to_string())
+        }
+    }
+}
+
+#[cfg(feature = "serde-traits")]
+impl<'de> Deserialize<'de> for OptionalNonZeroPubkey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(OptionalNonZeroPubkeyVisitor)
+    }
+}
+
 /// An ElGamalPubkey that encodes `None` as all `0`, meant to be usable as a Pod type.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
@@ -95,16 +127,43 @@ impl From<OptionalNonZeroElGamalPubkey> for Option<ElGamalPubkey> {
         }
     }
 }
+#[cfg(feature = "serde-traits")]
+impl Serialize for OptionalNonZeroElGamalPubkey {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.0 == ElGamalPubkey::default() {
+            s.serialize_none()
+        } else {
+            s.serialize_some(&self.0.to_string())
+        }
+    }
+}
+
+#[cfg(feature = "serde-traits")]
+impl<'de> Deserialize<'de> for OptionalNonZeroElGamalPubkey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(OptionalNonZeroElGamalPubkeyVisitor)
+    }
+}
 
 /// The standard `bool` is not a `Pod`, define a replacement that is
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(from = "bool", into = "bool"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct PodBool(u8);
+
 impl From<bool> for PodBool {
     fn from(b: bool) -> Self {
         Self(if b { 1 } else { 0 })
     }
 }
+
 impl From<&PodBool> for bool {
     fn from(b: &PodBool) -> Self {
         b.0 != 0
@@ -143,12 +202,16 @@ pub struct PodU16([u8; 2]);
 impl_int_conversion!(PodU16, u16);
 
 /// `i16` type that can be used in `Pod`s
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(from = "i16", into = "i16"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct PodI16([u8; 2]);
 impl_int_conversion!(PodI16, i16);
 
 /// `u64` type that can be used in `Pod`s
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(from = "u64", into = "u64"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct PodU64([u8; 8]);

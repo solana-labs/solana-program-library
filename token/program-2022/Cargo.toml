@@ -11,7 +11,7 @@ exclude = ["js/**"]
 [features]
 no-entrypoint = []
 test-sbf = []
-serde-traits = ["serde", "serde_with"]
+serde-traits = ["serde", "serde_with", "base64"]
 # Remove these features once the underlying syscalls are released on all networks
 default = ["zk-ops"]
 zk-ops = []
@@ -33,6 +33,7 @@ spl-type-length-value = { version = "0.2.0", path = "../../libraries/type-length
 thiserror = "1.0"
 serde = { version = "1.0.183", optional = true }
 serde_with = { version = "3.2.0", optional = true }
+base64 = { version = "0.21.2", optional = true }
 
 [dev-dependencies]
 lazy_static = "1.4.0"
