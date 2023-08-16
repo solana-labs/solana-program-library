@@ -103,22 +103,10 @@ Implementers of the transfer-hook interface are encouraged to make use of the
 library to manage the additional required accounts for their transfer hook
 program.
 
-This library is capable of storing two types of configurations for additional
-required accounts:
-
-- Accounts with a fixed address
-- Accounts with a **dynamic program-derived address** derived from seeds that
-may come from any combination of the following:
-  - Hard-coded values, such as string literals or integers
-  - A slice of the instruction data provided to the transfer-hook program
-  - The address of another account in the total list of accounts
-
-When you store configurations for a dynamic Program-Derived Address within the
-additional required accounts, the PDA itself is evaluated (or resolved) at the
-time of instruction invocation using the instruction itself. This
-occurs in the offchain and onchain helpers mentioned below, which leverage
-the SPL TLV Account Resolution library to perform this resolution
-automatically.
+TLV Account Resolution is capable of powering on-chain account resolution
+when an instruction that requires extra accounts is invoked.
+Read more about how account resolution works in the repository's
+[README file](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md).
 
 ### An Example
 
@@ -128,7 +116,7 @@ approved by the DAO. You also want to make sure that someone who intends to
 transfer your token has the proper permissions to do so.
 
 Let's assume the DAO multisig has some **fixed address**. And let's assume that
-in order to have the `can_transfer` permission, a user must have this 
+in order to have the `can_transfer` permission, a user must have this
 **dynamic program-derived address** associated with their wallet via the
 following seeds: `"can_transfer" + <wallet_address>`.
 

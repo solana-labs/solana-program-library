@@ -118,7 +118,7 @@ occurs in the offchain and onchain helpers mentioned below, which leverage
 the SPL TLV Account Resolution library to perform this resolution
 automatically.
 
-## How it works
+## How it Works
 
 This library uses `spl-type-length-value` to read and write required instruction
 accounts from account data.
