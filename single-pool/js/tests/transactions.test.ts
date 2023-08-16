@@ -2,12 +2,9 @@ import test from 'ava';
 import { start, BanksClient, ProgramTestContext } from 'solana-bankrun';
 import {
   Keypair,
-  VoteAccount,
   LAMPORTS_PER_SOL,
-  Connection,
   PublicKey,
   Transaction,
-  SystemProgram,
   Authorized,
   StakeProgram,
   VoteProgram,
@@ -22,6 +19,7 @@ import {
   deposit,
   withdraw,
   createTokenMetadata,
+  updateTokenMetadata,
   findMplMetadataAddress,
 } from '../src/index.ts';
 import * as voteAccount from './vote_account.json';
@@ -165,6 +163,50 @@ test('deposit', async (t) => {
   t.true(poolStakeAccount.lamports > minimumDelegation * 2, 'stake has been deposited');
 });
 
+test('withdraw', async (t) => {
+  const context = await startWithContext();
+  const client = context.banksClient;
+  const connection = new BanksConnection(client);
+  const payer = context.payer;
+
+  const voteAccountAddress = new PublicKey(voteAccount.pubkey);
+  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
+  const poolStakeAddress = findPoolStakeAddress(SINGLE_POOL_PROGRAM_ID, poolAddress);
+  const depositAccount = await createAndDelegateStakeAccount(context, voteAccountAddress);
+
+  // initialize pool
+  let transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  await processTransaction(context, transaction);
+
+  // deposit
+  transaction = await deposit({
+    connection,
+    pool: poolAddress,
+    userWallet: payer.publicKey,
+    userStakeAccount: depositAccount,
+  });
+  await processTransaction(context, transaction);
+
+  const minimumDelegation = (await connection.getStakeMinimumDelegation()).value;
+  const poolStakeAccount = await client.getAccount(poolStakeAddress);
+  t.true(poolStakeAccount.lamports > minimumDelegation * 2, 'stake has been deposited');
+
+  // withdraw
+  const withdrawAccount = new Keypair();
+  transaction = await withdraw({
+    connection,
+    pool: poolAddress,
+    userWallet: payer.publicKey,
+    userStakeAccount: withdrawAccount.publicKey,
+    tokenAmount: minimumDelegation,
+    createStakeAccount: true,
+  });
+  await processTransaction(context, transaction, [withdrawAccount]);
+
+  const userStakeAccount = await client.getAccount(withdrawAccount.publicKey);
+  t.true(userStakeAccount.lamports > minimumDelegation, 'stake has been withdrawn');
+});
+
 test('create metadata', async (t) => {
   const context = await startWithContext();
   const client = context.banksClient;
@@ -187,7 +229,7 @@ test('create metadata', async (t) => {
   );
 
   // create metadata
-  transaction = await createTokenMetadata(poolAddress, payer.publicKey);
+  transaction = createTokenMetadata(poolAddress, payer.publicKey);
   await processTransaction(context, transaction);
 
   t.truthy(
@@ -195,5 +237,39 @@ test('create metadata', async (t) => {
       findMplMetadataAddress(findPoolMintAddress(SINGLE_POOL_PROGRAM_ID, poolAddress)),
     ),
     'metadata has been created',
+  );
+});
+
+test('update metadata', async (t) => {
+  const authorizedWithdrawer = new Keypair();
+
+  const context = await startWithContext(authorizedWithdrawer.publicKey);
+  const client = context.banksClient;
+  const connection = new BanksConnection(client);
+  const payer = context.payer;
+
+  const voteAccountAddress = new PublicKey(voteAccount.pubkey);
+  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
+  const poolMintAddress = findPoolMintAddress(SINGLE_POOL_PROGRAM_ID, poolAddress);
+  const poolMetadataAddress = findMplMetadataAddress(poolMintAddress);
+
+  // initialize pool
+  let transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  await processTransaction(context, transaction);
+
+  // update metadata
+  const newName = 'hana wuz here';
+  transaction = updateTokenMetadata(
+    voteAccountAddress,
+    authorizedWithdrawer.publicKey,
+    newName,
+    '',
+  );
+  await processTransaction(context, transaction, [authorizedWithdrawer]);
+
+  const metadataAccount = await client.getAccount(poolMetadataAddress);
+  t.true(
+    new TextDecoder('ascii').decode(metadataAccount.data).indexOf(newName) > -1,
+    'metadata name has been updated',
   );
 });
