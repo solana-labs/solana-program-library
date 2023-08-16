@@ -1336,32 +1336,21 @@ at a well-defined program-derived address for that mint and program id. This
 call happens after all other transfer logic, so the accounts reflect the *end*
 state of the transfer.
 
+When interacting with a transfer-hook program, it's possible to send an
+instruction - such as `Execute` (transfer) - to the program with only the
+accounts required for the `Transfer` instruction, and any extra accounts that
+the program may require are automatically resolved on-chain! This process is
+explained in detail in many of the linked `README` files below under
+**Resources**.
+
 #### Resources
 
 The interface description and structs exist at
 [spl-transfer-hook-interface](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface),
-along with a sample minimal program implementation.
-
-A usable example program exists at
-[spl-transfer-hook-example](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-example).
-Token-2022 uses this example program in tests to ensure that it properly uses
-the transfer hook interface.
-
-#### How to use
-
-Developers must implement the `Execute` instruction, and optionally the
-`InitializeExtraAccountMetaList` instruction to write the required additional account
-pubkeys into the program-derived address defined by the mint and program id.
-
-Note: it's technically not required to implement `InitializeExtraAccountMetaList`
-at that instruction descriminator. Your program may implement multiple interfaces,
-so any other instruction in your program can create the account at the program-derived
-address!
-
-More information in the
-[spl-transfer-hook-interface README](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/README.md).
-
-#### Utilities
+along with a sample minimal program implementation. You can find detailed
+instructions on how to implement this interface for an on-chain program or
+interact with a program that implements transfer-hook in the repository's
+[README](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/README.md).
 
 The `spl-transfer-hook-interface` library provides offchain and onchain helpers
 for resolving the additional accounts required. See
@@ -1370,6 +1359,16 @@ for usage on-chain, and
 [offchain.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/src/offchain.rs)
 for fetching the additional required account metas with any async off-chain client
 like `BanksClient` or `RpcClient`.
+
+A usable example program exists at
+[spl-transfer-hook-example](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-example).
+Token-2022 uses this example program in tests to ensure that it properly uses
+the transfer hook interface.
+
+The example program and the interface are powered by the
+[spl-tlv-account-resolution](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution)
+library, which is explained in detail in the repository's 
+[README](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md)
 
 #### Example: Create a permissioned-transfer mint
 
