@@ -407,9 +407,8 @@ export class TokenSwap {
     );
 
     // Allocate memory for the account
-    const balanceNeeded = await TokenSwap.getMinBalanceRentForExemptTokenSwap(
-      connection,
-    );
+    const balanceNeeded =
+      await TokenSwap.getMinBalanceRentForExemptTokenSwap(connection);
     transaction = new Transaction();
     transaction.add(
       SystemProgram.createAccount({

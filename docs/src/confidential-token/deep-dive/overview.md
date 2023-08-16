@@ -4,16 +4,16 @@ title: Protocol Overview
 
 In this section, we provide an overview of the underlying cryptographic protocol
 for the confidential Token extension. An understanding of the details that are
-discussed in the following subsections are not needed to actually use the
+discussed in the following subsections is not needed to actually use the
 confidential extension. We refer to the previous section for a quick start
 guide.
 
 We note that this overview exists mainly to provide the design intuition behind
-the underlying cryptography that is used in the confidential extension. Some of
+the underlying cryptography that is used in the confidential extension. Some parts of
 the description of the protocol in the overview could differ from the actual
 implementation. We refer to the subsequent subsections, the [source
 code](https://github.com/solana-labs/solana-program-library), and the
-documentations within for the precise details of the underlying cryptography.
+documentation within for the precise details of the underlying cryptography.
 
 ## Tokens with Encryption and Proofs
 
@@ -188,7 +188,7 @@ token program itself, preventing it from verifying the validity of a
 transaction.
 
 To fix this, we require that transfer instructions include zero-knowledge proofs
-that validate their correctness. Put simply, zero-knolwedge proofs consist of
+that validate their correctness. Put simply, zero-knowledge proofs consist of
 two pair of algorithms `prove` and `verify` that work over public and private
 data. The `prove` algorithm generates a "proof" that certifies that some
 property of the public and private data is true. The `verify` algorithm checks
@@ -238,7 +238,7 @@ zero-knowledge proofs.
   `lower_bound <= x < upper_bound`.
 
   In the confidential extension, we require that a transfer instruction includes
-  a range proof that certify the following:
+  a range proof that certifies the following:
 
   - The proof should certify that there are enough funds in the source account.
     Specifically, let `ct_source` be the encrypted balance of a source account
@@ -299,7 +299,7 @@ decrypting transaction amounts allow for a more flexible interface.
 In a potential application, the decryption key for specific accounts can be
 shared among multiple users (e.g. regulators) that should have access to an
 account balance. Although these users can decrypt account balances, only the
-owner of the account that have access to the owner signing key can sign a
+owner of the account that has access to the owner signing key can sign a
 transaction that initiates a transfer of tokens. The owner of an account can
 update the account with a new encryption key using the `ConfigureAccount`.
 
@@ -343,13 +343,13 @@ One way an attacker can disrupt the use of a confidential extension account is
 by using _front-running_. Zero-knowledge proofs are verified with respect to the
 encrypted balance of an account. Suppose that a user Alice generates a proof
 with respect to her current encrypted account balance. If another user Bob
-transfers some tokesn to Alice, and Bob's transaction is processed first, then
+transfers some tokens to Alice, and Bob's transaction is processed first, then
 Alice's transaction will be rejected by the Token program as the proof will not
 verify with respect to the newly updated account state.
 
 Under normal conditions, upon a rejection by the program, Alice can simply look
 up the newly updated ciphertext and submit a new transaction. However, if a
-malicious attacker continuously flods the network with a transfer to Alice's
+malicious attacker continuously floods the network with a transfer to Alice's
 account, then the account may theoretically become unusable. To prevent this
 type of attack, we modify the account data structure such that the encrypted
 balance of an account is divided into two separate components: the _pending_

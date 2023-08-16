@@ -22,6 +22,10 @@ and the stake pool charges 2%, and a stake in the pool earns 100 SOL pre-commiss
 then that stake will actually enrich the pool by 90.16 SOL. The total rewards
 on that validator will be reduced by ~9.84%.
 
+When the epoch fee is updated, the change only takes effect after two epoch
+boundaries. For example, if you update the epoch fee during epoch 100, the new
+fee will only be used starting in epoch 102.
+
 ### SOL Withdraw Fee
 
 Sends a proportion of the desired withdrawal amount to the manager.
@@ -29,6 +33,14 @@ Sends a proportion of the desired withdrawal amount to the manager.
 For example, if a user wishes to withdraw 100 pool tokens, and the fee is set
 to 3%, 3 pool tokens go to the manager, and the remaining 97 tokens are converted
 to SOL and sent to the user.
+
+When the SOL withdrawal fee is updated, the change only takes effect after two
+epoch boundaries. For example, if you update the fee during epoch 100, the
+new fee will only be used starting in epoch 102.
+
+Also, the fee increase is limited to 1.5x the current fee. For example, if the
+current fee is 2.5%, the maximum settable fee is 3.75%, which will take effect
+after two epoch boundaries.
 
 ### Stake Withdraw Fee
 
@@ -38,6 +50,14 @@ creating a new stake for the user.
 For example, if a user wishes to withdraw 100 pool tokens, and the fee is set
 to 0.5%, 0.5 pool tokens go to the manager, and the remaining 99.5 tokens are
 converted to SOL then sent to the user as an activated stake account.
+
+When the stake withdrawal fee is updated, the change only takes effect after two
+epoch boundaries. For example, if you update the fee during epoch 100, the new
+fee will only be used starting in epoch 102.
+
+Also, the fee increase is limited to 1.5x the current fee. For example, if the
+current fee is 2.5%, the maximum settable fee is 3.75%, which will take effect
+after two epoch boundaries.
 
 ### SOL Deposit Fee
 

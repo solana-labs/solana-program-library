@@ -99,9 +99,6 @@ jobs:
 
       - name: Build dependent programs
         run: |
-          cargo build-sbf --manifest-path ./token/program/Cargo.toml
-          cargo build-sbf --manifest-path ./token/program-2022/Cargo.toml
-          cargo build-sbf --manifest-path ./associated-token-account/program/Cargo.toml
           cargo build-sbf --manifest-path ./token-upgrade/program/Cargo.toml
 
       - name: Run CLI tests

@@ -113,21 +113,9 @@ async fn start_validator() -> (TestValidator, Keypair) {
 
     test_validator_genesis.add_upgradeable_programs_with_path(&[
         UpgradeableProgramInfo {
-            program_id: spl_token::id(),
-            loader: bpf_loader_upgradeable::id(),
-            program_path: PathBuf::from("../../target/deploy/spl_token.so"),
-            upgrade_authority: Pubkey::default(),
-        },
-        UpgradeableProgramInfo {
-            program_id: spl_associated_token_account::id(),
-            loader: bpf_loader_upgradeable::id(),
-            program_path: PathBuf::from("../../target/deploy/spl_associated_token_account.so"),
-            upgrade_authority: Pubkey::default(),
-        },
-        UpgradeableProgramInfo {
             program_id: Pubkey::from_str("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s").unwrap(),
             loader: bpf_loader_upgradeable::id(),
-            program_path: PathBuf::from("../single-pool/tests/fixtures/mpl_token_metadata.so"),
+            program_path: PathBuf::from("../program/tests/fixtures/mpl_token_metadata.so"),
             upgrade_authority: Pubkey::default(),
         },
         UpgradeableProgramInfo {
