@@ -18,6 +18,11 @@
 //!     * `Seed::AccountKey` - 1 + 1 = 2
 //!         * 1 - Discriminator
 //!         * 1 - Index of account in accounts list
+//!     * `Seed::AccountData`: 1 + 1 + 1 + 1 = 4
+//!         * 1 - Discriminator
+//!         * 1 - Index of account in accounts list
+//!         * 1 - Index of account data
+//!         * 1 - Length of account data starting at index
 //!
 //! No matter which types of seeds you choose, the total size of all seed
 //! configurations must be less than or equal to 32 bytes.
@@ -66,6 +71,22 @@ pub enum Seed {
         /// The index of the account in the entire accounts list
         index: u8,
     },
+    /// An argument to be resolved from the inner data of some account
+    /// Packed as:
+    ///     * 1 - Discriminator
+    ///     * 1 - Index of account in accounts list
+    ///     * 1 - Index of account data
+    ///     * 1 - Length of account data starting at index
+    AccountData {
+        /// The index of the account in the entire accounts list
+        account_index: u8,
+        /// The index where the bytes of an account data argument begin
+        data_index: u8,
+        /// The length of the argument (number of bytes)
+        ///
+        /// Note: Max seed length is 32 bytes, so `u8` is appropriate here
+        length: u8,
+    },
 }
 impl Seed {
     /// Get the size of a seed configuration
@@ -79,6 +100,9 @@ impl Seed {
             Self::InstructionData { .. } => 1 + 1 + 1,
             // 1 byte for the discriminator, 1 byte for the index
             Self::AccountKey { .. } => 1 + 1,
+            // 1 byte for the discriminator, 1 byte for the account index,
+            // 1 byte for the data index 1 byte for the length
+            Self::AccountData { .. } => 1 + 1 + 1 + 1,
         }
     }
 
@@ -105,6 +129,16 @@ impl Seed {
             Self::AccountKey { index } => {
                 dst[0] = 3;
                 dst[1] = *index;
+            }
+            Self::AccountData {
+                account_index,
+                data_index,
+                length,
+            } => {
+                dst[0] = 4;
+                dst[1] = *account_index;
+                dst[2] = *data_index;
+                dst[3] = *length;
             }
         }
         Ok(())
@@ -137,6 +171,7 @@ impl Seed {
             1 => unpack_seed_literal(rest),
             2 => unpack_seed_instruction_arg(rest),
             3 => unpack_seed_account_key(rest),
+            4 => unpack_seed_account_data(rest),
             _ => Err(ProgramError::InvalidAccountData),
         }
     }
@@ -191,6 +226,18 @@ fn unpack_seed_account_key(bytes: &[u8]) -> Result<Seed, ProgramError> {
         return Err(AccountResolutionError::InvalidBytesForSeed.into());
     }
     Ok(Seed::AccountKey { index: bytes[0] })
+}
+
+fn unpack_seed_account_data(bytes: &[u8]) -> Result<Seed, ProgramError> {
+    if bytes.len() < 3 {
+        // Should be at least 3 bytes
+        return Err(AccountResolutionError::InvalidBytesForSeed.into());
+    }
+    Ok(Seed::AccountData {
+        account_index: bytes[0],
+        data_index: bytes[1],
+        length: bytes[2],
+    })
 }
 
 #[cfg(test)]
@@ -301,7 +348,7 @@ mod tests {
             1, // Discrim (Literal)
             4, // Length
             1, 1, 1, 1, // 4
-            4, // Discrim (Invalid)
+            6, // Discrim (Invalid)
             2, // Index
             1, // Length
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -376,13 +423,12 @@ mod tests {
         );
     }
 
-    fn test_pack_unpack_seed(seed: Seed, mixed: &mut Vec<Seed>) {
+    fn test_pack_unpack_seed(seed: Seed) {
         let tlv_size = seed.tlv_size() as usize;
         let mut packed = vec![0u8; tlv_size];
         seed.pack(&mut packed).unwrap();
         let unpacked = Seed::unpack(&packed).unwrap();
         assert_eq!(seed, unpacked);
-        mixed.push(seed);
     }
 
     #[test]
@@ -395,19 +441,21 @@ mod tests {
         let seed = Seed::Literal {
             bytes: bytes.to_vec(),
         };
-        test_pack_unpack_seed(seed, &mut mixed);
+        test_pack_unpack_seed(seed);
 
         let bytes = 8u8.to_le_bytes();
         let seed = Seed::Literal {
             bytes: bytes.to_vec(),
         };
-        test_pack_unpack_seed(seed, &mut mixed);
+        test_pack_unpack_seed(seed.clone());
+        mixed.push(seed);
 
         let bytes = 32u32.to_le_bytes();
         let seed = Seed::Literal {
             bytes: bytes.to_vec(),
         };
-        test_pack_unpack_seed(seed, &mut mixed);
+        test_pack_unpack_seed(seed.clone());
+        mixed.push(seed);
 
         // Instruction args
 
@@ -415,21 +463,40 @@ mod tests {
             index: 0,
             length: 0,
         };
-        test_pack_unpack_seed(seed, &mut mixed);
+        test_pack_unpack_seed(seed);
 
         let seed = Seed::InstructionData {
             index: 6,
             length: 9,
         };
-        test_pack_unpack_seed(seed, &mut mixed);
+        test_pack_unpack_seed(seed.clone());
+        mixed.push(seed);
 
         // Account keys
 
         let seed = Seed::AccountKey { index: 0 };
-        test_pack_unpack_seed(seed, &mut mixed);
+        test_pack_unpack_seed(seed);
 
         let seed = Seed::AccountKey { index: 9 };
-        test_pack_unpack_seed(seed, &mut mixed);
+        test_pack_unpack_seed(seed.clone());
+        mixed.push(seed);
+
+        // Account data
+
+        let seed = Seed::AccountData {
+            account_index: 0,
+            data_index: 0,
+            length: 0,
+        };
+        test_pack_unpack_seed(seed);
+
+        let seed = Seed::AccountData {
+            account_index: 0,
+            data_index: 0,
+            length: 9,
+        };
+        test_pack_unpack_seed(seed.clone());
+        mixed.push(seed);
 
         // Arrays
 
@@ -438,9 +505,8 @@ mod tests {
         assert_eq!(mixed, unpacked_array);
 
         let mut shuffled_mixed = mixed.clone();
-        shuffled_mixed.swap(0, 5);
+        shuffled_mixed.swap(0, 1);
         shuffled_mixed.swap(1, 4);
-        shuffled_mixed.swap(3, 6);
         shuffled_mixed.swap(3, 0);
 
         let packed_array = Seed::pack_into_address_config(&shuffled_mixed).unwrap();

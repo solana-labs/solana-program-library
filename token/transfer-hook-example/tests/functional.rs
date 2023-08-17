@@ -185,6 +185,16 @@ async fn success_execute() {
             true,
         )
         .unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[Seed::AccountData {
+                account_index: 2, // Destination
+                data_index: 32,   // Owner
+                length: 32,       // (Pubkey)
+            }],
+            false,
+            true,
+        )
+        .unwrap(),
         ExtraAccountMeta::new_with_pubkey(&writable_pubkey, false, true).unwrap(),
     ];
 
@@ -204,12 +214,20 @@ async fn success_execute() {
         &program_id,
     )
     .0;
+    let extra_pda_3 = Pubkey::find_program_address(
+        &[
+            wallet.pubkey().as_ref(), // Destination owner
+        ],
+        &program_id,
+    )
+    .0;
 
     let extra_account_metas = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
         AccountMeta::new(extra_pda_1, false),
         AccountMeta::new(extra_pda_2, false),
+        AccountMeta::new(extra_pda_3, false),
         AccountMeta::new(writable_pubkey, false),
     ];
 
@@ -282,6 +300,7 @@ async fn success_execute() {
             AccountMeta::new_readonly(mint_authority_pubkey, true),
             AccountMeta::new(extra_pda_1, false),
             AccountMeta::new(extra_pda_2, false),
+            AccountMeta::new(extra_pda_3, false),
             AccountMeta::new(Pubkey::new_unique(), false),
         ];
         let transaction = Transaction::new_signed_with_payer(
@@ -368,6 +387,7 @@ async fn success_execute() {
             AccountMeta::new_readonly(mint_authority_pubkey, false),
             AccountMeta::new(extra_pda_1, false),
             AccountMeta::new(extra_pda_2, false),
+            AccountMeta::new(extra_pda_3, false),
             AccountMeta::new(writable_pubkey, false),
         ];
         let transaction = Transaction::new_signed_with_payer(
@@ -573,6 +593,16 @@ async fn success_on_chain_invoke() {
             true,
         )
         .unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[Seed::AccountData {
+                account_index: 2, // Destination
+                data_index: 32,   // Owner
+                length: 32,       // (Pubkey)
+            }],
+            false,
+            true,
+        )
+        .unwrap(),
         ExtraAccountMeta::new_with_pubkey(&writable_pubkey, false, true).unwrap(),
     ];
 
@@ -592,12 +622,20 @@ async fn success_on_chain_invoke() {
         &hook_program_id,
     )
     .0;
+    let extra_pda_3 = Pubkey::find_program_address(
+        &[
+            wallet.pubkey().as_ref(), // Destination owner
+        ],
+        &hook_program_id,
+    )
+    .0;
 
     let extra_account_metas = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
         AccountMeta::new(extra_pda_1, false),
         AccountMeta::new(extra_pda_2, false),
+        AccountMeta::new(extra_pda_3, false),
         AccountMeta::new(writable_pubkey, false),
     ];
 

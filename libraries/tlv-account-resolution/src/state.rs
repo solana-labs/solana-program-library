@@ -1,7 +1,10 @@
 //! State transition types
 
 use {
-    crate::{account::ExtraAccountMeta, error::AccountResolutionError},
+    crate::{
+        account::{AccountDataResult, ExtraAccountMeta},
+        error::AccountResolutionError,
+    },
     solana_program::{
         account_info::AccountInfo,
         instruction::{AccountMeta, Instruction},
@@ -13,6 +16,7 @@ use {
         pod::{PodSlice, PodSliceMut},
         state::{TlvState, TlvStateBorrowed, TlvStateMut},
     },
+    std::future::Future,
 };
 
 /// De-escalate an account meta if necessary
@@ -41,15 +45,6 @@ fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[Acc
     }
 }
 
-/// Helper to convert an `AccountInfo` to an `AccountMeta`
-fn account_meta_from_info(account_info: &AccountInfo) -> AccountMeta {
-    AccountMeta {
-        pubkey: *account_info.key,
-        is_signer: account_info.is_signer,
-        is_writable: account_info.is_writable,
-    }
-}
-
 /// Stateless helper for storing additional accounts required for an
 /// instruction.
 ///
@@ -60,7 +55,7 @@ fn account_meta_from_info(account_info: &AccountInfo) -> AccountMeta {
 ///
 /// Sample usage:
 ///
-/// ```
+/// ```ignore
 /// use {
 ///     solana_program::{
 ///         account_info::AccountInfo, instruction::{AccountMeta, Instruction},
@@ -161,17 +156,19 @@ impl ExtraAccountMetaList {
 
         let initial_accounts_len = account_infos.len() - extra_account_metas.len();
 
-        let provided_metas = account_infos
-            .iter()
-            .map(account_meta_from_info)
-            .collect::<Vec<_>>();
-
         for (i, config) in extra_account_metas.iter().enumerate() {
-            let meta = config.resolve(&provided_metas, instruction_data, program_id)?;
+            let meta = config.resolve_onchain(account_infos, instruction_data, program_id)?;
             let expected_index = i
                 .checked_add(initial_accounts_len)
                 .ok_or::<ProgramError>(AccountResolutionError::CalculationFailure.into())?;
-            if provided_metas.get(expected_index) != Some(&meta) {
+            if let Some(info) = account_infos.get(expected_index) {
+                if !(info.key == &meta.pubkey
+                    && info.is_signer == meta.is_signer
+                    && info.is_writable == meta.is_writable)
+                {
+                    return Err(AccountResolutionError::IncorrectAccount.into());
+                }
+            } else {
                 return Err(AccountResolutionError::IncorrectAccount.into());
             }
         }
@@ -180,20 +177,29 @@ impl ExtraAccountMetaList {
     }
 
     /// Add the additional account metas to an existing instruction
-    pub fn add_to_instruction<T: SplDiscriminate>(
+    pub async fn add_to_instruction<F, Fut, T>(
         instruction: &mut Instruction,
+        get_account_data_fn: F,
         data: &[u8],
-    ) -> Result<(), ProgramError> {
+    ) -> Result<(), ProgramError>
+    where
+        F: Fn(Pubkey) -> Fut,
+        Fut: Future<Output = AccountDataResult>,
+        T: SplDiscriminate,
+    {
         let state = TlvStateBorrowed::unpack(data)?;
         let bytes = state.get_first_bytes::<T>()?;
         let extra_account_metas = PodSlice::<ExtraAccountMeta>::unpack(bytes)?;
 
         for extra_meta in extra_account_metas.data().iter() {
-            let mut meta = extra_meta.resolve(
-                &instruction.accounts,
-                &instruction.data,
-                &instruction.program_id,
-            )?;
+            let mut meta = extra_meta
+                .resolve_offchain(
+                    &get_account_data_fn,
+                    &instruction.accounts,
+                    &instruction.data,
+                    &instruction.program_id,
+                )
+                .await?;
             de_escalate_account_meta(&mut meta, &instruction.accounts);
             instruction.accounts.push(meta);
         }
@@ -207,20 +213,25 @@ impl ExtraAccountMetaList {
         data: &[u8],
         account_infos: &[AccountInfo<'a>],
     ) -> Result<(), ProgramError> {
-        let initial_instruction_metas_len = cpi_instruction.accounts.len();
+        let state = TlvStateBorrowed::unpack(data)?;
+        let bytes = state.get_first_bytes::<T>()?;
+        let extra_account_metas = PodSlice::<ExtraAccountMeta>::unpack(bytes)?;
 
-        Self::add_to_instruction::<T>(cpi_instruction, data)?;
+        for extra_meta in extra_account_metas.data().iter() {
+            let mut meta = extra_meta.resolve_onchain(
+                cpi_account_infos,
+                &cpi_instruction.data,
+                &cpi_instruction.program_id,
+            )?;
+            de_escalate_account_meta(&mut meta, &cpi_instruction.accounts);
 
-        for account_meta in cpi_instruction
-            .accounts
-            .iter()
-            .skip(initial_instruction_metas_len)
-        {
             let account_info = account_infos
                 .iter()
-                .find(|&x| *x.key == account_meta.pubkey)
+                .find(|&x| *x.key == meta.pubkey)
                 .ok_or(AccountResolutionError::IncorrectAccount)?
                 .clone();
+
+            cpi_instruction.accounts.push(meta);
             cpi_account_infos.push(account_info);
         }
         Ok(())
@@ -233,7 +244,9 @@ mod tests {
         super::*,
         crate::seeds::Seed,
         solana_program::{clock::Epoch, instruction::AccountMeta, pubkey::Pubkey},
+        solana_program_test::tokio,
         spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
+        std::collections::HashMap,
     };
 
     pub struct TestInstruction;
@@ -248,8 +261,40 @@ mod tests {
             ArrayDiscriminator::new([2; ArrayDiscriminator::LENGTH]);
     }
 
-    #[test]
-    fn init_with_metas() {
+    pub struct MockRpc<'a> {
+        cache: HashMap<Pubkey, &'a AccountInfo<'a>>,
+    }
+    impl<'a> MockRpc<'a> {
+        pub fn setup(account_infos: &'a [AccountInfo<'a>]) -> Self {
+            let mut cache = HashMap::new();
+            for info in account_infos {
+                cache.insert(*info.key, info);
+            }
+            Self { cache }
+        }
+
+        pub async fn get_account_data(&self, pubkey: Pubkey) -> AccountDataResult {
+            let account_info = self.cache.get(&pubkey).unwrap();
+            let account_data = account_info.try_borrow_data().unwrap().to_vec();
+            let data = if account_data.is_empty() {
+                None
+            } else {
+                Some(account_data)
+            };
+            Ok(data)
+        }
+    }
+
+    fn account_info_to_meta(account_info: &AccountInfo) -> AccountMeta {
+        AccountMeta {
+            pubkey: *account_info.key,
+            is_signer: account_info.is_signer,
+            is_writable: account_info.is_writable,
+        }
+    }
+
+    #[tokio::test]
+    async fn init_with_metas() {
         let metas = [
             AccountMeta::new(Pubkey::new_unique(), false).into(),
             AccountMeta::new(Pubkey::new_unique(), true).into(),
@@ -261,28 +306,35 @@ mod tests {
 
         ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &metas).unwrap();
 
-        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
-        ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
-            .unwrap();
+        let mock_rpc = MockRpc::setup(&[]);
 
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>(),
-            metas
-        );
+        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
+        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            &buffer,
+        )
+        .await
+        .unwrap();
+
+        let check_metas = metas
+            .iter()
+            .map(|e| AccountMeta::try_from(e).unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(instruction.accounts, check_metas,);
     }
 
-    #[test]
-    fn init_with_infos() {
+    #[tokio::test]
+    async fn init_with_infos() {
+        let program_id = Pubkey::new_unique();
+
         let pubkey1 = Pubkey::new_unique();
         let mut lamports1 = 0;
         let mut data1 = [];
         let pubkey2 = Pubkey::new_unique();
         let mut lamports2 = 0;
-        let mut data2 = [];
+        let mut data2 = [4, 4, 4, 6, 6, 6, 8, 8];
         let pubkey3 = Pubkey::new_unique();
         let mut lamports3 = 0;
         let mut data3 = [];
@@ -297,8 +349,7 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            )
-            .into(),
+            ),
             AccountInfo::new(
                 &pubkey2,
                 true,
@@ -308,8 +359,7 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            )
-            .into(),
+            ),
             AccountInfo::new(
                 &pubkey3,
                 false,
@@ -319,30 +369,74 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            )
-            .into(),
+            ),
         ];
-        let account_size = ExtraAccountMetaList::size_of(account_infos.len()).unwrap();
+
+        let required_pda = ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::AccountKey { index: 0 },
+                Seed::AccountData {
+                    account_index: 1,
+                    data_index: 2,
+                    length: 4,
+                },
+            ],
+            false,
+            true,
+        )
+        .unwrap();
+
+        // Convert to `ExtraAccountMeta`
+        let required_extra_accounts = [
+            ExtraAccountMeta::from(&account_infos[0]),
+            ExtraAccountMeta::from(&account_infos[1]),
+            ExtraAccountMeta::from(&account_infos[2]),
+            required_pda,
+        ];
+
+        let account_size = ExtraAccountMetaList::size_of(required_extra_accounts.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &account_infos).unwrap();
-
-        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
-        ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &required_extra_accounts)
             .unwrap();
 
+        let mock_rpc = MockRpc::setup(&account_infos);
+
+        let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            &buffer,
+        )
+        .await
+        .unwrap();
+
+        let (check_required_pda, _) = Pubkey::find_program_address(
+            &[
+                account_infos[0].key.as_ref(), // Account key
+                &[4, 6, 6, 6],                 // Account data
+            ],
+            &program_id,
+        );
+
+        // Convert to `AccountMeta` to check instruction
+        let check_metas = [
+            account_info_to_meta(&account_infos[0]),
+            account_info_to_meta(&account_infos[1]),
+            account_info_to_meta(&account_infos[2]),
+            AccountMeta::new(check_required_pda, false),
+        ];
+
+        assert_eq!(instruction.accounts, check_metas,);
+
         assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>(),
-            account_infos
+            instruction.accounts.get(3).unwrap().pubkey,
+            check_required_pda
         );
     }
 
-    #[test]
-    fn init_with_extra_account_metas() {
+    #[tokio::test]
+    async fn init_with_extra_account_metas() {
         let program_id = Pubkey::new_unique();
 
         let extra_meta3_literal_str = "seed_prefix";
@@ -384,8 +478,15 @@ mod tests {
 
         ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &metas).unwrap();
 
-        ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
-            .unwrap();
+        let mock_rpc = MockRpc::setup(&[]);
+
+        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            &buffer,
+        )
+        .await
+        .unwrap();
 
         let check_extra_meta3_u8_arg = ix_data[1];
         let check_extra_meta3_pubkey = Pubkey::find_program_address(
@@ -410,21 +511,11 @@ mod tests {
             instruction.accounts.get(4).unwrap().pubkey,
             check_extra_meta3_pubkey,
         );
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>(),
-            check_metas
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>()
-        );
+        assert_eq!(instruction.accounts, check_metas,);
     }
 
-    #[test]
-    fn init_multiple() {
+    #[tokio::test]
+    async fn init_multiple() {
         let extra_meta5_literal_str = "seed_prefix";
         let extra_meta5_literal_u32 = 4u32;
         let other_meta2_literal_str = "other_seed_prefix";
@@ -485,12 +576,19 @@ mod tests {
         ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &metas).unwrap();
         ExtraAccountMetaList::init::<TestOtherInstruction>(&mut buffer, &other_metas).unwrap();
 
+        let mock_rpc = MockRpc::setup(&[]);
+
         let program_id = Pubkey::new_unique();
         let ix_data = vec![0, 0, 0, 0, 0, 7, 0, 0];
         let ix_accounts = vec![];
         let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
-        ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
-            .unwrap();
+        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            &buffer,
+        )
+        .await
+        .unwrap();
 
         let check_extra_meta5_u8_arg = ix_data[5];
         let check_extra_meta5_pubkey = Pubkey::find_program_address(
@@ -515,17 +613,7 @@ mod tests {
             instruction.accounts.get(4).unwrap().pubkey,
             check_extra_meta5_pubkey,
         );
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>(),
-            check_metas
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>()
-        );
+        assert_eq!(instruction.accounts, check_metas,);
 
         let program_id = Pubkey::new_unique();
         let ix_account1 = AccountMeta::new(Pubkey::new_unique(), false);
@@ -533,8 +621,13 @@ mod tests {
         let ix_accounts = vec![ix_account1.clone(), ix_account2.clone()];
         let ix_data = vec![0, 26, 0, 0, 0, 0, 0];
         let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
-        ExtraAccountMetaList::add_to_instruction::<TestOtherInstruction>(&mut instruction, &buffer)
-            .unwrap();
+        ExtraAccountMetaList::add_to_instruction::<_, _, TestOtherInstruction>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            &buffer,
+        )
+        .await
+        .unwrap();
 
         let check_other_meta2_u32_arg = u32::from_le_bytes(ix_data[1..5].try_into().unwrap());
         let check_other_meta2_pubkey = Pubkey::find_program_address(
@@ -557,21 +650,11 @@ mod tests {
             instruction.accounts.get(3).unwrap().pubkey,
             check_other_meta2_pubkey,
         );
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>(),
-            check_other_metas
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>()
-        );
+        assert_eq!(instruction.accounts, check_other_metas,);
     }
 
-    #[test]
-    fn init_mixed() {
+    #[tokio::test]
+    async fn init_mixed() {
         let extra_meta5_literal_str = "seed_prefix";
         let extra_meta6_literal_u64 = 28u64;
 
@@ -595,8 +678,7 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            )
-            .into(),
+            ),
             AccountInfo::new(
                 &pubkey2,
                 true,
@@ -606,8 +688,7 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            )
-            .into(),
+            ),
             AccountInfo::new(
                 &pubkey3,
                 false,
@@ -617,8 +698,7 @@ mod tests {
                 &owner,
                 false,
                 Epoch::default(),
-            )
-            .into(),
+            ),
         ];
 
         let extra_meta1 = AccountMeta::new(Pubkey::new_unique(), false);
@@ -657,7 +737,11 @@ mod tests {
         )
         .unwrap();
 
-        let metas = [
+        let test_ix_required_extra_accounts = account_infos
+            .iter()
+            .map(ExtraAccountMeta::from)
+            .collect::<Vec<_>>();
+        let test_other_ix_required_extra_accounts = [
             ExtraAccountMeta::from(&extra_meta1),
             ExtraAccountMeta::from(&extra_meta2),
             ExtraAccountMeta::from(&extra_meta3),
@@ -666,25 +750,39 @@ mod tests {
             extra_meta6,
         ];
 
-        let account_size = ExtraAccountMetaList::size_of(account_infos.len()).unwrap()
-            + ExtraAccountMetaList::size_of(metas.len()).unwrap();
+        let account_size = ExtraAccountMetaList::size_of(test_ix_required_extra_accounts.len())
+            .unwrap()
+            + ExtraAccountMetaList::size_of(test_other_ix_required_extra_accounts.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
-        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &account_infos).unwrap();
-        ExtraAccountMetaList::init::<TestOtherInstruction>(&mut buffer, &metas).unwrap();
+        ExtraAccountMetaList::init::<TestInstruction>(
+            &mut buffer,
+            &test_ix_required_extra_accounts,
+        )
+        .unwrap();
+        ExtraAccountMetaList::init::<TestOtherInstruction>(
+            &mut buffer,
+            &test_other_ix_required_extra_accounts,
+        )
+        .unwrap();
+
+        let mock_rpc = MockRpc::setup(&account_infos);
 
         let program_id = Pubkey::new_unique();
         let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
-        ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
-            .unwrap();
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>(),
-            account_infos
-        );
+        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            &buffer,
+        )
+        .await
+        .unwrap();
+
+        let test_ix_check_metas = account_infos
+            .iter()
+            .map(account_info_to_meta)
+            .collect::<Vec<_>>();
+        assert_eq!(instruction.accounts, test_ix_check_metas,);
 
         let program_id = Pubkey::new_unique();
         let instruction_u8array_arg = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -693,8 +791,13 @@ mod tests {
         instruction_data.extend_from_slice(&instruction_u8array_arg);
         instruction_data.extend_from_slice(instruction_pubkey_arg.as_ref());
         let mut instruction = Instruction::new_with_bytes(program_id, &instruction_data, vec![]);
-        ExtraAccountMetaList::add_to_instruction::<TestOtherInstruction>(&mut instruction, &buffer)
-            .unwrap();
+        ExtraAccountMetaList::add_to_instruction::<_, _, TestOtherInstruction>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            &buffer,
+        )
+        .await
+        .unwrap();
 
         let check_extra_meta5_pubkey = Pubkey::find_program_address(
             &[
@@ -717,7 +820,7 @@ mod tests {
         )
         .0;
 
-        let check_metas = vec![
+        let test_other_ix_check_metas = vec![
             extra_meta1,
             extra_meta2,
             extra_meta3,
@@ -734,198 +837,119 @@ mod tests {
             instruction.accounts.get(5).unwrap().pubkey,
             check_extra_meta6_pubkey,
         );
-        assert_eq!(
-            instruction
-                .accounts
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>(),
-            check_metas
-                .iter()
-                .map(ExtraAccountMeta::from)
-                .collect::<Vec<_>>()
-        );
+        assert_eq!(instruction.accounts, test_other_ix_check_metas,);
     }
 
-    #[test]
-    fn cpi_instruction() {
+    #[tokio::test]
+    async fn cpi_instruction() {
         // Say we have a program that CPIs to another program.
         //
         // Say that _other_ program will need extra account infos.
 
-        // This will be our program. Let's ignore the account info
-        // for the other program in this example.
+        // This will be our program
         let program_id = Pubkey::new_unique();
         let owner = Pubkey::new_unique();
 
-        // First let's build a list of account infos for the CPI
-        // instruction itself.
-        let pubkey_ix_1 = Pubkey::new_unique();
-        let mut lamports_ix_1 = 0;
-        let mut data_ix_1 = [];
-        let pubkey_ix_2 = Pubkey::new_unique();
-        let mut lamports_ix_2 = 0;
-        let mut data_ix_2 = [];
-        // For the CPI account infos themselves.
-        let ix_account_infos = [
-            AccountInfo::new(
-                &pubkey_ix_1,
-                false,
-                true,
-                &mut lamports_ix_1,
-                &mut data_ix_1,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-            AccountInfo::new(
-                &pubkey_ix_2,
-                false,
-                true,
-                &mut lamports_ix_2,
-                &mut data_ix_2,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-        ];
-        // For the CPI instruction's list of account metas.
-        let ix_accounts = vec![
-            AccountMeta::new(*ix_account_infos[0].key, false),
-            AccountMeta::new(*ix_account_infos[1].key, false),
-        ];
-
-        // Now let's build a list of extra account infos required by
-        // the program we are going to CPI to.
-        let pubkey1 = Pubkey::new_unique();
-        let mut lamports1 = 0;
-        let mut data1 = [];
-        let pubkey2 = Pubkey::new_unique();
-        let mut lamports2 = 0;
-        let mut data2 = [];
-        let pubkey3 = Pubkey::new_unique();
-        let mut lamports3 = 0;
-        let mut data3 = [];
-        let owner = Pubkey::new_unique();
-        let extra_account_infos = [
-            AccountInfo::new(
-                &pubkey1,
-                false,
-                true,
-                &mut lamports1,
-                &mut data1,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-            AccountInfo::new(
-                &pubkey2,
-                true,
-                false,
-                &mut lamports2,
-                &mut data2,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-            AccountInfo::new(
-                &pubkey3,
-                false,
-                false,
-                &mut lamports3,
-                &mut data3,
-                &owner,
-                false,
-                Epoch::default(),
-            ),
-        ];
-
-        // Let's also add 2 required PDAs to the extra required accounts.
-
+        // Some seeds used by the program for PDAs
         let required_pda1_literal_string = "required_pda1";
         let required_pda2_literal_u32 = 4u32;
 
-        let required_pda1 = ExtraAccountMeta::new_with_seeds(
-            &[
-                Seed::Literal {
-                    bytes: required_pda1_literal_string.as_bytes().to_vec(),
-                },
-                Seed::InstructionData {
-                    index: 1,
-                    length: 8, // [u8; 8]
-                },
-                Seed::AccountKey { index: 1 },
-            ],
-            false,
-            true,
-        )
-        .unwrap();
-        let required_pda2 = ExtraAccountMeta::new_with_seeds(
-            &[
-                Seed::Literal {
-                    bytes: required_pda2_literal_u32.to_le_bytes().to_vec(),
-                },
-                Seed::InstructionData {
-                    index: 9,
-                    length: 8, // u64
-                },
-                Seed::AccountKey { index: 5 },
-            ],
-            false,
-            true,
-        )
-        .unwrap();
-
-        // The program to CPI to has 2 account metas and
-        // 5 extra required accounts (3 metas, 2 PDAs).
-
-        // Now we set up the validation account data
-
-        let mut required_accounts = extra_account_infos
-            .iter()
-            .map(ExtraAccountMeta::from)
-            .collect::<Vec<_>>();
-        required_accounts.push(required_pda1);
-        required_accounts.push(required_pda2);
-
-        let account_size = ExtraAccountMetaList::size_of(required_accounts.len()).unwrap();
-        let mut buffer = vec![0; account_size];
-
-        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &required_accounts).unwrap();
-
-        // Make an instruction to check later
-        // We'll also check the instruction seed components later
+        // Define instruction data
+        //  - 0: u8
+        //  - 1-8: [u8; 8]
+        //  - 9-16: u64
         let instruction_u8array_arg = [1, 2, 3, 4, 5, 6, 7, 8];
         let instruction_u64_arg = 208u64;
         let mut instruction_data = vec![0];
         instruction_data.extend_from_slice(&instruction_u8array_arg);
         instruction_data.extend_from_slice(instruction_u64_arg.to_le_bytes().as_ref());
 
-        let mut instruction =
-            Instruction::new_with_bytes(program_id, &instruction_data, ix_accounts.clone());
-        ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
-            .unwrap();
+        // Define known instruction accounts
+        let ix_accounts = vec![
+            AccountMeta::new(Pubkey::new_unique(), false),
+            AccountMeta::new(Pubkey::new_unique(), false),
+        ];
 
-        // Now our program is going to use its own set of account infos.
-        //
-        // These account infos must contain all required account infos for the CPI.
-        //
-        // We'll mess them up a bit to make sure the ordering doesn't matter when
-        // performing account resolution.
-        let mut messed_account_infos = Vec::new();
+        // Define extra account metas required by the program we will CPI to
+        let extra_meta1 = AccountMeta::new(Pubkey::new_unique(), false);
+        let extra_meta2 = AccountMeta::new(Pubkey::new_unique(), true);
+        let extra_meta3 = AccountMeta::new_readonly(Pubkey::new_unique(), false);
+        let required_accounts = [
+            ExtraAccountMeta::from(&extra_meta1),
+            ExtraAccountMeta::from(&extra_meta2),
+            ExtraAccountMeta::from(&extra_meta3),
+            ExtraAccountMeta::new_with_seeds(
+                &[
+                    Seed::Literal {
+                        bytes: required_pda1_literal_string.as_bytes().to_vec(),
+                    },
+                    Seed::InstructionData {
+                        index: 1,
+                        length: 8, // [u8; 8]
+                    },
+                    Seed::AccountKey { index: 1 },
+                ],
+                false,
+                true,
+            )
+            .unwrap(),
+            ExtraAccountMeta::new_with_seeds(
+                &[
+                    Seed::Literal {
+                        bytes: required_pda2_literal_u32.to_le_bytes().to_vec(),
+                    },
+                    Seed::InstructionData {
+                        index: 9,
+                        length: 8, // u64
+                    },
+                    Seed::AccountKey { index: 5 },
+                ],
+                false,
+                true,
+            )
+            .unwrap(),
+            ExtraAccountMeta::new_with_seeds(
+                &[
+                    Seed::InstructionData {
+                        index: 0,
+                        length: 1, // u8
+                    },
+                    Seed::AccountData {
+                        account_index: 2,
+                        data_index: 0,
+                        length: 8,
+                    },
+                ],
+                false,
+                true,
+            )
+            .unwrap(),
+            ExtraAccountMeta::new_with_seeds(
+                &[
+                    Seed::AccountData {
+                        account_index: 5,
+                        data_index: 4,
+                        length: 4,
+                    }, // This one is a PDA!
+                ],
+                false,
+                true,
+            )
+            .unwrap(),
+        ];
 
-        // First add the instruction account infos.
-        messed_account_infos.extend(ix_account_infos.clone());
+        // Now here we're going to build the list of account infos
+        // We'll need to include:
+        //  - The instruction account infos for the program to CPI to
+        //  - The extra account infos for the program to CPI to
+        //  - Some other arbitrary account infos our program may use
 
-        // Next add the extra account infos.
-        messed_account_infos.extend(extra_account_infos.iter().cloned());
-
-        // Also add the extra PDAs with their actual addresses.
+        // First we need to manually derive each PDA
         let check_required_pda1_pubkey = Pubkey::find_program_address(
             &[
                 required_pda1_literal_string.as_bytes(),
                 &instruction_u8array_arg,
-                ix_account_infos.get(1).unwrap().key.as_ref(), // The second account
+                ix_accounts.get(1).unwrap().pubkey.as_ref(), // The second account
             ],
             &program_id,
         )
@@ -939,72 +963,206 @@ mod tests {
             &program_id,
         )
         .0;
+        let check_required_pda3_pubkey = Pubkey::find_program_address(
+            &[
+                &[0],    // Instruction "discriminator" (u8)
+                &[8; 8], // The first 8 bytes of the data for account at index 2 (extra account 1)
+            ],
+            &program_id,
+        )
+        .0;
+        let check_required_pda4_pubkey = Pubkey::find_program_address(
+            &[
+                &[7; 4], /* 4 bytes starting at index 4 of the data for account at index 5 (extra
+                         * pda 1) */
+            ],
+            &program_id,
+        )
+        .0;
 
+        // The instruction account infos for the program to CPI to
+        let pubkey_ix_1 = ix_accounts.get(0).unwrap().pubkey;
+        let mut lamports_ix_1 = 0;
+        let mut data_ix_1 = [];
+        let pubkey_ix_2 = ix_accounts.get(1).unwrap().pubkey;
+        let mut lamports_ix_2 = 0;
+        let mut data_ix_2 = [];
+
+        // The extra account infos for the program to CPI to
+        let mut lamports1 = 0;
+        let mut data1 = [8; 12];
+        let mut lamports2 = 0;
+        let mut data2 = [];
+        let mut lamports3 = 0;
+        let mut data3 = [];
         let mut lamports_pda1 = 0;
-        let mut data_pda1 = [];
-        let extra_pda_info1 = AccountInfo::new(
-            &check_required_pda1_pubkey,
-            false,
-            true,
-            &mut lamports_pda1,
-            &mut data_pda1,
-            &owner,
-            false,
-            Epoch::default(),
-        );
-        messed_account_infos.push(extra_pda_info1.clone());
-
+        let mut data_pda1 = [7; 12];
         let mut lamports_pda2 = 0;
         let mut data_pda2 = [];
-        let extra_pda_info2 = AccountInfo::new(
-            &check_required_pda2_pubkey,
-            false,
-            true,
-            &mut lamports_pda2,
-            &mut data_pda2,
-            &owner,
-            false,
-            Epoch::default(),
-        );
-        messed_account_infos.push(extra_pda_info2.clone());
+        let mut lamports_pda3 = 0;
+        let mut data_pda3 = [];
+        let mut lamports_pda4 = 0;
+        let mut data_pda4 = [];
 
-        // Now throw in a few extras that might be just for our program.
-        let pubkey4 = Pubkey::new_unique();
-        let mut lamports4 = 0;
-        let mut data4 = [];
-        messed_account_infos.push(AccountInfo::new(
-            &pubkey4,
-            false,
-            true,
-            &mut lamports4,
-            &mut data4,
-            &owner,
-            false,
-            Epoch::default(),
-        ));
-        let pubkey5 = Pubkey::new_unique();
-        let mut lamports5 = 0;
-        let mut data5 = [];
-        messed_account_infos.push(AccountInfo::new(
-            &pubkey5,
-            false,
-            true,
-            &mut lamports5,
-            &mut data5,
-            &owner,
-            false,
-            Epoch::default(),
-        ));
+        // Some other arbitrary account infos our program may use
+        let pubkey_arb_1 = Pubkey::new_unique();
+        let mut lamports_arb_1 = 0;
+        let mut data_arb_1 = [];
+        let pubkey_arb_2 = Pubkey::new_unique();
+        let mut lamports_arb_2 = 0;
+        let mut data_arb_2 = [];
 
-        // Mess 'em up!
+        let all_account_infos = [
+            AccountInfo::new(
+                &pubkey_ix_1,
+                ix_accounts.get(0).unwrap().is_signer,
+                ix_accounts.get(0).unwrap().is_writable,
+                &mut lamports_ix_1,
+                &mut data_ix_1,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &pubkey_ix_2,
+                ix_accounts.get(1).unwrap().is_signer,
+                ix_accounts.get(1).unwrap().is_writable,
+                &mut lamports_ix_2,
+                &mut data_ix_2,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &extra_meta1.pubkey,
+                required_accounts.get(0).unwrap().is_signer.into(),
+                required_accounts.get(0).unwrap().is_writable.into(),
+                &mut lamports1,
+                &mut data1,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &extra_meta2.pubkey,
+                required_accounts.get(1).unwrap().is_signer.into(),
+                required_accounts.get(1).unwrap().is_writable.into(),
+                &mut lamports2,
+                &mut data2,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &extra_meta3.pubkey,
+                required_accounts.get(2).unwrap().is_signer.into(),
+                required_accounts.get(2).unwrap().is_writable.into(),
+                &mut lamports3,
+                &mut data3,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &check_required_pda1_pubkey,
+                required_accounts.get(3).unwrap().is_signer.into(),
+                required_accounts.get(3).unwrap().is_writable.into(),
+                &mut lamports_pda1,
+                &mut data_pda1,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &check_required_pda2_pubkey,
+                required_accounts.get(4).unwrap().is_signer.into(),
+                required_accounts.get(4).unwrap().is_writable.into(),
+                &mut lamports_pda2,
+                &mut data_pda2,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &check_required_pda3_pubkey,
+                required_accounts.get(5).unwrap().is_signer.into(),
+                required_accounts.get(5).unwrap().is_writable.into(),
+                &mut lamports_pda3,
+                &mut data_pda3,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &check_required_pda4_pubkey,
+                required_accounts.get(6).unwrap().is_signer.into(),
+                required_accounts.get(6).unwrap().is_writable.into(),
+                &mut lamports_pda4,
+                &mut data_pda4,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &pubkey_arb_1,
+                false,
+                true,
+                &mut lamports_arb_1,
+                &mut data_arb_1,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &pubkey_arb_2,
+                false,
+                true,
+                &mut lamports_arb_2,
+                &mut data_arb_2,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+        ];
+
+        // Let's use a mock RPC and set up a test instruction to check the CPI
+        // instruction against later
+        let rpc_account_infos = all_account_infos.clone();
+        let mock_rpc = MockRpc::setup(&rpc_account_infos);
+
+        let account_size = ExtraAccountMetaList::size_of(required_accounts.len()).unwrap();
+        let mut buffer = vec![0; account_size];
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &required_accounts).unwrap();
+
+        let mut instruction =
+            Instruction::new_with_bytes(program_id, &instruction_data, ix_accounts.clone());
+        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            &buffer,
+        )
+        .await
+        .unwrap();
+
+        // Perform the account resolution for the CPI instruction
+
+        // Create the instruction itself
+        let mut cpi_instruction =
+            Instruction::new_with_bytes(program_id, &instruction_data, ix_accounts);
+
+        // Start with the known account infos
+        let mut cpi_account_infos =
+            vec![all_account_infos[0].clone(), all_account_infos[1].clone()];
+
+        // Mess up the ordering of the account infos to make it harder!
+        let mut messed_account_infos = all_account_infos.clone();
         messed_account_infos.swap(0, 4);
         messed_account_infos.swap(1, 2);
         messed_account_infos.swap(3, 4);
+        messed_account_infos.swap(5, 6);
+        messed_account_infos.swap(8, 7);
 
-        // Perform the account resolution.
-        let mut cpi_instruction =
-            Instruction::new_with_bytes(program_id, &instruction_data, ix_accounts);
-        let mut cpi_account_infos = ix_account_infos.to_vec();
+        // Resolve the rest!
         ExtraAccountMetaList::add_to_cpi_instruction::<TestInstruction>(
             &mut cpi_instruction,
             &mut cpi_account_infos,
@@ -1019,13 +1177,9 @@ mod tests {
         // CPI account infos should have the instruction account infos
         // and the extra required account infos from the validation account,
         // and they should be in the correct order.
-        let mut all_account_infos = ix_account_infos.to_vec();
-        all_account_infos.extend(extra_account_infos.iter().cloned());
-        all_account_infos.push(extra_pda_info1);
-        all_account_infos.push(extra_pda_info2);
-
-        assert_eq!(cpi_account_infos.len(), all_account_infos.len());
-        for (a, b) in std::iter::zip(cpi_account_infos, all_account_infos) {
+        let check_account_infos = &all_account_infos[..9];
+        assert_eq!(cpi_account_infos.len(), check_account_infos.len());
+        for (a, b) in std::iter::zip(cpi_account_infos, check_account_infos) {
             assert_eq!(a.key, b.key);
             assert_eq!(a.is_signer, b.is_signer);
             assert_eq!(a.is_writable, b.is_writable);
