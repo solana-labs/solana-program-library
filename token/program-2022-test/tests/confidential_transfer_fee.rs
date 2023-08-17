@@ -1,5 +1,5 @@
 #![cfg(all(feature = "test-sbf"))]
-#![cfg(twoxtx)]
+// #![cfg(twoxtx)]
 
 mod program_test;
 use {
@@ -530,6 +530,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
             transfer_fee_parameters.transfer_fee_basis_points.into(),
             transfer_fee_parameters.maximum_fee.into(),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -687,6 +688,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts() {
             transfer_fee_parameters.transfer_fee_basis_points.into(),
             transfer_fee_parameters.maximum_fee.into(),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -817,6 +819,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_proof_con
             transfer_fee_parameters.transfer_fee_basis_points.into(),
             transfer_fee_parameters.maximum_fee.into(),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -984,6 +987,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_proof
             transfer_fee_parameters.transfer_fee_basis_points.into(),
             transfer_fee_parameters.maximum_fee.into(),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
@@ -1174,6 +1178,7 @@ async fn confidential_transfer_harvest_withheld_tokens_to_mint() {
             transfer_fee_parameters.transfer_fee_basis_points.into(),
             transfer_fee_parameters.maximum_fee.into(),
             &[&alice],
+            None,
         )
         .await
         .unwrap();
