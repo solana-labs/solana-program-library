@@ -31,7 +31,7 @@ document are available at:
 This document is intended for the main actors of the stake pool system:
 
 * manager: creates and manages the stake pool, earns fees, can update the fee, staker, and manager
-* staker: adds and removes validators to the pool, rebalances stake among validators
+* staker: adds and removes validators to the pool, rebalances stake among validators, can update the staker
 * user: provides liquid or staked SOL into an existing stake pool
 
 In its current iteration, the stake pool accepts active stakes or SOL, so
