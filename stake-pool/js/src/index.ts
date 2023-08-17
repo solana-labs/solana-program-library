@@ -934,8 +934,9 @@ export async function stakePoolInfo(connection: Connection, stakePoolAddress: Pu
     stakePoolAddress,
   );
 
-  const minimumReserveStakeBalance =
-    (await connection.getMinimumBalanceForRentExemption(StakeProgram.space)) + 1;
+  const minimumReserveStakeBalance = await connection.getMinimumBalanceForRentExemption(
+    StakeProgram.space,
+  );
 
   const stakeAccounts = await Promise.all(
     validatorList.account.data.validators.map(async (validator) => {
