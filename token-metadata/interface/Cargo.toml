@@ -7,12 +7,19 @@ repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
 edition = "2021"
 
+[features]
+serde-traits = ["serde"]
+
 [dependencies]
 borsh = "0.10"
 solana-program = "1.16.3"
 spl-discriminator = { version = "0.1.0" , path = "../../libraries/discriminator" }
 spl-program-error = { version = "0.2.0" , path = "../../libraries/program-error" }
 spl-type-length-value = { version = "0.2.0", path = "../../libraries/type-length-value" }
+serde = { version = "1.0.183", optional = true }
+
+[dev-dependencies]
+serde_json = "1.0.105"
 
 [lib]
 crate-type = ["cdylib", "lib"]

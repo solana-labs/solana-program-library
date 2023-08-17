@@ -15,6 +15,15 @@ use {
     std::convert::TryFrom,
 };
 
+#[cfg(feature = "serde-traits")]
+use {
+    serde::{
+        de::{Error, Unexpected, Visitor},
+        {Deserialize, Deserializer, Serialize, Serializer},
+    },
+    std::{fmt, str::FromStr},
+};
+
 /// A Pubkey that encodes `None` as all `0`, meant to be usable as a Pod type,
 /// similar to all NonZero* number types from the bytemuck library.
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -42,6 +51,60 @@ impl From<OptionalNonZeroPubkey> for Option<Pubkey> {
         } else {
             Some(p.0)
         }
+    }
+}
+
+#[cfg(feature = "serde-traits")]
+impl Serialize for OptionalNonZeroPubkey {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.0 == Pubkey::default() {
+            s.serialize_none()
+        } else {
+            s.serialize_some(&self.0.to_string())
+        }
+    }
+}
+
+#[cfg(feature = "serde-traits")]
+impl<'de> Deserialize<'de> for OptionalNonZeroPubkey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(OptionalNonZeroPubkeyVisitor)
+    }
+}
+
+/// Visitor for deserializing OptionalNonZeroPubkey
+#[cfg(feature = "serde-traits")]
+struct OptionalNonZeroPubkeyVisitor;
+
+#[cfg(feature = "serde-traits")]
+impl<'de> Visitor<'de> for OptionalNonZeroPubkeyVisitor {
+    type Value = OptionalNonZeroPubkey;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a Pubkey in base58 or `null`")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        let pkey = Pubkey::from_str(&v)
+            .map_err(|_| Error::invalid_value(Unexpected::Str(v), &"value string"))?;
+
+        Ok(OptionalNonZeroPubkey(pkey))
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(OptionalNonZeroPubkey(Pubkey::default()))
     }
 }
 
@@ -137,6 +200,7 @@ impl VariableLenPack for TokenMetadata {
 }
 
 /// Fields in the metadata account, used for updating
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum Field {
     /// The name field, corresponding to `TokenMetadata.name`
