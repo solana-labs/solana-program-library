@@ -194,6 +194,55 @@ pub mod elgamalpubkey_fromstr {
     }
 }
 
+/// helper to ser/deser pod::DecryptHandle values
+pub mod decrypthandle_fromstr {
+    use {
+        base64::{prelude::BASE64_STANDARD, Engine},
+        serde::{
+            de::{Error, Visitor},
+            Deserializer, Serializer,
+        },
+        solana_zk_token_sdk::zk_token_elgamal::pod::DecryptHandle,
+        std::fmt,
+    };
+
+    const DECRYPT_HANDLE_LEN: usize = 32;
+
+    /// Serialize a decrypt handle as a base64 string
+    pub fn serialize<S>(x: &DecryptHandle, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        s.serialize_str(&BASE64_STANDARD.encode(x.0))
+    }
+
+    struct DecryptHandleVisitor;
+
+    impl<'de> Visitor<'de> for DecryptHandleVisitor {
+        type Value = DecryptHandle;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a FromStr type")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            let array = super::base64_to_bytes::<DECRYPT_HANDLE_LEN, E>(v)?;
+            Ok(DecryptHandle(array))
+        }
+    }
+
+    /// Deserialize a DecryptHandle from a base64 string
+    pub fn deserialize<'de, D>(d: D) -> Result<DecryptHandle, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        d.deserialize_str(DecryptHandleVisitor)
+    }
+}
+
 /// deserialization Visitors for local types
 pub mod visitors {
     use {

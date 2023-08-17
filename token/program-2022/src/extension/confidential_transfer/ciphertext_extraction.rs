@@ -17,6 +17,12 @@ use crate::{
     },
 };
 
+#[cfg(feature = "serde-traits")]
+use {
+    crate::serialization::decrypthandle_fromstr,
+    serde::{Deserialize, Serialize},
+};
+
 pub(crate) fn transfer_amount_commitment(
     transfer_amount_ciphertext: &GroupedElGamalCiphertext2Handles,
 ) -> PedersenCommitment {
@@ -296,11 +302,14 @@ impl TransferProofContextInfo {
 /// proof contexts as a form of optimization. These components should be added back into these
 /// split proofs in `zk-token-sdk`. Until this modifications is made, include `SourceDecryptHandle`
 /// in the transfer instruction data.
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct SourceDecryptHandles {
     /// The ElGamal decryption handle pertaining to the low 16 bits of the transfer amount.
+    #[cfg_attr(feature = "serde-traits", serde(with = "decrypthandle_fromstr"))]
     pub lo: DecryptHandle,
     /// The ElGamal decryption handle pertaining to the low 32 bits of the transfer amount.
+    #[cfg_attr(feature = "serde-traits", serde(with = "decrypthandle_fromstr"))]
     pub hi: DecryptHandle,
 }
