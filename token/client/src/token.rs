@@ -27,6 +27,8 @@ use {
                     ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo, TransferAccountInfo,
                     WithdrawAccountInfo,
                 },
+                ciphertext_extraction::SourceDecryptHandles,
+                instruction::TransferContextStateAccounts,
                 ConfidentialTransferAccount, DecryptableBalance,
             },
             confidential_transfer_fee::{
@@ -2139,7 +2141,7 @@ where
         source_account: &Pubkey,
         destination_account: &Pubkey,
         source_authority: &Pubkey,
-        context_state_account: Option<&Pubkey>,
+        context_state_accounts: Option<TransferContextStateAccounts<'_>>,
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
@@ -2147,6 +2149,7 @@ where
         destination_elgamal_pubkey: &ElGamalPubkey,
         auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
         signing_keypairs: &S,
+        source_decrypt_handles: Option<&SourceDecryptHandles>,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(source_authority, &signing_pubkeys);
@@ -2160,7 +2163,7 @@ where
             TransferAccountInfo::new(confidential_transfer_account)
         };
 
-        let proof_data = if context_state_account.is_some() {
+        let proof_data = if context_state_accounts.is_some() {
             None
         } else {
             Some(
@@ -2176,11 +2179,23 @@ where
             )
         };
 
+        let mut split_context_state_accounts = Vec::with_capacity(3);
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
             ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
         } else {
-            let context_state_account = context_state_account.unwrap();
-            ProofLocation::ContextStateAccount(context_state_account)
+            let context_state_accounts = context_state_accounts.unwrap();
+            match context_state_accounts {
+                TransferContextStateAccounts::SingleAccount(context_state_account) => {
+                    ProofLocation::ContextStateAccount(context_state_account)
+                }
+                TransferContextStateAccounts::SplitAccounts(context_state_accounts) => {
+                    split_context_state_accounts.push(context_state_accounts.equality_proof);
+                    split_context_state_accounts
+                        .push(context_state_accounts.ciphertext_validity_proof);
+                    split_context_state_accounts.push(context_state_accounts.range_proof);
+                    ProofLocation::SplitContextStateAccounts(&split_context_state_accounts)
+                }
+            }
         };
 
         let new_decryptable_available_balance = account_info
@@ -2197,6 +2212,7 @@ where
                 source_authority,
                 &multisig_signers,
                 proof_location,
+                source_decrypt_handles,
             )?,
             signing_keypairs,
         )
@@ -2221,6 +2237,7 @@ where
         fee_rate_basis_points: u16,
         maximum_fee: u64,
         signing_keypairs: &S,
+        source_decrypt_handles: Option<&SourceDecryptHandles>,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(source_authority, &signing_pubkeys);
@@ -2274,6 +2291,7 @@ where
                 source_authority,
                 &multisig_signers,
                 proof_location,
+                source_decrypt_handles,
             )?,
             signing_keypairs,
         )

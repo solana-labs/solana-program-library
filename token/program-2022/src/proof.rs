@@ -34,4 +34,7 @@ pub enum ProofLocation<'a, T> {
     InstructionOffset(NonZeroI8, &'a T),
     /// The proof is pre-verified into a context state account.
     ContextStateAccount(&'a Pubkey),
+    /// The proof is split into multiple smaller components and are pre-verified into context state
+    /// accounts.
+    SplitContextStateAccounts(&'a [&'a Pubkey]),
 }

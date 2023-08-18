@@ -1,9 +1,9 @@
 use {
     crate::{
-        check_program_account, check_zk_token_proof_program_account,
+        check_program_account,
         error::TokenError,
         extension::{
-            confidential_transfer::{instruction::*, *},
+            confidential_transfer::{ciphertext_extraction::*, instruction::*, verify_proof::*, *},
             confidential_transfer_fee::{
                 ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig, EncryptedFee,
                 EncryptedWithheldAmount,
@@ -14,8 +14,6 @@ use {
         },
         instruction::{decode_instruction_data, decode_instruction_type},
         processor::Processor,
-        proof::decode_proof_instruction_context,
-        solana_zk_token_sdk::zk_token_elgamal::pod::TransferAmountCiphertext,
         state::{Account, Mint},
     },
     solana_program::{
@@ -25,7 +23,6 @@ use {
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar::instructions::get_instruction_relative,
         sysvar::Sysvar,
     },
 };
@@ -103,10 +100,8 @@ fn process_configure_account(
     let mint_info = next_account_info(account_info_iter)?;
 
     // zero-knowledge proof certifies that the supplied ElGamal public key is valid
-    let proof_context = verify_configure_account_proof(
-        next_account_info(account_info_iter)?,
-        proof_instruction_offset,
-    )?;
+    let proof_context =
+        verify_configure_account_proof(account_info_iter, proof_instruction_offset)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -163,37 +158,6 @@ fn process_configure_account(
     Ok(())
 }
 
-/// Verify zero-knowledge proof needed for a [ConfigureAccount] instruction and return the
-/// corresponding proof context.
-fn verify_configure_account_proof(
-    account_info: &AccountInfo<'_>,
-    proof_instruction_offset: i64,
-) -> Result<PubkeyValidityProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        // interpret `account_info` as a context state account
-        check_zk_token_proof_program_account(account_info.owner)?;
-        let context_state_account_data = account_info.data.borrow();
-        let context_state = pod_from_bytes::<ProofContextState<PubkeyValidityProofContext>>(
-            &context_state_account_data,
-        )?;
-
-        if context_state.proof_type != ProofType::PubkeyValidity.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        // interpret `account_info` as a sysvar
-        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
-        Ok(*decode_proof_instruction_context::<
-            PubkeyValidityData,
-            PubkeyValidityProofContext,
-        >(
-            ProofInstruction::VerifyPubkeyValidity, &zkp_instruction
-        )?)
-    }
-}
-
 /// Processes an [ApproveAccount] instruction.
 fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -234,10 +198,7 @@ fn process_empty_account(
     let token_account_info = next_account_info(account_info_iter)?;
 
     // zero-knowledge proof certifies that the available balance ciphertext holds the balance of 0.
-    let proof_context = verify_empty_account_proof(
-        next_account_info(account_info_iter)?,
-        proof_instruction_offset,
-    )?;
+    let proof_context = verify_empty_account_proof(account_info_iter, proof_instruction_offset)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -273,37 +234,6 @@ fn process_empty_account(
     confidential_transfer_account.closable()?;
 
     Ok(())
-}
-
-/// Verify zero-knowledge proof needed for a [EmptyAccount] instruction and return the
-/// corresponding proof context.
-fn verify_empty_account_proof(
-    account_info: &AccountInfo<'_>,
-    proof_instruction_offset: i64,
-) -> Result<ZeroBalanceProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        // interpret `account_info` as a context state account
-        check_zk_token_proof_program_account(account_info.owner)?;
-        let context_state_account_data = account_info.data.borrow();
-        let context_state = pod_from_bytes::<ProofContextState<ZeroBalanceProofContext>>(
-            &context_state_account_data,
-        )?;
-
-        if context_state.proof_type != ProofType::ZeroBalance.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        // interpret `account_info` as a sysvar
-        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
-        Ok(*decode_proof_instruction_context::<
-            ZeroBalanceProofData,
-            ZeroBalanceProofContext,
-        >(
-            ProofInstruction::VerifyZeroBalance, &zkp_instruction
-        )?)
-    }
 }
 
 /// Processes a [Deposit] instruction.
@@ -373,12 +303,12 @@ fn process_deposit(
     if amount_lo > 0 {
         confidential_transfer_account.pending_balance_lo =
             syscall::add_to(&confidential_transfer_account.pending_balance_lo, amount_lo)
-                .ok_or(ProgramError::InvalidInstructionData)?;
+                .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
     if amount_hi > 0 {
         confidential_transfer_account.pending_balance_hi =
             syscall::add_to(&confidential_transfer_account.pending_balance_hi, amount_hi)
-                .ok_or(ProgramError::InvalidInstructionData)?;
+                .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
 
     confidential_transfer_account.increment_pending_balance_credit_counter()?;
@@ -389,7 +319,7 @@ fn process_deposit(
 /// Verifies that a deposit amount is a 48-bit number and returns the least significant 16 bits and
 /// most significant 32 bits of the amount.
 #[cfg(feature = "zk-ops")]
-fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError> {
+pub(crate) fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError> {
     if amount > MAXIMUM_DEPOSIT_TRANSFER_AMOUNT {
         return Err(TokenError::MaximumDepositAmountExceeded);
     }
@@ -414,10 +344,7 @@ fn process_withdraw(
 
     // zero-knowledge proof certifies that the account has enough available balance to withdraw the
     // amount.
-    let proof_context = verify_withdraw_proof(
-        next_account_info(account_info_iter)?,
-        proof_instruction_offset,
-    )?;
+    let proof_context = verify_withdraw_proof(account_info_iter, proof_instruction_offset)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -471,7 +398,7 @@ fn process_withdraw(
     if amount > 0 {
         confidential_transfer_account.available_balance =
             syscall::subtract_from(&confidential_transfer_account.available_balance, amount)
-                .ok_or(ProgramError::InvalidInstructionData)?;
+                .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
     // Check that the final available balance ciphertext is consistent with the actual ciphertext
     // for which the zero-knowledge proof was generated for.
@@ -490,36 +417,6 @@ fn process_withdraw(
     Ok(())
 }
 
-/// Verify zero-knowledge proof needed for a [Withdraw] instruction and return the
-/// corresponding proof context.
-fn verify_withdraw_proof(
-    account_info: &AccountInfo<'_>,
-    proof_instruction_offset: i64,
-) -> Result<WithdrawProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        // interpret `account_info` as a context state account
-        check_zk_token_proof_program_account(account_info.owner)?;
-        let context_state_account_data = account_info.data.borrow();
-        let context_state =
-            pod_from_bytes::<ProofContextState<WithdrawProofContext>>(&context_state_account_data)?;
-
-        if context_state.proof_type != ProofType::Withdraw.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        // interpret `account_info` as a sysvar
-        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
-        Ok(*decode_proof_instruction_context::<
-            WithdrawData,
-            WithdrawProofContext,
-        >(
-            ProofInstruction::VerifyWithdraw, &zkp_instruction
-        )?)
-    }
-}
-
 /// Processes an [Transfer] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_transfer(
@@ -527,16 +424,13 @@ fn process_transfer(
     accounts: &[AccountInfo],
     new_source_decryptable_available_balance: DecryptableBalance,
     proof_instruction_offset: i64,
+    split_proof_context_state_accounts: bool,
+    source_decrypt_handles: &SourceDecryptHandles,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let source_account_info = next_account_info(account_info_iter)?;
     let destination_token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
-
-    // either sysvar or context state account depending on `proof_instruction_offset`
-    let proof_account_info = next_account_info(account_info_iter)?;
-
-    let authority_info = next_account_info(account_info_iter)?;
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
@@ -560,7 +454,14 @@ fn process_transfer(
         // The zero-knowledge proof certifies that:
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
-        let proof_context = verify_transfer_proof(proof_account_info, proof_instruction_offset)?;
+        let proof_context = verify_transfer_proof(
+            account_info_iter,
+            proof_instruction_offset,
+            split_proof_context_state_accounts,
+            source_decrypt_handles,
+        )?;
+
+        let authority_info = next_account_info(account_info_iter)?;
 
         // Check that the auditor encryption public key associated wth the confidential mint is
         // consistent with what was actually used to generate the zkp.
@@ -609,8 +510,13 @@ fn process_transfer(
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
         //   3. the transfer fee is computed correctly and encrypted in the correct form
-        let proof_context =
-            verify_transfer_with_fee_proof(proof_account_info, proof_instruction_offset)?;
+        let proof_context = verify_transfer_with_fee_proof(
+            account_info_iter,
+            proof_instruction_offset,
+            split_proof_context_state_accounts,
+        )?;
+
+        let authority_info = next_account_info(account_info_iter)?;
 
         // Check that the encryption public keys associated with the mint confidential transfer and
         // confidential transfer fee extensions are consistent with the keys that were used to
@@ -692,165 +598,6 @@ fn process_transfer(
     Ok(())
 }
 
-/// Verify zero-knowledge proof needed for a [Transfer] instruction without fee and return the
-/// corresponding proof context.
-fn verify_transfer_proof(
-    account_info: &AccountInfo<'_>,
-    proof_instruction_offset: i64,
-) -> Result<TransferProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        // interpret `account_info` as a context state account
-        check_zk_token_proof_program_account(account_info.owner)?;
-        let context_state_account_data = account_info.data.borrow();
-        let context_state =
-            pod_from_bytes::<ProofContextState<TransferProofContext>>(&context_state_account_data)?;
-
-        if context_state.proof_type != ProofType::Transfer.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        // interpret `account_info` as a sysvar
-        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
-        Ok(*decode_proof_instruction_context::<
-            TransferData,
-            TransferProofContext,
-        >(
-            ProofInstruction::VerifyTransfer, &zkp_instruction
-        )?)
-    }
-}
-
-/// Verify zero-knowledge proof needed for a [Transfer] instruction with fee and return the
-/// corresponding proof context.
-fn verify_transfer_with_fee_proof(
-    account_info: &AccountInfo<'_>,
-    proof_instruction_offset: i64,
-) -> Result<TransferWithFeeProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        // interpret `account_info` as a context state account
-        check_zk_token_proof_program_account(account_info.owner)?;
-        let context_state_account_data = account_info.data.borrow();
-        let context_state = pod_from_bytes::<ProofContextState<TransferWithFeeProofContext>>(
-            &context_state_account_data,
-        )?;
-
-        if context_state.proof_type != ProofType::TransferWithFee.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        // interpret `account_info` as a sysvar
-        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
-        Ok(*decode_proof_instruction_context::<
-            TransferWithFeeData,
-            TransferWithFeeProofContext,
-        >(
-            ProofInstruction::VerifyTransferWithFee,
-            &zkp_instruction,
-        )?)
-    }
-}
-
-/// Extract the transfer amount ciphertext encrypted under the source ElGamal public key.
-///
-/// A transfer amount ciphertext consists of the following 32-byte components that are serialized
-/// in order:
-///   1. The `commitment` component that encodes the transfer amount.
-///   2. The `decryption handle` component with respect to the source public key.
-///   3. The `decryption handle` component with respect to the destination public key.
-///   4. The `decryption handle` component with respect to the auditor public key.
-///
-/// An ElGamal ciphertext for the source consists of the `commitment` component and the `decryption
-/// handle` component with respect to the source.
-#[cfg(feature = "zk-ops")]
-fn transfer_amount_source_ciphertext(
-    transfer_amount_ciphertext: &TransferAmountCiphertext,
-) -> ElGamalCiphertext {
-    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
-
-    let mut source_ciphertext_bytes = [0u8; 64];
-    source_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
-    source_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[32..64]);
-
-    ElGamalCiphertext(source_ciphertext_bytes)
-}
-
-/// Extract the transfer amount ciphertext encrypted under the destination ElGamal public key.
-///
-/// A transfer amount ciphertext consists of the following 32-byte components that are serialized
-/// in order:
-///   1. The `commitment` component that encodes the transfer amount.
-///   2. The `decryption handle` component with respect to the source public key.
-///   3. The `decryption handle` component with respect to the destination public key.
-///   4. The `decryption handle` component with respect to the auditor public key.
-///
-/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
-/// `decryption handle` component with respect to the destination public key.
-#[cfg(feature = "zk-ops")]
-fn transfer_amount_destination_ciphertext(
-    transfer_amount_ciphertext: &TransferAmountCiphertext,
-) -> ElGamalCiphertext {
-    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
-
-    let mut destination_ciphertext_bytes = [0u8; 64];
-    destination_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
-    destination_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[64..96]);
-
-    ElGamalCiphertext(destination_ciphertext_bytes)
-}
-
-/// Extract the fee amount ciphertext encrypted under the destination ElGamal public key.
-///
-/// A fee encryption amount consists of the following 32-byte components that are serialized in
-/// order:
-///   1. The `commitment` component that encodes the fee amount.
-///   2. The `decryption handle` component with respect to the destination public key.
-///   3. The `decryption handle` component with respect to the withdraw withheld authority public
-///      key.
-///
-/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
-/// `decryption handle` component with respect to the destination public key.
-#[cfg(feature = "zk-ops")]
-fn fee_amount_destination_ciphertext(
-    transfer_amount_ciphertext: &EncryptedFee,
-) -> ElGamalCiphertext {
-    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
-
-    let mut source_ciphertext_bytes = [0u8; 64];
-    source_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
-    source_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[32..64]);
-
-    ElGamalCiphertext(source_ciphertext_bytes)
-}
-
-/// Extract the transfer amount ciphertext encrypted under the withdraw withheld authority ElGamal
-/// public key.
-///
-/// A fee encryption amount consists of the following 32-byte components that are serialized in
-/// order:
-///   1. The `commitment` component that encodes the fee amount.
-///   2. The `decryption handle` component with respect to the destination public key.
-///   3. The `decryption handle` component with respect to the withdraw withheld authority public
-///      key.
-///
-/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
-/// `decryption handle` component with respect to the withdraw withheld authority public key.
-#[cfg(feature = "zk-ops")]
-fn fee_amount_withdraw_withheld_authority_ciphertext(
-    transfer_amount_ciphertext: &EncryptedFee,
-) -> ElGamalCiphertext {
-    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
-
-    let mut destination_ciphertext_bytes = [0u8; 64];
-    destination_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
-    destination_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[64..96]);
-
-    ElGamalCiphertext(destination_ciphertext_bytes)
-}
-
 #[allow(clippy::too_many_arguments)]
 #[cfg(feature = "zk-ops")]
 fn process_source_for_transfer(
@@ -901,7 +648,7 @@ fn process_source_for_transfer(
         source_transfer_amount_lo,
         source_transfer_amount_hi,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     // Check that the computed available balance is consistent with what was actually used to
     // generate the zkp on the client side.
@@ -954,13 +701,13 @@ fn process_destination_for_transfer(
         &destination_confidential_transfer_account.pending_balance_lo,
         destination_transfer_amount_lo,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     destination_confidential_transfer_account.pending_balance_hi = syscall::add(
         &destination_confidential_transfer_account.pending_balance_hi,
         destination_transfer_amount_hi,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     destination_confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
@@ -975,12 +722,12 @@ fn process_destination_for_transfer(
             &destination_confidential_transfer_account.pending_balance_lo,
             &destination_fee_lo,
         )
-        .ok_or(ProgramError::InvalidInstructionData)?;
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
         destination_confidential_transfer_account.pending_balance_hi = syscall::subtract(
             &destination_confidential_transfer_account.pending_balance_hi,
             &destination_fee_hi,
         )
-        .ok_or(ProgramError::InvalidInstructionData)?;
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
         // Decode lo and hi fee amounts encrypted under the withdraw authority encryption public
         // key
@@ -998,7 +745,7 @@ fn process_destination_for_transfer(
             &withdraw_withheld_authority_fee_lo,
             &withdraw_withheld_authority_fee_hi,
         )
-        .ok_or(ProgramError::InvalidInstructionData)?;
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
 
     Ok(())
@@ -1039,7 +786,7 @@ fn process_apply_pending_balance(
         &confidential_transfer_account.pending_balance_lo,
         &confidential_transfer_account.pending_balance_hi,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     confidential_transfer_account.actual_pending_balance_credit_counter =
         confidential_transfer_account.pending_balance_credit_counter;
@@ -1197,6 +944,8 @@ pub(crate) fn process_instruction(
                 accounts,
                 data.new_source_decryptable_available_balance,
                 data.proof_instruction_offset as i64,
+                data.split_proof_context_state_accounts.into(),
+                &data.source_decrypt_handles,
             )
         }
         ConfidentialTransferInstruction::ApplyPendingBalance => {

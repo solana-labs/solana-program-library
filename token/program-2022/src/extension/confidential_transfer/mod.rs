@@ -23,9 +23,25 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
+/// Helper functions to verify zero-knowledge proofs in the Confidential Transfer Extension
+pub mod verify_proof;
+
+/// Helper functions to generate split zero-knowledge proofs for confidential transfers in the
+/// Confidential Transfer Extension.
+///
+/// The logic in this submodule should belong to the `solana-zk-token-sdk` and will be removed with
+/// the next upgrade to the Solana program.
+#[cfg(not(target_os = "solana"))]
+pub mod split_proof_generation;
+
 /// Confidential Transfer Extension account information needed for instructions
 #[cfg(not(target_os = "solana"))]
 pub mod account_info;
+
+/// Ciphertext extraction and proof related helper logic
+///
+/// This submodule should be removed with the next upgrade to the Solana program
+pub mod ciphertext_extraction;
 
 /// ElGamal ciphertext containing an account balance
 pub type EncryptedBalance = ElGamalCiphertext;

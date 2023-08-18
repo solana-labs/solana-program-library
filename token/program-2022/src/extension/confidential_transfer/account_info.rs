@@ -2,8 +2,9 @@ use {
     crate::{
         error::TokenError,
         extension::confidential_transfer::{
-            ConfidentialTransferAccount, DecryptableBalance, EncryptedBalance,
-            PENDING_BALANCE_LO_BIT_LENGTH,
+            ciphertext_extraction::SourceDecryptHandles,
+            split_proof_generation::transfer_split_proof_data, ConfidentialTransferAccount,
+            DecryptableBalance, EncryptedBalance, PENDING_BALANCE_LO_BIT_LENGTH,
         },
         pod::*,
     },
@@ -17,6 +18,8 @@ use {
             transfer::{FeeParameters, TransferData, TransferWithFeeData},
             withdraw::WithdrawData,
             zero_balance::ZeroBalanceProofData,
+            BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU128Data,
+            CiphertextCommitmentEqualityProofData,
         },
     },
 };
@@ -44,7 +47,7 @@ impl EmptyAccountAccountInfo {
         let available_balance = self
             .available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
 
         ZeroBalanceProofData::new(elgamal_keypair, &available_balance)
             .map_err(|_| TokenError::ProofGeneration)
@@ -90,7 +93,7 @@ impl ApplyPendingBalanceAccountInfo {
         let pending_balance_lo = self
             .pending_balance_lo
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         elgamal_secret_key
             .decrypt_u32(&pending_balance_lo)
             .ok_or(TokenError::AccountDecryption)
@@ -103,7 +106,7 @@ impl ApplyPendingBalanceAccountInfo {
         let pending_balance_hi = self
             .pending_balance_hi
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         elgamal_secret_key
             .decrypt_u32(&pending_balance_hi)
             .ok_or(TokenError::AccountDecryption)
@@ -113,7 +116,7 @@ impl ApplyPendingBalanceAccountInfo {
         let decryptable_available_balance = self
             .decryptable_available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         aes_key
             .decrypt(&decryptable_available_balance)
             .ok_or(TokenError::AccountDecryption)
@@ -162,7 +165,7 @@ impl WithdrawAccountInfo {
         let decryptable_available_balance = self
             .decryptable_available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         aes_key
             .decrypt(&decryptable_available_balance)
             .ok_or(TokenError::AccountDecryption)
@@ -178,7 +181,7 @@ impl WithdrawAccountInfo {
         let current_available_balance = self
             .available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
 
         WithdrawData::new(
@@ -227,7 +230,7 @@ impl TransferAccountInfo {
         let decryptable_available_balance = self
             .decryptable_available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         aes_key
             .decrypt(&decryptable_available_balance)
             .ok_or(TokenError::AccountDecryption)
@@ -245,7 +248,7 @@ impl TransferAccountInfo {
         let current_source_available_balance = self
             .available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         let current_source_decrypted_available_balance =
             self.decrypted_available_balance(aes_key)?;
 
@@ -264,6 +267,44 @@ impl TransferAccountInfo {
         .map_err(|_| TokenError::ProofGeneration)
     }
 
+    /// Create a transfer proof data that is split into equality, ciphertext validity, and range
+    /// proofs.
+    pub fn generate_split_transfer_proof_data(
+        &self,
+        transfer_amount: u64,
+        source_elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+        destination_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
+    ) -> Result<
+        (
+            CiphertextCommitmentEqualityProofData,
+            BatchedGroupedCiphertext2HandlesValidityProofData,
+            BatchedRangeProofU128Data,
+            SourceDecryptHandles,
+        ),
+        TokenError,
+    > {
+        let current_available_balance = self
+            .available_balance
+            .try_into()
+            .map_err(|_| TokenError::MalformedCiphertext)?;
+        let current_decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::MalformedCiphertext)?;
+
+        transfer_split_proof_data(
+            &current_available_balance,
+            &current_decryptable_available_balance,
+            transfer_amount,
+            source_elgamal_keypair,
+            aes_key,
+            destination_elgamal_pubkey,
+            auditor_elgamal_pubkey,
+        )
+    }
+
     /// Create a transfer with fee proof data
     #[allow(clippy::too_many_arguments)]
     pub fn generate_transfer_with_fee_proof_data(
@@ -280,7 +321,7 @@ impl TransferAccountInfo {
         let current_source_available_balance = self
             .available_balance
             .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
+            .map_err(|_| TokenError::MalformedCiphertext)?;
         let current_source_decrypted_available_balance =
             self.decrypted_available_balance(aes_key)?;
 
