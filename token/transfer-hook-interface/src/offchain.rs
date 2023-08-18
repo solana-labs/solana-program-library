@@ -1,6 +1,6 @@
 //! Offchain helper for fetching required accounts to build instructions
 
-pub use spl_tlv_account_resolution::account::{AccountDataResult, AccountFetchError};
+pub use spl_tlv_account_resolution::state::{AccountDataResult, AccountFetchError};
 use {
     crate::{get_extra_account_metas_address, instruction::ExecuteInstruction},
     solana_program::{

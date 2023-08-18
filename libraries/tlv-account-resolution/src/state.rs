@@ -1,10 +1,7 @@
 //! State transition types
 
 use {
-    crate::{
-        account::{AccountDataResult, ExtraAccountMeta},
-        error::AccountResolutionError,
-    },
+    crate::{account::ExtraAccountMeta, error::AccountResolutionError},
     solana_program::{
         account_info::AccountInfo,
         instruction::{AccountMeta, Instruction},
@@ -18,6 +15,13 @@ use {
     },
     std::future::Future,
 };
+
+/// Type representing the output of an account fetching function, for easy
+/// chaining between APIs
+pub type AccountDataResult = Result<Option<Vec<u8>>, AccountFetchError>;
+/// Generic error type that can come out of any client while fetching account
+/// data
+pub type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
 
 /// De-escalate an account meta if necessary
 fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[AccountMeta]) {
@@ -156,8 +160,20 @@ impl ExtraAccountMetaList {
 
         let initial_accounts_len = account_infos.len() - extra_account_metas.len();
 
+        // TODO: Try to find a way to store references to the
+        // `Rc<RefCell<&mut [u8]>>` instead of copying
+        let mut account_data_list: Vec<Option<Vec<u8>>> = vec![];
+        for info in account_infos.iter() {
+            account_data_list.push(Some(info.try_borrow_data()?.to_vec()));
+        }
+
         for (i, config) in extra_account_metas.iter().enumerate() {
-            let meta = config.resolve_onchain(account_infos, instruction_data, program_id)?;
+            let meta = config.resolve(
+                &account_data_list,
+                account_infos,
+                instruction_data,
+                program_id,
+            )?;
             let expected_index = i
                 .checked_add(initial_accounts_len)
                 .ok_or::<ProgramError>(AccountResolutionError::CalculationFailure.into())?;
@@ -167,6 +183,8 @@ impl ExtraAccountMetaList {
                     && info.is_writable == meta.is_writable)
                 {
                     return Err(AccountResolutionError::IncorrectAccount.into());
+                } else {
+                    account_data_list.push(Some(info.try_borrow_data()?.to_vec()));
                 }
             } else {
                 return Err(AccountResolutionError::IncorrectAccount.into());
@@ -191,16 +209,25 @@ impl ExtraAccountMetaList {
         let bytes = state.get_first_bytes::<T>()?;
         let extra_account_metas = PodSlice::<ExtraAccountMeta>::unpack(bytes)?;
 
+        // TODO: Here we aren't copying, but if the list turns into type
+        // `Vec<&[u8]>`, we can store the fetched vectors separately and pass
+        // a list of references to conform with the API
+        let mut account_data_list: Vec<Option<Vec<u8>>> = vec![];
+        for meta in instruction.accounts.iter() {
+            let account_data = get_account_data_fn(meta.pubkey).await.unwrap_or(None);
+            account_data_list.push(account_data);
+        }
+
         for extra_meta in extra_account_metas.data().iter() {
-            let mut meta = extra_meta
-                .resolve_offchain(
-                    &get_account_data_fn,
-                    &instruction.accounts,
-                    &instruction.data,
-                    &instruction.program_id,
-                )
-                .await?;
+            let mut meta = extra_meta.resolve(
+                &account_data_list,
+                &instruction.accounts,
+                &instruction.data,
+                &instruction.program_id,
+            )?;
             de_escalate_account_meta(&mut meta, &instruction.accounts);
+            let account_data = get_account_data_fn(meta.pubkey).await.unwrap_or(None);
+            account_data_list.push(account_data);
             instruction.accounts.push(meta);
         }
         Ok(())
@@ -217,8 +244,16 @@ impl ExtraAccountMetaList {
         let bytes = state.get_first_bytes::<T>()?;
         let extra_account_metas = PodSlice::<ExtraAccountMeta>::unpack(bytes)?;
 
+        // TODO: Try to find a way to store references to the
+        // `Rc<RefCell<&mut [u8]>>` instead of copying
+        let mut account_data_list: Vec<Option<Vec<u8>>> = vec![];
+        for info in cpi_account_infos.iter() {
+            account_data_list.push(Some(info.try_borrow_data()?.to_vec()));
+        }
+
         for extra_meta in extra_account_metas.data().iter() {
-            let mut meta = extra_meta.resolve_onchain(
+            let mut meta = extra_meta.resolve(
+                &account_data_list,
                 cpi_account_infos,
                 &cpi_instruction.data,
                 &cpi_instruction.program_id,
@@ -231,6 +266,7 @@ impl ExtraAccountMetaList {
                 .ok_or(AccountResolutionError::IncorrectAccount)?
                 .clone();
 
+            account_data_list.push(Some(account_info.try_borrow_data()?.to_vec()));
             cpi_instruction.accounts.push(meta);
             cpi_account_infos.push(account_info);
         }
@@ -274,14 +310,10 @@ mod tests {
         }
 
         pub async fn get_account_data(&self, pubkey: Pubkey) -> AccountDataResult {
-            let account_info = self.cache.get(&pubkey).unwrap();
-            let account_data = account_info.try_borrow_data().unwrap().to_vec();
-            let data = if account_data.is_empty() {
-                None
-            } else {
-                Some(account_data)
-            };
-            Ok(data)
+            Ok(self
+                .cache
+                .get(&pubkey)
+                .map(|account| account.try_borrow_data().unwrap().to_vec()))
         }
     }
 
