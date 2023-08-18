@@ -653,8 +653,8 @@ async fn command_create_stake(config: &Config, command_config: CreateStakeCli) -
     }
 
     let instructions = single_pool::instruction::create_and_delegate_user_stake(
+        &single_pool::id(),
         &vote_account_address,
-        &pool_address,
         &stake_authority_address,
         &quarantine::get_rent(config).await?,
         command_config.lamports,

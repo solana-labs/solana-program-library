@@ -169,8 +169,8 @@ async fn success_with_seed(activate: bool) {
         find_default_deposit_account_address(&accounts.pool, &accounts.alice.pubkey());
 
     let instructions = instruction::create_and_delegate_user_stake(
+        &id(),
         &accounts.vote_account.pubkey(),
-        &accounts.pool,
         &accounts.alice.pubkey(),
         &rent,
         minimum_stake,
