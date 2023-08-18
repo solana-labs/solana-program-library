@@ -329,18 +329,19 @@ pub fn withdraw_stake(
 /// Uses a fixed address for each wallet and vote account combination to make it easier to find for deposits.
 /// This is an optional helper function; deposits can come from any owned stake account without lockup.
 pub fn create_and_delegate_user_stake(
+    program_id: &Pubkey,
     vote_account_address: &Pubkey,
-    pool_address: &Pubkey,
     user_wallet: &Pubkey,
     rent: &Rent,
     stake_amount: u64,
 ) -> Vec<Instruction> {
+    let pool_address = find_pool_address(program_id, vote_account_address);
     let stake_space = std::mem::size_of::<stake::state::StakeState>();
     let lamports = rent
         .minimum_balance(stake_space)
         .saturating_add(stake_amount);
     let (deposit_address, deposit_seed) =
-        find_default_deposit_account_address_and_seed(pool_address, user_wallet);
+        find_default_deposit_account_address_and_seed(&pool_address, user_wallet);
 
     stake::instruction::create_account_with_seed_and_delegate_stake(
         user_wallet,
