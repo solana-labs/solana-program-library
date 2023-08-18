@@ -258,7 +258,7 @@ export async function createAndDelegateUserStake(
   const pool = findPoolAddress(programId, voteAccount);
   const stakeAccount = await findDefaultDepositAccountAddress(pool, userWallet);
 
-  const seed = 'svsp' + pool.toString().slice(28);
+  const seed = 'svsp' + pool.toString().slice(0, 28);
   const stakeRent = await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
 
   if (

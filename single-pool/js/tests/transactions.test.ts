@@ -9,7 +9,9 @@ import {
   StakeProgram,
   VoteProgram,
 } from '@solana/web3.js';
+import { Buffer } from 'buffer';
 import {
+  getVoteAccountAddressForPool,
   SINGLE_POOL_PROGRAM_ID,
   MPL_METADATA_PROGRAM_ID,
   findPoolAddress,
@@ -42,7 +44,10 @@ class BanksConnection {
 
   async getAccountInfo(address: PublicKey, commitment?: string): Promise<AccountInfo<Buffer>> {
     const account = await this.client.getAccount(address, commitment);
-    return account ? account.toBuffer() : account;
+    if (account) {
+      account.data = Buffer.from(account.data);
+    }
+    return account;
   }
 }
 
@@ -310,4 +315,21 @@ test('update metadata', async (t) => {
     new TextDecoder('ascii').decode(metadataAccount.data).indexOf(newName) > -1,
     'metadata name has been updated',
   );
+});
+
+test('get vote account address', async (t) => {
+  const context = await startWithContext();
+  const client = context.banksClient;
+  const connection = new BanksConnection(client);
+  const payer = context.payer;
+
+  const voteAccountAddress = new PublicKey(voteAccount.pubkey);
+  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
+
+  // initialize pool
+  const transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  await processTransaction(context, transaction);
+
+  const chainVoteAccount = await getVoteAccountAddressForPool(connection, poolAddress);
+  t.true(chainVoteAccount.equals(voteAccountAddress), 'got correct vote account');
 });

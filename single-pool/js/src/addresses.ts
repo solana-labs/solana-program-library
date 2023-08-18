@@ -38,6 +38,6 @@ export async function findDefaultDepositAccountAddress(
   poolAddress: PublicKey,
   userWallet: PublicKey,
 ) {
-  const seed = 'svsp' + poolAddress.toString().slice(28);
+  const seed = 'svsp' + poolAddress.toString().slice(0, 28);
   return PublicKey.createWithSeed(userWallet, seed, StakeProgram.programId);
 }
