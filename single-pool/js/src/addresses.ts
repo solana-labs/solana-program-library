@@ -1,4 +1,4 @@
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, StakeProgram } from '@solana/web3.js';
 
 export const SINGLE_POOL_PROGRAM_ID = new PublicKey('3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY');
 
@@ -34,4 +34,10 @@ function findPda(programId: PublicKey, baseAddress: PublicKey, prefix: string) {
   return publicKey;
 }
 
-// TODO default deposit
+export async function findDefaultDepositAccountAddress(
+  poolAddress: PublicKey,
+  userWallet: PublicKey,
+) {
+  const seed = 'svsp' + poolAddress.toString().slice(28);
+  return PublicKey.createWithSeed(userWallet, seed, StakeProgram.programId);
+}

@@ -20,6 +20,7 @@ import {
   withdraw,
   createTokenMetadata,
   updateTokenMetadata,
+  createAndDelegateUserStake,
   findMplMetadataAddress,
 } from '../src/index.ts';
 import * as voteAccount from './vote_account.json';
@@ -159,6 +160,43 @@ test('deposit', async (t) => {
   await processTransaction(context, transaction);
 
   const minimumDelegation = (await connection.getStakeMinimumDelegation()).value;
+  const poolStakeAccount = await client.getAccount(poolStakeAddress);
+  t.true(poolStakeAccount.lamports > minimumDelegation * 2, 'stake has been deposited');
+});
+
+test('deposit from default', async (t) => {
+  const context = await startWithContext();
+  const client = context.banksClient;
+  const connection = new BanksConnection(client);
+  const payer = context.payer;
+
+  const voteAccountAddress = new PublicKey(voteAccount.pubkey);
+  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
+  const poolStakeAddress = findPoolStakeAddress(SINGLE_POOL_PROGRAM_ID, poolAddress);
+
+  // create default account
+  const minimumDelegation = (await connection.getStakeMinimumDelegation()).value;
+  let transaction = await createAndDelegateUserStake(
+    connection,
+    voteAccountAddress,
+    payer.publicKey,
+    minimumDelegation,
+  );
+  await processTransaction(context, transaction);
+
+  // initialize pool
+  transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  await processTransaction(context, transaction);
+
+  // deposit
+  transaction = await deposit({
+    connection,
+    pool: poolAddress,
+    userWallet: payer.publicKey,
+    depositFromDefaultAccount: true,
+  });
+  await processTransaction(context, transaction);
+
   const poolStakeAccount = await client.getAccount(poolStakeAddress);
   t.true(poolStakeAccount.lamports > minimumDelegation * 2, 'stake has been deposited');
 });

@@ -1,6 +1,7 @@
 import {
   PublicKey,
   Connection,
+  Authorized,
   Transaction,
   StakeProgram,
   SystemProgram,
@@ -15,6 +16,7 @@ import {
 
 import {
   SINGLE_POOL_PROGRAM_ID,
+  findDefaultDepositAccountAddress,
   findPoolAddress,
   findPoolStakeAddress,
   findPoolMintAddress,
@@ -78,14 +80,24 @@ interface DepositParams {
   connection: Connection;
   pool: PublicKey;
   userWallet: PublicKey;
-  userStakeAccount: PublicKey;
+  userStakeAccount?: PublicKey;
+  depositFromDefaultAccount?: boolean;
   userTokenAccount?: PublicKey;
   userLamportAccount?: PublicKey;
   userWithdrawAuthority?: PublicKey;
 }
 
 export async function deposit(params: DepositParams) {
-  const { connection, pool, userWallet, userStakeAccount } = params;
+  const { connection, pool, userWallet } = params;
+
+  let userStakeAccount;
+  if (!params.userStakeAccount == !params.depositFromDefaultAccount) {
+    throw 'must either provide userStakeAccount or true depositFromDefaultAccount';
+  } else if (params.depositFromDefaultAccount) {
+    userStakeAccount = await findDefaultDepositAccountAddress(pool, userWallet);
+  } else {
+    userStakeAccount = params.userStakeAccount;
+  }
 
   const transaction = new Transaction();
 
@@ -160,6 +172,10 @@ export async function withdraw(params: WithdrawParams) {
   const { connection, pool, userWallet, userStakeAccount, tokenAmount, createStakeAccount } =
     params;
 
+  if (typeof tokenAmount == 'bigint' && tokenAmount > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw 'cannot convert tokenAmount to Number';
+  }
+
   const transaction = new Transaction();
 
   const programId = SINGLE_POOL_PROGRAM_ID;
@@ -186,7 +202,12 @@ export async function withdraw(params: WithdrawParams) {
   // TODO check token balance?
 
   transaction.add(
-    createApproveInstruction(userTokenAccount, poolMintAuthority, userTokenAuthority, tokenAmount),
+    createApproveInstruction(
+      userTokenAccount,
+      poolMintAuthority,
+      userTokenAuthority,
+      Number(tokenAmount),
+    ),
   );
 
   transaction.add(
@@ -220,6 +241,58 @@ export function updateTokenMetadata(
   const transaction = new Transaction();
   transaction.add(
     SinglePoolInstruction.updateTokenMetadata(voteAccount, authorizedWithdrawer, name, symbol, uri),
+  );
+
+  return transaction;
+}
+
+export async function createAndDelegateUserStake(
+  connection: Connection,
+  voteAccount: PublicKey,
+  userWallet: PublicKey,
+  stakeAmount: number | bigint,
+) {
+  const transaction = new Transaction();
+
+  const programId = SINGLE_POOL_PROGRAM_ID;
+  const pool = findPoolAddress(programId, voteAccount);
+  const stakeAccount = await findDefaultDepositAccountAddress(pool, userWallet);
+
+  const seed = 'svsp' + pool.toString().slice(28);
+  const stakeRent = await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
+
+  if (
+    typeof stakeAmount == 'bigint' &&
+    stakeAmount + BigInt(stakeRent) > BigInt(Number.MAX_SAFE_INTEGER)
+  ) {
+    throw 'cannot convert stakeAmount to Number';
+  }
+
+  transaction.add(
+    SystemProgram.createAccountWithSeed({
+      basePubkey: userWallet,
+      fromPubkey: userWallet,
+      lamports: Number(stakeAmount) + stakeRent,
+      newAccountPubkey: stakeAccount,
+      programId: StakeProgram.programId,
+      seed,
+      space: StakeProgram.space,
+    }),
+  );
+
+  transaction.add(
+    StakeProgram.initialize({
+      authorized: new Authorized(userWallet, userWallet),
+      stakePubkey: stakeAccount,
+    }),
+  );
+
+  transaction.add(
+    StakeProgram.delegate({
+      authorizedPubkey: userWallet,
+      stakePubkey: stakeAccount,
+      votePubkey: voteAccount,
+    }),
   );
 
   return transaction;
