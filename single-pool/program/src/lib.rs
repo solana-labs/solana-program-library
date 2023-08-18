@@ -32,45 +32,46 @@ const VOTE_STATE_DISCRIMINATOR_END: usize = 4;
 const VOTE_STATE_AUTHORIZED_WITHDRAWER_START: usize = 36;
 const VOTE_STATE_AUTHORIZED_WITHDRAWER_END: usize = 68;
 
-fn find_address_and_bump(
-    program_id: &Pubkey,
-    pool_address: &Pubkey,
-    prefix: &[u8],
-) -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[prefix, pool_address.as_ref()], program_id)
-}
-
 fn find_pool_address_and_bump(program_id: &Pubkey, vote_account_address: &Pubkey) -> (Pubkey, u8) {
-    find_address_and_bump(program_id, vote_account_address, POOL_PREFIX)
+    Pubkey::find_program_address(&[POOL_PREFIX, vote_account_address.as_ref()], program_id)
 }
 
 fn find_pool_stake_address_and_bump(program_id: &Pubkey, pool_address: &Pubkey) -> (Pubkey, u8) {
-    find_address_and_bump(program_id, pool_address, POOL_STAKE_PREFIX)
+    Pubkey::find_program_address(&[POOL_STAKE_PREFIX, pool_address.as_ref()], program_id)
 }
 
 fn find_pool_mint_address_and_bump(program_id: &Pubkey, pool_address: &Pubkey) -> (Pubkey, u8) {
-    find_address_and_bump(program_id, pool_address, POOL_MINT_PREFIX)
+    Pubkey::find_program_address(&[POOL_MINT_PREFIX, pool_address.as_ref()], program_id)
 }
 
 fn find_pool_stake_authority_address_and_bump(
     program_id: &Pubkey,
     pool_address: &Pubkey,
 ) -> (Pubkey, u8) {
-    find_address_and_bump(program_id, pool_address, POOL_STAKE_AUTHORITY_PREFIX)
+    Pubkey::find_program_address(
+        &[POOL_STAKE_AUTHORITY_PREFIX, pool_address.as_ref()],
+        program_id,
+    )
 }
 
 fn find_pool_mint_authority_address_and_bump(
     program_id: &Pubkey,
     pool_address: &Pubkey,
 ) -> (Pubkey, u8) {
-    find_address_and_bump(program_id, pool_address, POOL_MINT_AUTHORITY_PREFIX)
+    Pubkey::find_program_address(
+        &[POOL_MINT_AUTHORITY_PREFIX, pool_address.as_ref()],
+        program_id,
+    )
 }
 
 fn find_pool_mpl_authority_address_and_bump(
     program_id: &Pubkey,
     pool_address: &Pubkey,
 ) -> (Pubkey, u8) {
-    find_address_and_bump(program_id, pool_address, POOL_MPL_AUTHORITY_PREFIX)
+    Pubkey::find_program_address(
+        &[POOL_MPL_AUTHORITY_PREFIX, pool_address.as_ref()],
+        program_id,
+    )
 }
 
 fn find_default_deposit_account_address_and_seed(
