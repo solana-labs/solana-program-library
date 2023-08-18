@@ -1231,7 +1231,6 @@ async fn command_transfer(
     let maybe_fee =
         ui_fee.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
 
-
     // determine whether recipient is a token account or an expected owner of one
     let recipient_is_token_account = if !config.sign_only {
         // in online mode we can fetch it and see
@@ -4254,8 +4253,9 @@ async fn process_command<'a>(
                 || arg_matches.is_present("allow_unfunded_recipient");
 
             let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
-            let no_recipient_is_ata_owner = arg_matches.is_present("no_recipient_is_ata_owner") || !arg_matches.is_present("recipient_is_ata_owner");
-            if arg_matches.is_present("recipient_is_ata_owner") {
+            let no_recipient_is_ata_owner =
+                arg_matches.is_present("no_recipient_is_ata_owner") || !recipient_is_ata_owner;
+            if recipient_is_ata_owner {
                 println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
             }
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
