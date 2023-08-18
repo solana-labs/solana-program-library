@@ -1144,7 +1144,7 @@ async fn command_transfer(
     allow_unfunded_recipient: bool,
     fund_recipient: bool,
     mint_decimals: Option<u8>,
-    recipient_is_ata_owner: bool,
+    no_recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
     ui_fee: Option<f64>,
     memo: Option<String>,
@@ -1290,7 +1290,7 @@ async fn command_transfer(
         }
     } else {
         // in offline mode we gotta trust them
-        !recipient_is_ata_owner
+        no_recipient_is_ata_owner
     };
 
     // now if its a token account, life is ez
@@ -3134,11 +3134,20 @@ fn app<'a, 'b>(
                         .help("Send tokens to the recipient even if the recipient is not a wallet owned by System Program."),
                 )
                 .arg(
-                    Arg::with_name("recipient_is_ata_owner")
-                        .long("recipient-is-ata-owner")
+                    Arg::with_name("no_recipient_is_ata_owner")
+                        .long("no-recipient-is-ata-owner")
                         .takes_value(false)
                         .requires("sign_only")
                         .help("In sign-only mode, specifies that the recipient is the owner of the associated token account rather than an actual token account"),
+                )
+                .arg(
+                    Arg::with_name("recipient_is_ata_owner")
+                        .long("recipient-is-ata-owner")
+                        .takes_value(false)
+                        .hidden(true)
+                        .conflicts_with("no_recipient_is_ata_owner")
+                        .requires("sign_only")
+                        .help("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."),
                 )
                 .arg(
                     Arg::with_name("expected_fee")
@@ -4244,6 +4253,11 @@ async fn process_command<'a>(
                 || arg_matches.is_present("allow_unfunded_recipient");
 
             let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
+            let no_recipient_is_ata_owner =
+                arg_matches.is_present("no_recipient_is_ata_owner") || !recipient_is_ata_owner;
+            if recipient_is_ata_owner {
+                println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
+            }
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
             let memo = value_t!(arg_matches, "memo", String).ok();
@@ -4263,7 +4277,7 @@ async fn process_command<'a>(
                 allow_unfunded_recipient,
                 fund_recipient,
                 mint_decimals,
-                recipient_is_ata_owner,
+                no_recipient_is_ata_owner,
                 use_unchecked_instruction,
                 expected_fee,
                 memo,
