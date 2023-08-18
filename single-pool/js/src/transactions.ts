@@ -90,14 +90,13 @@ interface DepositParams {
 export async function deposit(params: DepositParams) {
   const { connection, pool, userWallet } = params;
 
-  let userStakeAccount;
   if (!params.userStakeAccount == !params.depositFromDefaultAccount) {
     throw 'must either provide userStakeAccount or true depositFromDefaultAccount';
-  } else if (params.depositFromDefaultAccount) {
-    userStakeAccount = await findDefaultDepositAccountAddress(pool, userWallet);
-  } else {
-    userStakeAccount = params.userStakeAccount;
   }
+
+  const userStakeAccount = params.depositFromDefaultAccount
+    ? await findDefaultDepositAccountAddress(pool, userWallet)
+    : params.userStakeAccount;
 
   const transaction = new Transaction();
 
@@ -128,7 +127,7 @@ export async function deposit(params: DepositParams) {
 
   transaction.add(
     StakeProgram.authorize({
-      stakePubkey: userStakeAccount,
+      stakePubkey: userStakeAccount as PublicKey,
       authorizedPubkey: userWithdrawAuthority,
       newAuthorizedPubkey: poolStakeAuthority,
       stakeAuthorizationType: StakeAuthorizationLayout.Staker,
@@ -137,7 +136,7 @@ export async function deposit(params: DepositParams) {
 
   transaction.add(
     StakeProgram.authorize({
-      stakePubkey: userStakeAccount,
+      stakePubkey: userStakeAccount as PublicKey,
       authorizedPubkey: userWithdrawAuthority,
       newAuthorizedPubkey: poolStakeAuthority,
       stakeAuthorizationType: StakeAuthorizationLayout.Withdrawer,
@@ -147,7 +146,7 @@ export async function deposit(params: DepositParams) {
   transaction.add(
     SinglePoolInstruction.depositStake(
       pool,
-      userStakeAccount,
+      userStakeAccount as PublicKey,
       userTokenAccount,
       userLamportAccount,
     ),
