@@ -148,7 +148,10 @@ pub fn process_instruction(
         MathInstruction::F64Pow { base, exponent } => {
             msg!("Calculating f64 Pow");
             sol_log_compute_units();
-            let _result = base.powi(5);
+            let result = base.powi(exponent as i32);
+            sol_log_compute_units();
+            msg!("{}", result as u64);
+            sol_log_compute_units();
             let result = base.powf(exponent);
             sol_log_compute_units();
             msg!("{}", result as u64);
