@@ -12,17 +12,12 @@ import {
 import { Buffer } from 'buffer';
 import {
   getVoteAccountAddressForPool,
-  SINGLE_POOL_PROGRAM_ID,
   MPL_METADATA_PROGRAM_ID,
+  SinglePoolProgram,
   findPoolAddress,
   findPoolStakeAddress,
   findPoolMintAddress,
-  initialize,
-  deposit,
-  withdraw,
-  createTokenMetadata,
-  updateTokenMetadata,
-  createAndDelegateUserStake,
+  SinglePoolProgram,
   findMplMetadataAddress,
 } from '../src/index.ts';
 import * as voteAccount from './vote_account.json';
@@ -78,7 +73,7 @@ async function startWithContext(authorizedWithdrawer?: PublicKey) {
 
   return await start(
     [
-      { name: 'spl_single_validator_pool', programId: SINGLE_POOL_PROGRAM_ID },
+      { name: 'spl_single_validator_pool', programId: SinglePoolProgram.programId },
       { name: 'mpl_token_metadata', programId: MPL_METADATA_PROGRAM_ID },
     ],
     [
@@ -141,16 +136,20 @@ test('initialize', async (t) => {
   const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
-  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
+  const poolAddress = findPoolAddress(SinglePoolProgram.programId, voteAccountAddress);
 
   // initialize pool
-  const transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  const transaction = await SinglePoolProgram.initialize(
+    connection,
+    voteAccountAddress,
+    payer.publicKey,
+  );
   await processTransaction(context, transaction);
 
   t.truthy(await client.getAccount(poolAddress), 'pool has been created');
   t.truthy(
     await client.getAccount(
-      findMplMetadataAddress(findPoolMintAddress(SINGLE_POOL_PROGRAM_ID, poolAddress)),
+      findMplMetadataAddress(findPoolMintAddress(SinglePoolProgram.programId, poolAddress)),
     ),
     'metadata has been created',
   );
@@ -163,16 +162,20 @@ test('deposit', async (t) => {
   const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
-  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
-  const poolStakeAddress = findPoolStakeAddress(SINGLE_POOL_PROGRAM_ID, poolAddress);
+  const poolAddress = findPoolAddress(SinglePoolProgram.programId, voteAccountAddress);
+  const poolStakeAddress = findPoolStakeAddress(SinglePoolProgram.programId, poolAddress);
   const userStakeAccount = await createAndDelegateStakeAccount(context, voteAccountAddress);
 
   // initialize pool
-  let transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  let transaction = await SinglePoolProgram.initialize(
+    connection,
+    voteAccountAddress,
+    payer.publicKey,
+  );
   await processTransaction(context, transaction);
 
   // deposit
-  transaction = await deposit({
+  transaction = await SinglePoolProgram.deposit({
     connection,
     pool: poolAddress,
     userWallet: payer.publicKey,
@@ -192,12 +195,12 @@ test('deposit from default', async (t) => {
   const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
-  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
-  const poolStakeAddress = findPoolStakeAddress(SINGLE_POOL_PROGRAM_ID, poolAddress);
+  const poolAddress = findPoolAddress(SinglePoolProgram.programId, voteAccountAddress);
+  const poolStakeAddress = findPoolStakeAddress(SinglePoolProgram.programId, poolAddress);
 
   // create default account
   const minimumDelegation = (await connection.getStakeMinimumDelegation()).value;
-  let transaction = await createAndDelegateUserStake(
+  let transaction = await SinglePoolProgram.createAndDelegateUserStake(
     connection,
     voteAccountAddress,
     payer.publicKey,
@@ -206,11 +209,11 @@ test('deposit from default', async (t) => {
   await processTransaction(context, transaction);
 
   // initialize pool
-  transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  transaction = await SinglePoolProgram.initialize(connection, voteAccountAddress, payer.publicKey);
   await processTransaction(context, transaction);
 
   // deposit
-  transaction = await deposit({
+  transaction = await SinglePoolProgram.deposit({
     connection,
     pool: poolAddress,
     userWallet: payer.publicKey,
@@ -229,16 +232,20 @@ test('withdraw', async (t) => {
   const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
-  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
-  const poolStakeAddress = findPoolStakeAddress(SINGLE_POOL_PROGRAM_ID, poolAddress);
+  const poolAddress = findPoolAddress(SinglePoolProgram.programId, voteAccountAddress);
+  const poolStakeAddress = findPoolStakeAddress(SinglePoolProgram.programId, poolAddress);
   const depositAccount = await createAndDelegateStakeAccount(context, voteAccountAddress);
 
   // initialize pool
-  let transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  let transaction = await SinglePoolProgram.initialize(
+    connection,
+    voteAccountAddress,
+    payer.publicKey,
+  );
   await processTransaction(context, transaction);
 
   // deposit
-  transaction = await deposit({
+  transaction = await SinglePoolProgram.deposit({
     connection,
     pool: poolAddress,
     userWallet: payer.publicKey,
@@ -252,7 +259,7 @@ test('withdraw', async (t) => {
 
   // withdraw
   const withdrawAccount = new Keypair();
-  transaction = await withdraw({
+  transaction = await SinglePoolProgram.withdraw({
     connection,
     pool: poolAddress,
     userWallet: payer.publicKey,
@@ -273,27 +280,32 @@ test('create metadata', async (t) => {
   const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
-  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
+  const poolAddress = findPoolAddress(SinglePoolProgram.programId, voteAccountAddress);
 
   // initialize pool without metadata
-  let transaction = await initialize(connection, voteAccountAddress, payer.publicKey, true);
+  let transaction = await SinglePoolProgram.initialize(
+    connection,
+    voteAccountAddress,
+    payer.publicKey,
+    true,
+  );
   await processTransaction(context, transaction);
 
   t.truthy(await client.getAccount(poolAddress), 'pool has been created');
   t.falsy(
     await client.getAccount(
-      findMplMetadataAddress(findPoolMintAddress(SINGLE_POOL_PROGRAM_ID, poolAddress)),
+      findMplMetadataAddress(findPoolMintAddress(SinglePoolProgram.programId, poolAddress)),
     ),
     'metadata has not been created',
   );
 
   // create metadata
-  transaction = createTokenMetadata(poolAddress, payer.publicKey);
+  transaction = SinglePoolProgram.createTokenMetadata(poolAddress, payer.publicKey);
   await processTransaction(context, transaction);
 
   t.truthy(
     await client.getAccount(
-      findMplMetadataAddress(findPoolMintAddress(SINGLE_POOL_PROGRAM_ID, poolAddress)),
+      findMplMetadataAddress(findPoolMintAddress(SinglePoolProgram.programId, poolAddress)),
     ),
     'metadata has been created',
   );
@@ -308,17 +320,21 @@ test('update metadata', async (t) => {
   const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
-  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
-  const poolMintAddress = findPoolMintAddress(SINGLE_POOL_PROGRAM_ID, poolAddress);
+  const poolAddress = findPoolAddress(SinglePoolProgram.programId, voteAccountAddress);
+  const poolMintAddress = findPoolMintAddress(SinglePoolProgram.programId, poolAddress);
   const poolMetadataAddress = findMplMetadataAddress(poolMintAddress);
 
   // initialize pool
-  let transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  let transaction = await SinglePoolProgram.initialize(
+    connection,
+    voteAccountAddress,
+    payer.publicKey,
+  );
   await processTransaction(context, transaction);
 
   // update metadata
   const newName = 'hana wuz here';
-  transaction = updateTokenMetadata(
+  transaction = SinglePoolProgram.updateTokenMetadata(
     voteAccountAddress,
     authorizedWithdrawer.publicKey,
     newName,
@@ -340,10 +356,14 @@ test('get vote account address', async (t) => {
   const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
-  const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
+  const poolAddress = findPoolAddress(SinglePoolProgram.programId, voteAccountAddress);
 
   // initialize pool
-  const transaction = await initialize(connection, voteAccountAddress, payer.publicKey);
+  const transaction = await SinglePoolProgram.initialize(
+    connection,
+    voteAccountAddress,
+    payer.publicKey,
+  );
   await processTransaction(context, transaction);
 
   const chainVoteAccount = await getVoteAccountAddressForPool(connection, poolAddress);

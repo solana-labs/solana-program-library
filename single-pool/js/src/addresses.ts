@@ -1,7 +1,5 @@
 import { PublicKey, StakeProgram } from '@solana/web3.js';
 
-export const SINGLE_POOL_PROGRAM_ID = new PublicKey('3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY');
-
 export function findPoolAddress(programId: PublicKey, voteAccountAddress: PublicKey) {
   return findPda(programId, voteAccountAddress, 'pool');
 }

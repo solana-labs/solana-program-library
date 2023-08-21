@@ -71,6 +71,18 @@ export function updateTokenMetadataLayout(
   symbolLength: number,
   uriLength: number,
 ) {
+  if (nameLength > 32) {
+    throw 'maximum token name length is 32 characters';
+  }
+
+  if (symbolLength > 10) {
+    throw 'maximum token symbol length is 10 characters';
+  }
+
+  if (uriLength > 200) {
+    throw 'maximum token uri length is 200 characters';
+  }
+
   return {
     index: 4,
     layout: BufferLayout.struct<any>([

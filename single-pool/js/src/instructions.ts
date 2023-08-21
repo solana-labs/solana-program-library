@@ -13,7 +13,6 @@ import { Buffer } from 'buffer';
 
 import { MPL_METADATA_PROGRAM_ID, findMplMetadataAddress } from './mpl_metadata';
 import {
-  SINGLE_POOL_PROGRAM_ID,
   findPoolAddress,
   findPoolStakeAddress,
   findPoolMintAddress,
@@ -21,14 +20,13 @@ import {
   findPoolMintAuthorityAddress,
   findPoolMplAuthorityAddress,
 } from './addresses';
+import { SinglePoolProgram } from './transactions';
 
 import { encodeData, SINGLE_POOL_INSTRUCTION_LAYOUTS, updateTokenMetadataLayout } from './layouts';
 
-// FIXME why does the stake pool js want program id for the pda search fns
-// but hardcodes one for the instruction fns? seems odd
 export class SinglePoolInstruction {
   static initializePool(voteAccount: PublicKey): TransactionInstruction {
-    const programId = SINGLE_POOL_PROGRAM_ID;
+    const programId = SinglePoolProgram.programId;
     const pool = findPoolAddress(programId, voteAccount);
 
     const keys = [
@@ -67,7 +65,7 @@ export class SinglePoolInstruction {
     userTokenAccount: PublicKey,
     userLamportAccount: PublicKey,
   ): TransactionInstruction {
-    const programId = SINGLE_POOL_PROGRAM_ID;
+    const programId = SinglePoolProgram.programId;
 
     const keys = [
       { pubkey: pool, isSigner: false, isWritable: false },
@@ -106,7 +104,7 @@ export class SinglePoolInstruction {
     userTokenAuthority: PublicKey,
     tokenAmount: number | bigint,
   ): TransactionInstruction {
-    const programId = SINGLE_POOL_PROGRAM_ID;
+    const programId = SinglePoolProgram.programId;
 
     const keys = [
       { pubkey: pool, isSigner: false, isWritable: false },
@@ -139,7 +137,7 @@ export class SinglePoolInstruction {
   }
 
   static createTokenMetadata(pool: PublicKey, payer: PublicKey): TransactionInstruction {
-    const programId = SINGLE_POOL_PROGRAM_ID;
+    const programId = SinglePoolProgram.programId;
     const mint = findPoolMintAddress(programId, pool);
 
     const keys = [
@@ -170,7 +168,7 @@ export class SinglePoolInstruction {
     tokenSymbol: string,
     tokenUri?: string,
   ): TransactionInstruction {
-    const programId = SINGLE_POOL_PROGRAM_ID;
+    const programId = SinglePoolProgram.programId;
     const pool = findPoolAddress(programId, voteAccount);
 
     tokenUri = tokenUri || '';
@@ -187,8 +185,6 @@ export class SinglePoolInstruction {
       },
       { pubkey: MPL_METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
     ];
-
-    // TODO check name/sym/uri length...
 
     const type = updateTokenMetadataLayout(tokenName.length, tokenSymbol.length, tokenUri.length);
 
