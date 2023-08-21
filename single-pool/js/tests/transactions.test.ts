@@ -12,6 +12,7 @@ import {
 import { Buffer } from 'buffer';
 import {
   getVoteAccountAddressForPool,
+  findDefaultDepositAccountAddress,
   MPL_METADATA_PROGRAM_ID,
   SinglePoolProgram,
   findPoolAddress,
@@ -368,4 +369,17 @@ test('get vote account address', async (t) => {
 
   const chainVoteAccount = await getVoteAccountAddressForPool(connection, poolAddress);
   t.true(chainVoteAccount.equals(voteAccountAddress), 'got correct vote account');
+});
+
+test('default account address', async (t) => {
+  const voteAccountAddress = new PublicKey(voteAccount.pubkey);
+  const owner = new PublicKey('3No4rmsu36AGb9bitRNFFnMzXZmproBKEWvQr1FuBvR8');
+  const expectedDefault = new PublicKey('AcQyHnPczCxFj3EoyyapubjjsLy9bX9kYkcRNerreKvA');
+
+  const actualDefault = await findDefaultDepositAccountAddress(
+    findPoolAddress(SinglePoolProgram.programId, voteAccountAddress),
+    owner,
+  );
+
+  t.true(actualDefault.equals(expectedDefault), 'got correct default account address');
 });
