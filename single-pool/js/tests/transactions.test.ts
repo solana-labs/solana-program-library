@@ -2,10 +2,10 @@ import test from 'ava';
 import { start, BanksClient, ProgramTestContext } from 'solana-bankrun';
 import {
   Keypair,
-  LAMPORTS_PER_SOL,
   PublicKey,
   Transaction,
   Authorized,
+  TransactionInstruction,
   StakeProgram,
   VoteProgram,
 } from '@solana/web3.js';
@@ -28,8 +28,9 @@ import {
 import * as voteAccount from './vote_account.json';
 
 class BanksConnection {
-  constructor(client: BanksClient) {
+  constructor(client: BanksClient, payer: Keypair) {
     this.client = client;
+    this.payer = payer;
   }
 
   async getMinimumBalanceForRentExemption(dataLen: number): Promise<number> {
@@ -38,8 +39,23 @@ class BanksConnection {
   }
 
   async getStakeMinimumDelegation() {
-    // TODO add this rpc call to the banks client
-    return { value: LAMPORTS_PER_SOL };
+    const transaction = new Transaction();
+    transaction.add(
+      new TransactionInstruction({
+        programId: StakeProgram.programId,
+        keys: [],
+        data: Buffer.from([13, 0, 0, 0]),
+      }),
+    );
+    transaction.recentBlockhash = (await this.client.getLatestBlockhash())[0];
+    transaction.feePayer = this.payer.publicKey;
+    transaction.sign(this.payer);
+
+    const res = await this.client.simulateTransaction(transaction);
+    const data = Array.from(res.inner.meta.returnData.data);
+    const minimumDelegation = data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24);
+
+    return { value: minimumDelegation };
   }
 
   async getAccountInfo(address: PublicKey, commitment?: string): Promise<AccountInfo<Buffer>> {
@@ -94,7 +110,7 @@ async function createAndDelegateStakeAccount(
   context: ProgramTestContext,
   voteAccountAddress: PublicKey,
 ): Promise<PublicKey> {
-  const connection = new BanksConnection(context.banksClient);
+  const connection = new BanksConnection(context.banksClient, context.payer);
   let userStakeAccount = new Keypair();
 
   const stakeRent = await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
@@ -121,8 +137,8 @@ async function createAndDelegateStakeAccount(
 test('initialize', async (t) => {
   const context = await startWithContext();
   const client = context.banksClient;
-  const connection = new BanksConnection(client);
   const payer = context.payer;
+  const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
   const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
@@ -143,8 +159,8 @@ test('initialize', async (t) => {
 test('deposit', async (t) => {
   const context = await startWithContext();
   const client = context.banksClient;
-  const connection = new BanksConnection(client);
   const payer = context.payer;
+  const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
   const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
@@ -172,8 +188,8 @@ test('deposit', async (t) => {
 test('deposit from default', async (t) => {
   const context = await startWithContext();
   const client = context.banksClient;
-  const connection = new BanksConnection(client);
   const payer = context.payer;
+  const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
   const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
@@ -209,8 +225,8 @@ test('deposit from default', async (t) => {
 test('withdraw', async (t) => {
   const context = await startWithContext();
   const client = context.banksClient;
-  const connection = new BanksConnection(client);
   const payer = context.payer;
+  const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
   const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
@@ -253,8 +269,8 @@ test('withdraw', async (t) => {
 test('create metadata', async (t) => {
   const context = await startWithContext();
   const client = context.banksClient;
-  const connection = new BanksConnection(client);
   const payer = context.payer;
+  const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
   const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
@@ -288,8 +304,8 @@ test('update metadata', async (t) => {
 
   const context = await startWithContext(authorizedWithdrawer.publicKey);
   const client = context.banksClient;
-  const connection = new BanksConnection(client);
   const payer = context.payer;
+  const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
   const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
@@ -320,8 +336,8 @@ test('update metadata', async (t) => {
 test('get vote account address', async (t) => {
   const context = await startWithContext();
   const client = context.banksClient;
-  const connection = new BanksConnection(client);
   const payer = context.payer;
+  const connection = new BanksConnection(client, payer);
 
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
   const poolAddress = findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccountAddress);
