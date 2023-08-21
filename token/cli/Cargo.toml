@@ -14,7 +14,7 @@ walkdir = "2"
 [dependencies]
 clap = "2.33.3"
 console = "0.15.7"
-serde = "1.0.183"
+serde = "1.0.185"
 serde_derive = "1.0.103"
 serde_json = "1.0.105"
 solana-account-decoder = "=1.16.3"
