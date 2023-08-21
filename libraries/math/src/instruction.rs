@@ -97,6 +97,16 @@ pub enum MathInstruction {
         argument: f32,
     },
 
+    /// Pow two float values
+    ///
+    /// No accounts required for this instruction
+    F64Pow {
+        /// The base
+        base: f64,
+        /// The exponent
+        exponent: f64,
+    },
+
     /// Don't do anything for comparison
     ///
     /// No accounts required for this instruction
@@ -214,6 +224,17 @@ pub fn f32_normal_cdf(argument: f32) -> Instruction {
         program_id: id(),
         accounts: vec![],
         data: MathInstruction::F32NormalCDF { argument }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Create F64Pow instruction
+pub fn f64_pow(base: f64, exponent: f64) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::F64Pow { base, exponent }
             .try_to_vec()
             .unwrap(),
     }
