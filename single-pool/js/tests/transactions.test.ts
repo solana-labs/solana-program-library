@@ -23,6 +23,8 @@ import {
 } from '../src/index.ts';
 import * as voteAccount from './vote_account.json';
 
+const SLOTS_PER_EPOCH: bigint = 432000n;
+
 class BanksConnection {
   constructor(client: BanksClient, payer: Keypair) {
     this.client = client;
@@ -175,6 +177,9 @@ test('deposit', async (t) => {
   );
   await processTransaction(context, transaction);
 
+  const slot = await client.getSlot();
+  context.warpToSlot(slot + SLOTS_PER_EPOCH);
+
   // deposit
   transaction = await SinglePoolProgram.deposit({
     connection,
@@ -184,9 +189,10 @@ test('deposit', async (t) => {
   });
   await processTransaction(context, transaction);
 
+  const stakeRent = await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
   const minimumDelegation = (await connection.getStakeMinimumDelegation()).value;
   const poolStakeAccount = await client.getAccount(poolStakeAddress);
-  t.true(poolStakeAccount.lamports > minimumDelegation * 2, 'stake has been deposited');
+  t.is(poolStakeAccount.lamports, minimumDelegation * 2 + stakeRent, 'stake has been deposited');
 });
 
 test('deposit from default', async (t) => {
@@ -213,6 +219,9 @@ test('deposit from default', async (t) => {
   transaction = await SinglePoolProgram.initialize(connection, voteAccountAddress, payer.publicKey);
   await processTransaction(context, transaction);
 
+  const slot = await client.getSlot();
+  context.warpToSlot(slot + SLOTS_PER_EPOCH);
+
   // deposit
   transaction = await SinglePoolProgram.deposit({
     connection,
@@ -222,8 +231,9 @@ test('deposit from default', async (t) => {
   });
   await processTransaction(context, transaction);
 
+  const stakeRent = await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
   const poolStakeAccount = await client.getAccount(poolStakeAddress);
-  t.true(poolStakeAccount.lamports > minimumDelegation * 2, 'stake has been deposited');
+  t.is(poolStakeAccount.lamports, minimumDelegation * 2 + stakeRent, 'stake has been deposited');
 });
 
 test('withdraw', async (t) => {
@@ -244,6 +254,9 @@ test('withdraw', async (t) => {
     payer.publicKey,
   );
   await processTransaction(context, transaction);
+
+  const slot = await client.getSlot();
+  context.warpToSlot(slot + SLOTS_PER_EPOCH);
 
   // deposit
   transaction = await SinglePoolProgram.deposit({
@@ -270,8 +283,9 @@ test('withdraw', async (t) => {
   });
   await processTransaction(context, transaction, [withdrawAccount]);
 
+  const stakeRent = await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
   const userStakeAccount = await client.getAccount(withdrawAccount.publicKey);
-  t.true(userStakeAccount.lamports > minimumDelegation, 'stake has been withdrawn');
+  t.is(userStakeAccount.lamports, minimumDelegation + stakeRent, 'stake has been withdrawn');
 });
 
 test('create metadata', async (t) => {

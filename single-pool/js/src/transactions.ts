@@ -23,6 +23,7 @@ import {
   findPoolMintAuthorityAddress,
 } from './addresses';
 import { SinglePoolInstruction } from './instructions';
+import { SINGLE_POOL_PROGRAM_ID, defaultDepositAccountSeed } from './internal';
 
 interface DepositParams {
   connection: Connection;
@@ -48,8 +49,7 @@ interface WithdrawParams {
 }
 
 export class SinglePoolProgram {
-  // FIXME replace with real id when we have one
-  static programId: PublicKey = new PublicKey('3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY');
+  static programId: PublicKey = SINGLE_POOL_PROGRAM_ID;
 
   static space: number = 33;
 
@@ -106,6 +106,7 @@ export class SinglePoolProgram {
   static async deposit(params: DepositParams) {
     const { connection, pool, userWallet } = params;
 
+    // note this is just "if not xor"
     if (!params.userStakeAccount == !params.depositFromDefaultAccount) {
       throw 'must either provide userStakeAccount or true depositFromDefaultAccount';
     }
@@ -172,10 +173,6 @@ export class SinglePoolProgram {
     const { connection, pool, userWallet, userStakeAccount, tokenAmount, createStakeAccount } =
       params;
 
-    if (typeof tokenAmount == 'bigint' && tokenAmount > BigInt(Number.MAX_SAFE_INTEGER)) {
-      throw 'cannot convert tokenAmount to Number';
-    }
-
     const transaction = new Transaction();
 
     const poolMintAuthority = findPoolMintAuthorityAddress(this.programId, pool);
@@ -203,7 +200,7 @@ export class SinglePoolProgram {
         userTokenAccount,
         poolMintAuthority,
         userTokenAuthority,
-        Number(tokenAmount),
+        tokenAmount,
       ),
     );
 
@@ -260,9 +257,9 @@ export class SinglePoolProgram {
     const pool = findPoolAddress(this.programId, voteAccount);
     const stakeAccount = await findDefaultDepositAccountAddress(pool, userWallet);
 
-    const seed = 'svsp' + pool.toString().slice(0, 28);
     const stakeRent = await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
 
+    // web3.js only supports number, so if amount is a bigint, we check that the conversion will be safe
     if (
       typeof stakeAmount == 'bigint' &&
       stakeAmount + BigInt(stakeRent) > BigInt(Number.MAX_SAFE_INTEGER)
@@ -277,7 +274,7 @@ export class SinglePoolProgram {
         lamports: Number(stakeAmount) + stakeRent,
         newAccountPubkey: stakeAccount,
         programId: StakeProgram.programId,
-        seed,
+        seed: defaultDepositAccountSeed(pool),
         space: StakeProgram.space,
       }),
     );

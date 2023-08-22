@@ -20,13 +20,16 @@ import {
   findPoolMintAuthorityAddress,
   findPoolMplAuthorityAddress,
 } from './addresses';
-import { SinglePoolProgram } from './transactions';
-
-import { encodeData, SINGLE_POOL_INSTRUCTION_LAYOUTS, updateTokenMetadataLayout } from './layouts';
+import {
+  encodeData,
+  SINGLE_POOL_PROGRAM_ID,
+  SINGLE_POOL_INSTRUCTION_LAYOUTS,
+  updateTokenMetadataLayout,
+} from './internal';
 
 export class SinglePoolInstruction {
   static initializePool(voteAccount: PublicKey): TransactionInstruction {
-    const programId = SinglePoolProgram.programId;
+    const programId = SINGLE_POOL_PROGRAM_ID;
     const pool = findPoolAddress(programId, voteAccount);
 
     const keys = [
@@ -65,7 +68,7 @@ export class SinglePoolInstruction {
     userTokenAccount: PublicKey,
     userLamportAccount: PublicKey,
   ): TransactionInstruction {
-    const programId = SinglePoolProgram.programId;
+    const programId = SINGLE_POOL_PROGRAM_ID;
 
     const keys = [
       { pubkey: pool, isSigner: false, isWritable: false },
@@ -104,7 +107,7 @@ export class SinglePoolInstruction {
     userTokenAuthority: PublicKey,
     tokenAmount: number | bigint,
   ): TransactionInstruction {
-    const programId = SinglePoolProgram.programId;
+    const programId = SINGLE_POOL_PROGRAM_ID;
 
     const keys = [
       { pubkey: pool, isSigner: false, isWritable: false },
@@ -137,7 +140,7 @@ export class SinglePoolInstruction {
   }
 
   static createTokenMetadata(pool: PublicKey, payer: PublicKey): TransactionInstruction {
-    const programId = SinglePoolProgram.programId;
+    const programId = SINGLE_POOL_PROGRAM_ID;
     const mint = findPoolMintAddress(programId, pool);
 
     const keys = [
@@ -168,7 +171,7 @@ export class SinglePoolInstruction {
     tokenSymbol: string,
     tokenUri?: string,
   ): TransactionInstruction {
-    const programId = SinglePoolProgram.programId;
+    const programId = SINGLE_POOL_PROGRAM_ID;
     const pool = findPoolAddress(programId, voteAccount);
 
     tokenUri = tokenUri || '';

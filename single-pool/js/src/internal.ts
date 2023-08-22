@@ -1,5 +1,13 @@
+import { PublicKey } from '@solana/web3.js';
 import * as BufferLayout from '@solana/buffer-layout';
 import { Buffer } from 'buffer';
+
+// FIXME replace with real id when we have one
+export const SINGLE_POOL_PROGRAM_ID = new PublicKey('3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY');
+
+export function defaultDepositAccountSeed(poolAddress: PublicKey): string {
+  return 'svsp' + poolAddress.toString().slice(0, 28);
+}
 
 export type InstructionType = {
   /** The Instruction index (from solana upstream program) */

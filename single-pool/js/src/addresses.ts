@@ -1,5 +1,7 @@
 import { PublicKey, StakeProgram } from '@solana/web3.js';
 
+import { defaultDepositAccountSeed } from './internal';
+
 export function findPoolAddress(programId: PublicKey, voteAccountAddress: PublicKey) {
   return findPda(programId, voteAccountAddress, 'pool');
 }
@@ -36,6 +38,9 @@ export async function findDefaultDepositAccountAddress(
   poolAddress: PublicKey,
   userWallet: PublicKey,
 ) {
-  const seed = 'svsp' + poolAddress.toString().slice(0, 28);
-  return PublicKey.createWithSeed(userWallet, seed, StakeProgram.programId);
+  return PublicKey.createWithSeed(
+    userWallet,
+    defaultDepositAccountSeed(poolAddress),
+    StakeProgram.programId,
+  );
 }

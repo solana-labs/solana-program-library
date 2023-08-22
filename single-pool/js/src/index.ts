@@ -7,7 +7,7 @@ export * from './transactions';
 
 export async function getVoteAccountAddressForPool(connection: Connection, poolAddress: PublicKey) {
   const poolAccount = await connection.getAccountInfo(poolAddress);
-  if (!poolAccount) {
+  if (!(poolAccount && poolAccount.data[0] === 1)) {
     throw 'invalid pool address';
   }
 

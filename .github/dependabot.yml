@@ -65,7 +65,7 @@ updates:
   open-pull-requests-limit: 3
   labels:
     - "automerge"
-- package-ecosystem: pnpm
+- package-ecosystem: npm
   directory: "/single-pool/js"
   schedule:
     interval: daily
