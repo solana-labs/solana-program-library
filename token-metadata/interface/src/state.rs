@@ -201,6 +201,7 @@ impl VariableLenPack for TokenMetadata {
 
 /// Fields in the metadata account, used for updating
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum Field {
     /// The name field, corresponding to `TokenMetadata.name`

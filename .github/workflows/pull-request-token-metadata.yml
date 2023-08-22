@@ -58,5 +58,12 @@ jobs:
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
+      - name: Test token-metadata with "serde" activated
+        run: |
+          cargo test \
+            --manifest-path=token-metadata/interface/Cargo.toml \
+            --features serde-traits \
+            -- --nocapture
+
       - name: Build and test example
         run: ./ci/cargo-test-sbf.sh token-metadata/example
