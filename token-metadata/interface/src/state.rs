@@ -8,105 +8,15 @@ use {
         pubkey::Pubkey,
     },
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
     spl_type_length_value::{
         state::{TlvState, TlvStateBorrowed},
         variable_len_pack::VariableLenPack,
     },
-    std::convert::TryFrom,
 };
 
 #[cfg(feature = "serde-traits")]
-use {
-    serde::{
-        de::{Error, Unexpected, Visitor},
-        {Deserialize, Deserializer, Serialize, Serializer},
-    },
-    std::{fmt, str::FromStr},
-};
-
-/// A Pubkey that encodes `None` as all `0`, meant to be usable as a Pod type,
-/// similar to all NonZero* number types from the bytemuck library.
-#[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-#[repr(transparent)]
-pub struct OptionalNonZeroPubkey(Pubkey);
-impl TryFrom<Option<Pubkey>> for OptionalNonZeroPubkey {
-    type Error = ProgramError;
-    fn try_from(p: Option<Pubkey>) -> Result<Self, Self::Error> {
-        match p {
-            None => Ok(Self(Pubkey::default())),
-            Some(pubkey) => {
-                if pubkey == Pubkey::default() {
-                    Err(ProgramError::InvalidArgument)
-                } else {
-                    Ok(Self(pubkey))
-                }
-            }
-        }
-    }
-}
-impl From<OptionalNonZeroPubkey> for Option<Pubkey> {
-    fn from(p: OptionalNonZeroPubkey) -> Self {
-        if p.0 == Pubkey::default() {
-            None
-        } else {
-            Some(p.0)
-        }
-    }
-}
-
-#[cfg(feature = "serde-traits")]
-impl Serialize for OptionalNonZeroPubkey {
-    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if self.0 == Pubkey::default() {
-            s.serialize_none()
-        } else {
-            s.serialize_some(&self.0.to_string())
-        }
-    }
-}
-
-#[cfg(feature = "serde-traits")]
-impl<'de> Deserialize<'de> for OptionalNonZeroPubkey {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_any(OptionalNonZeroPubkeyVisitor)
-    }
-}
-
-/// Visitor for deserializing OptionalNonZeroPubkey
-#[cfg(feature = "serde-traits")]
-struct OptionalNonZeroPubkeyVisitor;
-
-#[cfg(feature = "serde-traits")]
-impl<'de> Visitor<'de> for OptionalNonZeroPubkeyVisitor {
-    type Value = OptionalNonZeroPubkey;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a Pubkey in base58 or `null`")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        let pkey = Pubkey::from_str(&v)
-            .map_err(|_| Error::invalid_value(Unexpected::Str(v), &"value string"))?;
-
-        Ok(OptionalNonZeroPubkey(pkey))
-    }
-
-    fn visit_unit<E>(self) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        Ok(OptionalNonZeroPubkey(Pubkey::default()))
-    }
-}
+use serde::{Deserialize, Serialize};
 
 /// Data struct for all token-metadata, stored in a TLV entry
 ///

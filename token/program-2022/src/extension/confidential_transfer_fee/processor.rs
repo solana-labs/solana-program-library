@@ -24,7 +24,6 @@ use {
             BaseStateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
-        pod::{pod_from_bytes, OptionalNonZeroPubkey},
         processor::Processor,
         proof::decode_proof_instruction_context,
         solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
@@ -39,6 +38,7 @@ use {
         pubkey::Pubkey,
         sysvar::instructions::get_instruction_relative,
     },
+    spl_pod::{bytemuck::pod_from_bytes, optional_keys::OptionalNonZeroPubkey},
 };
 
 // Remove feature once zk ops syscalls are enabled on all networks

@@ -1,10 +1,8 @@
 use {
-    crate::{
-        extension::{BaseState, BaseStateWithExtensions, Extension, ExtensionType},
-        pod::*,
-    },
+    crate::extension::{BaseState, BaseStateWithExtensions, Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
     solana_program::pubkey::Pubkey,
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
 /// Permanent delegate extension data for mints.

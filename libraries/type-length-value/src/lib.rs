@@ -7,7 +7,6 @@
 
 pub mod error;
 pub mod length;
-pub mod pod;
 pub mod state;
 pub mod variable_len_pack;
 

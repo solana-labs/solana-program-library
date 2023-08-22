@@ -10,7 +10,7 @@ use {
         account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
         pubkey::Pubkey,
     },
-    spl_type_length_value::pod::PodBool,
+    spl_pod::primitives::PodBool,
 };
 
 /// Resolve a program-derived address (PDA) from the instruction data

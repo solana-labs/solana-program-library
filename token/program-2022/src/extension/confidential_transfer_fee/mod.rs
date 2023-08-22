@@ -2,11 +2,11 @@ use {
     crate::{
         error::TokenError,
         extension::{Extension, ExtensionType},
-        pod::*,
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
     solana_zk_token_sdk::zk_token_elgamal::pod::{ElGamalCiphertext, ElGamalPubkey, FeeEncryption},
+    spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool},
 };
 
 /// Confidential transfer fee extension instructions

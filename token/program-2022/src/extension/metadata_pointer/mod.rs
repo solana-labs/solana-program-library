@@ -1,9 +1,7 @@
 use {
-    crate::{
-        extension::{Extension, ExtensionType},
-        pod::OptionalNonZeroPubkey,
-    },
+    crate::extension::{Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
 /// Instructions for the MetadataPointer extension

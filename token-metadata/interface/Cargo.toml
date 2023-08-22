@@ -8,15 +8,16 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-serde-traits = ["serde"]
+serde-traits = ["serde", "spl-pod/serde-traits"]
 
 [dependencies]
 borsh = "0.10"
+serde = { version = "1.0.188", optional = true }
 solana-program = "1.16.3"
 spl-discriminator = { version = "0.1.0" , path = "../../libraries/discriminator" }
 spl-program-error = { version = "0.2.0" , path = "../../libraries/program-error" }
 spl-type-length-value = { version = "0.2.0", path = "../../libraries/type-length-value" }
-serde = { version = "1.0.188", optional = true }
+spl-pod = { version = "0.1.0", path = "../../libraries/pod", features = ["borsh"] }
 
 [dev-dependencies]
 serde_json = "1.0.105"

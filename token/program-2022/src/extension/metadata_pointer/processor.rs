@@ -12,7 +12,6 @@ use {
             StateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
-        pod::OptionalNonZeroPubkey,
         processor::Processor,
         state::Mint,
     },
@@ -22,6 +21,7 @@ use {
         msg,
         pubkey::Pubkey,
     },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
 fn process_initialize(

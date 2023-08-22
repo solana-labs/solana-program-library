@@ -7,7 +7,6 @@ use {
         check_program_account, check_spl_token_program_account,
         error::TokenError,
         extension::{transfer_fee::instruction::TransferFeeInstruction, ExtensionType},
-        pod::{pod_from_bytes, pod_get_packed_len},
     },
     bytemuck::Pod,
     solana_program::{
@@ -17,6 +16,7 @@ use {
         pubkey::{Pubkey, PUBKEY_BYTES},
         system_program, sysvar,
     },
+    spl_pod::bytemuck::{pod_from_bytes, pod_get_packed_len},
     std::{
         convert::{TryFrom, TryInto},
         mem::size_of,

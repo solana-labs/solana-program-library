@@ -3,7 +3,6 @@ use {
         check_program_account,
         extension::interest_bearing_mint::BasisPoints,
         instruction::{encode_instruction, TokenInstruction},
-        pod::OptionalNonZeroPubkey,
     },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -12,6 +11,7 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
     },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
     std::convert::TryInto,
 };
 

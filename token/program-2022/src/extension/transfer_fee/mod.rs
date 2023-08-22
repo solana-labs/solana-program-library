@@ -2,10 +2,13 @@ use {
     crate::{
         error::TokenError,
         extension::{Extension, ExtensionType},
-        pod::*,
     },
     bytemuck::{Pod, Zeroable},
     solana_program::{clock::Epoch, entrypoint::ProgramResult},
+    spl_pod::{
+        optional_keys::OptionalNonZeroPubkey,
+        primitives::{PodU16, PodU64},
+    },
     std::{
         cmp,
         convert::{TryFrom, TryInto},

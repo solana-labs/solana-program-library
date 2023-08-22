@@ -1,8 +1,8 @@
 //! Module for the length portion of a Type-Length-Value structure
 use {
-    crate::pod::PodU32,
     bytemuck::{Pod, Zeroable},
     solana_program::program_error::ProgramError,
+    spl_pod::primitives::PodU32,
 };
 
 /// Length in TLV structure

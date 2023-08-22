@@ -6766,6 +6766,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-pod"
+version = "0.1.0"
+dependencies = [
+ "base64 0.21.3",
+ "borsh 0.10.3",
+ "bytemuck",
+ "serde",
+ "serde_json",
+ "solana-program",
+ "solana-zk-token-sdk",
+ "spl-program-error",
+]
+
+[[package]]
 name = "spl-program-error"
 version = "0.2.0"
 dependencies = [
@@ -6924,6 +6938,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-discriminator",
+ "spl-pod",
  "spl-program-error",
  "spl-type-length-value",
 ]
@@ -7000,6 +7015,7 @@ dependencies = [
  "solana-sdk",
  "solana-zk-token-sdk",
  "spl-memo 4.0.0",
+ "spl-pod",
  "spl-token 4.0.0",
  "spl-token-metadata-interface",
  "spl-transfer-hook-interface",
@@ -7020,6 +7036,7 @@ dependencies = [
  "spl-associated-token-account 2.0.0",
  "spl-instruction-padding",
  "spl-memo 4.0.0",
+ "spl-pod",
  "spl-token-2022 0.7.0",
  "spl-token-client",
  "spl-token-metadata-interface",
@@ -7125,6 +7142,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "spl-pod",
  "spl-token-2022 0.7.0",
  "spl-token-client",
  "spl-token-metadata-interface",
@@ -7141,6 +7159,7 @@ dependencies = [
  "serde_json",
  "solana-program",
  "spl-discriminator",
+ "spl-pod",
  "spl-program-error",
  "spl-type-length-value",
 ]
@@ -7254,6 +7273,7 @@ dependencies = [
  "num_enum 0.7.0",
  "solana-program",
  "spl-discriminator",
+ "spl-pod",
  "spl-tlv-account-resolution",
  "spl-type-length-value",
  "thiserror",
@@ -7266,6 +7286,7 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "spl-discriminator",
+ "spl-pod",
  "spl-program-error",
  "spl-type-length-value-derive",
 ]
