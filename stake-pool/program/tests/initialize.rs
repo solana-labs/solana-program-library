@@ -448,7 +448,7 @@ async fn fail_with_freeze_authority() {
                 &wrong_mint.pubkey(),
                 &stake_pool_accounts.withdraw_authority,
                 Some(&stake_pool_accounts.withdraw_authority),
-                0,
+                stake_pool_accounts.pool_decimals,
             )
             .unwrap(),
         ],
@@ -1602,4 +1602,31 @@ async fn success_with_extra_reserve_lamports() {
     )
     .await;
     assert_eq!(init_pool_tokens, init_lamports);
+}
+
+#[tokio::test]
+async fn fail_with_incorrect_mint_decimals() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts {
+        pool_decimals: 8,
+        ..Default::default()
+    };
+    let error = stake_pool_accounts
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            MINIMUM_RESERVE_LAMPORTS,
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
+
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(error::StakePoolError::IncorrectMintDecimals as u32),
+        )
+    );
 }

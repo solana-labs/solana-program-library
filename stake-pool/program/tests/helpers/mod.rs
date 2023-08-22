@@ -36,6 +36,7 @@ use {
     },
     spl_token_2022::{
         extension::{ExtensionType, StateWithExtensionsOwned},
+        native_mint,
         state::{Account, Mint},
     },
     std::{convert::TryInto, num::NonZeroU32},
@@ -2013,7 +2014,7 @@ impl Default for StakePoolAccounts {
             token_program_id: spl_token::id(),
             pool_mint,
             pool_fee_account,
-            pool_decimals: 0,
+            pool_decimals: native_mint::DECIMALS,
             manager,
             staker,
             withdraw_authority,
