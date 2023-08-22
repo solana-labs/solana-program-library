@@ -20,5 +20,10 @@ cargo_audit_ignores=(
   #
   # Remove once SPL upgrades to Solana v1.17 or greater
   --ignore RUSTSEC-2022-0093
+
+  # webpki: CPU denial of service in certificate path building
+  #
+  # No fixed upgrade is available! Only fix is switching to rustls-webpki
+  --ignore RUSTSEC-2023-0052
 )
 cargo +"$rust_stable" audit "${cargo_audit_ignores[@]}"
