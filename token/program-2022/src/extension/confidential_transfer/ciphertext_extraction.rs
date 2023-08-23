@@ -303,6 +303,7 @@ impl TransferProofContextInfo {
 /// split proofs in `zk-token-sdk`. Until this modifications is made, include `SourceDecryptHandle`
 /// in the transfer instruction data.
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct SourceDecryptHandles {

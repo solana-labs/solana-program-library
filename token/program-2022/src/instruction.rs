@@ -42,6 +42,10 @@ const U64_BYTES: usize = 8;
 /// Instructions supported by the token program.
 #[repr(C)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde-traits",
+    serde(rename_all_fields = "camelCase", rename_all = "camelCase")
+)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenInstruction<'a> {
     /// Initializes a new mint and optionally deposits all the newly minted
@@ -1033,6 +1037,7 @@ impl<'a> TokenInstruction<'a> {
 /// Specifies the authority type for SetAuthority instructions
 #[repr(u8)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum AuthorityType {
     /// Authority to mint new tokens

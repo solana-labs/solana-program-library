@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 
 /// CPI Guard extension instructions
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum CpiGuardInstruction {
