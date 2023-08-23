@@ -67,7 +67,11 @@ fn account_meta_from_info(account_info: &AccountInfo) -> AccountMeta {
 ///         pubkey::Pubkey
 ///     },
 ///     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
-///     spl_tlv_account_resolution::state::ExtraAccountMetaList,
+///     spl_tlv_account_resolution::{
+///         account::ExtraAccountMeta,
+///         seeds::Seed,
+///         state::ExtraAccountMetaList
+///     },
 /// };
 ///
 /// struct MyInstruction;
@@ -79,9 +83,27 @@ fn account_meta_from_info(account_info: &AccountInfo) -> AccountMeta {
 /// // actually put it in the additional required account keys and signer / writable
 /// let extra_metas = [
 ///     AccountMeta::new(Pubkey::new_unique(), false).into(),
-///     AccountMeta::new(Pubkey::new_unique(), true).into(),
-///     AccountMeta::new_readonly(Pubkey::new_unique(), true).into(),
 ///     AccountMeta::new_readonly(Pubkey::new_unique(), false).into(),
+///     ExtraAccountMeta::new_with_seeds(
+///         &[
+///             Seed::Literal {
+///                 bytes: b"some_string".to_vec(),
+///             },
+///             Seed::InstructionData {
+///                 index: 1,
+///                 length: 1, // u8
+///             },
+///             Seed::AccountKey { index: 1 },
+///         ],
+///         false,
+///         true,
+///     ).unwrap(),
+///     ExtraAccountMeta::new_external_pda_with_seeds(
+///         0,
+///         &[Seed::AccountKey { index: 2 }],
+///         false,
+///         false,
+///     ).unwrap(),
 /// ];
 ///
 /// // assume that this buffer is actually account data, already allocated to `account_size`
@@ -93,11 +115,11 @@ fn account_meta_from_info(account_info: &AccountInfo) -> AccountMeta {
 ///
 /// // Off-chain, you can add the additional accounts directly from the account data
 /// let program_id = Pubkey::new_unique();
-/// let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+/// let mut instruction = Instruction::new_with_bytes(program_id, &[0, 1, 2], vec![]);
 /// ExtraAccountMetaList::add_to_instruction::<MyInstruction>(&mut instruction, &buffer).unwrap();
 ///
 /// // On-chain, you can add the additional accounts *and* account infos
-/// let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+/// let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[0, 1, 2], vec![]);
 /// let mut cpi_account_infos = vec![]; // assume the other required account infos are already included
 /// let remaining_account_infos: &[AccountInfo<'_>] = &[]; // these are the account infos provided to the instruction that are *not* part of any other known interface
 /// ExtraAccountMetaList::add_to_cpi_instruction::<MyInstruction>(
@@ -368,11 +390,19 @@ mod tests {
             true,
         )
         .unwrap();
+        let extra_meta4 = ExtraAccountMeta::new_external_pda_with_seeds(
+            0,
+            &[Seed::AccountKey { index: 2 }],
+            false,
+            false,
+        )
+        .unwrap();
 
         let metas = [
             ExtraAccountMeta::from(&extra_meta1),
             ExtraAccountMeta::from(&extra_meta2),
             extra_meta3,
+            extra_meta4,
         ];
 
         let ix_data = vec![1, 2, 3, 4];
@@ -398,17 +428,24 @@ mod tests {
             &program_id,
         )
         .0;
+        let check_extra_meta4_pubkey =
+            Pubkey::find_program_address(&[extra_meta1.pubkey.as_ref()], &ix_account1.pubkey).0;
         let check_metas = [
             ix_account1,
             ix_account2,
             extra_meta1,
             extra_meta2,
             AccountMeta::new(check_extra_meta3_pubkey, false),
+            AccountMeta::new_readonly(check_extra_meta4_pubkey, false),
         ];
 
         assert_eq!(
             instruction.accounts.get(4).unwrap().pubkey,
             check_extra_meta3_pubkey,
+        );
+        assert_eq!(
+            instruction.accounts.get(5).unwrap().pubkey,
+            check_extra_meta4_pubkey,
         );
         assert_eq!(
             instruction
@@ -468,6 +505,13 @@ mod tests {
             true,
         )
         .unwrap();
+        let other_meta3 = ExtraAccountMeta::new_external_pda_with_seeds(
+            1,
+            &[Seed::AccountKey { index: 3 }],
+            false,
+            false,
+        )
+        .unwrap();
 
         let metas = [
             ExtraAccountMeta::from(&extra_meta1),
@@ -476,7 +520,11 @@ mod tests {
             ExtraAccountMeta::from(&extra_meta4),
             extra_meta5,
         ];
-        let other_metas = [ExtraAccountMeta::from(&other_meta1), other_meta2];
+        let other_metas = [
+            ExtraAccountMeta::from(&other_meta1),
+            other_meta2,
+            other_meta3,
+        ];
 
         let account_size = ExtraAccountMetaList::size_of(metas.len()).unwrap()
             + ExtraAccountMetaList::size_of(other_metas.len()).unwrap();
@@ -546,16 +594,24 @@ mod tests {
             &program_id,
         )
         .0;
+        let check_other_meta3_pubkey =
+            Pubkey::find_program_address(&[check_other_meta2_pubkey.as_ref()], &ix_account2.pubkey)
+                .0;
         let check_other_metas = [
             ix_account1,
             ix_account2,
             other_meta1,
             AccountMeta::new(check_other_meta2_pubkey, false),
+            AccountMeta::new_readonly(check_other_meta3_pubkey, false),
         ];
 
         assert_eq!(
             instruction.accounts.get(3).unwrap().pubkey,
             check_other_meta2_pubkey,
+        );
+        assert_eq!(
+            instruction.accounts.get(4).unwrap().pubkey,
+            check_other_meta3_pubkey,
         );
         assert_eq!(
             instruction
@@ -1058,6 +1114,18 @@ mod tests {
                 true,
             )
             .unwrap(),
+            ExtraAccountMeta::new_external_pda_with_seeds(
+                1,
+                &[
+                    Seed::Literal {
+                        bytes: b"external_pda_seed".to_vec(),
+                    },
+                    Seed::AccountKey { index: 4 },
+                ],
+                false,
+                false,
+            )
+            .unwrap(),
         ];
 
         // Create the validation data
@@ -1087,6 +1155,10 @@ mod tests {
             &program_id,
         )
         .0;
+        let mut lamports4 = 0;
+        let mut data4 = [];
+        let external_pda =
+            Pubkey::find_program_address(&[b"external_pda_seed", pda.as_ref()], &pubkey_ix_2).0;
         let account_infos = [
             // Instruction account 1
             AccountInfo::new(
@@ -1139,6 +1211,17 @@ mod tests {
                 true,
                 &mut lamports3,
                 &mut data3,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            // Required account 4 (external PDA)
+            AccountInfo::new(
+                &external_pda,
+                false,
+                false,
+                &mut lamports4,
+                &mut data4,
                 &owner,
                 false,
                 Epoch::default(),

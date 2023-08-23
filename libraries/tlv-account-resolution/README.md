@@ -12,7 +12,11 @@ into a TLV entry in an account, you can do the following:
 use {
     solana_program::{account_info::AccountInfo, instruction::{AccountMeta, Instruction}, pubkey::Pubkey},
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
-    spl_tlv_account_resolution::state::ExtraAccountMetaList,
+    spl_tlv_account_resolution::{
+        account::ExtraAccountMeta,
+        seeds::Seed,
+        state::ExtraAccountMetaList
+    },
 };
 
 struct MyInstruction;
@@ -24,9 +28,27 @@ impl SplDiscriminate for MyInstruction {
 // Prepare the additional required account keys and signer / writable
 let extra_metas = [
     AccountMeta::new(Pubkey::new_unique(), false).into(),
-    AccountMeta::new(Pubkey::new_unique(), true).into(),
     AccountMeta::new_readonly(Pubkey::new_unique(), true).into(),
-    AccountMeta::new_readonly(Pubkey::new_unique(), false).into(),
+    ExtraAccountMeta::new_with_seeds(
+        &[
+            Seed::Literal {
+                bytes: b"some_string".to_vec(),
+            },
+            Seed::InstructionData {
+                index: 1,
+                length: 1, // u8
+            },
+            Seed::AccountKey { index: 1 },
+        ],
+        false,
+        true,
+    ).unwrap(),
+    ExtraAccountMeta::new_external_pda_with_seeds(
+        0,
+        &[Seed::AccountKey { index: 2 }],
+        false,
+        false,
+    ).unwrap(),
 ];
 
 // Allocate a new buffer with the proper `account_size`
@@ -38,11 +60,11 @@ ExtraAccountMetaList::init::<MyInstruction>(&mut buffer, &extra_metas).unwrap();
 
 // Off-chain, you can add the additional accounts directly from the account data
 let program_id = Pubkey::new_unique();
-let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+let mut instruction = Instruction::new_with_bytes(program_id, &[0, 1, 2], vec![]);
 ExtraAccountMetaList::add_to_instruction::<MyInstruction>(&mut instruction, &buffer).unwrap();
 
 // On-chain, you can add the additional accounts *and* account infos
-let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[0, 1, 2], vec![]);
 
 // Include all of the well-known required account infos here first
 let mut cpi_account_infos = vec![]; 
@@ -110,6 +132,7 @@ may come from any combination of the following:
   - Hard-coded values, such as string literals or integers
   - A slice of the instruction data provided to the transfer-hook program
   - The address of another account in the total list of accounts
+  - A program id from another account in the instruction
 
 When you store configurations for a dynamic Program-Derived Address within the
 additional required accounts, the PDA itself is evaluated (or resolved) at the

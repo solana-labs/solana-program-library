@@ -61,6 +61,9 @@ pub struct ExtraAccountMeta {
     /// Whether the account should be writable
     pub is_writable: PodBool,
 }
+/// Helper used to to know when the top bit is set, to interpret the discriminator
+/// as an index rather than as a type
+const U8_TOP_BIT: u8 = 1 << 7;
 impl ExtraAccountMeta {
     /// Create a `ExtraAccountMeta` from a public key,
     /// thus representing a standard `AccountMeta`
@@ -92,6 +95,28 @@ impl ExtraAccountMeta {
         })
     }
 
+    /// Create a `ExtraAccountMeta` from a list of seed configurations, representing
+    /// a PDA for an external program
+    ///
+    /// This PDA belongs to a program elsewhere in the account list, rather
+    /// than the executing program. For a PDA on the executing program, use
+    /// `ExtraAccountMeta::new_with_seeds`.
+    pub fn new_external_pda_with_seeds(
+        program_index: u8,
+        seeds: &[Seed],
+        is_signer: bool,
+        is_writable: bool,
+    ) -> Result<Self, ProgramError> {
+        Ok(Self {
+            discriminator: program_index
+                .checked_add(U8_TOP_BIT)
+                .ok_or(AccountResolutionError::InvalidSeedConfig)?,
+            address_config: Seed::pack_into_address_config(seeds)?,
+            is_signer: is_signer.into(),
+            is_writable: is_writable.into(),
+        })
+    }
+
     /// Resolve an `ExtraAccountMeta` into an `AccountMeta`, potentially
     /// resolving a program-derived address (PDA) if necessary
     pub fn resolve(
@@ -102,7 +127,15 @@ impl ExtraAccountMeta {
     ) -> Result<AccountMeta, ProgramError> {
         match self.discriminator {
             0 => AccountMeta::try_from(self),
-            1 => {
+            x if x == 1 || x >= U8_TOP_BIT => {
+                let program_id = if x == 1 {
+                    program_id
+                } else {
+                    &accounts
+                        .get(x.saturating_sub(U8_TOP_BIT) as usize)
+                        .ok_or(AccountResolutionError::AccountNotFound)?
+                        .pubkey
+                };
                 let seeds = Seed::unpack_address_config(&self.address_config)?;
                 Ok(AccountMeta {
                     pubkey: resolve_pda(&seeds, accounts, instruction_data, program_id)?,
