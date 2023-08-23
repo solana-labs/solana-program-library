@@ -368,11 +368,19 @@ mod tests {
             true,
         )
         .unwrap();
+        let extra_meta4 = ExtraAccountMeta::new_external_pda_with_seeds(
+            0,
+            &[Seed::AccountKey { index: 2 }],
+            false,
+            false,
+        )
+        .unwrap();
 
         let metas = [
             ExtraAccountMeta::from(&extra_meta1),
             ExtraAccountMeta::from(&extra_meta2),
             extra_meta3,
+            extra_meta4,
         ];
 
         let ix_data = vec![1, 2, 3, 4];
@@ -398,17 +406,24 @@ mod tests {
             &program_id,
         )
         .0;
+        let check_extra_meta4_pubkey =
+            Pubkey::find_program_address(&[extra_meta1.pubkey.as_ref()], &ix_account1.pubkey).0;
         let check_metas = [
             ix_account1,
             ix_account2,
             extra_meta1,
             extra_meta2,
             AccountMeta::new(check_extra_meta3_pubkey, false),
+            AccountMeta::new_readonly(check_extra_meta4_pubkey, false),
         ];
 
         assert_eq!(
             instruction.accounts.get(4).unwrap().pubkey,
             check_extra_meta3_pubkey,
+        );
+        assert_eq!(
+            instruction.accounts.get(5).unwrap().pubkey,
+            check_extra_meta4_pubkey,
         );
         assert_eq!(
             instruction
@@ -468,6 +483,13 @@ mod tests {
             true,
         )
         .unwrap();
+        let other_meta3 = ExtraAccountMeta::new_external_pda_with_seeds(
+            1,
+            &[Seed::AccountKey { index: 3 }],
+            false,
+            false,
+        )
+        .unwrap();
 
         let metas = [
             ExtraAccountMeta::from(&extra_meta1),
@@ -476,7 +498,11 @@ mod tests {
             ExtraAccountMeta::from(&extra_meta4),
             extra_meta5,
         ];
-        let other_metas = [ExtraAccountMeta::from(&other_meta1), other_meta2];
+        let other_metas = [
+            ExtraAccountMeta::from(&other_meta1),
+            other_meta2,
+            other_meta3,
+        ];
 
         let account_size = ExtraAccountMetaList::size_of(metas.len()).unwrap()
             + ExtraAccountMetaList::size_of(other_metas.len()).unwrap();
@@ -546,16 +572,24 @@ mod tests {
             &program_id,
         )
         .0;
+        let check_other_meta3_pubkey =
+            Pubkey::find_program_address(&[check_other_meta2_pubkey.as_ref()], &ix_account2.pubkey)
+                .0;
         let check_other_metas = [
             ix_account1,
             ix_account2,
             other_meta1,
             AccountMeta::new(check_other_meta2_pubkey, false),
+            AccountMeta::new_readonly(check_other_meta3_pubkey, false),
         ];
 
         assert_eq!(
             instruction.accounts.get(3).unwrap().pubkey,
             check_other_meta2_pubkey,
+        );
+        assert_eq!(
+            instruction.accounts.get(4).unwrap().pubkey,
+            check_other_meta3_pubkey,
         );
         assert_eq!(
             instruction
@@ -1058,6 +1092,18 @@ mod tests {
                 true,
             )
             .unwrap(),
+            ExtraAccountMeta::new_external_pda_with_seeds(
+                1,
+                &[
+                    Seed::Literal {
+                        bytes: b"external_pda_seed".to_vec(),
+                    },
+                    Seed::AccountKey { index: 4 },
+                ],
+                false,
+                false,
+            )
+            .unwrap(),
         ];
 
         // Create the validation data
@@ -1087,6 +1133,10 @@ mod tests {
             &program_id,
         )
         .0;
+        let mut lamports4 = 0;
+        let mut data4 = [];
+        let external_pda =
+            Pubkey::find_program_address(&[b"external_pda_seed", pda.as_ref()], &pubkey_ix_2).0;
         let account_infos = [
             // Instruction account 1
             AccountInfo::new(
@@ -1139,6 +1189,17 @@ mod tests {
                 true,
                 &mut lamports3,
                 &mut data3,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            // Required account 4 (external PDA)
+            AccountInfo::new(
+                &external_pda,
+                false,
+                false,
+                &mut lamports4,
+                &mut data4,
                 &owner,
                 false,
                 Epoch::default(),
