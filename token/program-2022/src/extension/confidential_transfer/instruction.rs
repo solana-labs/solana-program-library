@@ -28,6 +28,7 @@ use {
 
 /// Confidential Transfer extension instructions
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum ConfidentialTransferInstruction {
@@ -368,6 +369,7 @@ pub enum ConfidentialTransferInstruction {
 
 /// Data expected by `ConfidentialTransferInstruction::InitializeMint`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeMintData {
@@ -383,6 +385,7 @@ pub struct InitializeMintData {
 
 /// Data expected by `ConfidentialTransferInstruction::UpdateMint`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct UpdateMintData {
@@ -395,6 +398,7 @@ pub struct UpdateMintData {
 
 /// Data expected by `ConfidentialTransferInstruction::ConfigureAccount`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ConfigureAccountInstructionData {
@@ -412,6 +416,7 @@ pub struct ConfigureAccountInstructionData {
 
 /// Data expected by `ConfidentialTransferInstruction::EmptyAccount`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct EmptyAccountInstructionData {
@@ -423,6 +428,7 @@ pub struct EmptyAccountInstructionData {
 
 /// Data expected by `ConfidentialTransferInstruction::Deposit`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct DepositInstructionData {
@@ -434,6 +440,7 @@ pub struct DepositInstructionData {
 
 /// Data expected by `ConfidentialTransferInstruction::Withdraw`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawInstructionData {
@@ -452,6 +459,7 @@ pub struct WithdrawInstructionData {
 
 /// Data expected by `ConfidentialTransferInstruction::Transfer`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct TransferInstructionData {
@@ -474,6 +482,7 @@ pub struct TransferInstructionData {
 
 /// Data expected by `ConfidentialTransferInstruction::ApplyPendingBalance`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ApplyPendingBalanceData {

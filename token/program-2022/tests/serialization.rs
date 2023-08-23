@@ -23,7 +23,7 @@ fn serde_instruction_coption_pubkey() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    assert_eq!(&serialized, "{\"InitializeMint2\":{\"decimals\":0,\"mint_authority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\",\"freeze_authority\":\"8opHzTAnfzRpPEx21XtnrVTX28YQuCpAjcn1PczScKh\"}}");
+    assert_eq!(&serialized, "{\"initializeMint2\":{\"decimals\":0,\"mintAuthority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\",\"freezeAuthority\":\"8opHzTAnfzRpPEx21XtnrVTX28YQuCpAjcn1PczScKh\"}}");
 
     serde_json::from_str::<instruction::TokenInstruction>(&serialized).unwrap();
 }
@@ -37,7 +37,7 @@ fn serde_instruction_coption_pubkey_with_none() {
     let serialized = serde_json::to_string(&inst).unwrap();
     assert_eq!(
         &serialized,
-        "{\"InitializeMintCloseAuthority\":{\"close_authority\":null}}"
+        "{\"initializeMintCloseAuthority\":{\"closeAuthority\":null}}"
     );
 
     serde_json::from_str::<instruction::TokenInstruction>(&serialized).unwrap();
@@ -64,7 +64,7 @@ fn serde_instruction_optional_nonzero_pubkeys_podbool() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    let serialized_expected = &format!("{{\"authority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\",\"auto_approve_new_accounts\":false,\"auditor_elgamal_pubkey\":\"ohdsJIKPEtvEhvKRszHlwUpAA55E63xY95Ck/uQMrVU=\"}}");
+    let serialized_expected = &format!("{{\"authority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\",\"autoApproveNewAccounts\":false,\"auditorElgamalPubkey\":\"ohdsJIKPEtvEhvKRszHlwUpAA55E63xY95Ck/uQMrVU=\"}}");
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized =
@@ -89,7 +89,7 @@ fn serde_instruction_optional_nonzero_pubkeys_podbool_with_none() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    let serialized_expected = &format!("{{\"authority\":null,\"auto_approve_new_accounts\":false,\"auditor_elgamal_pubkey\":null}}");
+    let serialized_expected = &format!("{{\"authority\":null,\"autoApproveNewAccounts\":false,\"auditorElgamalPubkey\":null}}");
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized =
@@ -114,7 +114,7 @@ fn serde_instruction_decryptable_balance_podu64() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    let serialized_expected = &format!("{{\"decryptable_zero_balance\":\"OBZmMHBqOhkZ9MLZSYlJJhgaJBnr6kS1C1Kqo1nNcaA3ECOX\",\"maximum_pending_balance_credit_counter\":1099,\"proof_instruction_offset\":100}}");
+    let serialized_expected = &format!("{{\"decryptableZeroBalance\":\"OBZmMHBqOhkZ9MLZSYlJJhgaJBnr6kS1C1Kqo1nNcaA3ECOX\",\"maximumPendingBalanceCreditCounter\":1099,\"proofInstructionOffset\":100}}");
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized = serde_json::from_str::<
@@ -139,7 +139,7 @@ fn serde_instruction_elgamal_pubkey() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    let serialized_expected = "{\"authority\":null,\"withdraw_withheld_authority_elgamal_pubkey\":\"ohdsJIKPEtvEhvKRszHlwUpAA55E63xY95Ck/uQMrVU=\"}";
+    let serialized_expected = "{\"authority\":null,\"withdrawWithheldAuthorityElgamalPubkey\":\"ohdsJIKPEtvEhvKRszHlwUpAA55E63xY95Ck/uQMrVU=\"}";
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized =
@@ -158,7 +158,7 @@ fn serde_instruction_basis_points() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    let serialized_expected = "{\"rate_authority\":null,\"rate\":127}";
+    let serialized_expected = "{\"rateAuthority\":null,\"rate\":127}";
     assert_eq!(&serialized, serialized_expected);
 
     serde_json::from_str::<InitializeInstructionData>(&serialized_expected).unwrap();

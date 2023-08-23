@@ -32,6 +32,7 @@ use {
 
 /// Confidential Transfer extension instructions
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum ConfidentialTransferFeeInstruction {
@@ -198,6 +199,7 @@ pub enum ConfidentialTransferFeeInstruction {
 
 /// Data expected by `InitializeConfidentialTransferFeeConfig`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeConfidentialTransferFeeConfigData {
@@ -211,6 +213,7 @@ pub struct InitializeConfidentialTransferFeeConfigData {
 
 /// Data expected by `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromMintData {
@@ -225,6 +228,7 @@ pub struct WithdrawWithheldTokensFromMintData {
 
 /// Data expected by `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromAccountsData {
