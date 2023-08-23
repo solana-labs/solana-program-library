@@ -11,7 +11,12 @@ use {
     spl_discriminator::{discriminator::ArrayDiscriminator, SplDiscriminate},
 };
 
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
+
 /// Initialization instruction data
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:initialize_account")]
 pub struct Initialize {
@@ -24,6 +29,8 @@ pub struct Initialize {
 }
 
 /// Update field instruction data
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:updating_field")]
 pub struct UpdateField {
@@ -34,6 +41,8 @@ pub struct UpdateField {
 }
 
 /// Remove key instruction data
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:remove_key_ix")]
 pub struct RemoveKey {
@@ -46,6 +55,8 @@ pub struct RemoveKey {
 
 /// Update authority instruction data
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[discriminator_hash_input("spl_token_metadata_interface:update_the_authority")]
 pub struct UpdateAuthority {
     /// New authority for the token metadata, or unset if `None`
@@ -53,6 +64,8 @@ pub struct UpdateAuthority {
 }
 
 /// Instruction data for Emit
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_metadata_interface:emitter")]
 pub struct Emit {
@@ -63,6 +76,8 @@ pub struct Emit {
 }
 
 /// All instructions that must be implemented in the token-metadata interface
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenMetadataInstruction {
     /// Initializes a TLV entry with the basic token-metadata fields.
@@ -306,6 +321,9 @@ pub fn emit(
 mod test {
     use {super::*, crate::NAMESPACE, solana_program::hash};
 
+    #[cfg(feature = "serde-traits")]
+    use std::str::FromStr;
+
     fn check_pack_unpack<T: BorshSerialize>(
         instruction: TokenMetadataInstruction,
         discriminator: &[u8],
@@ -383,5 +401,105 @@ mod test {
         let preimage = hash::hashv(&[format!("{NAMESPACE}:emitter").as_bytes()]);
         let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         check_pack_unpack(check, discriminator, data);
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn initialize_serde() {
+        let data = Initialize {
+            name: "Token Name".to_string(),
+            symbol: "TST".to_string(),
+            uri: "uri.test".to_string(),
+        };
+        let ix = TokenMetadataInstruction::Initialize(data);
+        let serialized = serde_json::to_string(&ix).unwrap();
+        let serialized_expected =
+            "{\"initialize\":{\"name\":\"Token Name\",\"symbol\":\"TST\",\"uri\":\"uri.test\"}}";
+        assert_eq!(&serialized, serialized_expected);
+
+        let deserialized = serde_json::from_str::<TokenMetadataInstruction>(&serialized).unwrap();
+        assert_eq!(ix, deserialized);
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn update_field_serde() {
+        let data = UpdateField {
+            field: Field::Key("MyField".to_string()),
+            value: "my field value".to_string(),
+        };
+        let ix = TokenMetadataInstruction::UpdateField(data);
+        let serialized = serde_json::to_string(&ix).unwrap();
+        let serialized_expected =
+            "{\"updateField\":{\"field\":{\"key\":\"MyField\"},\"value\":\"my field value\"}}";
+        assert_eq!(&serialized, serialized_expected);
+
+        let deserialized = serde_json::from_str::<TokenMetadataInstruction>(&serialized).unwrap();
+        assert_eq!(ix, deserialized);
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn remove_key_serde() {
+        let data = RemoveKey {
+            key: "MyTestField".to_string(),
+            idempotent: true,
+        };
+        let ix = TokenMetadataInstruction::RemoveKey(data);
+        let serialized = serde_json::to_string(&ix).unwrap();
+        let serialized_expected = "{\"removeKey\":{\"idempotent\":true,\"key\":\"MyTestField\"}}";
+        assert_eq!(&serialized, serialized_expected);
+
+        let deserialized = serde_json::from_str::<TokenMetadataInstruction>(&serialized).unwrap();
+        assert_eq!(ix, deserialized);
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn update_authority_serde() {
+        let update_authority_option: Option<Pubkey> =
+            Some(Pubkey::from_str("4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM").unwrap());
+        let update_authority: OptionalNonZeroPubkey = update_authority_option.try_into().unwrap();
+        let data = UpdateAuthority {
+            new_authority: update_authority,
+        };
+        let ix = TokenMetadataInstruction::UpdateAuthority(data);
+        let serialized = serde_json::to_string(&ix).unwrap();
+        let serialized_expected = "{\"updateAuthority\":{\"newAuthority\":\"4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM\"}}";
+        assert_eq!(&serialized, serialized_expected);
+
+        let deserialized = serde_json::from_str::<TokenMetadataInstruction>(&serialized).unwrap();
+        assert_eq!(ix, deserialized);
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn update_authority_serde_with_none() {
+        let data = UpdateAuthority {
+            new_authority: OptionalNonZeroPubkey::default(),
+        };
+        let ix = TokenMetadataInstruction::UpdateAuthority(data);
+        let serialized = serde_json::to_string(&ix).unwrap();
+        let serialized_expected = "{\"updateAuthority\":{\"newAuthority\":null}}";
+        assert_eq!(&serialized, serialized_expected);
+
+        let deserialized = serde_json::from_str::<TokenMetadataInstruction>(&serialized).unwrap();
+        assert_eq!(ix, deserialized);
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn emit_serde() {
+        let data = Emit {
+            start: None,
+            end: Some(10),
+        };
+        let ix = TokenMetadataInstruction::Emit(data);
+        let serialized = serde_json::to_string(&ix).unwrap();
+        let serialized_expected = "{\"emit\":{\"start\":null,\"end\":10}}";
+        assert_eq!(&serialized, serialized_expected);
+
+        let deserialized = serde_json::from_str::<TokenMetadataInstruction>(&serialized).unwrap();
+        assert_eq!(ix, deserialized);
     }
 }
