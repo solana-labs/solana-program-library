@@ -42,7 +42,10 @@ const U64_BYTES: usize = 8;
 /// Instructions supported by the token program.
 #[repr(C)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde-traits", serde(rename_all_fields = "camelCase", rename_all = "camelCase"))]
+#[cfg_attr(
+    feature = "serde-traits",
+    serde(rename_all_fields = "camelCase", rename_all = "camelCase")
+)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenInstruction<'a> {
     /// Initializes a new mint and optionally deposits all the newly minted

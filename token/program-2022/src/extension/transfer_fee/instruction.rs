@@ -17,7 +17,10 @@ use {
 
 /// Transfer Fee extension instructions
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase", rename_all_fields = "camelCase"))]
+#[cfg_attr(
+    feature = "serde-traits",
+    serde(rename_all = "camelCase", rename_all_fields = "camelCase")
+)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum TransferFeeInstruction {

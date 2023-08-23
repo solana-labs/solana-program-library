@@ -89,7 +89,9 @@ fn serde_instruction_optional_nonzero_pubkeys_podbool_with_none() {
     };
 
     let serialized = serde_json::to_string(&inst).unwrap();
-    let serialized_expected = &format!("{{\"authority\":null,\"autoApproveNewAccounts\":false,\"auditorElgamalPubkey\":null}}");
+    let serialized_expected = &format!(
+        "{{\"authority\":null,\"autoApproveNewAccounts\":false,\"auditorElgamalPubkey\":null}}"
+    );
     assert_eq!(&serialized, serialized_expected);
 
     let deserialized =
