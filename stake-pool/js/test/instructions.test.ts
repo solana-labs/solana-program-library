@@ -26,6 +26,9 @@ import {
   withdrawStake,
   redelegate,
   getStakeAccount,
+  createPoolTokenMetadata,
+  updatePoolTokenMetadata,
+  tokenMetadataLayout,
 } from '../src';
 
 import { decodeData } from '../src/utils';
@@ -349,6 +352,47 @@ describe('StakePoolProgram', () => {
       expect(decodedData.sourceTransientStakeSeed).toBe(data.sourceTransientStakeSeed);
       expect(decodedData.destinationTransientStakeSeed).toBe(data.destinationTransientStakeSeed);
       expect(decodedData.ephemeralStakeSeed).toBe(data.ephemeralStakeSeed);
+    });
+  });
+  describe('createPoolTokenMetadata', () => {
+    it('should create pool token metadata', async () => {
+      connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
+        if (pubKey == stakePoolAddress) {
+          return stakePoolAccount;
+        }
+        return null;
+      });
+      const name = 'test';
+      const symbol = 'TEST';
+      const uri = 'https://example.com';
+
+      const payer = new PublicKey(0);
+      const res = await createPoolTokenMetadata(
+        connection,
+        stakePoolAddress,
+        payer,
+        name,
+        symbol,
+        uri,
+      );
+
+      const type = tokenMetadataLayout(17, name.length, symbol.length, uri.length);
+      const data = decodeData(type, res.instructions[0].data);
+      expect(Buffer.from(data.name).toString()).toBe(name);
+      expect(Buffer.from(data.symbol).toString()).toBe(symbol);
+      expect(Buffer.from(data.uri).toString()).toBe(uri);
+    });
+
+    it('should update pool token metadata', async () => {
+      const name = 'test';
+      const symbol = 'TEST';
+      const uri = 'https://example.com';
+      const res = await updatePoolTokenMetadata(connection, stakePoolAddress, name, symbol, uri);
+      const type = tokenMetadataLayout(18, name.length, symbol.length, uri.length);
+      const data = decodeData(type, res.instructions[0].data);
+      expect(Buffer.from(data.name).toString()).toBe(name);
+      expect(Buffer.from(data.symbol).toString()).toBe(symbol);
+      expect(Buffer.from(data.uri).toString()).toBe(uri);
     });
   });
 });
