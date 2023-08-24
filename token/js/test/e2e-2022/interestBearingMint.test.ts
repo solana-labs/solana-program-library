@@ -2,14 +2,14 @@ import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import type { Connection, Signer } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { Keypair } from '@solana/web3.js';
 import {
     AuthorityType,
     createInterestBearingMint,
     getInterestBearingMintConfigState,
     getMint,
-    getMintCloseAuthority,
     setAuthority,
     updateRateInterestBearingMint,
 } from '../../src';
@@ -100,7 +100,7 @@ describe('interestBearingMint', () => {
         const rateConfigState = getInterestBearingMintConfigState(mintInfo);
         expect(rateConfigState).to.not.be.null;
         if (rateConfigState !== null) {
-            expect(rateConfigState.rateAuthority).to.be.null;
+            expect(rateConfigState.rateAuthority).to.eql(PublicKey.default);
         }
     });
 });

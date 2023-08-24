@@ -2,7 +2,8 @@ import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import type { Connection, Signer } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 
 import {
@@ -244,7 +245,7 @@ describe('transferFee', () => {
         const transferFeeConfig = getTransferFeeConfig(mintInfo);
         expect(transferFeeConfig).to.not.be.null;
         if (transferFeeConfig !== null) {
-            expect(transferFeeConfig.transferFeeConfigAuthority).to.be.null;
+            expect(transferFeeConfig.transferFeeConfigAuthority).to.eql(PublicKey.default);
         }
     });
     it('withdrawWithheldAuthority', async () => {
@@ -263,7 +264,7 @@ describe('transferFee', () => {
         const transferFeeConfig = getTransferFeeConfig(mintInfo);
         expect(transferFeeConfig).to.not.be.null;
         if (transferFeeConfig !== null) {
-            expect(transferFeeConfig.transferFeeConfigAuthority).to.be.null;
+            expect(transferFeeConfig.withdrawWithheldAuthority).to.eql(PublicKey.default);
         }
     });
 });
