@@ -559,17 +559,6 @@ export async function withdrawStake(
       );
     });
   }
-  if (stakeReceiver && stakeReceiverAccount && stakeReceiverAccount.type === 'delegated') {
-    signers.forEach((newStakeKeypair) => {
-      instructions.concat(
-        StakeProgram.merge({
-          stakePubkey: stakeReceiver,
-          sourceStakePubKey: newStakeKeypair.publicKey,
-          authorizedPubkey: tokenOwner,
-        }).instructions,
-      );
-    });
-  }
 
   return {
     instructions,
