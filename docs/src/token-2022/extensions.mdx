@@ -1388,7 +1388,60 @@ Signature: 3ug4Ejs16jJgEm1WyBwDDxzh9xqPzQ3a2cmy1hSYiPFcLQi9U12HYF1Dbhzb2bx75SSyd
   </TabItem>
   <TabItem value="jsx" label="JS">
 
-Coming soon!
+```jsx
+import {
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+    Connection,
+    Keypair,
+    PublicKey,
+    SystemProgram,
+    Transaction,
+    LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+
+import {
+    ExtensionType,
+    createInitializeMintInstruction,
+    createInitializeTransferHookInstruction,
+    mintTo,
+    createAccount,
+    getMintLen,
+    TOKEN_2022_PROGRAM_ID,
+} from '../src';
+
+(async () => {
+    const payer = Keypair.generate();
+
+    const mintAuthority = Keypair.generate();
+    const mintKeypair = Keypair.generate();
+    const mint = mintKeypair.publicKey;
+
+    const extensions = [ExtensionType.TransferHook];
+    const mintLen = getMintLen(extensions);
+    const decimals = 9;
+    const transferHookProgramId = new PublicKey('7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj')
+
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+    await connection.confirmTransaction({ signature: airdropSignature, ...(await connection.getLatestBlockhash()) });
+
+    const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen);
+    const mintTransaction = new Transaction().add(
+        SystemProgram.createAccount({
+            fromPubkey: payer.publicKey,
+            newAccountPubkey: mint,
+            space: mintLen,
+            lamports: mintLamports,
+            programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        createInitializeTransferHookInstruction(mint, payer.publicKey, transferHookProgramId, TOKEN_2022_PROGRAM_ID),
+        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
+    );
+    await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
+})();
+```
 
   </TabItem>
 </Tabs>
@@ -1407,7 +1460,17 @@ Signature: 3Ffw6yjseDsL3Az5n2LjdwXXwVPYxDF3JUU1JC1KGAEb1LE68S9VN4ebtAyvKeYMHvhjd
   </TabItem>
   <TabItem value="jsx" label="JS">
 
-Coming soon!
+```js
+await updateTransferHook(
+  connection,
+  payer, mint,
+  newTransferHookProgramId,
+  payer.publicKey,
+  [],
+  undefined,
+  TOKEN_2022_PROGRAM_ID
+);
+```
 
   </TabItem>
 </Tabs>
