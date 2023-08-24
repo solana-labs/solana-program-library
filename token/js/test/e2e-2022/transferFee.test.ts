@@ -2,7 +2,8 @@ import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import type { Connection, Signer } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 
 import {
@@ -16,6 +17,8 @@ import {
     getAccount,
     getMint,
     getMintLen,
+    setAuthority,
+    AuthorityType,
 } from '../../src';
 
 import {
@@ -224,6 +227,44 @@ describe('transferFee', () => {
         expect(transferFeeConfig).to.not.be.null;
         if (transferFeeConfig !== null) {
             expect(transferFeeConfig.withheldAmount).to.eql(BigInt(0));
+        }
+    });
+    it('transferFeeConfigAuthority', async () => {
+        await setAuthority(
+            connection,
+            payer,
+            mint,
+            transferFeeConfigAuthority,
+            AuthorityType.TransferFeeConfig,
+            null,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const transferFeeConfig = getTransferFeeConfig(mintInfo);
+        expect(transferFeeConfig).to.not.be.null;
+        if (transferFeeConfig !== null) {
+            expect(transferFeeConfig.transferFeeConfigAuthority).to.eql(PublicKey.default);
+        }
+    });
+    it('withdrawWithheldAuthority', async () => {
+        await setAuthority(
+            connection,
+            payer,
+            mint,
+            withdrawWithheldAuthority,
+            AuthorityType.WithheldWithdraw,
+            null,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const transferFeeConfig = getTransferFeeConfig(mintInfo);
+        expect(transferFeeConfig).to.not.be.null;
+        if (transferFeeConfig !== null) {
+            expect(transferFeeConfig.withdrawWithheldAuthority).to.eql(PublicKey.default);
         }
     });
 });

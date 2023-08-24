@@ -52,7 +52,7 @@ export async function updateTransferHook(
     payer: Signer,
     mint: PublicKey,
     transferHookProgramId: PublicKey,
-    authority: PublicKey,
+    authority: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_2022_PROGRAM_ID

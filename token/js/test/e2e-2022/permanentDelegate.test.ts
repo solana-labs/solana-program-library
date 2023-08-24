@@ -2,7 +2,8 @@ import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import type { Connection, Signer } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
 import {
     createAccount,
@@ -13,6 +14,10 @@ import {
     createInitializePermanentDelegateInstruction,
     burn,
     transferChecked,
+    AuthorityType,
+    getMint,
+    setAuthority,
+    getPermanentDelegate,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
@@ -98,6 +103,25 @@ describe('permanentDelegate', () => {
         }
         if (destination_info !== null) {
             expect(destination_info.value.uiAmount).to.eql(2);
+        }
+    });
+    it('authority', async () => {
+        await setAuthority(
+            connection,
+            payer,
+            mint,
+            permanentDelegate,
+            AuthorityType.PermanentDelegate,
+            null,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const permanentDelegateConfig = getPermanentDelegate(mintInfo);
+        expect(permanentDelegateConfig).to.not.be.null;
+        if (permanentDelegateConfig !== null) {
+            expect(permanentDelegateConfig.delegate).to.eql(PublicKey.default);
         }
     });
 });

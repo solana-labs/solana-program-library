@@ -2,7 +2,8 @@ import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import type { Connection, Signer } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
 import {
     createInitializeMintInstruction,
@@ -12,6 +13,8 @@ import {
     createInitializeTransferHookInstruction,
     getTransferHook,
     updateTransferHook,
+    AuthorityType,
+    setAuthority,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
@@ -20,12 +23,14 @@ const EXTENSIONS = [ExtensionType.TransferHook];
 describe('transferHook', () => {
     let connection: Connection;
     let payer: Signer;
+    let transferHookAuthority: Keypair;
     let mint: PublicKey;
     let transferHookProgramId: PublicKey;
     let newTransferHookProgramId: PublicKey;
     before(async () => {
         connection = await getConnection();
         payer = await newAccountWithLamports(connection, 1000000000);
+        transferHookAuthority = Keypair.generate();
         transferHookProgramId = Keypair.generate().publicKey;
         newTransferHookProgramId = Keypair.generate().publicKey;
     });
@@ -43,7 +48,12 @@ describe('transferHook', () => {
                 lamports,
                 programId: TEST_PROGRAM_ID,
             }),
-            createInitializeTransferHookInstruction(mint, payer.publicKey, transferHookProgramId, TEST_PROGRAM_ID),
+            createInitializeTransferHookInstruction(
+                mint,
+                transferHookAuthority.publicKey,
+                transferHookProgramId,
+                TEST_PROGRAM_ID
+            ),
             createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, payer.publicKey, null, TEST_PROGRAM_ID)
         );
 
@@ -54,8 +64,8 @@ describe('transferHook', () => {
         const transferHook = getTransferHook(mintInfo);
         expect(transferHook).to.not.be.null;
         if (transferHook !== null) {
-            expect(transferHook.authority.toString()).to.eql(payer.publicKey.toString());
-            expect(transferHook.programId.toString()).to.eql(transferHookProgramId.toString());
+            expect(transferHook.authority).to.eql(transferHookAuthority.publicKey);
+            expect(transferHook.programId).to.eql(transferHookProgramId);
         }
     });
     it('can be updated', async () => {
@@ -64,7 +74,7 @@ describe('transferHook', () => {
             payer,
             mint,
             newTransferHookProgramId,
-            payer.publicKey,
+            transferHookAuthority,
             [],
             undefined,
             TEST_PROGRAM_ID
@@ -73,8 +83,27 @@ describe('transferHook', () => {
         const transferHook = getTransferHook(mintInfo);
         expect(transferHook).to.not.be.null;
         if (transferHook !== null) {
-            expect(transferHook.authority.toString()).to.eql(payer.publicKey.toString());
-            expect(transferHook.programId.toString()).to.eql(newTransferHookProgramId.toString());
+            expect(transferHook.authority).to.eql(transferHookAuthority.publicKey);
+            expect(transferHook.programId).to.eql(newTransferHookProgramId);
+        }
+    });
+    it('authority', async () => {
+        await setAuthority(
+            connection,
+            payer,
+            mint,
+            transferHookAuthority,
+            AuthorityType.TransferHookProgramId,
+            null,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const transferHook = getTransferHook(mintInfo);
+        expect(transferHook).to.not.be.null;
+        if (transferHook !== null) {
+            expect(transferHook.authority).to.eql(PublicKey.default);
         }
     });
 });

@@ -2,12 +2,15 @@ import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import type { Connection, Signer } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { Keypair } from '@solana/web3.js';
 import {
+    AuthorityType,
     createInterestBearingMint,
     getInterestBearingMintConfigState,
     getMint,
+    setAuthority,
     updateRateInterestBearingMint,
 } from '../../src';
 import { getConnection, newAccountWithLamports, TEST_PROGRAM_ID } from '../common';
@@ -79,6 +82,25 @@ describe('interestBearingMint', () => {
             expect(updatedRateConfigState.preUpdateAverageRate).to.eql(TEST_RATE);
             expect(updatedRateConfigState.lastUpdateTimestamp).to.be.greaterThan(0);
             expect(updatedRateConfigState.initializationTimestamp).to.be.greaterThan(0);
+        }
+    });
+    it('authority', async () => {
+        await setAuthority(
+            connection,
+            payer,
+            mint,
+            rateAuthority,
+            AuthorityType.InterestRate,
+            null,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const rateConfigState = getInterestBearingMintConfigState(mintInfo);
+        expect(rateConfigState).to.not.be.null;
+        if (rateConfigState !== null) {
+            expect(rateConfigState.rateAuthority).to.eql(PublicKey.default);
         }
     });
 });

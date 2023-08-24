@@ -2,7 +2,8 @@ import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
-import type { Connection, PublicKey, Signer } from '@solana/web3.js';
+import type { Connection, Signer } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
 import {
     createAccount,
@@ -12,6 +13,10 @@ import {
     mintTo,
     getMintLen,
     ExtensionType,
+    AuthorityType,
+    getMint,
+    setAuthority,
+    getMintCloseAuthority,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
@@ -78,6 +83,25 @@ describe('closeMint', () => {
         expect(destinationInfo).to.not.be.null;
         if (destinationInfo !== null) {
             expect(destinationInfo.lamports).to.eql(rentExemptAmount);
+        }
+    });
+    it('authority', async () => {
+        await setAuthority(
+            connection,
+            payer,
+            mint,
+            closeAuthority,
+            AuthorityType.CloseMint,
+            null,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const mintCloseAuthority = getMintCloseAuthority(mintInfo);
+        expect(mintCloseAuthority).to.not.be.null;
+        if (mintCloseAuthority !== null) {
+            expect(mintCloseAuthority.closeAuthority).to.eql(PublicKey.default);
         }
     });
 });

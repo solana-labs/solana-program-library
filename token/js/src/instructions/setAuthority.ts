@@ -18,6 +18,15 @@ export enum AuthorityType {
     FreezeAccount = 1,
     AccountOwner = 2,
     CloseAccount = 3,
+    TransferFeeConfig = 4,
+    WithheldWithdraw = 5,
+    CloseMint = 6,
+    InterestRate = 7,
+    PermanentDelegate = 8,
+    ConfidentialTransferMint = 9,
+    TransferHookProgramId = 10,
+    ConfidentialTransferFeeConfig = 11,
+    MetadataPointer = 12,
 }
 
 /** TODO: docs */

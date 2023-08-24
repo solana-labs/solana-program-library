@@ -15,18 +15,20 @@ describe('setAuthority', () => {
     let payer: Signer;
     let mint: PublicKey;
     let mintAuthority: Keypair;
+    let freezeAuthority: Keypair;
     let owner: Keypair;
     let account: PublicKey;
     before(async () => {
         connection = await getConnection();
         payer = await newAccountWithLamports(connection, 1000000000);
         mintAuthority = Keypair.generate();
+        freezeAuthority = Keypair.generate();
         const mintKeypair = Keypair.generate();
         mint = await createMint(
             connection,
             payer,
             mintAuthority.publicKey,
-            mintAuthority.publicKey,
+            freezeAuthority.publicKey,
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
@@ -115,5 +117,20 @@ describe('setAuthority', () => {
         );
         const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.closeAuthority).to.eql(closeAuthority.publicKey);
+    });
+    it('FreezeAuthority', async () => {
+        await setAuthority(
+            connection,
+            payer,
+            mint,
+            freezeAuthority,
+            AuthorityType.FreezeAccount,
+            null,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        expect(mintInfo.freezeAuthority).to.be.null;
     });
 });
