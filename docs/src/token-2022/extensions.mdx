@@ -1420,7 +1420,7 @@ import {
     const extensions = [ExtensionType.TransferHook];
     const mintLen = getMintLen(extensions);
     const decimals = 9;
-    const programId = new PublicKey('7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj')
+    const transferHookProgramId = new PublicKey('7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj')
 
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
@@ -1436,7 +1436,7 @@ import {
             lamports: mintLamports,
             programId: TOKEN_2022_PROGRAM_ID,
         }),
-        createInitializeTransferHookInstruction(mint, payer.publicKey, programId, TOKEN_2022_PROGRAM_ID),
+        createInitializeTransferHookInstruction(mint, payer.publicKey, transferHookProgramId, TOKEN_2022_PROGRAM_ID),
         createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
     );
     await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
@@ -1464,7 +1464,7 @@ Signature: 3Ffw6yjseDsL3Az5n2LjdwXXwVPYxDF3JUU1JC1KGAEb1LE68S9VN4ebtAyvKeYMHvhjd
 await updateTransferHook(
   connection,
   payer, mint,
-  programId,
+  newTransferHookProgramId,
   payer.publicKey,
   [],
   undefined,

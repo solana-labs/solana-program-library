@@ -28,7 +28,8 @@ import {
     const extensions = [ExtensionType.TransferHook];
     const mintLen = getMintLen(extensions);
     const decimals = 9;
-    const programId = new PublicKey('7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj');
+    const transferHookPogramId = new PublicKey('7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj');
+    const newTransferHookProgramId = new PublicKey('7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj');
 
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
@@ -44,10 +45,19 @@ import {
             lamports: mintLamports,
             programId: TOKEN_2022_PROGRAM_ID,
         }),
-        createInitializeTransferHookInstruction(mint, payer.publicKey, programId, TOKEN_2022_PROGRAM_ID),
+        createInitializeTransferHookInstruction(mint, payer.publicKey, transferHookPogramId, TOKEN_2022_PROGRAM_ID),
         createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
     );
     await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
 
-    await updateTransferHook(connection, payer, mint, programId, payer.publicKey, [], undefined, TOKEN_2022_PROGRAM_ID);
+    await updateTransferHook(
+        connection,
+        payer,
+        mint,
+        newTransferHookProgramId,
+        payer.publicKey,
+        [],
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
 })();

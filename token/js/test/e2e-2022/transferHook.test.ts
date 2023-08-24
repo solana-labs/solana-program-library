@@ -21,13 +21,13 @@ describe('transferHook', () => {
     let connection: Connection;
     let payer: Signer;
     let mint: PublicKey;
-    let programId: PublicKey;
-    let programId2: PublicKey;
+    let transferHookProgramId: PublicKey;
+    let newTransferHookProgramId: PublicKey;
     before(async () => {
         connection = await getConnection();
         payer = await newAccountWithLamports(connection, 1000000000);
-        programId = Keypair.generate().publicKey;
-        programId2 = Keypair.generate().publicKey;
+        transferHookProgramId = Keypair.generate().publicKey;
+        newTransferHookProgramId = Keypair.generate().publicKey;
     });
     beforeEach(async () => {
         const mintKeypair = Keypair.generate();
@@ -43,7 +43,7 @@ describe('transferHook', () => {
                 lamports,
                 programId: TEST_PROGRAM_ID,
             }),
-            createInitializeTransferHookInstruction(mint, payer.publicKey, programId, TEST_PROGRAM_ID),
+            createInitializeTransferHookInstruction(mint, payer.publicKey, transferHookProgramId, TEST_PROGRAM_ID),
             createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, payer.publicKey, null, TEST_PROGRAM_ID)
         );
 
@@ -55,17 +55,26 @@ describe('transferHook', () => {
         expect(transferHook).to.not.be.null;
         if (transferHook !== null) {
             expect(transferHook.authority.toString()).to.eql(payer.publicKey.toString());
-            expect(transferHook.programId.toString()).to.eql(programId.toString());
+            expect(transferHook.programId.toString()).to.eql(transferHookProgramId.toString());
         }
     });
     it('can be updated', async () => {
-        await updateTransferHook(connection, payer, mint, programId2, payer.publicKey, [], undefined, TEST_PROGRAM_ID);
+        await updateTransferHook(
+            connection,
+            payer,
+            mint,
+            newTransferHookProgramId,
+            payer.publicKey,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const transferHook = getTransferHook(mintInfo);
         expect(transferHook).to.not.be.null;
         if (transferHook !== null) {
             expect(transferHook.authority.toString()).to.eql(payer.publicKey.toString());
-            expect(transferHook.programId.toString()).to.eql(programId2.toString());
+            expect(transferHook.programId.toString()).to.eql(newTransferHookProgramId.toString());
         }
     });
 });

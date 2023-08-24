@@ -17,7 +17,7 @@ export interface InitializeTransferHookInstructionData {
     instruction: TokenInstruction.TransferHookExtension;
     transferHookInstruction: TransferHookInstruction.Initialize;
     authority: PublicKey;
-    programId: PublicKey;
+    transferHookProgramId: PublicKey;
 }
 
 /** The struct that represents the instruction data as it is read by the program */
@@ -25,26 +25,26 @@ export const initializeTransferHookInstructionData = struct<InitializeTransferHo
     u8('instruction'),
     u8('transferHookInstruction'),
     publicKey('authority'),
-    publicKey('programId'),
+    publicKey('transferHookProgramId'),
 ]);
 
 /**
  * Construct an InitializeTransferHook instruction
  *
- * @param mint              Token mint account
- * @param authority         Transfer hook authority account
- * @param programId         Transfer hook program account
- * @param tokenProgramId    SPL Token program account
+ * @param mint                  Token mint account
+ * @param authority             Transfer hook authority account
+ * @param transferHookProgramId Transfer hook program account
+ * @param programId             SPL Token program account
  *
  * @return Instruction to add to a transaction
  */
 export function createInitializeTransferHookInstruction(
     mint: PublicKey,
     authority: PublicKey,
-    programId: PublicKey,
-    tokenProgramId: PublicKey
+    transferHookProgramId: PublicKey,
+    programId: PublicKey
 ): TransactionInstruction {
-    if (!programSupportsExtensions(tokenProgramId)) {
+    if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
     }
     const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
@@ -55,47 +55,47 @@ export function createInitializeTransferHookInstruction(
             instruction: TokenInstruction.TransferHookExtension,
             transferHookInstruction: TransferHookInstruction.Initialize,
             authority,
-            programId,
+            transferHookProgramId,
         },
         data
     );
 
-    return new TransactionInstruction({ keys, programId: tokenProgramId, data });
+    return new TransactionInstruction({ keys, programId, data });
 }
 
 /** Deserialized instruction for the initiation of an transfer hook */
 export interface UpdateTransferHookInstructionData {
     instruction: TokenInstruction.TransferHookExtension;
     transferHookInstruction: TransferHookInstruction.Update;
-    programId: PublicKey;
+    transferHookProgramId: PublicKey;
 }
 
 /** The struct that represents the instruction data as it is read by the program */
 export const updateTransferHookInstructionData = struct<UpdateTransferHookInstructionData>([
     u8('instruction'),
     u8('transferHookInstruction'),
-    publicKey('programId'),
+    publicKey('transferHookProgramId'),
 ]);
 
 /**
  * Construct an UpdateTransferHook instruction
  *
- * @param mint            Mint to update
- * @param authority       The mint's transfer hook authority
- * @param programId       The new transfer hook program account
- * @param signers         The signer account(s) for a multisig
- * @param tokenProgramId  SPL Token program account
+ * @param mint                  Mint to update
+ * @param authority             The mint's transfer hook authority
+ * @param transferHookProgramId The new transfer hook program account
+ * @param signers               The signer account(s) for a multisig
+ * @param tokenProgramId        SPL Token program account
  *
  * @return Instruction to add to a transaction
  */
 export function createUpdateTransferHookInstruction(
     mint: PublicKey,
     authority: PublicKey,
-    programId: PublicKey,
+    transferHookProgramId: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    tokenProgramId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID
 ): TransactionInstruction {
-    if (!programSupportsExtensions(tokenProgramId)) {
+    if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
     }
 
@@ -105,10 +105,10 @@ export function createUpdateTransferHookInstruction(
         {
             instruction: TokenInstruction.TransferHookExtension,
             transferHookInstruction: TransferHookInstruction.Update,
-            programId,
+            transferHookProgramId,
         },
         data
     );
 
-    return new TransactionInstruction({ keys, programId: tokenProgramId, data });
+    return new TransactionInstruction({ keys, programId, data });
 }

@@ -25,7 +25,7 @@ describe('unsupported extensions in spl-token', () => {
     const account = new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z');
     const authority = new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z');
     const payer = new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z');
-    const programId = new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z');
+    const transferHookProgramId = new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z');
     it('initializeMintCloseAuthority', () => {
         expect(function () {
             createInitializeMintCloseAuthorityInstruction(mint, null, TOKEN_PROGRAM_ID);
@@ -68,10 +68,10 @@ describe('unsupported extensions in spl-token', () => {
     });
     it('transferHook', () => {
         expect(function () {
-            createInitializeTransferHookInstruction(mint, authority, programId, TOKEN_PROGRAM_ID);
+            createInitializeTransferHookInstruction(mint, authority, transferHookProgramId, TOKEN_PROGRAM_ID);
         }).to.throw(TokenUnsupportedInstructionError);
         expect(function () {
-            createInitializeTransferHookInstruction(mint, authority, programId, TOKEN_2022_PROGRAM_ID);
+            createInitializeTransferHookInstruction(mint, authority, transferHookProgramId, TOKEN_2022_PROGRAM_ID);
         }).to.not.throw(TokenUnsupportedInstructionError);
     });
     it('nonTransferableMint', () => {
