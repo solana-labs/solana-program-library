@@ -354,7 +354,7 @@ describe('StakePoolProgram', () => {
     });
   });
   describe('createPoolTokenMetadata', () => {
-    it.only('should create pool token metadata', async () => {
+    it('should create pool token metadata', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
@@ -362,15 +362,14 @@ describe('StakePoolProgram', () => {
         return null;
       });
 
-      const tokenMetadata = new PublicKey(0);
-
+      const payer = new PublicKey(0);
       const res = await createPoolTokenMetadata(
         connection,
         stakePoolAddress,
-        tokenMetadata,
         'test',
         'TEST',
         'https://example.com',
+        payer,
       );
 
       const data = STAKE_POOL_INSTRUCTION_LAYOUTS.CreateTokenMetadata.layout.decode(
@@ -381,13 +380,10 @@ describe('StakePoolProgram', () => {
       expect(Buffer.from(data.uri).toString().replace(/\0/g, '')).toBe('https://example.com');
     });
 
-    it.only('should update pool token metadata', async () => {
-      const tokenMetadata = new PublicKey(0);
-
+    it('should update pool token metadata', async () => {
       const res = await updatePoolTokenMetadata(
         connection,
         stakePoolAddress,
-        tokenMetadata,
         'test',
         'TEST',
         'https://example.com',

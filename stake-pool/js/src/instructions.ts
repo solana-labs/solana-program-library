@@ -35,9 +35,9 @@ export type StakePoolInstructionType =
   | 'WithdrawSol'
   | 'IncreaseAdditionalValidatorStake'
   | 'DecreaseAdditionalValidatorStake'
-  | 'Redelegate'
-  | 'UpdateTokenMetadata'
-  | 'CreateTokenMetadata';
+  | 'Redelegate';
+
+// 'UpdateTokenMetadata' and 'CreateTokenMetadata' have dynamic layouts
 
 const MOVE_STAKE_LAYOUT = BufferLayout.struct<any>([
   BufferLayout.u8('instruction'),
@@ -51,12 +51,38 @@ const UPDATE_VALIDATOR_LIST_BALANCE_LAYOUT = BufferLayout.struct<any>([
   BufferLayout.u8('noMerge'),
 ]);
 
-const TOKEN_METADATA_LAYOUT = BufferLayout.struct<any>([
-  BufferLayout.u8('instruction'),
-  BufferLayout.blob(METADATA_MAX_NAME_LENGTH, 'name'),
-  BufferLayout.blob(METADATA_MAX_SYMBOL_LENGTH, 'symbol'),
-  BufferLayout.blob(METADATA_MAX_URI_LENGTH, 'uri'),
-]);
+function tokenMetadataLayout(
+  instruction: number,
+  nameLength: number,
+  symbolLength: number,
+  uriLength: number,
+) {
+  if (nameLength > METADATA_MAX_NAME_LENGTH) {
+    throw 'maximum token name length is 32 characters';
+  }
+
+  if (symbolLength > METADATA_MAX_SYMBOL_LENGTH) {
+    throw 'maximum token symbol length is 10 characters';
+  }
+
+  if (uriLength > METADATA_MAX_URI_LENGTH) {
+    throw 'maximum token uri length is 200 characters';
+  }
+
+  return {
+    index: instruction,
+    layout: BufferLayout.struct<any>([
+      BufferLayout.u8('instruction'),
+      BufferLayout.u32('nameLen'),
+      BufferLayout.blob(nameLength, 'name'),
+      BufferLayout.u32('symbolLen'),
+      BufferLayout.blob(symbolLength, 'symbol'),
+      BufferLayout.u32('uriLen'),
+      BufferLayout.blob(uriLength, 'uri'),
+    ]),
+  };
+}
+
 /**
  * An enumeration of valid stake InstructionType's
  * @internal
@@ -147,18 +173,6 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
       /// it can be anything
       BufferLayout.ns64('destinationTransientStakeSeed'),
     ]),
-  },
-  /// Create token metadata for the stake-pool token in the
-  /// metaplex-token program
-  CreateTokenMetadata: {
-    index: 17,
-    layout: TOKEN_METADATA_LAYOUT,
-  },
-  /// Update token metadata for the stake-pool token in the
-  /// metaplex-token program
-  UpdateTokenMetadata: {
-    index: 18,
-    layout: TOKEN_METADATA_LAYOUT,
   },
 });
 
@@ -900,10 +914,14 @@ export class StakePoolInstruction {
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ];
 
-    const data = encodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.CreateTokenMetadata, {
-      name: new TextEncoder().encode(name.padEnd(METADATA_MAX_NAME_LENGTH, '\0')),
-      symbol: new TextEncoder().encode(symbol.padEnd(METADATA_MAX_SYMBOL_LENGTH, '\0')),
-      uri: new TextEncoder().encode(uri.padEnd(METADATA_MAX_URI_LENGTH, '\0')),
+    const type = tokenMetadataLayout(17, name.length, symbol.length, uri.length);
+    const data = encodeData(type, {
+      nameLen: name.length,
+      name: Buffer.from(name),
+      symbolLen: symbol.length,
+      symbol: Buffer.from(symbol),
+      uriLen: uri.length,
+      uri: Buffer.from(uri),
     });
 
     return new TransactionInstruction({
@@ -928,10 +946,14 @@ export class StakePoolInstruction {
       { pubkey: METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
     ];
 
-    const data = encodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.UpdateTokenMetadata, {
-      name: new TextEncoder().encode(name.padEnd(METADATA_MAX_NAME_LENGTH, '\0')),
-      symbol: new TextEncoder().encode(symbol.padEnd(METADATA_MAX_SYMBOL_LENGTH, '\0')),
-      uri: new TextEncoder().encode(uri.padEnd(METADATA_MAX_URI_LENGTH, '\0')),
+    const type = tokenMetadataLayout(18, name.length, symbol.length, uri.length);
+    const data = encodeData(type, {
+      nameLen: name.length,
+      name: Buffer.from(name),
+      symbolLen: symbol.length,
+      symbol: Buffer.from(symbol),
+      uriLen: uri.length,
+      uri: Buffer.from(uri),
     });
 
     return new TransactionInstruction({

@@ -28,6 +28,7 @@ import {
   lamportsToSol,
   solToLamports,
   findEphemeralStakeProgramAddress,
+  findMetadataAddress,
 } from './utils';
 import { StakePoolInstruction } from './instructions';
 import {
@@ -1127,11 +1128,10 @@ export async function redelegate(props: RedelegateProps) {
 export async function createPoolTokenMetadata(
   connection: Connection,
   stakePoolAddress: PublicKey,
-  tokenMetadata: PublicKey,
   name: string,
   symbol: string,
   uri: string,
-  payer?: PublicKey,
+  payer: PublicKey,
 ) {
   const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
 
@@ -1139,7 +1139,7 @@ export async function createPoolTokenMetadata(
     STAKE_POOL_PROGRAM_ID,
     stakePoolAddress,
   );
-
+  const tokenMetadata = findMetadataAddress(stakePool.account.data.poolMint);
   const manager = stakePool.account.data.manager;
 
   const instructions: TransactionInstruction[] = [];
@@ -1147,7 +1147,7 @@ export async function createPoolTokenMetadata(
     StakePoolInstruction.createTokenMetadata({
       stakePool: stakePoolAddress,
       poolMint: stakePool.account.data.poolMint,
-      payer: payer ?? manager,
+      payer,
       manager,
       tokenMetadata,
       withdrawAuthority,
@@ -1168,7 +1168,6 @@ export async function createPoolTokenMetadata(
 export async function updatePoolTokenMetadata(
   connection: Connection,
   stakePoolAddress: PublicKey,
-  tokenMetadata: PublicKey,
   name: string,
   symbol: string,
   uri: string,
@@ -1179,6 +1178,8 @@ export async function updatePoolTokenMetadata(
     STAKE_POOL_PROGRAM_ID,
     stakePoolAddress,
   );
+
+  const tokenMetadata = findMetadataAddress(stakePool.account.data.poolMint);
 
   const instructions: TransactionInstruction[] = [];
   instructions.push(

@@ -1,7 +1,11 @@
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Buffer } from 'buffer';
-import { EPHEMERAL_STAKE_SEED_PREFIX, TRANSIENT_STAKE_SEED_PREFIX } from '../constants';
+import {
+  METADATA_PROGRAM_ID,
+  EPHEMERAL_STAKE_SEED_PREFIX,
+  TRANSIENT_STAKE_SEED_PREFIX,
+} from '../constants';
 
 /**
  * Generates the withdraw authority program address for the stake pool
@@ -64,6 +68,17 @@ export async function findEphemeralStakeProgramAddress(
   const [publicKey] = await PublicKey.findProgramAddress(
     [EPHEMERAL_STAKE_SEED_PREFIX, stakePoolAddress.toBuffer(), seed.toBuffer('le', 8)],
     programId,
+  );
+  return publicKey;
+}
+
+/**
+ * Generates the metadata program address for the stake pool
+ */
+export function findMetadataAddress(stakePoolMintAddress: PublicKey) {
+  const [publicKey] = PublicKey.findProgramAddressSync(
+    [Buffer.from('metadata'), METADATA_PROGRAM_ID.toBuffer(), stakePoolMintAddress.toBuffer()],
+    METADATA_PROGRAM_ID,
   );
   return publicKey;
 }
