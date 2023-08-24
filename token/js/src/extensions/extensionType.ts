@@ -28,6 +28,7 @@ export enum ExtensionType {
     CpiGuard,
     PermanentDelegate,
     NonTransferableAccount,
+    TransferHook
 }
 
 export const TYPE_SIZE = 2;
