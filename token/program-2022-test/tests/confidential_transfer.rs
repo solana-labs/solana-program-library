@@ -2601,15 +2601,6 @@ async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() 
     )
     .await;
 
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    let transfer_account_info = TransferAccountInfo::new(extension);
-
     let context_state_authority = Keypair::new();
     let equality_proof_context_state_account = Keypair::new();
     let ciphertext_validity_proof_context_state_account = Keypair::new();

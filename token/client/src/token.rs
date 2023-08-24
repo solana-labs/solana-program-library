@@ -2249,7 +2249,7 @@ where
                     new_decryptable_available_balance.into(),
                     source_authority,
                     context_state_accounts,
-                    &source_decrypt_handles,
+                    source_decrypt_handles,
                 )?,
             ],
             &[source_authority_keypair],
