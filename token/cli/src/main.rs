@@ -5419,7 +5419,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn create_token_default() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5440,7 +5439,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn create_token_interest_bearing() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5474,7 +5472,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn set_interest_rate() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5512,7 +5509,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn supply() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5532,7 +5528,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn create_account_default() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5554,7 +5549,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn account_info() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5589,7 +5583,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn balance() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5611,7 +5604,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn mint() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5693,7 +5685,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn balance_after_mint() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5715,7 +5706,6 @@ mod tests {
         }
     }
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn balance_after_mint_with_owner() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5745,7 +5735,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn accounts() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5772,7 +5761,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn accounts_with_owner() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5805,7 +5793,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn wrap() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5839,7 +5826,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn unwrap() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5874,7 +5860,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn transfer() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5909,7 +5894,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn transfer_fund_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -5943,7 +5927,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn transfer_non_standard_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6104,7 +6087,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn allow_non_system_account_recipient() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6142,7 +6124,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn close_account() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6210,7 +6191,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn close_wrapped_sol_account() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6270,7 +6250,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn disable_mint_authority() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6298,7 +6277,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn gc() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6453,7 +6431,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn set_owner() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6483,7 +6460,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn transfer_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6589,7 +6565,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn burn_with_account_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6677,7 +6652,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn close_mint() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6732,7 +6706,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn burn_with_permanent_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6811,7 +6784,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn transfer_with_permanent_delegate() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -6912,7 +6884,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn required_transfer_memos() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -7014,7 +6985,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn cpi_guard() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -7076,7 +7046,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn immutable_accounts() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -7174,7 +7143,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn non_transferable() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -7236,7 +7204,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn default_account_state() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -7307,7 +7274,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn transfer_fee() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -7578,7 +7544,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn confidential_transfer() {
         use spl_token_2022::solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey;
@@ -7651,7 +7616,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn multisig_transfer() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -7736,7 +7700,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn offline_multisig_transfer_with_nonce() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -7829,7 +7792,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn withdraw_excess_lamports_from_multisig() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -7934,7 +7896,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn withdraw_excess_lamports_from_mint() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -8007,7 +7968,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn withdraw_excess_lamports_from_account() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -8083,7 +8043,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn metadata_pointer() {
         let (test_validator, payer) = new_validator_for_test().await;
@@ -8168,7 +8127,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     #[serial]
     async fn transfer_hook() {
         let (test_validator, payer) = new_validator_for_test().await;
