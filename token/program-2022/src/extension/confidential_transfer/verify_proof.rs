@@ -1,14 +1,17 @@
 use {
     crate::{
-        check_zk_token_proof_program_account,
+        check_system_program_account, check_zk_token_proof_program_account,
         extension::confidential_transfer::{ciphertext_extraction::*, instruction::*, *},
         proof::decode_proof_instruction_context,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
+        msg,
+        program::invoke,
         program_error::ProgramError,
         sysvar::instructions::get_instruction_relative,
     },
+    solana_zk_token_sdk::zk_token_proof_instruction::{self, ContextStateInfo},
     std::slice::Iter,
 };
 
@@ -115,31 +118,118 @@ pub fn verify_withdraw_proof(
 
 /// Verify zero-knowledge proof needed for a [Transfer] instruction without fee and return the
 /// corresponding proof context.
+///
+/// This returns a `Result` type for an `Option<TransferProofContextInfo>` type. If the proof
+/// verification fails, then the function returns a suitable error variant. If the proof succeeds
+/// to verify, then the function returns a `TransferProofContextInfo` that is wrapped inside
+/// `Ok(Some(TransferProofContextInfo))`. If `no_op_on_split_proof_context_state` is `true` and
+/// some a split context state account is not initialized, then it returns `Ok(None)`.
 pub fn verify_transfer_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
     split_proof_context_state_accounts: bool,
+    no_op_on_split_proof_context_state: bool,
+    close_split_context_state_on_execution: bool,
     source_decrypt_handles: &SourceDecryptHandles,
-) -> Result<TransferProofContextInfo, ProgramError> {
+) -> Result<Option<TransferProofContextInfo>, ProgramError> {
     if proof_instruction_offset == 0 && split_proof_context_state_accounts {
         let equality_proof_context_state_account_info = next_account_info(account_info_iter)?;
-        let equality_proof_context =
-            verify_equality_proof(equality_proof_context_state_account_info)?;
-
         let ciphertext_validity_proof_context_state_account_info =
             next_account_info(account_info_iter)?;
+        let range_proof_context_state_account_info = next_account_info(account_info_iter)?;
+
+        if no_op_on_split_proof_context_state
+            && check_system_program_account(equality_proof_context_state_account_info.owner).is_ok()
+        {
+            msg!("Equality proof context state account not initialized");
+            return Ok(None);
+        }
+
+        if no_op_on_split_proof_context_state
+            && check_system_program_account(
+                ciphertext_validity_proof_context_state_account_info.owner,
+            )
+            .is_ok()
+        {
+            msg!("Ciphertext validity proof context state account not initialized");
+            return Ok(None);
+        }
+
+        if no_op_on_split_proof_context_state
+            && check_system_program_account(range_proof_context_state_account_info.owner).is_ok()
+        {
+            msg!("Range proof context state account not initialized");
+            return Ok(None);
+        }
+
+        let equality_proof_context =
+            verify_equality_proof(equality_proof_context_state_account_info)?;
         let ciphertext_validity_proof_context =
             verify_ciphertext_validity_proof(ciphertext_validity_proof_context_state_account_info)?;
-
-        let range_proof_context_state_account_info = next_account_info(account_info_iter)?;
         let range_proof_context = verify_range_proof(range_proof_context_state_account_info)?;
 
-        Ok(TransferProofContextInfo::new(
+        let transfer_proof_context = TransferProofContextInfo::new(
             &equality_proof_context,
             &ciphertext_validity_proof_context,
             &range_proof_context,
             source_decrypt_handles,
-        )?)
+        )?;
+
+        if close_split_context_state_on_execution {
+            let lamport_destination_account_info = next_account_info(account_info_iter)?;
+            let context_state_account_authority_info = next_account_info(account_info_iter)?;
+
+            msg!("Closing equality proof context state account");
+            invoke(
+                &zk_token_proof_instruction::close_context_state(
+                    ContextStateInfo {
+                        context_state_account: equality_proof_context_state_account_info.key,
+                        context_state_authority: context_state_account_authority_info.key,
+                    },
+                    lamport_destination_account_info.key,
+                ),
+                &[
+                    equality_proof_context_state_account_info.clone(),
+                    lamport_destination_account_info.clone(),
+                    context_state_account_authority_info.clone(),
+                ],
+            )?;
+
+            msg!("Closing ciphertext validity proof context state account");
+            invoke(
+                &zk_token_proof_instruction::close_context_state(
+                    ContextStateInfo {
+                        context_state_account: ciphertext_validity_proof_context_state_account_info
+                            .key,
+                        context_state_authority: context_state_account_authority_info.key,
+                    },
+                    lamport_destination_account_info.key,
+                ),
+                &[
+                    ciphertext_validity_proof_context_state_account_info.clone(),
+                    lamport_destination_account_info.clone(),
+                    context_state_account_authority_info.clone(),
+                ],
+            )?;
+
+            msg!("Closing range proof context state account");
+            invoke(
+                &zk_token_proof_instruction::close_context_state(
+                    ContextStateInfo {
+                        context_state_account: range_proof_context_state_account_info.key,
+                        context_state_authority: context_state_account_authority_info.key,
+                    },
+                    lamport_destination_account_info.key,
+                ),
+                &[
+                    range_proof_context_state_account_info.clone(),
+                    lamport_destination_account_info.clone(),
+                    context_state_account_authority_info.clone(),
+                ],
+            )?;
+        }
+
+        Ok(Some(transfer_proof_context))
     } else if proof_instruction_offset == 0 && !split_proof_context_state_accounts {
         // interpret `account_info` as a context state account
         let context_state_account_info = next_account_info(account_info_iter)?;
@@ -152,19 +242,19 @@ pub fn verify_transfer_proof(
             return Err(ProgramError::InvalidInstructionData);
         }
 
-        Ok(context_state.proof_context.into())
+        Ok(Some(context_state.proof_context.into()))
     } else {
         // interpret `account_info` as sysvar
         let sysvar_account_info = next_account_info(account_info_iter)?;
         let zkp_instruction =
             get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        Ok(
-            (*decode_proof_instruction_context::<TransferData, TransferProofContext>(
-                ProofInstruction::VerifyTransfer,
-                &zkp_instruction,
-            )?)
-            .into(),
-        )
+        let proof_context = (*decode_proof_instruction_context::<
+            TransferData,
+            TransferProofContext,
+        >(ProofInstruction::VerifyTransfer, &zkp_instruction)?)
+        .into();
+
+        Ok(Some(proof_context))
     }
 }
 

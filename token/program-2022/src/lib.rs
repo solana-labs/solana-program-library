@@ -28,6 +28,7 @@ use solana_program::{
     program_error::ProgramError,
     program_memory::sol_memcmp,
     pubkey::{Pubkey, PUBKEY_BYTES},
+    system_program,
 };
 pub use solana_zk_token_sdk;
 
@@ -112,6 +113,14 @@ pub fn check_spl_token_program_account(spl_token_program_id: &Pubkey) -> Program
 /// Checks that the supplied program ID is correct for the ZK Token proof program
 pub fn check_zk_token_proof_program_account(zk_token_proof_program_id: &Pubkey) -> ProgramResult {
     if zk_token_proof_program_id != &solana_zk_token_sdk::zk_token_proof_program::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    Ok(())
+}
+
+/// Checks if the spplied program ID is that of the system program
+pub fn check_system_program_account(system_program_id: &Pubkey) -> ProgramResult {
+    if system_program_id != &system_program::id() {
         return Err(ProgramError::IncorrectProgramId);
     }
     Ok(())

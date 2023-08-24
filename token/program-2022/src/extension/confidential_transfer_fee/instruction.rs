@@ -288,9 +288,6 @@ pub fn inner_withdraw_withheld_tokens_from_mint(
             accounts.push(AccountMeta::new_readonly(*context_state_account, false));
             0
         }
-        ProofLocation::SplitContextStateAccounts(_) => {
-            return Err(TokenError::SplitProofContextStateAccountsNotSupported.into())
-        }
     };
 
     accounts.push(AccountMeta::new_readonly(
@@ -381,9 +378,6 @@ pub fn inner_withdraw_withheld_tokens_from_accounts(
         ProofLocation::ContextStateAccount(context_state_account) => {
             accounts.push(AccountMeta::new_readonly(*context_state_account, false));
             0
-        }
-        ProofLocation::SplitContextStateAccounts(_) => {
-            return Err(TokenError::SplitProofContextStateAccountsNotSupported.into())
         }
     };
 
