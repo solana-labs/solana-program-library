@@ -1117,10 +1117,10 @@ export async function redelegate(props: RedelegateProps) {
 export async function createPoolTokenMetadata(
   connection: Connection,
   stakePoolAddress: PublicKey,
+  payer: PublicKey,
   name: string,
   symbol: string,
   uri: string,
-  payer: PublicKey,
 ) {
   const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
 

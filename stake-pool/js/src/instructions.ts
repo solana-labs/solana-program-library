@@ -51,7 +51,7 @@ const UPDATE_VALIDATOR_LIST_BALANCE_LAYOUT = BufferLayout.struct<any>([
   BufferLayout.u8('noMerge'),
 ]);
 
-function tokenMetadataLayout(
+export function tokenMetadataLayout(
   instruction: number,
   nameLength: number,
   symbolLength: number,

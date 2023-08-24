@@ -28,6 +28,7 @@ import {
   getStakeAccount,
   createPoolTokenMetadata,
   updatePoolTokenMetadata,
+  tokenMetadataLayout,
 } from '../src';
 
 import { decodeData } from '../src/utils';
@@ -361,40 +362,37 @@ describe('StakePoolProgram', () => {
         }
         return null;
       });
+      const name = 'test';
+      const symbol = 'TEST';
+      const uri = 'https://example.com';
 
       const payer = new PublicKey(0);
       const res = await createPoolTokenMetadata(
         connection,
         stakePoolAddress,
-        'test',
-        'TEST',
-        'https://example.com',
         payer,
+        name,
+        symbol,
+        uri,
       );
 
-      const data = STAKE_POOL_INSTRUCTION_LAYOUTS.CreateTokenMetadata.layout.decode(
-        res.instructions[0].data,
-      );
-      expect(Buffer.from(data.name).toString().replace(/\0/g, '')).toBe('test');
-      expect(Buffer.from(data.symbol).toString().replace(/\0/g, '')).toBe('TEST');
-      expect(Buffer.from(data.uri).toString().replace(/\0/g, '')).toBe('https://example.com');
+      const type = tokenMetadataLayout(17, name.length, symbol.length, uri.length);
+      const data = decodeData(type, res.instructions[0].data);
+      expect(Buffer.from(data.name).toString()).toBe(name);
+      expect(Buffer.from(data.symbol).toString()).toBe(symbol);
+      expect(Buffer.from(data.uri).toString()).toBe(uri);
     });
 
     it('should update pool token metadata', async () => {
-      const res = await updatePoolTokenMetadata(
-        connection,
-        stakePoolAddress,
-        'test',
-        'TEST',
-        'https://example.com',
-      );
-
-      const data = STAKE_POOL_INSTRUCTION_LAYOUTS.UpdateTokenMetadata.layout.decode(
-        res.instructions[0].data,
-      );
-      expect(Buffer.from(data.name).toString().replace(/\0/g, '')).toBe('test');
-      expect(Buffer.from(data.symbol).toString().replace(/\0/g, '')).toBe('TEST');
-      expect(Buffer.from(data.uri).toString().replace(/\0/g, '')).toBe('https://example.com');
+      const name = 'test';
+      const symbol = 'TEST';
+      const uri = 'https://example.com';
+      const res = await updatePoolTokenMetadata(connection, stakePoolAddress, name, symbol, uri);
+      const type = tokenMetadataLayout(18, name.length, symbol.length, uri.length);
+      const data = decodeData(type, res.instructions[0].data);
+      expect(Buffer.from(data.name).toString()).toBe(name);
+      expect(Buffer.from(data.symbol).toString()).toBe(symbol);
+      expect(Buffer.from(data.uri).toString()).toBe(uri);
     });
   });
 });
