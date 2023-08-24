@@ -723,6 +723,7 @@ async fn command_set_transfer_hook_program(
 async fn command_initialize_metadata(
     config: &Config<'_>,
     token_pubkey: Pubkey,
+    update_authority: Pubkey,
     mint_authority: Pubkey,
     name: String,
     symbol: String,
@@ -734,7 +735,7 @@ async fn command_initialize_metadata(
     let res = token
         .token_metadata_initialize_with_rent_transfer(
             &config.fee_payer()?.pubkey(),
-            &mint_authority,
+            &update_authority,
             &mint_authority,
             name,
             symbol,
@@ -3074,6 +3075,17 @@ fn app<'a, 'b>(
                              Defaults to the client keypair."
                         ),
                 )
+                .arg(
+                    Arg::with_name("update_authority")
+                        .long("update-authority")
+                        .value_name("ADDRESS")
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help(
+                            "Specify the update authority address. \
+                             Defaults to the client keypair address."
+                        ),
+                )
         )
         .subcommand(
             SubCommand::with_name(CommandName::UpdateMetadata.into())
@@ -4357,10 +4369,13 @@ async fn process_command<'a>(
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             let bulk_signers = vec![mint_authority_signer];
+            let update_authority =
+                config.pubkey_or_default(arg_matches, "update_authority", &mut wallet_manager)?;
 
             command_initialize_metadata(
                 config,
                 token_pubkey,
+                update_authority,
                 mint_authority,
                 name,
                 symbol,
