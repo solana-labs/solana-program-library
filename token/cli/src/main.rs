@@ -720,6 +720,7 @@ async fn command_set_transfer_hook_program(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn command_initialize_metadata(
     config: &Config<'_>,
     token_pubkey: Pubkey,
