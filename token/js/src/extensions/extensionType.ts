@@ -12,6 +12,7 @@ import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority.js';
 import { NON_TRANSFERABLE_SIZE, NON_TRANSFERABLE_ACCOUNT_SIZE } from './nonTransferable.js';
 import { PERMANENT_DELEGATE_SIZE } from './permanentDelegate.js';
 import { TRANSFER_FEE_AMOUNT_SIZE, TRANSFER_FEE_CONFIG_SIZE } from './transferFee/index.js';
+import { TRANSFER_HOOK_SIZE } from './transferHook/index.js';
 
 export enum ExtensionType {
     Uninitialized,
@@ -28,7 +29,7 @@ export enum ExtensionType {
     CpiGuard,
     PermanentDelegate,
     NonTransferableAccount,
-    TransferHook
+    TransferHook,
 }
 
 export const TYPE_SIZE = 2;
@@ -66,6 +67,8 @@ export function getTypeLen(e: ExtensionType): number {
             return PERMANENT_DELEGATE_SIZE;
         case ExtensionType.NonTransferableAccount:
             return NON_TRANSFERABLE_ACCOUNT_SIZE;
+        case ExtensionType.TransferHook:
+            return TRANSFER_HOOK_SIZE;
         default:
             throw Error(`Unknown extension type: ${e}`);
     }
@@ -80,6 +83,7 @@ export function isMintExtension(e: ExtensionType): boolean {
         case ExtensionType.NonTransferable:
         case ExtensionType.InterestBearingConfig:
         case ExtensionType.PermanentDelegate:
+        case ExtensionType.TransferHook:
             return true;
         case ExtensionType.Uninitialized:
         case ExtensionType.TransferFeeAmount:
@@ -111,6 +115,7 @@ export function isAccountExtension(e: ExtensionType): boolean {
         case ExtensionType.NonTransferable:
         case ExtensionType.InterestBearingConfig:
         case ExtensionType.PermanentDelegate:
+        case ExtensionType.TransferHook:
             return false;
         default:
             throw Error(`Unknown extension type: ${e}`);
@@ -136,6 +141,7 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
         case ExtensionType.InterestBearingConfig:
         case ExtensionType.PermanentDelegate:
         case ExtensionType.NonTransferableAccount:
+        case ExtensionType.TransferHook:
             return ExtensionType.Uninitialized;
     }
 }

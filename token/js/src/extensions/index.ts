@@ -9,3 +9,4 @@ export * from './mintCloseAuthority.js';
 export * from './nonTransferable.js';
 export * from './transferFee/index.js';
 export * from './permanentDelegate.js';
+export * from './transferHook/index.js';

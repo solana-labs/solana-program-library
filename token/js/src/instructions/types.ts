@@ -36,4 +36,5 @@ export enum TokenInstruction {
     InterestBearingMintExtension = 33,
     CpiGuardExtension = 34,
     InitializePermanentDelegate = 35,
+    TransferHookExtension = 36,
 }
