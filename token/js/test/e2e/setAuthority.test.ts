@@ -131,6 +131,6 @@ describe('setAuthority', () => {
             TEST_PROGRAM_ID
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
-        expect(mintInfo.mintAuthority).to.be.null;
+        expect(mintInfo.freezeAuthority).to.be.null;
     });
 });
