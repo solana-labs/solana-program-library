@@ -12,6 +12,11 @@ import {
     mintTo,
     getMintLen,
     ExtensionType,
+    AuthorityType,
+    getMint,
+    getTransferFeeConfig,
+    setAuthority,
+    getMintCloseAuthority,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
@@ -78,6 +83,25 @@ describe('closeMint', () => {
         expect(destinationInfo).to.not.be.null;
         if (destinationInfo !== null) {
             expect(destinationInfo.lamports).to.eql(rentExemptAmount);
+        }
+    });
+    it('authority', async () => {
+        await setAuthority(
+            connection,
+            payer,
+            mint,
+            closeAuthority,
+            AuthorityType.CloseMint,
+            null,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const mintCloseAuthority = getMintCloseAuthority(mintInfo);
+        expect(mintCloseAuthority).to.not.be.null;
+        if (mintCloseAuthority !== null) {
+            expect(mintCloseAuthority.closeAuthority).to.be.null;
         }
     });
 });

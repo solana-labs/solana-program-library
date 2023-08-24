@@ -13,6 +13,11 @@ import {
     createInitializePermanentDelegateInstruction,
     burn,
     transferChecked,
+    AuthorityType,
+    getInterestBearingMintConfigState,
+    getMint,
+    setAuthority,
+    getPermanentDelegate,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
@@ -98,6 +103,25 @@ describe('permanentDelegate', () => {
         }
         if (destination_info !== null) {
             expect(destination_info.value.uiAmount).to.eql(2);
+        }
+    });
+    it('authority', async () => {
+        await setAuthority(
+            connection,
+            payer,
+            mint,
+            permanentDelegate,
+            AuthorityType.PermanentDelegate,
+            null,
+            [],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+        const permanentDelegateConfig = getPermanentDelegate(mintInfo);
+        expect(permanentDelegateConfig).to.not.be.null;
+        if (permanentDelegateConfig !== null) {
+            expect(permanentDelegateConfig.delegate).to.be.null;
         }
     });
 });
