@@ -785,7 +785,7 @@ fn process_source_for_transfer_with_fee(
         source_transfer_amount_lo,
         source_transfer_amount_hi,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     // Check that the computed available balance is consistent with what was actually used to
     // generate the zkp on the client side.
@@ -838,13 +838,13 @@ fn process_destination_for_transfer_with_fee(
         &destination_confidential_transfer_account.pending_balance_lo,
         destination_transfer_amount_lo,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     destination_confidential_transfer_account.pending_balance_hi = syscall::add(
         &destination_confidential_transfer_account.pending_balance_hi,
         destination_transfer_amount_hi,
     )
-    .ok_or(ProgramError::InvalidInstructionData)?;
+    .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     destination_confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
@@ -859,12 +859,12 @@ fn process_destination_for_transfer_with_fee(
             &destination_confidential_transfer_account.pending_balance_lo,
             &destination_fee_lo,
         )
-        .ok_or(ProgramError::InvalidInstructionData)?;
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
         destination_confidential_transfer_account.pending_balance_hi = syscall::subtract(
             &destination_confidential_transfer_account.pending_balance_hi,
             &destination_fee_hi,
         )
-        .ok_or(ProgramError::InvalidInstructionData)?;
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
         // Decode lo and hi fee amounts encrypted under the withdraw authority encryption public
         // key
@@ -882,7 +882,7 @@ fn process_destination_for_transfer_with_fee(
             &withdraw_withheld_authority_fee_lo,
             &withdraw_withheld_authority_fee_hi,
         )
-        .ok_or(ProgramError::InvalidInstructionData)?;
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
 
     Ok(())
