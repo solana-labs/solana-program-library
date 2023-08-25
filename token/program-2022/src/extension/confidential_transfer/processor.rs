@@ -432,8 +432,8 @@ fn process_transfer(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let source_account_info = next_account_info(account_info_iter)?;
-    let destination_token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
+    let destination_token_account_info = next_account_info(account_info_iter)?;
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
