@@ -2258,6 +2258,9 @@ where
     }
 
     /// Transfer tokens confidentially using split proofs in parallel
+    ///
+    /// This function internally generates the ZK Token proof instructions to create the necessary
+    /// proof context states.
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_transfer_with_split_proofs_in_parallel<S: Signer>(
         &self,
@@ -2317,25 +2320,26 @@ where
         )?;
 
         let transfer_with_equality_and_ciphertext_validity = self
-            .confidential_transfer_create_equality_and_ciphertext_validity_proofs_for_transfer(
+            .confidential_transfer_equality_and_ciphertext_validity_proof_context_states_and_transfer_parallel(
                 context_state_accounts,
                 &equality_proof_data,
                 &ciphertext_validity_proof_data,
-                Some(&transfer_instruction),
+                &transfer_instruction,
                 Some(source_authority_keypair),
                 equality_proof_account_keypair,
                 ciphertext_validity_proof_account_keypair,
                 context_state_authority_keypair,
             );
 
-        let transfer_with_range_proof = self.confidential_transfer_create_range_proof_for_transfer(
-            context_state_accounts,
-            &range_proof_data,
-            Some(&transfer_instruction),
-            Some(source_authority_keypair),
-            range_proof_account_keypair,
-            context_state_authority_keypair,
-        );
+        let transfer_with_range_proof = self
+            .confidential_transfer_range_proof_context_states_and_transfer_parallel(
+                context_state_accounts,
+                &range_proof_data,
+                &transfer_instruction,
+                Some(source_authority_keypair),
+                range_proof_account_keypair,
+                context_state_authority_keypair,
+            );
 
         try_join!(
             transfer_with_equality_and_ciphertext_validity,
@@ -2343,12 +2347,66 @@ where
         )
     }
 
-    /// Create equality and ciphertext validity proofs for a confidential transfer.
+    /// Create equality and ciphertext validity proof context state accounts for a confidential transfer.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_transfer_equality_and_ciphertext_validity_proof_context_states_for_transfer<
+        S: Signer,
+    >(
+        &self,
+        context_state_accounts: TransferSplitContextStateAccounts<'_>,
+        equality_proof_data: &CiphertextCommitmentEqualityProofData,
+        ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
+        source_authority_keypair: Option<&S>,
+        equality_proof_account_keypair: &S,
+        ciphertext_validity_proof_account_keypair: &S,
+        context_state_authority_keypair: Option<&S>,
+    ) -> TokenResult<T::Output> {
+        self.confidential_transfer_equality_and_ciphertext_validity_proof_context_state_with_optional_transfer(
+            context_state_accounts,
+            equality_proof_data,
+            ciphertext_validity_proof_data,
+            None,
+            source_authority_keypair,
+            equality_proof_account_keypair,
+            ciphertext_validity_proof_account_keypair,
+            context_state_authority_keypair,
+        ).await
+    }
+
+    /// Create equality and ciphertext validity proof context state accounts with a confidential
+    /// transfer instruction.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_transfer_equality_and_ciphertext_validity_proof_context_states_and_transfer_parallel<
+        S: Signer,
+    >(
+        &self,
+        context_state_accounts: TransferSplitContextStateAccounts<'_>,
+        equality_proof_data: &CiphertextCommitmentEqualityProofData,
+        ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
+        transfer_instruction: &Instruction,
+        source_authority_keypair: Option<&S>,
+        equality_proof_account_keypair: &S,
+        ciphertext_validity_proof_account_keypair: &S,
+        context_state_authority_keypair: Option<&S>,
+    ) -> TokenResult<T::Output> {
+        self.confidential_transfer_equality_and_ciphertext_validity_proof_context_state_with_optional_transfer(
+            context_state_accounts,
+            equality_proof_data,
+            ciphertext_validity_proof_data,
+            Some(transfer_instruction),
+            source_authority_keypair,
+            equality_proof_account_keypair,
+            ciphertext_validity_proof_account_keypair,
+            context_state_authority_keypair,
+        ).await
+    }
+
+    /// Create equality and ciphertext validity proof context states for a confidential transfer.
     ///
     /// If an optional transfer instruction is provided, then the transfer instruction is attached
     /// to the same transaction.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_create_equality_and_ciphertext_validity_proofs_for_transfer<
+    async fn confidential_transfer_equality_and_ciphertext_validity_proof_context_state_with_optional_transfer<
         S: Signer,
     >(
         &self,
@@ -2434,10 +2492,50 @@ where
     }
 
     /// Create a range proof context state account for a confidential transfer.
-    ///
-    /// If an optional transfer instruction is provided, then the transfer instruction is attached
-    /// to the same transaction.
-    pub async fn confidential_transfer_create_range_proof_for_transfer<S: Signer>(
+    pub async fn confidential_transfer_range_proof_context_state_for_transfer<S: Signer>(
+        &self,
+        context_state_accounts: TransferSplitContextStateAccounts<'_>,
+        range_proof_data: &BatchedRangeProofU128Data,
+        source_authority_keypair: Option<&S>,
+        range_proof_account_keypair: &S,
+        context_state_authority_keypair: Option<&S>,
+    ) -> TokenResult<T::Output> {
+        self.confidential_transfer_range_proof_context_state_with_optional_transfer(
+            context_state_accounts,
+            range_proof_data,
+            None,
+            source_authority_keypair,
+            range_proof_account_keypair,
+            context_state_authority_keypair,
+        )
+        .await
+    }
+
+    /// Create a range proof context state account with a confidential transfer instruction.
+    pub async fn confidential_transfer_range_proof_context_states_and_transfer_parallel<
+        S: Signer,
+    >(
+        &self,
+        context_state_accounts: TransferSplitContextStateAccounts<'_>,
+        range_proof_data: &BatchedRangeProofU128Data,
+        transfer_instruction: &Instruction,
+        source_authority_keypair: Option<&S>,
+        range_proof_account_keypair: &S,
+        context_state_authority_keypair: Option<&S>,
+    ) -> TokenResult<T::Output> {
+        self.confidential_transfer_range_proof_context_state_with_optional_transfer(
+            context_state_accounts,
+            range_proof_data,
+            Some(transfer_instruction),
+            source_authority_keypair,
+            range_proof_account_keypair,
+            context_state_authority_keypair,
+        )
+        .await
+    }
+
+    /// Create a range proof context state account and an optional confidential transfer instruction.
+    async fn confidential_transfer_range_proof_context_state_with_optional_transfer<S: Signer>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
@@ -2485,6 +2583,7 @@ where
         self.process_ixs(&instructions, &signers).await
     }
 
+    /// Close a ZK Token proof program context state
     pub async fn confidential_transfer_close_context_state<S: Signer>(
         &self,
         context_state_account: &Pubkey,

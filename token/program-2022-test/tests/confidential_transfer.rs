@@ -2454,11 +2454,10 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
 
     // create context state accounts
     token
-        .confidential_transfer_create_equality_and_ciphertext_validity_proofs_for_transfer(
+        .confidential_transfer_equality_and_ciphertext_validity_proof_context_states_for_transfer(
             transfer_context_state_accounts,
             &equality_proof_data,
             &ciphertext_validity_proof_data,
-            None,
             None,
             &equality_proof_context_state_account,
             &ciphertext_validity_proof_context_state_account,
@@ -2468,10 +2467,9 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
         .unwrap();
 
     token
-        .confidential_transfer_create_range_proof_for_transfer(
+        .confidential_transfer_range_proof_context_state_for_transfer(
             transfer_context_state_accounts,
             &range_proof_data,
-            None,
             None,
             &range_proof_context_state_account,
             None,
