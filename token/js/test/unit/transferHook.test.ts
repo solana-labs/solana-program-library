@@ -70,7 +70,7 @@ describe('transferHookExtraAccounts', () => {
 
     const extraAccountList = Buffer.concat([
         Buffer.from([0, 0, 0, 0, 0, 0, 0, 0]), // u64 accountDiscriminator
-        Buffer.from([0, 0, 0, 0]), // u32 arrayDiscriminator
+        Buffer.from([0, 0, 0, 0]), // u32 length
         Buffer.from([3, 0, 0, 0]), // u32 count
         plainExtraAccount,
         pdaExtraAccount,
