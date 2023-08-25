@@ -10,10 +10,10 @@ dependencies:
     version: 4.0.1
   '@solana/spl-token':
     specifier: ^0.3.8
-    version: 0.3.8(@solana/web3.js@1.78.0)
+    version: 0.3.8(@solana/web3.js@1.78.4)
   '@solana/web3.js':
-    specifier: ^1.78.0
-    version: 1.78.0
+    specifier: ^1.78.4
+    version: 1.78.4
 
 devDependencies:
   '@ava/typescript':
@@ -411,7 +411,7 @@ packages:
     engines: {node: '>= 10'}
     dependencies:
       '@solana/buffer-layout': 4.0.1
-      '@solana/web3.js': 1.78.0
+      '@solana/web3.js': 1.78.4
       bigint-buffer: 1.1.5
       bignumber.js: 9.1.1
     transitivePeerDependencies:
@@ -426,7 +426,7 @@ packages:
     dependencies:
       buffer: 6.0.3
 
-  /@solana/spl-token@0.3.8(@solana/web3.js@1.78.0):
+  /@solana/spl-token@0.3.8(@solana/web3.js@1.78.4):
     resolution: {integrity: sha512-ogwGDcunP9Lkj+9CODOWMiVJEdRtqHAtX2rWF62KxnnSWtMZtV9rDhTrZFshiyJmxDnRL/1nKE1yJHg4jjs3gg==}
     engines: {node: '>=16'}
     peerDependencies:
@@ -434,7 +434,7 @@ packages:
     dependencies:
       '@solana/buffer-layout': 4.0.1
       '@solana/buffer-layout-utils': 0.2.0
-      '@solana/web3.js': 1.78.0
+      '@solana/web3.js': 1.78.4
       buffer: 6.0.3
     transitivePeerDependencies:
       - bufferutil
@@ -442,8 +442,8 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@solana/web3.js@1.78.0:
-    resolution: {integrity: sha512-CSjCjo+RELJ5puoZALfznN5EF0YvL1V8NQrQYovsdjE1lCV6SqbKAIZD0+9LlqCBoa1ibuUaR7G2SooYzvzmug==}
+  /@solana/web3.js@1.78.4:
+    resolution: {integrity: sha512-up5VG1dK+GPhykmuMIozJZBbVqpm77vbOG6/r5dS7NBGZonwHfTLdBbsYc3rjmaQ4DpCXUa3tUc4RZHRORvZrw==}
     dependencies:
       '@babel/runtime': 7.22.10
       '@noble/curves': 1.1.0
@@ -484,7 +484,7 @@ packages:
   /@types/connect@3.4.35:
     resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==}
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.5.0
 
   /@types/json-schema@7.0.12:
     resolution: {integrity: sha512-Hr5Jfhc9eYOQNPYO5WLDq/n4jqijdHNlDXjuAQkkt+mWdQR+XJToOHrsD4cPaMXpn6KO7y2+wM8AZEs8VpBLVA==}
@@ -495,7 +495,6 @@ packages:
 
   /@types/node@20.5.0:
     resolution: {integrity: sha512-Mgq7eCtoTjT89FqNoTzzXg2XvCi5VMhRV6+I2aYanc6kQCBImeNaAYRs/DyoVqk1YEUJK5gN9VO7HRIdz4Wo3Q==}
-    dev: true
 
   /@types/semver@7.5.0:
     resolution: {integrity: sha512-G8hZ6XJiHnuhQKR7ZmysCeJWE08o8T0AXtk5darsCaTVsYZhhgUrq53jizaR2FvsoeCwJhlmwTjkXBY5Pn/ZHw==}
@@ -504,7 +503,7 @@ packages:
   /@types/ws@7.4.7:
     resolution: {integrity: sha512-JQbbmxZTZehdc2iszGKs5oC3NFnjeay7mtAWrdt7qNtAVK0g19muApzAy4bm9byz79xa2ZnO/BOBC2R8RC5Lww==}
     dependencies:
-      '@types/node': 12.20.55
+      '@types/node': 20.5.0
 
   /@typescript-eslint/eslint-plugin@6.2.0(@typescript-eslint/parser@6.4.0)(eslint@8.47.0)(typescript@5.1.6):
     resolution: {integrity: sha512-rClGrMuyS/3j0ETa1Ui7s6GkLhfZGKZL3ZrChLeAiACBE/tRc1wq8SNZESUuluxhLj9FkUefRs2l6bCIArWBiQ==}
@@ -2355,7 +2354,7 @@ packages:
     resolution: {integrity: sha512-JkoU7yEyaJAZDMw5wGsFXOI/BNTk1lwcPX6Kgg9dBrCo0xs1VTn/ipwjKXwdRFLKF9N2kt4x+bLAipDp7W6GiA==}
     engines: {node: '>= 10'}
     dependencies:
-      '@solana/web3.js': 1.78.0
+      '@solana/web3.js': 1.78.4
       bs58: 4.0.1
     optionalDependencies:
       solana-bankrun-darwin-arm64: 0.1.1
