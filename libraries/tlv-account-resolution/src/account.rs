@@ -29,6 +29,9 @@ fn resolve_pda(
             Seed::InstructionData { index, length } => {
                 let arg_start = *index as usize;
                 let arg_end = arg_start + *length as usize;
+                if arg_end > instruction_data.len() {
+                    return Err(AccountResolutionError::InstructionDataTooSmall.into());
+                }
                 pda_seeds.push(&instruction_data[arg_start..arg_end]);
             }
             Seed::AccountKey { index } => {
