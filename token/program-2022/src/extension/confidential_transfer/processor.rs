@@ -466,9 +466,10 @@ fn process_transfer(
             source_decrypt_handles,
         )?;
         // If `maybe_proof_context` is `None`, then this means that
-        // `close_split_context_state_on_execution` is true and a required context state account is
-        // not yet initialized. Even if this is the case, we follow through with the rest of the
-        // transfer logic to perform all the necessary checks for a transfer to be safe.
+        // `no_op_on_uninitialized_split_context_state` is true and a required context state
+        // account is not yet initialized. Even if this is the case, we follow through with the
+        // rest of the transfer logic to perform all the necessary checks for a transfer to be
+        // safe.
 
         // If `close_split_context_state_on_execution` is `true`, then the source account authority
         // info is located after the lamport destination, context state authority, and zk token
@@ -509,8 +510,10 @@ fn process_transfer(
         )?;
 
         if maybe_proof_context.is_none() {
-            msg!("Context states not fully initialized: return with no op");
-            msg!("WARNING: transfer is NOT yet executed");
+            msg!(
+                "Context states not fully initialized: returning with no op; transfer is NOT yet
+            executed"
+            );
         }
     } else {
         // Transfer fee is required. Decode the zero-knowledge proof as `TransferWithFeeData`.
@@ -642,9 +645,9 @@ fn process_source_for_transfer(
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_source()?;
 
-    // Check that the source encryption public key is consistent with what was actually used to
-    // generate the zkp.
     if let Some(proof_context) = maybe_proof_context {
+        // Check that the source encryption public key is consistent with what was actually used to
+        // generate the zkp.
         if proof_context.transfer_pubkeys.source != confidential_transfer_account.elgamal_pubkey {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
