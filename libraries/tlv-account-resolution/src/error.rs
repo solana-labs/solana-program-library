@@ -42,6 +42,9 @@ pub enum AccountResolutionError {
     /// Tried to pack an invalid seed configuration
     #[error("Tried to pack an invalid seed configuration")]
     InvalidSeedConfig,
+    /// Instruction data too small for seed configuration
+    #[error("Instruction data too small for seed configuration")]
+    InstructionDataTooSmall,
     /// Could not find account at specified index
     #[error("Could not find account at specified index")]
     AccountNotFound,

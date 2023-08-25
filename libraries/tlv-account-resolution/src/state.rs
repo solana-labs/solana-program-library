@@ -380,8 +380,8 @@ mod tests {
                     bytes: extra_meta3_literal_str.as_bytes().to_vec(),
                 },
                 Seed::InstructionData {
-                    index: 1,
-                    length: 1, // u8
+                    index: 2,
+                    length: 2, // u16
                 },
                 Seed::AccountKey { index: 0 },
                 Seed::AccountKey { index: 2 },
@@ -405,23 +405,31 @@ mod tests {
             extra_meta4,
         ];
 
-        let ix_data = vec![1, 2, 3, 4];
-        let ix_accounts = vec![ix_account1.clone(), ix_account2.clone()];
-        let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
-
         let account_size = ExtraAccountMetaList::size_of(metas.len()).unwrap();
         let mut buffer = vec![0; account_size];
 
         ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &metas).unwrap();
 
+        // Fails with not enough instruction data
+        let ix_data = vec![1, 2, 3];
+        let ix_accounts = vec![ix_account1.clone(), ix_account2.clone()];
+        let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
+        assert_eq!(
+            ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
+                .unwrap_err(),
+            AccountResolutionError::InstructionDataTooSmall.into()
+        );
+
+        let ix_data = vec![1, 2, 3, 4];
+        let ix_accounts = vec![ix_account1.clone(), ix_account2.clone()];
+        let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
         ExtraAccountMetaList::add_to_instruction::<TestInstruction>(&mut instruction, &buffer)
             .unwrap();
 
-        let check_extra_meta3_u8_arg = ix_data[1];
         let check_extra_meta3_pubkey = Pubkey::find_program_address(
             &[
                 extra_meta3_literal_str.as_bytes(),
-                &[check_extra_meta3_u8_arg],
+                &ix_data[2..4],
                 ix_account1.pubkey.as_ref(),
                 extra_meta1.pubkey.as_ref(),
             ],
