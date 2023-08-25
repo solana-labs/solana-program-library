@@ -34,7 +34,14 @@ pub enum ProofLocation<'a, T> {
     InstructionOffset(NonZeroI8, &'a T),
     /// The proof is pre-verified into a context state account.
     ContextStateAccount(&'a Pubkey),
-    /// The proof is split into multiple smaller components and are pre-verified into context state
-    /// accounts.
-    SplitContextStateAccounts(&'a [&'a Pubkey]),
+}
+
+/// Instruction options for when using split context state accounts
+#[derive(Clone, Copy)]
+pub struct SplitContextStateAccountsConfig {
+    /// If true, execute no op when an associated split proof context state account is not
+    /// initialized. Otherwise, fail on an uninitialized context state account.
+    pub no_op_on_uninitialized_split_context_state: bool,
+    /// Close associated context states after a complete execution of the transfer instruction.
+    pub close_split_context_state_on_execution: bool,
 }

@@ -417,7 +417,8 @@ fn process_withdraw(
     Ok(())
 }
 
-/// Processes an [Transfer] instruction.
+/// Processes a [Transfer] or [TransferWithSplitProofs] instruction.
+#[allow(clippy::too_many_arguments)]
 #[cfg(feature = "zk-ops")]
 fn process_transfer(
     program_id: &Pubkey,
@@ -425,6 +426,8 @@ fn process_transfer(
     new_source_decryptable_available_balance: DecryptableBalance,
     proof_instruction_offset: i64,
     split_proof_context_state_accounts: bool,
+    no_op_on_uninitialized_split_context_state: bool,
+    close_split_context_state_on_execution: bool,
     source_decrypt_handles: &SourceDecryptHandles,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -454,28 +457,41 @@ fn process_transfer(
         // The zero-knowledge proof certifies that:
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
-        let proof_context = verify_transfer_proof(
+        let maybe_proof_context = verify_transfer_proof(
             account_info_iter,
             proof_instruction_offset,
             split_proof_context_state_accounts,
+            no_op_on_uninitialized_split_context_state,
+            close_split_context_state_on_execution,
             source_decrypt_handles,
         )?;
+        // If `maybe_proof_context` is `None`, then this means that
+        // `no_op_on_uninitialized_split_context_state` is true and a required context state
+        // account is not yet initialized. Even if this is the case, we follow through with the
+        // rest of the transfer logic to perform all the necessary checks for a transfer to be
+        // safe.
+
+        // If `close_split_context_state_on_execution` is `true`, then the source account authority
+        // info is located after the lamport destination, context state authority, and zk token
+        // proof program account infos. Flush out these account infos.
+        if close_split_context_state_on_execution && maybe_proof_context.is_none() {
+            let _lamport_destination_account_info = next_account_info(account_info_iter)?;
+            let _context_state_authority_info = next_account_info(account_info_iter)?;
+            let _zk_token_proof_program_info = next_account_info(account_info_iter)?;
+        }
 
         let authority_info = next_account_info(account_info_iter)?;
 
         // Check that the auditor encryption public key associated wth the confidential mint is
         // consistent with what was actually used to generate the zkp.
-        if !confidential_transfer_mint
-            .auditor_elgamal_pubkey
-            .equals(&proof_context.transfer_pubkeys.auditor)
-        {
-            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+        if let Some(ref proof_context) = maybe_proof_context {
+            if !confidential_transfer_mint
+                .auditor_elgamal_pubkey
+                .equals(&proof_context.transfer_pubkeys.auditor)
+            {
+                return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+            }
         }
-
-        let source_transfer_amount_lo =
-            transfer_amount_source_ciphertext(&proof_context.ciphertext_lo);
-        let source_transfer_amount_hi =
-            transfer_amount_source_ciphertext(&proof_context.ciphertext_hi);
 
         process_source_for_transfer(
             program_id,
@@ -483,26 +499,22 @@ fn process_transfer(
             mint_info,
             authority_info,
             account_info_iter.as_slice(),
-            &proof_context.transfer_pubkeys.source,
-            &source_transfer_amount_lo,
-            &source_transfer_amount_hi,
-            &proof_context.new_source_ciphertext,
+            maybe_proof_context.as_ref(),
             new_source_decryptable_available_balance,
         )?;
-
-        let destination_ciphertext_lo =
-            transfer_amount_destination_ciphertext(&proof_context.ciphertext_lo);
-        let destination_ciphertext_hi =
-            transfer_amount_destination_ciphertext(&proof_context.ciphertext_hi);
 
         process_destination_for_transfer(
             destination_token_account_info,
             mint_info,
-            &proof_context.transfer_pubkeys.destination,
-            &destination_ciphertext_lo,
-            &destination_ciphertext_hi,
-            None,
+            maybe_proof_context.as_ref(),
         )?;
+
+        if maybe_proof_context.is_none() {
+            msg!(
+                "Context states not fully initialized: returning with no op; transfer is NOT yet
+            executed"
+            );
+        }
     } else {
         // Transfer fee is required. Decode the zero-knowledge proof as `TransferWithFeeData`.
         //
@@ -556,7 +568,7 @@ fn process_transfer(
         let source_transfer_amount_hi =
             transfer_amount_source_ciphertext(&proof_context.ciphertext_hi);
 
-        process_source_for_transfer(
+        process_source_for_transfer_with_fee(
             program_id,
             source_account_info,
             mint_info,
@@ -585,7 +597,7 @@ fn process_transfer(
             None
         };
 
-        process_destination_for_transfer(
+        process_destination_for_transfer_with_fee(
             destination_token_account_info,
             mint_info,
             &proof_context.transfer_with_fee_pubkeys.destination,
@@ -598,9 +610,134 @@ fn process_transfer(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 #[cfg(feature = "zk-ops")]
 fn process_source_for_transfer(
+    program_id: &Pubkey,
+    source_account_info: &AccountInfo,
+    mint_info: &AccountInfo,
+    authority_info: &AccountInfo,
+    signers: &[AccountInfo],
+    maybe_proof_context: Option<&TransferProofContextInfo>,
+    new_source_decryptable_available_balance: DecryptableBalance,
+) -> ProgramResult {
+    check_program_account(source_account_info.owner)?;
+    let authority_info_data_len = authority_info.data_len();
+    let token_account_data = &mut source_account_info.data.borrow_mut();
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
+
+    Processor::validate_owner(
+        program_id,
+        &token_account.base.owner,
+        authority_info,
+        authority_info_data_len,
+        signers,
+    )?;
+
+    if token_account.base.is_frozen() {
+        return Err(TokenError::AccountFrozen.into());
+    }
+
+    if token_account.base.mint != *mint_info.key {
+        return Err(TokenError::MintMismatch.into());
+    }
+
+    let mut confidential_transfer_account =
+        token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+    confidential_transfer_account.valid_as_source()?;
+
+    if let Some(proof_context) = maybe_proof_context {
+        // Check that the source encryption public key is consistent with what was actually used to
+        // generate the zkp.
+        if proof_context.transfer_pubkeys.source != confidential_transfer_account.elgamal_pubkey {
+            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+        }
+
+        let source_transfer_amount_lo =
+            transfer_amount_source_ciphertext(&proof_context.ciphertext_lo);
+        let source_transfer_amount_hi =
+            transfer_amount_source_ciphertext(&proof_context.ciphertext_hi);
+
+        let new_source_available_balance = syscall::subtract_with_lo_hi(
+            &confidential_transfer_account.available_balance,
+            &source_transfer_amount_lo,
+            &source_transfer_amount_hi,
+        )
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
+
+        // Check that the computed available balance is consistent with what was actually used to
+        // generate the zkp on the client side.
+        if new_source_available_balance != proof_context.new_source_ciphertext {
+            return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
+        }
+
+        confidential_transfer_account.available_balance = new_source_available_balance;
+        confidential_transfer_account.decryptable_available_balance =
+            new_source_decryptable_available_balance;
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "zk-ops")]
+fn process_destination_for_transfer(
+    destination_token_account_info: &AccountInfo,
+    mint_info: &AccountInfo,
+    maybe_transfer_proof_context_info: Option<&TransferProofContextInfo>,
+) -> ProgramResult {
+    check_program_account(destination_token_account_info.owner)?;
+    let destination_token_account_data = &mut destination_token_account_info.data.borrow_mut();
+    let mut destination_token_account =
+        StateWithExtensionsMut::<Account>::unpack(destination_token_account_data)?;
+
+    if destination_token_account.base.is_frozen() {
+        return Err(TokenError::AccountFrozen.into());
+    }
+
+    if destination_token_account.base.mint != *mint_info.key {
+        return Err(TokenError::MintMismatch.into());
+    }
+
+    if memo_required(&destination_token_account) {
+        check_previous_sibling_instruction_is_memo()?;
+    }
+
+    let mut destination_confidential_transfer_account =
+        destination_token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+    destination_confidential_transfer_account.valid_as_destination()?;
+
+    if let Some(proof_context) = maybe_transfer_proof_context_info {
+        if proof_context.transfer_pubkeys.destination
+            != destination_confidential_transfer_account.elgamal_pubkey
+        {
+            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+        }
+
+        let destination_ciphertext_lo =
+            transfer_amount_destination_ciphertext(&proof_context.ciphertext_lo);
+        let destination_ciphertext_hi =
+            transfer_amount_destination_ciphertext(&proof_context.ciphertext_hi);
+
+        destination_confidential_transfer_account.pending_balance_lo = syscall::add(
+            &destination_confidential_transfer_account.pending_balance_lo,
+            &destination_ciphertext_lo,
+        )
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
+
+        destination_confidential_transfer_account.pending_balance_hi = syscall::add(
+            &destination_confidential_transfer_account.pending_balance_hi,
+            &destination_ciphertext_hi,
+        )
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
+
+        destination_confidential_transfer_account.increment_pending_balance_credit_counter()?;
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+#[cfg(feature = "zk-ops")]
+fn process_source_for_transfer_with_fee(
     program_id: &Pubkey,
     source_account_info: &AccountInfo,
     mint_info: &AccountInfo,
@@ -664,7 +801,7 @@ fn process_source_for_transfer(
 }
 
 #[cfg(feature = "zk-ops")]
-fn process_destination_for_transfer(
+fn process_destination_for_transfer_with_fee(
     destination_token_account_info: &AccountInfo,
     mint_info: &AccountInfo,
     destination_encryption_pubkey: &ElGamalPubkey,
@@ -944,8 +1081,10 @@ pub(crate) fn process_instruction(
                 accounts,
                 data.new_source_decryptable_available_balance,
                 data.proof_instruction_offset as i64,
-                data.split_proof_context_state_accounts.into(),
-                &data.source_decrypt_handles,
+                false,
+                false,
+                false,
+                &SourceDecryptHandles::zeroed(),
             )
         }
         ConfidentialTransferInstruction::ApplyPendingBalance => {
@@ -978,6 +1117,28 @@ pub(crate) fn process_instruction(
         ConfidentialTransferInstruction::EnableNonConfidentialCredits => {
             msg!("ConfidentialTransferInstruction::EnableNonConfidentialCredits");
             process_allow_non_confidential_credits(program_id, accounts, true)
+        }
+        ConfidentialTransferInstruction::TransferWithSplitProofs => {
+            msg!("ConfidentialTransferInstruction::TransferWithSplitProofs");
+            #[cfg(feature = "zk-ops")]
+            let data = decode_instruction_data::<TransferWithSplitProofsInstructionData>(input)?;
+
+            // Remove this error on the next Solana version upgrade.
+            if data.close_split_context_state_on_execution.into() {
+                msg!("Auto-close of context state account is not yet supported");
+                return Err(ProgramError::InvalidInstructionData);
+            }
+
+            process_transfer(
+                program_id,
+                accounts,
+                data.new_source_decryptable_available_balance,
+                0,
+                true,
+                data.no_op_on_uninitialized_split_context_state.into(),
+                data.close_split_context_state_on_execution.into(),
+                &data.source_decrypt_handles,
+            )
         }
     }
 }
