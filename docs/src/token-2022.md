@@ -94,12 +94,17 @@ Mint extensions currently include:
 * closing mint
 * interest-bearing tokens
 * non-transferable tokens
+* permanent delegate
+* transfer hook
+* metadata pointer
+* metadata
 
 Account extensions currently include:
 
 * memo required on incoming transfers
 * immutable ownership
 * default account state
+* CPI guard
 
 Extensions can be mixed and matched, which means it's possible to create a mint
 with only transfer fees, only interest-bearing tokens, both, or neither!
