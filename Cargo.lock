@@ -7055,6 +7055,7 @@ dependencies = [
  "spl-token 4.0.0",
  "spl-token-2022 0.7.0",
  "spl-token-client",
+ "spl-token-metadata-interface",
  "strum 0.25.0",
  "strum_macros 0.25.2",
  "tempfile",

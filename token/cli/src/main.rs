@@ -58,6 +58,7 @@ use spl_token_client::{
     client::{ProgramRpcClientSendTransaction, RpcClientResponse},
     token::{ExtensionInitializationParams, Token},
 };
+use spl_token_metadata_interface::state::Field;
 use std::{collections::HashMap, fmt, fmt::Display, process::exit, str::FromStr, sync::Arc};
 use strum_macros::{EnumString, IntoStaticStr};
 
@@ -150,6 +151,8 @@ pub enum CommandName {
     SetTransferFee,
     WithdrawExcessLamports,
     SetTransferHookProgram,
+    InitializeMetadata,
+    UpdateMetadata,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -470,6 +473,7 @@ async fn command_create_token(
     transfer_fee: Option<(u16, u64)>,
     confidential_transfer_auto_approve: Option<bool>,
     transfer_hook_program_id: Option<Pubkey>,
+    enable_metadata: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(
@@ -545,7 +549,13 @@ async fn command_create_token(
         token.with_memo(text, vec![config.default_signer()?.pubkey()]);
     }
 
-    if metadata_address.is_some() {
+    // CLI checks that only one is set
+    if metadata_address.is_some() || enable_metadata {
+        let metadata_address = if enable_metadata {
+            Some(token_pubkey)
+        } else {
+            metadata_address
+        };
         extensions.push(ExtensionInitializationParams::MetadataPointer {
             authority: Some(authority),
             metadata_address,
@@ -562,6 +572,18 @@ async fn command_create_token(
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
+
+    if enable_metadata {
+        println_display(
+            config,
+            format!(
+                "To initialize metadata inside the mint, please run \
+                `spl-token initialize-metadata {token_pubkey} <YOUR_TOKEN_NAME> <YOUR_TOKEN_SYMBOL> <YOUR_TOKEN_URI>`, \
+                and sign with the mint authority.",
+            ),
+        );
+    }
+
     Ok(match tx_return {
         TransactionReturnData::CliSignature(cli_signature) => format_output(
             CliCreateToken {
@@ -686,6 +708,90 @@ async fn command_set_transfer_hook_program(
     let res = token
         .update_transfer_hook_program_id(&authority, new_program_id, &bulk_signers)
         .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn command_initialize_metadata(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    update_authority: Pubkey,
+    mint_authority: Pubkey,
+    name: String,
+    symbol: String,
+    uri: String,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    let res = token
+        .token_metadata_initialize_with_rent_transfer(
+            &config.fee_payer()?.pubkey(),
+            &update_authority,
+            &mint_authority,
+            name,
+            symbol,
+            uri,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+async fn command_update_metadata(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    authority: Pubkey,
+    field: Field,
+    value: Option<String>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    let res = if let Some(value) = value {
+        token
+            .token_metadata_update_field_with_rent_transfer(
+                &config.fee_payer()?.pubkey(),
+                &authority,
+                field,
+                value,
+                &bulk_signers,
+            )
+            .await?
+    } else if let Field::Key(key) = field {
+        token
+            .token_metadata_remove_key(
+                &authority,
+                key,
+                true, // idempotent
+                &bulk_signers,
+            )
+            .await?
+    } else {
+        return Err(format!(
+            "Attempting to remove field {field:?}, which cannot be removed. \
+            Please re-run the command with a value of \"\" rather than the `--remove` flag."
+        )
+        .into());
+    };
 
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
@@ -2780,6 +2886,7 @@ fn app<'a, 'b>(
                         .long("metadata-address")
                         .value_name("ADDRESS")
                         .takes_value(true)
+                        .conflicts_with("enable_metadata")
                         .help(
                             "Specify address that stores token metadata."
                         ),
@@ -2845,6 +2952,13 @@ fn app<'a, 'b>(
                         .validator(is_valid_pubkey)
                         .takes_value(true)
                         .help("Enable the mint authority to set the transfer hook program for this mint"),
+                )
+                .arg(
+                    Arg::with_name("enable_metadata")
+                        .long("enable-metadata")
+                        .conflicts_with("metadata_address")
+                        .takes_value(false)
+                        .help("Enables metadata in the mint. The mint authority must initialize the metadata."),
                 )
                 .nonce_args(true)
                 .arg(memo_arg())
@@ -2914,6 +3028,108 @@ fn app<'a, 'b>(
                     .value_name("SIGNER")
                     .takes_value(true)
                     .help("Specify the authority keypair. Defaults to the client keypair address.")
+                )
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::InitializeMetadata.into())
+                .about("Initialize metadata extension on a token mint")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The token address with no metadata present"),
+                )
+                .arg(
+                    Arg::with_name("name")
+                        .value_name("TOKEN_NAME")
+                        .takes_value(true)
+                        .index(2)
+                        .help("The name of the token to set in metadata"),
+                )
+                .arg(
+                    Arg::with_name("symbol")
+                        .value_name("TOKEN_SYMBOL")
+                        .takes_value(true)
+                        .index(3)
+                        .help("The symbol of the token to set in metadata"),
+                )
+                .arg(
+                    Arg::with_name("uri")
+                        .value_name("TOKEN_URI")
+                        .takes_value(true)
+                        .index(4)
+                        .help("The URI of the token to set in metadata"),
+                )
+                .arg(
+                    Arg::with_name("mint_authority")
+                        .long("mint-authority")
+                        .alias("owner")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the mint authority keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             Defaults to the client keypair."
+                        ),
+                )
+                .arg(
+                    Arg::with_name("update_authority")
+                        .long("update-authority")
+                        .value_name("ADDRESS")
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help(
+                            "Specify the update authority address. \
+                             Defaults to the client keypair address."
+                        ),
+                )
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::UpdateMetadata.into())
+                .about("Update metadata on a token mint that has the extension")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The token address with no metadata present"),
+                )
+                .arg(
+                    Arg::with_name("field")
+                        .value_name("FIELD_NAME")
+                        .takes_value(true)
+                        .required(true)
+                        .index(2)
+                        .help("The name of the field to update. Can be a base field (\"name\", \"symbol\", or \"uri\") or any new field to add."),
+                )
+                .arg(
+                    Arg::with_name("value")
+                        .value_name("VALUE_STRING")
+                        .takes_value(true)
+                        .index(3)
+                        .required_unless("remove")
+                        .help("The value for the field"),
+                )
+                .arg(
+                    Arg::with_name("remove")
+                        .long("remove")
+                        .takes_value(false)
+                        .conflicts_with("value")
+                        .help("Remove the key and value for the given field. Does not work with base fields: \"name\", \"symbol\", or \"uri\".")
+                )
+                .arg(
+                    Arg::with_name("authority")
+                    .long("authority")
+                    .validator(is_valid_signer)
+                    .value_name("SIGNER")
+                    .takes_value(true)
+                    .help("Specify the metadata update authority keypair. Defaults to the client keypair.")
                 )
         )
         .subcommand(
@@ -4102,6 +4318,7 @@ async fn process_command<'a>(
                 transfer_fee,
                 confidential_transfer_auto_approve,
                 transfer_hook_program_id,
+                arg_matches.is_present("enable_metadata"),
                 bulk_signers,
             )
             .await
@@ -4142,6 +4359,50 @@ async fn process_command<'a>(
                 bulk_signers,
             )
             .await
+        }
+        (CommandName::InitializeMetadata, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let name = arg_matches.value_of("name").unwrap().to_string();
+            let symbol = arg_matches.value_of("symbol").unwrap().to_string();
+            let uri = arg_matches.value_of("uri").unwrap().to_string();
+            let (mint_authority_signer, mint_authority) =
+                config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
+            let bulk_signers = vec![mint_authority_signer];
+            let update_authority =
+                config.pubkey_or_default(arg_matches, "update_authority", &mut wallet_manager)?;
+
+            command_initialize_metadata(
+                config,
+                token_pubkey,
+                update_authority,
+                mint_authority,
+                name,
+                symbol,
+                uri,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::UpdateMetadata, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let (authority_signer, authority) =
+                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+            let field = arg_matches.value_of("field").unwrap();
+            let field = match field.to_lowercase().as_str() {
+                "name" => Field::Name,
+                "symbol" => Field::Symbol,
+                "uri" => Field::Uri,
+                _ => Field::Key(field.to_string()),
+            };
+            let value = arg_matches.value_of("value").map(|v| v.to_string());
+            let bulk_signers = vec![authority_signer];
+
+            command_update_metadata(config, token_pubkey, authority, field, value, bulk_signers)
+                .await
         }
         (CommandName::CreateAccount, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
@@ -4848,6 +5109,7 @@ mod tests {
         spl_token_client::client::{
             ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
         },
+        spl_token_metadata_interface::{borsh::BorshDeserialize, state::TokenMetadata},
         std::path::PathBuf,
         tempfile::NamedTempFile,
     };
@@ -5011,6 +5273,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -5044,6 +5307,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -6431,6 +6695,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -6484,6 +6749,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -6561,6 +6827,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -6919,6 +7186,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -6978,6 +7246,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -7050,6 +7319,7 @@ mod tests {
             Some((transfer_fee_basis_points, maximum_fee)),
             None,
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -7321,6 +7591,7 @@ mod tests {
             None,
             Some(auto_approve),
             None,
+            false,
             bulk_signers,
         )
         .await
@@ -7988,5 +8259,147 @@ mod tests {
         let extension = mint_state.get_extension::<TransferHook>().unwrap();
 
         assert_eq!(extension.program_id, None.try_into().unwrap());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn metadata() {
+        let (test_validator, payer) = new_validator_for_test().await;
+        let program_id = spl_token_2022::id();
+        let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+        let name = "this";
+        let symbol = "is";
+        let uri = "METADATA!";
+
+        let result = process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::CreateToken.into(),
+                "--program-id",
+                &program_id.to_string(),
+                "--enable-metadata",
+            ],
+        )
+        .await;
+
+        let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+
+        let extension = mint_state.get_extension::<MetadataPointer>().unwrap();
+        assert_eq!(extension.metadata_address, Some(mint).try_into().unwrap());
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::InitializeMetadata.into(),
+                &mint.to_string(),
+                name,
+                symbol,
+                uri,
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let metadata_bytes = mint_state.get_extension_bytes::<TokenMetadata>().unwrap();
+        let fetched_metadata = TokenMetadata::try_from_slice(metadata_bytes).unwrap();
+        assert_eq!(fetched_metadata.name, name);
+        assert_eq!(fetched_metadata.symbol, symbol);
+        assert_eq!(fetched_metadata.uri, uri);
+        assert_eq!(fetched_metadata.mint, mint);
+        assert_eq!(
+            fetched_metadata.update_authority,
+            Some(payer.pubkey()).try_into().unwrap()
+        );
+        assert_eq!(fetched_metadata.additional_metadata, []);
+
+        // update canonical field
+        let new_value = "THIS!";
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::UpdateMetadata.into(),
+                &mint.to_string(),
+                "NAME",
+                new_value,
+            ],
+        )
+        .await
+        .unwrap();
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let metadata_bytes = mint_state.get_extension_bytes::<TokenMetadata>().unwrap();
+        let fetched_metadata = TokenMetadata::try_from_slice(metadata_bytes).unwrap();
+        assert_eq!(fetched_metadata.name, new_value);
+
+        // add new field
+        let field = "My field!";
+        let value = "Try and stop me";
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::UpdateMetadata.into(),
+                &mint.to_string(),
+                field,
+                value,
+            ],
+        )
+        .await
+        .unwrap();
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let metadata_bytes = mint_state.get_extension_bytes::<TokenMetadata>().unwrap();
+        let fetched_metadata = TokenMetadata::try_from_slice(metadata_bytes).unwrap();
+        assert_eq!(
+            fetched_metadata.additional_metadata,
+            [(field.to_string(), value.to_string())]
+        );
+
+        // remove it
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::UpdateMetadata.into(),
+                &mint.to_string(),
+                field,
+                "--remove",
+            ],
+        )
+        .await
+        .unwrap();
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let metadata_bytes = mint_state.get_extension_bytes::<TokenMetadata>().unwrap();
+        let fetched_metadata = TokenMetadata::try_from_slice(metadata_bytes).unwrap();
+        assert_eq!(fetched_metadata.additional_metadata, []);
+
+        // fail to remove name
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::UpdateMetadata.into(),
+                &mint.to_string(),
+                "name",
+                "--remove",
+            ],
+        )
+        .await
+        .unwrap_err();
     }
 }
