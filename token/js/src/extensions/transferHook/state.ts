@@ -1,9 +1,12 @@
-import { struct } from '@solana/buffer-layout';
+import { blob, greedy, seq, struct, u32, u8 } from '@solana/buffer-layout';
 import type { Mint } from '../../state/mint.js';
 import { ExtensionType, getExtensionData } from '../extensionType.js';
-import type { PublicKey } from '@solana/web3.js';
+import type { AccountInfo, AccountMeta } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { bool, publicKey } from '@solana/buffer-layout-utils';
 import type { Account } from '../../state/account.js';
+import { TokenTransferHookInvalidDiscriminator } from '../../errors.js';
+import { unpackSeeds } from './seeds.js';
 
 /** TransferHook as stored by the program */
 export interface TransferHook {
@@ -48,4 +51,65 @@ export function getTransferHookAccount(account: Account): TransferHookAccount | 
     } else {
         return null;
     }
+}
+
+/** ExtraAccountsMeta as stored by the transfer hook program */
+export interface ExtraAccountsMeta {
+    discriminator: number;
+    addressConfig: Uint8Array;
+    isSigner: boolean;
+    isWritable: boolean;
+}
+
+/** Buffer layout for de/serializing an ExtraAccountsMeta */
+export const ExtraAccountsMetaLayout = struct<ExtraAccountsMeta>([
+    u8('discriminator'),
+    blob(32, 'addressConfig'),
+    bool('isSigner'),
+    bool('isWritable'),
+]);
+
+export interface ExtraAccountsMetaList {
+    count: number;
+    extraAccounts: ExtraAccountsMeta[];
+}
+
+/** Buffer layout for de/serializing a list of ExtraAccountsMeta prefixed by a u32 length */
+export const ExtraAccountsMetaListLayout = struct<ExtraAccountsMetaList>([
+    u32('count'),
+    seq<ExtraAccountsMeta>(ExtraAccountsMetaLayout, greedy(ExtraAccountsMetaLayout.span), 'extraAccounts'),
+]);
+
+/** Unpack an extra account metas account and parse the data into a list of ExtraAccountMetas */
+export function getExtraAccountMetas(account: AccountInfo<Buffer> | null): ExtraAccountsMeta[] | null {
+    if (account == null) {
+        throw null;
+    }
+    return ExtraAccountsMetaListLayout.decode(account.data).extraAccounts;
+}
+
+/** Take an ExtraAccountMeta and construct that into an acutal AccountMeta */
+export function resolveExtraAccountMeta(
+    extraMeta: ExtraAccountsMeta,
+    previousMetas: AccountMeta[],
+    instructionData: Buffer,
+    transferHookProgramId: PublicKey
+): AccountMeta {
+    if (extraMeta.discriminator === 0) {
+        return {
+            pubkey: new PublicKey(extraMeta.addressConfig),
+            isSigner: extraMeta.isSigner,
+            isWritable: extraMeta.isWritable,
+        };
+    }
+
+    const accountIndex = extraMeta.discriminator - (1 << 7);
+    if (previousMetas.length <= accountIndex) {
+        throw new TokenTransferHookInvalidDiscriminator();
+    }
+    const programId = extraMeta.discriminator === 1 ? transferHookProgramId : previousMetas[accountIndex].pubkey;
+    const seeds = unpackSeeds(extraMeta.addressConfig, previousMetas, instructionData);
+    const pubkey = PublicKey.findProgramAddressSync(seeds, programId)[0];
+
+    return { pubkey, isSigner: extraMeta.isSigner, isWritable: extraMeta.isWritable };
 }
