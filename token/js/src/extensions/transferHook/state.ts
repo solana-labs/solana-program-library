@@ -5,7 +5,7 @@ import type { AccountInfo, AccountMeta } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 import { bool, publicKey } from '@solana/buffer-layout-utils';
 import type { Account } from '../../state/account.js';
-import { TokenTransferHookInvalidDiscriminator } from '../../errors.js';
+import { TokenTransferHookAccountNotFound } from '../../errors.js';
 import { unpackSeeds } from './seeds.js';
 
 /** TransferHook as stored by the program */
@@ -53,44 +53,41 @@ export function getTransferHookAccount(account: Account): TransferHookAccount | 
     }
 }
 
-/** ExtraAccountsMeta as stored by the transfer hook program */
-export interface ExtraAccountsMeta {
+/** ExtraAccountMeta as stored by the transfer hook program */
+export interface ExtraAccountMeta {
     discriminator: number;
     addressConfig: Uint8Array;
     isSigner: boolean;
     isWritable: boolean;
 }
 
-/** Buffer layout for de/serializing an ExtraAccountsMeta */
-export const ExtraAccountsMetaLayout = struct<ExtraAccountsMeta>([
+/** Buffer layout for de/serializing an ExtraAccountMeta */
+export const ExtraAccountMetaLayout = struct<ExtraAccountMeta>([
     u8('discriminator'),
     blob(32, 'addressConfig'),
     bool('isSigner'),
     bool('isWritable'),
 ]);
 
-export interface ExtraAccountsMetaList {
+export interface ExtraAccountMetaList {
     count: number;
-    extraAccounts: ExtraAccountsMeta[];
+    extraAccounts: ExtraAccountMeta[];
 }
 
-/** Buffer layout for de/serializing a list of ExtraAccountsMeta prefixed by a u32 length */
-export const ExtraAccountsMetaListLayout = struct<ExtraAccountsMetaList>([
+/** Buffer layout for de/serializing a list of ExtraAccountMeta prefixed by a u32 length */
+export const ExtraAccountMetaListLayout = struct<ExtraAccountMetaList>([
     u32('count'),
-    seq<ExtraAccountsMeta>(ExtraAccountsMetaLayout, greedy(ExtraAccountsMetaLayout.span), 'extraAccounts'),
+    seq<ExtraAccountMeta>(ExtraAccountMetaLayout, greedy(ExtraAccountMetaLayout.span), 'extraAccounts'),
 ]);
 
 /** Unpack an extra account metas account and parse the data into a list of ExtraAccountMetas */
-export function getExtraAccountMetas(account: AccountInfo<Buffer> | null): ExtraAccountsMeta[] | null {
-    if (account == null) {
-        throw null;
-    }
-    return ExtraAccountsMetaListLayout.decode(account.data).extraAccounts;
+export function getExtraAccountMetas(account: AccountInfo<Buffer>): ExtraAccountMeta[] | null {
+    return ExtraAccountMetaListLayout.decode(account.data).extraAccounts;
 }
 
 /** Take an ExtraAccountMeta and construct that into an acutal AccountMeta */
 export function resolveExtraAccountMeta(
-    extraMeta: ExtraAccountsMeta,
+    extraMeta: ExtraAccountMeta,
     previousMetas: AccountMeta[],
     instructionData: Buffer,
     transferHookProgramId: PublicKey
@@ -103,11 +100,18 @@ export function resolveExtraAccountMeta(
         };
     }
 
-    const accountIndex = extraMeta.discriminator - (1 << 7);
-    if (previousMetas.length <= accountIndex) {
-        throw new TokenTransferHookInvalidDiscriminator();
+    let programId = PublicKey.default;
+
+    if (extraMeta.discriminator === 1) {
+        programId = transferHookProgramId;
+    } else {
+        const accountIndex = extraMeta.discriminator - (1 << 7);
+        if (previousMetas.length <= accountIndex) {
+            throw new TokenTransferHookAccountNotFound();
+        }
+        programId = previousMetas[accountIndex].pubkey;
     }
-    const programId = extraMeta.discriminator === 1 ? transferHookProgramId : previousMetas[accountIndex].pubkey;
+
     const seeds = unpackSeeds(extraMeta.addressConfig, previousMetas, instructionData);
     const pubkey = PublicKey.findProgramAddressSync(seeds, programId)[0];
 

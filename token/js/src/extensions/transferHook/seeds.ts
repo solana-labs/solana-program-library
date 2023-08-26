@@ -2,9 +2,15 @@ import type { AccountMeta } from '@solana/web3.js';
 import { TokenTransferHookInvalidSeed } from '../../errors.js';
 
 interface Seed {
-    length: number;
     data: Buffer;
+    packedLength: number;
 }
+
+const DISCRIMINATOR_SPAN = 1;
+const LITERAL_LENGTH_SPAN = 1;
+const INSTRUCTION_ARG_OFFSET_SPAN = 1;
+const INSTRUCTION_ARG_LENGTH_SPAN = 1;
+const ACCOUNT_KEY_INDEX_SPAN = 1;
 
 function unpackSeedLiteral(seeds: Uint8Array): Seed {
     if (seeds.length < 1) {
@@ -16,7 +22,7 @@ function unpackSeedLiteral(seeds: Uint8Array): Seed {
     }
     return {
         data: Buffer.from(rest.slice(0, length)),
-        length: length + 2,
+        packedLength: DISCRIMINATOR_SPAN + LITERAL_LENGTH_SPAN + length,
     };
 }
 
@@ -25,12 +31,12 @@ function unpackSeedInstructionArg(seeds: Uint8Array, instructionData: Buffer): S
         throw new TokenTransferHookInvalidSeed();
     }
     const [index, length] = seeds;
-    if (instructionData.length < length) {
+    if (instructionData.length < length + index) {
         throw new TokenTransferHookInvalidSeed();
     }
     return {
         data: instructionData.subarray(index, index + length),
-        length: 3,
+        packedLength: DISCRIMINATOR_SPAN + INSTRUCTION_ARG_OFFSET_SPAN + INSTRUCTION_ARG_LENGTH_SPAN,
     };
 }
 
@@ -44,7 +50,7 @@ function unpackSeedAccountKey(seeds: Uint8Array, previousMetas: AccountMeta[]): 
     }
     return {
         data: previousMetas[index].pubkey.toBuffer(),
-        length: 2,
+        packedLength: DISCRIMINATOR_SPAN + ACCOUNT_KEY_INDEX_SPAN,
     };
 }
 
@@ -74,7 +80,7 @@ export function unpackSeeds(seeds: Uint8Array, previousMetas: AccountMeta[], ins
             break;
         }
         unpackedSeeds.push(seed.data);
-        i += seed.length;
+        i += seed.packedLength;
     }
     return unpackedSeeds;
 }

@@ -70,9 +70,9 @@ export class TokenUnsupportedInstructionError extends TokenError {
     name = 'TokenUnsupportedInstructionError';
 }
 
-/** Thrown if the transfer hook extra accounts contains an invalid discriminator */
-export class TokenTransferHookInvalidDiscriminator extends TokenError {
-    name = 'TokenTransferHookInvalidDiscriminator';
+/** Thrown if the transfer hook extra accounts contains an invalid account index */
+export class TokenTransferHookAccountNotFound extends TokenError {
+    name = 'TokenTransferHookAccountNotFound';
 }
 
 /** Thrown if the transfer hook extra accounts contains an invalid seed */
