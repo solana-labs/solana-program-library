@@ -73,7 +73,7 @@
         "start-server-and-test": "^2.0.0",
         "ts-jest": "^28.0.8",
         "ts-node": "^10.9.1",
-        "typedoc": "^0.24.7",
+        "typedoc": "^0.25.0",
         "typescript": "^5.0.4"
     }
 }
