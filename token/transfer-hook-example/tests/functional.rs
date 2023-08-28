@@ -15,6 +15,7 @@ use {
         signature::Signer,
         signer::keypair::Keypair,
         system_instruction, sysvar,
+        system_program,
         transaction::{Transaction, TransactionError},
     },
     spl_tlv_account_resolution::{
@@ -126,6 +127,14 @@ fn setup_token_accounts(
             ..SolanaAccount::default()
         },
     );
+    program_test.add_account(
+        *mint_authority,
+        SolanaAccount {
+            lamports: 1_000_000_000,
+            owner: system_program::id(),
+            ..SolanaAccount::default()
+        },
+    )
 }
 
 #[tokio::test]
@@ -214,16 +223,9 @@ async fn success_execute() {
     ];
 
     let mut context = program_test.start_with_context().await;
-    let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent
-        .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
+
     let transaction = Transaction::new_signed_with_payer(
         &[
-            system_instruction::transfer(
-                &context.payer.pubkey(),
-                &extra_account_metas_address,
-                rent_lamports,
-            ),
             initialize_extra_account_meta_list(
                 &program_id,
                 &extra_account_metas_address,
@@ -602,16 +604,8 @@ async fn success_on_chain_invoke() {
     ];
 
     let mut context = program_test.start_with_context().await;
-    let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent
-        .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
-            system_instruction::transfer(
-                &context.payer.pubkey(),
-                &extra_account_metas_address,
-                rent_lamports,
-            ),
             initialize_extra_account_meta_list(
                 &hook_program_id,
                 &extra_account_metas_address,
@@ -689,16 +683,8 @@ async fn fail_without_transferring_flag() {
     let extra_account_metas = [];
     let init_extra_account_metas = [];
     let mut context = program_test.start_with_context().await;
-    let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent
-        .minimum_balance(ExtraAccountMetaList::size_of(init_extra_account_metas.len()).unwrap());
     let transaction = Transaction::new_signed_with_payer(
         &[
-            system_instruction::transfer(
-                &context.payer.pubkey(),
-                &extra_account_metas_address,
-                rent_lamports,
-            ),
             initialize_extra_account_meta_list(
                 &program_id,
                 &extra_account_metas_address,
