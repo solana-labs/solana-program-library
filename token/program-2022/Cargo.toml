@@ -33,7 +33,7 @@ spl-type-length-value = { version = "0.2.0", path = "../../libraries/type-length
 thiserror = "1.0"
 serde = { version = "1.0.187", optional = true }
 serde_with = { version = "3.3.0", optional = true }
-base64 = { version = "0.21.2", optional = true }
+base64 = { version = "0.21.3", optional = true }
 
 [dev-dependencies]
 lazy_static = "1.4.0"
