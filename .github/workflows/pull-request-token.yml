@@ -239,8 +239,8 @@ jobs:
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Build and test ATA
-        run: ./ci/cargo-test-sbf.sh spl-transfer-hook-example
+      - name: Build and test transfer-hook-example
+        run: ./ci/cargo-test-sbf.sh token/transfer-hook-example
 
       - name: Upload program
         uses: actions/upload-artifact@v2
