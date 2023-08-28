@@ -227,8 +227,8 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   * Single owner/delegate
     ///   1. `[writable]` The source SPL Token account.
-    ///   2. `[writable]` The destination SPL Token account.
-    ///   3. `[]` The token mint.
+    ///   2. `[]` The token mint.
+    ///   3. `[writable]` The destination SPL Token account.
     ///   4. `[]` Instructions sysvar if `VerifyTransfer` or `VerifyTransferWithFee` is included in
     ///      the same transaction or context state account if these proofs are pre-verified into a
     ///      context state account.
@@ -236,8 +236,8 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   * Multisignature owner/delegate
     ///   1. `[writable]` The source SPL Token account.
-    ///   2. `[writable]` The destination SPL Token account.
-    ///   3. `[]` The token mint.
+    ///   2. `[]` The token mint.
+    ///   3. `[writable]` The destination SPL Token account.
     ///   4. `[]` Instructions sysvar if `VerifyTransfer` or `VerifyTransferWithFee` is included in
     ///      the same transaction or context state account if these proofs are pre-verified into a
     ///      context state account.
@@ -369,8 +369,8 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   * Transfer without fee
     ///   1. `[writable]` The source SPL Token account.
-    ///   2. `[writable]` The destination SPL Token account.
-    ///   3. `[]` The token mint.
+    ///   2. `[]` The token mint.
+    ///   3. `[writable]` The destination SPL Token account.
     ///   4. `[]` Context state account for `VerifyCiphertextCommitmentEqualityProof`.
     ///   5. `[]` Context state account for `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
     ///   6. `[]` Context state account for `VerifyBatchedRangeProofU128`.
@@ -383,8 +383,8 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   * Transfer with fee
     ///   1. `[writable]` The source SPL Token account.
-    ///   2. `[writable]` The destination SPL Token account.
-    ///   3. `[]` The token mint.
+    ///   2. `[]` The token mint.
+    ///   3. `[writable]` The destination SPL Token account.
     ///   4. `[]` Context state account for `VerifyCiphertextCommitmentEqualityProof`.
     ///   5. `[]` Context state account for `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
     ///   6. `[]` Context state account for `VerifyFeeSigmaProof`.
@@ -960,8 +960,8 @@ pub fn withdraw(
 pub fn inner_transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
-    destination_token_account: &Pubkey,
     mint: &Pubkey,
+    destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
@@ -970,8 +970,8 @@ pub fn inner_transfer(
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*source_token_account, false),
-        AccountMeta::new(*destination_token_account, false),
         AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new(*destination_token_account, false),
     ];
 
     let proof_instruction_offset = match proof_data_location {
@@ -1012,8 +1012,8 @@ pub fn inner_transfer(
 pub fn transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
-    destination_token_account: &Pubkey,
     mint: &Pubkey,
+    destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
@@ -1022,8 +1022,8 @@ pub fn transfer(
     let mut instructions = vec![inner_transfer(
         token_program_id,
         source_token_account,
-        destination_token_account,
         mint,
+        destination_token_account,
         new_source_decryptable_available_balance.into(),
         authority,
         multisig_signers,
@@ -1053,8 +1053,8 @@ pub fn transfer(
 pub fn inner_transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
-    destination_token_account: &Pubkey,
     mint: &Pubkey,
+    destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
@@ -1063,8 +1063,8 @@ pub fn inner_transfer_with_fee(
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*source_token_account, false),
-        AccountMeta::new(*destination_token_account, false),
         AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new(*destination_token_account, false),
     ];
 
     let proof_instruction_offset = match proof_data_location {
@@ -1105,8 +1105,8 @@ pub fn inner_transfer_with_fee(
 pub fn transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
-    destination_token_account: &Pubkey,
     mint: &Pubkey,
+    destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
@@ -1289,8 +1289,8 @@ pub fn disable_non_confidential_credits(
 pub fn transfer_with_split_proofs(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
-    destination_token_account: &Pubkey,
     mint: &Pubkey,
+    destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
     source_account_authority: &Pubkey,
     context_accounts: TransferSplitContextStateAccounts,
@@ -1299,8 +1299,8 @@ pub fn transfer_with_split_proofs(
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*source_token_account, false),
-        AccountMeta::new(*destination_token_account, false),
         AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new(*destination_token_account, false),
     ];
 
     let close_split_context_state_on_execution =

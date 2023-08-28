@@ -2198,8 +2198,8 @@ where
             &confidential_transfer::instruction::transfer(
                 &self.program_id,
                 source_account,
-                destination_account,
                 &self.pubkey,
+                destination_account,
                 new_decryptable_available_balance,
                 source_authority,
                 &multisig_signers,
@@ -2244,8 +2244,8 @@ where
                 confidential_transfer::instruction::transfer_with_split_proofs(
                     &self.program_id,
                     source_account,
-                    destination_account,
                     &self.pubkey,
+                    destination_account,
                     new_decryptable_available_balance.into(),
                     source_authority,
                     context_state_accounts,
@@ -2311,8 +2311,8 @@ where
         let transfer_instruction = confidential_transfer::instruction::transfer_with_split_proofs(
             &self.program_id,
             source_account,
-            destination_account,
             &self.pubkey,
+            destination_account,
             new_decryptable_available_balance.into(),
             source_authority,
             context_state_accounts,
