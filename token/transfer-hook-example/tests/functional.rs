@@ -14,8 +14,7 @@ use {
         pubkey::Pubkey,
         signature::Signer,
         signer::keypair::Keypair,
-        system_instruction, sysvar,
-        system_program,
+        system_instruction, system_program, sysvar,
         transaction::{Transaction, TransactionError},
     },
     spl_tlv_account_resolution::{
@@ -225,15 +224,13 @@ async fn success_execute() {
     let mut context = program_test.start_with_context().await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            initialize_extra_account_meta_list(
-                &program_id,
-                &extra_account_metas_address,
-                &mint_address,
-                &mint_authority_pubkey,
-                &init_extra_account_metas,
-            ),
-        ],
+        &[initialize_extra_account_meta_list(
+            &program_id,
+            &extra_account_metas_address,
+            &mint_address,
+            &mint_authority_pubkey,
+            &init_extra_account_metas,
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &mint_authority],
         context.last_blockhash,
@@ -605,15 +602,13 @@ async fn success_on_chain_invoke() {
 
     let mut context = program_test.start_with_context().await;
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            initialize_extra_account_meta_list(
-                &hook_program_id,
-                &extra_account_metas_address,
-                &mint_address,
-                &mint_authority_pubkey,
-                &init_extra_account_metas,
-            ),
-        ],
+        &[initialize_extra_account_meta_list(
+            &hook_program_id,
+            &extra_account_metas_address,
+            &mint_address,
+            &mint_authority_pubkey,
+            &init_extra_account_metas,
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &mint_authority],
         context.last_blockhash,
@@ -684,15 +679,13 @@ async fn fail_without_transferring_flag() {
     let init_extra_account_metas = [];
     let mut context = program_test.start_with_context().await;
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            initialize_extra_account_meta_list(
-                &program_id,
-                &extra_account_metas_address,
-                &mint_address,
-                &mint_authority_pubkey,
-                &init_extra_account_metas,
-            ),
-        ],
+        &[initialize_extra_account_meta_list(
+            &program_id,
+            &extra_account_metas_address,
+            &mint_address,
+            &mint_authority_pubkey,
+            &init_extra_account_metas,
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &mint_authority],
         context.last_blockhash,
