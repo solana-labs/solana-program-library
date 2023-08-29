@@ -170,6 +170,7 @@ pub struct TransferProofContextInfo {
     pub new_source_ciphertext: ElGamalCiphertext,
 }
 
+#[cfg(feature = "zk-ops")]
 impl From<TransferProofContext> for TransferProofContextInfo {
     fn from(context: TransferProofContext) -> Self {
         let transfer_pubkeys = TransferPubkeysInfo {
@@ -187,6 +188,7 @@ impl From<TransferProofContext> for TransferProofContextInfo {
     }
 }
 
+#[cfg(feature = "zk-ops")]
 impl TransferProofContextInfo {
     /// Create a transfer proof context information needed to process a [Transfer] instruction from
     /// split proof contexts after verifying their consistency.

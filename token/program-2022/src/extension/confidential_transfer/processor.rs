@@ -1071,21 +1071,27 @@ pub(crate) fn process_instruction(
                     data.proof_instruction_offset as i64,
                 )
             }
+            #[cfg(not(feature = "zk-ops"))]
+            Err(ProgramError::InvalidInstructionData)
         }
         ConfidentialTransferInstruction::Transfer => {
             msg!("ConfidentialTransferInstruction::Transfer");
             #[cfg(feature = "zk-ops")]
-            let data = decode_instruction_data::<TransferInstructionData>(input)?;
-            process_transfer(
-                program_id,
-                accounts,
-                data.new_source_decryptable_available_balance,
-                data.proof_instruction_offset as i64,
-                false,
-                false,
-                false,
-                &SourceDecryptHandles::zeroed(),
-            )
+            {
+                let data = decode_instruction_data::<TransferInstructionData>(input)?;
+                process_transfer(
+                    program_id,
+                    accounts,
+                    data.new_source_decryptable_available_balance,
+                    data.proof_instruction_offset as i64,
+                    false,
+                    false,
+                    false,
+                    &SourceDecryptHandles::zeroed(),
+                )
+            }
+            #[cfg(not(feature = "zk-ops"))]
+            Err(ProgramError::InvalidInstructionData)
         }
         ConfidentialTransferInstruction::ApplyPendingBalance => {
             msg!("ConfidentialTransferInstruction::ApplyPendingBalance");
@@ -1121,24 +1127,29 @@ pub(crate) fn process_instruction(
         ConfidentialTransferInstruction::TransferWithSplitProofs => {
             msg!("ConfidentialTransferInstruction::TransferWithSplitProofs");
             #[cfg(feature = "zk-ops")]
-            let data = decode_instruction_data::<TransferWithSplitProofsInstructionData>(input)?;
+            {
+                let data =
+                    decode_instruction_data::<TransferWithSplitProofsInstructionData>(input)?;
 
-            // Remove this error on the next Solana version upgrade.
-            if data.close_split_context_state_on_execution.into() {
-                msg!("Auto-close of context state account is not yet supported");
-                return Err(ProgramError::InvalidInstructionData);
+                // Remove this error on the next Solana version upgrade.
+                if data.close_split_context_state_on_execution.into() {
+                    msg!("Auto-close of context state account is not yet supported");
+                    return Err(ProgramError::InvalidInstructionData);
+                }
+
+                process_transfer(
+                    program_id,
+                    accounts,
+                    data.new_source_decryptable_available_balance,
+                    0,
+                    true,
+                    data.no_op_on_uninitialized_split_context_state.into(),
+                    data.close_split_context_state_on_execution.into(),
+                    &data.source_decrypt_handles,
+                )
             }
-
-            process_transfer(
-                program_id,
-                accounts,
-                data.new_source_decryptable_available_balance,
-                0,
-                true,
-                data.no_op_on_uninitialized_split_context_state.into(),
-                data.close_split_context_state_on_execution.into(),
-                &data.source_decrypt_handles,
-            )
+            #[cfg(not(feature = "zk-ops"))]
+            Err(ProgramError::InvalidInstructionData)
         }
     }
 }
