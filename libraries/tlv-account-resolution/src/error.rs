@@ -3,7 +3,6 @@
 use spl_program_error::*;
 
 /// Errors that may be returned by the Account Resolution library.
-/// 
 /// Note: Error codes range from 20_000 - (20_000 + n)
 #[spl_program_error]
 pub enum AccountResolutionError {

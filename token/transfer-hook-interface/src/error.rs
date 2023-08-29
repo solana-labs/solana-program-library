@@ -11,7 +11,6 @@ use {
 };
 
 /// Errors that may be returned by the interface.
-/// 
 /// Note: Error codes range from 30_000 - (30_000 + n)
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum TransferHookError {

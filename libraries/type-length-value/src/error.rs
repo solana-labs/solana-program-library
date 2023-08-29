@@ -3,7 +3,6 @@
 use spl_program_error::*;
 
 /// Errors that may be returned by the Token program.
-/// 
 /// Note: Error codes range from 10_000 - (10_000 + n)
 #[spl_program_error]
 pub enum TlvError {
