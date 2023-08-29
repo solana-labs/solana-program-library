@@ -124,6 +124,7 @@ pub fn verify_withdraw_proof(
 /// to verify, then the function returns a `TransferProofContextInfo` that is wrapped inside
 /// `Ok(Some(TransferProofContextInfo))`. If `no_op_on_split_proof_context_state` is `true` and
 /// some a split context state account is not initialized, then it returns `Ok(None)`.
+#[cfg(feature = "zk-ops")]
 pub fn verify_transfer_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
