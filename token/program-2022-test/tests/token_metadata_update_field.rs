@@ -197,7 +197,7 @@ async fn fail_authority_checks() {
         TokenClientError::Client(Box::new(TransportError::TransactionError(
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TokenMetadataError::IncorrectUpdateAuthority as u32)
+                InstructionError::Custom(TokenMetadataError::IncorrectUpdateAuthority.error_code())
             )
         )))
     );

@@ -265,7 +265,7 @@ async fn fail_incorrect_authority() {
         error,
         TransactionError::InstructionError(
             1,
-            InstructionError::Custom(TokenMetadataError::IncorrectMintAuthority as u32)
+            InstructionError::Custom(TokenMetadataError::IncorrectMintAuthority.error_code())
         )
     );
 }

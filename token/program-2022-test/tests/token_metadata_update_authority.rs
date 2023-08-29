@@ -142,7 +142,7 @@ async fn success_update() {
         TokenClientError::Client(Box::new(TransportError::TransactionError(
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TokenMetadataError::ImmutableMetadata as u32)
+                InstructionError::Custom(TokenMetadataError::ImmutableMetadata.error_code())
             )
         )))
     );
@@ -196,7 +196,7 @@ async fn fail_authority_checks() {
         TokenClientError::Client(Box::new(TransportError::TransactionError(
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TokenMetadataError::IncorrectUpdateAuthority as u32),
+                InstructionError::Custom(TokenMetadataError::IncorrectUpdateAuthority.error_code()),
             )
         )))
     );

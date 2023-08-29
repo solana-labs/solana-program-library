@@ -6920,12 +6920,14 @@ name = "spl-tlv-account-resolution"
 version = "0.2.0"
 dependencies = [
  "bytemuck",
+ "num-derive 0.4.0",
+ "num-traits",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "spl-discriminator",
- "spl-program-error",
  "spl-type-length-value",
+ "thiserror",
 ]
 
 [[package]]
@@ -7137,12 +7139,14 @@ name = "spl-token-metadata-interface"
 version = "0.1.0"
 dependencies = [
  "borsh 0.10.3",
+ "num-derive 0.4.0",
+ "num-traits",
  "serde",
  "serde_json",
  "solana-program",
  "spl-discriminator",
- "spl-program-error",
  "spl-type-length-value",
+ "thiserror",
 ]
 
 [[package]]
@@ -7264,10 +7268,12 @@ name = "spl-type-length-value"
 version = "0.2.0"
 dependencies = [
  "bytemuck",
+ "num-derive 0.4.0",
+ "num-traits",
  "solana-program",
  "spl-discriminator",
- "spl-program-error",
  "spl-type-length-value-derive",
+ "thiserror",
 ]
 
 [[package]]

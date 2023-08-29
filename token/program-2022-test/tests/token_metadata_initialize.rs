@@ -110,7 +110,7 @@ async fn success_initialize() {
         TokenClientError::Client(Box::new(TransportError::TransactionError(
             TransactionError::InstructionError(
                 1,
-                InstructionError::Custom(TokenMetadataError::IncorrectMintAuthority as u32)
+                InstructionError::Custom(TokenMetadataError::IncorrectMintAuthority.error_code())
             )
         )))
     );

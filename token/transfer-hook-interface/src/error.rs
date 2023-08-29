@@ -26,11 +26,22 @@ pub enum TransferHookError {
     #[error("Program called outside of a token transfer")]
     ProgramCalledOutsideOfTransfer,
 }
-impl From<TransferHookError> for ProgramError {
-    fn from(e: TransferHookError) -> Self {
-        ProgramError::Custom(e as u32)
+impl TransferHookError {
+    /// Offset to avoid conflict with implementing program error codes
+    const PROGRAM_ERROR_OFFSET: u32 = 30000;
+
+    /// Returns the error code
+    pub fn error_code(self) -> u32 {
+        (self as u32).saturating_add(Self::PROGRAM_ERROR_OFFSET)
     }
 }
+
+impl From<TransferHookError> for ProgramError {
+    fn from(e: TransferHookError) -> Self {
+        ProgramError::Custom(e.error_code())
+    }
+}
+
 impl<T> DecodeError<T> for TransferHookError {
     fn type_of() -> &'static str {
         "TransferHookError"

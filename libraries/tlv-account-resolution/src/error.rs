@@ -1,9 +1,17 @@
 //! Error types
 
-use spl_program_error::*;
+use {
+    num_derive::FromPrimitive,
+    solana_program::{
+        decode_error::DecodeError,
+        msg,
+        program_error::{PrintProgramError, ProgramError},
+    },
+    thiserror::Error,
+};
 
 /// Errors that may be returned by the Account Resolution library.
-#[spl_program_error]
+#[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum AccountResolutionError {
     /// Incorrect account provided
     #[error("Incorrect account provided")]
@@ -51,4 +59,34 @@ pub enum AccountResolutionError {
     /// Error in checked math operation
     #[error("Error in checked math operation")]
     CalculationFailure,
+}
+impl AccountResolutionError {
+    /// Offset to avoid conflict with implementing program error codes
+    const PROGRAM_ERROR_OFFSET: u32 = 20000;
+
+    /// Returns the error code
+    pub fn error_code(self) -> u32 {
+        (self as u32).saturating_add(Self::PROGRAM_ERROR_OFFSET)
+    }
+}
+
+impl From<AccountResolutionError> for ProgramError {
+    fn from(e: AccountResolutionError) -> Self {
+        ProgramError::Custom(e.error_code())
+    }
+}
+
+impl<T> DecodeError<T> for AccountResolutionError {
+    fn type_of() -> &'static str {
+        "TokenError"
+    }
+}
+
+impl PrintProgramError for AccountResolutionError {
+    fn print<E>(&self)
+    where
+        E: 'static + std::error::Error + DecodeError<E> + num_traits::FromPrimitive,
+    {
+        msg!("{}", self);
+    }
 }

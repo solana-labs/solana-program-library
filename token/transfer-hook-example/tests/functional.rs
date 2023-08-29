@@ -270,7 +270,7 @@ async fn success_execute() {
             error,
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TransferHookError::IncorrectAccount as u32),
+                InstructionError::Custom(TransferHookError::IncorrectAccount.error_code()),
             )
         );
     }
@@ -309,7 +309,7 @@ async fn success_execute() {
             error,
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TransferHookError::IncorrectAccount as u32),
+                InstructionError::Custom(TransferHookError::IncorrectAccount.error_code()),
             )
         );
     }
@@ -356,7 +356,7 @@ async fn success_execute() {
             error,
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TransferHookError::IncorrectAccount as u32),
+                InstructionError::Custom(TransferHookError::IncorrectAccount.error_code()),
             )
         );
     }
@@ -395,7 +395,7 @@ async fn success_execute() {
             error,
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TransferHookError::IncorrectAccount as u32),
+                InstructionError::Custom(TransferHookError::IncorrectAccount.error_code()),
             )
         );
     }
@@ -742,7 +742,9 @@ async fn fail_without_transferring_flag() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(TransferHookError::ProgramCalledOutsideOfTransfer as u32)
+            InstructionError::Custom(
+                TransferHookError::ProgramCalledOutsideOfTransfer.error_code()
+            )
         )
     );
 }

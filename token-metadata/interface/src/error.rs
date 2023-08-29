@@ -1,9 +1,17 @@
 //! Interface error types
 
-use spl_program_error::*;
+use {
+    num_derive::FromPrimitive,
+    solana_program::{
+        decode_error::DecodeError,
+        msg,
+        program_error::{PrintProgramError, ProgramError},
+    },
+    thiserror::Error,
+};
 
 /// Errors that may be returned by the interface.
-#[spl_program_error]
+#[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum TokenMetadataError {
     /// Incorrect account provided
     #[error("Incorrect account provided")]
@@ -23,4 +31,34 @@ pub enum TokenMetadataError {
     /// Key not found in metadata account
     #[error("Key not found in metadata account")]
     KeyNotFound,
+}
+impl TokenMetadataError {
+    /// Offset to avoid conflict with implementing program error codes
+    const PROGRAM_ERROR_OFFSET: u32 = 40000;
+
+    /// Returns the error code
+    pub fn error_code(self) -> u32 {
+        (self as u32).saturating_add(Self::PROGRAM_ERROR_OFFSET)
+    }
+}
+
+impl From<TokenMetadataError> for ProgramError {
+    fn from(e: TokenMetadataError) -> Self {
+        ProgramError::Custom(e.error_code())
+    }
+}
+
+impl<T> DecodeError<T> for TokenMetadataError {
+    fn type_of() -> &'static str {
+        "TokenError"
+    }
+}
+
+impl PrintProgramError for TokenMetadataError {
+    fn print<E>(&self)
+    where
+        E: 'static + std::error::Error + DecodeError<E> + num_traits::FromPrimitive,
+    {
+        msg!("{}", self);
+    }
 }
