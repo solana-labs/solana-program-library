@@ -11,11 +11,13 @@ use {
 };
 
 /// Errors that may be returned by the interface.
+/// 
+/// Note: Error codes range from 30_000 - (30_000 + n)
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum TransferHookError {
     /// Incorrect account provided
     #[error("Incorrect account provided")]
-    IncorrectAccount,
+    IncorrectAccount = 30_000, // Error code offset
     /// Mint has no mint authority
     #[error("Mint has no mint authority")]
     MintHasNoMintAuthority,

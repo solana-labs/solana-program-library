@@ -3,11 +3,13 @@
 use spl_program_error::*;
 
 /// Errors that may be returned by the Token program.
+/// 
+/// Note: Error codes range from 10_000 - (10_000 + n)
 #[spl_program_error]
 pub enum TlvError {
     /// Type not found in TLV data
     #[error("Type not found in TLV data")]
-    TypeNotFound,
+    TypeNotFound = 10_000, // Error code offset
     /// Type already exists in TLV data
     #[error("Type already exists in TLV data")]
     TypeAlreadyExists,
