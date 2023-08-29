@@ -53,6 +53,11 @@ export function getTransferHookAccount(account: Account): TransferHookAccount | 
     }
 }
 
+export function getExtraAccountMetaAccount(programId: PublicKey, mint: PublicKey): PublicKey {
+    const seeds = [Buffer.from('extra-account-metas'), mint.toBuffer()];
+    return PublicKey.findProgramAddressSync(seeds, programId)[0];
+}
+
 /** ExtraAccountMeta as stored by the transfer hook program */
 export interface ExtraAccountMeta {
     discriminator: number;
@@ -81,7 +86,7 @@ export const ExtraAccountMetaListLayout = struct<ExtraAccountMetaList>([
 ]);
 
 /** Unpack an extra account metas account and parse the data into a list of ExtraAccountMetas */
-export function getExtraAccountMetas(account: AccountInfo<Buffer>): ExtraAccountMeta[] | null {
+export function getExtraAccountMetas(account: AccountInfo<Buffer>): ExtraAccountMeta[] {
     return ExtraAccountMetaListLayout.decode(account.data).extraAccounts;
 }
 

@@ -6,8 +6,9 @@ describe('transferHookExtraAccounts', () => {
     const testProgramId = new PublicKey('7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj');
     const instructionData = Buffer.from(Array.from(Array(32).keys()));
     const plainAccount = new PublicKey('6c5q79ccBTWvZTEx3JkdHThtMa2eALba5bfvHGf8kA2c');
-    const pdaPublicKey = new PublicKey('8Zibh9ywkKCZc3h23vwxvdMPG9yhg4LYYzky2yRkLHBJ');
-    const pdaPublicKeyWithProgramId = new PublicKey('9Apejge9XvJ3toZ8PX2sKKgMoyN7sSegzdq8n1kMzRae');
+    const seeds = [Buffer.from('seed'), Buffer.from([4, 5, 6, 7]), plainAccount.toBuffer()];
+    const pdaPublicKey = PublicKey.findProgramAddressSync(seeds, testProgramId)[0];
+    const pdaPublicKeyWithProgramId = PublicKey.findProgramAddressSync(seeds, plainAccount)[0];
 
     const plainSeed = Buffer.concat([
         Buffer.from([1]), // u8 discriminator

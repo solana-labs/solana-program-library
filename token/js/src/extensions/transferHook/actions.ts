@@ -5,7 +5,7 @@ import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { getSigners } from '../../actions/internal.js';
 import { TOKEN_2022_PROGRAM_ID, programSupportsExtensions } from '../../constants.js';
 import { createInitializeTransferHookInstruction, createUpdateTransferHookInstruction } from './instructions.js';
-import { getExtraAccountMetas, getTransferHook, resolveExtraAccountMeta } from './state.js';
+import { getExtraAccountMetaAccount, getExtraAccountMetas, getTransferHook, resolveExtraAccountMeta } from './state.js';
 import { getMint } from '../../state/index.js';
 import {
     TokenInvalidAccountDataError,
@@ -93,6 +93,7 @@ export async function updateTransferHook(
 export async function addExtraAccountsToInstruction(
     connection: Connection,
     instruction: TransactionInstruction,
+    mint: PublicKey,
     commitment?: Commitment,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<TransactionInstruction> {
@@ -100,28 +101,19 @@ export async function addExtraAccountsToInstruction(
         throw new TokenUnsupportedInstructionError();
     }
 
-    const decodedInstruction = decodeTransferCheckedInstruction(instruction, programId);
-
-    const mint = decodedInstruction.keys.mint.pubkey;
     const mintInfo = await getMint(connection, mint, commitment, programId);
     const transferHook = getTransferHook(mintInfo);
     if (transferHook == null) {
-        throw new TokenInvalidMintError();
+        return instruction;
     }
 
-    const extraAccountsAccount = PublicKey.findProgramAddressSync(
-        [Buffer.from('extra-account-metas'), mint.toBuffer()],
-        transferHook.programId
-    )[0];
+    const extraAccountsAccount = getExtraAccountMetaAccount(transferHook.programId, mint);
     const extraAccountsInfo = await connection.getAccountInfo(extraAccountsAccount, commitment);
     if (extraAccountsInfo == null) {
-        throw new TokenInvalidAccountError();
+        return instruction;
     }
 
     const extraAccountMetas = getExtraAccountMetas(extraAccountsInfo);
-    if (extraAccountMetas == null) {
-        throw new TokenInvalidAccountDataError();
-    }
 
     const accountMetas = instruction.keys;
 
@@ -155,7 +147,7 @@ export async function addExtraAccountsToInstruction(
  *
  * @return Signature of the confirmed transaction
  */
-export async function transferCheckedWithHook(
+export async function transferCheckedWithTransferHook(
     connection: Connection,
     payer: Signer,
     source: PublicKey,
@@ -184,6 +176,7 @@ export async function transferCheckedWithHook(
     const hydratedInstruction = await addExtraAccountsToInstruction(
         connection,
         rawInstruction,
+        mint,
         confirmOptions?.commitment,
         programId
     );
