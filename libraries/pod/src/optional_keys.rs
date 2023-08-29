@@ -235,17 +235,106 @@ mod tests {
     use {super::*, crate::bytemuck::pod_from_bytes, solana_program::pubkey::PUBKEY_BYTES};
 
     #[test]
-    fn test_pod_option() {
+    fn test_pod_non_zero_option() {
         assert_eq!(
-            Some(Pubkey::new_from_array([1; 32])),
-            Option::<Pubkey>::from(*pod_from_bytes::<OptionalNonZeroPubkey>(&[1; 32]).unwrap())
+            Some(Pubkey::new_from_array([1; PUBKEY_BYTES])),
+            Option::<Pubkey>::from(
+                *pod_from_bytes::<OptionalNonZeroPubkey>(&[1; PUBKEY_BYTES]).unwrap()
+            )
         );
         assert_eq!(
             None,
-            Option::<Pubkey>::from(*pod_from_bytes::<OptionalNonZeroPubkey>(&[0; 32]).unwrap())
+            Option::<Pubkey>::from(
+                *pod_from_bytes::<OptionalNonZeroPubkey>(&[0; PUBKEY_BYTES]).unwrap()
+            )
         );
         assert!(pod_from_bytes::<OptionalNonZeroPubkey>(&[]).is_err());
         assert!(pod_from_bytes::<OptionalNonZeroPubkey>(&[0; 1]).is_err());
         assert!(pod_from_bytes::<OptionalNonZeroPubkey>(&[1; 1]).is_err());
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn test_pod_non_zero_option_serde_some() {
+        let optional_non_zero_pubkey_some =
+            OptionalNonZeroPubkey(Pubkey::new_from_array([1; PUBKEY_BYTES]));
+        let serialized_some = serde_json::to_string(&optional_non_zero_pubkey_some).unwrap();
+        assert_eq!(
+            &serialized_some,
+            "\"4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi\""
+        );
+
+        let deserialized_some =
+            serde_json::from_str::<OptionalNonZeroPubkey>(&serialized_some).unwrap();
+        assert_eq!(optional_non_zero_pubkey_some, deserialized_some);
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn test_pod_non_zero_option_serde_none() {
+        let optional_non_zero_pubkey_none =
+            OptionalNonZeroPubkey(Pubkey::new_from_array([0; PUBKEY_BYTES]));
+        let serialized_none = serde_json::to_string(&optional_non_zero_pubkey_none).unwrap();
+        assert_eq!(&serialized_none, "null");
+
+        let deserialized_none =
+            serde_json::from_str::<OptionalNonZeroPubkey>(&serialized_none).unwrap();
+        assert_eq!(optional_non_zero_pubkey_none, deserialized_none);
+    }
+
+    #[test]
+    fn test_pod_non_zero_elgamal_option() {
+        assert_eq!(
+            Some(ElGamalPubkey([1; OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN])),
+            Option::<ElGamalPubkey>::from(OptionalNonZeroElGamalPubkey(ElGamalPubkey(
+                [1; OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN]
+            )))
+        );
+        assert_eq!(
+            None,
+            Option::<ElGamalPubkey>::from(OptionalNonZeroElGamalPubkey(ElGamalPubkey(
+                [0; OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN]
+            )))
+        );
+
+        assert_eq!(
+            OptionalNonZeroElGamalPubkey(ElGamalPubkey([1; OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN])),
+            *pod_from_bytes::<OptionalNonZeroElGamalPubkey>(
+                &[1; OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN]
+            )
+            .unwrap()
+        );
+        assert!(pod_from_bytes::<OptionalNonZeroElGamalPubkey>(&[]).is_err());
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn test_pod_non_zero_elgamal_option_serde_some() {
+        let optional_non_zero_elgamal_pubkey_some =
+            OptionalNonZeroElGamalPubkey(ElGamalPubkey([1; OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN]));
+        let serialized_some =
+            serde_json::to_string(&optional_non_zero_elgamal_pubkey_some).unwrap();
+        assert_eq!(
+            &serialized_some,
+            "\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=\""
+        );
+
+        let deserialized_some =
+            serde_json::from_str::<OptionalNonZeroElGamalPubkey>(&serialized_some).unwrap();
+        assert_eq!(optional_non_zero_elgamal_pubkey_some, deserialized_some);
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn test_pod_non_zero_elgamal_option_serde_none() {
+        let optional_non_zero_elgamal_pubkey_none =
+            OptionalNonZeroElGamalPubkey(ElGamalPubkey([0; OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN]));
+        let serialized_none =
+            serde_json::to_string(&optional_non_zero_elgamal_pubkey_none).unwrap();
+        assert_eq!(&serialized_none, "null");
+
+        let deserialized_none =
+            serde_json::from_str::<OptionalNonZeroElGamalPubkey>(&serialized_none).unwrap();
+        assert_eq!(optional_non_zero_elgamal_pubkey_none, deserialized_none);
     }
 }

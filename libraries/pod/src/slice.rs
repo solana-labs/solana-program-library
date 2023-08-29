@@ -5,8 +5,8 @@ use {
         bytemuck::{
             pod_from_bytes, pod_from_bytes_mut, pod_slice_from_bytes, pod_slice_from_bytes_mut,
         },
+        error::PodSliceError,
         primitives::PodU32,
-        error::PodSliceError
     },
     bytemuck::Pod,
     solana_program::program_error::ProgramError,
@@ -114,10 +114,104 @@ fn max_len_for_type<T>(data_len: usize) -> Result<usize, ProgramError> {
     let max_len = data_len
         .checked_div(size)
         .ok_or(PodSliceError::CalculationFailure)?;
-    // check that it isn't overallocated
+    // check that it isn't over or under allocated
     if max_len.saturating_mul(size) != data_len {
-        Err(PodSliceError::BufferTooLarge.into())
+        if max_len == 0 {
+            // Size of T is greater than buffer size
+            Err(PodSliceError::BufferTooSmall.into())
+        } else {
+            Err(PodSliceError::BufferTooLarge.into())
+        }
     } else {
         Ok(max_len)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, crate::bytemuck::pod_slice_to_bytes, bytemuck::Zeroable};
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+    struct TestStruct {
+        test_field: u8,
+        test_pubkey: [u8; 32],
+    }
+
+    #[test]
+    fn test_pod_slice() {
+        let test_field_bytes = [0];
+        let test_pubkey_bytes = [1; 32];
+        let len_bytes = [2, 0, 0, 0];
+
+        // Slice will contain 2 `TestStruct`
+        let mut data_bytes = [0; 66];
+        data_bytes[0..1].copy_from_slice(&test_field_bytes);
+        data_bytes[1..33].copy_from_slice(&test_pubkey_bytes);
+        data_bytes[33..34].copy_from_slice(&test_field_bytes);
+        data_bytes[34..66].copy_from_slice(&test_pubkey_bytes);
+
+        let mut pod_slice_bytes = [0; 70];
+        pod_slice_bytes[0..4].copy_from_slice(&len_bytes);
+        pod_slice_bytes[4..70].copy_from_slice(&data_bytes);
+
+        let pod_slice = PodSlice::<TestStruct>::unpack(&pod_slice_bytes).unwrap();
+        let pod_slice_data = pod_slice.data();
+
+        assert_eq!(*pod_slice.length, PodU32::from(2));
+        assert_eq!(pod_slice_to_bytes(pod_slice.data()), data_bytes);
+        assert_eq!(pod_slice_data[0].test_field, test_field_bytes[0]);
+        assert_eq!(pod_slice_data[0].test_pubkey, test_pubkey_bytes);
+        assert_eq!(PodSlice::<TestStruct>::size_of(1).unwrap(), 37);
+    }
+
+    #[test]
+    fn test_pod_slice_buffer_too_large() {
+        // 1 `TestStruct` + length = 37 bytes
+        // we pass 38 to trigger BufferTooLarge
+        let pod_slice_bytes = [1; 38];
+        let result = PodSlice::<TestStruct>::unpack(&pod_slice_bytes);
+        match result {
+            Ok(_) => panic!("Expected an `PodSliceError::BufferTooLarge` error, but got Ok"),
+            Err(err) => {
+                assert_eq!(err, PodSliceError::BufferTooLarge.into());
+            }
+        }
+    }
+
+    #[test]
+    fn test_pod_slice_buffer_too_small() {
+        // 1 `TestStruct` + length = 37 bytes
+        // we pass 36 to trigger BufferTooSmall
+        let pod_slice_bytes = [1; 36];
+        let result = PodSlice::<TestStruct>::unpack(&pod_slice_bytes);
+        match result {
+            Ok(_) => panic!("Expected an `PodSliceError::BufferTooSmall` error, but got Ok"),
+            Err(err) => {
+                assert_eq!(err, PodSliceError::BufferTooSmall.into());
+            }
+        }
+    }
+
+    #[test]
+    fn test_pod_slice_mut() {
+        // slice can fit 2 `TestStruct`
+        let mut pod_slice_bytes = [0; 70];
+        // set length to 1, so we have room to push 1 more item
+        let len_bytes = [1, 0, 0, 0];
+        pod_slice_bytes[0..4].copy_from_slice(&len_bytes);
+
+        let mut pod_slice = PodSliceMut::<TestStruct>::unpack(&mut pod_slice_bytes).unwrap();
+
+        assert_eq!(*pod_slice.length, PodU32::from(1));
+        pod_slice.push(TestStruct::default()).unwrap();
+        assert_eq!(*pod_slice.length, PodU32::from(2));
+        let result = pod_slice.push(TestStruct::default());
+        match result {
+            Ok(_) => panic!("Expected an `PodSliceError::BufferTooSmall` error, but got Ok"),
+            Err(err) => {
+                assert_eq!(err, PodSliceError::BufferTooSmall.into());
+            }
+        }
     }
 }
