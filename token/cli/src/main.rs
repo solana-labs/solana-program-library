@@ -3224,7 +3224,7 @@ fn app<'a, 'b>(
                             "mint", "freeze", "owner", "close",
                             "close-mint", "transfer-fee-config", "withheld-withdraw",
                             "interest-rate", "permanent-delegate", "confidential-transfer-mint",
-                            "transfer-hook",
+                            "transfer-hook-program-id", "confidential-transfer-fee", "metadata-pointer",
                         ])
                         .index(2)
                         .required(true)
