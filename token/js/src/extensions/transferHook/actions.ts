@@ -1,18 +1,14 @@
-import type { Commitment, ConfirmOptions, Connection, Signer, TransactionSignature } from '@solana/web3.js';
-import { TransactionInstruction } from '@solana/web3.js';
+import type { ConfirmOptions, Connection, Signer, TransactionSignature } from '@solana/web3.js';
 import type { PublicKey } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { getSigners } from '../../actions/internal.js';
-import { TOKEN_2022_PROGRAM_ID, programSupportsExtensions } from '../../constants.js';
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../../constants.js';
 import {
     createInitializeTransferHookInstruction,
     createTransferCheckedWithFeeAndTransferHookInstruction,
     createTransferCheckedWithTransferHookInstruction,
     createUpdateTransferHookInstruction,
 } from './instructions.js';
-import { getExtraAccountMetaAccount, getExtraAccountMetas, getTransferHook, resolveExtraAccountMeta } from './state.js';
-import { getMint } from '../../state/index.js';
-import { TokenUnsupportedInstructionError } from '../../errors.js';
 
 /**
  * Initialize a transfer hook on a mint
@@ -77,56 +73,6 @@ export async function updateTransferHook(
 }
 
 /**
- * Add extra accounts needed for transfer hook to an instruction
- *
- * @param connection      Connection to use
- * @param instruction     The transferChecked instruction to add accounts to
- * @param commitment      Commitment to use
- * @param programId       SPL Token program account
- *
- * @return Instruction to add to a transaction
- */
-export async function addExtraAccountsToInstruction(
-    connection: Connection,
-    instruction: TransactionInstruction,
-    mint: PublicKey,
-    commitment?: Commitment,
-    programId = TOKEN_2022_PROGRAM_ID
-): Promise<TransactionInstruction> {
-    if (!programSupportsExtensions(programId)) {
-        throw new TokenUnsupportedInstructionError();
-    }
-
-    const mintInfo = await getMint(connection, mint, commitment, programId);
-    const transferHook = getTransferHook(mintInfo);
-    if (transferHook == null) {
-        return instruction;
-    }
-
-    const extraAccountsAccount = getExtraAccountMetaAccount(transferHook.programId, mint);
-    const extraAccountsInfo = await connection.getAccountInfo(extraAccountsAccount, commitment);
-    if (extraAccountsInfo == null) {
-        return instruction;
-    }
-
-    const extraAccountMetas = getExtraAccountMetas(extraAccountsInfo);
-
-    const accountMetas = instruction.keys;
-
-    for (const extraAccountMeta of extraAccountMetas) {
-        const accountMeta = resolveExtraAccountMeta(
-            extraAccountMeta,
-            accountMetas,
-            instruction.data,
-            transferHook.programId
-        );
-        accountMetas.push(accountMeta);
-    }
-
-    return new TransactionInstruction({ keys: accountMetas, programId, data: instruction.data });
-}
-
-/**
  * Transfer tokens from one account to another, asserting the token mint, and decimals
  *
  * @param connection     Connection to use
@@ -154,7 +100,7 @@ export async function transferCheckedWithTransferHook(
     decimals: number,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
@@ -206,7 +152,7 @@ export async function transferCheckedWithFeeAndTransferHook(
     fee: bigint,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 

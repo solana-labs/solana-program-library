@@ -88,20 +88,21 @@ export const ExtraAccountMetaListLayout = struct<ExtraAccountMetaList>([
 /** Buffer layout for de/serializing a list of ExtraAccountMetaAccountData prefixed by a u32 length */
 export interface ExtraAccountMetaAccountData {
     instructionDiscriminator: bigint;
-    arrayDiscriminator: number;
+    length: number;
     extraAccountsList: ExtraAccountMetaList;
 }
 
 /** Buffer layout for de/serializing an ExtraAccountMetaAccountData */
 export const ExtraAccountMetaAccountDataLayout = struct<ExtraAccountMetaAccountData>([
     u64('instructionDiscriminator'),
-    u32('arrayDiscriminator'),
+    u32('length'),
     ExtraAccountMetaListLayout.replicate('extraAccountsList'),
 ]);
 
 /** Unpack an extra account metas account and parse the data into a list of ExtraAccountMetas */
 export function getExtraAccountMetas(account: AccountInfo<Buffer>): ExtraAccountMeta[] {
-    return ExtraAccountMetaAccountDataLayout.decode(account.data).extraAccountsList.extraAccounts;
+    const extraAccountsList = ExtraAccountMetaAccountDataLayout.decode(account.data).extraAccountsList;
+    return extraAccountsList.extraAccounts.slice(0, extraAccountsList.count);
 }
 
 /** Take an ExtraAccountMeta and construct that into an acutal AccountMeta */
