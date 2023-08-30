@@ -1,9 +1,12 @@
-import { struct } from '@solana/buffer-layout';
+import { blob, greedy, seq, struct, u32, u8 } from '@solana/buffer-layout';
 import type { Mint } from '../../state/mint.js';
 import { ExtensionType, getExtensionData } from '../extensionType.js';
-import type { PublicKey } from '@solana/web3.js';
-import { bool, publicKey } from '@solana/buffer-layout-utils';
+import type { AccountInfo, AccountMeta } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
+import { bool, publicKey, u64 } from '@solana/buffer-layout-utils';
 import type { Account } from '../../state/account.js';
+import { TokenTransferHookAccountNotFound } from '../../errors.js';
+import { unpackSeeds } from './seeds.js';
 
 /** TransferHook as stored by the program */
 export interface TransferHook {
@@ -48,4 +51,89 @@ export function getTransferHookAccount(account: Account): TransferHookAccount | 
     } else {
         return null;
     }
+}
+
+export function getExtraAccountMetaAccount(programId: PublicKey, mint: PublicKey): PublicKey {
+    const seeds = [Buffer.from('extra-account-metas'), mint.toBuffer()];
+    return PublicKey.findProgramAddressSync(seeds, programId)[0];
+}
+
+/** ExtraAccountMeta as stored by the transfer hook program */
+export interface ExtraAccountMeta {
+    discriminator: number;
+    addressConfig: Uint8Array;
+    isSigner: boolean;
+    isWritable: boolean;
+}
+
+/** Buffer layout for de/serializing an ExtraAccountMeta */
+export const ExtraAccountMetaLayout = struct<ExtraAccountMeta>([
+    u8('discriminator'),
+    blob(32, 'addressConfig'),
+    bool('isSigner'),
+    bool('isWritable'),
+]);
+
+export interface ExtraAccountMetaList {
+    count: number;
+    extraAccounts: ExtraAccountMeta[];
+}
+
+/** Buffer layout for de/serializing a list of ExtraAccountMeta prefixed by a u32 length */
+export const ExtraAccountMetaListLayout = struct<ExtraAccountMetaList>([
+    u32('count'),
+    seq<ExtraAccountMeta>(ExtraAccountMetaLayout, greedy(ExtraAccountMetaLayout.span), 'extraAccounts'),
+]);
+
+/** Buffer layout for de/serializing a list of ExtraAccountMetaAccountData prefixed by a u32 length */
+export interface ExtraAccountMetaAccountData {
+    instructionDiscriminator: bigint;
+    length: number;
+    extraAccountsList: ExtraAccountMetaList;
+}
+
+/** Buffer layout for de/serializing an ExtraAccountMetaAccountData */
+export const ExtraAccountMetaAccountDataLayout = struct<ExtraAccountMetaAccountData>([
+    u64('instructionDiscriminator'),
+    u32('length'),
+    ExtraAccountMetaListLayout.replicate('extraAccountsList'),
+]);
+
+/** Unpack an extra account metas account and parse the data into a list of ExtraAccountMetas */
+export function getExtraAccountMetas(account: AccountInfo<Buffer>): ExtraAccountMeta[] {
+    const extraAccountsList = ExtraAccountMetaAccountDataLayout.decode(account.data).extraAccountsList;
+    return extraAccountsList.extraAccounts.slice(0, extraAccountsList.count);
+}
+
+/** Take an ExtraAccountMeta and construct that into an acutal AccountMeta */
+export function resolveExtraAccountMeta(
+    extraMeta: ExtraAccountMeta,
+    previousMetas: AccountMeta[],
+    instructionData: Buffer,
+    transferHookProgramId: PublicKey
+): AccountMeta {
+    if (extraMeta.discriminator === 0) {
+        return {
+            pubkey: new PublicKey(extraMeta.addressConfig),
+            isSigner: extraMeta.isSigner,
+            isWritable: extraMeta.isWritable,
+        };
+    }
+
+    let programId = PublicKey.default;
+
+    if (extraMeta.discriminator === 1) {
+        programId = transferHookProgramId;
+    } else {
+        const accountIndex = extraMeta.discriminator - (1 << 7);
+        if (previousMetas.length <= accountIndex) {
+            throw new TokenTransferHookAccountNotFound();
+        }
+        programId = previousMetas[accountIndex].pubkey;
+    }
+
+    const seeds = unpackSeeds(extraMeta.addressConfig, previousMetas, instructionData);
+    const pubkey = PublicKey.findProgramAddressSync(seeds, programId)[0];
+
+    return { pubkey, isSigner: extraMeta.isSigner, isWritable: extraMeta.isWritable };
 }

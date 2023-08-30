@@ -15,6 +15,11 @@ export class TokenInvalidAccountError extends TokenError {
     name = 'TokenInvalidAccountError';
 }
 
+/** Thrown if a program state account does not contain valid data */
+export class TokenInvalidAccountDataError extends TokenError {
+    name = 'TokenInvalidAccountDataError';
+}
+
 /** Thrown if a program state account is not owned by the expected token program */
 export class TokenInvalidAccountOwnerError extends TokenError {
     name = 'TokenInvalidAccountOwnerError';
@@ -63,4 +68,14 @@ export class TokenInvalidInstructionTypeError extends TokenError {
 /** Thrown if the program does not support the desired instruction */
 export class TokenUnsupportedInstructionError extends TokenError {
     name = 'TokenUnsupportedInstructionError';
+}
+
+/** Thrown if the transfer hook extra accounts contains an invalid account index */
+export class TokenTransferHookAccountNotFound extends TokenError {
+    name = 'TokenTransferHookAccountNotFound';
+}
+
+/** Thrown if the transfer hook extra accounts contains an invalid seed */
+export class TokenTransferHookInvalidSeed extends TokenError {
+    name = 'TokenTransferHookInvalidSeed';
 }

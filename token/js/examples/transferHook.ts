@@ -16,6 +16,9 @@ import {
     getMintLen,
     TOKEN_2022_PROGRAM_ID,
     updateTransferHook,
+    transferCheckedWithHook,
+    getAssociatedTokenAddressSync,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '../src';
 
 (async () => {
@@ -24,6 +27,9 @@ import {
     const mintAuthority = Keypair.generate();
     const mintKeypair = Keypair.generate();
     const mint = mintKeypair.publicKey;
+
+    const sender = Keypair.generate();
+    const recipient = Keypair.generate();
 
     const extensions = [ExtensionType.TransferHook];
     const mintLen = getMintLen(extensions);
@@ -56,6 +62,35 @@ import {
         mint,
         newTransferHookProgramId,
         payer.publicKey,
+        [],
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+
+    const senderAta = getAssociatedTokenAddressSync(
+        mint,
+        sender.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const recipientAta = getAssociatedTokenAddressSync(
+        mint,
+        recipient.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    await transferCheckedWithHook(
+        connection,
+        payer,
+        senderAta,
+        mint,
+        recipientAta,
+        sender,
+        BigInt(1000000000),
+        9,
         [],
         undefined,
         TOKEN_2022_PROGRAM_ID
