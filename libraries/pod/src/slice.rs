@@ -14,6 +14,7 @@ use {
 
 const LENGTH_SIZE: usize = std::mem::size_of::<PodU32>();
 /// Special type for using a slice of `Pod`s in a zero-copy way
+#[derive(Debug)]
 pub struct PodSlice<'data, T: Pod> {
     length: &'data PodU32,
     data: &'data [T],
@@ -170,13 +171,9 @@ mod tests {
         // 1 `TestStruct` + length = 37 bytes
         // we pass 38 to trigger BufferTooLarge
         let pod_slice_bytes = [1; 38];
-        let result = PodSlice::<TestStruct>::unpack(&pod_slice_bytes);
-        match result {
-            Ok(_) => panic!("Expected an `PodSliceError::BufferTooLarge` error, but got Ok"),
-            Err(err) => {
-                assert_eq!(err, PodSliceError::BufferTooLarge.into());
-            }
-        }
+        let err = PodSlice::<TestStruct>::unpack(&pod_slice_bytes)
+            .expect_err("Expected an `PodSliceError::BufferTooLarge` error");
+        assert_eq!(err, PodSliceError::BufferTooLarge.into());
     }
 
     #[test]
@@ -184,13 +181,9 @@ mod tests {
         // 1 `TestStruct` + length = 37 bytes
         // we pass 36 to trigger BufferTooSmall
         let pod_slice_bytes = [1; 36];
-        let result = PodSlice::<TestStruct>::unpack(&pod_slice_bytes);
-        match result {
-            Ok(_) => panic!("Expected an `PodSliceError::BufferTooSmall` error, but got Ok"),
-            Err(err) => {
-                assert_eq!(err, PodSliceError::BufferTooSmall.into());
-            }
-        }
+        let err = PodSlice::<TestStruct>::unpack(&pod_slice_bytes)
+            .expect_err("Expected an `PodSliceError::BufferTooSmall` error");
+        assert_eq!(err, PodSliceError::BufferTooSmall.into());
     }
 
     #[test]
@@ -206,12 +199,9 @@ mod tests {
         assert_eq!(*pod_slice.length, PodU32::from(1));
         pod_slice.push(TestStruct::default()).unwrap();
         assert_eq!(*pod_slice.length, PodU32::from(2));
-        let result = pod_slice.push(TestStruct::default());
-        match result {
-            Ok(_) => panic!("Expected an `PodSliceError::BufferTooSmall` error, but got Ok"),
-            Err(err) => {
-                assert_eq!(err, PodSliceError::BufferTooSmall.into());
-            }
-        }
+        let err = pod_slice
+            .push(TestStruct::default())
+            .expect_err("Expected an `PodSliceError::BufferTooSmall` error");
+        assert_eq!(err, PodSliceError::BufferTooSmall.into());
     }
 }

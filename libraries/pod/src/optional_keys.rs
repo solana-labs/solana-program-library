@@ -183,7 +183,7 @@ impl Serialize for OptionalNonZeroElGamalPubkey {
 }
 
 #[cfg(feature = "serde-traits")]
-pub(crate) struct OptionalNonZeroElGamalPubkeyVisitor;
+struct OptionalNonZeroElGamalPubkeyVisitor;
 
 #[cfg(feature = "serde-traits")]
 impl<'de> Visitor<'de> for OptionalNonZeroElGamalPubkeyVisitor {
@@ -248,9 +248,18 @@ mod tests {
                 *pod_from_bytes::<OptionalNonZeroPubkey>(&[0; PUBKEY_BYTES]).unwrap()
             )
         );
-        assert!(pod_from_bytes::<OptionalNonZeroPubkey>(&[]).is_err());
-        assert!(pod_from_bytes::<OptionalNonZeroPubkey>(&[0; 1]).is_err());
-        assert!(pod_from_bytes::<OptionalNonZeroPubkey>(&[1; 1]).is_err());
+        assert_eq!(
+            pod_from_bytes::<OptionalNonZeroPubkey>(&[]).unwrap_err(),
+            ProgramError::InvalidArgument
+        );
+        assert_eq!(
+            pod_from_bytes::<OptionalNonZeroPubkey>(&[0; 1]).unwrap_err(),
+            ProgramError::InvalidArgument
+        );
+        assert_eq!(
+            pod_from_bytes::<OptionalNonZeroPubkey>(&[1; 1]).unwrap_err(),
+            ProgramError::InvalidArgument
+        );
     }
 
     #[cfg(feature = "serde-traits")]
