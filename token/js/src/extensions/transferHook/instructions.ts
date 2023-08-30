@@ -1,11 +1,14 @@
 import { struct, u8 } from '@solana/buffer-layout';
-import type { PublicKey, Signer } from '@solana/web3.js';
+import type { Commitment, Connection, PublicKey, Signer } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
 import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import { TokenUnsupportedInstructionError } from '../../errors.js';
 import { addSigners } from '../../instructions/internal.js';
 import { TokenInstruction } from '../../instructions/types.js';
 import { publicKey } from '@solana/buffer-layout-utils';
+import { createTransferCheckedInstruction } from '../../instructions/index.js';
+import { addExtraAccountsToInstruction } from './actions.js';
+import { createTransferCheckedWithFeeInstruction } from '../transferFee/instructions.js';
 
 export enum TransferHookInstruction {
     Initialize = 0,
@@ -111,4 +114,107 @@ export function createUpdateTransferHookInstruction(
     );
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/**
+ * Construct an transferChecked instruction with extra accounts for transfer hook
+ *
+ * @param connection            Connection to use
+ * @param source                Source account
+ * @param mint                  Mint to update
+ * @param destination           Destination account
+ * @param authority             The mint's transfer hook authority
+ * @param amount                The amount of tokens to transfer
+ * @param decimals              Number of decimals in transfer amount
+ * @param multiSigners          The signer account(s) for a multisig
+ * @param commitment            Commitment to use
+ * @param programId             SPL Token program account
+ *
+ * @return Instruction to add to a transaction
+ */
+export async function createTransferCheckedWithTransferHookInstruction(
+    connection: Connection,
+    source: PublicKey,
+    mint: PublicKey,
+    destination: PublicKey,
+    authority: PublicKey,
+    amount: bigint,
+    decimals: number,
+    multiSigners: (Signer | PublicKey)[] = [],
+    commitment?: Commitment,
+    programId = TOKEN_2022_PROGRAM_ID
+) {
+    const rawInstruction = createTransferCheckedInstruction(
+        source,
+        mint,
+        destination,
+        authority,
+        amount,
+        decimals,
+        multiSigners,
+        programId
+    );
+
+    const hydratedInstruction = await addExtraAccountsToInstruction(
+        connection,
+        rawInstruction,
+        mint,
+        commitment,
+        programId
+    );
+
+    return hydratedInstruction;
+}
+
+/**
+ * Construct an transferChecked instruction with extra accounts for transfer hook
+ *
+ * @param connection            Connection to use
+ * @param source                Source account
+ * @param mint                  Mint to update
+ * @param destination           Destination account
+ * @param authority             The mint's transfer hook authority
+ * @param amount                The amount of tokens to transfer
+ * @param decimals              Number of decimals in transfer amount
+ * @param fee                   The calculated fee for the transfer fee extension
+ * @param multiSigners          The signer account(s) for a multisig
+ * @param commitment            Commitment to use
+ * @param programId             SPL Token program account
+ *
+ * @return Instruction to add to a transaction
+ */
+export async function createTransferCheckedWithFeeAndTransferHookInstruction(
+    connection: Connection,
+    source: PublicKey,
+    mint: PublicKey,
+    destination: PublicKey,
+    authority: PublicKey,
+    amount: bigint,
+    decimals: number,
+    fee: bigint,
+    multiSigners: (Signer | PublicKey)[] = [],
+    commitment?: Commitment,
+    programId = TOKEN_2022_PROGRAM_ID
+) {
+    const rawInstruction = createTransferCheckedWithFeeInstruction(
+        source,
+        mint,
+        destination,
+        authority,
+        amount,
+        decimals,
+        fee,
+        multiSigners,
+        programId
+    );
+
+    const hydratedInstruction = await addExtraAccountsToInstruction(
+        connection,
+        rawInstruction,
+        mint,
+        commitment,
+        programId
+    );
+
+    return hydratedInstruction;
 }

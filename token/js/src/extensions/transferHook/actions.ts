@@ -1,22 +1,18 @@
 import type { Commitment, ConfirmOptions, Connection, Signer, TransactionSignature } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
-import { PublicKey } from '@solana/web3.js';
+import type { PublicKey } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { getSigners } from '../../actions/internal.js';
 import { TOKEN_2022_PROGRAM_ID, programSupportsExtensions } from '../../constants.js';
-import { createInitializeTransferHookInstruction, createUpdateTransferHookInstruction } from './instructions.js';
+import {
+    createInitializeTransferHookInstruction,
+    createTransferCheckedWithFeeAndTransferHookInstruction,
+    createTransferCheckedWithTransferHookInstruction,
+    createUpdateTransferHookInstruction,
+} from './instructions.js';
 import { getExtraAccountMetaAccount, getExtraAccountMetas, getTransferHook, resolveExtraAccountMeta } from './state.js';
 import { getMint } from '../../state/index.js';
-import {
-    TokenInvalidAccountDataError,
-    TokenInvalidAccountError,
-    TokenInvalidMintError,
-    TokenUnsupportedInstructionError,
-} from '../../errors.js';
-import {
-    createTransferCheckedInstruction,
-    decodeTransferCheckedInstruction,
-} from '../../instructions/transferChecked.js';
+import { TokenUnsupportedInstructionError } from '../../errors.js';
 
 /**
  * Initialize a transfer hook on a mint
@@ -131,7 +127,7 @@ export async function addExtraAccountsToInstruction(
 }
 
 /**
- * Transfer tokens from one account to another, asserting the transfer fee, token mint, and decimals
+ * Transfer tokens from one account to another, asserting the token mint, and decimals
  *
  * @param connection     Connection to use
  * @param payer          Payer of the transaction fees
@@ -162,26 +158,73 @@ export async function transferCheckedWithTransferHook(
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
-    const rawInstruction = createTransferCheckedInstruction(
-        source,
-        mint,
-        destination,
-        authorityPublicKey,
-        amount,
-        decimals,
-        signers,
-        programId
+    const transaction = new Transaction().add(
+        await createTransferCheckedWithTransferHookInstruction(
+            connection,
+            source,
+            mint,
+            destination,
+            authorityPublicKey,
+            amount,
+            decimals,
+            signers,
+            confirmOptions?.commitment,
+            programId
+        )
     );
 
-    const hydratedInstruction = await addExtraAccountsToInstruction(
-        connection,
-        rawInstruction,
-        mint,
-        confirmOptions?.commitment,
-        programId
-    );
+    return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
+}
 
-    const transaction = new Transaction().add(hydratedInstruction);
+/**
+ * Transfer tokens from one account to another, asserting the transfer fee, token mint, and decimals
+ *
+ * @param connection     Connection to use
+ * @param payer          Payer of the transaction fees
+ * @param source         Source account
+ * @param mint           Mint for the account
+ * @param destination    Destination account
+ * @param authority      Authority of the source account
+ * @param amount         Number of tokens to transfer
+ * @param decimals       Number of decimals in transfer amount
+ * @param fee            The calculated fee for the transfer fee extension
+ * @param multiSigners   Signing accounts if `owner` is a multisig
+ * @param confirmOptions Options for confirming the transaction
+ * @param programId      SPL Token program account
+ *
+ * @return Signature of the confirmed transaction
+ */
+export async function transferCheckedWithFeeAndTransferHook(
+    connection: Connection,
+    payer: Signer,
+    source: PublicKey,
+    mint: PublicKey,
+    destination: PublicKey,
+    authority: Signer | PublicKey,
+    amount: bigint,
+    decimals: number,
+    fee: bigint,
+    multiSigners: Signer[] = [],
+    confirmOptions?: ConfirmOptions,
+    programId = TOKEN_2022_PROGRAM_ID
+): Promise<TransactionSignature> {
+    const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
+
+    const transaction = new Transaction().add(
+        await createTransferCheckedWithFeeAndTransferHookInstruction(
+            connection,
+            source,
+            mint,
+            destination,
+            authorityPublicKey,
+            amount,
+            decimals,
+            fee,
+            signers,
+            confirmOptions?.commitment,
+            programId
+        )
+    );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
 }
