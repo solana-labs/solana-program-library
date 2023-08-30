@@ -12,12 +12,11 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
     spl_token_2022::{extension::BaseStateWithExtensions, processor::Processor},
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
     spl_token_metadata_interface::{
-        error::TokenMetadataError,
-        instruction::update_authority,
-        state::{OptionalNonZeroPubkey, TokenMetadata},
+        error::TokenMetadataError, instruction::update_authority, state::TokenMetadata,
     },
     std::{convert::TryInto, sync::Arc},
 };
@@ -94,7 +93,7 @@ async fn success_update() {
     let new_update_authority = Keypair::new();
     let new_update_authority_pubkey =
         OptionalNonZeroPubkey::try_from(Some(new_update_authority.pubkey())).unwrap();
-    token_metadata.update_authority = new_update_authority_pubkey.clone();
+    token_metadata.update_authority = new_update_authority_pubkey;
 
     token_context
         .token

@@ -11,10 +11,9 @@ use {
         signer::keypair::Keypair,
         transaction::{Transaction, TransactionError},
     },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
     spl_token_metadata_interface::{
-        error::TokenMetadataError,
-        instruction::update_authority,
-        state::{OptionalNonZeroPubkey, TokenMetadata},
+        error::TokenMetadataError, instruction::update_authority, state::TokenMetadata,
     },
     spl_type_length_value::state::{TlvState, TlvStateBorrowed},
 };
@@ -68,14 +67,14 @@ async fn success_update() {
     let new_update_authority = Keypair::new();
     let new_update_authority_pubkey =
         OptionalNonZeroPubkey::try_from(Some(new_update_authority.pubkey())).unwrap();
-    token_metadata.update_authority = new_update_authority_pubkey.clone();
+    token_metadata.update_authority = new_update_authority_pubkey;
 
     let transaction = Transaction::new_signed_with_payer(
         &[update_authority(
             &program_id,
             &metadata_pubkey,
             &authority.pubkey(),
-            new_update_authority_pubkey.clone(),
+            new_update_authority_pubkey,
         )],
         Some(&payer.pubkey()),
         &[&payer, &authority],

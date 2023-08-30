@@ -9,7 +9,6 @@ use {
             DecryptableBalance,
         },
         instruction::{encode_instruction, TokenInstruction},
-        pod::OptionalNonZeroPubkey,
         proof::ProofLocation,
         solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
     },
@@ -21,6 +20,7 @@ use {
         pubkey::Pubkey,
         sysvar,
     },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
     std::convert::TryFrom,
 };
 

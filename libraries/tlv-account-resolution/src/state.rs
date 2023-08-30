@@ -9,10 +9,8 @@ use {
         pubkey::Pubkey,
     },
     spl_discriminator::SplDiscriminate,
-    spl_type_length_value::{
-        pod::{PodSlice, PodSliceMut},
-        state::{TlvState, TlvStateBorrowed, TlvStateMut},
-    },
+    spl_pod::slice::{PodSlice, PodSliceMut},
+    spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
 };
 
 /// De-escalate an account meta if necessary

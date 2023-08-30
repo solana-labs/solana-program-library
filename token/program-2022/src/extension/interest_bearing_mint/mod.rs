@@ -1,10 +1,11 @@
 use {
-    crate::{
-        extension::{Extension, ExtensionType},
-        pod::{OptionalNonZeroPubkey, PodI16, PodI64},
-    },
+    crate::extension::{Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
     solana_program::program_error::ProgramError,
+    spl_pod::{
+        optional_keys::OptionalNonZeroPubkey,
+        primitives::{PodI16, PodI64},
+    },
     std::convert::TryInto,
 };
 

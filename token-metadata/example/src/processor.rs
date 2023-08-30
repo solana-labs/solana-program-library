@@ -11,13 +11,14 @@ use {
         program_option::COption,
         pubkey::Pubkey,
     },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
     spl_token_2022::{extension::StateWithExtensions, state::Mint},
     spl_token_metadata_interface::{
         error::TokenMetadataError,
         instruction::{
             Emit, Initialize, RemoveKey, TokenMetadataInstruction, UpdateAuthority, UpdateField,
         },
-        state::{OptionalNonZeroPubkey, TokenMetadata},
+        state::TokenMetadata,
     },
     spl_type_length_value::state::{
         realloc_and_pack_first_variable_len, TlvState, TlvStateBorrowed, TlvStateMut,
@@ -31,7 +32,7 @@ fn check_update_authority(
     if !update_authority_info.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    let update_authority = Option::<Pubkey>::from(expected_update_authority.clone())
+    let update_authority = Option::<Pubkey>::from(*expected_update_authority)
         .ok_or(TokenMetadataError::ImmutableMetadata)?;
     if update_authority != *update_authority_info.key {
         return Err(TokenMetadataError::IncorrectUpdateAuthority.into());

@@ -2,7 +2,6 @@ use {
     crate::{
         check_program_account,
         instruction::{encode_instruction, TokenInstruction},
-        pod::OptionalNonZeroPubkey,
     },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -11,6 +10,7 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
     },
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
     std::convert::TryInto,
 };
 

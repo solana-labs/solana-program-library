@@ -1,11 +1,11 @@
 use {
     crate::{
         extension::{BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsMut},
-        pod::PodBool,
         state::Account,
     },
     bytemuck::{Pod, Zeroable},
     solana_program::instruction::{get_stack_height, TRANSACTION_LEVEL_STACK_HEIGHT},
+    spl_pod::primitives::PodBool,
 };
 
 /// CPI Guard extension instructions

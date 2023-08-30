@@ -1,7 +1,7 @@
 //! Instruction types
 
 use {
-    crate::state::{Field, OptionalNonZeroPubkey},
+    crate::state::Field,
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -9,6 +9,7 @@ use {
         pubkey::Pubkey,
     },
     spl_discriminator::{discriminator::ArrayDiscriminator, SplDiscriminate},
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
 #[cfg(feature = "serde-traits")]

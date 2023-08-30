@@ -1,9 +1,7 @@
 use {
-    crate::{
-        extension::{Extension, ExtensionType},
-        pod::*,
-    },
+    crate::extension::{Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
 /// Close authority extension data for mints.

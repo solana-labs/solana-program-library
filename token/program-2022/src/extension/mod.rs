@@ -20,7 +20,6 @@ use {
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{TransferHook, TransferHookAccount},
         },
-        pod::*,
         state::{Account, Mint, Multisig},
     },
     bytemuck::{Pod, Zeroable},
@@ -29,6 +28,10 @@ use {
         account_info::AccountInfo,
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack},
+    },
+    spl_pod::{
+        bytemuck::{pod_from_bytes, pod_from_bytes_mut, pod_get_packed_len},
+        primitives::PodU16,
     },
     spl_type_length_value::variable_len_pack::VariableLenPack,
     std::{
@@ -1241,6 +1244,9 @@ mod test {
             clock::Epoch,
             entrypoint::MAX_PERMITTED_DATA_INCREASE,
             pubkey::Pubkey,
+        },
+        spl_pod::{
+            bytemuck::pod_bytes_of, optional_keys::OptionalNonZeroPubkey, primitives::PodU64,
         },
         transfer_fee::test::test_transfer_fee_config,
     };

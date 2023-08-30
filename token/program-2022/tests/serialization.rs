@@ -3,10 +3,10 @@
 use {
     solana_program::program_option::COption,
     solana_sdk::pubkey::Pubkey,
+    spl_pod::optional_keys::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
     spl_token_2022::{
         extension::confidential_transfer,
         instruction,
-        pod::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
         solana_zk_token_sdk::zk_token_elgamal::pod::{AeCiphertext, ElGamalPubkey},
     },
     std::str::FromStr,

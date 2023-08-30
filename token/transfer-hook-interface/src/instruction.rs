@@ -8,8 +8,8 @@ use {
         system_program,
     },
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
+    spl_pod::{bytemuck::pod_slice_to_bytes, slice::PodSlice},
     spl_tlv_account_resolution::account::ExtraAccountMeta,
-    spl_type_length_value::pod::{pod_slice_to_bytes, PodSlice},
     std::convert::TryInto,
 };
 
@@ -190,10 +190,7 @@ pub fn initialize_extra_account_meta_list(
 
 #[cfg(test)]
 mod test {
-    use {
-        super::*, crate::NAMESPACE, solana_program::hash,
-        spl_type_length_value::pod::pod_from_bytes,
-    };
+    use {super::*, crate::NAMESPACE, solana_program::hash, spl_pod::bytemuck::pod_from_bytes};
 
     #[test]
     fn validate_packing() {

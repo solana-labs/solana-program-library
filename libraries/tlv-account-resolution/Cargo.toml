@@ -16,6 +16,7 @@ solana-program = "1.16.3"
 spl-discriminator = { version = "0.1", path = "../discriminator" }
 spl-program-error = { version = "0.2.0", path = "../program-error" }
 spl-type-length-value = { version = "0.2", path = "../type-length-value" }
+spl-pod = { version = "0.1.0", path = "../pod" }
 
 [dev-dependencies]
 solana-program-test = "1.16.3"

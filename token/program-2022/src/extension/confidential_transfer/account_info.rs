@@ -6,7 +6,6 @@ use {
             split_proof_generation::transfer_split_proof_data, ConfidentialTransferAccount,
             DecryptableBalance, EncryptedBalance, PENDING_BALANCE_LO_BIT_LENGTH,
         },
-        pod::*,
     },
     bytemuck::{Pod, Zeroable},
     solana_zk_token_sdk::{
@@ -22,6 +21,7 @@ use {
             CiphertextCommitmentEqualityProofData,
         },
     },
+    spl_pod::primitives::PodU64,
 };
 
 /// Confidential transfer extension information needed to construct an `EmptyAccount` instruction.
