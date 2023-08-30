@@ -58,9 +58,10 @@ use spl_token_client::{
     client::{ProgramRpcClientSendTransaction, RpcClientResponse},
     token::{ExtensionInitializationParams, Token},
 };
-use spl_token_metadata_interface::state::Field;
+use spl_token_metadata_interface::state::{Field, TokenMetadata};
 use std::{collections::HashMap, fmt, fmt::Display, process::exit, str::FromStr, sync::Arc};
-use strum_macros::{EnumString, IntoStaticStr};
+use strum::IntoEnumIterator;
+use strum_macros::{EnumIter, EnumString, IntoStaticStr};
 
 mod config;
 use config::{Config, MintInfo};
@@ -203,6 +204,52 @@ where
                 .map_err(|e| format!("{e}"))
         }
         _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, EnumIter, EnumString, IntoStaticStr)]
+#[strum(serialize_all = "kebab-case")]
+pub enum CliAuthorityType {
+    Mint,
+    Freeze,
+    Owner,
+    Close,
+    CloseMint,
+    TransferFeeConfig,
+    WithheldWithdraw,
+    InterestRate,
+    PermanentDelegate,
+    ConfidentialTransferMint,
+    TransferHookProgramId,
+    ConfidentialTransferFee,
+    MetadataPointer,
+    Metadata,
+}
+impl TryFrom<CliAuthorityType> for AuthorityType {
+    type Error = Error;
+    fn try_from(authority_type: CliAuthorityType) -> Result<Self, Error> {
+        match authority_type {
+            CliAuthorityType::Mint => Ok(AuthorityType::MintTokens),
+            CliAuthorityType::Freeze => Ok(AuthorityType::FreezeAccount),
+            CliAuthorityType::Owner => Ok(AuthorityType::AccountOwner),
+            CliAuthorityType::Close => Ok(AuthorityType::CloseAccount),
+            CliAuthorityType::CloseMint => Ok(AuthorityType::CloseMint),
+            CliAuthorityType::TransferFeeConfig => Ok(AuthorityType::TransferFeeConfig),
+            CliAuthorityType::WithheldWithdraw => Ok(AuthorityType::WithheldWithdraw),
+            CliAuthorityType::InterestRate => Ok(AuthorityType::InterestRate),
+            CliAuthorityType::PermanentDelegate => Ok(AuthorityType::PermanentDelegate),
+            CliAuthorityType::ConfidentialTransferMint => {
+                Ok(AuthorityType::ConfidentialTransferMint)
+            }
+            CliAuthorityType::TransferHookProgramId => Ok(AuthorityType::TransferHookProgramId),
+            CliAuthorityType::ConfidentialTransferFee => {
+                Ok(AuthorityType::ConfidentialTransferFeeConfig)
+            }
+            CliAuthorityType::MetadataPointer => Ok(AuthorityType::MetadataPointer),
+            CliAuthorityType::Metadata => {
+                Err("Metadata authority does not map to a token authority type".into())
+            }
+        }
     }
 }
 
@@ -996,29 +1043,13 @@ async fn command_create_multisig(
 async fn command_authorize(
     config: &Config<'_>,
     account: Pubkey,
-    authority_type: AuthorityType,
+    authority_type: CliAuthorityType,
     authority: Pubkey,
     new_authority: Option<Pubkey>,
     force_authorize: bool,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    let auth_str = match authority_type {
-        AuthorityType::MintTokens => "mint authority",
-        AuthorityType::FreezeAccount => "freeze authority",
-        AuthorityType::AccountOwner => "owner",
-        AuthorityType::CloseAccount => "close account authority",
-        AuthorityType::CloseMint => "close mint authority",
-        AuthorityType::TransferFeeConfig => "transfer fee authority",
-        AuthorityType::WithheldWithdraw => "withdraw withheld authority",
-        AuthorityType::InterestRate => "interest rate authority",
-        AuthorityType::PermanentDelegate => "permanent delegate",
-        AuthorityType::ConfidentialTransferMint => "confidential transfer mint authority",
-        AuthorityType::TransferHookProgramId => "transfer hook program id authority",
-        AuthorityType::ConfidentialTransferFeeConfig => {
-            "confidential transfer fee config authority"
-        }
-        AuthorityType::MetadataPointer => "metadata pointer authority",
-    };
+    let auth_str: &'static str = (&authority_type).into();
 
     let (mint_pubkey, previous_authority) = if !config.sign_only {
         let target_account = config.get_account_checked(&account).await?;
@@ -1027,17 +1058,15 @@ async fn command_authorize(
             StateWithExtensionsOwned::<Mint>::unpack(target_account.data.clone())
         {
             let previous_authority = match authority_type {
-                AuthorityType::AccountOwner | AuthorityType::CloseAccount => Err(format!(
+                CliAuthorityType::Owner | CliAuthorityType::Close => Err(format!(
                     "Authority type `{}` not supported for SPL Token mints",
                     auth_str
                 )),
-                AuthorityType::MintTokens => Ok(mint.base.mint_authority),
-                AuthorityType::FreezeAccount => Ok(mint.base.freeze_authority),
-                AuthorityType::CloseMint => {
+                CliAuthorityType::Mint => Ok(Option::<Pubkey>::from(mint.base.mint_authority)),
+                CliAuthorityType::Freeze => Ok(Option::<Pubkey>::from(mint.base.freeze_authority)),
+                CliAuthorityType::CloseMint => {
                     if let Ok(mint_close_authority) = mint.get_extension::<MintCloseAuthority>() {
-                        Ok(COption::<Pubkey>::from(
-                            mint_close_authority.close_authority,
-                        ))
+                        Ok(Option::<Pubkey>::from(mint_close_authority.close_authority))
                     } else {
                         Err(format!(
                             "Mint `{}` does not support close authority",
@@ -1045,35 +1074,35 @@ async fn command_authorize(
                         ))
                     }
                 }
-                AuthorityType::TransferFeeConfig => {
+                CliAuthorityType::TransferFeeConfig => {
                     if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
-                        Ok(COption::<Pubkey>::from(
+                        Ok(Option::<Pubkey>::from(
                             transfer_fee_config.transfer_fee_config_authority,
                         ))
                     } else {
                         Err(format!("Mint `{}` does not support transfer fees", account))
                     }
                 }
-                AuthorityType::WithheldWithdraw => {
+                CliAuthorityType::WithheldWithdraw => {
                     if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
-                        Ok(COption::<Pubkey>::from(
+                        Ok(Option::<Pubkey>::from(
                             transfer_fee_config.withdraw_withheld_authority,
                         ))
                     } else {
                         Err(format!("Mint `{}` does not support transfer fees", account))
                     }
                 }
-                AuthorityType::InterestRate => {
+                CliAuthorityType::InterestRate => {
                     if let Ok(interest_rate_config) = mint.get_extension::<InterestBearingConfig>()
                     {
-                        Ok(COption::<Pubkey>::from(interest_rate_config.rate_authority))
+                        Ok(Option::<Pubkey>::from(interest_rate_config.rate_authority))
                     } else {
                         Err(format!("Mint `{}` is not interest-bearing", account))
                     }
                 }
-                AuthorityType::PermanentDelegate => {
+                CliAuthorityType::PermanentDelegate => {
                     if let Ok(permanent_delegate) = mint.get_extension::<PermanentDelegate>() {
-                        Ok(COption::<Pubkey>::from(permanent_delegate.delegate))
+                        Ok(Option::<Pubkey>::from(permanent_delegate.delegate))
                     } else {
                         Err(format!(
                             "Mint `{}` does not support permanent delegate",
@@ -1081,13 +1110,11 @@ async fn command_authorize(
                         ))
                     }
                 }
-                AuthorityType::ConfidentialTransferMint => {
+                CliAuthorityType::ConfidentialTransferMint => {
                     if let Ok(confidential_transfer_mint) =
                         mint.get_extension::<ConfidentialTransferMint>()
                     {
-                        Ok(COption::<Pubkey>::from(
-                            confidential_transfer_mint.authority,
-                        ))
+                        Ok(Option::<Pubkey>::from(confidential_transfer_mint.authority))
                     } else {
                         Err(format!(
                             "Mint `{}` does not support confidential transfers",
@@ -1095,9 +1122,9 @@ async fn command_authorize(
                         ))
                     }
                 }
-                AuthorityType::TransferHookProgramId => {
+                CliAuthorityType::TransferHookProgramId => {
                     if let Ok(extension) = mint.get_extension::<TransferHook>() {
-                        Ok(COption::<Pubkey>::from(extension.authority))
+                        Ok(Option::<Pubkey>::from(extension.authority))
                     } else {
                         Err(format!(
                             "Mint `{}` does not support a transfer hook program",
@@ -1105,11 +1132,11 @@ async fn command_authorize(
                         ))
                     }
                 }
-                AuthorityType::ConfidentialTransferFeeConfig => {
+                CliAuthorityType::ConfidentialTransferFee => {
                     if let Ok(confidential_transfer_fee_config) =
                         mint.get_extension::<ConfidentialTransferFeeConfig>()
                     {
-                        Ok(COption::<Pubkey>::from(
+                        Ok(Option::<Pubkey>::from(
                             confidential_transfer_fee_config.authority,
                         ))
                     } else {
@@ -1119,14 +1146,21 @@ async fn command_authorize(
                         ))
                     }
                 }
-                AuthorityType::MetadataPointer => {
+                CliAuthorityType::MetadataPointer => {
                     if let Ok(extension) = mint.get_extension::<MetadataPointer>() {
-                        Ok(COption::<Pubkey>::from(extension.authority))
+                        Ok(Option::<Pubkey>::from(extension.authority))
                     } else {
                         Err(format!(
                             "Mint `{}` does not support a metadata pointer",
                             account
                         ))
+                    }
+                }
+                CliAuthorityType::Metadata => {
+                    if let Ok(extension) = mint.get_variable_len_extension::<TokenMetadata>() {
+                        Ok(Option::<Pubkey>::from(extension.update_authority))
+                    } else {
+                        Err(format!("Mint `{account}` does not support metadata"))
                     }
                 }
             }?;
@@ -1156,27 +1190,27 @@ async fn command_authorize(
             };
 
             let previous_authority = match authority_type {
-                AuthorityType::MintTokens
-                | AuthorityType::FreezeAccount
-                | AuthorityType::CloseMint
-                | AuthorityType::TransferFeeConfig
-                | AuthorityType::WithheldWithdraw
-                | AuthorityType::InterestRate
-                | AuthorityType::PermanentDelegate
-                | AuthorityType::ConfidentialTransferMint
-                | AuthorityType::TransferHookProgramId
-                | AuthorityType::ConfidentialTransferFeeConfig
-                | AuthorityType::MetadataPointer => Err(format!(
-                    "Authority type `{}` not supported for SPL Token accounts",
-                    auth_str
+                CliAuthorityType::Mint
+                | CliAuthorityType::Freeze
+                | CliAuthorityType::CloseMint
+                | CliAuthorityType::TransferFeeConfig
+                | CliAuthorityType::WithheldWithdraw
+                | CliAuthorityType::InterestRate
+                | CliAuthorityType::PermanentDelegate
+                | CliAuthorityType::ConfidentialTransferMint
+                | CliAuthorityType::TransferHookProgramId
+                | CliAuthorityType::ConfidentialTransferFee
+                | CliAuthorityType::MetadataPointer
+                | CliAuthorityType::Metadata => Err(format!(
+                    "Authority type `{auth_str}` not supported for SPL Token accounts",
                 )),
-                AuthorityType::AccountOwner => {
+                CliAuthorityType::Owner => {
                     check_associated_token_account()?;
-                    Ok(COption::Some(token_account.base.owner))
+                    Ok(Some(token_account.base.owner))
                 }
-                AuthorityType::CloseAccount => {
+                CliAuthorityType::Close => {
                     check_associated_token_account()?;
-                    Ok(COption::Some(
+                    Ok(Some(
                         token_account
                             .base
                             .close_authority
@@ -1193,7 +1227,7 @@ async fn command_authorize(
         (mint_pubkey, previous_authority)
     } else {
         // default is safe here because authorize doesnt use it
-        (Pubkey::default(), COption::None)
+        (Pubkey::default(), None)
     };
 
     let token = token_client_from_config(config, &mint_pubkey, None)?;
@@ -1218,15 +1252,21 @@ async fn command_authorize(
         ),
     );
 
-    let res = token
-        .set_authority(
-            &account,
-            &authority,
-            new_authority.as_ref(),
-            authority_type,
-            &bulk_signers,
-        )
-        .await?;
+    let res = if let CliAuthorityType::Metadata = authority_type {
+        token
+            .token_metadata_update_authority(&authority, new_authority, &bulk_signers)
+            .await?
+    } else {
+        token
+            .set_authority(
+                &account,
+                &authority,
+                new_authority.as_ref(),
+                authority_type.try_into()?,
+                &bulk_signers,
+            )
+            .await?
+    };
 
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
@@ -3220,12 +3260,7 @@ fn app<'a, 'b>(
                     Arg::with_name("authority_type")
                         .value_name("AUTHORITY_TYPE")
                         .takes_value(true)
-                        .possible_values(&[
-                            "mint", "freeze", "owner", "close",
-                            "close-mint", "transfer-fee-config", "withheld-withdraw",
-                            "interest-rate", "permanent-delegate", "confidential-transfer-mint",
-                            "transfer-hook-program-id", "confidential-transfer-fee", "metadata-pointer",
-                        ])
+                        .possible_values(&CliAuthorityType::iter().map(Into::into).collect::<Vec<_>>())
                         .index(2)
                         .required(true)
                         .help("The new authority type. \
@@ -4452,22 +4487,7 @@ async fn process_command<'a>(
                 .unwrap()
                 .unwrap();
             let authority_type = arg_matches.value_of("authority_type").unwrap();
-            let authority_type = match authority_type {
-                "mint" => AuthorityType::MintTokens,
-                "freeze" => AuthorityType::FreezeAccount,
-                "owner" => AuthorityType::AccountOwner,
-                "close" => AuthorityType::CloseAccount,
-                "close-mint" => AuthorityType::CloseMint,
-                "transfer-fee-config" => AuthorityType::TransferFeeConfig,
-                "withheld-withdraw" => AuthorityType::WithheldWithdraw,
-                "interest-rate" => AuthorityType::InterestRate,
-                "permanent-delegate" => AuthorityType::PermanentDelegate,
-                "confidential-transfer-mint" => AuthorityType::ConfidentialTransferMint,
-                "transfer-hook-program-id" => AuthorityType::TransferHookProgramId,
-                "confidential-transfer-fee" => AuthorityType::ConfidentialTransferFeeConfig,
-                "metadata-pointer" => AuthorityType::MetadataPointer,
-                _ => unreachable!(),
-            };
+            let authority_type = CliAuthorityType::from_str(authority_type)?;
 
             let (authority_signer, authority) =
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
@@ -5109,7 +5129,6 @@ mod tests {
         spl_token_client::client::{
             ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
         },
-        spl_token_metadata_interface::{borsh::BorshDeserialize, state::TokenMetadata},
         std::path::PathBuf,
         tempfile::NamedTempFile,
     };
@@ -7083,7 +7102,7 @@ mod tests {
         let result = command_authorize(
             &config,
             account,
-            AuthorityType::AccountOwner,
+            CliAuthorityType::Owner,
             payer.pubkey(),
             Some(new_owner),
             true,
@@ -7115,7 +7134,7 @@ mod tests {
         let result = command_authorize(
             &config,
             aux_pubkey,
-            AuthorityType::AccountOwner,
+            CliAuthorityType::Owner,
             payer.pubkey(),
             Some(new_owner),
             true,
@@ -7148,7 +7167,7 @@ mod tests {
         let result = command_authorize(
             &config,
             Pubkey::from_str(&accounts[0].pubkey).unwrap(),
-            AuthorityType::AccountOwner,
+            CliAuthorityType::Owner,
             payer.pubkey(),
             Some(new_owner),
             true,
@@ -8309,8 +8328,9 @@ mod tests {
 
         let account = config.rpc_client.get_account(&mint).await.unwrap();
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
-        let metadata_bytes = mint_state.get_extension_bytes::<TokenMetadata>().unwrap();
-        let fetched_metadata = TokenMetadata::try_from_slice(metadata_bytes).unwrap();
+        let fetched_metadata = mint_state
+            .get_variable_len_extension::<TokenMetadata>()
+            .unwrap();
         assert_eq!(fetched_metadata.name, name);
         assert_eq!(fetched_metadata.symbol, symbol);
         assert_eq!(fetched_metadata.uri, uri);
@@ -8338,8 +8358,9 @@ mod tests {
         .unwrap();
         let account = config.rpc_client.get_account(&mint).await.unwrap();
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
-        let metadata_bytes = mint_state.get_extension_bytes::<TokenMetadata>().unwrap();
-        let fetched_metadata = TokenMetadata::try_from_slice(metadata_bytes).unwrap();
+        let fetched_metadata = mint_state
+            .get_variable_len_extension::<TokenMetadata>()
+            .unwrap();
         assert_eq!(fetched_metadata.name, new_value);
 
         // add new field
@@ -8360,8 +8381,9 @@ mod tests {
         .unwrap();
         let account = config.rpc_client.get_account(&mint).await.unwrap();
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
-        let metadata_bytes = mint_state.get_extension_bytes::<TokenMetadata>().unwrap();
-        let fetched_metadata = TokenMetadata::try_from_slice(metadata_bytes).unwrap();
+        let fetched_metadata = mint_state
+            .get_variable_len_extension::<TokenMetadata>()
+            .unwrap();
         assert_eq!(
             fetched_metadata.additional_metadata,
             [(field.to_string(), value.to_string())]
@@ -8383,8 +8405,9 @@ mod tests {
         .unwrap();
         let account = config.rpc_client.get_account(&mint).await.unwrap();
         let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
-        let metadata_bytes = mint_state.get_extension_bytes::<TokenMetadata>().unwrap();
-        let fetched_metadata = TokenMetadata::try_from_slice(metadata_bytes).unwrap();
+        let fetched_metadata = mint_state
+            .get_variable_len_extension::<TokenMetadata>()
+            .unwrap();
         assert_eq!(fetched_metadata.additional_metadata, []);
 
         // fail to remove name
@@ -8401,5 +8424,30 @@ mod tests {
         )
         .await
         .unwrap_err();
+
+        // update authority
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Authorize.into(),
+                &mint.to_string(),
+                "metadata",
+                &mint.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&mint).await.unwrap();
+        let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let fetched_metadata = mint_state
+            .get_variable_len_extension::<TokenMetadata>()
+            .unwrap();
+        assert_eq!(
+            fetched_metadata.update_authority,
+            Some(mint).try_into().unwrap()
+        );
     }
 }
