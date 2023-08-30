@@ -20,7 +20,7 @@ fn test_macros_compile() {
 }
 
 /// Example library error with namespace
-#[spl_program_error(hash_error_codes = true)]
+#[spl_program_error(hash_error_code_start = 1_275_525_928)]
 enum ExampleLibraryError {
     /// This is a very informative error
     #[error("This is a very informative error")]
@@ -45,20 +45,23 @@ fn test_library_error_codes() {
         bytes.copy_from_slice(&preimage.to_bytes()[13..17]);
         u32::from_le_bytes(bytes)
     }
+
+    let first_error_as_u32 = ExampleLibraryError::VeryInformativeError as u32;
+
     assert_eq!(
         ExampleLibraryError::VeryInformativeError as u32,
         get_error_code_check("spl_program_error:ExampleLibraryError:VeryInformativeError"),
     );
     assert_eq!(
         ExampleLibraryError::SuperImportantError as u32,
-        get_error_code_check("spl_program_error:ExampleLibraryError:SuperImportantError"),
+        first_error_as_u32 + 1,
     );
     assert_eq!(
         ExampleLibraryError::MegaSeriousError as u32,
-        get_error_code_check("spl_program_error:ExampleLibraryError:MegaSeriousError"),
+        first_error_as_u32 + 2,
     );
     assert_eq!(
         ExampleLibraryError::YouAreToast as u32,
-        get_error_code_check("spl_program_error:ExampleLibraryError:YouAreToast"),
+        first_error_as_u32 + 3,
     );
 }

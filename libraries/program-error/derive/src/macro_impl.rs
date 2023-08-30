@@ -120,8 +120,8 @@ pub fn spl_program_error(
     args: &SplProgramErrorArgs,
     item_enum: &mut ItemEnum,
 ) -> proc_macro2::TokenStream {
-    if args.hash_error_codes {
-        build_discriminants(item_enum);
+    if let Some(error_code_start) = args.hash_error_code_start {
+        set_first_discriminant(item_enum, error_code_start);
     }
 
     let ident = &item_enum.ident;
@@ -144,27 +144,34 @@ pub fn spl_program_error(
     }
 }
 
-/// This function adds discriminants to the enum variants based on the
+/// This function adds a discriminant to the first enum variant based on the
 /// hash of the `SPL_ERROR_HASH_NAMESPACE` constant, the enum name and variant
 /// name.
+/// It will then check to make sure the provided `hash_error_code_start` is
+/// equal to the hash-produced `u32`.
 ///
 /// See https://docs.rs/syn/latest/syn/struct.Variant.html
-fn build_discriminants(item_enum: &mut ItemEnum) {
+fn set_first_discriminant(item_enum: &mut ItemEnum, error_code_start: u32) {
     let enum_ident = &item_enum.ident;
-    for variant in item_enum.variants.iter_mut() {
-        let variant_ident = &variant.ident;
-        let discriminant = u32_from_hash(enum_ident, variant_ident);
+    let first_variant = &mut item_enum.variants[0];
+    let discriminant = u32_from_hash(enum_ident, &first_variant.ident);
+    if discriminant == error_code_start {
         let eq = Token![=](Span::call_site());
         let expr = Expr::Lit(ExprLit {
             attrs: Vec::new(),
             lit: Lit::Int(LitInt::new(&discriminant.to_string(), Span::call_site())),
         });
-        variant.discriminant = Some((eq, expr));
+        first_variant.discriminant = Some((eq, expr));
+    } else {
+        panic!(
+            "Error code start value from hash is {}. Update your macro attribute.",
+            discriminant
+        );
     }
 }
 
 /// Hashes the `SPL_ERROR_HASH_NAMESPACE` constant, the enum name and variant
-/// name and returns four middle bytes (8 through 12) as a u32.
+/// name and returns four middle bytes (13 through 16) as a u32.
 fn u32_from_hash(enum_ident: &Ident, variant_ident: &Ident) -> u32 {
     let hash_input = format!(
         "{}:{}:{}",

@@ -64,12 +64,17 @@ pub fn print_program_error(input: TokenStream) -> TokenStream {
 /// - `solana_program::decode_error::DecodeError`
 /// - `solana_program::program_error::PrintProgramError`
 ///
-/// Optionally, you can add `hash_error_codes: bool` argument to create unique
-/// `u32` error codes from the names of the enum variants.
+/// Optionally, you can add `hash_error_code_start: u32` argument to create
+/// a unique `u32` _starting_ error codes from the names of the enum variants.
+/// Notes:
+/// - The _error_ variant will start at this value, and the rest will be
+/// incremented by one
+/// - The value provided is only for code readability, the actual error code
+/// will be a hash of the input string and is checked against your input
 ///
-/// Syntax: `#[spl_program_error(hash_error_codes = true)]`
+/// Syntax: `#[spl_program_error(hash_error_code_start = 1275525928)]`
 /// Hash Input: `spl_program_error:<enum name>:<variant name>`
-/// Value: `u32::from_le_bytes(<hash of input>[8..12])`
+/// Value: `u32::from_le_bytes(<hash of input>[13..17])`
 #[proc_macro_attribute]
 pub fn spl_program_error(attr: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as SplProgramErrorArgs);

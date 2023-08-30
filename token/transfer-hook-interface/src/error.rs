@@ -3,7 +3,7 @@
 use spl_program_error::*;
 
 /// Errors that may be returned by the interface.
-#[spl_program_error(hash_error_codes = true)]
+#[spl_program_error(hash_error_code_start = 3_496_640_673)]
 pub enum TransferHookError {
     /// Incorrect account provided
     #[error("Incorrect account provided")]
