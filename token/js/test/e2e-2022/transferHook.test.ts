@@ -207,6 +207,7 @@ describe('transferHook', () => {
         const transferCheckedWithExtraAccountMeta = await addExtraAccountsToInstruction(
             connection,
             transferCheckedInstruction,
+            mint,
             undefined,
             TEST_PROGRAM_ID
         );
