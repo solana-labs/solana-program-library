@@ -36,7 +36,7 @@ pub fn pod_from_bytes_mut<T: Pod>(bytes: &mut [u8]) -> Result<&mut T, ProgramErr
     bytemuck::try_from_bytes_mut(bytes).map_err(|_| ProgramError::InvalidArgument)
 }
 
-/// Convert a slice into a mutable `Pod` slice (zero copy)
+/// Convert a slice into a `Pod` slice (zero copy)
 pub fn pod_slice_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&[T], ProgramError> {
     bytemuck::try_cast_slice(bytes).map_err(|_| ProgramError::InvalidArgument)
 }
