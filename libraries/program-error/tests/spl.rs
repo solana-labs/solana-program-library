@@ -20,7 +20,7 @@ fn test_macros_compile() {
 }
 
 /// Example library error with namespace
-#[spl_program_error(hash_error_code_start = 1_275_525_928)]
+#[spl_program_error(hash_error_code_start = 3_234_444_947)]
 enum ExampleLibraryError {
     /// This is a very informative error
     #[error("This is a very informative error")]
@@ -40,10 +40,17 @@ enum ExampleLibraryError {
 #[test]
 fn test_library_error_codes() {
     fn get_error_code_check(hash_input: &str) -> u32 {
-        let preimage = solana_program::hash::hashv(&[hash_input.as_bytes()]);
-        let mut bytes = [0u8; 4];
-        bytes.copy_from_slice(&preimage.to_bytes()[13..17]);
-        u32::from_le_bytes(bytes)
+        let mut nonce: u32 = 0;
+        loop {
+            let hash = solana_program::hash::hashv(&[hash_input.as_bytes(), &nonce.to_le_bytes()]);
+            let mut bytes = [0u8; 4];
+            bytes.copy_from_slice(&hash.to_bytes()[13..17]);
+            let error_code = u32::from_le_bytes(bytes);
+            if error_code >= 10_000 {
+                return error_code;
+            }
+            nonce += 1;
+        }
     }
 
     let first_error_as_u32 = ExampleLibraryError::VeryInformativeError as u32;

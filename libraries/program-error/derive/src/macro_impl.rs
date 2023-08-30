@@ -11,6 +11,7 @@ use {
 };
 
 const SPL_ERROR_HASH_NAMESPACE: &str = "spl_program_error";
+const SPL_ERROR_HASH_MIN_VALUE: u32 = 10_0000;
 
 /// The type of macro being called, thus directing which tokens to generate
 #[allow(clippy::enum_variant_names)]
@@ -177,10 +178,19 @@ fn u32_from_hash(enum_ident: &Ident, variant_ident: &Ident) -> u32 {
         "{}:{}:{}",
         SPL_ERROR_HASH_NAMESPACE, enum_ident, variant_ident
     );
-    let hash = solana_program::hash::hash(hash_input.as_bytes());
-    u32::from_le_bytes(
-        hash.to_bytes()[13..17]
-            .try_into()
-            .expect("Unable to convert hash to u32"),
-    )
+
+    // We don't want our error code to start at any number below `10_0000`!
+    let mut nonce: u32 = 0;
+    loop {
+        let hash = solana_program::hash::hashv(&[hash_input.as_bytes(), &nonce.to_le_bytes()]);
+        let d = u32::from_le_bytes(
+            hash.to_bytes()[13..17]
+                .try_into()
+                .expect("Unable to convert hash to u32"),
+        );
+        if d >= SPL_ERROR_HASH_MIN_VALUE {
+            return d;
+        }
+        nonce += 1;
+    }
 }

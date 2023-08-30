@@ -3,7 +3,7 @@
 use spl_program_error::*;
 
 /// Errors that may be returned by the interface.
-#[spl_program_error(hash_error_code_start = 1_907_429_725)]
+#[spl_program_error(hash_error_code_start = 933_549_204)]
 pub enum TokenMetadataError {
     /// Incorrect account provided
     #[error("Incorrect account provided")]
