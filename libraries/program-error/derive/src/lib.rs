@@ -14,39 +14,67 @@
 extern crate proc_macro;
 
 mod macro_impl;
+mod parser;
 
-use macro_impl::MacroType;
-use proc_macro::TokenStream;
-use syn::{parse_macro_input, ItemEnum};
+use {
+    crate::parser::SplProgramErrorArgs,
+    macro_impl::MacroType,
+    proc_macro::TokenStream,
+    syn::{parse_macro_input, ItemEnum},
+};
 
-/// Derive macro to add `Into<solana_program::program_error::ProgramError>` traits
+/// Derive macro to add `Into<solana_program::program_error::ProgramError>`
+/// trait
 #[proc_macro_derive(IntoProgramError)]
 pub fn into_program_error(input: TokenStream) -> TokenStream {
-    MacroType::IntoProgramError
-        .generate_tokens(parse_macro_input!(input as ItemEnum))
+    let ItemEnum { ident, .. } = parse_macro_input!(input as ItemEnum);
+    MacroType::IntoProgramError { ident }
+        .generate_tokens()
         .into()
 }
 
 /// Derive macro to add `solana_program::decode_error::DecodeError` trait
 #[proc_macro_derive(DecodeError)]
 pub fn decode_error(input: TokenStream) -> TokenStream {
-    MacroType::DecodeError
-        .generate_tokens(parse_macro_input!(input as ItemEnum))
-        .into()
+    let ItemEnum { ident, .. } = parse_macro_input!(input as ItemEnum);
+    MacroType::DecodeError { ident }.generate_tokens().into()
 }
 
 /// Derive macro to add `solana_program::program_error::PrintProgramError` trait
 #[proc_macro_derive(PrintProgramError)]
 pub fn print_program_error(input: TokenStream) -> TokenStream {
-    MacroType::PrintProgramError
-        .generate_tokens(parse_macro_input!(input as ItemEnum))
+    let ItemEnum {
+        ident, variants, ..
+    } = parse_macro_input!(input as ItemEnum);
+    MacroType::PrintProgramError { ident, variants }
+        .generate_tokens()
         .into()
 }
 
 /// Proc macro attribute to turn your enum into a Solana Program Error
+///
+/// Adds:
+/// - `Clone`
+/// - `Debug`
+/// - `Eq`
+/// - `PartialEq`
+/// - `thiserror::Error`
+/// - `num_derive::FromPrimitive`
+/// - `Into<solana_program::program_error::ProgramError>`
+/// - `solana_program::decode_error::DecodeError`
+/// - `solana_program::program_error::PrintProgramError`
+///
+/// Optionally, you can add `hash_error_codes: bool` argument to create unique
+/// `u32` error codes from the names of the enum variants.
+///
+/// Syntax: `#[spl_program_error(hash_error_codes = true)]`
+/// Hash Input: `spl_program_error:<enum name>:<variant name>`
+/// Value: `u32::from_le_bytes(<hash of input>[8..12])`
 #[proc_macro_attribute]
-pub fn spl_program_error(_: TokenStream, input: TokenStream) -> TokenStream {
-    MacroType::SplProgramError
-        .generate_tokens(parse_macro_input!(input as ItemEnum))
+pub fn spl_program_error(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as SplProgramErrorArgs);
+    let item_enum = parse_macro_input!(input as ItemEnum);
+    MacroType::SplProgramError { args, item_enum }
+        .generate_tokens()
         .into()
 }

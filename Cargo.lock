@@ -6799,6 +6799,7 @@ version = "0.2.0"
 dependencies = [
  "proc-macro2 1.0.63",
  "quote 1.0.29",
+ "solana-program",
  "syn 2.0.28",
 ]
 
@@ -7268,15 +7269,12 @@ version = "0.1.0"
 dependencies = [
  "arrayref",
  "bytemuck",
- "num-derive 0.4.0",
- "num-traits",
- "num_enum 0.7.0",
  "solana-program",
  "spl-discriminator",
  "spl-pod",
+ "spl-program-error",
  "spl-tlv-account-resolution",
  "spl-type-length-value",
- "thiserror",
 ]
 
 [[package]]

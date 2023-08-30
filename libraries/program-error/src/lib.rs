@@ -8,10 +8,10 @@ extern crate self as spl_program_error;
 
 // Make these available downstream for the macro to work without
 // additional imports
-pub use num_derive;
-pub use num_traits;
-pub use solana_program;
-pub use spl_program_error_derive::{
-    spl_program_error, DecodeError, IntoProgramError, PrintProgramError,
+pub use {
+    num_derive, num_traits, solana_program,
+    spl_program_error_derive::{
+        spl_program_error, DecodeError, IntoProgramError, PrintProgramError,
+    },
+    thiserror,
 };
-pub use thiserror;

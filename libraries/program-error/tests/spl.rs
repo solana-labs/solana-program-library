@@ -1,5 +1,5 @@
 //! Tests `#[spl_program_error]`
-//!
+
 use spl_program_error::*;
 
 /// Example error
@@ -17,4 +17,48 @@ pub enum ExampleError {
 #[test]
 fn test_macros_compile() {
     let _ = ExampleError::MintHasNoMintAuthority;
+}
+
+/// Example library error with namespace
+#[spl_program_error(hash_error_codes = true)]
+enum ExampleLibraryError {
+    /// This is a very informative error
+    #[error("This is a very informative error")]
+    VeryInformativeError,
+    /// This is a super important error
+    #[error("This is a super important error")]
+    SuperImportantError,
+    /// This is a mega serious error
+    #[error("This is a mega serious error")]
+    MegaSeriousError,
+    /// You are toast
+    #[error("You are toast")]
+    YouAreToast,
+}
+
+/// Tests hashing of error codes into unique `u32` values
+#[test]
+fn test_library_error_codes() {
+    fn get_error_code_check(hash_input: &str) -> u32 {
+        let preimage = solana_program::hash::hashv(&[hash_input.as_bytes()]);
+        let mut bytes = [0u8; 4];
+        bytes.copy_from_slice(&preimage.to_bytes()[13..17]);
+        u32::from_le_bytes(bytes)
+    }
+    assert_eq!(
+        ExampleLibraryError::VeryInformativeError as u32,
+        get_error_code_check("spl_program_error:ExampleLibraryError:VeryInformativeError"),
+    );
+    assert_eq!(
+        ExampleLibraryError::SuperImportantError as u32,
+        get_error_code_check("spl_program_error:ExampleLibraryError:SuperImportantError"),
+    );
+    assert_eq!(
+        ExampleLibraryError::MegaSeriousError as u32,
+        get_error_code_check("spl_program_error:ExampleLibraryError:MegaSeriousError"),
+    );
+    assert_eq!(
+        ExampleLibraryError::YouAreToast as u32,
+        get_error_code_check("spl_program_error:ExampleLibraryError:YouAreToast"),
+    );
 }

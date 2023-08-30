@@ -3,7 +3,7 @@
 use spl_program_error::*;
 
 /// Errors that may be returned by the Account Resolution library.
-#[spl_program_error]
+#[spl_program_error(hash_error_codes = true)]
 pub enum AccountResolutionError {
     /// Incorrect account provided
     #[error("Incorrect account provided")]
