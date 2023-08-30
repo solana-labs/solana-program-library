@@ -3,7 +3,7 @@ import type { Mint } from '../../state/mint.js';
 import { ExtensionType, getExtensionData } from '../extensionType.js';
 import type { AccountInfo, AccountMeta } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
-import { bool, publicKey } from '@solana/buffer-layout-utils';
+import { bool, publicKey, u64 } from '@solana/buffer-layout-utils';
 import type { Account } from '../../state/account.js';
 import { TokenTransferHookAccountNotFound } from '../../errors.js';
 import { unpackSeeds } from './seeds.js';
@@ -85,9 +85,23 @@ export const ExtraAccountMetaListLayout = struct<ExtraAccountMetaList>([
     seq<ExtraAccountMeta>(ExtraAccountMetaLayout, greedy(ExtraAccountMetaLayout.span), 'extraAccounts'),
 ]);
 
+/** Buffer layout for de/serializing a list of ExtraAccountMetaAccountData prefixed by a u32 length */
+export interface ExtraAccountMetaAccountData {
+    instructionDiscriminator: bigint;
+    arrayDiscriminator: number;
+    extraAccountsList: ExtraAccountMetaList;
+}
+
+/** Buffer layout for de/serializing an ExtraAccountMetaAccountData */
+export const ExtraAccountMetaAccountDataLayout = struct<ExtraAccountMetaAccountData>([
+    u64('instructionDiscriminator'),
+    u32('arrayDiscriminator'),
+    ExtraAccountMetaListLayout.replicate('extraAccountsList'),
+]);
+
 /** Unpack an extra account metas account and parse the data into a list of ExtraAccountMetas */
 export function getExtraAccountMetas(account: AccountInfo<Buffer>): ExtraAccountMeta[] {
-    return ExtraAccountMetaListLayout.decode(account.data).extraAccounts;
+    return ExtraAccountMetaAccountDataLayout.decode(account.data).extraAccountsList.extraAccounts;
 }
 
 /** Take an ExtraAccountMeta and construct that into an acutal AccountMeta */
