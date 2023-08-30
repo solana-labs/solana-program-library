@@ -170,8 +170,14 @@ mod tests {
         // 1 `TestStruct` + length = 37 bytes
         // we pass 38 to trigger BufferTooLarge
         let pod_slice_bytes = [1; 38];
-        let err = PodSlice::<TestStruct>::unpack(&pod_slice_bytes).err().unwrap();
-        assert_eq!(err, PodSliceError::BufferTooLarge.into(), "Expected an `PodSliceError::BufferTooLarge` error");
+        let err = PodSlice::<TestStruct>::unpack(&pod_slice_bytes)
+            .err()
+            .unwrap();
+        assert_eq!(
+            err,
+            PodSliceError::BufferTooLarge.into(),
+            "Expected an `PodSliceError::BufferTooLarge` error"
+        );
     }
 
     #[test]
@@ -179,8 +185,14 @@ mod tests {
         // 1 `TestStruct` + length = 37 bytes
         // we pass 36 to trigger BufferTooSmall
         let pod_slice_bytes = [1; 36];
-        let err = PodSlice::<TestStruct>::unpack(&pod_slice_bytes).err().unwrap();
-        assert_eq!(err, PodSliceError::BufferTooSmall.into(), "Expected an `PodSliceError::BufferTooSmall` error");
+        let err = PodSlice::<TestStruct>::unpack(&pod_slice_bytes)
+            .err()
+            .unwrap();
+        assert_eq!(
+            err,
+            PodSliceError::BufferTooSmall.into(),
+            "Expected an `PodSliceError::BufferTooSmall` error"
+        );
     }
 
     #[test]
