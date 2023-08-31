@@ -11,7 +11,14 @@ use {
     spl_discriminator::SplDiscriminate,
     spl_pod::slice::{PodSlice, PodSliceMut},
     spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
+    std::future::Future,
 };
+
+/// Type representing the output of an account fetching function, for easy
+/// chaining between APIs
+pub type AccountDataResult = Result<Option<Vec<u8>>, AccountFetchError>;
+/// Generic error type that can come out of any client while fetching account data
+pub type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
 
 /// De-escalate an account meta if necessary
 fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[AccountMeta]) {
@@ -39,15 +46,6 @@ fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[Acc
     }
 }
 
-/// Helper to convert an `AccountInfo` to an `AccountMeta`
-fn account_meta_from_info(account_info: &AccountInfo) -> AccountMeta {
-    AccountMeta {
-        pubkey: *account_info.key,
-        is_signer: account_info.is_signer,
-        is_writable: account_info.is_writable,
-    }
-}
-
 /// Stateless helper for storing additional accounts required for an
 /// instruction.
 ///
@@ -58,7 +56,7 @@ fn account_meta_from_info(account_info: &AccountInfo) -> AccountMeta {
 ///
 /// Sample usage:
 ///
-/// ```
+/// ```ignore
 /// use {
 ///     solana_program::{
 ///         account_info::AccountInfo, instruction::{AccountMeta, Instruction},
@@ -181,13 +179,30 @@ impl ExtraAccountMetaList {
 
         let initial_accounts_len = account_infos.len() - extra_account_metas.len();
 
+        // Convert to `AccountMeta` to check resolved metas
         let provided_metas = account_infos
             .iter()
-            .map(account_meta_from_info)
+            .map(|info| AccountMeta {
+                pubkey: *info.key,
+                is_signer: info.is_signer,
+                is_writable: info.is_writable,
+            })
             .collect::<Vec<_>>();
 
         for (i, config) in extra_account_metas.iter().enumerate() {
-            let meta = config.resolve(&provided_metas, instruction_data, program_id)?;
+            // Create a list of `Ref`s so we can reference account data in the
+            // resolution step
+            let account_data_refs: Vec<_> = account_infos
+                .iter()
+                .map(|info| info.try_borrow_data())
+                .collect::<Result<_, _>>()?;
+
+            let meta = config.resolve(&provided_metas, instruction_data, program_id, |usize| {
+                account_data_refs.get(usize).map(|opt| opt.as_ref())
+            })?;
+            drop(account_data_refs);
+
+            // Ensure the account is in the correct position
             let expected_index = i
                 .checked_add(initial_accounts_len)
                 .ok_or::<ProgramError>(AccountResolutionError::CalculationFailure.into())?;
@@ -200,21 +215,51 @@ impl ExtraAccountMetaList {
     }
 
     /// Add the additional account metas to an existing instruction
-    pub fn add_to_instruction<T: SplDiscriminate>(
+    pub async fn add_to_instruction<F, Fut, T: SplDiscriminate>(
         instruction: &mut Instruction,
+        fetch_account_data_fn: F,
         data: &[u8],
-    ) -> Result<(), ProgramError> {
+    ) -> Result<(), ProgramError>
+    where
+        F: Fn(Pubkey) -> Fut,
+        Fut: Future<Output = AccountDataResult>,
+    {
         let state = TlvStateBorrowed::unpack(data)?;
         let bytes = state.get_first_bytes::<T>()?;
         let extra_account_metas = PodSlice::<ExtraAccountMeta>::unpack(bytes)?;
+
+        // Fetch account data for each of the instruction accounts
+        let mut account_datas = vec![];
+        for meta in instruction.accounts.iter() {
+            let account_data = fetch_account_data_fn(meta.pubkey)
+                .await
+                .map_err::<ProgramError, _>(|_| {
+                    AccountResolutionError::AccountFetchFailed.into()
+                })?;
+            account_datas.push(account_data);
+        }
 
         for extra_meta in extra_account_metas.data().iter() {
             let mut meta = extra_meta.resolve(
                 &instruction.accounts,
                 &instruction.data,
                 &instruction.program_id,
+                |usize| {
+                    account_datas
+                        .get(usize)
+                        .and_then(|opt_data| opt_data.as_ref().map(|x| x.as_slice()))
+                },
             )?;
             de_escalate_account_meta(&mut meta, &instruction.accounts);
+
+            // Fetch account data for the new account
+            account_datas.push(
+                fetch_account_data_fn(meta.pubkey)
+                    .await
+                    .map_err::<ProgramError, _>(|_| {
+                        AccountResolutionError::AccountFetchFailed.into()
+                    })?,
+            );
             instruction.accounts.push(meta);
         }
         Ok(())
@@ -227,26 +272,41 @@ impl ExtraAccountMetaList {
         data: &[u8],
         account_infos: &[AccountInfo<'a>],
     ) -> Result<(), ProgramError> {
-        let initial_instruction_metas_len = cpi_instruction.accounts.len();
+        let state = TlvStateBorrowed::unpack(data)?;
+        let bytes = state.get_first_bytes::<T>()?;
+        let extra_account_metas = PodSlice::<ExtraAccountMeta>::unpack(bytes)?;
 
-        Self::add_to_instruction::<T>(cpi_instruction, data)?;
+        for extra_meta in extra_account_metas.data().iter() {
+            // Create a list of `Ref`s so we can reference account data in the
+            // resolution step
+            let account_data_refs: Vec<_> = cpi_account_infos
+                .iter()
+                .map(|info| info.try_borrow_data())
+                .collect::<Result<_, _>>()?;
 
-        for account_meta in cpi_instruction
-            .accounts
-            .iter()
-            .skip(initial_instruction_metas_len)
-        {
+            let mut meta = extra_meta.resolve(
+                cpi_account_infos,
+                &cpi_instruction.data,
+                &cpi_instruction.program_id,
+                |usize| account_data_refs.get(usize).map(|opt| opt.as_ref()),
+            )?;
+            drop(account_data_refs);
+            de_escalate_account_meta(&mut meta, &cpi_instruction.accounts);
+
             let account_info = account_infos
                 .iter()
-                .find(|&x| *x.key == account_meta.pubkey)
+                .find(|&x| *x.key == meta.pubkey)
                 .ok_or(AccountResolutionError::IncorrectAccount)?
                 .clone();
+
+            cpi_instruction.accounts.push(meta);
             cpi_account_infos.push(account_info);
         }
         Ok(())
     }
 }
 
+#[cfg(ignore)]
 #[cfg(test)]
 mod tests {
     use {

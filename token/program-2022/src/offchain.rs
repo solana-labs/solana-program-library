@@ -34,20 +34,25 @@ use {
 /// ```
 pub async fn resolve_extra_transfer_account_metas<F, Fut>(
     instruction: &mut Instruction,
-    get_account_data_fn: F,
+    fetch_account_data_fn: F,
     mint_address: &Pubkey,
 ) -> Result<(), AccountFetchError>
 where
     F: Fn(Pubkey) -> Fut,
     Fut: Future<Output = AccountDataResult>,
 {
-    let mint_data = get_account_data_fn(*mint_address)
+    let mint_data = fetch_account_data_fn(*mint_address)
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
     let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
     if let Some(program_id) = transfer_hook::get_program_id(&mint) {
-        resolve_extra_account_metas(instruction, get_account_data_fn, mint_address, &program_id)
-            .await?;
+        resolve_extra_account_metas(
+            instruction,
+            fetch_account_data_fn,
+            mint_address,
+            &program_id,
+        )
+        .await?;
     }
     Ok(())
 }
