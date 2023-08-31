@@ -11,7 +11,7 @@ exclude = ["js/**"]
 [features]
 no-entrypoint = []
 test-sbf = []
-serde-traits = ["serde", "serde_with", "base64", "spl-pod/serde-traits"]
+serde-traits = ["dep:serde", "dep:serde_with", "dep:base64", "spl-pod/serde-traits"]
 # Remove these features once the underlying syscalls are released on all networks
 default = ["zk-ops"]
 zk-ops = []
