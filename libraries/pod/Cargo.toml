@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-serde-traits = ["serde", "base64"]
+serde-traits = ["dep:serde", "dep:base64"]
 borsh = ["dep:borsh"]
 
 [dependencies]

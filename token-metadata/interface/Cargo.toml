@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-serde-traits = ["serde", "spl-pod/serde-traits"]
+serde-traits = ["dep:serde", "spl-pod/serde-traits"]
 
 [dependencies]
 borsh = "0.10"
