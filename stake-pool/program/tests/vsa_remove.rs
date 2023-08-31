@@ -544,15 +544,16 @@ async fn success_with_deactivating_transient_stake() {
         validators: vec![state::ValidatorStakeInfo {
             status: state::StakeStatus::DeactivatingAll,
             vote_account_address: validator_stake.vote.pubkey(),
-            last_update_epoch: 0,
-            active_stake_lamports: stake_rent + current_minimum_delegation,
-            transient_stake_lamports: TEST_STAKE_AMOUNT + stake_rent,
-            transient_seed_suffix: validator_stake.transient_stake_seed,
-            unused: 0,
+            last_update_epoch: 0.into(),
+            active_stake_lamports: (stake_rent + current_minimum_delegation).into(),
+            transient_stake_lamports: (TEST_STAKE_AMOUNT + stake_rent).into(),
+            transient_seed_suffix: validator_stake.transient_stake_seed.into(),
+            unused: 0.into(),
             validator_seed_suffix: validator_stake
                 .validator_stake_seed
                 .map(|s| s.get())
-                .unwrap_or(0),
+                .unwrap_or(0)
+                .into(),
         }],
     };
     assert_eq!(validator_list, expected_list);

@@ -250,15 +250,15 @@ async fn success() {
         .find(&source_validator_stake.vote.pubkey())
         .unwrap();
     assert_eq!(
-        source_item.active_stake_lamports,
+        u64::from(source_item.active_stake_lamports),
         validator_stake_account.lamports
     );
     assert_eq!(
-        source_item.transient_stake_lamports,
+        u64::from(source_item.transient_stake_lamports),
         source_transient_stake_account.lamports
     );
     assert_eq!(
-        source_item.transient_seed_suffix,
+        u64::from(source_item.transient_seed_suffix),
         source_validator_stake.transient_stake_seed
     );
 
@@ -266,11 +266,11 @@ async fn success() {
         .find(&destination_validator_stake.vote.pubkey())
         .unwrap();
     assert_eq!(
-        destination_item.transient_stake_lamports,
+        u64::from(destination_item.transient_stake_lamports),
         destination_transient_stake_account.lamports
     );
     assert_eq!(
-        destination_item.transient_seed_suffix,
+        u64::from(destination_item.transient_seed_suffix),
         destination_validator_stake.transient_stake_seed
     );
 
@@ -313,17 +313,17 @@ async fn success() {
         .find(&source_validator_stake.vote.pubkey())
         .unwrap();
     assert_eq!(
-        source_item.active_stake_lamports,
+        u64::from(source_item.active_stake_lamports),
         validator_stake_account.lamports
     );
-    assert_eq!(source_item.transient_stake_lamports, 0);
+    assert_eq!(u64::from(source_item.transient_stake_lamports), 0);
 
     let destination_item = validator_list
         .find(&destination_validator_stake.vote.pubkey())
         .unwrap();
-    assert_eq!(destination_item.transient_stake_lamports, 0);
+    assert_eq!(u64::from(destination_item.transient_stake_lamports), 0);
     assert_eq!(
-        destination_item.active_stake_lamports,
+        u64::from(destination_item.active_stake_lamports),
         pre_destination_validator_stake_account.lamports + redelegate_lamports - stake_rent * 2
     );
     let post_destination_validator_stake_account = get_account(
@@ -386,7 +386,7 @@ async fn success_with_increasing_stake() {
         .find(&destination_validator_stake.vote.pubkey())
         .unwrap();
     assert_eq!(
-        destination_item.transient_stake_lamports,
+        u64::from(destination_item.transient_stake_lamports),
         current_minimum_delegation + stake_rent
     );
     let pre_transient_stake_account = get_account(
@@ -499,11 +499,11 @@ async fn success_with_increasing_stake() {
         .find(&destination_validator_stake.vote.pubkey())
         .unwrap();
     assert_eq!(
-        destination_item.transient_stake_lamports,
+        u64::from(destination_item.transient_stake_lamports),
         destination_transient_stake_account.lamports
     );
     assert_eq!(
-        destination_item.transient_seed_suffix,
+        u64::from(destination_item.transient_seed_suffix),
         destination_validator_stake.transient_stake_seed
     );
 
@@ -539,11 +539,11 @@ async fn success_with_increasing_stake() {
     let destination_item = validator_list
         .find(&destination_validator_stake.vote.pubkey())
         .unwrap();
-    assert_eq!(destination_item.transient_stake_lamports, 0);
+    assert_eq!(u64::from(destination_item.transient_stake_lamports), 0);
     // redelegate is smart enough to activate *everything*, so there's only one rent-exemption
     // worth of inactive stake!
     assert_eq!(
-        destination_item.active_stake_lamports,
+        u64::from(destination_item.active_stake_lamports),
         pre_validator_stake_account.lamports + redelegate_lamports + current_minimum_delegation
             - stake_rent
     );

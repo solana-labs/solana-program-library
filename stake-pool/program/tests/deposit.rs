@@ -249,7 +249,10 @@ async fn success(token_program_id: Pubkey) {
         validator_stake_account.lamports,
         post_validator_stake_item.stake_lamports().unwrap()
     );
-    assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
+    assert_eq!(
+        u64::from(post_validator_stake_item.transient_stake_lamports),
+        0
+    );
 
     // Check reserve
     let post_reserve_lamports = get_account(
@@ -443,7 +446,10 @@ async fn success_with_extra_stake_lamports() {
         validator_stake_account.lamports,
         post_validator_stake_item.stake_lamports().unwrap()
     );
-    assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
+    assert_eq!(
+        u64::from(post_validator_stake_item.transient_stake_lamports),
+        0
+    );
 
     // Check reserve
     let post_reserve_lamports = get_account(

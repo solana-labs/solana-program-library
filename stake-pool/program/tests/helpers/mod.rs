@@ -2405,12 +2405,12 @@ pub fn add_validator_stake_account(
     validator_list.validators.push(state::ValidatorStakeInfo {
         status,
         vote_account_address: *voter_pubkey,
-        active_stake_lamports,
-        transient_stake_lamports: 0,
-        last_update_epoch: FIRST_NORMAL_EPOCH,
-        transient_seed_suffix: 0,
-        unused: 0,
-        validator_seed_suffix: raw_suffix,
+        active_stake_lamports: active_stake_lamports.into(),
+        transient_stake_lamports: 0.into(),
+        last_update_epoch: FIRST_NORMAL_EPOCH.into(),
+        transient_seed_suffix: 0.into(),
+        unused: 0.into(),
+        validator_seed_suffix: raw_suffix.into(),
     });
 
     stake_pool.total_lamports += active_stake_lamports;
