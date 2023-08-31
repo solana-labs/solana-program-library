@@ -440,7 +440,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
             .await;
         let entry = validator_list.find(&validator_stake.vote.pubkey()).unwrap();
         assert_eq!(
-            entry.transient_stake_lamports,
+            u64::from(entry.transient_stake_lamports),
             total_increase + stake_rent * 2
         );
     } else {

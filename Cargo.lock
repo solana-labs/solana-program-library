@@ -6898,6 +6898,7 @@ dependencies = [
  "solana-sdk",
  "solana-vote-program",
  "spl-math",
+ "spl-pod",
  "spl-token 4.0.0",
  "spl-token-2022 0.7.0",
  "test-case",

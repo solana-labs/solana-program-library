@@ -4,6 +4,9 @@ use bytemuck::{Pod, Zeroable};
 #[cfg(feature = "serde-traits")]
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "borsh")]
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+
 /// The standard `bool` is not a `Pod`, define a replacement that is
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(from = "bool", into = "bool"))]
@@ -72,6 +75,10 @@ pub struct PodI16([u8; 2]);
 impl_int_conversion!(PodI16, i16);
 
 /// `u32` type that can be used in `Pod`s
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
+)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(from = "u32", into = "u32"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -80,6 +87,10 @@ pub struct PodU32([u8; 4]);
 impl_int_conversion!(PodU32, u32);
 
 /// `u64` type that can be used in Pods
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
+)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(from = "u64", into = "u64"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]

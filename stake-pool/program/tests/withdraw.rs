@@ -223,7 +223,7 @@ async fn _success(token_program_id: Pubkey, test_type: SuccessTestType) {
         validator_stake_item_before.stake_lamports().unwrap() - tokens_burnt
     );
     assert_eq!(
-        validator_stake_item.active_stake_lamports,
+        u64::from(validator_stake_item.active_stake_lamports),
         validator_stake_item.stake_lamports().unwrap(),
     );
 
@@ -246,7 +246,7 @@ async fn _success(token_program_id: Pubkey, test_type: SuccessTestType) {
     .await;
     assert_eq!(
         validator_stake_account.lamports,
-        validator_stake_item.active_stake_lamports
+        u64::from(validator_stake_item.active_stake_lamports)
     );
 
     // Check user recipient stake account balance

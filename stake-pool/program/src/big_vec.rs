@@ -246,7 +246,7 @@ mod tests {
 
     #[derive(Debug, PartialEq)]
     struct TestStruct {
-        value: u64,
+        value: [u8; 8],
     }
 
     impl Sealed for TestStruct {}
@@ -259,18 +259,19 @@ mod tests {
         }
         fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
             Ok(TestStruct {
-                value: u64::try_from_slice(src).unwrap(),
+                value: src.try_into().unwrap(),
             })
         }
     }
 
     impl TestStruct {
-        fn new(value: u64) -> Self {
+        fn new(value: u8) -> Self {
+            let value = [value, 0, 0, 0, 0, 0, 0, 0];
             Self { value }
         }
     }
 
-    fn from_slice<'data>(data: &'data mut [u8], vec: &[u64]) -> BigVec<'data> {
+    fn from_slice<'data>(data: &'data mut [u8], vec: &[u8]) -> BigVec<'data> {
         let mut big_vec = BigVec { data };
         for element in vec {
             big_vec.push(TestStruct::new(*element)).unwrap();
@@ -278,10 +279,10 @@ mod tests {
         big_vec
     }
 
-    fn check_big_vec_eq(big_vec: &BigVec, slice: &[u64]) {
+    fn check_big_vec_eq(big_vec: &BigVec, slice: &[u8]) {
         assert!(big_vec
             .iter::<TestStruct>()
-            .map(|x| &x.value)
+            .map(|x| &x.value[0])
             .zip(slice.iter())
             .all(|(a, b)| a == b));
     }
@@ -314,11 +315,11 @@ mod tests {
         check_big_vec_eq(&v, &[2, 4]);
     }
 
-    fn find_predicate(a: &[u8], b: u64) -> bool {
+    fn find_predicate(a: &[u8], b: u8) -> bool {
         if a.len() != 8 {
             false
         } else {
-            u64::try_from_slice(&a[0..8]).unwrap() == b
+            a[0] == b
         }
     }
 
@@ -344,7 +345,7 @@ mod tests {
         let mut test_struct = v
             .find_mut::<TestStruct, _>(|x| find_predicate(x, 1))
             .unwrap();
-        test_struct.value = 0;
+        test_struct.value = [0; 8];
         check_big_vec_eq(&v, &[0, 2, 3, 4]);
         assert_eq!(v.find_mut::<TestStruct, _>(|x| find_predicate(x, 5)), None);
     }
@@ -354,8 +355,8 @@ mod tests {
         let mut data = [0u8; 4 + 8 * 4];
         let mut v = from_slice(&mut data, &[1, 2, 3, 4]);
         let mut slice = v.deserialize_mut_slice::<TestStruct>(1, 2).unwrap();
-        slice[0].value = 10;
-        slice[1].value = 11;
+        slice[0].value[0] = 10;
+        slice[1].value[0] = 11;
         check_big_vec_eq(&v, &[1, 10, 11, 4]);
         assert_eq!(
             v.deserialize_mut_slice::<TestStruct>(1, 4).unwrap_err(),
