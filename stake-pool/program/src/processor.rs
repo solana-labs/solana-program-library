@@ -39,6 +39,7 @@ use {
     spl_token_2022::{
         check_spl_token_program_account,
         extension::{BaseStateWithExtensions, StateWithExtensions},
+        native_mint,
         state::Mint,
     },
     std::num::NonZeroU32,
@@ -826,6 +827,10 @@ impl Processor {
 
             if pool_mint.base.supply != 0 {
                 return Err(StakePoolError::NonZeroPoolTokenSupply.into());
+            }
+
+            if pool_mint.base.decimals != native_mint::DECIMALS {
+                return Err(StakePoolError::IncorrectMintDecimals.into());
             }
 
             if !pool_mint
@@ -4006,6 +4011,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::UnsupportedMintExtension => msg!("Error: mint has an unsupported extension"),
             StakePoolError::UnsupportedFeeAccountExtension => msg!("Error: fee account has an unsupported extension"),
             StakePoolError::ExceededSlippage => msg!("Error: instruction exceeds desired slippage limit"),
+            StakePoolError::IncorrectMintDecimals => msg!("Error: Provided mint does not have 9 decimals to match SOL"),
         }
     }
 }

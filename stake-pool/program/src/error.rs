@@ -144,6 +144,11 @@ pub enum StakePoolError {
     /// Instruction exceeds desired slippage limit
     #[error("Instruction exceeds desired slippage limit")]
     ExceededSlippage,
+
+    // 40.
+    /// Provided mint does not have 9 decimals to match SOL
+    #[error("IncorrectMintDecimals")]
+    IncorrectMintDecimals,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
