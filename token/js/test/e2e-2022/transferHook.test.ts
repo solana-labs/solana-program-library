@@ -19,7 +19,7 @@ import {
     getAssociatedTokenAddressSync,
     ASSOCIATED_TOKEN_PROGRAM_ID,
     createMintToCheckedInstruction,
-    getExtraAccountMetaAccount,
+    getExtraAccountMetaAddress,
     ExtraAccountMetaListLayout,
     ExtraAccountMetaLayout,
     transferCheckedWithTransferHook,
@@ -48,7 +48,7 @@ describe('transferHook', () => {
     beforeEach(async () => {
         const mintKeypair = Keypair.generate();
         mint = mintKeypair.publicKey;
-        pdaExtraAccountMeta = getExtraAccountMetaAccount(TRANSFER_HOOK_TEST_PROGRAM_ID, mint);
+        pdaExtraAccountMeta = getExtraAccountMetaAddress(mint, TRANSFER_HOOK_TEST_PROGRAM_ID);
         payerAta = getAssociatedTokenAddressSync(
             mint,
             payer.publicKey,
