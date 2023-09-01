@@ -3,7 +3,7 @@ import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
 import type { AccountMeta, Connection, Signer } from '@solana/web3.js';
-import { LAMPORTS_PER_SOL, PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
 import {
     createInitializeMintInstruction,
@@ -19,12 +19,9 @@ import {
     getAssociatedTokenAddressSync,
     ASSOCIATED_TOKEN_PROGRAM_ID,
     createMintToCheckedInstruction,
-    createAssociatedTokenAccountIdempotentInstruction,
-    createTransferCheckedInstruction,
     getExtraAccountMetaAccount,
     ExtraAccountMetaListLayout,
     ExtraAccountMetaLayout,
-    addExtraAccountsToInstruction,
     transferCheckedWithTransferHook,
     createAssociatedTokenAccountIdempotent,
 } from '../../src';
