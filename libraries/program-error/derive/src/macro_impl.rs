@@ -11,7 +11,7 @@ use {
 };
 
 const SPL_ERROR_HASH_NAMESPACE: &str = "spl_program_error";
-const SPL_ERROR_HASH_MIN_VALUE: u32 = 7_0000;
+const SPL_ERROR_HASH_MIN_VALUE: u32 = 7_000;
 
 /// The type of macro being called, thus directing which tokens to generate
 #[allow(clippy::enum_variant_names)]
