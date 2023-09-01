@@ -1076,7 +1076,7 @@ impl Processor {
         )?;
 
         validator_list.push(ValidatorStakeInfo {
-            status: StakeStatus::Active,
+            status: StakeStatus::Active.into(),
             vote_account_address: *validator_vote_info.key,
             active_stake_lamports: required_lamports.into(),
             transient_stake_lamports: 0.into(),
@@ -1161,7 +1161,7 @@ impl Processor {
             NonZeroU32::new(validator_stake_info.validator_seed_suffix.into()),
         )?;
 
-        if validator_stake_info.status != StakeStatus::Active {
+        if validator_stake_info.status != StakeStatus::Active.into() {
             msg!("Validator is already marked for removal");
             return Err(StakePoolError::ValidatorNotFound.into());
         }
@@ -1211,7 +1211,7 @@ impl Processor {
             stake_pool.stake_withdraw_bump_seed,
         )?;
 
-        validator_stake_info.status = new_status;
+        validator_stake_info.status = new_status.into();
 
         if stake_pool.preferred_deposit_validator_vote_address == Some(vote_account_address) {
             stake_pool.preferred_deposit_validator_vote_address = None;
@@ -1593,7 +1593,7 @@ impl Processor {
             &stake_pool.lockup,
         )?;
 
-        if validator_stake_info.status != StakeStatus::Active {
+        if validator_stake_info.status != StakeStatus::Active.into() {
             msg!("Validator is marked for removal and no longer allows increases");
             return Err(StakePoolError::ValidatorNotFound.into());
         }
@@ -1899,7 +1899,7 @@ impl Processor {
             if u64::from(validator_stake_info.transient_stake_lamports) > 0 {
                 return Err(StakePoolError::TransientAccountInUse.into());
             }
-            if validator_stake_info.status != StakeStatus::Active {
+            if validator_stake_info.status != StakeStatus::Active.into() {
                 msg!("Validator is marked for removal and no longer allows redelegation");
                 return Err(StakePoolError::ValidatorNotFound.into());
             }
@@ -2002,7 +2002,7 @@ impl Processor {
                 validator_stake_info.validator_seed_suffix.into(),
                 &stake_pool.lockup,
             )?;
-            if validator_stake_info.status != StakeStatus::Active {
+            if validator_stake_info.status != StakeStatus::Active.into() {
                 msg!(
                     "Destination validator is marked for removal and no longer allows redelegation"
                 );
@@ -2128,7 +2128,7 @@ impl Processor {
             });
             match maybe_validator_stake_info {
                 Some(vsi) => {
-                    if vsi.status != StakeStatus::Active {
+                    if vsi.status != StakeStatus::Active.into() {
                         msg!("Validator for {:?} about to be removed, cannot set as preferred deposit account", validator_type);
                         return Err(StakePoolError::InvalidPreferredValidator.into());
                     }
@@ -2281,7 +2281,7 @@ impl Processor {
                                 clock_info.clone(),
                                 stake_history_info.clone(),
                             )?;
-                            validator_stake_record.status.remove_transient_stake();
+                            validator_stake_record.status.remove_transient_stake()?;
                         }
                     }
                 }
@@ -2305,7 +2305,7 @@ impl Processor {
                                 clock_info.clone(),
                                 stake_history_info.clone(),
                             )?;
-                            validator_stake_record.status.remove_transient_stake();
+                            validator_stake_record.status.remove_transient_stake()?;
                         } else if stake.delegation.activation_epoch < clock.epoch {
                             if let Some(stake::state::StakeState::Stake(_, validator_stake)) =
                                 validator_stake_state
@@ -2373,7 +2373,7 @@ impl Processor {
                             additional_lamports,
                         )?;
                     }
-                    match validator_stake_record.status {
+                    match validator_stake_record.status.try_into()? {
                         StakeStatus::Active => {
                             active_stake_lamports = validator_stake_info.lamports();
                         }
@@ -2398,7 +2398,7 @@ impl Processor {
                                     clock_info.clone(),
                                     stake_history_info.clone(),
                                 )?;
-                                validator_stake_record.status.remove_validator_stake();
+                                validator_stake_record.status.remove_validator_stake()?;
                             }
                         }
                         StakeStatus::DeactivatingTransient | StakeStatus::ReadyForRemoval => {
@@ -2427,7 +2427,7 @@ impl Processor {
                         clock_info.clone(),
                         stake_history_info.clone(),
                     )?;
-                    validator_stake_record.status.remove_validator_stake();
+                    validator_stake_record.status.remove_validator_stake()?;
                 }
                 Some(stake::state::StakeState::Initialized(_))
                 | Some(stake::state::StakeState::Uninitialized)
@@ -2692,7 +2692,7 @@ impl Processor {
             NonZeroU32::new(validator_stake_info.validator_seed_suffix.into()),
         )?;
 
-        if validator_stake_info.status != StakeStatus::Active {
+        if validator_stake_info.status != StakeStatus::Active.into() {
             msg!("Validator is marked for removal and no longer accepting deposits");
             return Err(StakePoolError::ValidatorNotFound.into());
         }
@@ -3202,7 +3202,7 @@ impl Processor {
                 StakeWithdrawSource::ValidatorRemoval
             };
 
-            if validator_stake_info.status != StakeStatus::Active {
+            if validator_stake_info.status != StakeStatus::Active.into() {
                 msg!("Validator is marked for removal and no longer allowing withdrawals");
                 return Err(StakePoolError::ValidatorNotFound.into());
             }
@@ -3317,7 +3317,7 @@ impl Processor {
                     }
                     // since we already checked that there's no transient stake,
                     // we can immediately set this as ready for removal
-                    validator_list_item.status = StakeStatus::ReadyForRemoval;
+                    validator_list_item.status = StakeStatus::ReadyForRemoval.into();
                 }
             }
         }

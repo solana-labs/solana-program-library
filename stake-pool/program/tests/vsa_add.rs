@@ -110,7 +110,7 @@ async fn success() {
                 max_validators: stake_pool_accounts.max_validators,
             },
             validators: vec![state::ValidatorStakeInfo {
-                status: state::StakeStatus::Active,
+                status: state::StakeStatus::Active.into(),
                 vote_account_address: validator_stake.vote.pubkey(),
                 last_update_epoch: 0.into(),
                 active_stake_lamports: (stake_rent + current_minimum_delegation).into(),
