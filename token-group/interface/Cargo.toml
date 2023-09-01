@@ -12,10 +12,10 @@ borsh = "0.10"
 solana-program = "1.16.3"
 spl-discriminator = { version = "0.1.0" , path = "../../libraries/discriminator" }
 spl-pod = { version = "0.1.0" , path = "../../libraries/pod", features = ["borsh"] }
-spl-program-error = { version = "0.2.0" , path = "../../libraries/program-error" }
-spl-tlv-account-resolution = { version = "0.2.0", path = "../../libraries/tlv-account-resolution" }
-spl-transfer-hook-interface = { version = "0.1.0", path = "../../token/transfer-hook-interface" }
-spl-type-length-value = { version = "0.2.0", path = "../../libraries/type-length-value", features = ["derive"] }
+spl-program-error = { version = "0.3.0" , path = "../../libraries/program-error" }
+spl-tlv-account-resolution = { version = "0.3.0", path = "../../libraries/tlv-account-resolution" }
+spl-transfer-hook-interface = { version = "0.2.0", path = "../../token/transfer-hook-interface" }
+spl-type-length-value = { version = "0.3.0", path = "../../libraries/type-length-value", features = ["derive"] }
 
 [lib]
 crate-type = ["cdylib", "lib"]
