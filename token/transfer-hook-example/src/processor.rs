@@ -1,7 +1,5 @@
 //! Program state processor
 
-use solana_program::{rent::Rent, sysvar::Sysvar};
-
 use {
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -116,17 +114,14 @@ pub fn process_initialize_extra_account_meta_list(
     let signer_seeds = collect_extra_account_metas_signer_seeds(mint_info.key, &bump_seed);
     let length = extra_account_metas.len();
     let account_size = ExtraAccountMetaList::size_of(length)?;
-    let minimum_lamports_for_rent = Rent::get()?.minimum_balance(account_size);
-    let create_instruction = system_instruction::create_account(
-        authority_info.key,
-        extra_account_metas_info.key,
-        minimum_lamports_for_rent,
-        account_size as u64,
-        program_id,
-    );
     invoke_signed(
-        &create_instruction,
-        &[authority_info.clone(), extra_account_metas_info.clone()],
+        &system_instruction::allocate(extra_account_metas_info.key, account_size as u64),
+        &[extra_account_metas_info.clone()],
+        &[&signer_seeds],
+    )?;
+    invoke_signed(
+        &system_instruction::assign(extra_account_metas_info.key, program_id),
+        &[extra_account_metas_info.clone()],
         &[&signer_seeds],
     )?;
 

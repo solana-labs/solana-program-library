@@ -3,7 +3,7 @@ import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
 import type { AccountMeta, Connection, Signer } from '@solana/web3.js';
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
 import {
     createInitializeMintInstruction,
@@ -25,6 +25,8 @@ import {
     ExtraAccountMetaListLayout,
     ExtraAccountMetaLayout,
     addExtraAccountsToInstruction,
+    transferCheckedWithTransferHook,
+    createAssociatedTokenAccountIdempotent,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection, TRANSFER_HOOK_TEST_PROGRAM_ID } from '../common';
 import { createHash } from 'crypto';
@@ -172,6 +174,11 @@ describe('transferHook', () => {
 
         const setupTransaction = new Transaction().add(
             initExtraAccountMetaInstruction,
+            SystemProgram.transfer({
+                fromPubkey: payer.publicKey,
+                toPubkey: pdaExtraAccountMeta,
+                lamports: 10000000,
+            }),
             createAssociatedTokenAccountInstruction(
                 payer.publicKey,
                 payerAta,
@@ -193,36 +200,28 @@ describe('transferHook', () => {
 
         await sendAndConfirmTransaction(connection, setupTransaction, [payer]);
 
-        const transferCheckedInstruction = createTransferCheckedInstruction(
+        await createAssociatedTokenAccountIdempotent(
+            connection,
+            payer,
+            mint,
+            destinationAuthority,
+            undefined,
+            TEST_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        await transferCheckedWithTransferHook(
+            connection,
+            payer,
             payerAta,
             mint,
             destinationAta,
-            payer.publicKey,
-            10 ** TEST_TOKEN_DECIMALS,
+            payer,
+            BigInt(10 ** TEST_TOKEN_DECIMALS),
             TEST_TOKEN_DECIMALS,
             [],
-            TEST_PROGRAM_ID
-        );
-
-        const transferCheckedWithExtraAccountMeta = await addExtraAccountsToInstruction(
-            connection,
-            transferCheckedInstruction,
-            mint,
             undefined,
             TEST_PROGRAM_ID
         );
-
-        const transaction = new Transaction().add(
-            createAssociatedTokenAccountIdempotentInstruction(
-                payer.publicKey,
-                destinationAta,
-                destinationAuthority,
-                mint,
-                TEST_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
-            ),
-            transferCheckedWithExtraAccountMeta
-        );
-        await sendAndConfirmTransaction(connection, transaction, [payer], { skipPreflight: true });
     });
 });

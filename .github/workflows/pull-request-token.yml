@@ -145,6 +145,13 @@ jobs:
       - name: Build and test transfer hook example
         run: ./ci/cargo-test-sbf.sh token/transfer-hook-example
 
+      - name: Upload program
+        uses: actions/upload-artifact@v2
+        with:
+          name: spl-transfer-hook-example
+          path: "target/deploy/*.so"
+          if-no-files-found: error
+
   cargo-test-sbf-associated-token-account:
     runs-on: ubuntu-latest
     steps:
@@ -194,58 +201,6 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: associated-token-account-program
-          path: "target/deploy/*.so"
-          if-no-files-found: error
-
-  cargo-test-sbf-spl-transfer-hook-example:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Set env vars
-        run: |
-          source ci/rust-version.sh
-          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
-          source ci/solana-version.sh
-          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
-
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/rustfilt
-          key: cargo-sbf-bins-${{ runner.os }}
-
-      - uses: actions/cache@v2
-        with:
-          path: ~/.cache/solana
-          key: solana-${{ env.SOLANA_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          ./ci/install-build-deps.sh
-          ./ci/install-program-deps.sh
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-
-      - name: Build and test transfer-hook-example
-        run: ./ci/cargo-test-sbf.sh token/transfer-hook-example
-
-      - name: Upload program
-        uses: actions/upload-artifact@v2
-        with:
-          name: spl-transfer-hook-example
           path: "target/deploy/*.so"
           if-no-files-found: error
 

@@ -177,7 +177,7 @@ pub fn initialize_extra_account_meta_list(
     let accounts = vec![
         AccountMeta::new(*extra_account_metas_pubkey, false),
         AccountMeta::new_readonly(*mint_pubkey, false),
-        AccountMeta::new(*authority_pubkey, true),
+        AccountMeta::new_readonly(*authority_pubkey, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
