@@ -9,7 +9,7 @@ import { publicKey } from '@solana/buffer-layout-utils';
 import { createTransferCheckedInstruction } from '../../instructions/transferChecked.js';
 import { createTransferCheckedWithFeeInstruction } from '../transferFee/instructions.js';
 import { getMint } from '../../state/mint.js';
-import { getExtraAccountMetaAccount, getExtraAccountMetas, getTransferHook, resolveExtraAccountMeta } from './state.js';
+import { getExtraAccountMetaAddress, getExtraAccountMetas, getTransferHook, resolveExtraAccountMeta } from './state.js';
 
 export enum TransferHookInstruction {
     Initialize = 0,
@@ -144,7 +144,7 @@ export async function addExtraAccountsToInstruction(
         return instruction;
     }
 
-    const extraAccountsAccount = getExtraAccountMetaAccount(transferHook.programId, mint);
+    const extraAccountsAccount = getExtraAccountMetaAddress(mint, transferHook.programId);
     const extraAccountsInfo = await connection.getAccountInfo(extraAccountsAccount, commitment);
     if (extraAccountsInfo == null) {
         return instruction;
