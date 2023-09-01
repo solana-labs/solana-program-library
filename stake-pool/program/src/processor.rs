@@ -739,6 +739,8 @@ impl Processor {
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
+        // This check is unnecessary since the runtime will check the ownership,
+        // but provides clarity that the parameter is in fact checked.
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_uninitialized() {
@@ -746,6 +748,8 @@ impl Processor {
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
+        // This check is unnecessary since the runtime will check the ownership,
+        // but provides clarity that the parameter is in fact checked.
         check_account_owner(validator_list_info, program_id)?;
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
