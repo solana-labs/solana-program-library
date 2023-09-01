@@ -2197,12 +2197,13 @@ impl Processor {
 
         check_account_owner(validator_list_info, program_id)?;
         let mut validator_list_data = validator_list_info.data.borrow_mut();
-        let (validator_list_header, mut validator_slice) =
-            ValidatorListHeader::deserialize_mut_slice(
-                &mut validator_list_data,
-                start_index as usize,
-                validator_stake_accounts.len() / 2,
-            )?;
+        let (validator_list_header, mut big_vec) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        let validator_slice = ValidatorListHeader::deserialize_mut_slice(
+            &mut big_vec,
+            start_index as usize,
+            validator_stake_accounts.len() / 2,
+        )?;
 
         if !validator_list_header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
@@ -2502,7 +2503,9 @@ impl Processor {
             msg!("Reserve stake account in unknown state, aborting");
             return Err(StakePoolError::WrongStakeState.into());
         };
-        for validator_stake_record in validator_list.iter::<ValidatorStakeInfo>() {
+        for validator_stake_record in validator_list
+            .deserialize_slice::<ValidatorStakeInfo>(0, validator_list.len() as usize)?
+        {
             if u64::from(validator_stake_record.last_update_epoch) < clock.epoch {
                 return Err(StakePoolError::StakeListOutOfDate.into());
             }

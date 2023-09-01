@@ -6,6 +6,7 @@ use {
         WITHDRAWAL_BASELINE_FEE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    bytemuck::{Pod, Zeroable},
     num_derive::FromPrimitive,
     num_traits::FromPrimitive,
     solana_program::{
@@ -600,6 +601,9 @@ impl Default for StakeStatus {
     }
 }
 
+unsafe impl Pod for StakeStatus {}
+unsafe impl Zeroable for StakeStatus {}
+
 /// Withdrawal type, figured out during process_withdraw_stake
 #[derive(Debug, PartialEq)]
 pub(crate) enum StakeWithdrawSource {
@@ -620,7 +624,18 @@ pub(crate) enum StakeWithdrawSource {
 /// unsafe pointer cast, which means that this structure cannot have any
 /// undeclared alignment-padding in its representation.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Pod,
+    Zeroable,
+    BorshDeserialize,
+    BorshSerialize,
+    BorshSchema,
+)]
 pub struct ValidatorStakeInfo {
     /// Amount of lamports on the validator stake account, including rent
     ///
@@ -770,14 +785,12 @@ impl ValidatorListHeader {
 
     /// Extracts a slice of ValidatorStakeInfo types from the vec part
     /// of the ValidatorList
-    pub fn deserialize_mut_slice(
-        data: &mut [u8],
+    pub fn deserialize_mut_slice<'a>(
+        big_vec: &'a mut BigVec,
         skip: usize,
         len: usize,
-    ) -> Result<(Self, Vec<&mut ValidatorStakeInfo>), ProgramError> {
-        let (header, mut big_vec) = Self::deserialize_vec(data)?;
-        let validator_list = big_vec.deserialize_mut_slice::<ValidatorStakeInfo>(skip, len)?;
-        Ok((header, validator_list))
+    ) -> Result<&'a mut [ValidatorStakeInfo], ProgramError> {
+        big_vec.deserialize_mut_slice::<ValidatorStakeInfo>(skip, len)
     }
 
     /// Extracts the validator list into its header and internal BigVec
@@ -1086,8 +1099,9 @@ mod test {
         let max_validators = 10;
         let stake_list = test_validator_list(max_validators);
         let mut serialized = stake_list.try_to_vec().unwrap();
-        let (header, list) = ValidatorListHeader::deserialize_mut_slice(
-            &mut serialized,
+        let (header, mut big_vec) = ValidatorListHeader::deserialize_vec(&mut serialized).unwrap();
+        let list = ValidatorListHeader::deserialize_mut_slice(
+            &mut big_vec,
             0,
             stake_list.validators.len(),
         )
@@ -1097,30 +1111,30 @@ mod test {
         assert!(list
             .iter()
             .zip(stake_list.validators.iter())
-            .all(|(a, b)| *a == b));
+            .all(|(a, b)| a == b));
 
-        let (_, list) = ValidatorListHeader::deserialize_mut_slice(&mut serialized, 1, 2).unwrap();
+        let list = ValidatorListHeader::deserialize_mut_slice(&mut big_vec, 1, 2).unwrap();
         assert!(list
             .iter()
             .zip(stake_list.validators[1..].iter())
-            .all(|(a, b)| *a == b));
-        let (_, list) = ValidatorListHeader::deserialize_mut_slice(&mut serialized, 2, 1).unwrap();
+            .all(|(a, b)| a == b));
+        let list = ValidatorListHeader::deserialize_mut_slice(&mut big_vec, 2, 1).unwrap();
         assert!(list
             .iter()
             .zip(stake_list.validators[2..].iter())
-            .all(|(a, b)| *a == b));
-        let (_, list) = ValidatorListHeader::deserialize_mut_slice(&mut serialized, 0, 2).unwrap();
+            .all(|(a, b)| a == b));
+        let list = ValidatorListHeader::deserialize_mut_slice(&mut big_vec, 0, 2).unwrap();
         assert!(list
             .iter()
             .zip(stake_list.validators[..2].iter())
-            .all(|(a, b)| *a == b));
+            .all(|(a, b)| a == b));
 
         assert_eq!(
-            ValidatorListHeader::deserialize_mut_slice(&mut serialized, 0, 4).unwrap_err(),
+            ValidatorListHeader::deserialize_mut_slice(&mut big_vec, 0, 4).unwrap_err(),
             ProgramError::AccountDataTooSmall
         );
         assert_eq!(
-            ValidatorListHeader::deserialize_mut_slice(&mut serialized, 1, 3).unwrap_err(),
+            ValidatorListHeader::deserialize_mut_slice(&mut big_vec, 1, 3).unwrap_err(),
             ProgramError::AccountDataTooSmall
         );
     }
@@ -1132,7 +1146,9 @@ mod test {
         let mut serialized = stake_list.try_to_vec().unwrap();
         let (_, big_vec) = ValidatorListHeader::deserialize_vec(&mut serialized).unwrap();
         for (a, b) in big_vec
-            .iter::<ValidatorStakeInfo>()
+            .deserialize_slice::<ValidatorStakeInfo>(0, big_vec.len() as usize)
+            .unwrap()
+            .iter()
             .zip(stake_list.validators.iter())
         {
             assert_eq!(a, b);
