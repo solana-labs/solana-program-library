@@ -7050,7 +7050,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-cli"
-version = "3.0.0"
+version = "3.1.0"
 dependencies = [
  "assert_cmd",
  "clap 2.34.0",
