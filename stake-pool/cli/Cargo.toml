@@ -23,7 +23,7 @@ solana-logger = "=1.16.3"
 solana-program = "=1.16.3"
 solana-remote-wallet = "=1.16.3"
 solana-sdk = "=1.16.3"
-spl-associated-token-account = { version = "=2.0", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
+spl-associated-token-account = { version = "=2.1", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
 spl-stake-pool = { version = "=0.7.0", path="../program", features = [ "no-entrypoint" ] }
 spl-token = { version = "=4.0", path="../../token/program", features = [ "no-entrypoint" ]  }
 bs58 = "0.4.0"

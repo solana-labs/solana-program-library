@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "spl-token-client"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "0.5.1"
+version = "0.6.0"
 
 [dependencies]
 async-trait = "0.1"
@@ -22,9 +22,9 @@ solana-sdk = "1.16.3"
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
 spl-memo = { version = "4.0.0", path = "../../memo/program", features = ["no-entrypoint"] }
 spl-token = { version = "4.0", path="../program", features = [ "no-entrypoint" ] }
-spl-token-2022 = { version = "0.7", path="../program-2022" }
-spl-token-metadata-interface = { version = "0.1", path="../../token-metadata/interface" }
-spl-transfer-hook-interface = { version = "0.1", path="../transfer-hook-interface" }
+spl-token-2022 = { version = "0.8", path="../program-2022" }
+spl-token-metadata-interface = { version = "0.2", path="../../token-metadata/interface" }
+spl-transfer-hook-interface = { version = "0.2", path="../transfer-hook-interface" }
 thiserror = "1.0"
 
 [features]
