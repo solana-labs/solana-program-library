@@ -1,0 +1,71 @@
+{
+  "name": "eslint-plugin-prettier",
+  "version": "4.2.1",
+  "description": "Runs prettier as an eslint rule",
+  "repository": "git+https://github.com/prettier/eslint-plugin-prettier.git",
+  "homepage": "https://github.com/prettier/eslint-plugin-prettier#readme",
+  "author": "Teddy Katz",
+  "contributors": [
+    "JounQin (https://github.com/JounQin) <admin@1stg.me>"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "main": "eslint-plugin-prettier.js",
+  "files": [
+    "eslint-plugin-prettier.js"
+  ],
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "prettier"
+  ],
+  "scripts": {
+    "format": "yarn prettier '**/*.{js,json,md,yml}' --write && yarn lint --fix",
+    "lint": "eslint . --cache -f friendly --max-warnings 10",
+    "prepare": "patch-package && simple-git-hooks && yarn-deduplicate --strategy fewer || exit 0",
+    "prerelease": "yarn format && yarn test",
+    "release": "changeset publish",
+    "test": "yarn lint && mocha"
+  },
+  "peerDependencies": {
+    "eslint": ">=7.28.0",
+    "prettier": ">=2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "eslint-config-prettier": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "prettier-linter-helpers": "^1.0.0"
+  },
+  "devDependencies": {
+    "@1stg/common-config": "~3.0.0",
+    "@1stg/eslint-config": "~3.0.0",
+    "@changesets/changelog-github": "^0.4.5",
+    "@changesets/cli": "^2.23.0",
+    "@graphql-eslint/eslint-plugin": "^2.5.0",
+    "@ota-meshi/eslint-plugin-svelte": "^0.34.1",
+    "@typescript-eslint/parser": "^5.29.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-mdx": "^1.17.0",
+    "eslint-plugin-eslint-plugin": "^4.3.0",
+    "eslint-plugin-mdx": "^1.17.0",
+    "eslint-plugin-self": "^1.2.1",
+    "eslint-plugin-utils": "^0.1.0",
+    "graphql": "^16.5.0",
+    "mocha": "^9.2.2",
+    "patch-package": "^6.4.7",
+    "svelte": "^3.48.0",
+    "vue-eslint-parser": "^8.3.0"
+  },
+  "resolutions": {
+    "@babel/traverse": "^7.18.5",
+    "eslint-plugin-prettier": "link:.",
+    "prettier": "^2.7.1"
+  },
+  "packageManager": "yarn@1.22.19"
+}

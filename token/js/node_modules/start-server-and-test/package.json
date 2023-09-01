@@ -1,0 +1,159 @@
+{
+  "name": "start-server-and-test",
+  "description": "Starts server, waits for URL, then runs test command; when the tests end, shuts down server",
+  "version": "2.0.0",
+  "author": "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
+  "bugs": "https://github.com/bahmutov/start-server-and-test/issues",
+  "bin": {
+    "start-server-and-test": "src/bin/start.js",
+    "server-test": "src/bin/start.js",
+    "start-test": "src/bin/start.js"
+  },
+  "config": {
+    "pre-git": {
+      "commit-msg": "simple",
+      "pre-commit": [
+        "npm run deps",
+        "npm test",
+        "npm run ban"
+      ],
+      "pre-push": [
+        "npm run unused-deps",
+        "npm run license",
+        "npm run ban -- --all",
+        "npm run size"
+      ],
+      "post-commit": [],
+      "post-merge": []
+    }
+  },
+  "engines": {
+    "node": ">=6"
+  },
+  "files": [
+    "src/**/*.js",
+    "!src/**/*-spec.js"
+  ],
+  "homepage": "https://github.com/bahmutov/start-server-and-test#readme",
+  "keywords": [
+    "ci",
+    "parallel",
+    "server",
+    "start",
+    "test",
+    "utility",
+    "wait"
+  ],
+  "license": "MIT",
+  "main": "src/",
+  "private": false,
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bahmutov/start-server-and-test.git"
+  },
+  "scripts": {
+    "ban": "ban",
+    "deps": "deps-ok && dependency-check --no-dev .",
+    "issues": "git-issues",
+    "license": "license-checker --production --onlyunknown --csv",
+    "lint": "standard --verbose --fix 'src/**/*.js'",
+    "prelint": "npm run pretty",
+    "pretest": "npm run lint",
+    "pretty": "prettier-standard 'src/**/*.js'",
+    "size": "t=\"$(npm pack .)\"; wc -c \"${t}\"; tar tvf \"${t}\"; rm \"${t}\";",
+    "test": "npm run unit",
+    "unit": "mocha test/helper src/*-spec.js",
+    "unused-deps": "dependency-check --unused --no-dev .",
+    "semantic-release": "semantic-release",
+    "start": "node test/server.js",
+    "start-with-child": "node test/server-as-child.js",
+    "start-multiple": "node test/multiple-servers.js",
+    "start-https": "node test/https-server.js",
+    "start-fail": "node test/server-fail.js",
+    "start-304": "node test/server-304.js",
+    "start-403": "node test/server-403.js",
+    "start-cross-env": "cross-env FOO=bar node test/server.js",
+    "test2": "curl http://127.0.0.1:9000",
+    "test3": "curl http://127.0.0.1:9000 && curl http://127.0.0.1:9001",
+    "test4": "curl --insecure https://127.0.0.1:9000",
+    "message": "echo Hi there 👋",
+    "message2": "echo Hi there 2 👋",
+    "demo": "node src/bin/start.js http://127.0.0.1:9000 message",
+    "demo2": "node src/bin/start.js start http://127.0.0.1:9000 test2",
+    "demo3": "node src/bin/start.js start-with-child http://127.0.0.1:9000 test",
+    "demo4": "node src/bin/start.js 9000",
+    "demo5": "node src/bin/start.js start-with-child 9000",
+    "demo6": "node src/bin/start.js :9000",
+    "demo7": "node src/bin/start.js :9000 test2",
+    "demo8": "node src/bin/start.js start-multiple \":9000|:9001\" test3",
+    "demo9": "node src/bin/start.js start-https \"https://127.0.0.1:9000\" test4",
+    "demo10": "node src/bin/start.js start-fail http://127.0.0.1:9000 test",
+    "demo11": "node src/bin/start.js http-get://127.0.0.1:9000",
+    "demo12": "node src/bin/start.js start-304 9000 test2",
+    "demo-expect-403": "node src/bin/start.js --expect 403 start-403 9000 'echo Waited'",
+    "demo-interval": "WAIT_ON_INTERVAL=1000 node src/bin/start.js start http://127.0.0.1:9000 test2",
+    "demo-timeout": "WAIT_ON_TIMEOUT=10000 node src/bin/start.js start http://127.0.0.1:9000 test2",
+    "demo-cross-env": "node src/bin/start.js start-cross-env 9000",
+    "demo-commands": "node src/bin/start.js 'node test/server.js --port 8800' 8800 'node test/client --port 8800'",
+    "demo-multiple": "node src/bin/start.js 'node test/server --port 6000' 6000 'node test/server --port 6010' 6010 'curl http://127.0.0.1:6000 && curl http://127.0.0.1:6010'",
+    "demo-multiple-test-commands": "node src/bin/start.js 9000 'npm run message && npm run message2'",
+    "demo-json-server": "WAIT_ON_TIMEOUT=10000 DEBUG=start-server-and-test node src/bin/start.js 'json-server test/data.json' localhost:3000 'echo json-server working'",
+    "demo-ip6": "WAIT_ON_TIMEOUT=10000 DEBUG=start-server-and-test node src/bin/start.js 'node test/ip6.mjs' localhost:8000 'echo server with ::1 working'",
+    "demo-zero": "WAIT_ON_TIMEOUT=10000 node src/bin/start.js 'node test/zero.mjs' 8000 'echo server with 0.0.0.0 working'",
+    "demo-zero-127": "WAIT_ON_TIMEOUT=10000 node src/bin/start.js 'node test/zero.mjs' http://127.0.0.1:8000 'echo server with 0.0.0.0 working'",
+    "demo-zero-explicit": "node src/bin/start.js 'node test/zero.mjs' http://0.0.0.0:8000 'echo server with 0.0.0.0 working'"
+  },
+  "devDependencies": {
+    "@types/node": "^18.14.1",
+    "ban-sensitive-files": "1.9.7",
+    "chai": "4.2.0",
+    "cross-env": "7.0.2",
+    "dependency-check": "3.4.1",
+    "deps-ok": "1.4.1",
+    "dont-crack": "1.2.1",
+    "git-issues": "1.3.1",
+    "got": "9.6.0",
+    "json-server": "^0.17.1",
+    "license-checker": "24.1.0",
+    "minimist": "1.2.5",
+    "mocha": "7.1.1",
+    "pre-git": "3.17.1",
+    "prettier-standard": "8.0.1",
+    "semantic-release": "^17.1.1",
+    "simple-commit-message": "4.0.13",
+    "sinon": "9.0.2",
+    "sinon-chai": "3.5.0",
+    "snap-shot-it": "6.3.5",
+    "standard": "13.1.0"
+  },
+  "dependencies": {
+    "arg": "^5.0.2",
+    "bluebird": "3.7.2",
+    "check-more-types": "2.24.0",
+    "debug": "4.3.4",
+    "execa": "5.1.1",
+    "lazy-ass": "1.6.0",
+    "ps-tree": "1.2.0",
+    "wait-on": "7.0.1"
+  },
+  "release": {
+    "analyzeCommits": {
+      "preset": "angular",
+      "releaseRules": [
+        {
+          "type": "break",
+          "release": "major"
+        }
+      ]
+    }
+  },
+  "standard": {
+    "globals": [
+      "sandbox",
+      "expect"
+    ]
+  }
+}
