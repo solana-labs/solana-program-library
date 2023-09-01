@@ -1,1 +1,0 @@
-cmd_Release/bigint_buffer.node := ln -f "Release/obj.target/bigint_buffer.node" "Release/bigint_buffer.node" 2>/dev/null || (rm -rf "Release/bigint_buffer.node" && cp -af "Release/obj.target/bigint_buffer.node" "Release/bigint_buffer.node")

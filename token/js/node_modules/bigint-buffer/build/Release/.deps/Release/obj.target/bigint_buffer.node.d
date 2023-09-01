@@ -1,1 +1,0 @@
-cmd_Release/obj.target/bigint_buffer.node := g++ -o Release/obj.target/bigint_buffer.node -shared -pthread -rdynamic -m64  -Wl,-soname=bigint_buffer.node -Wl,--start-group Release/obj.target/bigint_buffer/src/bigint-buffer.o -Wl,--end-group 

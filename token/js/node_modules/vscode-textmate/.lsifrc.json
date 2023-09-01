@@ -1,6 +1,0 @@
-{
-	"project": "./tsconfig.json",
-	"out": "vscode-textmate.lsif",
-	"source": "./package.json",
-	"package": "./package.json"
-}
