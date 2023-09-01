@@ -1,5 +1,5 @@
 //! Tests `#[derive(IntoProgramError)]`
-//!
+
 use spl_program_error::*;
 
 /// Example error

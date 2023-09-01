@@ -1,32 +1,52 @@
 //! The actual token generator for the macro
-use quote::quote;
-use syn::{punctuated::Punctuated, token::Comma, Ident, ItemEnum, LitStr, Variant};
+
+use {
+    crate::parser::SplProgramErrorArgs,
+    proc_macro2::Span,
+    quote::quote,
+    syn::{
+        punctuated::Punctuated, token::Comma, Expr, ExprLit, Ident, ItemEnum, Lit, LitInt, LitStr,
+        Token, Variant,
+    },
+};
+
+const SPL_ERROR_HASH_NAMESPACE: &str = "spl_program_error";
+const SPL_ERROR_HASH_MIN_VALUE: u32 = 7_000;
 
 /// The type of macro being called, thus directing which tokens to generate
 #[allow(clippy::enum_variant_names)]
 pub enum MacroType {
-    IntoProgramError,
-    DecodeError,
-    PrintProgramError,
-    SplProgramError,
+    IntoProgramError {
+        ident: Ident,
+    },
+    DecodeError {
+        ident: Ident,
+    },
+    PrintProgramError {
+        ident: Ident,
+        variants: Punctuated<Variant, Comma>,
+    },
+    SplProgramError {
+        args: SplProgramErrorArgs,
+        item_enum: ItemEnum,
+    },
 }
 
 impl MacroType {
     /// Generates the corresponding tokens based on variant selection
-    pub fn generate_tokens(&self, item_enum: ItemEnum) -> proc_macro2::TokenStream {
+    pub fn generate_tokens(&mut self) -> proc_macro2::TokenStream {
         match self {
-            MacroType::IntoProgramError => into_program_error(&item_enum.ident),
-            MacroType::DecodeError => decode_error(&item_enum.ident),
-            MacroType::PrintProgramError => {
-                print_program_error(&item_enum.ident, &item_enum.variants)
-            }
-            MacroType::SplProgramError => spl_program_error(item_enum),
+            Self::IntoProgramError { ident } => into_program_error(ident),
+            Self::DecodeError { ident } => decode_error(ident),
+            Self::PrintProgramError { ident, variants } => print_program_error(ident, variants),
+            Self::SplProgramError { args, item_enum } => spl_program_error(args, item_enum),
         }
     }
 }
 
-/// Builds the implementation of `Into<solana_program::program_error::ProgramError>`
-/// More specifically, implements `From<Self> for solana_program::program_error::ProgramError`
+/// Builds the implementation of
+/// `Into<solana_program::program_error::ProgramError>` More specifically,
+/// implements `From<Self> for solana_program::program_error::ProgramError`
 pub fn into_program_error(ident: &Ident) -> proc_macro2::TokenStream {
     quote! {
         impl From<#ident> for solana_program::program_error::ProgramError {
@@ -48,7 +68,8 @@ pub fn decode_error(ident: &Ident) -> proc_macro2::TokenStream {
     }
 }
 
-/// Builds the implementation of `solana_program::program_error::PrintProgramError`
+/// Builds the implementation of
+/// `solana_program::program_error::PrintProgramError`
 pub fn print_program_error(
     ident: &Ident,
     variants: &Punctuated<Variant, Comma>,
@@ -96,21 +117,82 @@ fn get_error_message(variant: &Variant) -> Option<String> {
 
 /// The main function that produces the tokens required to turn your
 /// error enum into a Solana Program Error
-pub fn spl_program_error(input: ItemEnum) -> proc_macro2::TokenStream {
-    let ident = &input.ident;
-    let variants = &input.variants;
+pub fn spl_program_error(
+    args: &SplProgramErrorArgs,
+    item_enum: &mut ItemEnum,
+) -> proc_macro2::TokenStream {
+    if let Some(error_code_start) = args.hash_error_code_start {
+        set_first_discriminant(item_enum, error_code_start);
+    }
+
+    let ident = &item_enum.ident;
+    let variants = &item_enum.variants;
     let into_program_error = into_program_error(ident);
     let decode_error = decode_error(ident);
     let print_program_error = print_program_error(ident, variants);
+
     quote! {
+        #[repr(u32)]
         #[derive(Clone, Debug, Eq, thiserror::Error, num_derive::FromPrimitive, PartialEq)]
         #[num_traits = "num_traits"]
-        #input
+        #item_enum
 
         #into_program_error
 
         #decode_error
 
         #print_program_error
+    }
+}
+
+/// This function adds a discriminant to the first enum variant based on the
+/// hash of the `SPL_ERROR_HASH_NAMESPACE` constant, the enum name and variant
+/// name.
+/// It will then check to make sure the provided `hash_error_code_start` is
+/// equal to the hash-produced `u32`.
+///
+/// See https://docs.rs/syn/latest/syn/struct.Variant.html
+fn set_first_discriminant(item_enum: &mut ItemEnum, error_code_start: u32) {
+    let enum_ident = &item_enum.ident;
+    if item_enum.variants.is_empty() {
+        panic!("Enum must have at least one variant");
+    }
+    let first_variant = &mut item_enum.variants[0];
+    let discriminant = u32_from_hash(enum_ident);
+    if discriminant == error_code_start {
+        let eq = Token![=](Span::call_site());
+        let expr = Expr::Lit(ExprLit {
+            attrs: Vec::new(),
+            lit: Lit::Int(LitInt::new(&discriminant.to_string(), Span::call_site())),
+        });
+        first_variant.discriminant = Some((eq, expr));
+    } else {
+        panic!(
+            "Error code start value from hash must be {0}. Update your macro attribute to \
+             `#[spl_program_error(hash_error_code_start = {0})]`.",
+            discriminant
+        );
+    }
+}
+
+/// Hashes the `SPL_ERROR_HASH_NAMESPACE` constant, the enum name and variant
+/// name and returns four middle bytes (13 through 16) as a u32.
+fn u32_from_hash(enum_ident: &Ident) -> u32 {
+    let hash_input = format!("{}:{}", SPL_ERROR_HASH_NAMESPACE, enum_ident);
+
+    // We don't want our error code to start at any number below
+    // `SPL_ERROR_HASH_MIN_VALUE`!
+    let mut nonce: u32 = 0;
+    loop {
+        let hash = solana_program::hash::hashv(&[hash_input.as_bytes(), &nonce.to_le_bytes()]);
+        let d = u32::from_le_bytes(
+            hash.to_bytes()[13..17]
+                .try_into()
+                .expect("Unable to convert hash to u32"),
+        );
+        if d >= SPL_ERROR_HASH_MIN_VALUE {
+            return d;
+        }
+        nonce += 1;
     }
 }

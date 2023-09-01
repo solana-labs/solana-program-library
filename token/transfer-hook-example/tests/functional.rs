@@ -18,7 +18,8 @@ use {
         transaction::{Transaction, TransactionError},
     },
     spl_tlv_account_resolution::{
-        account::ExtraAccountMeta, seeds::Seed, state::ExtraAccountMetaList,
+        account::ExtraAccountMeta, error::AccountResolutionError, seeds::Seed,
+        state::ExtraAccountMetaList,
     },
     spl_token_2022::{
         extension::{transfer_hook::TransferHookAccount, ExtensionType, StateWithExtensionsMut},
@@ -270,7 +271,7 @@ async fn success_execute() {
             error,
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TransferHookError::IncorrectAccount as u32),
+                InstructionError::Custom(AccountResolutionError::IncorrectAccount as u32),
             )
         );
     }
@@ -309,7 +310,7 @@ async fn success_execute() {
             error,
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TransferHookError::IncorrectAccount as u32),
+                InstructionError::Custom(AccountResolutionError::IncorrectAccount as u32),
             )
         );
     }
@@ -356,7 +357,7 @@ async fn success_execute() {
             error,
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TransferHookError::IncorrectAccount as u32),
+                InstructionError::Custom(AccountResolutionError::IncorrectAccount as u32),
             )
         );
     }
@@ -395,7 +396,7 @@ async fn success_execute() {
             error,
             TransactionError::InstructionError(
                 0,
-                InstructionError::Custom(TransferHookError::IncorrectAccount as u32),
+                InstructionError::Custom(AccountResolutionError::IncorrectAccount as u32),
             )
         );
     }

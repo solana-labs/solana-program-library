@@ -6,13 +6,15 @@ pub mod spl;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use serial_test::serial;
-    use solana_program::{
-        decode_error::DecodeError,
-        program_error::{PrintProgramError, ProgramError},
+    use {
+        super::*,
+        serial_test::serial,
+        solana_program::{
+            decode_error::DecodeError,
+            program_error::{PrintProgramError, ProgramError},
+        },
+        std::sync::{Arc, RwLock},
     };
-    use std::sync::{Arc, RwLock};
 
     // Used to capture output for `PrintProgramError` for testing
     lazy_static::lazy_static! {

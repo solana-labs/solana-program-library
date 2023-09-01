@@ -1,5 +1,5 @@
 //! Tests `#[derive(DecodeError)]`
-//!
+
 use spl_program_error::*;
 
 /// Example error
