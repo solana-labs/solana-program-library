@@ -20,7 +20,7 @@ fn test_macros_compile() {
 }
 
 /// Example library error with namespace
-#[spl_program_error(hash_error_code_start = 3_234_444_947)]
+#[spl_program_error(hash_error_code_start = 2_056_342_880)]
 enum ExampleLibraryError {
     /// This is a very informative error
     #[error("This is a very informative error")]
@@ -57,7 +57,7 @@ fn test_library_error_codes() {
 
     assert_eq!(
         ExampleLibraryError::VeryInformativeError as u32,
-        get_error_code_check("spl_program_error:ExampleLibraryError:VeryInformativeError"),
+        get_error_code_check("spl_program_error:ExampleLibraryError"),
     );
     assert_eq!(
         ExampleLibraryError::SuperImportantError as u32,

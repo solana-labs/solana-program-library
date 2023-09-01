@@ -11,7 +11,7 @@ use {
 };
 
 const SPL_ERROR_HASH_NAMESPACE: &str = "spl_program_error";
-const SPL_ERROR_HASH_MIN_VALUE: u32 = 10_0000;
+const SPL_ERROR_HASH_MIN_VALUE: u32 = 7_0000;
 
 /// The type of macro being called, thus directing which tokens to generate
 #[allow(clippy::enum_variant_names)]
@@ -154,8 +154,11 @@ pub fn spl_program_error(
 /// See https://docs.rs/syn/latest/syn/struct.Variant.html
 fn set_first_discriminant(item_enum: &mut ItemEnum, error_code_start: u32) {
     let enum_ident = &item_enum.ident;
+    if item_enum.variants.is_empty() {
+        panic!("Enum must have at least one variant");
+    }
     let first_variant = &mut item_enum.variants[0];
-    let discriminant = u32_from_hash(enum_ident, &first_variant.ident);
+    let discriminant = u32_from_hash(enum_ident);
     if discriminant == error_code_start {
         let eq = Token![=](Span::call_site());
         let expr = Expr::Lit(ExprLit {
@@ -165,7 +168,8 @@ fn set_first_discriminant(item_enum: &mut ItemEnum, error_code_start: u32) {
         first_variant.discriminant = Some((eq, expr));
     } else {
         panic!(
-            "Error code start value from hash is {}. Update your macro attribute.",
+            "Error code start value from hash must be {0}. Update your macro attribute to \
+             `#[spl_program_error(hash_error_code_start = {0})]`.",
             discriminant
         );
     }
@@ -173,13 +177,11 @@ fn set_first_discriminant(item_enum: &mut ItemEnum, error_code_start: u32) {
 
 /// Hashes the `SPL_ERROR_HASH_NAMESPACE` constant, the enum name and variant
 /// name and returns four middle bytes (13 through 16) as a u32.
-fn u32_from_hash(enum_ident: &Ident, variant_ident: &Ident) -> u32 {
-    let hash_input = format!(
-        "{}:{}:{}",
-        SPL_ERROR_HASH_NAMESPACE, enum_ident, variant_ident
-    );
+fn u32_from_hash(enum_ident: &Ident) -> u32 {
+    let hash_input = format!("{}:{}", SPL_ERROR_HASH_NAMESPACE, enum_ident);
 
-    // We don't want our error code to start at any number below `10_0000`!
+    // We don't want our error code to start at any number below
+    // `SPL_ERROR_HASH_MIN_VALUE`!
     let mut nonce: u32 = 0;
     loop {
         let hash = solana_program::hash::hashv(&[hash_input.as_bytes(), &nonce.to_le_bytes()]);
