@@ -1247,13 +1247,13 @@ pub fn update_validator_list_balance(
                         program_id,
                         vote_account_address,
                         stake_pool,
-                        NonZeroU32::new(validator_stake_info.validator_seed_suffix),
+                        NonZeroU32::new(validator_stake_info.validator_seed_suffix.into()),
                     );
                     let (transient_stake_account, _) = find_transient_stake_program_address(
                         program_id,
                         vote_account_address,
                         stake_pool,
-                        validator_stake_info.transient_seed_suffix,
+                        validator_stake_info.transient_seed_suffix.into(),
                     );
                     vec![
                         AccountMeta::new(validator_stake_account, false),

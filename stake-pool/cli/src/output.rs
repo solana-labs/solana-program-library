@@ -372,12 +372,12 @@ pub(crate) struct CliStakePoolValidator {
 impl From<ValidatorStakeInfo> for CliStakePoolValidator {
     fn from(v: ValidatorStakeInfo) -> Self {
         Self {
-            active_stake_lamports: v.active_stake_lamports,
-            transient_stake_lamports: v.transient_stake_lamports,
-            last_update_epoch: v.last_update_epoch,
-            transient_seed_suffix: v.transient_seed_suffix,
-            unused: v.unused,
-            validator_seed_suffix: v.validator_seed_suffix,
+            active_stake_lamports: v.active_stake_lamports.into(),
+            transient_stake_lamports: v.transient_stake_lamports.into(),
+            last_update_epoch: v.last_update_epoch.into(),
+            transient_seed_suffix: v.transient_seed_suffix.into(),
+            unused: v.unused.into(),
+            validator_seed_suffix: v.validator_seed_suffix.into(),
             status: CliStakePoolValidatorStakeStatus::from(v.status),
             vote_account_address: v.vote_account_address.to_string(),
         }

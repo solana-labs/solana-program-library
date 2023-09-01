@@ -1,6 +1,6 @@
 import { getExtraAccountMetas, resolveExtraAccountMeta } from '../../src';
 import { expect } from 'chai';
-import { AccountMeta, Keypair, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 
 describe('transferHookExtraAccounts', () => {
     const testProgramId = new PublicKey('7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj');
@@ -70,7 +70,7 @@ describe('transferHookExtraAccounts', () => {
 
     const extraAccountList = Buffer.concat([
         Buffer.from([0, 0, 0, 0, 0, 0, 0, 0]), // u64 accountDiscriminator
-        Buffer.from([0, 0, 0, 0]), // u32 arrayDiscriminator
+        Buffer.from([0, 0, 0, 0]), // u32 length
         Buffer.from([3, 0, 0, 0]), // u32 count
         plainExtraAccount,
         pdaExtraAccount,

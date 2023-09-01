@@ -424,7 +424,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
             .get_validator_list(&mut context.banks_client)
             .await;
         let entry = validator_list.find(&validator_stake.vote.pubkey()).unwrap();
-        assert_eq!(entry.transient_stake_lamports, total_decrease);
+        assert_eq!(u64::from(entry.transient_stake_lamports), total_decrease);
     } else {
         let error = error.unwrap().unwrap();
         assert_eq!(

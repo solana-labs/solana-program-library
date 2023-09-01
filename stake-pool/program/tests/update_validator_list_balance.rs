@@ -611,11 +611,11 @@ async fn merge_transient_stake_after_remove() {
         StakeStatus::DeactivatingAll
     );
     assert_eq!(
-        validator_list.validators[0].active_stake_lamports,
+        u64::from(validator_list.validators[0].active_stake_lamports),
         stake_rent + current_minimum_delegation
     );
     assert_eq!(
-        validator_list.validators[0].transient_stake_lamports,
+        u64::from(validator_list.validators[0].transient_stake_lamports),
         deactivated_lamports
     );
 

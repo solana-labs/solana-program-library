@@ -65,12 +65,12 @@ async fn setup() -> (
     validator_list.validators.push(ValidatorStakeInfo {
         status: StakeStatus::Active,
         vote_account_address: voter_pubkey,
-        active_stake_lamports,
-        transient_stake_lamports: 0,
-        last_update_epoch: 0,
-        transient_seed_suffix: 0,
-        unused: 0,
-        validator_seed_suffix: raw_validator_seed,
+        active_stake_lamports: active_stake_lamports.into(),
+        transient_stake_lamports: 0.into(),
+        last_update_epoch: 0.into(),
+        transient_seed_suffix: 0.into(),
+        unused: 0.into(),
+        validator_seed_suffix: raw_validator_seed.into(),
     });
 
     stake_pool.total_lamports += active_stake_lamports;

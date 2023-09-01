@@ -19,3 +19,5 @@ export async function getConnection(): Promise<Connection> {
 export const TEST_PROGRAM_ID = process.env.TEST_PROGRAM_ID
     ? new PublicKey(process.env.TEST_PROGRAM_ID)
     : TOKEN_PROGRAM_ID;
+
+export const TRANSFER_HOOK_TEST_PROGRAM_ID = new PublicKey('TokenHookExampLe8smaVNrxTBezWTRbEwxwb1Zykrb');

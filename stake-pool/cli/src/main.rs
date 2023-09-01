@@ -499,7 +499,7 @@ fn command_vsa_remove(
         .find(vote_account)
         .ok_or("Vote account not found in validator list")?;
 
-    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
+    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
     let (stake_account_address, _) = find_stake_program_address(
         &spl_stake_pool::id(),
         vote_account,
@@ -520,7 +520,7 @@ fn command_vsa_remove(
             stake_pool_address,
             vote_account,
             validator_seed,
-            validator_stake_info.transient_seed_suffix,
+            validator_stake_info.transient_seed_suffix.into(),
         ),
     ];
     unique_signers!(signers);
@@ -545,7 +545,7 @@ fn command_increase_validator_stake(
     let validator_stake_info = validator_list
         .find(vote_account)
         .ok_or("Vote account not found in validator list")?;
-    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
+    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
@@ -559,7 +559,7 @@ fn command_increase_validator_stake(
                 vote_account,
                 lamports,
                 validator_seed,
-                validator_stake_info.transient_seed_suffix,
+                validator_stake_info.transient_seed_suffix.into(),
             ),
         ],
         &signers,
@@ -584,7 +584,7 @@ fn command_decrease_validator_stake(
     let validator_stake_info = validator_list
         .find(vote_account)
         .ok_or("Vote account not found in validator list")?;
-    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
+    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
@@ -598,7 +598,7 @@ fn command_decrease_validator_stake(
                 vote_account,
                 lamports,
                 validator_seed,
-                validator_stake_info.transient_seed_suffix,
+                validator_stake_info.transient_seed_suffix.into(),
             ),
         ],
         &signers,
@@ -692,7 +692,7 @@ fn command_deposit_stake(
     let validator_stake_info = validator_list
         .find(&vote_account)
         .ok_or("Vote account not found in the stake pool")?;
-    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
+    let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
 
     // Calculate validator stake account address linked to the pool
     let (validator_stake_account, _) = find_stake_program_address(
@@ -872,7 +872,7 @@ fn command_deposit_all_stake(
         let validator_stake_info = validator_list
             .find(&vote_account)
             .ok_or("Vote account not found in the stake pool")?;
-        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
+        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
 
         // Calculate validator stake account address linked to the pool
         let (validator_stake_account, _) = find_stake_program_address(
@@ -1084,7 +1084,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         .validators
         .iter()
         .map(|validator| {
-            let validator_seed = NonZeroU32::new(validator.validator_seed_suffix);
+            let validator_seed = NonZeroU32::new(validator.validator_seed_suffix.into());
             let (stake_account_address, _) = find_stake_program_address(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
@@ -1095,18 +1095,18 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
-                validator.transient_seed_suffix,
+                validator.transient_seed_suffix.into(),
             );
-            let update_required = validator.last_update_epoch != epoch_info.epoch;
+            let update_required = u64::from(validator.last_update_epoch) != epoch_info.epoch;
             CliStakePoolStakeAccountInfo {
                 vote_account_address: validator.vote_account_address.to_string(),
                 stake_account_address: stake_account_address.to_string(),
-                validator_active_stake_lamports: validator.active_stake_lamports,
-                validator_last_update_epoch: validator.last_update_epoch,
+                validator_active_stake_lamports: validator.active_stake_lamports.into(),
+                validator_last_update_epoch: validator.last_update_epoch.into(),
                 validator_lamports: validator.stake_lamports().unwrap(),
                 validator_transient_stake_account_address: transient_stake_account_address
                     .to_string(),
-                validator_transient_stake_lamports: validator.transient_stake_lamports,
+                validator_transient_stake_lamports: validator.transient_stake_lamports.into(),
                 update_required,
             }
         })
@@ -1255,7 +1255,7 @@ fn prepare_withdraw_accounts(
         &validator_list,
         stake_pool,
         |validator| {
-            let validator_seed = NonZeroU32::new(validator.validator_seed_suffix);
+            let validator_seed = NonZeroU32::new(validator.validator_seed_suffix.into());
             let (stake_account_address, _) = find_stake_program_address(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
@@ -1265,7 +1265,7 @@ fn prepare_withdraw_accounts(
 
             (
                 stake_account_address,
-                validator.active_stake_lamports,
+                validator.active_stake_lamports.into(),
                 Some(validator.vote_account_address),
             )
         },
@@ -1279,14 +1279,12 @@ fn prepare_withdraw_accounts(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
-                validator.transient_seed_suffix,
+                validator.transient_seed_suffix.into(),
             );
 
             (
                 transient_stake_account_address,
-                validator
-                    .transient_stake_lamports
-                    .saturating_sub(min_balance),
+                u64::from(validator.transient_stake_lamports).saturating_sub(min_balance),
                 Some(validator.vote_account_address),
             )
         },
@@ -1438,7 +1436,7 @@ fn command_withdraw_stake(
         let validator_stake_info = validator_list
             .find(&vote_account)
             .ok_or(format!("Provided stake account is delegated to a vote account {} which does not exist in the stake pool", vote_account))?;
-        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
+        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
         let (stake_account_address, _) = find_stake_program_address(
             &spl_stake_pool::id(),
             &vote_account,
@@ -1474,7 +1472,7 @@ fn command_withdraw_stake(
             "Provided vote account address {} does not exist in the stake pool",
             vote_account_address
         ))?;
-        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix);
+        let validator_seed = NonZeroU32::new(validator_stake_info.validator_seed_suffix.into());
         let (stake_account_address, _) = find_stake_program_address(
             &spl_stake_pool::id(),
             vote_account_address,

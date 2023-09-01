@@ -145,6 +145,13 @@ jobs:
       - name: Build and test transfer hook example
         run: ./ci/cargo-test-sbf.sh token/transfer-hook-example
 
+      - name: Upload program
+        uses: actions/upload-artifact@v2
+        with:
+          name: spl-transfer-hook-example
+          path: "target/deploy/*.so"
+          if-no-files-found: error
+
   cargo-test-sbf-associated-token-account:
     runs-on: ubuntu-latest
     steps:
@@ -265,6 +272,11 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: associated-token-account-program
+          path: target/deploy
+      - name: Download spl-transfer-hook-example program
+        uses: actions/download-artifact@v2
+        with:
+          name: spl-transfer-hook-example
           path: target/deploy
       - run: ./ci/js-test-token.sh
 

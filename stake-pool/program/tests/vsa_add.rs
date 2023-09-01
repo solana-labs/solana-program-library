@@ -112,15 +112,16 @@ async fn success() {
             validators: vec![state::ValidatorStakeInfo {
                 status: state::StakeStatus::Active,
                 vote_account_address: validator_stake.vote.pubkey(),
-                last_update_epoch: 0,
-                active_stake_lamports: stake_rent + current_minimum_delegation,
-                transient_stake_lamports: 0,
-                transient_seed_suffix: 0,
-                unused: 0,
+                last_update_epoch: 0.into(),
+                active_stake_lamports: (stake_rent + current_minimum_delegation).into(),
+                transient_stake_lamports: 0.into(),
+                transient_seed_suffix: 0.into(),
+                unused: 0.into(),
                 validator_seed_suffix: validator_stake
                     .validator_stake_seed
                     .map(|s| s.get())
-                    .unwrap_or(0),
+                    .unwrap_or(0)
+                    .into(),
             }]
         }
     );
