@@ -3,7 +3,9 @@ use {
     solana_cli_output::{QuietDisplay, VerboseDisplay},
     solana_sdk::native_token::Sol,
     solana_sdk::{pubkey::Pubkey, stake::state::Lockup},
-    spl_stake_pool::state::{Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
+    spl_stake_pool::state::{
+        Fee, PodStakeStatus, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo,
+    },
     std::fmt::{Display, Formatter, Result, Write},
 };
 
@@ -384,8 +386,9 @@ impl From<ValidatorStakeInfo> for CliStakePoolValidator {
     }
 }
 
-impl From<StakeStatus> for CliStakePoolValidatorStakeStatus {
-    fn from(s: StakeStatus) -> CliStakePoolValidatorStakeStatus {
+impl From<PodStakeStatus> for CliStakePoolValidatorStakeStatus {
+    fn from(s: PodStakeStatus) -> CliStakePoolValidatorStakeStatus {
+        let s = StakeStatus::try_from(s).unwrap();
         match s {
             StakeStatus::Active => CliStakePoolValidatorStakeStatus::Active,
             StakeStatus::DeactivatingTransient => {
