@@ -6415,7 +6415,7 @@ dependencies = [
  "num-traits",
  "solana-program",
  "spl-token 4.0.0",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "thiserror",
 ]
 
@@ -6428,7 +6428,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 2.0.0",
  "spl-token 4.0.0",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
 ]
 
 [[package]]
@@ -6781,7 +6781,7 @@ dependencies = [
 
 [[package]]
 name = "spl-program-error"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lazy_static",
  "num-derive 0.4.0",
@@ -6795,7 +6795,7 @@ dependencies = [
 
 [[package]]
 name = "spl-program-error-derive"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "proc-macro2 1.0.63",
  "quote 1.0.29",
@@ -6901,7 +6901,7 @@ dependencies = [
  "spl-math",
  "spl-pod",
  "spl-token 4.0.0",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "test-case",
  "thiserror",
 ]
@@ -6933,7 +6933,7 @@ dependencies = [
 
 [[package]]
 name = "spl-tlv-account-resolution"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bytemuck",
  "solana-program",
@@ -6998,7 +6998,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-2022"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "arrayref",
  "base64 0.21.3",
@@ -7039,7 +7039,7 @@ dependencies = [
  "spl-instruction-padding",
  "spl-memo 4.0.0",
  "spl-pod",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "spl-token-client",
  "spl-token-metadata-interface",
  "spl-transfer-hook-example",
@@ -7072,7 +7072,7 @@ dependencies = [
  "spl-associated-token-account 2.0.0",
  "spl-memo 4.0.0",
  "spl-token 4.0.0",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "spl-token-client",
  "spl-token-metadata-interface",
  "strum 0.25.0",
@@ -7084,7 +7084,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-client"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "async-trait",
  "futures 0.3.28",
@@ -7098,7 +7098,7 @@ dependencies = [
  "spl-associated-token-account 2.0.0",
  "spl-memo 4.0.0",
  "spl-token 4.0.0",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "spl-token-metadata-interface",
  "spl-transfer-hook-interface",
  "thiserror",
@@ -7139,13 +7139,13 @@ dependencies = [
 
 [[package]]
 name = "spl-token-metadata-example"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "spl-pod",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "spl-token-client",
  "spl-token-metadata-interface",
  "spl-type-length-value",
@@ -7154,7 +7154,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-metadata-interface"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "borsh 0.10.3",
  "serde",
@@ -7181,7 +7181,7 @@ dependencies = [
  "solana-sdk",
  "spl-math",
  "spl-token 4.0.0",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "test-case",
  "thiserror",
 ]
@@ -7209,7 +7209,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 4.0.0",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "spl-token-client",
  "test-case",
  "thiserror",
@@ -7230,7 +7230,7 @@ dependencies = [
  "solana-test-validator",
  "spl-associated-token-account 2.0.0",
  "spl-token 4.0.0",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "spl-token-client",
  "spl-token-upgrade",
  "tokio",
@@ -7246,27 +7246,27 @@ dependencies = [
  "solana-program",
  "spl-associated-token-account 2.0.0",
  "spl-token 4.0.0",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "thiserror",
 ]
 
 [[package]]
 name = "spl-transfer-hook-example"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arrayref",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "spl-tlv-account-resolution",
- "spl-token-2022 0.7.0",
+ "spl-token-2022 0.8.0",
  "spl-transfer-hook-interface",
  "spl-type-length-value",
 ]
 
 [[package]]
 name = "spl-transfer-hook-interface"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -7280,7 +7280,7 @@ dependencies = [
 
 [[package]]
 name = "spl-type-length-value"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bytemuck",
  "solana-program",
