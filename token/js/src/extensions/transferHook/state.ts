@@ -53,7 +53,7 @@ export function getTransferHookAccount(account: Account): TransferHookAccount | 
     }
 }
 
-export function getExtraAccountMetaAccount(programId: PublicKey, mint: PublicKey): PublicKey {
+export function getExtraAccountMetaAddress(mint: PublicKey, programId: PublicKey): PublicKey {
     const seeds = [Buffer.from('extra-account-metas'), mint.toBuffer()];
     return PublicKey.findProgramAddressSync(seeds, programId)[0];
 }
