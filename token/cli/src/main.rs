@@ -4225,9 +4225,9 @@ async fn main() -> Result<(), Error> {
     let mut wallet_manager = None;
     let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
 
-    let (sub_command, sub_matches) = app_matches.subcommand();
+    let (sub_command, sub_matches) = app_matches.subcommand().unwrap();
     let sub_command = CommandName::from_str(sub_command).unwrap();
-    let matches = sub_matches.unwrap();
+    let matches = sub_matches;
 
     let mut multisigner_ids = Vec::new();
     let config = Config::new(
@@ -5392,9 +5392,9 @@ mod tests {
             &multisig_member_help,
         )
         .get_matches_from(args);
-        let (sub_command, sub_matches) = app_matches.subcommand();
+        let (sub_command, sub_matches) = app_matches.subcommand().unwrap();
         let sub_command = CommandName::from_str(sub_command).unwrap();
-        let matches = sub_matches.unwrap();
+        let matches = sub_matches;
 
         let wallet_manager = None;
         let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(payer))];
@@ -5412,9 +5412,9 @@ mod tests {
             &multisig_member_help,
         )
         .get_matches_from(args);
-        let (sub_command, sub_matches) = app_matches.subcommand();
+        let (sub_command, sub_matches) = app_matches.subcommand().unwrap();
         let sub_command = CommandName::from_str(sub_command).unwrap();
-        let matches = sub_matches.unwrap();
+        let matches = sub_matches;
 
         let mut wallet_manager = None;
         let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
