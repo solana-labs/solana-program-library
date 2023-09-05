@@ -278,12 +278,12 @@ pub fn multisig_signer_arg<'a>() -> Arg<'a> {
         .takes_value(true)
         .multiple(true)
         .min_values(0_usize)
-        .max_values(MAX_SIGNERS as usize)
+        .max_values(MAX_SIGNERS)
         .help(MULTISIG_SIGNER_ARG.help)
 }
 
 fn is_multisig_minimum_signers(string: &str) -> Result<(), String> {
-    let v = u8::from_str(&string).map_err(|e| e.to_string())? as usize;
+    let v = u8::from_str(string).map_err(|e| e.to_string())? as usize;
     if v < MIN_SIGNERS {
         Err(format!("must be at least {}", MIN_SIGNERS))
     } else if v > MAX_SIGNERS {
@@ -2784,7 +2784,7 @@ fn app<'a>(
                 .value_name("FORMAT")
                 .global(true)
                 .takes_value(true)
-                .possible_values(&["json", "json-compact"])
+                .possible_values(["json", "json-compact"])
                 .help("Return information in specified output format"),
         )
         .arg(
@@ -2905,7 +2905,7 @@ fn app<'a>(
                         .long("default-account-state")
                         .requires("enable_freeze")
                         .takes_value(true)
-                        .possible_values(&["initialized", "frozen"])
+                        .possible_values(["initialized", "frozen"])
                         .help("Specify that accounts have a default state. \
                             Note: specifying \"initialized\" adds an extension, which gives \
                             the option of specifying default frozen accounts in the future. \
@@ -2936,7 +2936,7 @@ fn app<'a>(
                         .long("enable-confidential-transfers")
                         .value_names(&["APPROVE-POLICY"])
                         .takes_value(true)
-                        .possible_values(&["auto", "manual"])
+                        .possible_values(["auto", "manual"])
                         .help(
                             "Enable accounts to make confidential transfers. If \"auto\" \
                             is selected, then accounts are automatically approved to make \
@@ -3186,8 +3186,8 @@ fn app<'a>(
                         .takes_value(true)
                         .index(2)
                         .required(true)
-                        .min_values(MIN_SIGNERS as usize)
-                        .max_values(MAX_SIGNERS as usize)
+                        .min_values(MIN_SIGNERS)
+                        .max_values(MAX_SIGNERS)
                         .help(multisig_member_help),
                 )
                 .arg(
@@ -3220,7 +3220,7 @@ fn app<'a>(
                     Arg::with_name("authority_type")
                         .value_name("AUTHORITY_TYPE")
                         .takes_value(true)
-                        .possible_values(&[
+                        .possible_values([
                             "mint", "freeze", "owner", "close",
                             "close-mint", "transfer-fee-config", "withheld-withdraw",
                             "interest-rate", "permanent-delegate", "confidential-transfer-mint",
@@ -4038,7 +4038,7 @@ fn app<'a>(
                     Arg::with_name("state")
                         .value_name("STATE")
                         .takes_value(true)
-                        .possible_values(&["initialized", "frozen"])
+                        .possible_values(["initialized", "frozen"])
                         .index(2)
                         .required(true)
                         .help("The new default account state."),
@@ -4517,7 +4517,7 @@ async fn process_command<'a>(
             let no_recipient_is_ata_owner =
                 arg_matches.is_present("no_recipient_is_ata_owner") || !recipient_is_ata_owner;
             if recipient_is_ata_owner {
-                println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
+                println_display(config, "recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release.".to_string());
             }
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
