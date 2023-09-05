@@ -277,8 +277,8 @@ pub fn multisig_signer_arg<'a>() -> Arg<'a> {
         .value_name("MULTISIG_SIGNER")
         .takes_value(true)
         .multiple(true)
-        .min_values(0u64)
-        .max_values(MAX_SIGNERS as u64)
+        .min_values(0_usize)
+        .max_values(MAX_SIGNERS as usize)
         .help(MULTISIG_SIGNER_ARG.help)
 }
 
@@ -3186,8 +3186,8 @@ fn app<'a, 'b>(
                         .takes_value(true)
                         .index(2)
                         .required(true)
-                        .min_values(MIN_SIGNERS as u64)
-                        .max_values(MAX_SIGNERS as u64)
+                        .min_values(MIN_SIGNERS as usize)
+                        .max_values(MAX_SIGNERS as usize)
                         .help(multisig_member_help),
                 )
                 .arg(
@@ -3380,7 +3380,7 @@ fn app<'a, 'b>(
                         .value_name("PUBKEY:ROLE")
                         .takes_value(true)
                         .multiple(true)
-                        .min_values(0u64)
+                        .min_values(0_usize)
                         .help("Additional pubkey(s) required for a transfer hook and their \
                             role, in the format \"<PUBKEY>:<ROLE>\". The role must be \
                             \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\".\
@@ -4121,7 +4121,7 @@ fn app<'a, 'b>(
                         .value_name("ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .multiple(true)
-                        .min_values(0u64)
+                        .min_values(0_usize)
                         .help("The token accounts to withdraw from")
                 )
                 .arg(
