@@ -2763,7 +2763,7 @@ fn app<'a, 'b>(
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(
             Arg::with_name("config_file")
-                .short("C")
+                .short('C')
                 .long("config")
                 .value_name("PATH")
                 .takes_value(true)
@@ -2772,7 +2772,7 @@ fn app<'a, 'b>(
         )
         .arg(
             Arg::with_name("verbose")
-                .short("v")
+                .short('v')
                 .long("verbose")
                 .takes_value(false)
                 .global(true)
@@ -2789,7 +2789,7 @@ fn app<'a, 'b>(
         )
         .arg(
             Arg::with_name("program_id")
-                .short("p")
+                .short('p')
                 .long("program-id")
                 .value_name("ADDRESS")
                 .takes_value(true)
@@ -2799,7 +2799,7 @@ fn app<'a, 'b>(
         )
         .arg(
             Arg::with_name("json_rpc_url")
-                .short("u")
+                .short('u')
                 .long("url")
                 .value_name("URL_OR_MONIKER")
                 .takes_value(true)
