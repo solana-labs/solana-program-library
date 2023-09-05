@@ -8,7 +8,7 @@ use solana_account_decoder::{
     parse_token::{get_token_account_mint, parse_token, TokenAccountType, UiAccountState},
     UiAccountData,
 };
-use solana_clap_utils::{
+use solana_clap_v3_utils::{
     fee_payer::fee_payer_arg,
     input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, value_of},
     input_validators::{

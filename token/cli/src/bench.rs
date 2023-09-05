@@ -2,7 +2,7 @@
 use {
     crate::{config::Config, owner_address_arg, CommandResult, Error},
     clap::{value_t_or_exit, App, AppSettings, Arg, ArgMatches, SubCommand},
-    solana_clap_utils::{
+    solana_clap_v3_utils::{
         input_parsers::pubkey_of_signer,
         input_validators::{is_amount, is_parsable, is_valid_pubkey},
     },

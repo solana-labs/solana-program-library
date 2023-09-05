@@ -1,6 +1,6 @@
 use crate::{signers_of, Error, MULTISIG_SIGNER_ARG};
 use clap::ArgMatches;
-use solana_clap_utils::{
+use solana_clap_v3_utils::{
     input_parsers::{pubkey_of_signer, value_of},
     input_validators::normalize_to_url_if_moniker,
     keypair::{signer_from_path, signer_from_path_with_config, SignerFromPathConfig},

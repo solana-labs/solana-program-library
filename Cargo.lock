@@ -7053,14 +7053,14 @@ name = "spl-token-cli"
 version = "3.1.0"
 dependencies = [
  "assert_cmd",
- "clap 2.34.0",
+ "clap 3.2.25",
  "console",
  "serde",
  "serde_derive",
  "serde_json",
  "serial_test",
  "solana-account-decoder",
- "solana-clap-utils",
+ "solana-clap-v3-utils",
  "solana-cli-config",
  "solana-cli-output",
  "solana-client",
