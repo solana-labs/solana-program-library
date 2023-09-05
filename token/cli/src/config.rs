@@ -49,7 +49,7 @@ pub(crate) struct Config<'a> {
 
 impl<'a> Config<'a> {
     pub(crate) async fn new(
-        matches: &ArgMatches<'_>,
+        matches: &ArgMatches,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
@@ -100,7 +100,7 @@ impl<'a> Config<'a> {
     }
 
     fn extract_multisig_signers(
-        matches: &ArgMatches<'_>,
+        matches: &ArgMatches,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
@@ -120,7 +120,7 @@ impl<'a> Config<'a> {
     }
 
     pub(crate) async fn new_with_clients_and_ws_url(
-        matches: &ArgMatches<'_>,
+        matches: &ArgMatches,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
@@ -303,7 +303,7 @@ impl<'a> Config<'a> {
     // return the associated token address for the default address.
     pub(crate) async fn associated_token_address_or_override(
         &self,
-        arg_matches: &ArgMatches<'_>,
+        arg_matches: &ArgMatches,
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
@@ -322,7 +322,7 @@ impl<'a> Config<'a> {
     // return the associated token address for the default address.
     pub(crate) async fn associated_token_address_for_token_or_override(
         &self,
-        arg_matches: &ArgMatches<'_>,
+        arg_matches: &ArgMatches,
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
         token: Option<Pubkey>,
@@ -353,7 +353,7 @@ impl<'a> Config<'a> {
     // Checks if an explicit address was provided, otherwise return the default address if there is one
     pub(crate) fn pubkey_or_default(
         &self,
-        arg_matches: &ArgMatches<'_>,
+        arg_matches: &ArgMatches,
         address_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {

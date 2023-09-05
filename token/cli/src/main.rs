@@ -206,7 +206,7 @@ where
     }
 }
 
-pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn owner_address_arg<'a>() -> Arg<'a> {
     Arg::with_name(OWNER_ADDRESS_ARG.name)
         .long(OWNER_ADDRESS_ARG.long)
         .takes_value(true)
@@ -215,7 +215,7 @@ pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help(OWNER_ADDRESS_ARG.help)
 }
 
-pub fn owner_keypair_arg_with_value_name<'a, 'b>(value_name: &'static str) -> Arg<'a, 'b> {
+pub fn owner_keypair_arg_with_value_name<'a>(value_name: &'static str) -> Arg<'a> {
     Arg::with_name(OWNER_KEYPAIR_ARG.name)
         .long(OWNER_KEYPAIR_ARG.long)
         .takes_value(true)
@@ -224,11 +224,11 @@ pub fn owner_keypair_arg_with_value_name<'a, 'b>(value_name: &'static str) -> Ar
         .help(OWNER_KEYPAIR_ARG.help)
 }
 
-pub fn owner_keypair_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn owner_keypair_arg<'a>() -> Arg<'a> {
     owner_keypair_arg_with_value_name("OWNER_KEYPAIR")
 }
 
-pub fn mint_address_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn mint_address_arg<'a>() -> Arg<'a> {
     Arg::with_name(MINT_ADDRESS_ARG.name)
         .long(MINT_ADDRESS_ARG.long)
         .takes_value(true)
@@ -241,7 +241,7 @@ fn is_mint_decimals(string: String) -> Result<(), String> {
     is_parsable::<u8>(string)
 }
 
-pub fn mint_decimals_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn mint_decimals_arg<'a>() -> Arg<'a> {
     Arg::with_name(MINT_DECIMALS_ARG.name)
         .long(MINT_DECIMALS_ARG.long)
         .takes_value(true)
@@ -254,14 +254,14 @@ pub trait MintArgs {
     fn mint_args(self) -> Self;
 }
 
-impl MintArgs for App<'_, '_> {
+impl MintArgs for App<'_> {
     fn mint_args(self) -> Self {
         self.arg(mint_address_arg().requires(MINT_DECIMALS_ARG.name))
             .arg(mint_decimals_arg().requires(MINT_ADDRESS_ARG.name))
     }
 }
 
-pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn delegate_address_arg<'a>() -> Arg<'a> {
     Arg::with_name(DELEGATE_ADDRESS_ARG.name)
         .long(DELEGATE_ADDRESS_ARG.long)
         .takes_value(true)
@@ -270,7 +270,7 @@ pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help(DELEGATE_ADDRESS_ARG.help)
 }
 
-pub fn multisig_signer_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn multisig_signer_arg<'a>() -> Arg<'a> {
     Arg::with_name(MULTISIG_SIGNER_ARG.name)
         .long(MULTISIG_SIGNER_ARG.long)
         .validator(is_valid_signer)
@@ -332,7 +332,7 @@ fn new_throwaway_signer() -> (Arc<dyn Signer>, Pubkey) {
 }
 
 fn get_signer(
-    matches: &ArgMatches<'_>,
+    matches: &ArgMatches,
     keypair_name: &str,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
 ) -> Option<(Arc<dyn Signer>, Pubkey)> {
@@ -386,7 +386,7 @@ async fn check_wallet_balance(
 
 type SignersOf = Vec<(Arc<dyn Signer>, Pubkey)>;
 pub fn signers_of(
-    matches: &ArgMatches<'_>,
+    matches: &ArgMatches,
     name: &str,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
 ) -> Result<Option<SignersOf>, Box<dyn std::error::Error>> {
@@ -2700,40 +2700,40 @@ async fn command_withdraw_withheld_tokens(
 
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
-    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn sign_only_arg<'a>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
     }
-    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn signer_arg<'a>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
     }
 }
 
 struct SignOnlyNeedsMintDecimals {}
 impl offline::ArgsConfig for SignOnlyNeedsMintDecimals {
-    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn sign_only_arg<'a>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_DECIMALS_ARG.name])
     }
-    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn signer_arg<'a>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_DECIMALS_ARG.name])
     }
 }
 
 struct SignOnlyNeedsMintAddress {}
 impl offline::ArgsConfig for SignOnlyNeedsMintAddress {
-    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn sign_only_arg<'a>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name])
     }
-    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn signer_arg<'a>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name])
     }
 }
 
 struct SignOnlyNeedsDelegateAddress {}
 impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
-    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn sign_only_arg<'a>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
     }
-    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn signer_arg<'a>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
     }
 }
@@ -2756,7 +2756,7 @@ fn app<'a, 'b>(
     default_decimals: &'a str,
     minimum_signers_help: &'b str,
     multisig_member_help: &'b str,
-) -> App<'a, 'b> {
+) -> App<'a> {
     App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
@@ -4247,7 +4247,7 @@ async fn main() -> Result<(), Error> {
 
 async fn process_command<'a>(
     sub_command: &CommandName,
-    sub_matches: &ArgMatches<'_>,
+    sub_matches: &ArgMatches,
     config: &Config<'a>,
     mut wallet_manager: Option<Arc<RemoteWalletManager>>,
     mut bulk_signers: Vec<Arc<dyn Signer>>,

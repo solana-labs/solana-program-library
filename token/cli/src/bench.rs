@@ -28,7 +28,7 @@ pub(crate) trait BenchSubCommand {
     fn bench_subcommand(self) -> Self;
 }
 
-impl BenchSubCommand for App<'_, '_> {
+impl BenchSubCommand for App<'_> {
     fn bench_subcommand(self) -> Self {
         self.subcommand(
             SubCommand::with_name("bench")
@@ -166,7 +166,7 @@ impl BenchSubCommand for App<'_, '_> {
 }
 
 pub(crate) async fn bench_process_command(
-    matches: &ArgMatches<'_>,
+    matches: &ArgMatches,
     config: &Config<'_>,
     mut signers: Vec<Arc<dyn Signer>>,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
