@@ -2752,10 +2752,10 @@ fn multisig_member_help_string() -> String {
     )
 }
 
-fn app<'a, 'b>(
+fn app<'a>(
     default_decimals: &'a str,
-    minimum_signers_help: &'b str,
-    multisig_member_help: &'b str,
+    minimum_signers_help: &'a str,
+    multisig_member_help: &'a str,
 ) -> App<'a> {
     App::new(crate_name!())
         .about(crate_description!())
