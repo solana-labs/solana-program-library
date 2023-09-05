@@ -40,7 +40,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Create multiple token accounts for benchmarking")
                         .arg(
                             Arg::with_name("token")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -63,7 +63,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Close multiple token accounts used for benchmarking")
                         .arg(
                             Arg::with_name("token")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -86,7 +86,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Deposit tokens into multiple accounts")
                         .arg(
                             Arg::with_name("token")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -104,7 +104,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("amount")
-                                .validator(is_amount)
+                                .validator(|s| is_amount(s))
                                 .value_name("TOKEN_AMOUNT")
                                 .takes_value(true)
                                 .index(3)
@@ -114,7 +114,7 @@ impl BenchSubCommand for App<'_> {
                         .arg(
                             Arg::with_name("from")
                                 .long("from")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("SOURCE_TOKEN_ACCOUNT_ADDRESS")
                                 .takes_value(true)
                                 .help("The source token account address [default: associated token account for --owner]")
@@ -126,7 +126,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Withdraw tokens from multiple accounts")
                         .arg(
                             Arg::with_name("token")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -144,7 +144,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("amount")
-                                .validator(is_amount)
+                                .validator(|s| is_amount(s))
                                 .value_name("TOKEN_AMOUNT")
                                 .takes_value(true)
                                 .index(3)
@@ -154,7 +154,7 @@ impl BenchSubCommand for App<'_> {
                         .arg(
                             Arg::with_name("to")
                                 .long("to")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                                 .takes_value(true)
                                 .help("The recipient token account address [default: associated token account for --owner]")
