@@ -3880,7 +3880,6 @@ fn app<'a>(
                 )
                 .arg(
                     owner_address_arg()
-                        .index(2)
                         .conflicts_with("address")
                         .help("Owner of the associated account for the specified token. \
                                To query a specific account, use the `--address` parameter instead. \
