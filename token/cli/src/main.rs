@@ -10,7 +10,7 @@ use solana_account_decoder::{
 };
 use solana_clap_v3_utils::{
     fee_payer::fee_payer_arg,
-    input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, value_of},
+    input_parsers::pubkeys_of_multiple_signers,
     input_validators::{
         is_amount, is_amount_or_all, is_parsable, is_pubkey, is_url_or_moniker, is_valid_pubkey,
         is_valid_signer,
@@ -73,6 +73,9 @@ use sort::{sort_and_parse_token_accounts, AccountFilter};
 
 mod bench;
 use bench::*;
+
+mod input_parsers;
+use input_parsers::{is_present, pubkey_of_signer, value_of};
 
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
@@ -4310,10 +4313,10 @@ async fn process_command<'a>(
                 decimals,
                 token,
                 mint_authority,
-                arg_matches.is_present("enable_freeze"),
-                arg_matches.is_present("enable_close"),
-                arg_matches.is_present("enable_non_transferable"),
-                arg_matches.is_present("enable_permanent_delegate"),
+                is_present(arg_matches, "enable_freeze"),
+                is_present(arg_matches, "enable_close"),
+                is_present(arg_matches, "enable_non_transferable"),
+                is_present(arg_matches, "enable_permanent_delegate"),
                 memo,
                 metadata_address,
                 rate_bps,
@@ -4321,7 +4324,7 @@ async fn process_command<'a>(
                 transfer_fee,
                 confidential_transfer_auto_approve,
                 transfer_hook_program_id,
-                arg_matches.is_present("enable_metadata"),
+                is_present(arg_matches, "enable_metadata"),
                 bulk_signers,
             )
             .await
@@ -4426,7 +4429,7 @@ async fn process_command<'a>(
                 token,
                 owner,
                 account,
-                arg_matches.is_present("immutable"),
+                is_present(arg_matches, "immutable"),
                 bulk_signers,
             )
             .await
@@ -4480,7 +4483,7 @@ async fn process_command<'a>(
 
             let new_authority =
                 pubkey_of_signer(arg_matches, "new_authority", &mut wallet_manager).unwrap();
-            let force_authorize = arg_matches.is_present("force");
+            let force_authorize = is_present(arg_matches, "force");
             command_authorize(
                 config,
                 address,
@@ -4512,17 +4515,17 @@ async fn process_command<'a>(
             }
 
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let fund_recipient = arg_matches.is_present("fund_recipient");
+            let fund_recipient = is_present(arg_matches, "fund_recipient");
             let allow_unfunded_recipient = arg_matches.is_present("allow_empty_recipient")
-                || arg_matches.is_present("allow_unfunded_recipient");
+                || is_present(arg_matches, "allow_unfunded_recipient");
 
-            let recipient_is_ata_owner = arg_matches.is_present("recipient_is_ata_owner");
+            let recipient_is_ata_owner = is_present(arg_matches, "recipient_is_ata_owner");
             let no_recipient_is_ata_owner =
-                arg_matches.is_present("no_recipient_is_ata_owner") || !recipient_is_ata_owner;
+                is_present(arg_matches, "no_recipient_is_ata_owner") || !recipient_is_ata_owner;
             if recipient_is_ata_owner {
                 println_display(config, "recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release.".to_string());
             }
-            let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            let use_unchecked_instruction = is_present(arg_matches, "use_unchecked_instruction");
             let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
             let memo = value_t!(arg_matches, "memo", String).ok();
             let transfer_hook_accounts = arg_matches.values_of("transfer_hook_account").map(|v| {
@@ -4546,8 +4549,8 @@ async fn process_command<'a>(
                 expected_fee,
                 memo,
                 bulk_signers,
-                arg_matches.is_present("no_wait"),
-                arg_matches.is_present("allow_non_system_account_recipient"),
+                is_present(arg_matches, "no_wait"),
+                is_present(arg_matches, "allow_non_system_account_recipient"),
                 transfer_hook_accounts,
             )
             .await
@@ -4567,7 +4570,7 @@ async fn process_command<'a>(
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            let use_unchecked_instruction = is_present(arg_matches, "use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
             command_burn(
                 config,
@@ -4612,7 +4615,7 @@ async fn process_command<'a>(
                 )?
             };
             config.check_account(&recipient, Some(token)).await?;
-            let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            let use_unchecked_instruction = is_present(arg_matches, "use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
             command_mint(
                 config,
@@ -4671,7 +4674,7 @@ async fn process_command<'a>(
         }
         (CommandName::Wrap, arg_matches) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let account = if arg_matches.is_present("create_aux_account") {
+            let account = if is_present(arg_matches, "create_aux_account") {
                 let (signer, account) = new_throwaway_signer();
                 bulk_signers.push(signer);
                 Some(account)
@@ -4689,7 +4692,7 @@ async fn process_command<'a>(
                 amount,
                 wallet_address,
                 account,
-                arg_matches.is_present("immutable"),
+                is_present(arg_matches, "immutable"),
                 bulk_signers,
             )
             .await
@@ -4719,7 +4722,7 @@ async fn process_command<'a>(
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
+            let use_unchecked_instruction = is_present(arg_matches, "use_unchecked_instruction");
             command_approve(
                 config,
                 account,
@@ -4798,9 +4801,9 @@ async fn process_command<'a>(
         (CommandName::Accounts, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager)?;
-            let filter = if arg_matches.is_present("delegated") {
+            let filter = if is_present(arg_matches, "delegated") {
                 AccountFilter::Delegated
-            } else if arg_matches.is_present("externally_closeable") {
+            } else if is_present(arg_matches, "externally_closeable") {
                 AccountFilter::ExternallyCloseable
             } else {
                 AccountFilter::All
@@ -4811,7 +4814,7 @@ async fn process_command<'a>(
                 token,
                 owner,
                 filter,
-                arg_matches.is_present("addresses_only"),
+                is_present(arg_matches, "addresses_only"),
             )
             .await
         }
@@ -4850,7 +4853,7 @@ async fn process_command<'a>(
             }
 
             let close_empty_associated_accounts =
-                arg_matches.is_present("close_empty_associated_accounts");
+                is_present(arg_matches, "close_empty_associated_accounts");
 
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
@@ -4983,7 +4986,7 @@ async fn process_command<'a>(
                 pubkey_of_signer(arg_matches, "account", &mut wallet_manager)
                     .unwrap()
                     .unwrap();
-            let include_mint = arg_matches.is_present("include_mint");
+            let include_mint = is_present(arg_matches, "include_mint");
             let source_accounts = arg_matches
                 .values_of("source")
                 .unwrap_or_default()

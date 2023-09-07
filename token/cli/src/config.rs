@@ -1,7 +1,6 @@
-use crate::{signers_of, Error, MULTISIG_SIGNER_ARG};
+use crate::{is_present, pubkey_of_signer, signers_of, value_of, Error, MULTISIG_SIGNER_ARG};
 use clap::ArgMatches;
 use solana_clap_v3_utils::{
-    input_parsers::{pubkey_of_signer, value_of},
     input_validators::normalize_to_url_if_moniker,
     keypair::{signer_from_path, signer_from_path_with_config, SignerFromPathConfig},
     nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
@@ -74,7 +73,7 @@ impl<'a> Config<'a> {
             json_rpc_url,
             CommitmentConfig::confirmed(),
         ));
-        let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
+        let sign_only = is_present(matches, SIGN_ONLY_ARG.name);
         let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = if sign_only {
             let blockhash = value_of(matches, BLOCKHASH_ARG.name).unwrap_or_default();
             Arc::new(ProgramOfflineClient::new(
@@ -148,8 +147,8 @@ impl<'a> Config<'a> {
         let default_keypair = cli_config.keypair_path.clone();
 
         let default_signer: Option<Arc<dyn Signer>> = {
-            if let Some(owner_path) = matches.value_of("owner") {
-                signer_from_path_with_config(matches, owner_path, "owner", wallet_manager, &config)
+            if let Some(owner_path) = value_of::<String>(matches, "owner") {
+                signer_from_path_with_config(matches, &owner_path, "owner", wallet_manager, &config)
                     .ok()
             } else {
                 signer_from_path_with_config(
@@ -172,11 +171,10 @@ impl<'a> Config<'a> {
         }
         .map(Arc::from);
 
-        let fee_payer: Option<Arc<dyn Signer>> = matches
-            .value_of("fee_payer")
+        let fee_payer: Option<Arc<dyn Signer>> = value_of::<String>(matches, "fee_payer")
             .map(|path| {
                 Arc::from(
-                    signer_from_path(matches, path, "fee_payer", wallet_manager).unwrap_or_else(
+                    signer_from_path(matches, &path, "fee_payer", wallet_manager).unwrap_or_else(
                         |e| {
                             eprintln!("error: {}", e);
                             exit(1);
@@ -186,10 +184,9 @@ impl<'a> Config<'a> {
             })
             .or_else(|| default_signer.clone());
 
-        let verbose = matches.is_present("verbose");
-        let output_format = matches
-            .value_of("output_format")
-            .map(|value| match value {
+        let verbose = is_present(matches, "verbose");
+        let output_format = value_of::<String>(matches, "output_format")
+            .map(|value| match value.as_str() {
                 "json" => OutputFormat::Json,
                 "json-compact" => OutputFormat::JsonCompact,
                 _ => unreachable!(),
@@ -208,9 +205,8 @@ impl<'a> Config<'a> {
         let nonce_authority = if nonce_account.is_some() {
             let (nonce_authority, _) = signer_from_path(
                 matches,
-                matches
-                    .value_of(NONCE_AUTHORITY_ARG.name)
-                    .unwrap_or(&cli_config.keypair_path),
+                &value_of::<String>(matches, NONCE_AUTHORITY_ARG.name)
+                    .unwrap_or(cli_config.keypair_path),
                 NONCE_AUTHORITY_ARG.name,
                 wallet_manager,
             )
@@ -229,17 +225,17 @@ impl<'a> Config<'a> {
             None
         };
 
-        let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
-        let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
+        let sign_only = is_present(matches, SIGN_ONLY_ARG.name);
+        let dump_transaction_message = is_present(matches, DUMP_TRANSACTION_MESSAGE.name);
 
         let default_program_id = spl_token::id();
         let (program_id, restrict_to_program_id) =
-            if let Some(program_id) = value_of(matches, "program_id") {
+            if let Some(program_id) = value_of::<Pubkey>(matches, "program_id") {
                 (program_id, true)
             } else if !sign_only {
-                if let Some(address) = value_of(matches, "token")
-                    .or_else(|| value_of(matches, "account"))
-                    .or_else(|| value_of(matches, "address"))
+                if let Some(address) = value_of::<Pubkey>(matches, "token")
+                    .or_else(|| value_of::<Pubkey>(matches, "account"))
+                    .or_else(|| value_of::<Pubkey>(matches, "address"))
                 {
                     (
                         rpc_client
@@ -256,7 +252,7 @@ impl<'a> Config<'a> {
                 (default_program_id, false)
             };
 
-        let nonce_blockhash = value_of(matches, BLOCKHASH_ARG.name);
+        let nonce_blockhash = value_of::<Hash>(matches, BLOCKHASH_ARG.name);
         Self {
             default_signer,
             rpc_client,
@@ -380,10 +376,10 @@ impl<'a> Config<'a> {
         };
         let mut load_authority = move || -> Result<Arc<dyn Signer>, Error> {
             if authority_name != "owner" {
-                if let Some(keypair_path) = arg_matches.value_of(authority_name) {
+                if let Some(keypair_path) = value_of::<String>(arg_matches, authority_name) {
                     return signer_from_path_with_config(
                         arg_matches,
-                        keypair_path,
+                        &keypair_path,
                         authority_name,
                         wallet_manager,
                         &config,
