@@ -1,5 +1,5 @@
-import type { TLVNumberSize } from '../../src/extensions/tlvData';
-import { TLVData } from '../../src/extensions/tlvData';
+import type { TlvNumberSize } from '../../src/extensions/tlvState';
+import { TlvState } from '../../src/extensions/tlvState';
 import { expect } from 'chai';
 
 describe('tlvData', () => {
@@ -14,6 +14,9 @@ describe('tlvData', () => {
         Buffer.from([2]),
         Buffer.from([2, 0]),
         Buffer.from([1, 2]),
+        Buffer.from([0]),
+        Buffer.from([3, 0]),
+        Buffer.from([1, 2, 3]),
     ]);
 
     // typeLength 2, lengthSize 1
@@ -27,6 +30,9 @@ describe('tlvData', () => {
         Buffer.from([2, 0]),
         Buffer.from([2]),
         Buffer.from([1, 2]),
+        Buffer.from([0, 0]),
+        Buffer.from([3]),
+        Buffer.from([1, 2, 3]),
     ]);
 
     // typeLength 4, lengthSize 8
@@ -40,6 +46,9 @@ describe('tlvData', () => {
         Buffer.from([2, 0, 0, 0]),
         Buffer.from([2, 0, 0, 0, 0, 0, 0, 0]),
         Buffer.from([1, 2]),
+        Buffer.from([0, 0, 0, 0]),
+        Buffer.from([3, 0, 0, 0, 0, 0, 0, 0]),
+        Buffer.from([1, 2, 3]),
     ]);
 
     // typeLength 8, lengthSize 4
@@ -53,12 +62,15 @@ describe('tlvData', () => {
         Buffer.from([2, 0, 0, 0, 0, 0, 0, 0]),
         Buffer.from([2, 0, 0, 0]),
         Buffer.from([1, 2]),
+        Buffer.from([0, 0, 0, 0, 0, 0, 0, 0]),
+        Buffer.from([3, 0, 0, 0]),
+        Buffer.from([1, 2, 3]),
     ]);
 
-    const testRawData = (tlvData: Buffer, typeSize: TLVNumberSize, lengthSize: TLVNumberSize) => {
-        const tlv = new TLVData(tlvData, typeSize, lengthSize);
+    const testRawData = (tlvData: Buffer, typeSize: TlvNumberSize, lengthSize: TlvNumberSize) => {
+        const tlv = new TlvState(tlvData, typeSize, lengthSize);
         expect(tlv.data).to.be.deep.equal(tlvData);
-        const tlvWithOffset = new TLVData(tlvData, typeSize, lengthSize, typeSize + lengthSize);
+        const tlvWithOffset = new TlvState(tlvData, typeSize, lengthSize, typeSize + lengthSize);
         expect(tlvWithOffset.data).to.be.deep.equal(tlvData.subarray(typeSize + lengthSize));
     };
 
@@ -69,26 +81,35 @@ describe('tlvData', () => {
         testRawData(tlvData4, 8, 4);
     });
 
-    const testIndividualEntries = (tlvData: Buffer, typeSize: TLVNumberSize, lengthSize: TLVNumberSize) => {
-        const tlv = new TLVData(tlvData, typeSize, lengthSize);
-        expect(tlv.entry(Number(0))).to.be.deep.equal(Buffer.alloc(0));
-        expect(tlv.entry(Number(1))).to.be.deep.equal(Buffer.from([1]));
-        expect(tlv.entry(Number(2))).to.be.deep.equal(Buffer.from([1, 2]));
-        expect(tlv.entry(Number(3))).to.be.null;
-        expect(tlv.entry(BigInt(0))).to.be.deep.equal(Buffer.alloc(0));
-        expect(tlv.entry(BigInt(1))).to.be.deep.equal(Buffer.from([1]));
-        expect(tlv.entry(BigInt(2))).to.be.deep.equal(Buffer.from([1, 2]));
-        expect(tlv.entry(BigInt(3))).to.be.null;
+    const testIndividualEntries = (tlvData: Buffer, typeSize: TlvNumberSize, lengthSize: TlvNumberSize) => {
+        const tlv = new TlvState(tlvData, typeSize, lengthSize);
 
+        // Number as discriminator
+        expect(tlv.firstBytes(Number(0))).to.be.deep.equal(Buffer.from([]));
+        expect(tlv.firstBytes(Number(1))).to.be.deep.equal(Buffer.from([1]));
+        expect(tlv.firstBytes(Number(2))).to.be.deep.equal(Buffer.from([1, 2]));
+        expect(tlv.firstBytes(Number(3))).to.be.null;
+
+        // BigInt as discriminator
+        expect(tlv.firstBytes(BigInt(0))).to.be.deep.equal(Buffer.from([]));
+        expect(tlv.firstBytes(BigInt(1))).to.be.deep.equal(Buffer.from([1]));
+        expect(tlv.firstBytes(BigInt(2))).to.be.deep.equal(Buffer.from([1, 2]));
+        expect(tlv.firstBytes(BigInt(3))).to.be.null;
+
+        // Buffer / TlvDiscriminator as discriminator
         const type = Buffer.alloc(typeSize);
         type[0] = 0;
-        expect(tlv.entry(type)).to.be.deep.equal(Buffer.alloc(0));
+        expect(tlv.firstBytes(type)).to.be.deep.equal(Buffer.from([]));
+        expect(tlv.firstBytes({ bytes: type })).to.be.deep.equal(Buffer.from([]));
         type[0] = 1;
-        expect(tlv.entry(type)).to.be.deep.equal(Buffer.from([1]));
+        expect(tlv.firstBytes(type)).to.be.deep.equal(Buffer.from([1]));
+        expect(tlv.firstBytes({ bytes: type })).to.be.deep.equal(Buffer.from([1]));
         type[0] = 2;
-        expect(tlv.entry(type)).to.be.deep.equal(Buffer.from([1, 2]));
+        expect(tlv.firstBytes(type)).to.be.deep.equal(Buffer.from([1, 2]));
+        expect(tlv.firstBytes({ bytes: type })).to.be.deep.equal(Buffer.from([1, 2]));
         type[0] = 3;
-        expect(tlv.entry(type)).to.be.null;
+        expect(tlv.firstBytes(type)).to.be.null;
+        expect(tlv.firstBytes({ bytes: type })).to.be.null;
     };
 
     it('should get the entries individually', () => {
@@ -98,20 +119,73 @@ describe('tlvData', () => {
         testIndividualEntries(tlvData4, 8, 4);
     });
 
-    const testEntries = (tlvData: Buffer, typeSize: TLVNumberSize, lengthSize: TLVNumberSize) => {
-        const tlv = new TLVData(tlvData, typeSize, lengthSize);
-        const entries = tlv.entries();
-        expect(entries).to.have.length(3);
-        expect(entries.get(BigInt(0))).to.be.deep.equal(Buffer.alloc(0));
-        expect(entries.get(BigInt(1))).to.be.deep.equal(Buffer.from([1]));
-        expect(entries.get(BigInt(2))).to.be.deep.equal(Buffer.from([1, 2]));
-        expect(entries.get(BigInt(3))).to.be.undefined;
+    const testRepeatingEntries = (tlvData: Buffer, typeSize: TlvNumberSize, lengthSize: TlvNumberSize) => {
+        const tlv = new TlvState(tlvData, typeSize, lengthSize);
+
+        const numberDiscriminator = tlv.bytesRepeating(Number(0));
+        expect(numberDiscriminator).to.have.length(2);
+        expect(numberDiscriminator[0]).to.be.deep.equal(Buffer.from([]));
+        expect(numberDiscriminator[1]).to.be.deep.equal(Buffer.from([1, 2, 3]));
+
+        const numberDiscriminatorWithCount = tlv.bytesRepeating(Number(0), 1);
+        expect(numberDiscriminatorWithCount).to.have.length(1);
+        expect(numberDiscriminatorWithCount[0]).to.be.deep.equal(Buffer.from([]));
+
+        const bigIntDiscriminator = tlv.bytesRepeating(BigInt(0));
+        expect(bigIntDiscriminator).to.have.length(2);
+        expect(bigIntDiscriminator[0]).to.be.deep.equal(Buffer.from([]));
+        expect(bigIntDiscriminator[1]).to.be.deep.equal(Buffer.from([1, 2, 3]));
+
+        const bigIntDiscriminatorWithCount = tlv.bytesRepeating(BigInt(0), 1);
+        expect(bigIntDiscriminatorWithCount).to.have.length(1);
+        expect(bigIntDiscriminatorWithCount[0]).to.be.deep.equal(Buffer.from([]));
+
+        const bufferDiscriminator = tlv.bytesRepeating(Buffer.alloc(typeSize));
+        expect(bufferDiscriminator).to.have.length(2);
+        expect(bufferDiscriminator[0]).to.be.deep.equal(Buffer.from([]));
+        expect(bufferDiscriminator[1]).to.be.deep.equal(Buffer.from([1, 2, 3]));
+
+        const bufferDiscriminatorWithCount = tlv.bytesRepeating(Buffer.alloc(typeSize), 1);
+        expect(bufferDiscriminatorWithCount).to.have.length(1);
+        expect(bufferDiscriminatorWithCount[0]).to.be.deep.equal(Buffer.from([]));
+
+        const tlvDiscriminator = tlv.bytesRepeating({ bytes: Buffer.alloc(typeSize) });
+        expect(tlvDiscriminator).to.have.length(2);
+        expect(tlvDiscriminator[0]).to.be.deep.equal(Buffer.from([]));
+        expect(tlvDiscriminator[1]).to.be.deep.equal(Buffer.from([1, 2, 3]));
+
+        const tlvDiscriminatorWithCount = tlv.bytesRepeating({ bytes: Buffer.alloc(typeSize) }, 1);
+        expect(tlvDiscriminatorWithCount).to.have.length(1);
+        expect(tlvDiscriminatorWithCount[0]).to.be.deep.equal(Buffer.from([]));
     };
 
-    it('should get the entries', () => {
-        testEntries(tlvData1, 1, 2);
-        testEntries(tlvData2, 2, 1);
-        testEntries(tlvData3, 4, 8);
-        testEntries(tlvData4, 8, 4);
+    it('should get the repeating entries', () => {
+        testRepeatingEntries(tlvData1, 1, 2);
+        testRepeatingEntries(tlvData2, 2, 1);
+        testRepeatingEntries(tlvData3, 4, 8);
+        testRepeatingEntries(tlvData4, 8, 4);
+    });
+
+    const testDiscriminators = (tlvData: Buffer, typeSize: TlvNumberSize, lengthSize: TlvNumberSize) => {
+        const tlv = new TlvState(tlvData, typeSize, lengthSize);
+        const discriminators = tlv.discriminators();
+        expect(discriminators).to.have.length(4);
+
+        const type = Buffer.alloc(typeSize);
+        type[0] = 0;
+        expect(discriminators[0]).to.be.deep.equal(type);
+        type[0] = 1;
+        expect(discriminators[1]).to.be.deep.equal(type);
+        type[0] = 2;
+        expect(discriminators[2]).to.be.deep.equal(type);
+        type[0] = 0;
+        expect(discriminators[3]).to.be.deep.equal(type);
+    };
+
+    it('should get the discriminators', () => {
+        testDiscriminators(tlvData1, 1, 2);
+        testDiscriminators(tlvData2, 2, 1);
+        testDiscriminators(tlvData3, 4, 8);
+        testDiscriminators(tlvData4, 8, 4);
     });
 });
