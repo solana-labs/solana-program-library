@@ -28,6 +28,7 @@ members = [
   "libraries/merkle-tree-reference",
   "libraries/pod",
   "libraries/program-error",
+  "libraries/serde",
   "libraries/tlv-account-resolution",
   "libraries/type-length-value",
   "libraries/type-length-value-derive-test",

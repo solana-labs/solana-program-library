@@ -6816,6 +6816,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-serde"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_with 3.3.0",
+ "spl-serde-derive",
+]
+
+[[package]]
+name = "spl-serde-derive"
+version = "0.1.0"
+dependencies = [
+ "quote 1.0.29",
+ "syn 2.0.28",
+]
+
+[[package]]
 name = "spl-shared-memory"
 version = "2.0.6"
 dependencies = [
