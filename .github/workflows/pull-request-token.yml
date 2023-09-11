@@ -114,6 +114,16 @@ jobs:
           path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
 
+      - name: Install dependencies
+        run: |
+          echo "HANA before deps"
+          df -h
+          ./ci/install-build-deps.sh
+          ./ci/install-program-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          echo "HANA after deps"
+          df -h
+
       - name: Test token
         run: |
           echo "HANA before test"
