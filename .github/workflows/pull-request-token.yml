@@ -62,6 +62,14 @@ jobs:
           echo "HANA after deps"
           df -h
 
+      - name: Build token
+        run: |
+          echo "HANA before build"
+          df -h
+          ./ci/cargo-build-sbf.sh token
+          echo "HANA after build"
+          df -h
+
       - name: Upload programs
         uses: actions/upload-artifact@v2
         with:
@@ -106,7 +114,7 @@ jobs:
           path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
 
-      - name: Build and test token
+      - name: Test token
         run: |
           echo "HANA before test"
           df -h
