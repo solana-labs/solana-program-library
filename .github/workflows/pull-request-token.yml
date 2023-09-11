@@ -54,12 +54,21 @@ jobs:
 
       - name: Install dependencies
         run: |
+          echo "HANA before deps"
+          df -h
           ./ci/install-build-deps.sh
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          echo "HANA after deps"
+          df -h
 
       - name: Build and test token
-        run: ./ci/cargo-test-sbf.sh token
+        run: |
+          echo "HANA before test"
+          df -h
+          ./ci/cargo-test-sbf.sh token
+          echo "HANA after test"
+          df -h
 
       - name: Upload programs
         uses: actions/upload-artifact@v2
