@@ -31,7 +31,7 @@ if [[ -r $run_dir/Cargo.toml ]]; then
     # Build just one BPF program
     set -x
     cd $run_dir
-    cargo +"$rust_stable" build-sbf -- --nocapture
+    cargo +"$rust_stable" build-sbf
     exit 0
 fi
 
@@ -43,7 +43,7 @@ for program in $run_dir/program{,-*}; do
     (
       set -x
       cd $program
-      cargo +"$rust_stable" build-sbf -- --nocapture
+      cargo +"$rust_stable" build-sbf
     )
   fi
 done
@@ -53,6 +53,6 @@ if [[ -n $run_all ]]; then
   set -x
   for directory in $(ls -d $run_dir/*/); do
     cd $directory
-    cargo +"$rust_stable" build-sbf -- --nocapture
+    cargo +"$rust_stable" build-sbf
   done
 fi
