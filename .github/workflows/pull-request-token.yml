@@ -23,6 +23,8 @@ jobs:
 
       - name: Set env vars
         run: |
+          echo "HANA before everything"
+          df -h
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
@@ -34,12 +36,22 @@ jobs:
           override: true
           profile: minimal
 
+      - name: Check space
+        run: |
+          echo "HANA after toolchain, before cache"
+          df -h
+
       - uses: actions/cache@v2
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
+
+      - name: Check again
+        run: |
+          echo "HANA after cargo cache"
+          df -h
 
       - uses: actions/cache@v2
         with:
