@@ -19,7 +19,7 @@ proof-program = []
 
 [dependencies]
 arrayref = "0.3.7"
-bytemuck = { version = "1.13.1", features = ["derive"] }
+bytemuck = { version = "1.14.0", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.0"
