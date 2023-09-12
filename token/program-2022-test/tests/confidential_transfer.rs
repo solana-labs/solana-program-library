@@ -2759,7 +2759,7 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
         &alice_meta.aes_key,
         bob_meta.elgamal_keypair.pubkey(),
         Some(auditor_elgamal_keypair.pubkey()),
-        &withdraw_withheld_authority_elgamal_keypair.pubkey(),
+        withdraw_withheld_authority_elgamal_keypair.pubkey(),
         &fee_parameters,
     )
     .unwrap();
