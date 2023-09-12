@@ -542,8 +542,8 @@ pub struct TransferWithSplitProofsInstructionData {
     pub source_decrypt_handles: SourceDecryptHandles,
 }
 
-/// Type for split transfer instruction proof context state account addresses intended to be used
-/// as parameters to functions.
+/// Type for split transfer (without fee) instruction proof context state account addresses
+/// intended to be used as parameters to functions.
 #[derive(Clone, Copy)]
 pub struct TransferSplitContextStateAccounts<'a> {
     /// The context state account address for an equality proof needed for a transfer.
@@ -551,6 +551,30 @@ pub struct TransferSplitContextStateAccounts<'a> {
     /// The context state account address for a ciphertext validity proof needed for a transfer.
     pub ciphertext_validity_proof: &'a Pubkey,
     /// The context state account address for a range proof needed for a transfer.
+    pub range_proof: &'a Pubkey,
+    /// The context state accounts authority
+    pub authority: &'a Pubkey,
+    /// No op if an associated split proof context state account is not initialized.
+    pub no_op_on_uninitialized_split_context_state: bool,
+    /// Accounts needed if `close_split_context_state_on_execution` flag is enabled.
+    pub close_split_context_state_accounts: Option<CloseSplitContextStateAccounts<'a>>,
+}
+
+/// Type for split transfer (with fee) instruction proof context state account addresses intended
+/// to be used as parameters to functions.
+#[derive(Clone, Copy)]
+pub struct TransferWithFeeSplitContextStateAccounts<'a> {
+    /// The context state account address for an equality proof needed for a transfer with fee.
+    pub equality_proof: &'a Pubkey,
+    /// The context state account address for a transfer amount ciphertext validity proof needed
+    /// for a transfer with fee.
+    pub transfer_amount_ciphertext_validity_proof: &'a Pubkey,
+    /// The context state account address for a fee sigma proof needed for a transfer with fee.
+    pub fee_sigma_proof: &'a Pubkey,
+    /// The context state account address for a fee ciphertext validity proof needed for a transfer
+    /// with fee.
+    pub fee_ciphertext_validity_proof: &'a Pubkey,
+    /// The context state account address for a range proof needed for a transfer with fee.
     pub range_proof: &'a Pubkey,
     /// The context state accounts authority
     pub authority: &'a Pubkey,
@@ -1335,6 +1359,98 @@ pub fn transfer_with_split_proofs(
             ));
             accounts.push(AccountMeta::new_readonly(
                 *context_accounts.ciphertext_validity_proof,
+                false,
+            ));
+            accounts.push(AccountMeta::new_readonly(
+                *context_accounts.range_proof,
+                false,
+            ));
+            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
+
+            false
+        };
+
+    Ok(encode_instruction(
+        token_program_id,
+        accounts,
+        TokenInstruction::ConfidentialTransferExtension,
+        ConfidentialTransferInstruction::TransferWithSplitProofs,
+        &TransferWithSplitProofsInstructionData {
+            new_source_decryptable_available_balance,
+            no_op_on_uninitialized_split_context_state: context_accounts
+                .no_op_on_uninitialized_split_context_state
+                .into(),
+            close_split_context_state_on_execution: close_split_context_state_on_execution.into(),
+            source_decrypt_handles: *source_decrypt_handles,
+        },
+    ))
+}
+
+/// Create a `TransferWithSplitProof` instruction with fee
+#[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
+pub fn transfer_with_fee_and_split_proofs(
+    token_program_id: &Pubkey,
+    source_token_account: &Pubkey,
+    mint: &Pubkey,
+    destination_token_account: &Pubkey,
+    new_source_decryptable_available_balance: DecryptableBalance,
+    source_account_authority: &Pubkey,
+    context_accounts: TransferWithFeeSplitContextStateAccounts,
+    source_decrypt_handles: &SourceDecryptHandles,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let mut accounts = vec![
+        AccountMeta::new(*source_token_account, false),
+        AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new(*destination_token_account, false),
+    ];
+
+    let close_split_context_state_on_execution =
+        if let Some(close_split_context_state_on_execution_accounts) =
+            context_accounts.close_split_context_state_accounts
+        {
+            // If `close_split_context_state_accounts` is set, then all context state accounts must
+            // be `writable`.
+            accounts.push(AccountMeta::new(*context_accounts.equality_proof, false));
+            accounts.push(AccountMeta::new(
+                *context_accounts.transfer_amount_ciphertext_validity_proof,
+                false,
+            ));
+            accounts.push(AccountMeta::new(*context_accounts.fee_sigma_proof, false));
+            accounts.push(AccountMeta::new(
+                *context_accounts.fee_ciphertext_validity_proof,
+                false,
+            ));
+            accounts.push(AccountMeta::new(*context_accounts.range_proof, false));
+            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
+            accounts.push(AccountMeta::new(
+                *close_split_context_state_on_execution_accounts.lamport_destination,
+                false,
+            ));
+            accounts.push(AccountMeta::new_readonly(*context_accounts.authority, true));
+            accounts.push(AccountMeta::new_readonly(
+                *close_split_context_state_on_execution_accounts.zk_token_proof_program,
+                false,
+            ));
+            true
+        } else {
+            // If `close_split_context_state_accounts` is not set, then context state accounts can
+            // be read-only.
+            accounts.push(AccountMeta::new_readonly(
+                *context_accounts.equality_proof,
+                false,
+            ));
+            accounts.push(AccountMeta::new_readonly(
+                *context_accounts.transfer_amount_ciphertext_validity_proof,
+                false,
+            ));
+            accounts.push(AccountMeta::new_readonly(
+                *context_accounts.fee_sigma_proof,
+                false,
+            ));
+            accounts.push(AccountMeta::new_readonly(
+                *context_accounts.fee_ciphertext_validity_proof,
                 false,
             ));
             accounts.push(AccountMeta::new_readonly(
