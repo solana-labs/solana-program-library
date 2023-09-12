@@ -20,7 +20,7 @@ spl-type-length-value = { version = "0.3", path = "../../libraries/type-length-v
 spl-pod = { version = "0.1", path = "../../libraries/pod", features = ["borsh"] }
 
 [dev-dependencies]
-serde_json = "1.0.105"
+serde_json = "1.0.106"
 
 [lib]
 crate-type = ["cdylib", "lib"]
