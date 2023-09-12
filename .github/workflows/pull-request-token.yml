@@ -23,8 +23,6 @@ jobs:
 
       - name: Clear disk space
         run: |
-          echo "HANA before everything"
-          df -h
           # if we need more: `sudo apt-get install -y wajig && wajig large`
           for p in ant mono-complete lldb-14 google-cloud-sdk azure-cli microsoft-edge-stable \
               google-chrome-stable firefox powershell mono-devel dotnet-sdk-6.0 dotnet-sdk-7.0 \
@@ -32,8 +30,6 @@ jobs:
               fake-canary-package; do sudo apt-get remove -y $p || true; done
           sudo apt-get autoremove -y
           sudo rm -rf /imagegeneration
-          echo "HANA where now"
-          df -h
 
       - name: Set env vars
         run: |
@@ -48,22 +44,12 @@ jobs:
           override: true
           profile: minimal
 
-      - name: Check space
-        run: |
-          echo "HANA after toolchain, before cache"
-          df -h
-
       - uses: actions/cache@v2
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
-
-      - name: Check again
-        run: |
-          echo "HANA after cargo cache"
-          df -h
 
       - uses: actions/cache@v2
         with:
@@ -78,21 +64,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          echo "HANA before deps"
-          df -h
           ./ci/install-build-deps.sh
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          echo "HANA after deps"
-          df -h
 
       - name: Build and test token
-        run: |
-          echo "HANA before test"
-          df -h
-          ./ci/cargo-test-sbf.sh token
-          echo "HANA after test"
-          df -h
+        run: ./ci/cargo-test-sbf.sh token
 
       - name: Upload programs
         uses: actions/upload-artifact@v2
