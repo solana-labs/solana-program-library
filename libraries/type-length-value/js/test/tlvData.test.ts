@@ -1,4 +1,5 @@
-import { TlvState, LengthSize } from '../src/tlvState';
+import type { LengthSize } from '../src/tlvState';
+import { TlvState } from '../src/tlvState';
 import { expect } from 'chai';
 
 describe('tlvData', () => {

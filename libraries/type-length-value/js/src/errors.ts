@@ -9,4 +9,3 @@ export abstract class TlvError extends Error {
 export class TlvInvalidAccountDataError extends TlvError {
     name = 'TlvInvalidAccountDataError';
 }
-
