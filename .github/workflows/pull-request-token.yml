@@ -25,10 +25,11 @@ jobs:
         run: |
           echo "HANA before everything"
           df -h
-          #sudo du -sh /usr/* /var/* /home/* /imagegeneration/* /var/cache/apt
-          #sudo apt-get install -y wajig
-          #wajig large
-          sudo apt-get purge -y --auto-remove google-cloud-sdk azure-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel dotnet-sdk-6.0 dotnet-sdk-7.0 temurin-8-jdk temurin-11-jdk temurin-17-jdk llvm-12-dev llvm-13-dev llvm-14-dev
+          # if we need more space: `sudo apt-get install -y wajig && wajig large`
+          sudo apt-get purge -y --auto-remove google-cloud-sdk azure-cli microsoft-edge-stable \
+              google-chrome-stable firefox powershell mono-devel dotnet-sdk-6.0 dotnet-sdk-7.0 \
+              temurin-8-jdk temurin-11-jdk temurin-17-jdk llvm-12-dev llvm-13-dev llvm-14-dev \
+              fake-canary-package
           sudo rm -rf /imagegeneration
           echo "HANA where now"
           df -h
