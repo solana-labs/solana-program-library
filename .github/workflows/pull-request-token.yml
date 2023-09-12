@@ -21,18 +21,22 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set env vars
+      - name: Clear disk space
         run: |
           echo "HANA before everything"
           df -h
-          # if we need more space: `sudo apt-get install -y wajig && wajig large`
-          for p in google-cloud-sdk azure-cli microsoft-edge-stable \
+          # if we need more: `sudo apt-get install -y wajig && wajig large`
+          for p in ant mono-complete lldb-14 google-cloud-sdk azure-cli microsoft-edge-stable
               google-chrome-stable firefox powershell mono-devel dotnet-sdk-6.0 dotnet-sdk-7.0 \
               temurin-8-jdk temurin-11-jdk temurin-17-jdk llvm-12-dev llvm-13-dev llvm-14-dev \
-              fake-canary-package; do sudo apt-get purge -y --auto-remove $p || true; done
+              fake-canary-package; do sudo apt-get remove -y $p || true; done
+          sudo apt-get autoremove -y
           sudo rm -rf /imagegeneration
           echo "HANA where now"
           df -h
+
+      - name: Set env vars
+        run: |
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
