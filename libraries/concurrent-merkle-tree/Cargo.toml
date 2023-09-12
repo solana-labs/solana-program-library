@@ -13,7 +13,7 @@ sol-log = [ "log" ]
 
 [dependencies]
 solana-program = "1.16"
-bytemuck = "1.13"
+bytemuck = "1.14"
 thiserror = "1.0.48"
 
 [dev-dependencies]
