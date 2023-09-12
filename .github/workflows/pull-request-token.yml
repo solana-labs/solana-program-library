@@ -26,15 +26,11 @@ jobs:
           echo "HANA before everything"
           df -h
           sudo du -sh /usr/* /var/* /home/* /imagegeneration/* /var/cache/apt
-          echo "HANA deleting shit"
-          sudo apt-get -y clean
-          sudo apt-get -y autoremove
-          echo "HANA where are we now..."
+          sudo apt-get install -y wajig
+          wajig large
+          sudo rm -rf /imagegeneration
+          echo "HANA where now"
           df -h
-          echo "HANA ok find"
-          sudo find /home -type f -size +1G
-          sudo find /usr -type f -size +1G
-          sudo find /imagegeneration -type f -size +1G
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
