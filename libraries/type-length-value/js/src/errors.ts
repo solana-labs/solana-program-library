@@ -6,11 +6,7 @@ export abstract class TlvError extends Error {
 }
 
 /** Thrown if the byte length of an tlv buffer doesn't match the expected size */
-export class TlvInvalidAccountSizeError extends TlvError {
-    name = 'TlvInvalidAccountSizeError';
+export class TlvInvalidAccountDataError extends TlvError {
+    name = 'TlvInvalidAccountDataError';
 }
 
-/** Thrown if an invalid tlv discriminator is supplied */
-export class TlvInvalidDiscriminatorError extends TlvError {
-    name = 'TlvInvalidDiscriminatorError';
-}

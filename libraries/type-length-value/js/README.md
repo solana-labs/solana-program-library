@@ -7,8 +7,8 @@ Library with utilities for working with Type-Length-Value structures in js.
 ```ts
 import { TlvState, SplDiscriminator } from '@solana/spl-type-length-value';
 
-const tlv = new TlvState(tlvData, typeSize, lengthSize);
-const discriminator = new SplDiscriminator("<discriminator-key>");
+const tlv = new TlvState(tlvData, discriminatorSize, lengthSize);
+const discriminator = splDiscriminate("<discriminator-hash-input>", discriminatorSize);
 
 const firstValue = tlv.firstBytes(discriminator);
 

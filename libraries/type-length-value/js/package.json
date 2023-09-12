@@ -40,14 +40,10 @@
         "lint:fix": "npm run fmt && eslint --fix .",
         "test": "mocha test"
     },
-    "peerDependencies": {
-        "@solana/web3.js": "^1.47.4"
-    },
     "dependencies": {
         "buffer": "^6.0.3"
     },
     "devDependencies": {
-        "@solana/web3.js": "^1.47.4",
         "@types/chai": "^4.3.3",
         "@types/mocha": "^10.0.0",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
