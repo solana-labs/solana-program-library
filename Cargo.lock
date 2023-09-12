@@ -7085,6 +7085,7 @@ name = "spl-token-client"
 version = "0.5.1"
 dependencies = [
  "async-trait",
+ "curve25519-dalek",
  "futures 0.3.28",
  "futures-util",
  "solana-banks-interface",
