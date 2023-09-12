@@ -1,4 +1,4 @@
-import { TokenInvalidAccountSizeError, TokenInvalidDiscriminatorError } from '../errors.js';
+import { TlvInvalidAccountSizeError, TlvInvalidDiscriminatorError } from './errors.js';
 
 export type TlvNumberSize = 1 | 2 | 4 | 8;
 
@@ -54,9 +54,9 @@ export class TlvState {
                 if ('bytes' in type) {
                     return this.tlvData.subarray(offset, offset + this.typeSize).equals(type.bytes);
                 }
-                throw new TokenInvalidDiscriminatorError();
+                throw new TlvInvalidDiscriminatorError();
             default:
-                throw new TokenInvalidDiscriminatorError();
+                throw new TlvInvalidDiscriminatorError();
         }
     }
 
@@ -85,14 +85,14 @@ export class TlvState {
         let offset = 0;
         while (offset < this.tlvData.length) {
             if (offset + this.typeSize + this.lengthSize > this.tlvData.length) {
-                throw new TokenInvalidAccountSizeError();
+                throw new TlvInvalidAccountSizeError();
             }
             const typeMatches = this.tlvDiscriminatorMatches(type, offset);
             offset += this.typeSize;
             const entryLength = this.readTlvNumberSize(this.lengthSize, offset, Number);
             offset += this.lengthSize;
             if (offset + entryLength > this.tlvData.length) {
-                throw new TokenInvalidAccountSizeError();
+                throw new TlvInvalidAccountSizeError();
             }
             if (typeMatches) {
                 entries.push(this.tlvData.subarray(offset, offset + entryLength));
@@ -115,7 +115,7 @@ export class TlvState {
         let offset = 0;
         while (offset < this.tlvData.length) {
             if (offset + this.typeSize + this.lengthSize > this.tlvData.length) {
-                throw new TokenInvalidAccountSizeError();
+                throw new TlvInvalidAccountSizeError();
             }
             const type = this.tlvData.subarray(offset, offset + this.typeSize);
             types.push(type);
@@ -123,7 +123,7 @@ export class TlvState {
             const entryLength = this.readTlvNumberSize(this.lengthSize, offset, Number);
             offset += this.lengthSize;
             if (offset + entryLength > this.tlvData.length) {
-                throw new TokenInvalidAccountSizeError();
+                throw new TlvInvalidAccountSizeError();
             }
             offset += entryLength;
         }

@@ -1,0 +1,67 @@
+{
+    "name": "@solana/spl-type-length-value",
+    "description": "SPL Type Length Value Library",
+    "version": "0.1.0",
+    "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
+    "repository": "https://github.com/solana-labs/solana-program-library",
+    "license": "Apache-2.0",
+    "type": "module",
+    "sideEffects": false,
+    "engines": {
+        "node": ">=16"
+    },
+    "files": [
+        "lib",
+        "src",
+        "LICENSE",
+        "README.md"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "main": "./lib/cjs/index.js",
+    "module": "./lib/esm/index.js",
+    "types": "./lib/types/index.d.ts",
+    "exports": {
+        "types": "./lib/types/index.d.ts",
+        "require": "./lib/cjs/index.js",
+        "import": "./lib/esm/index.js"
+    },
+    "scripts": {
+        "nuke": "shx rm -rf node_modules package-lock.json || true",
+        "reinstall": "npm run nuke && npm install",
+        "clean": "shx rm -rf lib **/*.tsbuildinfo || true",
+        "build": "tsc --build --verbose tsconfig.all.json",
+        "postbuild": "shx echo '{ \"type\": \"commonjs\" }' > lib/cjs/package.json",
+        "watch": "tsc --build --verbose --watch tsconfig.all.json",
+        "release": "npm run clean && npm run build",
+        "fmt": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'",
+        "lint": "prettier --check '{*,**/*}.{ts,tsx,js,jsx,json}' && eslint --max-warnings 0 .",
+        "lint:fix": "npm run fmt && eslint --fix .",
+        "test": "mocha test"
+    },
+    "peerDependencies": {
+        "@solana/web3.js": "^1.47.4"
+    },
+    "dependencies": {
+        "buffer": "^6.0.3"
+    },
+    "devDependencies": {
+        "@solana/web3.js": "^1.47.4",
+        "@types/chai": "^4.3.3",
+        "@types/mocha": "^10.0.0",
+        "@typescript-eslint/eslint-plugin": "^6.0.0",
+        "@typescript-eslint/parser": "^6.0.0",
+        "chai": "^4.3.6",
+        "chai-as-promised": "^7.1.1",
+        "eslint": "^8.20.0",
+        "eslint-config-prettier": "^9.0.0",
+        "eslint-plugin-prettier": "^5.0.0",
+        "eslint-plugin-require-extensions": "^0.1.1",
+        "gh-pages": "^6.0.0",
+        "mocha": "^10.1.0",
+        "prettier": "^3.0.0",
+        "shx": "^0.3.4",
+        "typescript": "^5.0.4"
+    }
+}

@@ -1,5 +1,5 @@
-import type { TlvNumberSize } from '../../src/extensions/tlvState';
-import { TlvState } from '../../src/extensions/tlvState';
+import type { TlvNumberSize } from '../src/tlvState';
+import { TlvState } from '../src/tlvState';
 import { expect } from 'chai';
 
 describe('tlvData', () => {

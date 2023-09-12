@@ -79,8 +79,3 @@ export class TokenTransferHookAccountNotFound extends TokenError {
 export class TokenTransferHookInvalidSeed extends TokenError {
     name = 'TokenTransferHookInvalidSeed';
 }
-
-/** Thrown if an invalid tlv discriminator is supplied */
-export class TokenInvalidDiscriminatorError extends TokenError {
-    name = 'TokenInvalidDiscriminatorError';
-}

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { SplDiscriminator } from '../../src/extensions/splDiscriminate';
+import { SplDiscriminator } from '../src/splDiscriminate';
 import { createHash } from 'crypto';
 
 describe('splDiscrimintor', () => {
