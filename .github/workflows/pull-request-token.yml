@@ -25,6 +25,7 @@ jobs:
         run: |
           echo "HANA before everything"
           df -h
+          du -sh /dev/root/*
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh
