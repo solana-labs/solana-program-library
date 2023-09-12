@@ -12,7 +12,7 @@ serde-traits = ["dep:serde", "dep:base64"]
 borsh = ["dep:borsh"]
 
 [dependencies]
-base64 = { version = "0.21.2", optional = true }
+base64 = { version = "0.21.4", optional = true }
 borsh = { version = "0.10", optional = true }
 bytemuck = { version = "1.13.1" }
 serde = { version = "1.0.183", optional = true }
