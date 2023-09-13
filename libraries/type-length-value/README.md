@@ -21,7 +21,7 @@ use {
 struct MyPodValue {
     data: [u8; 32],
 }
-impl SpleDiscriminates for MyPodValue {
+impl SplDiscriminate for MyPodValue {
     // Give it a unique discriminator, can also be generated using a hash function
     const SPL_DISCRIMINATOR: ArrayDiscriminator = ArrayDiscriminator::new([1; ArrayDiscriminator::LENGTH]);
 }
@@ -56,22 +56,39 @@ let mut buffer = vec![0; account_size];
 let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
 // Init and write default value
-let value = state.init_value::<MyPodValue>().unwrap();
+// Note: you'll need to provide a boolean whether or not to allow repeating
+// values with the same TLV discriminator.
+// If set to false, this function will error when an existing entry is detected.
+let value = state.init_value::<MyPodValue>(false).unwrap();
 // Update it in-place
 value.data[0] = 1;
 
 // Init and write another default value
-let other_value = state.init_value::<MyOtherPodValue>().unwrap();
-assert_eq!(other_value.data, 10);
+// This time, we're going to allow repeating values.
+let other_value1 = state.init_value::<MyOtherPodValue>(true).unwrap();
+assert_eq!(other_value1.data, 10);
 // Update it in-place
-other_value.data = 2;
+other_value1.data = 2;
 
-// Later on, to work with it again
-let value = state.get_value_mut::<MyPodValue>().unwrap();
+// Let's do it again, since we can now have repeating values!
+let other_value2 = state.init_value::<MyOtherPodValue>(true).unwrap();
+assert_eq!(other_value2.data, 10);
+// Update it in-place
+other_value1.data = 4;
+
+// Later on, to work with it again, since we did _not_ allow repeating entries,
+// we can just get the first value we encounter.
+let value = state.get_first_value_mut::<MyPodValue>().unwrap();
 
 // Or fetch it from an immutable buffer
 let state = TlvStateBorrowed::unpack(&buffer).unwrap();
-let value = state.get_value::<MyOtherPodValue>().unwrap();
+let value1 = state.get_first_value::<MyOtherPodValue>().unwrap();
+
+// Since we used repeating entries for `MyOtherPodValue`, we can grab either one by
+// its entry number
+let value1 = state.get_value_with_repetition::<MyOtherPodValue>(1).unwrap();
+let value2 = state.get_value_with_repetition::<MyOtherPodValue>(2).unwrap();
+
 ```
 
 ## Motivation
@@ -155,11 +172,12 @@ let mut buffer = vec![0; account_size];
 let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
 // No need to hold onto the bytes since we'll serialize back into the right place
-let _ = state.allocate::<MyVariableLenType>(tlv_size).unwrap();
+// For this example, let's _not_ allow repeating entries.
+let _ = state.alloc::<MyVariableLenType>(tlv_size, false).unwrap();
 let my_variable_len = MyVariableLenType {
     data: initial_data.to_string()
 };
 state.pack_variable_len_value(&my_variable_len).unwrap();
-let deser = state.get_variable_len_value::<MyVariableLenType>().unwrap();
+let deser = state.get_first_variable_len_value::<MyVariableLenType>().unwrap();
 assert_eq!(deser, my_variable_len);
 ```
