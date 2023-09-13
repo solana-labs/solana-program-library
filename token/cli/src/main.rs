@@ -3874,7 +3874,11 @@ fn app<'a, 'b>(
                                To query a specific account, use the `--address` parameter instead"),
                 )
                 .arg(
-                    owner_address_arg()
+                    Arg::with_name(OWNER_ADDRESS_ARG.name)
+                        .takes_value(true)
+                        .value_name("OWNER_ADDRESS")
+                        .validator(is_valid_signer)
+                        .help(OWNER_ADDRESS_ARG.help)
                         .index(2)
                         .conflicts_with("address")
                         .help("Owner of the associated account for the specified token. \
