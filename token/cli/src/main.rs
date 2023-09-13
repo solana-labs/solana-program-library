@@ -3086,6 +3086,7 @@ fn app<'a, 'b>(
                     Arg::with_name("name")
                         .value_name("TOKEN_NAME")
                         .takes_value(true)
+                        .required(true)
                         .index(2)
                         .help("The name of the token to set in metadata"),
                 )
@@ -3093,6 +3094,7 @@ fn app<'a, 'b>(
                     Arg::with_name("symbol")
                         .value_name("TOKEN_SYMBOL")
                         .takes_value(true)
+                        .required(true)
                         .index(3)
                         .help("The symbol of the token to set in metadata"),
                 )
@@ -3100,6 +3102,7 @@ fn app<'a, 'b>(
                     Arg::with_name("uri")
                         .value_name("TOKEN_URI")
                         .takes_value(true)
+                        .required(true)
                         .index(4)
                         .help("The URI of the token to set in metadata"),
                 )
