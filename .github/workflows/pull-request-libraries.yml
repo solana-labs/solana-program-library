@@ -56,3 +56,21 @@ jobs:
 
       - name: Build and test
         run: ./ci/cargo-test-sbf.sh libraries
+
+  js-test-tlv:
+    runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: 16.x
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: node-${{ hashFiles('libraries/type-length-value/js/package-lock.json') }}
+          restore-keys: |
+            node-
+      - run: ./ci/js-test-tlv.sh
