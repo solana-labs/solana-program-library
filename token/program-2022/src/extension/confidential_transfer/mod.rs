@@ -170,7 +170,7 @@ impl ConfidentialTransferAccount {
     /// A destination account can receive funds if the following conditions are satisfied:
     ///   1. The account is approved by the confidential transfer mint authority
     ///   2. The account is not disabled by the account owner
-    ///   3. The number of credits into the account has reached the maximum credit counter
+    ///   3. The number of credits into the account has not reached the maximum credit counter
     pub fn valid_as_destination(&self) -> ProgramResult {
         self.approved()?;
 
