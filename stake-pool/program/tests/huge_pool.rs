@@ -184,7 +184,7 @@ async fn update(max_validators: u32) {
             false, /* no_merge */
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .update_stake_pool_balance(
@@ -193,7 +193,7 @@ async fn update(max_validators: u32) {
             &context.last_blockhash,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .cleanup_removed_validator_entries(
@@ -202,7 +202,7 @@ async fn update(max_validators: u32) {
             &context.last_blockhash,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }
 
 //#[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
@@ -236,7 +236,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
             &transient_stake_address,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let middle_index = max_validators as usize / 2;
     let middle_vote = vote_account_pubkeys[middle_index];
@@ -262,7 +262,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
             &transient_stake_address,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let last_index = max_validators as usize - 1;
     let last_vote = vote_account_pubkeys[last_index];
@@ -288,7 +288,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
             &transient_stake_address,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_list = get_account(
         &mut context.banks_client,
@@ -330,7 +330,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
             false, /* no_merge */
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let mut instructions = vec![instruction::update_validator_list_balance(
         &id(),
@@ -355,7 +355,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
         .process_transaction(transaction)
         .await
         .err();
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let mut instructions = vec![instruction::update_validator_list_balance(
         &id(),
@@ -380,7 +380,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
         .process_transaction(transaction)
         .await
         .err();
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .cleanup_removed_validator_entries(
@@ -389,7 +389,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
             &context.last_blockhash,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_list = get_account(
         &mut context.banks_client,
@@ -454,7 +454,7 @@ async fn add_validator_to_pool(max_validators: u32) {
             None,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_list = get_account(
         &mut context.banks_client,
@@ -531,7 +531,7 @@ async fn set_preferred(max_validators: u32) {
             Some(vote_account_address),
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
     let error = stake_pool_accounts
         .set_preferred_validator(
             &mut context.banks_client,
@@ -541,7 +541,7 @@ async fn set_preferred(max_validators: u32) {
             Some(vote_account_address),
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let stake_pool = get_account(
         &mut context.banks_client,
@@ -585,7 +585,7 @@ async fn deposit_stake(max_validators: u32) {
             &user,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }
 
 #[test_case(MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS; "compute-budget")]
@@ -613,7 +613,7 @@ async fn withdraw(max_validators: u32) {
             &user,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Create stake account to withdraw to
     let user_stake_recipient = Keypair::new();
@@ -695,5 +695,5 @@ async fn cleanup_all(max_validators: u32) {
             &context.last_blockhash,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }

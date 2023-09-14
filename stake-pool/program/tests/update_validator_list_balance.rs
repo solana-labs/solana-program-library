@@ -74,7 +74,7 @@ async fn setup(
                 stake_account.validator_stake_seed,
             )
             .await;
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
 
         let deposit_account = DepositStakeAccount::new_with_vote(
             stake_account.vote.pubkey(),
@@ -289,7 +289,7 @@ async fn merge_into_reserve() {
                 stake_account.transient_stake_seed,
             )
             .await;
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
     }
 
     println!("Update, should not change, no merges yet");
@@ -417,7 +417,7 @@ async fn merge_into_validator_stake() {
                 stake_account.transient_stake_seed,
             )
             .await;
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
     }
 
     // Warp just a little bit to get a new blockhash and update again
@@ -442,7 +442,7 @@ async fn merge_into_validator_stake() {
             false,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let expected_lamports = get_validator_list_sum(
         &mut context.banks_client,
@@ -482,7 +482,7 @@ async fn merge_into_validator_stake() {
             false,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
     let current_lamports = get_validator_list_sum(
         &mut context.banks_client,
         &stake_pool_accounts.reserve_stake.pubkey(),
@@ -564,7 +564,7 @@ async fn merge_transient_stake_after_remove() {
                 stake_account.transient_stake_seed,
             )
             .await;
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
         let error = stake_pool_accounts
             .remove_validator_from_pool(
                 &mut context.banks_client,
@@ -574,7 +574,7 @@ async fn merge_transient_stake_after_remove() {
                 &stake_account.transient_stake_account,
             )
             .await;
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
     }
 
     // Warp forward to merge time
@@ -596,7 +596,7 @@ async fn merge_transient_stake_after_remove() {
             true,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_list = get_account(
         &mut context.banks_client,
@@ -633,7 +633,7 @@ async fn merge_transient_stake_after_remove() {
             false,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // stake accounts were merged in, none exist anymore
     for stake_account in &stake_accounts {
@@ -679,7 +679,7 @@ async fn merge_transient_stake_after_remove() {
     let error = stake_pool_accounts
         .update_stake_pool_balance(&mut context.banks_client, &context.payer, &last_blockhash)
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .cleanup_removed_validator_entries(
@@ -688,7 +688,7 @@ async fn merge_transient_stake_after_remove() {
             &last_blockhash,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_list = get_account(
         &mut context.banks_client,

@@ -176,7 +176,7 @@ async fn success() {
             destination_validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check validator stake account balance
     let validator_stake_account = get_account(
@@ -377,7 +377,7 @@ async fn success_with_increasing_stake() {
             destination_validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_list = stake_pool_accounts
         .get_validator_list(&mut context.banks_client)
@@ -467,7 +467,7 @@ async fn success_with_increasing_stake() {
             destination_validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check destination transient stake account
     let destination_transient_stake_account = get_account(
@@ -624,7 +624,7 @@ async fn fail_with_decreasing_stake() {
             destination_validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let ephemeral_stake_seed = 20;
     let ephemeral_stake = find_ephemeral_stake_program_address(
@@ -993,7 +993,7 @@ async fn fail_redelegate_twice() {
             destination_validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let last_blockhash = context
         .banks_client

@@ -151,7 +151,7 @@ async fn success_with_preferred_deposit() {
             &user,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }
 
 #[tokio::test]

@@ -81,7 +81,7 @@ async fn setup(
                 stake_account.validator_stake_seed,
             )
             .await;
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
 
         let deposit_account = DepositStakeAccount::new_with_vote(
             stake_account.vote.pubkey(),
@@ -230,7 +230,7 @@ async fn check_ignored_hijacked_transient_stake(
             stake_account.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     println!("Warp one epoch so the stakes deactivate and merge");
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -296,7 +296,7 @@ async fn check_ignored_hijacked_transient_stake(
         .process_transaction(transaction)
         .await
         .err();
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     println!("Update again normally, should be no change in the lamports");
     let last_blockhash = context
@@ -394,7 +394,7 @@ async fn check_ignored_hijacked_validator_stake(
             stake_account.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .remove_validator_from_pool(
@@ -405,7 +405,7 @@ async fn check_ignored_hijacked_validator_stake(
             &stake_account.transient_stake_account,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     println!("Warp one epoch so the stakes deactivate and merge");
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -464,7 +464,7 @@ async fn check_ignored_hijacked_validator_stake(
         .process_transaction(transaction)
         .await
         .err();
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     println!("Update again normally, should be no change in the lamports");
     let last_blockhash = context
@@ -542,7 +542,7 @@ async fn check_ignored_hijacked_validator_stake(
             seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let stake_pool_info = get_account(
         &mut context.banks_client,

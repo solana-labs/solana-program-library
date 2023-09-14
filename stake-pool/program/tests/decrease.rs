@@ -108,7 +108,7 @@ async fn success(use_additional_instruction: bool) {
             use_additional_instruction,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check validator stake account balance
     let validator_stake_account =
@@ -291,7 +291,7 @@ async fn fail_twice_diff_seed(use_additional_instruction: bool) {
             use_additional_instruction,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let transient_stake_seed = validator_stake.transient_stake_seed * 100;
     let transient_stake_address = find_transient_stake_program_address(
@@ -358,7 +358,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
             use_additional_first_time,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .decrease_validator_stake_either(
@@ -374,7 +374,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
         .await;
 
     if success {
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
         // no ephemeral account
         let ephemeral_stake = find_ephemeral_stake_program_address(
             &id(),
@@ -565,7 +565,7 @@ async fn fail_additional_with_increasing() {
             validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .decrease_validator_stake_either(

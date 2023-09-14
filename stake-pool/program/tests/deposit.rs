@@ -182,7 +182,7 @@ async fn success(token_program_id: Pubkey) {
             &user,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Original stake account should be drained
     assert!(context
@@ -355,7 +355,7 @@ async fn success_with_extra_stake_lamports() {
             &referrer_token_account.pubkey(),
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Original stake account should be drained
     assert!(context
@@ -875,7 +875,7 @@ async fn success_with_slippage(token_program_id: Pubkey) {
             tokens_issued_user,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Original stake account should be drained
     assert!(context

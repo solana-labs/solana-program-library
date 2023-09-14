@@ -60,7 +60,7 @@ async fn setup(
             None,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let mut last_blockhash = context
         .banks_client
@@ -95,7 +95,7 @@ async fn setup(
                 stake_account.validator_stake_seed,
             )
             .await;
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
 
         let mut deposit_account = DepositStakeAccount::new_with_vote(
             stake_account.vote.pubkey(),
@@ -188,7 +188,7 @@ async fn success() {
             false,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check fee
     let post_balance = get_validator_list_sum(
@@ -301,7 +301,7 @@ async fn success_absorbing_extra_lamports() {
             false,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check extra lamports are absorbed and fee'd as rewards
     let post_balance = get_validator_list_sum(

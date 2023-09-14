@@ -2085,7 +2085,7 @@ pub async fn simple_add_validator_to_pool(
             sol_deposit_authority,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     create_vote(
         banks_client,
@@ -2106,7 +2106,7 @@ pub async fn simple_add_validator_to_pool(
             validator_stake.validator_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     validator_stake
 }
@@ -2207,7 +2207,7 @@ impl DepositStakeAccount {
             )
             .await;
         self.pool_tokens = get_token_balance(banks_client, &self.pool_account.pubkey()).await;
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
     }
 }
 

@@ -65,7 +65,7 @@ async fn setup(
             None,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let tokens_issued =
         get_token_balance(&mut context.banks_client, &pool_token_account.pubkey()).await;
@@ -114,7 +114,7 @@ async fn success(token_program_id: Pubkey) {
             None,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Stake pool should add its balance to the pool balance
     let post_stake_pool = get_account(
@@ -212,7 +212,7 @@ async fn fail_overdraw_reserve() {
             validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // try to withdraw one lamport, will overdraw
     let error = stake_pool_accounts
@@ -273,7 +273,7 @@ async fn success_with_sol_withdraw_authority() {
             Some(&sol_withdraw_authority),
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }
 
 #[tokio::test]
@@ -373,7 +373,7 @@ async fn success_with_slippage(token_program_id: Pubkey) {
             amount_received,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check burned tokens
     let user_token_balance =

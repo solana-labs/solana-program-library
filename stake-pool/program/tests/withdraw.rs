@@ -167,7 +167,7 @@ async fn _success(token_program_id: Pubkey, test_type: SuccessTestType) {
             tokens_to_withdraw,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check pool stats
     let stake_pool = get_account(
@@ -528,7 +528,7 @@ async fn fail_double_withdraw_to_the_same_account() {
             tokens_to_burn / 2,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let latest_blockhash = context.banks_client.get_latest_blockhash().await.unwrap();
 
@@ -825,7 +825,7 @@ async fn success_with_slippage(token_program_id: Pubkey) {
             received_lamports,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check tokens used
     let user_token_balance = get_token_balance(
