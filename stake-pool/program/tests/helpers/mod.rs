@@ -1890,6 +1890,7 @@ impl StakePoolAccounts {
                 &self.staker.pubkey(),
                 &self.withdraw_authority,
                 &self.validator_list.pubkey(),
+                &self.reserve_stake.pubkey(),
                 source_validator_stake,
                 source_transient_stake,
                 ephemeral_stake,

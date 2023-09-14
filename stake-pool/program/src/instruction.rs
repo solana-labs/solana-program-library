@@ -487,34 +487,36 @@ pub enum StakePoolInstruction {
     /// The instruction only succeeds if the source transient stake account and
     /// ephemeral stake account do not exist.
     ///
-    /// The amount of lamports to move must be at least twice rent-exemption
-    /// plus the minimum delegation amount. Rent-exemption is required for the
-    /// source transient stake account, and rent-exemption plus minimum delegation
+    /// The amount of lamports to move must be at least rent-exemption plus the
+    /// minimum delegation amount. Rent-exemption plus minimum delegation
     /// is required for the destination ephemeral stake account.
     ///
+    /// The rent-exemption for the source transient account comes from the stake
+    /// pool reserve, if needed.
+    ///
     /// The amount that arrives at the destination validator in the end is
-    /// `redelegate_lamports - 2 * rent_exemption` if the destination transient
-    /// account does *not* exist, and `redelegate_lamports - rent_exemption` if
-    /// the destination transient account already exists. One `rent_exemption`
-    /// is deactivated with the source transient account during redelegation,
-    /// and another `rent_exemption` is deactivated when creating the destination
-    /// transient stake account.
+    /// `redelegate_lamports - rent_exemption` if the destination transient
+    /// account does *not* exist, and `redelegate_lamports` if the destination
+    /// transient account already exists. The `rent_exemption` is not activated
+    /// when creating the destination transient stake account, but if it already
+    /// exists, then the full amount is delegated.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
     ///  2. `[]` Stake pool withdraw authority
     ///  3. `[w]` Validator list
-    ///  4. `[w]` Source canonical stake account to split from
-    ///  5. `[w]` Source transient stake account to receive split and be redelegated
-    ///  6. `[w]` Uninitialized ephemeral stake account to receive redelegation
-    ///  7. `[w]` Destination transient stake account to receive ephemeral stake by merge
-    ///  8. `[]` Destination stake account to receive transient stake after activation
-    ///  9. `[]` Destination validator vote account
-    /// 10. `[]` Clock sysvar
-    /// 11. `[]` Stake History sysvar
-    /// 12. `[]` Stake Config sysvar
-    /// 13. `[]` System program
-    /// 14. `[]` Stake program
+    ///  4. `[w]` Reserve stake account, to withdraw rent exempt reserve
+    ///  5. `[w]` Source canonical stake account to split from
+    ///  6. `[w]` Source transient stake account to receive split and be redelegated
+    ///  7. `[w]` Uninitialized ephemeral stake account to receive redelegation
+    ///  8. `[w]` Destination transient stake account to receive ephemeral stake by merge
+    ///  9. `[]` Destination stake account to receive transient stake after activation
+    /// 10. `[]` Destination validator vote account
+    /// 11. `[]` Clock sysvar
+    /// 12. `[]` Stake History sysvar
+    /// 13. `[]` Stake Config sysvar
+    /// 14. `[]` System program
+    /// 15. `[]` Stake program
     Redelegate {
         /// Amount of lamports to redelegate
         #[allow(dead_code)] // but it's not
@@ -920,6 +922,7 @@ pub fn redelegate(
     staker: &Pubkey,
     stake_pool_withdraw_authority: &Pubkey,
     validator_list: &Pubkey,
+    reserve_stake: &Pubkey,
     source_validator_stake: &Pubkey,
     source_transient_stake: &Pubkey,
     ephemeral_stake: &Pubkey,
@@ -936,6 +939,7 @@ pub fn redelegate(
         AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*reserve_stake, false),
         AccountMeta::new(*source_validator_stake, false),
         AccountMeta::new(*source_transient_stake, false),
         AccountMeta::new(*ephemeral_stake, false),

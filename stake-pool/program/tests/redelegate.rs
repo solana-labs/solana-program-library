@@ -48,7 +48,7 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            MINIMUM_RESERVE_LAMPORTS + current_minimum_delegation + stake_rent,
+            MINIMUM_RESERVE_LAMPORTS + current_minimum_delegation + stake_rent * 2,
         )
         .await
         .unwrap();
@@ -71,7 +71,7 @@ async fn setup(
     )
     .await;
 
-    let minimum_redelegate_lamports = current_minimum_delegation + stake_rent * 2;
+    let minimum_redelegate_lamports = current_minimum_delegation + stake_rent;
     simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
@@ -212,7 +212,22 @@ async fn success() {
     assert_eq!(source_transient_stake_account.lamports, stake_rent);
     let transient_delegation = transient_stake_state.delegation().unwrap();
     assert_ne!(transient_delegation.deactivation_epoch, Epoch::MAX);
-    assert_eq!(transient_delegation.stake, redelegate_lamports - stake_rent);
+    assert_eq!(transient_delegation.stake, redelegate_lamports);
+
+    // Check reserve stake
+    let current_minimum_delegation = stake_pool_get_minimum_delegation(
+        &mut context.banks_client,
+        &context.payer,
+        &last_blockhash,
+    )
+    .await;
+    let reserve_lamports = MINIMUM_RESERVE_LAMPORTS + current_minimum_delegation + stake_rent * 2;
+    let reserve_stake_account = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await;
+    assert_eq!(reserve_stake_account.lamports, reserve_lamports);
 
     // Check ephemeral account doesn't exist
     let maybe_account = context
@@ -232,15 +247,12 @@ async fn success() {
         deserialize::<stake::state::StakeState>(&destination_transient_stake_account.data).unwrap();
     assert_eq!(
         destination_transient_stake_account.lamports,
-        redelegate_lamports - stake_rent
+        redelegate_lamports
     );
     let transient_delegation = transient_stake_state.delegation().unwrap();
     assert_eq!(transient_delegation.deactivation_epoch, Epoch::MAX);
     assert_ne!(transient_delegation.activation_epoch, Epoch::MAX);
-    assert_eq!(
-        transient_delegation.stake,
-        redelegate_lamports - stake_rent * 2
-    );
+    assert_eq!(transient_delegation.stake, redelegate_lamports - stake_rent);
 
     // Check validator list
     let validator_list = stake_pool_accounts
@@ -324,7 +336,7 @@ async fn success() {
     assert_eq!(u64::from(destination_item.transient_stake_lamports), 0);
     assert_eq!(
         u64::from(destination_item.active_stake_lamports),
-        pre_destination_validator_stake_account.lamports + redelegate_lamports - stake_rent * 2
+        pre_destination_validator_stake_account.lamports + redelegate_lamports - stake_rent
     );
     let post_destination_validator_stake_account = get_account(
         &mut context.banks_client,
@@ -333,7 +345,18 @@ async fn success() {
     .await;
     assert_eq!(
         post_destination_validator_stake_account.lamports,
-        pre_destination_validator_stake_account.lamports + redelegate_lamports - stake_rent * 2
+        pre_destination_validator_stake_account.lamports + redelegate_lamports - stake_rent
+    );
+
+    // Check reserve stake, which has claimed back all rent-exempt reserves
+    let reserve_stake_account = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await;
+    assert_eq!(
+        reserve_stake_account.lamports,
+        reserve_lamports + stake_rent * 2
     );
 }
 
@@ -477,10 +500,9 @@ async fn success_with_increasing_stake() {
     .await;
     let transient_stake_state =
         deserialize::<stake::state::StakeState>(&destination_transient_stake_account.data).unwrap();
-    // stake rent cancels out
     assert_eq!(
         destination_transient_stake_account.lamports,
-        redelegate_lamports + current_minimum_delegation
+        redelegate_lamports + current_minimum_delegation + stake_rent
     );
 
     let transient_delegation = transient_stake_state.delegation().unwrap();
@@ -488,8 +510,16 @@ async fn success_with_increasing_stake() {
     assert_ne!(transient_delegation.activation_epoch, Epoch::MAX);
     assert_eq!(
         transient_delegation.stake,
-        redelegate_lamports + current_minimum_delegation - stake_rent
+        redelegate_lamports + current_minimum_delegation
     );
+
+    // Check reserve stake
+    let reserve_stake_account = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await;
+    assert_eq!(reserve_stake_account.lamports, stake_rent);
 
     // Check validator list
     let validator_list = stake_pool_accounts
@@ -540,12 +570,11 @@ async fn success_with_increasing_stake() {
         .find(&destination_validator_stake.vote.pubkey())
         .unwrap();
     assert_eq!(u64::from(destination_item.transient_stake_lamports), 0);
-    // redelegate is smart enough to activate *everything*, so there's only one rent-exemption
+    // redelegate is smart enough to activate *everything*, so there's no rent-exemption
     // worth of inactive stake!
     assert_eq!(
         u64::from(destination_item.active_stake_lamports),
         pre_validator_stake_account.lamports + redelegate_lamports + current_minimum_delegation
-            - stake_rent
     );
     let post_validator_stake_account = get_account(
         &mut context.banks_client,
@@ -555,8 +584,16 @@ async fn success_with_increasing_stake() {
     assert_eq!(
         post_validator_stake_account.lamports,
         pre_validator_stake_account.lamports + redelegate_lamports + current_minimum_delegation
-            - stake_rent
     );
+
+    // Check reserve has claimed back rent-exempt reserve from both transient
+    // accounts
+    let reserve_stake_account = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await;
+    assert_eq!(reserve_stake_account.lamports, stake_rent * 3);
 }
 
 #[tokio::test]
@@ -690,6 +727,7 @@ async fn fail_with_wrong_withdraw_authority() {
             &stake_pool_accounts.staker.pubkey(),
             &wrong_withdraw_authority,
             &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
             &source_validator_stake.stake_account,
             &source_validator_stake.transient_stake_account,
             &ephemeral_stake,
@@ -750,6 +788,7 @@ async fn fail_with_wrong_validator_list() {
             &stake_pool_accounts.staker.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &wrong_validator_list,
+            &stake_pool_accounts.reserve_stake.pubkey(),
             &source_validator_stake.stake_account,
             &source_validator_stake.transient_stake_account,
             &ephemeral_stake,
@@ -783,6 +822,67 @@ async fn fail_with_wrong_validator_list() {
 }
 
 #[tokio::test]
+async fn fail_with_wrong_reserve() {
+    let (
+        mut context,
+        last_blockhash,
+        stake_pool_accounts,
+        source_validator_stake,
+        destination_validator_stake,
+        redelegate_lamports,
+        _,
+    ) = setup(true).await;
+
+    let ephemeral_stake_seed = 2;
+    let ephemeral_stake = find_ephemeral_stake_program_address(
+        &id(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        ephemeral_stake_seed,
+    )
+    .0;
+
+    let wrong_reserve = Keypair::new();
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::redelegate(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.staker.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &stake_pool_accounts.validator_list.pubkey(),
+            &wrong_reserve.pubkey(),
+            &source_validator_stake.stake_account,
+            &source_validator_stake.transient_stake_account,
+            &ephemeral_stake,
+            &destination_validator_stake.transient_stake_account,
+            &destination_validator_stake.stake_account,
+            &destination_validator_stake.vote.pubkey(),
+            redelegate_lamports,
+            source_validator_stake.transient_stake_seed,
+            ephemeral_stake_seed,
+            destination_validator_stake.transient_stake_seed,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.staker],
+        last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::InvalidProgramAddress as u32)
+        )
+    );
+}
+
+#[tokio::test]
 async fn fail_with_wrong_staker() {
     let (
         mut context,
@@ -810,6 +910,7 @@ async fn fail_with_wrong_staker() {
             &wrong_staker.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
             &source_validator_stake.stake_account,
             &source_validator_stake.transient_stake_account,
             &ephemeral_stake,
