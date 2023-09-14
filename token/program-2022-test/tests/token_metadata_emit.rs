@@ -118,11 +118,13 @@ async fn success(start: Option<u64>, end: Option<u64>) {
         if !check_buffer.is_empty() {
             // pad the data if necessary
             let mut return_data = vec![0; MAX_RETURN_DATA];
-            let simulation_return_data =
-                simulation.simulation_details.unwrap().return_data.unwrap();
-            assert_eq!(simulation_return_data.program_id, program_id);
-            return_data[..simulation_return_data.data.len()]
-                .copy_from_slice(&simulation_return_data.data);
+            if let Some(simulation_details) = simulation.simulation_details {
+                if let Some(simulation_return_data) = simulation_details.return_data {
+                    assert_eq!(simulation_return_data.program_id, program_id);
+                    return_data[..simulation_return_data.data.len()]
+                        .copy_from_slice(&simulation_return_data.data);
+                }
+            }
 
             assert_eq!(*check_buffer, return_data[..check_buffer.len()]);
             // we're sure that we're getting the full data, so also compare the deserialized type

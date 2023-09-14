@@ -1211,6 +1211,8 @@ async fn confidential_transfer_harvest_withheld_tokens_to_mint() {
         .await
         .unwrap();
 
+    // Refresh the blockhash since we're doing the same thing twice in a row
+    token.get_new_latest_blockhash().await.unwrap();
     token
         .confidential_transfer_harvest_withheld_tokens_to_mint(&[&bob_meta.token_account])
         .await
