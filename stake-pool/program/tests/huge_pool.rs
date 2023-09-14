@@ -25,7 +25,7 @@ use {
 // the test require so many helper accounts.
 // 20k is also a very safe number for the current upper bound of the network.
 const MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS: u32 = 20_000;
-const MAX_POOL_SIZE: u32 = 2_650;
+const MAX_POOL_SIZE: u32 = 3_000;
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 
 async fn setup(
@@ -298,7 +298,10 @@ async fn remove_validator_from_pool(max_validators: u32) {
     let validator_list =
         try_from_slice_unchecked::<ValidatorList>(validator_list.data.as_slice()).unwrap();
     let first_element = &validator_list.validators[0];
-    assert_eq!(first_element.status, StakeStatus::DeactivatingValidator);
+    assert_eq!(
+        first_element.status,
+        StakeStatus::DeactivatingValidator.into()
+    );
     assert_eq!(
         u64::from(first_element.active_stake_lamports),
         LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
@@ -306,7 +309,10 @@ async fn remove_validator_from_pool(max_validators: u32) {
     assert_eq!(u64::from(first_element.transient_stake_lamports), 0);
 
     let middle_element = &validator_list.validators[middle_index];
-    assert_eq!(middle_element.status, StakeStatus::DeactivatingValidator);
+    assert_eq!(
+        middle_element.status,
+        StakeStatus::DeactivatingValidator.into()
+    );
     assert_eq!(
         u64::from(middle_element.active_stake_lamports),
         LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
@@ -314,7 +320,10 @@ async fn remove_validator_from_pool(max_validators: u32) {
     assert_eq!(u64::from(middle_element.transient_stake_lamports), 0);
 
     let last_element = &validator_list.validators[last_index];
-    assert_eq!(last_element.status, StakeStatus::DeactivatingValidator);
+    assert_eq!(
+        last_element.status,
+        StakeStatus::DeactivatingValidator.into()
+    );
     assert_eq!(
         u64::from(last_element.active_stake_lamports),
         LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
@@ -465,7 +474,7 @@ async fn add_validator_to_pool(max_validators: u32) {
         try_from_slice_unchecked::<ValidatorList>(validator_list.data.as_slice()).unwrap();
     assert_eq!(validator_list.validators.len(), last_index + 1);
     let last_element = validator_list.validators[last_index];
-    assert_eq!(last_element.status, StakeStatus::Active);
+    assert_eq!(last_element.status, StakeStatus::Active.into());
     assert_eq!(
         u64::from(last_element.active_stake_lamports),
         LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION
@@ -503,7 +512,7 @@ async fn add_validator_to_pool(max_validators: u32) {
     let validator_list =
         try_from_slice_unchecked::<ValidatorList>(validator_list.data.as_slice()).unwrap();
     let last_element = validator_list.validators[last_index];
-    assert_eq!(last_element.status, StakeStatus::Active);
+    assert_eq!(last_element.status, StakeStatus::Active.into());
     assert_eq!(
         u64::from(last_element.active_stake_lamports),
         LAMPORTS_PER_SOL + STAKE_ACCOUNT_RENT_EXEMPTION

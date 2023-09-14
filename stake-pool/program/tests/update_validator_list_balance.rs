@@ -608,7 +608,7 @@ async fn merge_transient_stake_after_remove() {
     assert_eq!(validator_list.validators.len(), 1);
     assert_eq!(
         validator_list.validators[0].status,
-        StakeStatus::DeactivatingAll
+        StakeStatus::DeactivatingAll.into()
     );
     assert_eq!(
         u64::from(validator_list.validators[0].active_stake_lamports),
@@ -660,7 +660,7 @@ async fn merge_transient_stake_after_remove() {
     assert_eq!(validator_list.validators.len(), 1);
     assert_eq!(
         validator_list.validators[0].status,
-        StakeStatus::ReadyForRemoval
+        StakeStatus::ReadyForRemoval.into()
     );
     assert_eq!(validator_list.validators[0].stake_lamports().unwrap(), 0);
 

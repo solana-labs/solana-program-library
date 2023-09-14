@@ -6887,6 +6887,7 @@ dependencies = [
  "arrayref",
  "bincode",
  "borsh 0.10.3",
+ "bytemuck",
  "num-derive 0.4.0",
  "num-traits",
  "num_enum 0.7.0",

@@ -2404,7 +2404,7 @@ pub fn add_validator_stake_account(
     let active_stake_lamports = stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION;
 
     validator_list.validators.push(state::ValidatorStakeInfo {
-        status,
+        status: status.into(),
         vote_account_address: *voter_pubkey,
         active_stake_lamports: active_stake_lamports.into(),
         transient_stake_lamports: 0.into(),

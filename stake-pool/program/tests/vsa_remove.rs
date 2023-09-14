@@ -542,7 +542,7 @@ async fn success_with_deactivating_transient_stake() {
             max_validators: stake_pool_accounts.max_validators,
         },
         validators: vec![state::ValidatorStakeInfo {
-            status: state::StakeStatus::DeactivatingAll,
+            status: state::StakeStatus::DeactivatingAll.into(),
             vote_account_address: validator_stake.vote.pubkey(),
             last_update_epoch: 0.into(),
             active_stake_lamports: (stake_rent + current_minimum_delegation).into(),
