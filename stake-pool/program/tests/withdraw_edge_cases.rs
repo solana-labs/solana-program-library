@@ -39,7 +39,7 @@ async fn fail_remove_validator() {
             validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -139,7 +139,7 @@ async fn success_remove_validator(multiple: u64) {
             validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -190,7 +190,7 @@ async fn success_remove_validator(multiple: u64) {
             pool_tokens,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check validator stake account gone
     let validator_stake_account = context
@@ -252,7 +252,7 @@ async fn fail_with_reserve() {
             validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -322,7 +322,7 @@ async fn success_with_reserve() {
             validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -354,7 +354,7 @@ async fn success_with_reserve() {
             deposit_info.pool_tokens,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // first and only deposit, lamports:pool 1:1
     let stake_pool = get_account(
@@ -457,7 +457,7 @@ async fn success_with_empty_preferred_withdraw() {
             tokens_to_burn / 2,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }
 
 #[tokio::test]
@@ -553,7 +553,7 @@ async fn success_and_fail_with_preferred_withdraw() {
             tokens_to_burn / 2,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }
 
 #[tokio::test]
@@ -615,7 +615,7 @@ async fn fail_withdraw_from_transient() {
             validator_stake_account.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // fail withdrawing from transient, still a lamport in the validator stake account
     let new_user_authority = Pubkey::new_unique();
@@ -702,7 +702,7 @@ async fn success_withdraw_from_transient() {
             validator_stake_account.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // nothing left in the validator stake account (or any others), so withdrawing
     // from the transient account is ok!
@@ -720,7 +720,7 @@ async fn success_withdraw_from_transient() {
             tokens_to_withdraw / 2,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }
 
 #[tokio::test]
@@ -816,7 +816,7 @@ async fn success_with_small_preferred_withdraw() {
             preferred_validator.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // warp forward to deactivation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -868,5 +868,5 @@ async fn success_with_small_preferred_withdraw() {
             tokens_to_burn / 6,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }

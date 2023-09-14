@@ -113,7 +113,7 @@ async fn success(use_additional_instruction: bool) {
             use_additional_instruction,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check reserve stake account balance
     let reserve_stake_account = get_account(
@@ -298,7 +298,7 @@ async fn fail_twice_diff_seed(use_additional_instruction: bool) {
             use_additional_instruction,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let transient_stake_seed = validator_stake.transient_stake_seed * 100;
     let transient_stake_address = find_transient_stake_program_address(
@@ -370,7 +370,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
             use_additional_first_time,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .increase_validator_stake_either(
@@ -387,7 +387,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
         .await;
 
     if success {
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
         let rent = context.banks_client.get_rent().await.unwrap();
         let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
         // no ephemeral account
@@ -563,7 +563,7 @@ async fn fail_additional_with_decreasing() {
             validator_stake.transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .increase_validator_stake_either(

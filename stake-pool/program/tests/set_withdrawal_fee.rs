@@ -350,7 +350,7 @@ async fn success_fee_cannot_increase_more_than_once() {
             &context.last_blockhash,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check that nothing has changed after updating the stake pool
     let stake_pool = get_account(

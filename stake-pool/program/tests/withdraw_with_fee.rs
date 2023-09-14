@@ -78,7 +78,7 @@ async fn success_withdraw_all_fee_tokens() {
             fee_tokens,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check balance is 0
     let fee_tokens = get_token_balance(
@@ -217,7 +217,7 @@ async fn success_empty_out_stake_with_fee() {
             pool_tokens_to_withdraw,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check balance of validator stake account is MINIMUM + rent-exemption
     let validator_stake_account = get_account(

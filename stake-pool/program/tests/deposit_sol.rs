@@ -98,7 +98,7 @@ async fn success(token_program_id: Pubkey) {
             None,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let tokens_issued = TEST_STAKE_AMOUNT; // For now tokens are 1:1 to stake
 
@@ -309,7 +309,7 @@ async fn success_with_sol_deposit_authority() {
             None,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let sol_deposit_authority = Keypair::new();
 
@@ -336,7 +336,7 @@ async fn success_with_sol_deposit_authority() {
             Some(&sol_deposit_authority),
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }
 
 #[tokio::test]
@@ -569,7 +569,7 @@ async fn success_with_slippage(token_program_id: Pubkey) {
             tokens_issued,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Stake pool should add its balance to the pool balance
     let post_stake_pool = get_account(

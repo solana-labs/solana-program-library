@@ -74,7 +74,7 @@ async fn success_deposit() {
             Some(vote_account_address),
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
@@ -102,7 +102,7 @@ async fn success_withdraw() {
             Some(vote_account_address),
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
@@ -129,7 +129,7 @@ async fn success_unset() {
             Some(vote_account_address),
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
@@ -148,7 +148,7 @@ async fn success_unset() {
             None,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
@@ -230,7 +230,7 @@ async fn fail_ready_for_removal() {
         &stake_pool_accounts.stake_pool.pubkey(),
         transient_stake_seed,
     );
-    let remove_err = stake_pool_accounts
+    let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut banks_client,
             &payer,
@@ -239,7 +239,7 @@ async fn fail_ready_for_removal() {
             &transient_stake_address,
         )
         .await;
-    assert!(remove_err.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let error = stake_pool_accounts
         .set_preferred_validator(

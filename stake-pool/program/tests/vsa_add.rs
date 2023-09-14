@@ -88,7 +88,7 @@ async fn success() {
             validator_stake.validator_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check if validator account was added to the list
     let validator_list = get_account(
@@ -471,7 +471,7 @@ async fn fail_add_too_many_validator_stake_accounts() {
             validator_stake.validator_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_stake =
         ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
@@ -590,7 +590,7 @@ async fn success_with_lamports_in_account() {
             validator_stake.validator_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check stake account existence and authority
     let stake = get_account(&mut banks_client, &validator_stake.stake_account).await;

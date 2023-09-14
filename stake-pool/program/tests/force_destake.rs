@@ -146,7 +146,7 @@ async fn success_update() {
             false,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
     let post_reserve_lamports = context
         .banks_client
         .get_account(stake_pool_accounts.reserve_stake.pubkey())
