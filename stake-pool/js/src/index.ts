@@ -1092,6 +1092,7 @@ export async function redelegate(props: RedelegateProps) {
       stakePool: stakePool.pubkey,
       staker: stakePool.account.data.staker,
       validatorList: stakePool.account.data.validatorList,
+      reserveStake: stakePool.account.data.reserveStake,
       stakePoolWithdrawAuthority,
       ephemeralStake,
       ephemeralStakeSeed,

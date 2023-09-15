@@ -325,6 +325,7 @@ export type RedelegateParams = {
   staker: PublicKey;
   stakePoolWithdrawAuthority: PublicKey;
   validatorList: PublicKey;
+  reserveStake: PublicKey;
   sourceValidatorStake: PublicKey;
   sourceTransientStake: PublicKey;
   ephemeralStake: PublicKey;
@@ -841,6 +842,7 @@ export class StakePoolInstruction {
       staker,
       stakePoolWithdrawAuthority,
       validatorList,
+      reserveStake,
       sourceValidatorStake,
       sourceTransientStake,
       ephemeralStake,
@@ -858,6 +860,7 @@ export class StakePoolInstruction {
       { pubkey: staker, isSigner: true, isWritable: false },
       { pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false },
       { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: reserveStake, isSigner: false, isWritable: true },
       { pubkey: sourceValidatorStake, isSigner: false, isWritable: true },
       { pubkey: sourceTransientStake, isSigner: false, isWritable: true },
       { pubkey: ephemeralStake, isSigner: false, isWritable: true },
