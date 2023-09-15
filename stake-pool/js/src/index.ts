@@ -795,6 +795,7 @@ export async function decreaseValidatorStake(
         stakePool: stakePoolAddress,
         staker: stakePool.account.data.staker,
         validatorList: stakePool.account.data.validatorList,
+        reserveStake: stakePool.account.data.reserveStake,
         transientStakeSeed: transientStakeSeed.toNumber(),
         withdrawAuthority,
         validatorStake,
