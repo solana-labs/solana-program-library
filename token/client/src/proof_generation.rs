@@ -165,10 +165,7 @@ pub fn transfer_with_fee_split_proof_data(
             .ok_or(TokenError::Overflow)?;
 
     // if raw fee is greater than the maximum fee, then use the maximum fee for the fee amount
-    let mut fee_amount = raw_fee_amount;
-    if transfer_fee_maximum_fee < raw_fee_amount {
-        fee_amount = transfer_fee_maximum_fee;
-    }
+    let fee_amount = std::cmp::min(transfer_fee_maximum_fee, raw_fee_amount);
 
     // split and encrypt fee
     let (fee_amount_lo, fee_amount_hi) = verify_and_split_deposit_amount(fee_amount)?;

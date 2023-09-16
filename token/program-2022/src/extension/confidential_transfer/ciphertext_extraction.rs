@@ -330,11 +330,11 @@ pub struct TransferWithFeePubkeysInfo {
 /// The proof context information needed to process a [Transfer] instruction with fee.
 #[cfg(feature = "zk-ops")]
 pub struct TransferWithFeeProofContextInfo {
-    /// Group encryption of the low 16 bites of the transfer amount
+    /// Group encryption of the low 16 bits of the transfer amount
     pub ciphertext_lo: TransferAmountCiphertext,
     /// Group encryption of the high 48 bits of the transfer amount
     pub ciphertext_hi: TransferAmountCiphertext,
-    /// The public encryption keys associated with the transfer: source, dest, and auditor
+    /// The public encryption keys associated with the transfer: source, dest, auditor, and withdraw withheld authority
     pub transfer_with_fee_pubkeys: TransferWithFeePubkeysInfo,
     /// The final spendable ciphertext after the transfer,
     pub new_source_ciphertext: ElGamalCiphertext,
