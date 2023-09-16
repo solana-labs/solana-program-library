@@ -7,7 +7,7 @@ use crate::{
         confidential_transfer::*, confidential_transfer_fee::EncryptedFee,
         transfer_fee::TransferFee,
     },
-    solana_program::{msg, program_error::ProgramError},
+    solana_program::program_error::ProgramError,
     solana_zk_token_sdk::{
         curve25519::{
             ristretto::{self, PodRistrettoPoint},
@@ -461,8 +461,6 @@ impl TransferWithFeeProofContextInfo {
 
         let fee_commitment_lo = extract_commitment_from_grouped_ciphertext(fee_ciphertext_lo);
         let fee_commitment_hi = extract_commitment_from_grouped_ciphertext(fee_ciphertext_hi);
-
-        msg!("after verify delta commitment");
 
         const MAX_FEE_BASIS_POINTS: u64 = 10_000;
         let max_fee_basis_points_scalar = u64_to_scalar(MAX_FEE_BASIS_POINTS);
