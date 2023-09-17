@@ -173,7 +173,10 @@ pub fn verify_transfer_proof(
         let range_proof_context =
             verify_transfer_range_proof(range_proof_context_state_account_info)?;
 
-        let transfer_proof_context = TransferProofContextInfo::new(
+        // The `TransferProofContextInfo` constructor verifies the consistency of the
+        // individual proof context and generates a `TransferWithFeeProofInfo` struct that is used
+        // to process the rest of the token-2022 logic.
+        let transfer_proof_context = TransferProofContextInfo::verify_and_generate(
             &equality_proof_context,
             &ciphertext_validity_proof_context,
             &range_proof_context,
@@ -338,7 +341,12 @@ pub fn verify_transfer_with_fee_proof(
         let range_proof_context =
             verify_transfer_with_fee_range_proof(range_proof_context_state_account_info)?;
 
-        let transfer_with_fee_proof_context = TransferWithFeeProofContextInfo::new(
+        // The `TransferWithFeeProofContextInfo` constructor verifies the consistency of the
+        // individual proof context and generates a `TransferWithFeeProofInfo` struct that is used
+        // to process the rest of the token-2022 logic. The consistency check includes verifying
+        // whether the fee-related zkps were generated with respect to the correct fee parameter
+        // that is stored in the mint extension.
+        let transfer_with_fee_proof_context = TransferWithFeeProofContextInfo::verify_and_generate(
             &equality_proof_context,
             &transfer_amount_ciphertext_validity_proof_context,
             &fee_sigma_proof_context,
@@ -460,6 +468,8 @@ pub fn verify_transfer_with_fee_proof(
             .maximum_fee
             .into();
 
+        // check consistency of the transfer fee parameters in the mint extension with what were
+        // used to generate the zkp
         if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
             || u64::from(fee_parameters.maximum_fee) != proof_maximum_fee
         {
@@ -481,6 +491,8 @@ pub fn verify_transfer_with_fee_proof(
             proof_context.fee_parameters.fee_rate_basis_points.into();
         let proof_maximum_fee: u64 = proof_context.fee_parameters.maximum_fee.into();
 
+        // check consistency of the transfer fee parameters in the mint extension with what were
+        // used to generate the zkp
         if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
             || u64::from(fee_parameters.maximum_fee) != proof_maximum_fee
         {

@@ -209,7 +209,7 @@ impl From<TransferProofContext> for TransferProofContextInfo {
 impl TransferProofContextInfo {
     /// Create a transfer proof context information needed to process a [Transfer] instruction from
     /// split proof contexts after verifying their consistency.
-    pub fn new(
+    pub fn verify_and_generate(
         equality_proof_context: &CiphertextCommitmentEqualityProofContext,
         ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
         range_proof_context: &BatchedRangeProofContext,
@@ -371,7 +371,7 @@ impl From<TransferWithFeeProofContext> for TransferWithFeeProofContextInfo {
 impl TransferWithFeeProofContextInfo {
     /// Create a transfer proof context information needed to process a [Transfer] instruction from
     /// split proof contexts after verifying their consistency.
-    pub fn new(
+    pub fn verify_and_generate(
         equality_proof_context: &CiphertextCommitmentEqualityProofContext,
         transfer_amount_ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
         fee_sigma_proof_context: &FeeSigmaProofContext,
