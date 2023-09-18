@@ -176,7 +176,7 @@ pub fn verify_transfer_proof(
         // The `TransferProofContextInfo` constructor verifies the consistency of the
         // individual proof context and generates a `TransferWithFeeProofInfo` struct that is used
         // to process the rest of the token-2022 logic.
-        let transfer_proof_context = TransferProofContextInfo::verify_and_generate(
+        let transfer_proof_context = TransferProofContextInfo::verify_and_extract(
             &equality_proof_context,
             &ciphertext_validity_proof_context,
             &range_proof_context,
@@ -346,7 +346,7 @@ pub fn verify_transfer_with_fee_proof(
         // to process the rest of the token-2022 logic. The consistency check includes verifying
         // whether the fee-related zkps were generated with respect to the correct fee parameter
         // that is stored in the mint extension.
-        let transfer_with_fee_proof_context = TransferWithFeeProofContextInfo::verify_and_generate(
+        let transfer_with_fee_proof_context = TransferWithFeeProofContextInfo::verify_and_extract(
             &equality_proof_context,
             &transfer_amount_ciphertext_validity_proof_context,
             &fee_sigma_proof_context,
@@ -469,7 +469,9 @@ pub fn verify_transfer_with_fee_proof(
             .into();
 
         // check consistency of the transfer fee parameters in the mint extension with what were
-        // used to generate the zkp
+        // used to generate the zkp, which is not checked in the
+        // `From<TransferWithFeeProofContext>` implementation for
+        // `TransferWithFeeProofContextInfo`.
         if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
             || u64::from(fee_parameters.maximum_fee) != proof_maximum_fee
         {
@@ -492,7 +494,9 @@ pub fn verify_transfer_with_fee_proof(
         let proof_maximum_fee: u64 = proof_context.fee_parameters.maximum_fee.into();
 
         // check consistency of the transfer fee parameters in the mint extension with what were
-        // used to generate the zkp
+        // used to generate the zkp, which is not checked in the
+        // `From<TransferWithFeeProofContext>` implementation for
+        // `TransferWithFeeProofContextInfo`.
         if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
             || u64::from(fee_parameters.maximum_fee) != proof_maximum_fee
         {
