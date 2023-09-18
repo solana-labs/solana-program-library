@@ -5,7 +5,7 @@ use {
         extension::{
             confidential_transfer::{ciphertext_extraction::*, instruction::*, verify_proof::*, *},
             confidential_transfer_fee::{
-                ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig, EncryptedFee,
+                ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig,
                 EncryptedWithheldAmount,
             },
             memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
@@ -319,7 +319,7 @@ fn process_deposit(
 /// Verifies that a deposit amount is a 48-bit number and returns the least significant 16 bits and
 /// most significant 32 bits of the amount.
 #[cfg(feature = "zk-ops")]
-pub(crate) fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError> {
+pub fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError> {
     if amount > MAXIMUM_DEPOSIT_TRANSFER_AMOUNT {
         return Err(TokenError::MaximumDepositAmountExceeded);
     }
@@ -516,57 +516,68 @@ fn process_transfer(
             );
         }
     } else {
-        // Transfer fee is required. Decode the zero-knowledge proof as `TransferWithFeeData`.
+        // Transfer fee is required.
+        let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
+        let fee_parameters = transfer_fee_config.get_epoch_fee(Clock::get()?.epoch);
+
+        // Decode the zero-knowledge proof as `TransferWithFeeData`.
         //
         // The zero-knowledge proof certifies that:
         //   1. the transfer amount is encrypted in the correct form
         //   2. the source account has enough balance to send the transfer amount
         //   3. the transfer fee is computed correctly and encrypted in the correct form
-        let proof_context = verify_transfer_with_fee_proof(
+        let maybe_proof_context = verify_transfer_with_fee_proof(
             account_info_iter,
             proof_instruction_offset,
             split_proof_context_state_accounts,
+            no_op_on_uninitialized_split_context_state,
+            close_split_context_state_on_execution,
+            source_decrypt_handles,
+            fee_parameters,
         )?;
+
+        // If `maybe_proof_context` is `None`, then this means that
+        // `no_op_on_uninitialized_split_context_state` is true and a required context state
+        // account is not yet initialized. Even if this is the case, we follow through with the
+        // rest of the transfer with fee logic to perform all the necessary checks to be safe.
+
+        // If `close_split_context_state_on_execution` is `true`, then the source account authority
+        // info is located after the lamport destination, context state authority, and zk token
+        // proof program account infos. Flush out these account infos.
+        if close_split_context_state_on_execution && maybe_proof_context.is_none() {
+            let _lamport_destination_account_info = next_account_info(account_info_iter)?;
+            let _context_state_authority_info = next_account_info(account_info_iter)?;
+            let _zk_token_proof_program_info = next_account_info(account_info_iter)?;
+        }
 
         let authority_info = next_account_info(account_info_iter)?;
 
         // Check that the encryption public keys associated with the mint confidential transfer and
         // confidential transfer fee extensions are consistent with the keys that were used to
         // generate the zkp.
-        if !confidential_transfer_mint
-            .auditor_elgamal_pubkey
-            .equals(&proof_context.transfer_with_fee_pubkeys.auditor)
-        {
-            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+        if let Some(ref proof_context) = maybe_proof_context {
+            if !confidential_transfer_mint
+                .auditor_elgamal_pubkey
+                .equals(&proof_context.transfer_with_fee_pubkeys.auditor)
+            {
+                return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+            }
         }
+
         let confidential_transfer_fee_config =
             mint.get_extension::<ConfidentialTransferFeeConfig>()?;
-        if proof_context
-            .transfer_with_fee_pubkeys
-            .withdraw_withheld_authority
-            != confidential_transfer_fee_config.withdraw_withheld_authority_elgamal_pubkey
-        {
-            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
-        }
 
-        // Check that the fee parameters in the mint are consistent with what were used to generate
-        // the zkp.
-        let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
-        let fee_parameters = transfer_fee_config.get_epoch_fee(Clock::get()?.epoch);
-        if u64::from(fee_parameters.maximum_fee)
-            != u64::from(proof_context.fee_parameters.maximum_fee)
-            || u16::from(fee_parameters.transfer_fee_basis_points)
-                != u16::from(proof_context.fee_parameters.fee_rate_basis_points)
-        {
-            return Err(TokenError::FeeParametersMismatch.into());
+        // Check that the withdraw withheld authority ElGamal public key in the mint is
+        // consistent with what was used to generate the zkp.
+        if let Some(ref proof_context) = maybe_proof_context {
+            if proof_context
+                .transfer_with_fee_pubkeys
+                .withdraw_withheld_authority
+                != confidential_transfer_fee_config.withdraw_withheld_authority_elgamal_pubkey
+            {
+                return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+            }
         }
-
-        // From the proof data, decode lo and hi transfer amounts encrypted under the source
-        // encryption public key
-        let source_transfer_amount_lo =
-            transfer_amount_source_ciphertext(&proof_context.ciphertext_lo);
-        let source_transfer_amount_hi =
-            transfer_amount_source_ciphertext(&proof_context.ciphertext_hi);
 
         process_source_for_transfer_with_fee(
             program_id,
@@ -574,37 +585,23 @@ fn process_transfer(
             mint_info,
             authority_info,
             account_info_iter.as_slice(),
-            &proof_context.transfer_with_fee_pubkeys.source,
-            &source_transfer_amount_lo,
-            &source_transfer_amount_hi,
-            &proof_context.new_source_ciphertext,
+            maybe_proof_context.as_ref(),
             new_source_decryptable_available_balance,
         )?;
 
-        // From the proof data decode lo and hi transfer amounts encrypted under the destination
-        // encryption public key
-        let destination_transfer_amount_lo =
-            transfer_amount_destination_ciphertext(&proof_context.ciphertext_lo);
-        let destination_transfer_amount_hi =
-            transfer_amount_destination_ciphertext(&proof_context.ciphertext_hi);
-
-        let fee_ciphertext = if source_account_info.key != destination_token_account_info.key {
-            Some((
-                &proof_context.fee_ciphertext_lo,
-                &proof_context.fee_ciphertext_hi,
-            ))
-        } else {
-            None
-        };
-
+        let is_self_transfer = source_account_info.key == destination_token_account_info.key;
         process_destination_for_transfer_with_fee(
             destination_token_account_info,
             mint_info,
-            &proof_context.transfer_with_fee_pubkeys.destination,
-            &destination_transfer_amount_lo,
-            &destination_transfer_amount_hi,
-            fee_ciphertext,
+            maybe_proof_context.as_ref(),
+            is_self_transfer,
         )?;
+
+        if maybe_proof_context.is_none() {
+            msg!(
+                "Context state not fully initialized: returning with no op; transfer is NOT yet executed"
+            );
+        }
     }
 
     Ok(())
@@ -743,10 +740,7 @@ fn process_source_for_transfer_with_fee(
     mint_info: &AccountInfo,
     authority_info: &AccountInfo,
     signers: &[AccountInfo],
-    source_encryption_pubkey: &ElGamalPubkey,
-    source_transfer_amount_lo: &EncryptedBalance,
-    source_transfer_amount_hi: &EncryptedBalance,
-    expected_new_source_available_balance: &EncryptedBalance,
+    maybe_proof_context: Option<&TransferWithFeeProofContextInfo>,
     new_source_decryptable_available_balance: DecryptableBalance,
 ) -> ProgramResult {
     check_program_account(source_account_info.owner)?;
@@ -774,28 +768,37 @@ fn process_source_for_transfer_with_fee(
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_source()?;
 
-    // Check that the source encryption public key is consistent with what was actually used to
-    // generate the zkp.
-    if *source_encryption_pubkey != confidential_transfer_account.elgamal_pubkey {
-        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+    if let Some(proof_context) = maybe_proof_context {
+        // Check that the source encryption public key is consistent with what was actually used to
+        // generate the zkp.
+        if proof_context.transfer_with_fee_pubkeys.source
+            != confidential_transfer_account.elgamal_pubkey
+        {
+            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+        }
+
+        let source_transfer_amount_lo =
+            transfer_amount_source_ciphertext(&proof_context.ciphertext_lo);
+        let source_transfer_amount_hi =
+            transfer_amount_source_ciphertext(&proof_context.ciphertext_hi);
+
+        let new_source_available_balance = syscall::subtract_with_lo_hi(
+            &confidential_transfer_account.available_balance,
+            &source_transfer_amount_lo,
+            &source_transfer_amount_hi,
+        )
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
+
+        // Check that the computed available balance is consistent with what was actually used to
+        // generate the zkp on the client side.
+        if new_source_available_balance != proof_context.new_source_ciphertext {
+            return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
+        }
+
+        confidential_transfer_account.available_balance = new_source_available_balance;
+        confidential_transfer_account.decryptable_available_balance =
+            new_source_decryptable_available_balance;
     }
-
-    let new_source_available_balance = syscall::subtract_with_lo_hi(
-        &confidential_transfer_account.available_balance,
-        source_transfer_amount_lo,
-        source_transfer_amount_hi,
-    )
-    .ok_or(TokenError::CiphertextArithmeticFailed)?;
-
-    // Check that the computed available balance is consistent with what was actually used to
-    // generate the zkp on the client side.
-    if new_source_available_balance != *expected_new_source_available_balance {
-        return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
-    }
-
-    confidential_transfer_account.available_balance = new_source_available_balance;
-    confidential_transfer_account.decryptable_available_balance =
-        new_source_decryptable_available_balance;
 
     Ok(())
 }
@@ -804,10 +807,8 @@ fn process_source_for_transfer_with_fee(
 fn process_destination_for_transfer_with_fee(
     destination_token_account_info: &AccountInfo,
     mint_info: &AccountInfo,
-    destination_encryption_pubkey: &ElGamalPubkey,
-    destination_transfer_amount_lo: &EncryptedBalance,
-    destination_transfer_amount_hi: &EncryptedBalance,
-    encrypted_fee: Option<(&EncryptedFee, &EncryptedFee)>,
+    maybe_proof_context: Option<&TransferWithFeeProofContextInfo>,
+    is_self_transfer: bool,
 ) -> ProgramResult {
     check_program_account(destination_token_account_info.owner)?;
     let destination_token_account_data = &mut destination_token_account_info.data.borrow_mut();
@@ -830,59 +831,70 @@ fn process_destination_for_transfer_with_fee(
         destination_token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     destination_confidential_transfer_account.valid_as_destination()?;
 
-    if *destination_encryption_pubkey != destination_confidential_transfer_account.elgamal_pubkey {
-        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
-    }
+    if let Some(proof_context) = maybe_proof_context {
+        if proof_context.transfer_with_fee_pubkeys.destination
+            != destination_confidential_transfer_account.elgamal_pubkey
+        {
+            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+        }
 
-    destination_confidential_transfer_account.pending_balance_lo = syscall::add(
-        &destination_confidential_transfer_account.pending_balance_lo,
-        destination_transfer_amount_lo,
-    )
-    .ok_or(TokenError::CiphertextArithmeticFailed)?;
+        let destination_transfer_amount_lo =
+            transfer_amount_destination_ciphertext(&proof_context.ciphertext_lo);
+        let destination_transfer_amount_hi =
+            transfer_amount_destination_ciphertext(&proof_context.ciphertext_hi);
 
-    destination_confidential_transfer_account.pending_balance_hi = syscall::add(
-        &destination_confidential_transfer_account.pending_balance_hi,
-        destination_transfer_amount_hi,
-    )
-    .ok_or(TokenError::CiphertextArithmeticFailed)?;
-
-    destination_confidential_transfer_account.increment_pending_balance_credit_counter()?;
-
-    // Process transfer fee
-    if let Some((ciphertext_fee_lo, ciphertext_fee_hi)) = encrypted_fee {
-        // Decode lo and hi fee amounts encrypted under the destination encryption public key
-        let destination_fee_lo = fee_amount_destination_ciphertext(ciphertext_fee_lo);
-        let destination_fee_hi = fee_amount_destination_ciphertext(ciphertext_fee_hi);
-
-        // Subtract the fee amount from the destination pending balance
-        destination_confidential_transfer_account.pending_balance_lo = syscall::subtract(
+        destination_confidential_transfer_account.pending_balance_lo = syscall::add(
             &destination_confidential_transfer_account.pending_balance_lo,
-            &destination_fee_lo,
+            &destination_transfer_amount_lo,
         )
         .ok_or(TokenError::CiphertextArithmeticFailed)?;
-        destination_confidential_transfer_account.pending_balance_hi = syscall::subtract(
+
+        destination_confidential_transfer_account.pending_balance_hi = syscall::add(
             &destination_confidential_transfer_account.pending_balance_hi,
-            &destination_fee_hi,
+            &destination_transfer_amount_hi,
         )
         .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
-        // Decode lo and hi fee amounts encrypted under the withdraw authority encryption public
-        // key
-        let withdraw_withheld_authority_fee_lo =
-            fee_amount_withdraw_withheld_authority_ciphertext(ciphertext_fee_lo);
-        let withdraw_withheld_authority_fee_hi =
-            fee_amount_withdraw_withheld_authority_ciphertext(ciphertext_fee_hi);
+        destination_confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
-        let mut destination_confidential_transfer_fee_amount =
-            destination_token_account.get_extension_mut::<ConfidentialTransferFeeAmount>()?;
+        // process transfer fee
+        if !is_self_transfer {
+            // Decode lo and hi fee amounts encrypted under the destination encryption public key
+            let destination_fee_lo =
+                fee_amount_destination_ciphertext(&proof_context.fee_ciphertext_lo);
+            let destination_fee_hi =
+                fee_amount_destination_ciphertext(&proof_context.fee_ciphertext_hi);
 
-        // Add the fee amount to the destination withheld fee
-        destination_confidential_transfer_fee_amount.withheld_amount = syscall::add_with_lo_hi(
-            &destination_confidential_transfer_fee_amount.withheld_amount,
-            &withdraw_withheld_authority_fee_lo,
-            &withdraw_withheld_authority_fee_hi,
-        )
-        .ok_or(TokenError::CiphertextArithmeticFailed)?;
+            // Subtract the fee amount from the destination pending balance
+            destination_confidential_transfer_account.pending_balance_lo = syscall::subtract(
+                &destination_confidential_transfer_account.pending_balance_lo,
+                &destination_fee_lo,
+            )
+            .ok_or(TokenError::CiphertextArithmeticFailed)?;
+            destination_confidential_transfer_account.pending_balance_hi = syscall::subtract(
+                &destination_confidential_transfer_account.pending_balance_hi,
+                &destination_fee_hi,
+            )
+            .ok_or(TokenError::CiphertextArithmeticFailed)?;
+
+            // Decode lo and hi fee amounts encrypted under the withdraw authority encryption public
+            // key
+            let withdraw_withheld_authority_fee_lo =
+                fee_amount_withdraw_withheld_authority_ciphertext(&proof_context.fee_ciphertext_lo);
+            let withdraw_withheld_authority_fee_hi =
+                fee_amount_withdraw_withheld_authority_ciphertext(&proof_context.fee_ciphertext_hi);
+
+            let mut destination_confidential_transfer_fee_amount =
+                destination_token_account.get_extension_mut::<ConfidentialTransferFeeAmount>()?;
+
+            // Add the fee amount to the destination withheld fee
+            destination_confidential_transfer_fee_amount.withheld_amount = syscall::add_with_lo_hi(
+                &destination_confidential_transfer_fee_amount.withheld_amount,
+                &withdraw_withheld_authority_fee_lo,
+                &withdraw_withheld_authority_fee_hi,
+            )
+            .ok_or(TokenError::CiphertextArithmeticFailed)?;
+        }
     }
 
     Ok(())
