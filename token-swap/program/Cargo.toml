@@ -29,7 +29,7 @@ roots = { version = "0.0.8", optional = true }
 proptest = "1.2"
 roots = "0.0.8"
 solana-sdk = "1.16.3"
-test-case = "3.1"
+test-case = "3.2"
 
 [lib]
 crate-type = ["cdylib", "lib"]
