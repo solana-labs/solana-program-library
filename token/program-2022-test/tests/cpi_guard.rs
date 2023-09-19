@@ -516,6 +516,8 @@ async fn test_cpi_guard_approve() {
             .await
             .unwrap();
 
+        // refresh the blockhash
+        token_obj.get_new_latest_blockhash().await.unwrap();
         token_obj
             .process_ixs(&[mk_approve(do_checked)], &[&alice])
             .await
