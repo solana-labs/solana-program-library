@@ -1442,9 +1442,7 @@ impl Processor {
 
                 (
                     ephemeral_stake_account_info,
-                    lamports
-                        .checked_add(stake_rent)
-                        .ok_or(StakePoolError::CalculationFailure)?,
+                    ephemeral_stake_account_info.lamports()
                 )
             } else {
                 // if no ephemeral account is provided, split everything from the
