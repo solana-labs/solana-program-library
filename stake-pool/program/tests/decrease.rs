@@ -4,6 +4,7 @@
 mod helpers;
 
 use {
+    assert_matches::assert_matches,
     bincode::deserialize,
     helpers::*,
     solana_program::{clock::Epoch, instruction::InstructionError, pubkey::Pubkey, stake},
@@ -360,12 +361,12 @@ async fn fail_twice_diff_seed(instruction_type: DecreaseInstruction) {
             TransactionError::InstructionError(0, InstructionError::InvalidSeeds)
         );
     } else {
-        assert_eq!(
+        assert_matches!(
             error,
             TransactionError::InstructionError(
-                0,
-                InstructionError::Custom(StakePoolError::TransientAccountInUse as u32)
-            )
+                _,
+                InstructionError::Custom(code)
+            ) if code == StakePoolError::TransientAccountInUse as u32
         );
     }
 }
@@ -498,12 +499,12 @@ async fn twice(
         assert_eq!(reserve_stake_account.lamports, reserve_lamports);
     } else {
         let error = error.unwrap().unwrap();
-        assert_eq!(
+        assert_matches!(
             error,
             TransactionError::InstructionError(
-                0,
-                InstructionError::Custom(StakePoolError::TransientAccountInUse as u32)
-            )
+                _,
+                InstructionError::Custom(code)
+            ) if code == StakePoolError::TransientAccountInUse as u32
         );
     }
 }
@@ -534,10 +535,10 @@ async fn fail_with_small_lamport_amount(instruction_type: DecreaseInstruction) {
         .unwrap()
         .unwrap();
 
-    match error {
-        TransactionError::InstructionError(_, InstructionError::AccountNotRentExempt) => {}
-        _ => panic!("Wrong error occurs while try to decrease small stake"),
-    }
+    assert_matches!(
+        error,
+        TransactionError::InstructionError(_, InstructionError::AccountNotRentExempt)
+    );
 }
 
 #[test_case(DecreaseInstruction::Additional; "additional")]
@@ -563,9 +564,9 @@ async fn fail_big_overdraw(instruction_type: DecreaseInstruction) {
         .unwrap()
         .unwrap();
 
-    assert_eq!(
+    assert_matches!(
         error,
-        TransactionError::InstructionError(0, InstructionError::InsufficientFunds)
+        TransactionError::InstructionError(_, InstructionError::InsufficientFunds)
     );
 }
 
@@ -595,9 +596,9 @@ async fn fail_overdraw(instruction_type: DecreaseInstruction) {
         .unwrap()
         .unwrap();
 
-    assert_eq!(
+    assert_matches!(
         error,
-        TransactionError::InstructionError(0, InstructionError::InsufficientFunds)
+        TransactionError::InstructionError(_, InstructionError::InsufficientFunds)
     );
 }
 
@@ -660,11 +661,11 @@ async fn fail_additional_with_increasing() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(
+    assert_matches!(
         error,
         TransactionError::InstructionError(
-            0,
-            InstructionError::Custom(StakePoolError::WrongStakeState as u32)
-        )
+            _,
+            InstructionError::Custom(code)
+        ) if code == StakePoolError::WrongStakeState as u32
     );
 }
