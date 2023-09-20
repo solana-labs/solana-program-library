@@ -1398,14 +1398,14 @@ impl Processor {
 
                 // if needed, withdraw rent-exempt reserve for ephemeral account
                 if let Some(reserve_stake_info) = maybe_reserve_stake_info {
-                    let stake_history_info =
-                        maybe_stake_history_info.ok_or(StakePoolError::MissingRequiredSysvar)?;
                     let required_lamports_for_rent_exemption =
                         stake_rent.saturating_sub(ephemeral_stake_account_info.lamports());
-                    if required_lamports_for_rent_exemption >= reserve_stake_info.lamports() {
-                        return Err(StakePoolError::ReserveDepleted.into());
-                    }
                     if required_lamports_for_rent_exemption > 0 {
+                        if required_lamports_for_rent_exemption >= reserve_stake_info.lamports() {
+                            return Err(StakePoolError::ReserveDepleted.into());
+                        }
+                        let stake_history_info = maybe_stake_history_info
+                            .ok_or(StakePoolError::MissingRequiredSysvar)?;
                         Self::stake_withdraw(
                             stake_pool_info.key,
                             reserve_stake_info.clone(),
