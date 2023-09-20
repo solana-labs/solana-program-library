@@ -226,6 +226,7 @@ export type DecreaseValidatorStakeParams = {
 };
 
 export interface DecreaseAdditionalValidatorStakeParams extends DecreaseValidatorStakeParams {
+  reserveStake: PublicKey;
   ephemeralStake: PublicKey;
   ephemeralStakeSeed: number;
 }
@@ -612,6 +613,7 @@ export class StakePoolInstruction {
       staker,
       withdrawAuthority,
       validatorList,
+      reserveStake,
       validatorStake,
       transientStake,
       lamports,
@@ -628,6 +630,7 @@ export class StakePoolInstruction {
       { pubkey: staker, isSigner: true, isWritable: false },
       { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
       { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: reserveStake, isSigner: false, isWritable: true },
       { pubkey: validatorStake, isSigner: false, isWritable: true },
       { pubkey: ephemeralStake, isSigner: false, isWritable: true },
       { pubkey: transientStake, isSigner: false, isWritable: true },

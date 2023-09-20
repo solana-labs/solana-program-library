@@ -1668,6 +1668,7 @@ impl StakePoolAccounts {
             &self.staker.pubkey(),
             &self.withdraw_authority,
             &self.validator_list.pubkey(),
+            &self.reserve_stake.pubkey(),
             validator_stake,
             ephemeral_stake,
             transient_stake,

@@ -446,24 +446,28 @@ pub enum StakePoolInstruction {
     ///
     /// Works regardless if the transient stake account already exists.
     ///
-    /// Internally, this instruction splits a validator stake account into an
-    /// ephemeral stake account, deactivates it, then merges or splits it into
-    /// the transient stake account delegated to the appropriate validator.
+    /// Internally, this instruction:
+    ///  * withdraws rent-exempt reserve lamports from the reserve into the ephemeral stake
+    ///  * splits a validator stake account into an ephemeral stake account
+    ///  * deactivates the ephemeral account
+    ///  * merges or splits the ephemeral account into the transient stake account
+    ///    delegated to the appropriate validator
     ///
-    ///  The amount of lamports to move must be at least rent-exemption plus
+    ///  The amount of lamports to move must be at least
     /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
     ///  2. `[]` Stake pool withdraw authority
     ///  3. `[w]` Validator list
-    ///  4. `[w]` Canonical stake account to split from
-    ///  5. `[w]` Uninitialized ephemeral stake account to receive stake
-    ///  6. `[w]` Transient stake account
-    ///  7. `[]` Clock sysvar
-    ///  8. '[]' Stake history sysvar
-    ///  9. `[]` System program
-    /// 10. `[]` Stake program
+    ///  4. `[w]` Reserve stake account, to fund rent exempt reserve
+    ///  5. `[w]` Canonical stake account to split from
+    ///  6. `[w]` Uninitialized ephemeral stake account to receive stake
+    ///  7. `[w]` Transient stake account
+    ///  8. `[]` Clock sysvar
+    ///  9. '[]' Stake history sysvar
+    /// 10. `[]` System program
+    /// 11. `[]` Stake program
     DecreaseAdditionalValidatorStake {
         /// amount of lamports to split into the transient stake account
         lamports: u64,
@@ -793,6 +797,7 @@ pub fn decrease_additional_validator_stake(
     staker: &Pubkey,
     stake_pool_withdraw_authority: &Pubkey,
     validator_list: &Pubkey,
+    reserve_stake: &Pubkey,
     validator_stake: &Pubkey,
     ephemeral_stake: &Pubkey,
     transient_stake: &Pubkey,
@@ -805,6 +810,7 @@ pub fn decrease_additional_validator_stake(
         AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*reserve_stake, false),
         AccountMeta::new(*validator_stake, false),
         AccountMeta::new(*ephemeral_stake, false),
         AccountMeta::new(*transient_stake, false),
@@ -1211,6 +1217,7 @@ pub fn decrease_additional_validator_stake_with_vote(
         &stake_pool.staker,
         &pool_withdraw_authority,
         &stake_pool.validator_list,
+        &stake_pool.reserve_stake,
         &validator_stake_address,
         &ephemeral_stake_address,
         &transient_stake_address,

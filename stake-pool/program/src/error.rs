@@ -154,6 +154,9 @@ pub enum StakePoolError {
     /// the rent-exempt reserve for a stake account.
     #[error("ReserveDepleted")]
     ReserveDepleted,
+    /// Missing required sysvar account
+    #[error("Missing required sysvar account")]
+    MissingRequiredSysvar,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
