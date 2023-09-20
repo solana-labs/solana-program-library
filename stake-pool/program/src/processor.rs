@@ -1396,21 +1396,25 @@ impl Processor {
                     stake_space,
                 )?;
 
-                // withdraw rent-exempt reserve for ephemeral account
+                // if needed, withdraw rent-exempt reserve for ephemeral account
                 if let Some(reserve_stake_info) = maybe_reserve_stake_info {
                     let stake_history_info =
                         maybe_stake_history_info.ok_or(StakePoolError::MissingRequiredSysvar)?;
-                    Self::stake_withdraw(
-                        stake_pool_info.key,
-                        reserve_stake_info.clone(),
-                        withdraw_authority_info.clone(),
-                        AUTHORITY_WITHDRAW,
-                        stake_pool.stake_withdraw_bump_seed,
-                        ephemeral_stake_account_info.clone(),
-                        clock_info.clone(),
-                        stake_history_info.clone(),
-                        stake_rent,
-                    )?;
+                    let required_lamports_for_rent_exemption =
+                        stake_rent.saturating_sub(ephemeral_stake_account_info.lamports());
+                    if required_lamports_for_rent_exemption > 0 {
+                        Self::stake_withdraw(
+                            stake_pool_info.key,
+                            reserve_stake_info.clone(),
+                            withdraw_authority_info.clone(),
+                            AUTHORITY_WITHDRAW,
+                            stake_pool.stake_withdraw_bump_seed,
+                            ephemeral_stake_account_info.clone(),
+                            clock_info.clone(),
+                            stake_history_info.clone(),
+                            required_lamports_for_rent_exemption,
+                        )?;
+                    }
                 }
 
                 // split into ephemeral stake account
