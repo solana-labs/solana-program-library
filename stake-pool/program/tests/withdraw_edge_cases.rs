@@ -25,7 +25,7 @@ async fn fail_remove_validator() {
         user_transfer_authority,
         user_stake_recipient,
         _,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
     // decrease a little stake, not all
     let error = stake_pool_accounts
@@ -101,7 +101,7 @@ async fn success_remove_validator(multiple: u64) {
         user_transfer_authority,
         user_stake_recipient,
         _,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
     // make pool tokens very valuable, so it isn't possible to exactly get down to the minimum
     transfer(
@@ -241,7 +241,7 @@ async fn fail_with_reserve() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
     // decrease a little stake, not all
     let error = stake_pool_accounts
@@ -309,7 +309,7 @@ async fn success_with_reserve() {
         user_transfer_authority,
         user_stake_recipient,
         _,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
@@ -403,7 +403,7 @@ async fn success_with_reserve() {
     let stake_state = deserialize::<stake::state::StakeState>(&reserve_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
-        meta.rent_exempt_reserve + withdrawal_fee + deposit_fee,
+        meta.rent_exempt_reserve + withdrawal_fee + deposit_fee + stake_rent,
         reserve_stake_account.lamports
     );
 
@@ -426,7 +426,7 @@ async fn success_with_empty_preferred_withdraw() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let preferred_validator = simple_add_validator_to_pool(
         &mut context.banks_client,
@@ -475,7 +475,7 @@ async fn success_and_fail_with_preferred_withdraw() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let last_blockhash = context
         .banks_client
@@ -571,7 +571,7 @@ async fn fail_withdraw_from_transient() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
     let last_blockhash = context
         .banks_client
@@ -659,7 +659,7 @@ async fn success_withdraw_from_transient() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
     let last_blockhash = context
         .banks_client
@@ -740,7 +740,7 @@ async fn success_with_small_preferred_withdraw() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let last_blockhash = context
         .banks_client

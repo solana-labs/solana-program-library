@@ -2600,6 +2600,7 @@ pub fn add_token_account(
 
 pub async fn setup_for_withdraw(
     token_program_id: Pubkey,
+    reserve_lamports: u64,
 ) -> (
     ProgramTestContext,
     StakePoolAccounts,
@@ -2616,7 +2617,7 @@ pub async fn setup_for_withdraw(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            MINIMUM_RESERVE_LAMPORTS,
+            reserve_lamports,
         )
         .await
         .unwrap();

@@ -22,7 +22,7 @@ async fn success_withdraw_all_fee_tokens() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let last_blockhash = context
         .banks_client
@@ -99,7 +99,7 @@ async fn success_empty_out_stake_with_fee() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let last_blockhash = context
         .banks_client
