@@ -1944,18 +1944,22 @@ impl Processor {
                 stake_space,
             )?;
 
-            // pre-fund the rent-exempt reserve from the reserve stake account
-            Self::stake_withdraw(
-                stake_pool_info.key,
-                reserve_stake_info.clone(),
-                withdraw_authority_info.clone(),
-                AUTHORITY_WITHDRAW,
-                stake_pool.stake_withdraw_bump_seed,
-                source_transient_stake_account_info.clone(),
-                clock_info.clone(),
-                stake_history_info.clone(),
-                stake_rent,
-            )?;
+            // if needed, pre-fund the rent-exempt reserve from the reserve stake
+            let required_lamports_for_rent_exemption =
+                stake_rent.saturating_sub(source_transient_stake_account_info.lamports());
+            if required_lamports_for_rent_exemption > 0 {
+                Self::stake_withdraw(
+                    stake_pool_info.key,
+                    reserve_stake_info.clone(),
+                    withdraw_authority_info.clone(),
+                    AUTHORITY_WITHDRAW,
+                    stake_pool.stake_withdraw_bump_seed,
+                    source_transient_stake_account_info.clone(),
+                    clock_info.clone(),
+                    stake_history_info.clone(),
+                    required_lamports_for_rent_exemption,
+                )?;
+            }
             Self::stake_split(
                 stake_pool_info.key,
                 source_validator_stake_account_info.clone(),
