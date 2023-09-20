@@ -455,7 +455,7 @@ async fn success_with_deactivating_transient_stake() {
 
     // increase the validator stake
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -463,6 +463,7 @@ async fn success_with_deactivating_transient_stake() {
             &validator_stake.transient_stake_account,
             TEST_STAKE_AMOUNT + stake_rent,
             validator_stake.transient_stake_seed,
+            DecreaseInstruction::Deprecated,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -705,7 +706,7 @@ async fn success_with_hijacked_transient_account() {
 
     // decrease
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -713,6 +714,7 @@ async fn success_with_hijacked_transient_account() {
             &validator_stake.transient_stake_account,
             increase_amount,
             validator_stake.transient_stake_seed,
+            DecreaseInstruction::Deprecated,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);

@@ -1258,17 +1258,14 @@ impl Processor {
         let transient_stake_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        let rent = if maybe_ephemeral_stake_seed.is_some() {
-            // instruction with ephemeral account doesn't take the rent account
-            Rent::get()?
-        } else {
-            // legacy instruction takes the rent account
-            let rent_info = next_account_info(account_info_iter)?;
-            Rent::from_account_info(rent_info)?
-        };
-        let maybe_stake_history_info = maybe_ephemeral_stake_seed
-            .map(|_| next_account_info(account_info_iter))
-            .transpose()?;
+        let (rent, maybe_stake_history_info) =
+            if maybe_ephemeral_stake_seed.is_some() || fund_rent_exempt_reserve {
+                (Rent::get()?, Some(next_account_info(account_info_iter)?))
+            } else {
+                // legacy instruction takes the rent account
+                let rent_info = next_account_info(account_info_iter)?;
+                (Rent::from_account_info(rent_info)?, None)
+            };
         let system_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
@@ -1487,6 +1484,35 @@ impl Processor {
                 stake_space,
             )?;
 
+            // if needed, withdraw rent-exempt reserve for transient account
+            if let Some(reserve_stake_info) = maybe_reserve_stake_info {
+                let required_lamports =
+                    stake_rent.saturating_sub(transient_stake_account_info.lamports());
+                // in the case of doing a full split from an ephemeral account,
+                // the rent-exempt reserve moves over, so no need to fund it from
+                // the pool reserve
+                if source_stake_account_info.lamports() != split_lamports {
+                    let stake_history_info =
+                        maybe_stake_history_info.ok_or(StakePoolError::MissingRequiredSysvar)?;
+                    if required_lamports >= reserve_stake_info.lamports() {
+                        return Err(StakePoolError::ReserveDepleted.into());
+                    }
+                    if required_lamports > 0 {
+                        Self::stake_withdraw(
+                            stake_pool_info.key,
+                            reserve_stake_info.clone(),
+                            withdraw_authority_info.clone(),
+                            AUTHORITY_WITHDRAW,
+                            stake_pool.stake_withdraw_bump_seed,
+                            transient_stake_account_info.clone(),
+                            clock_info.clone(),
+                            stake_history_info.clone(),
+                            required_lamports,
+                        )?;
+                    }
+                }
+            }
+
             // split into transient stake account
             Self::stake_split(
                 stake_pool_info.key,
@@ -1517,13 +1543,8 @@ impl Processor {
                 .checked_sub(lamports)
                 .ok_or(StakePoolError::CalculationFailure)?
                 .into();
-        // `split_lamports` may be greater than `lamports` if the reserve stake
-        // funded the rent-exempt reserve
         validator_stake_info.transient_stake_lamports =
-            u64::from(validator_stake_info.transient_stake_lamports)
-                .checked_add(split_lamports)
-                .ok_or(StakePoolError::CalculationFailure)?
-                .into();
+            transient_stake_account_info.lamports().into();
         validator_stake_info.transient_seed_suffix = transient_stake_seed.into();
 
         Ok(())
@@ -3842,6 +3863,7 @@ impl Processor {
                 transient_stake_seed,
             } => {
                 msg!("Instruction: DecreaseValidatorStake");
+                msg!("NOTE: This instruction is deprecated, please use `DecreaseValidatorStakeWithReserve`");
                 Self::process_decrease_validator_stake(
                     program_id,
                     accounts,
@@ -3849,6 +3871,20 @@ impl Processor {
                     transient_stake_seed,
                     None,
                     false,
+                )
+            }
+            StakePoolInstruction::DecreaseValidatorStakeWithReserve {
+                lamports,
+                transient_stake_seed,
+            } => {
+                msg!("Instruction: DecreaseValidatorStakeWithReserve");
+                Self::process_decrease_validator_stake(
+                    program_id,
+                    accounts,
+                    lamports,
+                    transient_stake_seed,
+                    None,
+                    true,
                 )
             }
             StakePoolInstruction::DecreaseAdditionalValidatorStake {

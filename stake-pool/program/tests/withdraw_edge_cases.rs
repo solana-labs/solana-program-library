@@ -29,7 +29,7 @@ async fn fail_remove_validator() {
 
     // decrease a little stake, not all
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -37,6 +37,7 @@ async fn fail_remove_validator() {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports / 2,
             validator_stake.transient_stake_seed,
+            DecreaseInstruction::Deprecated,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -129,7 +130,7 @@ async fn success_remove_validator(multiple: u64) {
 
     // decrease all of stake except for lamports_per_pool_token lamports, must be withdrawable
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -137,6 +138,7 @@ async fn success_remove_validator(multiple: u64) {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports + stake_rent - lamports_per_pool_token,
             validator_stake.transient_stake_seed,
+            DecreaseInstruction::Deprecated,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -242,7 +244,7 @@ async fn fail_with_reserve() {
 
     // decrease a little stake, not all
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -250,6 +252,7 @@ async fn fail_with_reserve() {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports / 2,
             validator_stake.transient_stake_seed,
+            DecreaseInstruction::Deprecated,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -312,7 +315,7 @@ async fn success_with_reserve() {
 
     // decrease all of stake
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -320,6 +323,7 @@ async fn success_with_reserve() {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports + stake_rent,
             validator_stake.transient_stake_seed,
+            DecreaseInstruction::Deprecated,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -605,7 +609,7 @@ async fn fail_withdraw_from_transient() {
 
     // decrease to minimum stake + 2 lamports
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
@@ -613,6 +617,7 @@ async fn fail_withdraw_from_transient() {
             &validator_stake_account.transient_stake_account,
             deposit_info.stake_lamports + stake_rent - 2,
             validator_stake_account.transient_stake_seed,
+            DecreaseInstruction::Deprecated,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -692,7 +697,7 @@ async fn success_withdraw_from_transient() {
 
     // decrease all of stake
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
@@ -700,6 +705,7 @@ async fn success_withdraw_from_transient() {
             &validator_stake_account.transient_stake_account,
             deposit_info.stake_lamports + stake_rent,
             validator_stake_account.transient_stake_seed,
+            DecreaseInstruction::Deprecated,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -806,7 +812,7 @@ async fn success_with_small_preferred_withdraw() {
 
     // decrease all stake except for 1 lamport
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
@@ -814,6 +820,7 @@ async fn success_with_small_preferred_withdraw() {
             &preferred_validator.transient_stake_account,
             minimum_lamports,
             preferred_validator.transient_stake_seed,
+            DecreaseInstruction::Deprecated,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
