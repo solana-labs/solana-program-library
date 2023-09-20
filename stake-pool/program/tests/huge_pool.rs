@@ -106,7 +106,7 @@ async fn setup(
     );
 
     let mut context = program_test.start_with_context().await;
-    let epoch_schedule = context.genesis_config().epoch_schedule;
+    let epoch_schedule = &context.genesis_config().epoch_schedule;
     let slot = epoch_schedule.first_normal_slot + epoch_schedule.slots_per_epoch + 1;
     context.warp_to_slot(slot).unwrap();
 
