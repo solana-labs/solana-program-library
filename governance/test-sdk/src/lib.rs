@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use borsh::{BorshDeserialize, BorshSerialize};
 use cookies::{TokenAccountCookie, WalletCookie};
 use solana_program::{
-    borsh::try_from_slice_unchecked, clock::Clock, instruction::Instruction,
+    borsh0_10::try_from_slice_unchecked, clock::Clock, instruction::Instruction,
     program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
     stake_history::Epoch, system_instruction, system_program, sysvar,
 };

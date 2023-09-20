@@ -24,7 +24,7 @@ use {
     num_traits::FromPrimitive,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
-        borsh::try_from_slice_unchecked,
+        borsh0_10::try_from_slice_unchecked,
         clock::{Clock, Epoch},
         decode_error::DecodeError,
         entrypoint::ProgramResult,

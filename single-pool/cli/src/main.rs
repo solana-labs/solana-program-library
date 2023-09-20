@@ -8,7 +8,7 @@ use {
         rpc_filter::{Memcmp, RpcFilterType},
     },
     solana_sdk::{
-        borsh::try_from_slice_unchecked,
+        borsh0_10::try_from_slice_unchecked,
         pubkey::Pubkey,
         signature::Signature,
         signature::{Keypair, Signer},

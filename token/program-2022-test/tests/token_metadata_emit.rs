@@ -5,7 +5,7 @@ use {
     program_test::TestContext,
     solana_program_test::{processor, tokio, ProgramTest},
     solana_sdk::{
-        borsh::try_from_slice_unchecked, program::MAX_RETURN_DATA, pubkey::Pubkey,
+        borsh0_10::try_from_slice_unchecked, program::MAX_RETURN_DATA, pubkey::Pubkey,
         signature::Signer, signer::keypair::Keypair, transaction::Transaction,
     },
     spl_token_2022::processor::Processor,

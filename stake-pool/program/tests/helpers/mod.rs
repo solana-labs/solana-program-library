@@ -3,7 +3,7 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
-        borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
+        borsh0_10::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
         instruction::Instruction,
         program_option::COption,
@@ -2377,7 +2377,7 @@ pub fn add_validator_stake_account(
             stake: stake_amount,
             activation_epoch: FIRST_NORMAL_EPOCH,
             deactivation_epoch: u64::MAX,
-            warmup_cooldown_rate: 0.25, // default
+            ..Default::default()
         },
         credits_observed: 0,
     };

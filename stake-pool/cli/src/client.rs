@@ -7,7 +7,9 @@ use {
         rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
         rpc_filter::{Memcmp, RpcFilterType},
     },
-    solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
+    solana_program::{
+        borsh0_10::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake,
+    },
     spl_stake_pool::{
         find_withdraw_authority_program_address,
         state::{StakePool, ValidatorList},

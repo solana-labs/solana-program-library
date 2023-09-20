@@ -79,11 +79,11 @@ impl From<&SplBorshVariableLenPackBuilder> for TokenStream {
                 }
 
                 fn unpack_from_slice(src: &[u8]) -> Result<Self, solana_program::program_error::ProgramError> {
-                    solana_program::borsh::try_from_slice_unchecked(src).map_err(Into::into)
+                    solana_program::borsh0_10::try_from_slice_unchecked(src).map_err(Into::into)
                 }
 
                 fn get_packed_len(&self) -> Result<usize, solana_program::program_error::ProgramError> {
-                    solana_program::borsh::get_instance_packed_len(self).map_err(Into::into)
+                    solana_program::borsh0_10::get_instance_packed_len(self).map_err(Into::into)
                 }
             }
         }
