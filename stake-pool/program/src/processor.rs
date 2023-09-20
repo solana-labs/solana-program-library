@@ -1442,7 +1442,7 @@ impl Processor {
 
                 (
                     ephemeral_stake_account_info,
-                    ephemeral_stake_account_info.lamports()
+                    ephemeral_stake_account_info.lamports(),
                 )
             } else {
                 // if no ephemeral account is provided, split everything from the
