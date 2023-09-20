@@ -371,9 +371,9 @@ async fn fail_twice_diff_seed(instruction_type: DecreaseInstruction) {
 }
 
 #[test_case(true, DecreaseInstruction::Additional, DecreaseInstruction::Additional; "success-all-additional")]
-#[test_case(true, DecreaseInstruction::Deprecated, DecreaseInstruction::Additional; "success-with-additional")]
-#[test_case(false, DecreaseInstruction::Additional, DecreaseInstruction::Deprecated; "fail-without-additional")]
-#[test_case(false, DecreaseInstruction::Deprecated, DecreaseInstruction::Deprecated; "fail-no-additional")]
+#[test_case(true, DecreaseInstruction::Reserve, DecreaseInstruction::Additional; "success-with-additional")]
+#[test_case(false, DecreaseInstruction::Additional, DecreaseInstruction::Reserve; "fail-without-additional")]
+#[test_case(false, DecreaseInstruction::Reserve, DecreaseInstruction::Reserve; "fail-no-additional")]
 #[tokio::test]
 async fn twice(
     success: bool,
@@ -386,7 +386,7 @@ async fn twice(
         validator_stake,
         _deposit_info,
         decrease_lamports,
-        mut reserve_lamports,
+        reserve_lamports,
     ) = setup().await;
 
     let pre_stake_account =
@@ -462,10 +462,7 @@ async fn twice(
         .await;
         let transient_stake_state =
             deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
-        let mut transient_lamports = total_decrease;
-        if first_instruction == DecreaseInstruction::Additional {
-            transient_lamports += stake_rent;
-        }
+        let mut transient_lamports = total_decrease + stake_rent;
         if second_instruction == DecreaseInstruction::Additional {
             transient_lamports += stake_rent;
         }
@@ -489,9 +486,7 @@ async fn twice(
         );
 
         // reserve deducted properly
-        if first_instruction == DecreaseInstruction::Additional {
-            reserve_lamports -= stake_rent;
-        }
+        let mut reserve_lamports = reserve_lamports - stake_rent;
         if second_instruction == DecreaseInstruction::Additional {
             reserve_lamports -= stake_rent;
         }
