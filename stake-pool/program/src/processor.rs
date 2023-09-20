@@ -4034,6 +4034,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::UnsupportedFeeAccountExtension => msg!("Error: fee account has an unsupported extension"),
             StakePoolError::ExceededSlippage => msg!("Error: instruction exceeds desired slippage limit"),
             StakePoolError::IncorrectMintDecimals => msg!("Error: Provided mint does not have 9 decimals to match SOL"),
+            StakePoolError::ReserveDepleted => msg!("Error: Pool reserve does not have enough lamports to fund rent-exempt reserve in split destination. Deposit more SOL in reserve, or pre-fund split destination with the rent-exempt reserve for a stake account."),
         }
     }
 }
