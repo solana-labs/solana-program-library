@@ -1625,17 +1625,24 @@ impl StakePoolAccounts {
         transient_stake_seed: u64,
     ) -> Option<TransportError> {
         #[allow(deprecated)]
-        let mut instructions = vec![instruction::decrease_validator_stake(
-            &id(),
-            &self.stake_pool.pubkey(),
-            &self.staker.pubkey(),
-            &self.withdraw_authority,
-            &self.validator_list.pubkey(),
-            validator_stake,
-            transient_stake,
-            lamports,
-            transient_stake_seed,
-        )];
+        let mut instructions = vec![
+            system_instruction::transfer(
+                &payer.pubkey(),
+                transient_stake,
+                STAKE_ACCOUNT_RENT_EXEMPTION,
+            ),
+            instruction::decrease_validator_stake(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.staker.pubkey(),
+                &self.withdraw_authority,
+                &self.validator_list.pubkey(),
+                validator_stake,
+                transient_stake,
+                lamports,
+                transient_stake_seed,
+            ),
+        ];
         self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
             &instructions,

@@ -149,11 +149,7 @@ async fn success(instruction_type: DecreaseInstruction) {
     .await;
     let transient_stake_state =
         deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
-    let transient_lamports = if instruction_type == DecreaseInstruction::Deprecated {
-        decrease_lamports
-    } else {
-        decrease_lamports + stake_rent
-    };
+    let transient_lamports = decrease_lamports + stake_rent;
     assert_eq!(transient_stake_account.lamports, transient_lamports);
     let reserve_lamports = if instruction_type == DecreaseInstruction::Deprecated {
         reserve_lamports
