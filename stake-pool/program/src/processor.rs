@@ -1793,6 +1793,7 @@ impl Processor {
         let staker_info = next_account_info(account_info_iter)?;
         let withdraw_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
+        let reserve_stake_info = next_account_info(account_info_iter)?;
         let source_validator_stake_account_info = next_account_info(account_info_iter)?;
         let source_transient_stake_account_info = next_account_info(account_info_iter)?;
         let ephemeral_stake_account_info = next_account_info(account_info_iter)?;
@@ -1829,6 +1830,7 @@ impl Processor {
 
         stake_pool.check_validator_list(validator_list_info)?;
         check_account_owner(validator_list_info, program_id)?;
+        stake_pool.check_reserve_stake(reserve_stake_info)?;
 
         let mut validator_list_data = validator_list_info.data.borrow_mut();
         let (header, mut validator_list) =
@@ -1844,11 +1846,11 @@ impl Processor {
         let current_minimum_delegation = minimum_delegation(stake_minimum_delegation);
 
         // check that we're redelegating enough
-        let destination_transient_lamports = {
+        {
             // redelegation requires that the source account maintains rent exemption and that
             // the destination account has rent-exemption and minimum delegation
             let minimum_redelegation_lamports =
-                current_minimum_delegation.saturating_add(stake_rent.saturating_mul(2));
+                current_minimum_delegation.saturating_add(stake_rent);
             if lamports < minimum_redelegation_lamports {
                 msg!(
                     "Need more than {} lamports for redelegated stake and transient stake to meet minimum delegation requirement, {} provided",
@@ -1877,10 +1879,7 @@ impl Processor {
                 );
                 return Err(ProgramError::InsufficientFunds);
             }
-            lamports
-                .checked_sub(stake_rent)
-                .ok_or(StakePoolError::CalculationFailure)?
-        };
+        }
 
         // check source account state
         let (_, stake) = get_stake_state(source_validator_stake_account_info)?;
@@ -1945,6 +1944,25 @@ impl Processor {
                 stake_space,
             )?;
 
+            // if needed, pre-fund the rent-exempt reserve from the reserve stake
+            let required_lamports_for_rent_exemption =
+                stake_rent.saturating_sub(source_transient_stake_account_info.lamports());
+            if required_lamports_for_rent_exemption > 0 {
+                if required_lamports_for_rent_exemption >= reserve_stake_info.lamports() {
+                    return Err(StakePoolError::ReserveDepleted.into());
+                }
+                Self::stake_withdraw(
+                    stake_pool_info.key,
+                    reserve_stake_info.clone(),
+                    withdraw_authority_info.clone(),
+                    AUTHORITY_WITHDRAW,
+                    stake_pool.stake_withdraw_bump_seed,
+                    source_transient_stake_account_info.clone(),
+                    clock_info.clone(),
+                    stake_history_info.clone(),
+                    required_lamports_for_rent_exemption,
+                )?;
+            }
             Self::stake_split(
                 stake_pool_info.key,
                 source_validator_stake_account_info.clone(),
@@ -2021,7 +2039,7 @@ impl Processor {
                 u64::from(validator_stake_info.transient_stake_lamports) > 0;
             validator_stake_info.transient_stake_lamports =
                 u64::from(validator_stake_info.transient_stake_lamports)
-                    .checked_add(destination_transient_lamports)
+                    .checked_add(lamports)
                     .ok_or(StakePoolError::CalculationFailure)?
                     .into();
 
@@ -2088,7 +2106,7 @@ impl Processor {
                     withdraw_authority_info.clone(),
                     AUTHORITY_WITHDRAW,
                     stake_pool.stake_withdraw_bump_seed,
-                    destination_transient_lamports,
+                    lamports,
                     destination_transient_stake_account_info.clone(),
                 )?;
                 validator_stake_info.transient_seed_suffix =
@@ -4019,6 +4037,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::UnsupportedFeeAccountExtension => msg!("Error: fee account has an unsupported extension"),
             StakePoolError::ExceededSlippage => msg!("Error: instruction exceeds desired slippage limit"),
             StakePoolError::IncorrectMintDecimals => msg!("Error: Provided mint does not have 9 decimals to match SOL"),
+            StakePoolError::ReserveDepleted => msg!("Error: Pool reserve does not have enough lamports to fund rent-exempt reserve in split destination. Deposit more SOL in reserve, or pre-fund split destination with the rent-exempt reserve for a stake account."),
         }
     }
 }

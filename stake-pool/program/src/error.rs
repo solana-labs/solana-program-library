@@ -149,6 +149,11 @@ pub enum StakePoolError {
     /// Provided mint does not have 9 decimals to match SOL
     #[error("IncorrectMintDecimals")]
     IncorrectMintDecimals,
+    /// Pool reserve does not have enough lamports to fund rent-exempt reserve in split
+    /// destination. Deposit more SOL in reserve, or pre-fund split destination with
+    /// the rent-exempt reserve for a stake account.
+    #[error("ReserveDepleted")]
+    ReserveDepleted,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
