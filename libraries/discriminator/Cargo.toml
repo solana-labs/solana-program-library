@@ -13,7 +13,7 @@ borsh = ["dep:borsh"]
 [dependencies]
 borsh = { version = "0.10", optional = true }
 bytemuck = { version = "1.14.0", features = ["derive"] }
-solana-program = "1.16.3"
+solana-program = "1.16.13"
 spl-discriminator-derive = { version = "0.1.0", path = "./derive" }
 
 [lib]

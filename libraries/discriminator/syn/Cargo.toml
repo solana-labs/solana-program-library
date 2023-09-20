@@ -10,7 +10,7 @@ edition = "2021"
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
-solana-program = "1.16.3"
+solana-program = "1.16.13"
 syn = { version = "2.0", features = ["full"] }
 thiserror = "1.0"
 
