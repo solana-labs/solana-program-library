@@ -1947,10 +1947,10 @@ impl Processor {
             // if needed, pre-fund the rent-exempt reserve from the reserve stake
             let required_lamports_for_rent_exemption =
                 stake_rent.saturating_sub(source_transient_stake_account_info.lamports());
-            if required_lamports_for_rent_exemption >= reserve_stake_info.lamports() {
-                return Err(StakePoolError::ReserveDepleted.into());
-            }
             if required_lamports_for_rent_exemption > 0 {
+                if required_lamports_for_rent_exemption >= reserve_stake_info.lamports() {
+                    return Err(StakePoolError::ReserveDepleted.into());
+                }
                 Self::stake_withdraw(
                     stake_pool_info.key,
                     reserve_stake_info.clone(),
