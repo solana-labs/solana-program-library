@@ -37,7 +37,7 @@ async fn fail_remove_validator() {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports / 2,
             validator_stake.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -47,7 +47,7 @@ async fn fail_remove_validator() {
     context.warp_to_slot(first_normal_slot + 1).unwrap();
 
     // update to merge deactivated stake into reserve
-    stake_pool_accounts
+    let error = stake_pool_accounts
         .update_all(
             &mut context.banks_client,
             &context.payer,
@@ -56,6 +56,7 @@ async fn fail_remove_validator() {
             false,
         )
         .await;
+    assert!(error.is_none(), "{:?}", error);
 
     // Withdraw entire account, fail because some stake left
     let validator_stake_account =
@@ -138,7 +139,7 @@ async fn success_remove_validator(multiple: u64) {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports + stake_rent - lamports_per_pool_token,
             validator_stake.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -252,7 +253,7 @@ async fn fail_with_reserve() {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports / 2,
             validator_stake.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -323,7 +324,7 @@ async fn success_with_reserve() {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports + stake_rent,
             validator_stake.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -617,7 +618,7 @@ async fn fail_withdraw_from_transient() {
             &validator_stake_account.transient_stake_account,
             deposit_info.stake_lamports + stake_rent - 2,
             validator_stake_account.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -705,7 +706,7 @@ async fn success_withdraw_from_transient() {
             &validator_stake_account.transient_stake_account,
             deposit_info.stake_lamports + stake_rent,
             validator_stake_account.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -820,7 +821,7 @@ async fn success_with_small_preferred_withdraw() {
             &preferred_validator.transient_stake_account,
             minimum_lamports,
             preferred_validator.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);

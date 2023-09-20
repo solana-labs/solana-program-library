@@ -659,7 +659,7 @@ async fn fail_with_decreasing_stake() {
             &destination_validator_stake.transient_stake_account,
             minimum_decrease_lamports,
             destination_validator_stake.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);

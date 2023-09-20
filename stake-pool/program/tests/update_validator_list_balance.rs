@@ -287,7 +287,7 @@ async fn merge_into_reserve() {
                 &stake_account.transient_stake_account,
                 lamports,
                 stake_account.transient_stake_seed,
-                DecreaseInstruction::Deprecated,
+                DecreaseInstruction::Reserve,
             )
             .await;
         assert!(error.is_none(), "{:?}", error);
@@ -563,7 +563,7 @@ async fn merge_transient_stake_after_remove() {
                 &stake_account.transient_stake_account,
                 deactivated_lamports,
                 stake_account.transient_stake_seed,
-                DecreaseInstruction::Deprecated,
+                DecreaseInstruction::Reserve,
             )
             .await;
         assert!(error.is_none(), "{:?}", error);
@@ -618,7 +618,7 @@ async fn merge_transient_stake_after_remove() {
     );
     assert_eq!(
         u64::from(validator_list.validators[0].transient_stake_lamports),
-        deactivated_lamports
+        deactivated_lamports + stake_rent
     );
 
     // Update with merge, status should be ReadyForRemoval and no lamports

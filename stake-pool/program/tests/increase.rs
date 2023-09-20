@@ -561,7 +561,7 @@ async fn fail_additional_with_decreasing() {
             &validator_stake.transient_stake_account,
             current_minimum_delegation + stake_rent,
             validator_stake.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);

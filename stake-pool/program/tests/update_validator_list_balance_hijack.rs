@@ -228,7 +228,7 @@ async fn check_ignored_hijacked_transient_stake(
             &stake_account.transient_stake_account,
             lamports,
             stake_account.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -393,7 +393,7 @@ async fn check_ignored_hijacked_validator_stake(
             &stake_account.transient_stake_account,
             lamports,
             stake_account.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);

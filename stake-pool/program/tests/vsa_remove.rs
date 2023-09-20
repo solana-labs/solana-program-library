@@ -463,7 +463,7 @@ async fn success_with_deactivating_transient_stake() {
             &validator_stake.transient_stake_account,
             TEST_STAKE_AMOUNT + stake_rent,
             validator_stake.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -547,7 +547,7 @@ async fn success_with_deactivating_transient_stake() {
             vote_account_address: validator_stake.vote.pubkey(),
             last_update_epoch: 0.into(),
             active_stake_lamports: (stake_rent + current_minimum_delegation).into(),
-            transient_stake_lamports: (TEST_STAKE_AMOUNT + stake_rent).into(),
+            transient_stake_lamports: (TEST_STAKE_AMOUNT + stake_rent * 2).into(),
             transient_seed_suffix: validator_stake.transient_stake_seed.into(),
             unused: 0.into(),
             validator_seed_suffix: validator_stake
@@ -714,7 +714,7 @@ async fn success_with_hijacked_transient_account() {
             &validator_stake.transient_stake_account,
             increase_amount,
             validator_stake.transient_stake_seed,
-            DecreaseInstruction::Deprecated,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
