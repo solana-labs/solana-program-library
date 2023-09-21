@@ -3174,6 +3174,8 @@ fn app<'a, 'b>(
                     .takes_value(true)
                     .help("Specify the metadata update authority keypair. Defaults to the client keypair.")
                 )
+                .nonce_args(true)
+                .offline_args(),
         )
         .subcommand(
             SubCommand::with_name(CommandName::CreateAccount.into())
