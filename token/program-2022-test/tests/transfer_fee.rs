@@ -3,7 +3,6 @@
 mod program_test;
 use {
     program_test::{TestContext, TokenContext},
-    solana_program::epoch_schedule::EpochSchedule,
     solana_program_test::tokio,
     solana_sdk::{
         instruction::InstructionError, program_option::COption, pubkey::Pubkey, signature::Signer,
@@ -280,17 +279,14 @@ async fn set_fee() {
         .unwrap();
 
     // warp to first normal slot to easily calculate epochs
-    let EpochSchedule {
-        first_normal_slot,
-        slots_per_epoch,
-        ..
-    } = context
-        .context
-        .lock()
-        .await
-        .genesis_config()
-        .epoch_schedule
-        .clone();
+    let (first_normal_slot, slots_per_epoch) = {
+        let context = context.context.lock().await;
+        (
+            context.epoch_schedule.first_normal_slot,
+            context.epoch_schedule.slots_per_epoch,
+        )
+    };
+
     context
         .context
         .lock()
