@@ -1,10 +1,9 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_program::epoch_schedule::EpochSchedule;
-
 mod program_test;
 use {
     program_test::{TestContext, TokenContext},
+    solana_program::epoch_schedule::EpochSchedule,
     solana_program_test::tokio,
     solana_sdk::{
         instruction::InstructionError, program_option::COption, pubkey::Pubkey, signature::Signer,
