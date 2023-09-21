@@ -15,16 +15,14 @@ use {
 
 /// Resolve a program-derived address (PDA) from the instruction data
 /// and the accounts that have already been resolved
-fn resolve_pda<'a, A, F>(
+fn resolve_pda<'a, F>(
     seeds: &[Seed],
-    accounts: &[A],
     instruction_data: &[u8],
     program_id: &Pubkey,
-    get_account_data_fn: F,
+    get_account_key_data_fn: F,
 ) -> Result<Pubkey, ProgramError>
 where
-    A: Addressable,
-    F: Fn(usize) -> Option<&'a [u8]>,
+    F: Fn(usize) -> Option<(&'a Pubkey, Option<&'a [u8]>)>,
 {
     let mut pda_seeds: Vec<&[u8]> = vec![];
     for config in seeds {
@@ -41,10 +39,10 @@ where
             }
             Seed::AccountKey { index } => {
                 let account_index = *index as usize;
-                let account_meta = accounts
-                    .get(account_index)
-                    .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?;
-                pda_seeds.push(account_meta.address().as_ref());
+                let address = get_account_key_data_fn(account_index)
+                    .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?
+                    .0;
+                pda_seeds.push(address.as_ref());
             }
             Seed::AccountData {
                 account_index,
@@ -52,7 +50,9 @@ where
                 length,
             } => {
                 let account_index = *account_index as usize;
-                let account_data = get_account_data_fn(account_index)
+                let account_data = get_account_key_data_fn(account_index)
+                    .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?
+                    .1
                     .ok_or::<ProgramError>(AccountResolutionError::AccountDataNotFound.into())?;
                 let arg_start = *data_index as usize;
                 let arg_end = arg_start + *length as usize;
@@ -142,16 +142,14 @@ impl ExtraAccountMeta {
 
     /// Resolve an `ExtraAccountMeta` into an `AccountMeta`, potentially
     /// resolving a program-derived address (PDA) if necessary
-    pub fn resolve<'a, A, F>(
+    pub fn resolve<'a, F>(
         &self,
-        accounts: &[A],
         instruction_data: &[u8],
         program_id: &Pubkey,
-        get_account_data_fn: F,
+        get_account_key_data_fn: F,
     ) -> Result<AccountMeta, ProgramError>
     where
-        A: Addressable,
-        F: Fn(usize) -> Option<&'a [u8]>,
+        F: Fn(usize) -> Option<(&'a Pubkey, Option<&'a [u8]>)>,
     {
         match self.discriminator {
             0 => AccountMeta::try_from(self),
@@ -159,19 +157,17 @@ impl ExtraAccountMeta {
                 let program_id = if x == 1 {
                     program_id
                 } else {
-                    accounts
-                        .get(x.saturating_sub(U8_TOP_BIT) as usize)
-                        .ok_or(AccountResolutionError::AccountNotFound)?
-                        .address()
+                    get_account_key_data_fn(x.saturating_sub(U8_TOP_BIT) as usize)
+                        .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?
+                        .0
                 };
                 let seeds = Seed::unpack_address_config(&self.address_config)?;
                 Ok(AccountMeta {
                     pubkey: resolve_pda(
                         &seeds,
-                        accounts,
                         instruction_data,
                         program_id,
-                        get_account_data_fn,
+                        get_account_key_data_fn,
                     )?,
                     is_signer: self.is_signer.into(),
                     is_writable: self.is_writable.into(),
@@ -227,24 +223,5 @@ impl TryFrom<&ExtraAccountMeta> for AccountMeta {
         } else {
             Err(AccountResolutionError::AccountTypeNotAccountMeta.into())
         }
-    }
-}
-
-/// Trait for types that have an address
-/// There is no such trait in `solana-program` that can be used for referencing
-/// an address from either an `AccountMeta` or `AccountInfo`.
-/// Perhaps this should be introduced to `solana-program`?
-pub trait Addressable {
-    /// Get the address of the account
-    fn address(&self) -> &Pubkey;
-}
-impl Addressable for AccountMeta {
-    fn address(&self) -> &Pubkey {
-        &self.pubkey
-    }
-}
-impl Addressable for AccountInfo<'_> {
-    fn address(&self) -> &Pubkey {
-        self.key
     }
 }
