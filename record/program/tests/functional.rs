@@ -3,7 +3,7 @@
 use {
     borsh::BorshSerialize,
     solana_program::{
-        borsh::get_packed_len,
+        borsh0_10::get_packed_len,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
         rent::Rent,

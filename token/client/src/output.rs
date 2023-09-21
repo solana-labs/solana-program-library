@@ -36,7 +36,7 @@ mod tests {
     #[test]
     fn display_signature() {
         let signature_bytes = [202u8; SIGNATURE_BYTES];
-        let signature = RpcClientResponse::Signature(Signature::new(&signature_bytes));
+        let signature = RpcClientResponse::Signature(Signature::from(signature_bytes));
         println!("{}", signature);
     }
 

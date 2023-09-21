@@ -4,8 +4,8 @@ use {
     crate::{error::SinglePoolError, find_pool_address},
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
-        account_info::AccountInfo, borsh::try_from_slice_unchecked, program_error::ProgramError,
-        pubkey::Pubkey,
+        account_info::AccountInfo, borsh0_10::try_from_slice_unchecked,
+        program_error::ProgramError, pubkey::Pubkey,
     },
 };
 

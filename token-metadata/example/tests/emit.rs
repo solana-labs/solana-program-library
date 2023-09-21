@@ -5,7 +5,7 @@ use {
     program_test::{setup, setup_metadata, setup_mint},
     solana_program_test::tokio,
     solana_sdk::{
-        borsh::try_from_slice_unchecked, program::MAX_RETURN_DATA, pubkey::Pubkey,
+        borsh0_10::try_from_slice_unchecked, program::MAX_RETURN_DATA, pubkey::Pubkey,
         signature::Signer, signer::keypair::Keypair, transaction::Transaction,
     },
     spl_token_metadata_interface::{

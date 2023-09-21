@@ -3,7 +3,7 @@
 use {
     solana_program::{
         account_info::{next_account_info, AccountInfo},
-        borsh::get_instance_packed_len,
+        borsh0_10::get_instance_packed_len,
         entrypoint::ProgramResult,
         msg,
         program::set_return_data,

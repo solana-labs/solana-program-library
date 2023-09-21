@@ -4,7 +4,7 @@ use {
     borsh::BorshDeserialize,
     solana_program_test::BanksClient,
     solana_sdk::{
-        borsh::try_from_slice_unchecked,
+        borsh0_10::try_from_slice_unchecked,
         hash::Hash,
         program_pack::Pack,
         pubkey::Pubkey,

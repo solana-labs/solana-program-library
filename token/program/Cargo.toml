@@ -18,15 +18,15 @@ bytemuck = "1.14.0"
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.0"
-solana-program = "1.16.3"
+solana-program = "1.16.13"
 thiserror = "1.0"
 
 [dev-dependencies]
 lazy_static = "1.4.0"
 proptest = "1.2"
 serial_test = "2.0.0"
-solana-program-test = "1.16.3"
-solana-sdk = "1.16.3"
+solana-program-test = "1.16.13"
+solana-sdk = "1.16.13"
 
 [lib]
 crate-type = ["cdylib", "lib"]

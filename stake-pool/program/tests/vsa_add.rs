@@ -8,7 +8,7 @@ use {
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
-        borsh::try_from_slice_unchecked,
+        borsh0_10::try_from_slice_unchecked,
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
@@ -284,6 +284,7 @@ async fn fail_without_signature() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
@@ -339,6 +340,7 @@ async fn fail_with_wrong_stake_program_id() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(wrong_stake_program, false),
@@ -392,6 +394,7 @@ async fn fail_with_wrong_system_program_id() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(wrong_system_program, false),
         AccountMeta::new_readonly(stake::program::id(), false),

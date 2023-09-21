@@ -7,7 +7,7 @@ use {
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
-        borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
+        borsh0_10::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
         instruction::{AccountMeta, Instruction},
         program_pack::Pack,

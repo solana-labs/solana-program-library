@@ -8,7 +8,7 @@ use {
     solana_program::hash::Hash,
     solana_program_test::*,
     solana_sdk::{
-        borsh::try_from_slice_unchecked,
+        borsh0_10::try_from_slice_unchecked,
         instruction::InstructionError,
         pubkey::Pubkey,
         signature::{Keypair, Signer},

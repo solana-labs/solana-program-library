@@ -163,6 +163,7 @@ pub fn initialize_pool(program_id: &Pubkey, vote_account_address: &Pubkey) -> In
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),

@@ -11,7 +11,7 @@ use {
     num_traits::{FromPrimitive, ToPrimitive},
     solana_program::{
         account_info::AccountInfo,
-        borsh::get_instance_packed_len,
+        borsh0_10::get_instance_packed_len,
         msg,
         program_error::ProgramError,
         program_memory::sol_memcmp,
@@ -1035,7 +1035,7 @@ mod test {
         super::*,
         proptest::prelude::*,
         solana_program::{
-            borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
+            borsh0_10::{get_packed_len, try_from_slice_unchecked},
             clock::{DEFAULT_SLOTS_PER_EPOCH, DEFAULT_S_PER_SLOT, SECONDS_PER_DAY},
             native_token::LAMPORTS_PER_SOL,
         },

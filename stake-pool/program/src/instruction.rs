@@ -709,6 +709,7 @@ pub fn add_validator_to_pool(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
@@ -859,6 +860,7 @@ pub fn increase_validator_stake(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
@@ -904,6 +906,7 @@ pub fn increase_additional_validator_stake(
         AccountMeta::new_readonly(*validator, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
@@ -954,6 +957,7 @@ pub fn redelegate(
         AccountMeta::new_readonly(*validator, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
