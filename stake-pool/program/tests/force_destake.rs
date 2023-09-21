@@ -63,7 +63,7 @@ async fn setup() -> (
     let active_stake_lamports = TEST_STAKE_AMOUNT - MINIMUM_ACTIVE_STAKE;
     // add to validator list
     validator_list.validators.push(ValidatorStakeInfo {
-        status: StakeStatus::Active,
+        status: StakeStatus::Active.into(),
         vote_account_address: voter_pubkey,
         active_stake_lamports: active_stake_lamports.into(),
         transient_stake_lamports: 0.into(),
@@ -146,7 +146,7 @@ async fn success_update() {
             false,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
     let post_reserve_lamports = context
         .banks_client
         .get_account(stake_pool_accounts.reserve_stake.pubkey())

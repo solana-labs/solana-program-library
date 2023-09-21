@@ -3,7 +3,7 @@
 use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
-        borsh::{get_instance_packed_len, try_from_slice_unchecked},
+        borsh0_10::{get_instance_packed_len, try_from_slice_unchecked},
         program_error::ProgramError,
         pubkey::Pubkey,
     },

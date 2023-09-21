@@ -8,13 +8,13 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4.30"
+chrono = "0.4.31"
 clap = "2.33.3"
-solana-clap-utils = "1.16.3"
-solana-cli-config = "1.16.3"
-solana-client = "1.16.3"
-solana-logger = "1.16.3"
-solana-sdk = "1.16.3"
+solana-clap-utils = "1.16.13"
+solana-cli-config = "1.16.13"
+solana-client = "1.16.13"
+solana-logger = "1.16.13"
+solana-sdk = "1.16.13"
 spl-feature-proposal = { version = "1.0", path = "../program", features = ["no-entrypoint"] }
 
 [[bin]]

@@ -20,9 +20,9 @@ walkdir = "2"
 async-trait = "0.1"
 borsh = "0.10"
 futures-util = "0.3"
-solana-program = "=1.16.3"
-solana-program-test = "=1.16.3"
-solana-sdk = "=1.16.3"
+solana-program = "=1.16.13"
+solana-program-test = "=1.16.13"
+solana-sdk = "=1.16.13"
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program" }
 spl-memo = { version = "4.0.0", path = "../../memo/program", features = ["no-entrypoint"] }
 spl-pod = { version = "0.1.0", path = "../../libraries/pod" }
@@ -32,4 +32,4 @@ spl-token-client = { version = "0.6", path = "../client" }
 spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
 spl-transfer-hook-example = { version = "0.2", path="../transfer-hook-example", features = ["no-entrypoint"] }
 spl-transfer-hook-interface = { version = "0.2", path="../transfer-hook-interface" }
-test-case = "3.1"
+test-case = "3.2"

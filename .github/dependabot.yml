@@ -12,6 +12,15 @@ updates:
   ignore:
     - dependency-name: "cbindgen"
 - package-ecosystem: npm
+  directory: "/libraries/type-length-value/js"
+  schedule:
+    interval: daily
+    time: "02:00"
+    timezone: America/Los_Angeles
+  open-pull-requests-limit: 3
+  labels:
+    - "automerge"
+- package-ecosystem: npm
   directory: "/token/js"
   schedule:
     interval: daily

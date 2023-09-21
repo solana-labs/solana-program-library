@@ -1,0 +1,13 @@
+.idea
+.vscode
+.DS_Store
+
+node_modules
+
+pnpm-lock.yaml
+yarn.lock
+
+docs
+lib
+test-ledger
+*.tsbuildinfo

@@ -120,12 +120,12 @@ pub fn transfer_split_proof_data(
     };
 
     // encrypt the transfer amount under the destination and auditor ElGamal public key
-    let transfer_amount_destination_auditor_ciphertext_lo = GroupedElGamal::<2>::encrypt_with(
+    let transfer_amount_destination_auditor_ciphertext_lo = GroupedElGamal::encrypt_with(
         [destination_elgamal_pubkey, auditor_elgamal_pubkey],
         transfer_amount_lo,
         &transfer_amount_opening_lo,
     );
-    let transfer_amount_destination_auditor_ciphertext_hi = GroupedElGamal::<2>::encrypt_with(
+    let transfer_amount_destination_auditor_ciphertext_hi = GroupedElGamal::encrypt_with(
         [destination_elgamal_pubkey, auditor_elgamal_pubkey],
         transfer_amount_hi,
         &transfer_amount_opening_hi,

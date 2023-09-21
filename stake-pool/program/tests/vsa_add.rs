@@ -8,7 +8,7 @@ use {
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
-        borsh::try_from_slice_unchecked,
+        borsh0_10::try_from_slice_unchecked,
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
@@ -88,7 +88,7 @@ async fn success() {
             validator_stake.validator_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check if validator account was added to the list
     let validator_list = get_account(
@@ -110,7 +110,7 @@ async fn success() {
                 max_validators: stake_pool_accounts.max_validators,
             },
             validators: vec![state::ValidatorStakeInfo {
-                status: state::StakeStatus::Active,
+                status: state::StakeStatus::Active.into(),
                 vote_account_address: validator_stake.vote.pubkey(),
                 last_update_epoch: 0.into(),
                 active_stake_lamports: (stake_rent + current_minimum_delegation).into(),
@@ -284,6 +284,7 @@ async fn fail_without_signature() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
@@ -339,6 +340,7 @@ async fn fail_with_wrong_stake_program_id() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(wrong_stake_program, false),
@@ -392,6 +394,7 @@ async fn fail_with_wrong_system_program_id() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(wrong_system_program, false),
         AccountMeta::new_readonly(stake::program::id(), false),
@@ -471,7 +474,7 @@ async fn fail_add_too_many_validator_stake_accounts() {
             validator_stake.validator_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_stake =
         ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), None, 0);
@@ -590,7 +593,7 @@ async fn success_with_lamports_in_account() {
             validator_stake.validator_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     // Check stake account existence and authority
     let stake = get_account(&mut banks_client, &validator_stake.stake_account).await;

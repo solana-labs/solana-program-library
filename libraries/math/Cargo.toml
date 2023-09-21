@@ -15,14 +15,14 @@ test-sbf = []
 borsh = "0.10"
 num-derive = "0.4"
 num-traits = "0.2"
-solana-program = "1.16.3"
+solana-program = "1.16.13"
 thiserror = "1.0"
 uint = "0.9"
 
 [dev-dependencies]
 proptest = "1.2.0"
-solana-program-test = "1.16.3"
-solana-sdk = "1.16.3"
+solana-program-test = "1.16.13"
+solana-sdk = "1.16.13"
 libm = "0.2.7"
 
 [lib]

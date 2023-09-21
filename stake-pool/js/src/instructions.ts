@@ -226,6 +226,7 @@ export type DecreaseValidatorStakeParams = {
 };
 
 export interface DecreaseAdditionalValidatorStakeParams extends DecreaseValidatorStakeParams {
+  reserveStake: PublicKey;
   ephemeralStake: PublicKey;
   ephemeralStakeSeed: number;
 }
@@ -325,6 +326,7 @@ export type RedelegateParams = {
   staker: PublicKey;
   stakePoolWithdrawAuthority: PublicKey;
   validatorList: PublicKey;
+  reserveStake: PublicKey;
   sourceValidatorStake: PublicKey;
   sourceTransientStake: PublicKey;
   ephemeralStake: PublicKey;
@@ -611,6 +613,7 @@ export class StakePoolInstruction {
       staker,
       withdrawAuthority,
       validatorList,
+      reserveStake,
       validatorStake,
       transientStake,
       lamports,
@@ -627,6 +630,7 @@ export class StakePoolInstruction {
       { pubkey: staker, isSigner: true, isWritable: false },
       { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
       { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: reserveStake, isSigner: false, isWritable: true },
       { pubkey: validatorStake, isSigner: false, isWritable: true },
       { pubkey: ephemeralStake, isSigner: false, isWritable: true },
       { pubkey: transientStake, isSigner: false, isWritable: true },
@@ -841,6 +845,7 @@ export class StakePoolInstruction {
       staker,
       stakePoolWithdrawAuthority,
       validatorList,
+      reserveStake,
       sourceValidatorStake,
       sourceTransientStake,
       ephemeralStake,
@@ -858,6 +863,7 @@ export class StakePoolInstruction {
       { pubkey: staker, isSigner: true, isWritable: false },
       { pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false },
       { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: reserveStake, isSigner: false, isWritable: true },
       { pubkey: sourceValidatorStake, isSigner: false, isWritable: true },
       { pubkey: sourceTransientStake, isSigner: false, isWritable: true },
       { pubkey: ephemeralStake, isSigner: false, isWritable: true },

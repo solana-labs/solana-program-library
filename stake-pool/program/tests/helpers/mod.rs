@@ -3,7 +3,7 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
-        borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
+        borsh0_10::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
         instruction::Instruction,
         program_option::COption,
@@ -1668,6 +1668,7 @@ impl StakePoolAccounts {
             &self.staker.pubkey(),
             &self.withdraw_authority,
             &self.validator_list.pubkey(),
+            &self.reserve_stake.pubkey(),
             validator_stake,
             ephemeral_stake,
             transient_stake,
@@ -1890,6 +1891,7 @@ impl StakePoolAccounts {
                 &self.staker.pubkey(),
                 &self.withdraw_authority,
                 &self.validator_list.pubkey(),
+                &self.reserve_stake.pubkey(),
                 source_validator_stake,
                 source_transient_stake,
                 ephemeral_stake,
@@ -2085,7 +2087,7 @@ pub async fn simple_add_validator_to_pool(
             sol_deposit_authority,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     create_vote(
         banks_client,
@@ -2106,7 +2108,7 @@ pub async fn simple_add_validator_to_pool(
             validator_stake.validator_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     validator_stake
 }
@@ -2207,7 +2209,7 @@ impl DepositStakeAccount {
             )
             .await;
         self.pool_tokens = get_token_balance(banks_client, &self.pool_account.pubkey()).await;
-        assert!(error.is_none());
+        assert!(error.is_none(), "{:?}", error);
     }
 }
 
@@ -2375,7 +2377,7 @@ pub fn add_validator_stake_account(
             stake: stake_amount,
             activation_epoch: FIRST_NORMAL_EPOCH,
             deactivation_epoch: u64::MAX,
-            warmup_cooldown_rate: 0.25, // default
+            ..Default::default()
         },
         credits_observed: 0,
     };
@@ -2404,7 +2406,7 @@ pub fn add_validator_stake_account(
     let active_stake_lamports = stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION;
 
     validator_list.validators.push(state::ValidatorStakeInfo {
-        status,
+        status: status.into(),
         vote_account_address: *voter_pubkey,
         active_stake_lamports: active_stake_lamports.into(),
         transient_stake_lamports: 0.into(),

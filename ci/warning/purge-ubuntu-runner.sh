@@ -23,4 +23,5 @@ if [[ -n "$CI" ]]; then
 
   sudo rm -rf /usr/local/lib/android
   sudo rm -rf /usr/local/lib/heroku
+  sudo rm -rf /imagegeneration
 fi
