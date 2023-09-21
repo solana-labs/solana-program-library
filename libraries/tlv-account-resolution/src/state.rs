@@ -208,17 +208,18 @@ impl ExtraAccountMetaList {
             .collect::<Vec<_>>();
 
         for (i, config) in extra_account_metas.iter().enumerate() {
-            // Create a list of `Ref`s so we can reference account data in the
-            // resolution step
-            let account_data_refs: Vec<_> = account_infos
-                .iter()
-                .map(|info| info.try_borrow_data())
-                .collect::<Result<_, _>>()?;
+            let meta = {
+                // Create a list of `Ref`s so we can reference account data in the
+                // resolution step
+                let account_data_refs: Vec<_> = account_infos
+                    .iter()
+                    .map(|info| info.try_borrow_data())
+                    .collect::<Result<_, _>>()?;
 
-            let meta = config.resolve(&provided_metas, instruction_data, program_id, |usize| {
-                account_data_refs.get(usize).map(|opt| opt.as_ref())
-            })?;
-            drop(account_data_refs);
+                config.resolve(&provided_metas, instruction_data, program_id, |usize| {
+                    account_data_refs.get(usize).map(|opt| opt.as_ref())
+                })?
+            };
 
             // Ensure the account is in the correct position
             let expected_index = i
@@ -295,20 +296,21 @@ impl ExtraAccountMetaList {
         let extra_account_metas = PodSlice::<ExtraAccountMeta>::unpack(bytes)?;
 
         for extra_meta in extra_account_metas.data().iter() {
-            // Create a list of `Ref`s so we can reference account data in the
-            // resolution step
-            let account_data_refs: Vec<_> = cpi_account_infos
-                .iter()
-                .map(|info| info.try_borrow_data())
-                .collect::<Result<_, _>>()?;
+            let mut meta = {
+                // Create a list of `Ref`s so we can reference account data in the
+                // resolution step
+                let account_data_refs: Vec<_> = cpi_account_infos
+                    .iter()
+                    .map(|info| info.try_borrow_data())
+                    .collect::<Result<_, _>>()?;
 
-            let mut meta = extra_meta.resolve(
-                cpi_account_infos,
-                &cpi_instruction.data,
-                &cpi_instruction.program_id,
-                |usize| account_data_refs.get(usize).map(|opt| opt.as_ref()),
-            )?;
-            drop(account_data_refs);
+                extra_meta.resolve(
+                    cpi_account_infos,
+                    &cpi_instruction.data,
+                    &cpi_instruction.program_id,
+                    |usize| account_data_refs.get(usize).map(|opt| opt.as_ref()),
+                )?
+            };
             de_escalate_account_meta(&mut meta, &cpi_instruction.accounts);
 
             let account_info = account_infos
