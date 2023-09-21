@@ -499,8 +499,8 @@ mod tests {
 
         let (check_required_pda, _) = Pubkey::find_program_address(
             &[
-                account_infos[0].key.as_ref(), // Account key
-                &[4, 6, 6, 6],                 // Account data
+                account_infos[0].key.as_ref(),                      // Account key
+                &account_infos[1].try_borrow_data().unwrap()[2..6], // Account data
             ],
             &program_id,
         );
@@ -1263,6 +1263,9 @@ mod tests {
         // CPI account infos should have the instruction account infos
         // and the extra required account infos from the validation account,
         // and they should be in the correct order.
+        // Note: The two additional arbitrary account infos for the currently
+        // executing program won't be present in the CPI instruction's account
+        // infos, so we will omit them (hence the `..9`).
         let check_account_infos = &all_account_infos[..9];
         assert_eq!(cpi_account_infos.len(), check_account_infos.len());
         for (a, b) in std::iter::zip(cpi_account_infos, check_account_infos) {
