@@ -48,6 +48,9 @@ pub enum AccountResolutionError {
     /// Could not find account at specified index
     #[error("Could not find account at specified index")]
     AccountNotFound,
+    /// Error in checked math operation
+    #[error("Error in checked math operation")]
+    CalculationFailure,
     /// Could not find account data at specified index
     #[error("Could not find account data at specified index")]
     AccountDataNotFound,
@@ -57,7 +60,4 @@ pub enum AccountResolutionError {
     /// Failed to fetch account
     #[error("Failed to fetch account")]
     AccountFetchFailed,
-    /// Error in checked math operation
-    #[error("Error in checked math operation")]
-    CalculationFailure,
 }

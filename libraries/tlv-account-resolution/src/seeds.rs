@@ -13,7 +13,7 @@
 //!         * N - Literal bytes themselves
 //!     * `Seed::InstructionData`: 1 + 1 + 1 = 3
 //!         * 1 - Discriminator
-//!         * 1 - Index of instruction data
+//!         * 1 - Start index of instruction data
 //!         * 1 - Length of instruction data starting at index
 //!     * `Seed::AccountKey` - 1 + 1 = 2
 //!         * 1 - Discriminator
@@ -21,7 +21,7 @@
 //!     * `Seed::AccountData`: 1 + 1 + 1 + 1 = 4
 //!         * 1 - Discriminator
 //!         * 1 - Index of account in accounts list
-//!         * 1 - Index of account data
+//!         * 1 - Start index of account data
 //!         * 1 - Length of account data starting at index
 //!
 //! No matter which types of seeds you choose, the total size of all seed
@@ -51,7 +51,7 @@ pub enum Seed {
     /// data
     /// Packed as:
     ///     * 1 - Discriminator
-    ///     * 1 - Index of instruction data
+    ///     * 1 - Start index of instruction data
     ///     * 1 - Length of instruction data starting at index
     InstructionData {
         /// The index where the bytes of an instruction argument begin
@@ -75,7 +75,7 @@ pub enum Seed {
     /// Packed as:
     ///     * 1 - Discriminator
     ///     * 1 - Index of account in accounts list
-    ///     * 1 - Index of account data
+    ///     * 1 - Start index of account data
     ///     * 1 - Length of account data starting at index
     AccountData {
         /// The index of the account in the entire accounts list

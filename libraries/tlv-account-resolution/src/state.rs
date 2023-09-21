@@ -20,6 +20,15 @@ pub type AccountDataResult = Result<Option<Vec<u8>>, AccountFetchError>;
 /// Generic error type that can come out of any client while fetching account data
 pub type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
 
+/// Helper to convert an `AccountInfo` to an `AccountMeta`
+fn account_info_to_meta(account_info: &AccountInfo) -> AccountMeta {
+    AccountMeta {
+        pubkey: *account_info.key,
+        is_signer: account_info.is_signer,
+        is_writable: account_info.is_writable,
+    }
+}
+
 /// De-escalate an account meta if necessary
 fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[AccountMeta]) {
     // This is a little tricky to read, but the idea is to see if
@@ -195,11 +204,7 @@ impl ExtraAccountMetaList {
         // Convert to `AccountMeta` to check resolved metas
         let provided_metas = account_infos
             .iter()
-            .map(|info| AccountMeta {
-                pubkey: *info.key,
-                is_signer: info.is_signer,
-                is_writable: info.is_writable,
-            })
+            .map(account_info_to_meta)
             .collect::<Vec<_>>();
 
         for (i, config) in extra_account_metas.iter().enumerate() {
@@ -359,14 +364,6 @@ mod tests {
                 .cache
                 .get(&pubkey)
                 .map(|account| account.try_borrow_data().unwrap().to_vec()))
-        }
-    }
-
-    fn account_info_to_meta(account_info: &AccountInfo) -> AccountMeta {
-        AccountMeta {
-            pubkey: *account_info.key,
-            is_signer: account_info.is_signer,
-            is_writable: account_info.is_writable,
         }
     }
 
