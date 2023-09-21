@@ -15,16 +15,16 @@ use {
 
 /// Resolve a program-derived address (PDA) from the instruction data
 /// and the accounts that have already been resolved
-fn resolve_pda<'a, A, G>(
+fn resolve_pda<'a, A, F>(
     seeds: &[Seed],
     accounts: &[A],
     instruction_data: &[u8],
     program_id: &Pubkey,
-    get_account_data_fn: G,
+    get_account_data_fn: F,
 ) -> Result<Pubkey, ProgramError>
 where
     A: Addressable,
-    G: Fn(usize) -> Option<&'a [u8]>,
+    F: Fn(usize) -> Option<&'a [u8]>,
 {
     let mut pda_seeds: Vec<&[u8]> = vec![];
     for config in seeds {
@@ -142,16 +142,16 @@ impl ExtraAccountMeta {
 
     /// Resolve an `ExtraAccountMeta` into an `AccountMeta`, potentially
     /// resolving a program-derived address (PDA) if necessary
-    pub fn resolve<'a, A, G>(
+    pub fn resolve<'a, A, F>(
         &self,
         accounts: &[A],
         instruction_data: &[u8],
         program_id: &Pubkey,
-        get_account_data_fn: G,
+        get_account_data_fn: F,
     ) -> Result<AccountMeta, ProgramError>
     where
         A: Addressable,
-        G: Fn(usize) -> Option<&'a [u8]>,
+        F: Fn(usize) -> Option<&'a [u8]>,
     {
         match self.discriminator {
             0 => AccountMeta::try_from(self),

@@ -124,7 +124,7 @@ fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[Acc
 /// let client = RpcClient::new_mock("succeeds".to_string());
 /// let program_id = Pubkey::new_unique();
 /// let mut instruction = Instruction::new_with_bytes(program_id, &[0, 1, 2], vec![]);
-/// ExtraAccountMetaList::add_to_instruction::<_, _, MyInstruction>(
+/// ExtraAccountMetaList::add_to_instruction::<MyInstruction, _, _>(
 ///     &mut instruction,
 ///     |address: &Pubkey| {
 ///         client
@@ -233,7 +233,7 @@ impl ExtraAccountMetaList {
     }
 
     /// Add the additional account metas to an existing instruction
-    pub async fn add_to_instruction<F, Fut, T: SplDiscriminate>(
+    pub async fn add_to_instruction<T: SplDiscriminate, F, Fut>(
         instruction: &mut Instruction,
         fetch_account_data_fn: F,
         data: &[u8],
@@ -383,7 +383,7 @@ mod tests {
         let mock_rpc = MockRpc::setup(&[]);
 
         let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
-        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+        ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
             &buffer,
@@ -477,7 +477,7 @@ mod tests {
         let mock_rpc = MockRpc::setup(&account_infos);
 
         let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
-        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+        ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
             &buffer,
@@ -554,7 +554,7 @@ mod tests {
 
         let mock_rpc = MockRpc::setup(&[]);
 
-        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+        ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
             &buffer,
@@ -656,7 +656,7 @@ mod tests {
         let ix_data = vec![0, 0, 0, 0, 0, 7, 0, 0];
         let ix_accounts = vec![];
         let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
-        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+        ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
             &buffer,
@@ -695,7 +695,7 @@ mod tests {
         let ix_accounts = vec![ix_account1.clone(), ix_account2.clone()];
         let ix_data = vec![0, 26, 0, 0, 0, 0, 0];
         let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
-        ExtraAccountMetaList::add_to_instruction::<_, _, TestOtherInstruction>(
+        ExtraAccountMetaList::add_to_instruction::<TestOtherInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
             &buffer,
@@ -844,7 +844,7 @@ mod tests {
 
         let program_id = Pubkey::new_unique();
         let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
-        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+        ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
             &buffer,
@@ -865,7 +865,7 @@ mod tests {
         instruction_data.extend_from_slice(&instruction_u8array_arg);
         instruction_data.extend_from_slice(instruction_pubkey_arg.as_ref());
         let mut instruction = Instruction::new_with_bytes(program_id, &instruction_data, vec![]);
-        ExtraAccountMetaList::add_to_instruction::<_, _, TestOtherInstruction>(
+        ExtraAccountMetaList::add_to_instruction::<TestOtherInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
             &buffer,
@@ -1210,7 +1210,7 @@ mod tests {
 
         let mut instruction =
             Instruction::new_with_bytes(program_id, &instruction_data, ix_accounts.clone());
-        ExtraAccountMetaList::add_to_instruction::<_, _, TestInstruction>(
+        ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
             &buffer,

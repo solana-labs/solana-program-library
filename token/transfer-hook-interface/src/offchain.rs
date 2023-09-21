@@ -50,7 +50,7 @@ where
     let validation_account_data = fetch_account_data_fn(validation_address)
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
-    ExtraAccountMetaList::add_to_instruction::<_, _, ExecuteInstruction>(
+    ExtraAccountMetaList::add_to_instruction::<ExecuteInstruction, _, _>(
         instruction,
         fetch_account_data_fn,
         &validation_account_data,
