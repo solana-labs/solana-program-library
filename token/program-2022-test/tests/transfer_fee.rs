@@ -282,8 +282,8 @@ async fn set_fee() {
     let (first_normal_slot, slots_per_epoch) = {
         let context = context.context.lock().await;
         (
-            context.epoch_schedule.first_normal_slot,
-            context.epoch_schedule.slots_per_epoch,
+            context.genesis_config().epoch_schedule.first_normal_slot,
+            context.genesis_config().epoch_schedule.slots_per_epoch,
         )
     };
 
