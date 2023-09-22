@@ -19,8 +19,11 @@ spl-type-length-value = { version = "0.3", path = "../type-length-value" }
 spl-pod = { version = "0.1", path = "../pod" }
 
 [dev-dependencies]
-solana-program-test = "1.16.13"
-solana-sdk = "1.16.13"
+futures = "0.3.28"
+futures-util = "0.3"
+solana-client = "1.16.3"
+solana-program-test = "1.16.3"
+solana-sdk = "1.16.3"
 spl-discriminator = { version = "0.1", path = "../discriminator" }
 
 [lib]

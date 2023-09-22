@@ -65,8 +65,9 @@ fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[Acc
 ///
 /// Sample usage:
 ///
-/// ```rust,ignore
+/// ```rust
 /// use {
+///     futures_util::TryFutureExt,
 ///     solana_client::nonblocking::rpc_client::RpcClient,
 ///     solana_program::{
 ///         account_info::AccountInfo, instruction::{AccountMeta, Instruction},
@@ -76,7 +77,7 @@ fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[Acc
 ///     spl_tlv_account_resolution::{
 ///         account::ExtraAccountMeta,
 ///         seeds::Seed,
-///         state::ExtraAccountMetaList
+///         state::{AccountDataResult, AccountFetchError, ExtraAccountMetaList}
 ///     },
 /// };
 ///
@@ -121,20 +122,35 @@ fn de_escalate_account_meta(account_meta: &mut AccountMeta, account_metas: &[Acc
 ///
 /// // Off-chain, you can add the additional accounts directly from the account data
 /// // You need to provide the resolver a way to fetch account data off-chain
-/// let client = RpcClient::new_mock("succeeds".to_string());
+/// struct MyClient {
+///     client: RpcClient,
+/// }
+/// impl MyClient {
+///     pub fn new() -> Self {
+///         Self {
+///             client: RpcClient::new_mock("succeeds".to_string()),
+///         }
+///     }
+///     pub async fn get_account_data(&self, address: Pubkey) -> AccountDataResult {
+///         self.client.get_account(&address)
+///             .await
+///             .map(|acct| Some(acct.data))
+///             .map_err(|e| Box::new(e) as AccountFetchError)
+///     }
+/// }
+///
+/// let client = MyClient::new();
 /// let program_id = Pubkey::new_unique();
 /// let mut instruction = Instruction::new_with_bytes(program_id, &[0, 1, 2], vec![]);
-/// ExtraAccountMetaList::add_to_instruction::<MyInstruction, _, _>(
-///     &mut instruction,
-///     |address: &Pubkey| {
-///         client
-///             .get_account(address)
-///             .map_ok(|acct| Some(acct.data))
-///         },
-///     &buffer,
-/// )
-/// .await
-/// .unwrap();
+/// # futures::executor::block_on(async {
+///     // Now use the resolver to add the additional accounts off-chain
+///     ExtraAccountMetaList::add_to_instruction::<MyInstruction, _, _>(
+///         &mut instruction,
+///         |address: Pubkey| client.get_account_data(address),
+///         &buffer,
+///     )
+///     .await;
+/// # });
 ///
 /// // On-chain, you can add the additional accounts *and* account infos
 /// let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[0, 1, 2], vec![]);

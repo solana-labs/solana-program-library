@@ -6937,6 +6937,9 @@ name = "spl-tlv-account-resolution"
 version = "0.3.0"
 dependencies = [
  "bytemuck",
+ "futures 0.3.28",
+ "futures-util",
+ "solana-client",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
