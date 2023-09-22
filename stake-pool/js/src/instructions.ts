@@ -35,6 +35,7 @@ export type StakePoolInstructionType =
   | 'WithdrawSol'
   | 'IncreaseAdditionalValidatorStake'
   | 'DecreaseAdditionalValidatorStake'
+  | 'DecreaseValidatorStakeWithReserve'
   | 'Redelegate';
 
 // 'UpdateTokenMetadata' and 'CreateTokenMetadata' have dynamic layouts
@@ -158,8 +159,12 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
       BufferLayout.ns64('ephemeralStakeSeed'),
     ]),
   },
-  Redelegate: {
+  DecreaseValidatorStakeWithReserve: {
     index: 21,
+    layout: MOVE_STAKE_LAYOUT,
+  },
+  Redelegate: {
+    index: 22,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
       /// Amount of lamports to redelegate
@@ -224,6 +229,10 @@ export type DecreaseValidatorStakeParams = {
   // Seed to used to create the transient stake account
   transientStakeSeed: number;
 };
+
+export interface DecreaseValidatorStakeWithReserveParams extends DecreaseValidatorStakeParams {
+  reserveStake: PublicKey;
+}
 
 export interface DecreaseAdditionalValidatorStakeParams extends DecreaseValidatorStakeParams {
   reserveStake: PublicKey;
@@ -590,6 +599,49 @@ export class StakePoolInstruction {
       { pubkey: transientStake, isSigner: false, isWritable: true },
       { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+    ];
+
+    return new TransactionInstruction({
+      programId: STAKE_POOL_PROGRAM_ID,
+      keys,
+      data,
+    });
+  }
+
+  /**
+   * Creates `DecreaseValidatorStakeWithReserve` instruction (rebalance from
+   * validator account to transient account)
+   */
+  static decreaseValidatorStakeWithReserve(
+    params: DecreaseValidatorStakeWithReserveParams,
+  ): TransactionInstruction {
+    const {
+      stakePool,
+      staker,
+      withdrawAuthority,
+      validatorList,
+      reserveStake,
+      validatorStake,
+      transientStake,
+      lamports,
+      transientStakeSeed,
+    } = params;
+
+    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DecreaseValidatorStakeWithReserve;
+    const data = encodeData(type, { lamports, transientStakeSeed });
+
+    const keys = [
+      { pubkey: stakePool, isSigner: false, isWritable: false },
+      { pubkey: staker, isSigner: true, isWritable: false },
+      { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: reserveStake, isSigner: false, isWritable: true },
+      { pubkey: validatorStake, isSigner: false, isWritable: true },
+      { pubkey: transientStake, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
     ];

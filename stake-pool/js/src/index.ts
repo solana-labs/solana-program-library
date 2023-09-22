@@ -807,10 +807,11 @@ export async function decreaseValidatorStake(
     );
   } else {
     instructions.push(
-      StakePoolInstruction.decreaseValidatorStake({
+      StakePoolInstruction.decreaseValidatorStakeWithReserve({
         stakePool: stakePoolAddress,
         staker: stakePool.account.data.staker,
         validatorList: stakePool.account.data.validatorList,
+        reserveStake: stakePool.account.data.reserveStake,
         transientStakeSeed: transientStakeSeed.toNumber(),
         withdrawAuthority,
         validatorStake,

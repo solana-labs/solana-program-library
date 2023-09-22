@@ -347,7 +347,7 @@ describe('StakePoolProgram', () => {
         res.instructions[0].data,
       );
 
-      expect(decodedData.instruction).toBe(21);
+      expect(decodedData.instruction).toBe(22);
       expect(decodedData.lamports).toBe(data.lamports);
       expect(decodedData.sourceTransientStakeSeed).toBe(data.sourceTransientStakeSeed);
       expect(decodedData.destinationTransientStakeSeed).toBe(data.destinationTransientStakeSeed);
