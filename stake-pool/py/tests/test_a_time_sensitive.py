@@ -64,7 +64,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     data = resp['result']['value']['data']
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
-        assert validator.transient_stake_lamports == decrease_amount
+        assert validator.transient_stake_lamports == decrease_amount + stake_rent_exemption
         assert validator.active_stake_lamports == increase_amount - decrease_amount + minimum_amount
 
     print("Waiting for epoch to roll over")
