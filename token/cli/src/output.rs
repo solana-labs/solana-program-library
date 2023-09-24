@@ -766,9 +766,7 @@ pub(crate) struct UiConfidentialTransferMint {
 
 pub(crate) fn has_confidential_transfer(data: &[u8]) -> Option<UiConfidentialTransferExtension> {
     if let Ok(mint) = StateWithExtensions::<Mint>::unpack(data) {
-        if let Some(confidential_transfer_mint) =
-            mint.get_extension::<ConfidentialTransferMint>().ok()
-        {
+        if let Ok(confidential_transfer_mint) = mint.get_extension::<ConfidentialTransferMint>() {
             let authority: Option<Pubkey> = confidential_transfer_mint.authority.into();
             let auditor_encryption_pubkey: Option<ElGamalPubkey> =
                 confidential_transfer_mint.auditor_elgamal_pubkey.into();

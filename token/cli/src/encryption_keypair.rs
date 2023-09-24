@@ -17,7 +17,7 @@ pub(crate) fn elgamal_pubkey_or_none(
     if arg_str == "none" {
         return Ok(None);
     }
-    elgamal_pubkey_of(matches, name).map(|pubkey| Some(pubkey))
+    elgamal_pubkey_of(matches, name).map(Some)
 }
 
 pub(crate) fn elgamal_pubkey_of(
