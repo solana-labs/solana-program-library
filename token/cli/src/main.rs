@@ -52,6 +52,7 @@ use spl_token_2022::{
         BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
+    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
     state::{Account, AccountState, Mint},
 };
 use spl_token_client::{
@@ -74,6 +75,9 @@ use sort::{sort_and_parse_token_accounts, AccountFilter};
 
 mod bench;
 use bench::*;
+
+mod encryption_keypair;
+use encryption_keypair::*;
 
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
@@ -154,6 +158,7 @@ pub enum CommandName {
     SetTransferHookProgram,
     InitializeMetadata,
     UpdateMetadata,
+    UpdateConfidentialTransferSettings,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2742,6 +2747,90 @@ async fn command_withdraw_withheld_tokens(
     Ok(results.join(""))
 }
 
+async fn command_update_confidential_transfer_settings(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    authority: Pubkey,
+    auto_approve: bool,
+    auditor_pubkey: Option<ElGamalPubkey>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    if !config.sign_only {
+        let confidential_transfer_account = config.get_account_checked(&token_pubkey).await?;
+
+        let mint_state =
+            StateWithExtensionsOwned::<Mint>::unpack(confidential_transfer_account.data)
+                .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+
+        if let Ok(confidential_transfer_mint) =
+            mint_state.get_extension::<ConfidentialTransferMint>()
+        {
+            let expected_authority = Option::<Pubkey>::from(confidential_transfer_mint.authority);
+
+            if expected_authority != Some(authority) {
+                return Err(format!(
+                    "Mint {} has confidential transfer authority {}, but {} was provided",
+                    token_pubkey,
+                    expected_authority
+                        .map(|pubkey| pubkey.to_string())
+                        .unwrap_or_else(|| "disabled".to_string()),
+                    authority
+                )
+                .into());
+            }
+        } else {
+            return Err(format!(
+                "Mint {} does not support confidential transfers",
+                token_pubkey
+            )
+            .into());
+        }
+    }
+
+    println_display(
+        config,
+        format!(
+            "Updating confidential transfer settings for {}:",
+            token_pubkey,
+        ),
+    );
+
+    println_display(
+        config,
+        format!(
+            "  approve policy set to {}",
+            if auto_approve { "auto" } else { "manual" }
+        ),
+    );
+
+    if let Some(auditor_pubkey) = auditor_pubkey {
+        println_display(
+            config,
+            format!(
+                "  auditor encryption pubkey set to {}",
+                auditor_pubkey.to_string(),
+            ),
+        );
+    } else {
+        println_display(config, format!("  auditability set to disabled",))
+    }
+
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let res = token
+        .confidential_transfer_update_mint(&authority, auto_approve, auditor_pubkey, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -4256,6 +4345,61 @@ fn app<'a, 'b>(
                 .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::UpdateConfidentialTransferSettings.into())
+                .about("Update confidential transfer configuation for a token")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token mint to update confidential transfer configuration for")
+                )
+                .arg(
+                    Arg::with_name("approve_policy")
+                        .long("approve-policy")
+                        .value_name("APPROVE_POLICY")
+                        .takes_value(true)
+                        .index(2)
+                        .possible_values(&["auto", "manual"])
+                        .help(
+                            "Enable accounts to make confidential transfers. If \"auto\" \
+                            is selected, then accounts are automatically approved to make \
+                            confidential transfers. If \"manual\" is selected, then the \
+                            confidential transfer mint authority must approve each account \
+                            before it can make confidential transfers."
+                        )
+                )
+                .arg(
+                    Arg::with_name("auditor_pubkey")
+                        .long("auditor-pubkey")
+                        .value_name("AUDITOR_PUBKEY")
+                        .takes_value(true)
+                        .index(3)
+                        .help(
+                            "The auditor encryption public key. The corresponding private key for \
+                            this auditor public key can be used to decrypt all confidential \
+                            transfers involving tokens from this mint. Currently, the auditor \
+                            public key can only be specified as a direct *base64* encoding of \
+                            an ElGamal public key. More methods of specifying the auditor public \
+                            key will be supported in a future version. To disable auditability \
+                            feature for the token, use \"none\"."
+                        )
+                )
+                .arg(
+                    Arg::with_name("confidential_transfer_authority")
+                        .long("confidential-transfer-authority")
+                        .validator(is_valid_signer)
+                        .value_name("SIGNER")
+                        .takes_value(true)
+                        .help(
+                            "Specify the confidential transfer authority keypair. \
+                            Defaults to the client keypair address."
+                        )
+                )
+        )
 }
 
 #[tokio::main]
@@ -5065,6 +5209,35 @@ async fn process_command<'a>(
 
             command_withdraw_excess_lamports(config, source, destination, authority, bulk_signers)
                 .await
+        }
+        (CommandName::UpdateConfidentialTransferSettings, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+
+            let auto_approve = arg_matches
+                .value_of("approve_policy")
+                .map(|b| b == "auto")
+                .unwrap();
+            let auditor_encryption_pubkey =
+                elgamal_pubkey_or_none(arg_matches, "auditor_pubkey").unwrap();
+
+            let (authority_signer, authority_pubkey) = config.signer_or_default(
+                arg_matches,
+                "confidential_transfer_authority",
+                &mut wallet_manager,
+            );
+            let bulk_signers = vec![authority_signer];
+
+            command_update_confidential_transfer_settings(
+                config,
+                token_pubkey,
+                authority_pubkey,
+                auto_approve,
+                auditor_encryption_pubkey,
+                bulk_signers,
+            )
+            .await
         }
     }
 }
@@ -7594,12 +7767,13 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn confidential_transfer() {
-        use spl_token_2022::solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey;
+        use spl_token_2022::solana_zk_token_sdk::encryption::elgamal::ElGamalKeypair;
 
         let (test_validator, payer) = new_validator_for_test().await;
         let config =
             test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
 
+        // create token with confidential transfers enabled
         let token_keypair = Keypair::new();
         let token_pubkey = token_keypair.pubkey();
         let bulk_signers: Vec<Arc<dyn Signer>> =
@@ -7624,7 +7798,7 @@ mod tests {
             Some(auto_approve),
             None,
             false,
-            bulk_signers,
+            bulk_signers.clone(),
         )
         .await
         .unwrap();
@@ -7648,6 +7822,38 @@ mod tests {
             None,
         );
 
+        // update confidential transfer mint settings
+        let auditor_keypair = ElGamalKeypair::new_rand();
+        let auditor_pubkey: ElGamalPubkey = (*auditor_keypair.pubkey()).into();
+        let new_auto_approve = false;
+
+        command_update_confidential_transfer_settings(
+            &config,
+            token_pubkey,
+            confidential_transfer_mint_authority,
+            false,                // auto approve
+            Some(auditor_pubkey), // auditor pubkey
+            bulk_signers.clone(),
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+        let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+        let extension = test_mint
+            .get_extension::<ConfidentialTransferMint>()
+            .unwrap();
+
+        assert_eq!(
+            bool::from(extension.auto_approve_new_accounts),
+            new_auto_approve,
+        );
+        assert_eq!(
+            Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
+            Some(auditor_pubkey),
+        );
+
+        // disable confidential transfers
         process_test_command(
             &config,
             &payer,
