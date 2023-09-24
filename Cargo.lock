@@ -7058,6 +7058,7 @@ name = "spl-token-cli"
 version = "3.1.1"
 dependencies = [
  "assert_cmd",
+ "base64 0.21.4",
  "clap 2.34.0",
  "console",
  "serde",
