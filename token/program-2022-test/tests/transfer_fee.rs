@@ -279,9 +279,14 @@ async fn set_fee() {
         .unwrap();
 
     // warp to first normal slot to easily calculate epochs
-    let epoch_schedule = context.context.lock().await.genesis_config().epoch_schedule;
-    let first_normal_slot = epoch_schedule.first_normal_slot;
-    let slots_per_epoch = epoch_schedule.slots_per_epoch;
+    let (first_normal_slot, slots_per_epoch) = {
+        let context = context.context.lock().await;
+        (
+            context.genesis_config().epoch_schedule.first_normal_slot,
+            context.genesis_config().epoch_schedule.slots_per_epoch,
+        )
+    };
+
     context
         .context
         .lock()
