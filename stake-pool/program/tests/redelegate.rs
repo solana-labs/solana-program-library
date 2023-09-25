@@ -651,7 +651,7 @@ async fn fail_with_decreasing_stake() {
         .unwrap();
 
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -659,6 +659,7 @@ async fn fail_with_decreasing_stake() {
             &destination_validator_stake.transient_stake_account,
             minimum_decrease_lamports,
             destination_validator_stake.transient_stake_seed,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);

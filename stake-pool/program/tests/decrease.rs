@@ -4,6 +4,7 @@
 mod helpers;
 
 use {
+    assert_matches::assert_matches,
     bincode::deserialize,
     helpers::*,
     solana_program::{clock::Epoch, instruction::InstructionError, pubkey::Pubkey, stake},
@@ -80,10 +81,11 @@ async fn setup() -> (
     )
 }
 
-#[test_case(true; "additional")]
-#[test_case(false; "no-additional")]
+#[test_case(DecreaseInstruction::Additional; "additional")]
+#[test_case(DecreaseInstruction::Reserve; "reserve")]
+#[test_case(DecreaseInstruction::Deprecated; "deprecated")]
 #[tokio::test]
-async fn success(use_additional_instruction: bool) {
+async fn success(instruction_type: DecreaseInstruction) {
     let (
         mut context,
         stake_pool_accounts,
@@ -114,7 +116,7 @@ async fn success(use_additional_instruction: bool) {
             &validator_stake.transient_stake_account,
             decrease_lamports,
             validator_stake.transient_stake_seed,
-            use_additional_instruction,
+            instruction_type,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -147,16 +149,12 @@ async fn success(use_additional_instruction: bool) {
     .await;
     let transient_stake_state =
         deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
-    let transient_lamports = if use_additional_instruction {
-        decrease_lamports + stake_rent
-    } else {
-        decrease_lamports
-    };
+    let transient_lamports = decrease_lamports + stake_rent;
     assert_eq!(transient_stake_account.lamports, transient_lamports);
-    let reserve_lamports = if use_additional_instruction {
-        reserve_lamports - stake_rent
-    } else {
+    let reserve_lamports = if instruction_type == DecreaseInstruction::Deprecated {
         reserve_lamports
+    } else {
+        reserve_lamports - stake_rent
     };
     let reserve_stake_account = get_account(
         &mut context.banks_client,
@@ -181,12 +179,13 @@ async fn fail_with_wrong_withdraw_authority() {
     let wrong_authority = Pubkey::new_unique();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::decrease_validator_stake(
+        &[instruction::decrease_validator_stake_with_reserve(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.staker.pubkey(),
             &wrong_authority,
             &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             decrease_lamports,
@@ -204,13 +203,13 @@ async fn fail_with_wrong_withdraw_authority() {
         .unwrap()
         .unwrap();
 
-    match error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = StakePoolError::InvalidProgramAddress as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs while decreasing with wrong withdraw authority"),
-    }
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::InvalidProgramAddress as u32)
+        )
+    );
 }
 
 #[tokio::test]
@@ -227,12 +226,13 @@ async fn fail_with_wrong_validator_list() {
     stake_pool_accounts.validator_list = Keypair::new();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::decrease_validator_stake(
+        &[instruction::decrease_validator_stake_with_reserve(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.staker.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             decrease_lamports,
@@ -250,13 +250,13 @@ async fn fail_with_wrong_validator_list() {
         .unwrap()
         .unwrap();
 
-    match error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = StakePoolError::InvalidValidatorStakeList as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs while decreasing with wrong validator stake list account"),
-    }
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::InvalidValidatorStakeList as u32)
+        )
+    );
 }
 
 #[tokio::test]
@@ -274,12 +274,13 @@ async fn fail_with_unknown_validator() {
     .await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::decrease_validator_stake(
+        &[instruction::decrease_validator_stake_with_reserve(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.staker.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
             &unknown_stake.stake_account,
             &unknown_stake.transient_stake_account,
             decrease_lamports,
@@ -306,10 +307,11 @@ async fn fail_with_unknown_validator() {
     );
 }
 
-#[test_case(true; "additional")]
-#[test_case(false; "no-additional")]
+#[test_case(DecreaseInstruction::Additional; "additional")]
+#[test_case(DecreaseInstruction::Reserve; "reserve")]
+#[test_case(DecreaseInstruction::Deprecated; "deprecated")]
 #[tokio::test]
-async fn fail_twice_diff_seed(use_additional_instruction: bool) {
+async fn fail_twice_diff_seed(instruction_type: DecreaseInstruction) {
     let (mut context, stake_pool_accounts, validator_stake, _deposit_info, decrease_lamports, _) =
         setup().await;
 
@@ -322,7 +324,7 @@ async fn fail_twice_diff_seed(use_additional_instruction: bool) {
             &validator_stake.transient_stake_account,
             decrease_lamports / 3,
             validator_stake.transient_stake_seed,
-            use_additional_instruction,
+            instruction_type,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -344,40 +346,44 @@ async fn fail_twice_diff_seed(use_additional_instruction: bool) {
             &transient_stake_address,
             decrease_lamports / 2,
             transient_stake_seed,
-            use_additional_instruction,
+            instruction_type,
         )
         .await
         .unwrap()
         .unwrap();
-    if use_additional_instruction {
+    if instruction_type == DecreaseInstruction::Additional {
         assert_eq!(
             error,
             TransactionError::InstructionError(0, InstructionError::InvalidSeeds)
         );
     } else {
-        assert_eq!(
+        assert_matches!(
             error,
             TransactionError::InstructionError(
-                0,
-                InstructionError::Custom(StakePoolError::TransientAccountInUse as u32)
-            )
+                _,
+                InstructionError::Custom(code)
+            ) if code == StakePoolError::TransientAccountInUse as u32
         );
     }
 }
 
-#[test_case(true, true, true; "success-all-additional")]
-#[test_case(true, false, true; "success-with-additional")]
-#[test_case(false, true, false; "fail-without-additional")]
-#[test_case(false, false, false; "fail-no-additional")]
+#[test_case(true, DecreaseInstruction::Additional, DecreaseInstruction::Additional; "success-all-additional")]
+#[test_case(true, DecreaseInstruction::Reserve, DecreaseInstruction::Additional; "success-with-additional")]
+#[test_case(false, DecreaseInstruction::Additional, DecreaseInstruction::Reserve; "fail-without-additional")]
+#[test_case(false, DecreaseInstruction::Reserve, DecreaseInstruction::Reserve; "fail-no-additional")]
 #[tokio::test]
-async fn twice(success: bool, use_additional_first_time: bool, use_additional_second_time: bool) {
+async fn twice(
+    success: bool,
+    first_instruction: DecreaseInstruction,
+    second_instruction: DecreaseInstruction,
+) {
     let (
         mut context,
         stake_pool_accounts,
         validator_stake,
         _deposit_info,
         decrease_lamports,
-        mut reserve_lamports,
+        reserve_lamports,
     ) = setup().await;
 
     let pre_stake_account =
@@ -398,7 +404,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
             &validator_stake.transient_stake_account,
             first_decrease,
             validator_stake.transient_stake_seed,
-            use_additional_first_time,
+            first_instruction,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -412,7 +418,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
             &validator_stake.transient_stake_account,
             second_decrease,
             validator_stake.transient_stake_seed,
-            use_additional_second_time,
+            second_instruction,
         )
         .await;
 
@@ -453,11 +459,8 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
         .await;
         let transient_stake_state =
             deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
-        let mut transient_lamports = total_decrease;
-        if use_additional_first_time {
-            transient_lamports += stake_rent;
-        }
-        if use_additional_second_time {
+        let mut transient_lamports = total_decrease + stake_rent;
+        if second_instruction == DecreaseInstruction::Additional {
             transient_lamports += stake_rent;
         }
         assert_eq!(transient_stake_account.lamports, transient_lamports);
@@ -480,10 +483,8 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
         );
 
         // reserve deducted properly
-        if use_additional_first_time {
-            reserve_lamports -= stake_rent;
-        }
-        if use_additional_second_time {
+        let mut reserve_lamports = reserve_lamports - stake_rent;
+        if second_instruction == DecreaseInstruction::Additional {
             reserve_lamports -= stake_rent;
         }
         let reserve_stake_account = get_account(
@@ -494,20 +495,21 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
         assert_eq!(reserve_stake_account.lamports, reserve_lamports);
     } else {
         let error = error.unwrap().unwrap();
-        assert_eq!(
+        assert_matches!(
             error,
             TransactionError::InstructionError(
-                0,
-                InstructionError::Custom(StakePoolError::TransientAccountInUse as u32)
-            )
+                _,
+                InstructionError::Custom(code)
+            ) if code == StakePoolError::TransientAccountInUse as u32
         );
     }
 }
 
-#[test_case(true; "additional")]
-#[test_case(false; "no-additional")]
+#[test_case(DecreaseInstruction::Additional; "additional")]
+#[test_case(DecreaseInstruction::Reserve; "reserve")]
+#[test_case(DecreaseInstruction::Deprecated; "deprecated")]
 #[tokio::test]
-async fn fail_with_small_lamport_amount(use_additional_instruction: bool) {
+async fn fail_with_small_lamport_amount(instruction_type: DecreaseInstruction) {
     let (mut context, stake_pool_accounts, validator_stake, _deposit_info, _decrease_lamports, _) =
         setup().await;
 
@@ -523,25 +525,28 @@ async fn fail_with_small_lamport_amount(use_additional_instruction: bool) {
             &validator_stake.transient_stake_account,
             lamports,
             validator_stake.transient_stake_seed,
-            use_additional_instruction,
+            instruction_type,
         )
         .await
         .unwrap()
         .unwrap();
 
-    match error {
-        TransactionError::InstructionError(_, InstructionError::AccountNotRentExempt) => {}
-        _ => panic!("Wrong error occurs while try to decrease small stake"),
-    }
+    assert_matches!(
+        error,
+        TransactionError::InstructionError(_, InstructionError::AccountNotRentExempt)
+    );
 }
 
+#[test_case(DecreaseInstruction::Additional; "additional")]
+#[test_case(DecreaseInstruction::Reserve; "reserve")]
+#[test_case(DecreaseInstruction::Deprecated; "deprecated")]
 #[tokio::test]
-async fn fail_big_overdraw() {
+async fn fail_big_overdraw(instruction_type: DecreaseInstruction) {
     let (mut context, stake_pool_accounts, validator_stake, deposit_info, _decrease_lamports, _) =
         setup().await;
 
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -549,21 +554,23 @@ async fn fail_big_overdraw() {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports * 1_000_000,
             validator_stake.transient_stake_seed,
+            instruction_type,
         )
         .await
         .unwrap()
         .unwrap();
 
-    assert_eq!(
+    assert_matches!(
         error,
-        TransactionError::InstructionError(0, InstructionError::InsufficientFunds)
+        TransactionError::InstructionError(_, InstructionError::InsufficientFunds)
     );
 }
 
-#[test_case(true; "additional")]
-#[test_case(false; "no-additional")]
+#[test_case(DecreaseInstruction::Additional; "additional")]
+#[test_case(DecreaseInstruction::Reserve; "reserve")]
+#[test_case(DecreaseInstruction::Deprecated; "deprecated")]
 #[tokio::test]
-async fn fail_overdraw(use_additional_instruction: bool) {
+async fn fail_overdraw(instruction_type: DecreaseInstruction) {
     let (mut context, stake_pool_accounts, validator_stake, deposit_info, _decrease_lamports, _) =
         setup().await;
 
@@ -579,15 +586,15 @@ async fn fail_overdraw(use_additional_instruction: bool) {
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports + stake_rent + 1,
             validator_stake.transient_stake_seed,
-            use_additional_instruction,
+            instruction_type,
         )
         .await
         .unwrap()
         .unwrap();
 
-    assert_eq!(
+    assert_matches!(
         error,
-        TransactionError::InstructionError(0, InstructionError::InsufficientFunds)
+        TransactionError::InstructionError(_, InstructionError::InsufficientFunds)
     );
 }
 
@@ -644,17 +651,17 @@ async fn fail_additional_with_increasing() {
             &validator_stake.transient_stake_account,
             decrease_lamports / 2,
             validator_stake.transient_stake_seed,
-            true,
+            DecreaseInstruction::Additional,
         )
         .await
         .unwrap()
         .unwrap();
 
-    assert_eq!(
+    assert_matches!(
         error,
         TransactionError::InstructionError(
-            0,
-            InstructionError::Custom(StakePoolError::WrongStakeState as u32)
-        )
+            _,
+            InstructionError::Custom(code)
+        ) if code == StakePoolError::WrongStakeState as u32
     );
 }

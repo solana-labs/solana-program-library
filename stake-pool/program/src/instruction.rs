@@ -117,6 +117,9 @@ pub enum StakePoolInstruction {
     ///   7. `[]` Stake program id,
     RemoveValidatorFromPool,
 
+    /// NOTE: This instruction has been deprecated since version 0.7.0. Please
+    /// use `DecreaseValidatorStakeWithReserve` instead.
+    ///
     /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
     ///
     /// Internally, this instruction splits a validator stake account into its
@@ -477,6 +480,40 @@ pub enum StakePoolInstruction {
         ephemeral_stake_seed: u64,
     },
 
+    /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
+    ///
+    /// Internally, this instruction:
+    /// * withdraws enough lamports to make the transient account rent-exempt
+    /// * splits from a validator stake account into a transient stake account
+    /// * deactivates the transient stake account
+    ///
+    /// In order to rebalance the pool without taking custody, the staker needs
+    /// a way of reducing the stake on a stake account. This instruction splits
+    /// some amount of stake, up to the total activated stake, from the canonical
+    /// validator stake account, into its "transient" stake account.
+    ///
+    /// The instruction only succeeds if the transient stake account does not
+    /// exist. The amount of lamports to move must be at least rent-exemption plus
+    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///
+    ///  0. `[]` Stake pool
+    ///  1. `[s]` Stake pool staker
+    ///  2. `[]` Stake pool withdraw authority
+    ///  3. `[w]` Validator list
+    ///  4. `[w]` Reserve stake account, to fund rent exempt reserve
+    ///  5. `[w]` Canonical stake account to split from
+    ///  6. `[w]` Transient stake account to receive split
+    ///  7. `[]` Clock sysvar
+    ///  8. '[]' Stake history sysvar
+    ///  9. `[]` System program
+    /// 10. `[]` Stake program
+    DecreaseValidatorStakeWithReserve {
+        /// amount of lamports to split into the transient stake account
+        lamports: u64,
+        /// seed used to create transient stake account
+        transient_stake_seed: u64,
+    },
+
     /// (Staker only) Redelegate active stake on a validator, eventually moving it to another
     ///
     /// Internally, this instruction splits a validator stake account into its
@@ -755,6 +792,10 @@ pub fn remove_validator_from_pool(
 
 /// Creates `DecreaseValidatorStake` instruction (rebalance from validator account to
 /// transient account)
+#[deprecated(
+    since = "0.7.0",
+    note = "please use `decrease_validator_stake_with_reserve`"
+)]
 pub fn decrease_validator_stake(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -827,6 +868,45 @@ pub fn decrease_additional_validator_stake(
             lamports,
             transient_stake_seed,
             ephemeral_stake_seed,
+        }
+        .try_to_vec()
+        .unwrap(),
+    }
+}
+
+/// Creates `DecreaseValidatorStakeWithReserve` instruction (rebalance from
+/// validator account to transient account)
+pub fn decrease_validator_stake_with_reserve(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    staker: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list: &Pubkey,
+    reserve_stake: &Pubkey,
+    validator_stake: &Pubkey,
+    transient_stake: &Pubkey,
+    lamports: u64,
+    transient_stake_seed: u64,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*staker, true),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*reserve_stake, false),
+        AccountMeta::new(*validator_stake, false),
+        AccountMeta::new(*transient_stake, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::DecreaseValidatorStakeWithReserve {
+            lamports,
+            transient_stake_seed,
         }
         .try_to_vec()
         .unwrap(),
@@ -1174,12 +1254,13 @@ pub fn decrease_validator_stake_with_vote(
         stake_pool_address,
         transient_stake_seed,
     );
-    decrease_validator_stake(
+    decrease_validator_stake_with_reserve(
         program_id,
         stake_pool_address,
         &stake_pool.staker,
         &pool_withdraw_authority,
         &stake_pool.validator_list,
+        &stake_pool.reserve_stake,
         &validator_stake_address,
         &transient_stake_address,
         lamports,

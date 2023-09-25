@@ -279,7 +279,7 @@ async fn merge_into_reserve() {
     println!("Decrease from all validators");
     for stake_account in &stake_accounts {
         let error = stake_pool_accounts
-            .decrease_validator_stake(
+            .decrease_validator_stake_either(
                 &mut context.banks_client,
                 &context.payer,
                 &last_blockhash,
@@ -287,6 +287,7 @@ async fn merge_into_reserve() {
                 &stake_account.transient_stake_account,
                 lamports,
                 stake_account.transient_stake_seed,
+                DecreaseInstruction::Reserve,
             )
             .await;
         assert!(error.is_none(), "{:?}", error);
@@ -554,7 +555,7 @@ async fn merge_transient_stake_after_remove() {
     // Decrease and remove all validators
     for stake_account in &stake_accounts {
         let error = stake_pool_accounts
-            .decrease_validator_stake(
+            .decrease_validator_stake_either(
                 &mut context.banks_client,
                 &context.payer,
                 &last_blockhash,
@@ -562,6 +563,7 @@ async fn merge_transient_stake_after_remove() {
                 &stake_account.transient_stake_account,
                 deactivated_lamports,
                 stake_account.transient_stake_seed,
+                DecreaseInstruction::Reserve,
             )
             .await;
         assert!(error.is_none(), "{:?}", error);
@@ -616,7 +618,7 @@ async fn merge_transient_stake_after_remove() {
     );
     assert_eq!(
         u64::from(validator_list.validators[0].transient_stake_lamports),
-        deactivated_lamports
+        deactivated_lamports + stake_rent
     );
 
     // Update with merge, status should be ReadyForRemoval and no lamports

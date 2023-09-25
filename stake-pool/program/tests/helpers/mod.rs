@@ -1614,7 +1614,7 @@ impl StakePoolAccounts {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn decrease_validator_stake(
+    pub async fn decrease_validator_stake_deprecated(
         &self,
         banks_client: &mut BanksClient,
         payer: &Keypair,
@@ -1624,12 +1624,57 @@ impl StakePoolAccounts {
         lamports: u64,
         transient_stake_seed: u64,
     ) -> Option<TransportError> {
-        let mut instructions = vec![instruction::decrease_validator_stake(
+        #[allow(deprecated)]
+        let mut instructions = vec![
+            system_instruction::transfer(
+                &payer.pubkey(),
+                transient_stake,
+                STAKE_ACCOUNT_RENT_EXEMPTION,
+            ),
+            instruction::decrease_validator_stake(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.staker.pubkey(),
+                &self.withdraw_authority,
+                &self.validator_list.pubkey(),
+                validator_stake,
+                transient_stake,
+                lamports,
+                transient_stake_seed,
+            ),
+        ];
+        self.maybe_add_compute_budget_instruction(&mut instructions);
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&payer.pubkey()),
+            &[payer, &self.staker],
+            *recent_blockhash,
+        );
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .map_err(|e| e.into())
+            .err()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn decrease_validator_stake_with_reserve(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        validator_stake: &Pubkey,
+        transient_stake: &Pubkey,
+        lamports: u64,
+        transient_stake_seed: u64,
+    ) -> Option<TransportError> {
+        let mut instructions = vec![instruction::decrease_validator_stake_with_reserve(
             &id(),
             &self.stake_pool.pubkey(),
             &self.staker.pubkey(),
             &self.withdraw_authority,
             &self.validator_list.pubkey(),
+            &self.reserve_stake.pubkey(),
             validator_stake,
             transient_stake,
             lamports,
@@ -1700,39 +1745,56 @@ impl StakePoolAccounts {
         transient_stake: &Pubkey,
         lamports: u64,
         transient_stake_seed: u64,
-        use_additional_instruction: bool,
+        instruction_type: DecreaseInstruction,
     ) -> Option<TransportError> {
-        if use_additional_instruction {
-            let ephemeral_stake_seed = 0;
-            let ephemeral_stake = find_ephemeral_stake_program_address(
-                &id(),
-                &self.stake_pool.pubkey(),
-                ephemeral_stake_seed,
-            )
-            .0;
-            self.decrease_additional_validator_stake(
-                banks_client,
-                payer,
-                recent_blockhash,
-                validator_stake,
-                &ephemeral_stake,
-                transient_stake,
-                lamports,
-                transient_stake_seed,
-                ephemeral_stake_seed,
-            )
-            .await
-        } else {
-            self.decrease_validator_stake(
-                banks_client,
-                payer,
-                recent_blockhash,
-                validator_stake,
-                transient_stake,
-                lamports,
-                transient_stake_seed,
-            )
-            .await
+        match instruction_type {
+            DecreaseInstruction::Additional => {
+                let ephemeral_stake_seed = 0;
+                let ephemeral_stake = find_ephemeral_stake_program_address(
+                    &id(),
+                    &self.stake_pool.pubkey(),
+                    ephemeral_stake_seed,
+                )
+                .0;
+                self.decrease_additional_validator_stake(
+                    banks_client,
+                    payer,
+                    recent_blockhash,
+                    validator_stake,
+                    &ephemeral_stake,
+                    transient_stake,
+                    lamports,
+                    transient_stake_seed,
+                    ephemeral_stake_seed,
+                )
+                .await
+            }
+            DecreaseInstruction::Reserve => {
+                self.decrease_validator_stake_with_reserve(
+                    banks_client,
+                    payer,
+                    recent_blockhash,
+                    validator_stake,
+                    transient_stake,
+                    lamports,
+                    transient_stake_seed,
+                )
+                .await
+            }
+            DecreaseInstruction::Deprecated =>
+            {
+                #[allow(deprecated)]
+                self.decrease_validator_stake_deprecated(
+                    banks_client,
+                    payer,
+                    recent_blockhash,
+                    validator_stake,
+                    transient_stake,
+                    lamports,
+                    transient_stake_seed,
+                )
+                .await
+            }
         }
     }
 
@@ -2545,6 +2607,7 @@ pub fn add_token_account(
 
 pub async fn setup_for_withdraw(
     token_program_id: Pubkey,
+    reserve_lamports: u64,
 ) -> (
     ProgramTestContext,
     StakePoolAccounts,
@@ -2561,7 +2624,7 @@ pub async fn setup_for_withdraw(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            MINIMUM_RESERVE_LAMPORTS,
+            reserve_lamports,
         )
         .await
         .unwrap();
@@ -2628,4 +2691,11 @@ pub async fn setup_for_withdraw(
         user_stake_recipient,
         tokens_to_withdraw,
     )
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum DecreaseInstruction {
+    Additional,
+    Reserve,
+    Deprecated,
 }

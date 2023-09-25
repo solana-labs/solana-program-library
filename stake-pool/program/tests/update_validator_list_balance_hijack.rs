@@ -220,7 +220,7 @@ async fn check_ignored_hijacked_transient_stake(
     println!("Decrease from all validators");
     let stake_account = &stake_accounts[0];
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
@@ -228,6 +228,7 @@ async fn check_ignored_hijacked_transient_stake(
             &stake_account.transient_stake_account,
             lamports,
             stake_account.transient_stake_seed,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);
@@ -384,7 +385,7 @@ async fn check_ignored_hijacked_validator_stake(
 
     let stake_account = &stake_accounts[0];
     let error = stake_pool_accounts
-        .decrease_validator_stake(
+        .decrease_validator_stake_either(
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
@@ -392,6 +393,7 @@ async fn check_ignored_hijacked_validator_stake(
             &stake_account.transient_stake_account,
             lamports,
             stake_account.transient_stake_seed,
+            DecreaseInstruction::Reserve,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);

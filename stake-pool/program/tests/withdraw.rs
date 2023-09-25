@@ -49,7 +49,7 @@ async fn _success(token_program_id: Pubkey, test_type: SuccessTestType) {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup_for_withdraw(token_program_id).await;
+    ) = setup_for_withdraw(token_program_id, 0).await;
 
     // Save stake pool state before withdrawal
     let stake_pool_before = get_account(
@@ -268,7 +268,7 @@ async fn fail_with_wrong_stake_program() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     let wrong_stake_program = Pubkey::new_unique();
@@ -328,7 +328,7 @@ async fn fail_with_wrong_withdraw_authority() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     stake_pool_accounts.withdraw_authority = Keypair::new().pubkey();
@@ -370,7 +370,7 @@ async fn fail_with_wrong_token_program_id() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     let wrong_token_program = Keypair::new();
@@ -421,7 +421,7 @@ async fn fail_with_wrong_validator_list() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     stake_pool_accounts.validator_list = Keypair::new();
@@ -465,7 +465,7 @@ async fn fail_with_unknown_validator() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let unknown_stake = create_unknown_validator_stake(
         &mut context.banks_client,
@@ -512,7 +512,7 @@ async fn fail_double_withdraw_to_the_same_account() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -578,7 +578,7 @@ async fn fail_without_token_approval() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     revoke_tokens(
         &mut context.banks_client,
@@ -630,7 +630,7 @@ async fn fail_with_not_enough_tokens() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup_for_withdraw(spl_token::id()).await;
+    ) = setup_for_withdraw(spl_token::id(), 0).await;
 
     let last_blockhash = context
         .banks_client
@@ -773,7 +773,7 @@ async fn success_with_slippage(token_program_id: Pubkey) {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_withdraw,
-    ) = setup_for_withdraw(token_program_id).await;
+    ) = setup_for_withdraw(token_program_id, 0).await;
 
     // Save user token balance
     let user_token_balance_before = get_token_balance(
