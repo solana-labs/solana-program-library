@@ -1,5 +1,6 @@
 //! Offchain helper for fetching required accounts to build instructions
 
+pub use spl_tlv_account_resolution::state::{AccountDataResult, AccountFetchError};
 use {
     crate::{get_extra_account_metas_address, instruction::ExecuteInstruction},
     solana_program::{
@@ -10,12 +11,6 @@ use {
     spl_tlv_account_resolution::state::ExtraAccountMetaList,
     std::future::Future,
 };
-
-/// Type representing the output of an account fetching function, for easy
-/// chaining between APIs
-pub type AccountDataResult = Result<Option<Vec<u8>>, AccountFetchError>;
-/// Generic error type that can come out of any client while fetching account data
-pub type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
 
 /// Offchain helper to get all additional required account metas for a mint
 ///
@@ -42,7 +37,7 @@ pub type AccountFetchError = Box<dyn std::error::Error + Send + Sync>;
 /// ```
 pub async fn resolve_extra_account_metas<F, Fut>(
     instruction: &mut Instruction,
-    get_account_data_fn: F,
+    fetch_account_data_fn: F,
     mint: &Pubkey,
     permissioned_transfer_program_id: &Pubkey,
 ) -> Result<(), AccountFetchError>
@@ -52,13 +47,15 @@ where
 {
     let validation_address =
         get_extra_account_metas_address(mint, permissioned_transfer_program_id);
-    let validation_account_data = get_account_data_fn(validation_address)
+    let validation_account_data = fetch_account_data_fn(validation_address)
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
-    ExtraAccountMetaList::add_to_instruction::<ExecuteInstruction>(
+    ExtraAccountMetaList::add_to_instruction::<ExecuteInstruction, _, _>(
         instruction,
+        fetch_account_data_fn,
         &validation_account_data,
-    )?;
+    )
+    .await?;
     // The onchain helpers pull out the required accounts from an opaque
     // slice by pubkey, so the order doesn't matter here!
     instruction.accounts.push(AccountMeta::new_readonly(

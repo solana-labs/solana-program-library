@@ -51,4 +51,13 @@ pub enum AccountResolutionError {
     /// Error in checked math operation
     #[error("Error in checked math operation")]
     CalculationFailure,
+    /// Could not find account data at specified index
+    #[error("Could not find account data at specified index")]
+    AccountDataNotFound,
+    /// Account data too small for requested seed configuration
+    #[error("Account data too small for requested seed configuration")]
+    AccountDataTooSmall,
+    /// Failed to fetch account
+    #[error("Failed to fetch account")]
+    AccountFetchFailed,
 }

@@ -59,9 +59,21 @@ let mut buffer = vec![0; account_size];
 ExtraAccountMetaList::init::<MyInstruction>(&mut buffer, &extra_metas).unwrap();
 
 // Off-chain, you can add the additional accounts directly from the account data
+// You need to provide the resolver a way to fetch account data off-chain
+let client = RpcClient::new_mock("succeeds".to_string());
 let program_id = Pubkey::new_unique();
 let mut instruction = Instruction::new_with_bytes(program_id, &[0, 1, 2], vec![]);
-ExtraAccountMetaList::add_to_instruction::<MyInstruction>(&mut instruction, &buffer).unwrap();
+ExtraAccountMetaList::add_to_instruction::<_, _, MyInstruction>(
+    &mut instruction,
+    |address: &Pubkey| {
+        client
+            .get_account(address)
+            .map_ok(|acct| Some(acct.data))
+        },
+    &buffer,
+)
+.await
+.unwrap();
 
 // On-chain, you can add the additional accounts *and* account infos
 let mut cpi_instruction = Instruction::new_with_bytes(program_id, &[0, 1, 2], vec![]);

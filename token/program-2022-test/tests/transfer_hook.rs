@@ -706,10 +706,13 @@ async fn success_transfers_using_onchain_helper() {
     offchain::resolve_extra_transfer_account_metas(
         &mut instruction,
         |address| {
-            token_a
-                .get_account(address)
-                .map_ok(|acc| Some(acc.data))
-                .map_err(offchain::AccountFetchError::from)
+            token_a.get_account(address).map_ok_or_else(
+                |e| match e {
+                    TokenClientError::AccountNotFound => Ok(None),
+                    _ => Err(offchain::AccountFetchError::from(e)),
+                },
+                |acc| Ok(Some(acc.data)),
+            )
         },
         &mint_a,
     )
@@ -718,10 +721,13 @@ async fn success_transfers_using_onchain_helper() {
     offchain::resolve_extra_transfer_account_metas(
         &mut instruction,
         |address| {
-            token_a
-                .get_account(address)
-                .map_ok(|acc| Some(acc.data))
-                .map_err(offchain::AccountFetchError::from)
+            token_a.get_account(address).map_ok_or_else(
+                |e| match e {
+                    TokenClientError::AccountNotFound => Ok(None),
+                    _ => Err(offchain::AccountFetchError::from(e)),
+                },
+                |acc| Ok(Some(acc.data)),
+            )
         },
         &mint_b,
     )
