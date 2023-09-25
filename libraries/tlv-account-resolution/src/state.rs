@@ -11,7 +11,7 @@ use {
     spl_discriminator::SplDiscriminate,
     spl_pod::slice::{PodSlice, PodSliceMut},
     spl_type_length_value::state::{TlvState, TlvStateBorrowed, TlvStateMut},
-    std::{cell::Ref, future::Future},
+    std::future::Future,
 };
 
 /// Type representing the output of an account fetching function, for easy
@@ -227,14 +227,14 @@ impl ExtraAccountMetaList {
             let meta = {
                 // Create a list of `Ref`s so we can reference account data in the
                 // resolution step
-                let account_key_data_refs: Vec<_> = account_infos
+                let account_key_data_refs = account_infos
                     .iter()
                     .map(|info| {
                         let key = *info.key;
                         let data = info.try_borrow_data()?;
                         Ok((key, data))
                     })
-                    .collect::<Result<Vec<(Pubkey, Ref<&mut [u8]>)>, ProgramError>>()?;
+                    .collect::<Result<Vec<_>, ProgramError>>()?;
 
                 config.resolve(instruction_data, program_id, |usize| {
                     account_key_data_refs
@@ -318,14 +318,14 @@ impl ExtraAccountMetaList {
             let mut meta = {
                 // Create a list of `Ref`s so we can reference account data in the
                 // resolution step
-                let account_key_data_refs: Vec<_> = cpi_account_infos
+                let account_key_data_refs = cpi_account_infos
                     .iter()
                     .map(|info| {
                         let key = *info.key;
                         let data = info.try_borrow_data()?;
                         Ok((key, data))
                     })
-                    .collect::<Result<Vec<(Pubkey, Ref<&mut [u8]>)>, ProgramError>>()?;
+                    .collect::<Result<Vec<_>, ProgramError>>()?;
 
                 extra_meta.resolve(
                     &cpi_instruction.data,
