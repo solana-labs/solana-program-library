@@ -4400,6 +4400,8 @@ fn app<'a, 'b>(
                             Defaults to the client keypair address."
                         )
                 )
+                .nonce_args(true)
+                .offline_args(),
         )
 }
 
