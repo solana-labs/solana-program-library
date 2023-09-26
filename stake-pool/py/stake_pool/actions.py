@@ -569,17 +569,18 @@ async def decrease_validator_stake(
 
     txn = Transaction()
     txn.add(
-        sp.decrease_validator_stake(
-            sp.DecreaseValidatorStakeParams(
+        sp.decrease_validator_stake_with_reserve(
+            sp.DecreaseValidatorStakeWithReserveParams(
                 program_id=STAKE_POOL_PROGRAM_ID,
                 stake_pool=stake_pool_address,
                 staker=staker.public_key,
                 withdraw_authority=withdraw_authority,
                 validator_list=stake_pool.validator_list,
+                reserve_stake=stake_pool.reserve_stake,
                 validator_stake=validator_stake,
                 transient_stake=transient_stake,
                 clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                rent_sysvar=SYSVAR_RENT_PUBKEY,
+                stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
                 system_program_id=sys.SYS_PROGRAM_ID,
                 stake_program_id=STAKE_PROGRAM_ID,
                 lamports=lamports,

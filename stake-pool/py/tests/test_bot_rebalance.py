@@ -54,10 +54,10 @@ async def test_rebalance_this_is_very_slow(async_client, validators, payer, stak
     max_in_reserve = total_lamports - minimum_amount * len(validators)
     await rebalance(ENDPOINT, stake_pool_address, payer, max_in_reserve / LAMPORTS_PER_SOL)
 
-    # should still only have minimum left + rent exemptions from increase
+    # should still only have minimum left
     resp = await async_client.get_account_info(stake_pool.reserve_stake, commitment=Confirmed)
     reserve_lamports = resp['result']['value']['lamports']
-    assert reserve_lamports == stake_rent_exemption * (1 + len(validator_list.validators)) + MINIMUM_RESERVE_LAMPORTS
+    assert reserve_lamports == stake_rent_exemption + MINIMUM_RESERVE_LAMPORTS
 
     # should all be decreasing now
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
@@ -65,7 +65,7 @@ async def test_rebalance_this_is_very_slow(async_client, validators, payer, stak
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
         assert validator.active_stake_lamports == minimum_amount
-        assert validator.transient_stake_lamports == max_in_reserve / len(validators) - stake_rent_exemption
+        assert validator.transient_stake_lamports == max_in_reserve / len(validators)
 
     # Test case 3: Do nothing
     print('Waiting for next epoch')

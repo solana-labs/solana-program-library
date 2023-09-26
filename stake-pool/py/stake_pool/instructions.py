@@ -173,6 +173,42 @@ class DecreaseValidatorStakeParams(NamedTuple):
     """Seed to used to create the transient stake account."""
 
 
+class DecreaseValidatorStakeWithReserveParams(NamedTuple):
+    """(Staker only) Decrease active stake on a validator, eventually moving it to the reserve"""
+
+    # Accounts
+    program_id: PublicKey
+    """SPL Stake Pool program account."""
+    stake_pool: PublicKey
+    """`[]` Stake pool."""
+    staker: PublicKey
+    """`[s]` Staker."""
+    withdraw_authority: PublicKey
+    """`[]` Stake pool withdraw authority."""
+    validator_list: PublicKey
+    """`[w]` Validator stake list storage account."""
+    reserve_stake: PublicKey
+    """`[w]` Stake pool's reserve."""
+    validator_stake: PublicKey
+    """`[w]` Canonical stake to split from."""
+    transient_stake: PublicKey
+    """`[w]` Transient stake account to receive split."""
+    clock_sysvar: PublicKey
+    """`[]` Clock sysvar."""
+    stake_history_sysvar: PublicKey
+    """'[]' Stake history sysvar."""
+    system_program_id: PublicKey
+    """`[]` System program."""
+    stake_program_id: PublicKey
+    """`[]` Stake program."""
+
+    # Params
+    lamports: int
+    """Amount of lamports to split into the transient stake account."""
+    transient_stake_seed: int
+    """Seed to used to create the transient stake account."""
+
+
 class IncreaseValidatorStakeParams(NamedTuple):
     """(Staker only) Increase stake on a validator from the reserve account."""
 
@@ -529,6 +565,10 @@ class InstructionType(IntEnum):
     WITHDRAW_SOL = 16
     CREATE_TOKEN_METADATA = 17
     UPDATE_TOKEN_METADATA = 18
+    INCREASE_ADDITIONAL_VALIDATOR_STAKE = 19
+    DECREASE_ADDITIONAL_VALIDATOR_STAKE = 20
+    DECREASE_VALIDATOR_STAKE_WITH_RESERVE = 21
+    REDELEGATE = 22
 
 
 INITIALIZE_LAYOUT = Struct(
@@ -542,6 +582,12 @@ INITIALIZE_LAYOUT = Struct(
 MOVE_STAKE_LAYOUT = Struct(
     "lamports" / Int64ul,
     "transient_stake_seed" / Int64ul,
+)
+
+MOVE_STAKE_LAYOUT_WITH_EPHEMERAL_STAKE = Struct(
+    "lamports" / Int64ul,
+    "transient_stake_seed" / Int64ul,
+    "ephemeral_stake_seed" / Int64ul,
 )
 
 UPDATE_VALIDATOR_LIST_BALANCE_LAYOUT = Struct(
@@ -588,6 +634,9 @@ INSTRUCTIONS_LAYOUT = Struct(
             InstructionType.WITHDRAW_SOL: AMOUNT_LAYOUT,
             InstructionType.CREATE_TOKEN_METADATA: TOKEN_METADATA_LAYOUT,
             InstructionType.UPDATE_TOKEN_METADATA: TOKEN_METADATA_LAYOUT,
+            InstructionType.DECREASE_ADDITIONAL_VALIDATOR_STAKE: MOVE_STAKE_LAYOUT_WITH_EPHEMERAL_STAKE,
+            InstructionType.INCREASE_ADDITIONAL_VALIDATOR_STAKE: MOVE_STAKE_LAYOUT_WITH_EPHEMERAL_STAKE,
+            InstructionType.DECREASE_VALIDATOR_STAKE_WITH_RESERVE: MOVE_STAKE_LAYOUT,
         },
     ),
 )
@@ -979,6 +1028,35 @@ def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> Transactio
         data=INSTRUCTIONS_LAYOUT.build(
             dict(
                 instruction_type=InstructionType.DECREASE_VALIDATOR_STAKE,
+                args={
+                    'lamports': params.lamports,
+                    'transient_stake_seed': params.transient_stake_seed
+                }
+            )
+        )
+    )
+
+
+def decrease_validator_stake_with_reserve(params: DecreaseValidatorStakeWithReserveParams) -> TransactionInstruction:
+    """Creates instruction to decrease the stake on a validator."""
+    return TransactionInstruction(
+        keys=[
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.transient_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_history_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.system_program_id, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
+        ],
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.DECREASE_VALIDATOR_STAKE_WITH_RESERVE,
                 args={
                     'lamports': params.lamports,
                     'transient_stake_seed': params.transient_stake_seed
