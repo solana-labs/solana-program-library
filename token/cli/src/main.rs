@@ -2813,7 +2813,7 @@ async fn command_update_confidential_transfer_settings(
             ),
         );
     } else {
-        println_display(config, format!("  auditability set to disabled",))
+        println_display(config, format!("  auditability disabled",))
     }
 
     let token = token_client_from_config(config, &token_pubkey, None)?;
@@ -4366,7 +4366,7 @@ fn app<'a, 'b>(
                         .index(2)
                         .possible_values(&["auto", "manual"])
                         .help(
-                            "Enable accounts to make confidential transfers. If \"auto\" \
+                            "Policy for enabling accounts to make confidential transfers. If \"auto\" \
                             is selected, then accounts are automatically approved to make \
                             confidential transfers. If \"manual\" is selected, then the \
                             confidential transfer mint authority must approve each account \
@@ -7834,7 +7834,7 @@ mod tests {
             &config,
             token_pubkey,
             confidential_transfer_mint_authority,
-            false,                // auto approve
+            new_auto_approve,
             Some(auditor_pubkey), // auditor pubkey
             bulk_signers.clone(),
         )
