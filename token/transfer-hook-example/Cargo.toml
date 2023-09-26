@@ -1,6 +1,6 @@
 [package]
 name = "spl-transfer-hook-example"
-version = "0.2.0"
+version = "0.3.0"
 description = "Solana Program Library Transfer Hook Example Program"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -14,9 +14,9 @@ test-sbf = []
 [dependencies]
 arrayref = "0.3.7"
 solana-program = "1.16.13"
-spl-tlv-account-resolution = { version = "0.3" , path = "../../libraries/tlv-account-resolution" }
-spl-token-2022 = { version = "0.8",  path = "../program-2022", features = ["no-entrypoint"] }
-spl-transfer-hook-interface = { version = "0.2" , path = "../transfer-hook-interface" }
+spl-tlv-account-resolution = { version = "0.4" , path = "../../libraries/tlv-account-resolution" }
+spl-token-2022 = { version = "0.9",  path = "../program-2022", features = ["no-entrypoint"] }
+spl-transfer-hook-interface = { version = "0.3" , path = "../transfer-hook-interface" }
 spl-type-length-value = { version = "0.3" , path = "../../libraries/type-length-value" }
 
 [dev-dependencies]

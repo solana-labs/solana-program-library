@@ -1,6 +1,6 @@
 [package]
 name = "spl-transfer-hook-interface"
-version = "0.2.0"
+version = "0.3.0"
 description = "Solana Program Library Transfer Hook Interface"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -13,7 +13,7 @@ bytemuck = { version = "1.14.0", features = ["derive"] }
 solana-program = "1.16.13"
 spl-discriminator = { version = "0.1" , path = "../../libraries/discriminator" }
 spl-program-error = { version = "0.3" , path = "../../libraries/program-error" }
-spl-tlv-account-resolution = { version = "0.3" , path = "../../libraries/tlv-account-resolution" }
+spl-tlv-account-resolution = { version = "0.4" , path = "../../libraries/tlv-account-resolution" }
 spl-type-length-value = { version = "0.3" , path = "../../libraries/type-length-value" }
 spl-pod = { version = "0.1", path = "../../libraries/pod" }
 
