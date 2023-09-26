@@ -297,6 +297,7 @@ pub(crate) struct CliMint {
     pub(crate) epoch: u64,
     #[serde(flatten)]
     pub(crate) mint: UiMint,
+    // NOTE: this should be removed in the next solana upgrade
     pub(crate) ui_confidential_transfer_extension: Option<UiConfidentialTransferExtension>,
 }
 
@@ -751,12 +752,18 @@ fn flattened<S: Serializer>(
     flattened.serialize(serializer)
 }
 
+// Ui struct for confidential transfer extensions
+//
+// NOTE: this should be removed in the next Solana upgrade
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) enum UiConfidentialTransferExtension {
     ConfidentialTransferMint(UiConfidentialTransferMint),
     // TODO: add `ConfidentialTransferAccount`
 }
 
+// Ui struct for confidential transfer mint
+//
+// NOTE: this should be removed in the next Solana upgrade
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct UiConfidentialTransferMint {
     pub authority: Option<String>,
@@ -764,6 +771,9 @@ pub(crate) struct UiConfidentialTransferMint {
     pub auditor_encryption_pubkey: Option<String>,
 }
 
+// Checks whether a token 2022 state with extension contains the confidential transfer extension
+//
+// NOTE: this should be removed in the next Solana upgrade
 pub(crate) fn has_confidential_transfer(data: &[u8]) -> Option<UiConfidentialTransferExtension> {
     if let Ok(mint) = StateWithExtensions::<Mint>::unpack(data) {
         if let Ok(confidential_transfer_mint) = mint.get_extension::<ConfidentialTransferMint>() {

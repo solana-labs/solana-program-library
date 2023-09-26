@@ -1,3 +1,7 @@
+//! Temporary ElGamal keypair argument parser.
+//!
+//! NOTE: this module should be remoeved in the next Solana upgrade.
+
 use {
     base64::{prelude::BASE64_STANDARD, Engine},
     clap::ArgMatches,

@@ -76,6 +76,7 @@ use sort::{sort_and_parse_token_accounts, AccountFilter};
 mod bench;
 use bench::*;
 
+// NOTE: this submodule should be removed in the next Solana upgrade
 mod encryption_keypair;
 use encryption_keypair::*;
 
@@ -7826,6 +7827,8 @@ mod tests {
         let auditor_keypair = ElGamalKeypair::new_rand();
         let auditor_pubkey: ElGamalPubkey = (*auditor_keypair.pubkey()).into();
         let new_auto_approve = false;
+
+        println!("{}", auditor_keypair.pubkey());
 
         command_update_confidential_transfer_settings(
             &config,
