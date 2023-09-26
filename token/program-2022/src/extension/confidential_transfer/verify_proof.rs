@@ -268,6 +268,7 @@ pub fn verify_transfer_proof(
 
 /// Verify zero-knowledge proof needed for a [Transfer] instruction with fee and return the
 /// corresponding proof context.
+#[cfg(feature = "zk-ops")]
 pub fn verify_transfer_with_fee_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
