@@ -728,7 +728,7 @@ fn display_ui_extension(
                             {
                                 auditor_pubkey
                             } else {
-                                "audits are not enabled"
+                                "audits are disabled"
                             }
                         )
                     }
