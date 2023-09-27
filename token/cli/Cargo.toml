@@ -12,6 +12,7 @@ version = "3.1.1"
 walkdir = "2"
 
 [dependencies]
+base64 = "0.21.4"
 clap = "2.33.3"
 console = "0.15.7"
 serde = "1.0.188"
@@ -26,12 +27,20 @@ solana-logger = "=1.16.13"
 solana-remote-wallet = "=1.16.13"
 solana-sdk = "=1.16.13"
 solana-transaction-status = "=1.16.13"
-spl-token = { version = "4.0", path="../program", features = [ "no-entrypoint" ] }
-spl-token-2022 = { version = "0.9", path="../program-2022", features = [ "no-entrypoint" ] }
-spl-token-client = { version = "0.7", path="../client" }
-spl-token-metadata-interface = { version = "0.2", path="../../token-metadata/interface" }
-spl-associated-token-account = { version = "2.0", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
-spl-memo = { version = "4.0.0", path="../../memo/program", features = ["no-entrypoint"] }
+spl-token = { version = "4.0", path = "../program", features = [
+  "no-entrypoint",
+] }
+spl-token-2022 = { version = "0.9", path = "../program-2022", features = [
+  "no-entrypoint",
+] }
+spl-token-client = { version = "0.7", path = "../client" }
+spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
+spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [
+  "no-entrypoint",
+] }
+spl-memo = { version = "4.0.0", path = "../../memo/program", features = [
+  "no-entrypoint",
+] }
 strum = "0.25"
 strum_macros = "0.25"
 tokio = "1.14"

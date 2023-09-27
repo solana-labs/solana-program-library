@@ -9,6 +9,15 @@ use solana_account_decoder::{
     },
 };
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
+use spl_token_2022::{
+    extension::{
+        confidential_transfer::ConfidentialTransferMint, BaseStateWithExtensions,
+        StateWithExtensions,
+    },
+    solana_program::pubkey::Pubkey,
+    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
+    state::Mint,
+};
 use std::fmt::{self, Display};
 
 pub(crate) trait Output: Serialize + fmt::Display + QuietDisplay + VerboseDisplay {}
@@ -250,7 +259,7 @@ impl fmt::Display for CliTokenAccount {
         if !self.account.extensions.is_empty() {
             writeln!(f, "{}", style("Extensions:").bold())?;
             for extension in &self.account.extensions {
-                display_ui_extension(f, 0, extension)?;
+                display_ui_extension(f, 0, extension, None)?;
             }
         }
 
@@ -288,6 +297,8 @@ pub(crate) struct CliMint {
     pub(crate) epoch: u64,
     #[serde(flatten)]
     pub(crate) mint: UiMint,
+    // NOTE: this should be removed in the next solana upgrade
+    pub(crate) ui_confidential_transfer_extension: Option<UiConfidentialTransferExtension>,
 }
 
 impl QuietDisplay for CliMint {}
@@ -319,7 +330,12 @@ impl fmt::Display for CliMint {
         if !self.mint.extensions.is_empty() {
             writeln!(f, "{}", style("Extensions").bold())?;
             for extension in &self.mint.extensions {
-                display_ui_extension(f, self.epoch, extension)?;
+                display_ui_extension(
+                    f,
+                    self.epoch,
+                    extension,
+                    self.ui_confidential_transfer_extension.as_ref(),
+                )?;
             }
         }
 
@@ -547,6 +563,7 @@ fn display_ui_extension(
     f: &mut fmt::Formatter,
     epoch: u64,
     ui_extension: &UiExtension,
+    ui_confidential_transfer_extension: Option<&UiConfidentialTransferExtension>,
 ) -> fmt::Result {
     match ui_extension {
         UiExtension::TransferFeeConfig(UiTransferFeeConfig {
@@ -683,21 +700,47 @@ fn display_ui_extension(
         }
         // ExtensionType::Uninitialized is a hack to ensure a mint/account is never the same length as a multisig
         UiExtension::Uninitialized => Ok(()),
-        UiExtension::ConfidentialTransferMint(_) => writeln_name_value(
-            f,
-            "    Unparseable extension:",
-            "ConfidentialTransferMint is not presently supported",
-        ),
         UiExtension::ConfidentialTransferAccount(_) => writeln_name_value(
             f,
-            "    Unparseable extension:",
+            "  Confidential transfer:",
             "ConfidentialTransferAccount is not presently supported",
         ),
-        _ => writeln_name_value(
-            f,
-            "    Unparseable extension:",
-            "Consider upgrading to a newer version of spl-token",
-        ),
+        _ => {
+            if let Some(ui_confidential_transfer_extension) = ui_confidential_transfer_extension {
+                match ui_confidential_transfer_extension {
+                    UiConfidentialTransferExtension::ConfidentialTransferMint(ui_mint) => {
+                        writeln!(f, "  {}", style("Confidential transfer:").bold())?;
+                        writeln!(
+                            f,
+                            "    {}: {}",
+                            style("Account approve policy").bold(),
+                            if ui_mint.auto_approve_new_accounts {
+                                "auto"
+                            } else {
+                                "manual"
+                            },
+                        )?;
+                        writeln!(
+                            f,
+                            "    {}: {}",
+                            style("Audit key:").bold(),
+                            if let Some(auditor_pubkey) = ui_mint.auditor_encryption_pubkey.as_ref()
+                            {
+                                auditor_pubkey
+                            } else {
+                                "audits are disabled"
+                            }
+                        )
+                    }
+                }
+            } else {
+                writeln_name_value(
+                    f,
+                    "  Unparseable extension:",
+                    "Consider upgrading to a newer version of spl-token",
+                )
+            }
+        }
     }
 }
 
@@ -707,4 +750,47 @@ fn flattened<S: Serializer>(
 ) -> Result<S::Ok, S::Error> {
     let flattened: Vec<_> = vec.iter().flatten().collect();
     flattened.serialize(serializer)
+}
+
+// Ui struct for confidential transfer extensions
+//
+// NOTE: this should be removed in the next Solana upgrade
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub(crate) enum UiConfidentialTransferExtension {
+    ConfidentialTransferMint(UiConfidentialTransferMint),
+    // TODO: add `ConfidentialTransferAccount`
+}
+
+// Ui struct for confidential transfer mint
+//
+// NOTE: this should be removed in the next Solana upgrade
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub(crate) struct UiConfidentialTransferMint {
+    pub authority: Option<String>,
+    pub auto_approve_new_accounts: bool,
+    pub auditor_encryption_pubkey: Option<String>,
+}
+
+// Checks whether a token 2022 state with extension contains the confidential transfer extension
+//
+// NOTE: this should be removed in the next Solana upgrade
+pub(crate) fn has_confidential_transfer(data: &[u8]) -> Option<UiConfidentialTransferExtension> {
+    if let Ok(mint) = StateWithExtensions::<Mint>::unpack(data) {
+        if let Ok(confidential_transfer_mint) = mint.get_extension::<ConfidentialTransferMint>() {
+            let authority: Option<Pubkey> = confidential_transfer_mint.authority.into();
+            let auditor_encryption_pubkey: Option<ElGamalPubkey> =
+                confidential_transfer_mint.auditor_elgamal_pubkey.into();
+            return Some(UiConfidentialTransferExtension::ConfidentialTransferMint(
+                UiConfidentialTransferMint {
+                    authority: authority.map(|pubkey| pubkey.to_string()),
+                    auto_approve_new_accounts: confidential_transfer_mint
+                        .auto_approve_new_accounts
+                        .into(),
+                    auditor_encryption_pubkey: auditor_encryption_pubkey
+                        .map(|pubkey| pubkey.to_string()),
+                },
+            ));
+        }
+    }
+    None
 }
