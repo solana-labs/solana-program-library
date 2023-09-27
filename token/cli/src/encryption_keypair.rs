@@ -13,15 +13,31 @@ use {
 
 const ELGAMAL_PUBKEY_MAX_BASE64_LEN: usize = 44;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ElGamalPubkeyOrNone {
+    ElGamalPubkey(PodElGamalPubkey),
+    None,
+}
+
+impl Into<Option<PodElGamalPubkey>> for ElGamalPubkeyOrNone {
+    fn into(self) -> Option<PodElGamalPubkey> {
+        match self {
+            ElGamalPubkeyOrNone::ElGamalPubkey(pubkey) => Some(pubkey),
+            ElGamalPubkeyOrNone::None => None,
+        }
+    }
+}
+
 pub(crate) fn elgamal_pubkey_or_none(
     matches: &ArgMatches,
     name: &str,
-) -> Result<Option<PodElGamalPubkey>, String> {
+) -> Result<ElGamalPubkeyOrNone, String> {
     let arg_str = matches.value_of(name).unwrap();
     if arg_str == "none" {
-        return Ok(None);
+        return Ok(ElGamalPubkeyOrNone::None);
     }
-    elgamal_pubkey_of(matches, name).map(Some)
+    let elgamal_pubkey = elgamal_pubkey_of(matches, name)?;
+    Ok(ElGamalPubkeyOrNone::ElGamalPubkey(elgamal_pubkey))
 }
 
 pub(crate) fn elgamal_pubkey_of(

@@ -1,7 +1,7 @@
 #![allow(clippy::integer_arithmetic)]
 use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
-    ArgMatches, SubCommand,
+    ArgGroup, ArgMatches, SubCommand,
 };
 use serde::Serialize;
 use solana_account_decoder::{
@@ -2752,11 +2752,11 @@ async fn command_update_confidential_transfer_settings(
     config: &Config<'_>,
     token_pubkey: Pubkey,
     authority: Pubkey,
-    auto_approve: bool,
-    auditor_pubkey: Option<ElGamalPubkey>,
+    auto_approve: Option<bool>,
+    auditor_pubkey: Option<ElGamalPubkeyOrNone>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    if !config.sign_only {
+    let (new_auto_approve, new_auditor_pubkey) = if !config.sign_only {
         let confidential_transfer_account = config.get_account_checked(&token_pubkey).await?;
 
         let mint_state =
@@ -2779,6 +2779,20 @@ async fn command_update_confidential_transfer_settings(
                 )
                 .into());
             }
+
+            let current_auto_approve = if let Some(auto_approve) = auto_approve {
+                auto_approve
+            } else {
+                bool::from(confidential_transfer_mint.auto_approve_new_accounts)
+            };
+
+            let current_auditor_pubkey = if let Some(auditor_pubkey) = auditor_pubkey {
+                auditor_pubkey.into()
+            } else {
+                Option::<ElGamalPubkey>::from(confidential_transfer_mint.auditor_elgamal_pubkey)
+            };
+
+            (current_auto_approve, current_auditor_pubkey)
         } else {
             return Err(format!(
                 "Mint {} does not support confidential transfers",
@@ -2786,7 +2800,14 @@ async fn command_update_confidential_transfer_settings(
             )
             .into());
         }
-    }
+    } else {
+        let new_auto_approve = auto_approve.expect("The approve policy must be provided");
+        let new_auditor_pubkey = auditor_pubkey
+            .expect("The auditor encryption pubkey must be provided")
+            .into();
+
+        (new_auto_approve, new_auditor_pubkey)
+    };
 
     println_display(
         config,
@@ -2796,29 +2817,38 @@ async fn command_update_confidential_transfer_settings(
         ),
     );
 
-    println_display(
-        config,
-        format!(
-            "  approve policy set to {}",
-            if auto_approve { "auto" } else { "manual" }
-        ),
-    );
-
-    if let Some(auditor_pubkey) = auditor_pubkey {
+    if auto_approve.is_some() {
         println_display(
             config,
             format!(
-                "  auditor encryption pubkey set to {}",
-                auditor_pubkey.to_string(),
+                "  approve policy set to {}",
+                if new_auto_approve { "auto" } else { "manual" }
             ),
         );
-    } else {
-        println_display(config, format!("  auditability disabled",))
+    }
+
+    if auditor_pubkey.is_some() {
+        if let Some(new_auditor_pubkey) = new_auditor_pubkey {
+            println_display(
+                config,
+                format!(
+                    "  auditor encryption pubkey set to {}",
+                    new_auditor_pubkey.to_string(),
+                ),
+            );
+        } else {
+            println_display(config, format!("  auditability disabled",))
+        }
     }
 
     let token = token_client_from_config(config, &token_pubkey, None)?;
     let res = token
-        .confidential_transfer_update_mint(&authority, auto_approve, auditor_pubkey, &bulk_signers)
+        .confidential_transfer_update_mint(
+            &authority,
+            new_auto_approve,
+            new_auditor_pubkey,
+            &bulk_signers,
+        )
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -4363,7 +4393,6 @@ fn app<'a, 'b>(
                         .long("approve-policy")
                         .value_name("APPROVE_POLICY")
                         .takes_value(true)
-                        .index(2)
                         .possible_values(&["auto", "manual"])
                         .help(
                             "Policy for enabling accounts to make confidential transfers. If \"auto\" \
@@ -4378,7 +4407,6 @@ fn app<'a, 'b>(
                         .long("auditor-pubkey")
                         .value_name("AUDITOR_PUBKEY")
                         .takes_value(true)
-                        .index(3)
                         .help(
                             "The auditor encryption public key. The corresponding private key for \
                             this auditor public key can be used to decrypt all confidential \
@@ -4388,6 +4416,10 @@ fn app<'a, 'b>(
                             key will be supported in a future version. To disable auditability \
                             feature for the token, use \"none\"."
                         )
+                )
+                .group(
+                    ArgGroup::with_name("update_fields").args(&["approve_policy", "auditor_pubkey"])
+                        .required(true)
                 )
                 .arg(
                     Arg::with_name("confidential_transfer_authority")
@@ -5218,12 +5250,13 @@ async fn process_command<'a>(
                 .unwrap()
                 .unwrap();
 
-            let auto_approve = arg_matches
-                .value_of("approve_policy")
-                .map(|b| b == "auto")
-                .unwrap();
-            let auditor_encryption_pubkey =
-                elgamal_pubkey_or_none(arg_matches, "auditor_pubkey").unwrap();
+            let auto_approve = arg_matches.value_of("approve_policy").map(|b| b == "auto");
+
+            let auditor_encryption_pubkey = if arg_matches.is_present("auditor_pubkey") {
+                Some(elgamal_pubkey_or_none(arg_matches, "auditor_pubkey")?)
+            } else {
+                None
+            };
 
             let (authority_signer, authority_pubkey) = config.signer_or_default(
                 arg_matches,
@@ -7830,14 +7863,12 @@ mod tests {
         let auditor_pubkey: ElGamalPubkey = (*auditor_keypair.pubkey()).into();
         let new_auto_approve = false;
 
-        println!("{}", auditor_keypair.pubkey());
-
         command_update_confidential_transfer_settings(
             &config,
             token_pubkey,
             confidential_transfer_mint_authority,
-            new_auto_approve,
-            Some(auditor_pubkey), // auditor pubkey
+            Some(new_auto_approve),
+            Some(ElGamalPubkeyOrNone::ElGamalPubkey(auditor_pubkey)), // auditor pubkey
             bulk_signers.clone(),
         )
         .await
