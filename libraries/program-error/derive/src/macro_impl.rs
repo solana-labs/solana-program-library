@@ -186,7 +186,7 @@ fn u32_from_hash(enum_ident: &Ident) -> u32 {
     let mut nonce: u32 = 0;
     loop {
         let mut hasher = Sha256::new_with_prefix(hash_input.as_bytes());
-        hasher.update(&nonce.to_le_bytes());
+        hasher.update(nonce.to_le_bytes());
         let d = u32::from_le_bytes(
             hasher.finalize()[13..17]
                 .try_into()
