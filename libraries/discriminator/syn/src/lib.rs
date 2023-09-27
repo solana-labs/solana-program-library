@@ -10,7 +10,7 @@ use {
     crate::{error::SplDiscriminateError, parser::parse_hash_input},
     proc_macro2::{Span, TokenStream},
     quote::{quote, ToTokens},
-    solana_program::hash,
+    sha2::{Digest, Sha256},
     syn::{parse::Parse, Generics, Ident, Item, ItemEnum, ItemStruct, LitByteStr, WhereClause},
 };
 
@@ -102,7 +102,7 @@ impl From<&SplDiscriminateBuilder> for TokenStream {
 /// Returns the bytes for the TLV hash_input discriminator
 fn get_discriminator_bytes(hash_input: &str) -> LitByteStr {
     LitByteStr::new(
-        &hash::hashv(&[hash_input.as_bytes()]).to_bytes()[..8],
+        &Sha256::digest(hash_input.as_bytes())[..8],
         Span::call_site(),
     )
 }
