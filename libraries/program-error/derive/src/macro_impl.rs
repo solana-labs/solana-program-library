@@ -4,6 +4,7 @@ use {
     crate::parser::SplProgramErrorArgs,
     proc_macro2::Span,
     quote::quote,
+    sha2::{Digest, Sha256},
     syn::{
         punctuated::Punctuated, token::Comma, Expr, ExprLit, Ident, ItemEnum, Lit, LitInt, LitStr,
         Token, Variant,
@@ -184,9 +185,10 @@ fn u32_from_hash(enum_ident: &Ident) -> u32 {
     // `SPL_ERROR_HASH_MIN_VALUE`!
     let mut nonce: u32 = 0;
     loop {
-        let hash = solana_program::hash::hashv(&[hash_input.as_bytes(), &nonce.to_le_bytes()]);
+        let mut hasher = Sha256::new_with_prefix(hash_input.as_bytes());
+        hasher.update(nonce.to_le_bytes());
         let d = u32::from_le_bytes(
-            hash.to_bytes()[13..17]
+            hasher.finalize()[13..17]
                 .try_into()
                 .expect("Unable to convert hash to u32"),
         );

@@ -6471,7 +6471,7 @@ dependencies = [
 
 [[package]]
 name = "spl-discriminator-derive"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "quote 1.0.29",
  "spl-discriminator-syn",
@@ -6480,11 +6480,11 @@ dependencies = [
 
 [[package]]
 name = "spl-discriminator-syn"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proc-macro2 1.0.63",
  "quote 1.0.29",
- "solana-program",
+ "sha2 0.10.7",
  "syn 2.0.28",
  "thiserror",
 ]
@@ -6799,7 +6799,7 @@ version = "0.3.0"
 dependencies = [
  "proc-macro2 1.0.63",
  "quote 1.0.29",
- "solana-program",
+ "sha2 0.10.7",
  "syn 2.0.28",
 ]
 
