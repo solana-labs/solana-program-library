@@ -2780,19 +2780,19 @@ async fn command_update_confidential_transfer_settings(
                 .into());
             }
 
-            let current_auto_approve = if let Some(auto_approve) = auto_approve {
+            let new_auto_approve = if let Some(auto_approve) = auto_approve {
                 auto_approve
             } else {
                 bool::from(confidential_transfer_mint.auto_approve_new_accounts)
             };
 
-            let current_auditor_pubkey = if let Some(auditor_pubkey) = auditor_pubkey {
+            let new_auditor_pubkey = if let Some(auditor_pubkey) = auditor_pubkey {
                 auditor_pubkey.into()
             } else {
                 Option::<ElGamalPubkey>::from(confidential_transfer_mint.auditor_elgamal_pubkey)
             };
 
-            (current_auto_approve, current_auditor_pubkey)
+            (new_auto_approve, new_auditor_pubkey)
         } else {
             return Err(format!(
                 "Mint {} does not support confidential transfers",
