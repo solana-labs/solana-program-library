@@ -19,9 +19,9 @@ pub(crate) enum ElGamalPubkeyOrNone {
     None,
 }
 
-impl Into<Option<PodElGamalPubkey>> for ElGamalPubkeyOrNone {
-    fn into(self) -> Option<PodElGamalPubkey> {
-        match self {
+impl From<ElGamalPubkeyOrNone> for Option<PodElGamalPubkey> {
+    fn from(val: ElGamalPubkeyOrNone) -> Self {
+        match val {
             ElGamalPubkeyOrNone::ElGamalPubkey(pubkey) => Some(pubkey),
             ElGamalPubkeyOrNone::None => None,
         }
