@@ -11,8 +11,7 @@ export type Field = 'name' | 'symbol' | 'uri' | string;
 
 export interface TokenMetadata {
     // The authority that can sign to update the metadata
-    // TODO:- updateAuthority is an optional public key, so typically in Rust we'd represent it with Option<Pubkey>, but we're using OptionalNonZeroPubkey, which just means for None it's going to be a 32-length array of 0.
-    updateAuthority: PublicKey;
+    updateAuthority?: PublicKey;
     // The associated mint, used to counter spoofing to be sure that metadata belongs to a particular mint
     mint: PublicKey;
     // The longer name of the token
