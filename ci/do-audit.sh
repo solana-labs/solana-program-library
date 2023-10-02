@@ -25,5 +25,10 @@ cargo_audit_ignores=(
   #
   # No fixed upgrade is available! Only fix is switching to rustls-webpki
   --ignore RUSTSEC-2023-0052
+
+  # tungstenite
+  #
+  # Remove once SPL upgrades to Solana v1.17 or greater
+  --ignore RUSTSEC-2023-0065
 )
 cargo +"$rust_stable" audit "${cargo_audit_ignores[@]}"
