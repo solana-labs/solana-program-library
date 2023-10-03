@@ -402,6 +402,8 @@ async fn confidential_transfer_enable_disable_confidential_credits() {
         .unwrap();
     assert!(bool::from(&extension.allow_confidential_credits));
 
+    // Refresh the blockhash since we're doing the same thing twice in a row
+    token.get_new_latest_blockhash().await.unwrap();
     token
         .confidential_transfer_deposit(
             &alice_meta.token_account,
