@@ -97,7 +97,7 @@ When token accounts are required, it defaults to the default keypair's associate
 All of these roles can be overrided by command-line flags.
 
   </TabItem>
-  <TabItem value="jsx" label="WEB3.JS CLASSIC">
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
 
 #### pnpm
 ```console
@@ -124,7 +124,7 @@ const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 You can either get your keypair using [`Keypair`](https://solana-labs.github.io/solana-web3.js/classes/Keypair.html) from `@solana/web3.js`, or let the user's wallet handle the keypair and use `sendTransaction` from [`wallet-adapter`](https://github.com/solana-labs/wallet-adapter)
 
   </TabItem>
-  <TabItem value="jsx" label="WEB3.JS NEXT">
+  <TabItem value="jsn" label="WEB3.JS NEXT">
 #### pnpm
 ```console
 pnpm install XXX TODO
@@ -171,7 +171,7 @@ spl-single-pool initialize Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS CLASSIC">
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
 ```typescript
 const voteAccountAddress = new PublicKey('Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC');
 const transaction = await SinglePoolProgram.initialize(
@@ -184,7 +184,7 @@ const transaction = await SinglePoolProgram.initialize(
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS NEXT">
+  <TabItem value="jsn" label="WEB3.JS NEXT">
 ```typescript
 const voteAccountAddress = 'Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC' as VoteAccountAddress;
 const transaction = await SinglePoolProgram.initialize(
@@ -210,7 +210,7 @@ spl-single-pool create-token-metadata --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU83
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS CLASSIC">
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
 ```typescript
 const transaction = await SinglePoolProgram.createTokenMetadata(poolAddress, feePayerAddress);
 
@@ -218,7 +218,7 @@ const transaction = await SinglePoolProgram.createTokenMetadata(poolAddress, fee
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS NEXT">
+  <TabItem value="jsn" label="WEB3.JS NEXT">
 ```typescript
 const transaction = await SinglePoolProgram.createTokenMetadata(poolAddress, feePayerAddress);
 
@@ -239,7 +239,7 @@ spl-single-pool update-token-metadata DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS CLASSIC">
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
 ```typescript
 const transaction = await SinglePoolProgram.updateTokenMetadata(
   voteAccountAddress,
@@ -252,7 +252,7 @@ const transaction = await SinglePoolProgram.updateTokenMetadata(
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS NEXT">
+  <TabItem value="jsn" label="WEB3.JS NEXT">
 ```typescript
 const transaction = await SinglePoolProgram.updateTokenMetadata(
   voteAccountAddress,
@@ -281,15 +281,13 @@ Assuming the stake account `9cc4cmLcZA89fYmcVPPTLmHPQ5gab3R6jMqj124abkSi` is in 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 ```console
-```console
 spl-single-pool deposit 9cc4cmLcZA89fYmcVPPTLmHPQ5gab3R6jMqj124abkSi
 ```
 
 When an explicit stake account address is provided, the CLI can determine the pool address automatically.
-```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS CLASSIC">
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
 ```typescript
 const transaction = await SinglePoolProgram.deposit({
   connection,
@@ -303,7 +301,7 @@ const transaction = await SinglePoolProgram.deposit({
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS NEXT">
+  <TabItem value="jsn" label="WEB3.JS NEXT">
 ```typescript
 const transaction = await SinglePoolProgram.deposit({
   rpc,
@@ -337,7 +335,7 @@ spl-single-pool deposit --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb --de
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS CLASSIC">
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
 ```typescript
 const minimumDelegation = (await connection.getStakeMinimumDelegation()).value;
 const transaction = await SinglePoolProgram.createAndDelegateUserStake(
@@ -364,7 +362,7 @@ const transaction = await SinglePoolProgram.deposit({
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS NEXT">
+  <TabItem value="jsn" label="WEB3.JS NEXT">
 const minimumDelegation = (await rpc.getStakeMinimumDelegation().send()).value;
 const transaction = await SinglePoolProgram.createAndDelegateUserStake(
   rpc,
@@ -407,7 +405,7 @@ spl-single-pool withdraw --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb 100
 The `--deactivate` flag may also be passed, as a convenience to start the undelegation process.
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS CLASSIC">
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
 ```typescript
 const withdrawAccount = new Keypair();
 const transaction = await SinglePoolProgram.withdraw({
@@ -423,7 +421,7 @@ const transaction = await SinglePoolProgram.withdraw({
 ```
   </TabItem>
 
-  <TabItem value="jsx" label="WEB3.JS NEXT">
+  <TabItem value="jsn" label="WEB3.JS NEXT">
 ```typescript
 const { publicKey, privateKey } = await generateKeyPair();
 const transaction = await SinglePoolProgram.withdraw({
