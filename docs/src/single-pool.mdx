@@ -125,6 +125,7 @@ You can either get your keypair using [`Keypair`](https://solana-labs.github.io/
 
   </TabItem>
   <TabItem value="jsn" label="WEB3.JS NEXT">
+
 #### pnpm
 ```console
 pnpm install XXX TODO
@@ -166,12 +167,15 @@ Assuming a vote account `Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC` exists, w
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
+
 ```console
 spl-single-pool initialize Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC
 ```
+
   </TabItem>
 
   <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
 ```typescript
 const voteAccountAddress = new PublicKey('Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC');
 const transaction = await SinglePoolProgram.initialize(
@@ -182,9 +186,11 @@ const transaction = await SinglePoolProgram.initialize(
 
 // sign with the fee payer
 ```
+
   </TabItem>
 
   <TabItem value="jsn" label="WEB3.JS NEXT">
+
 ```typescript
 const voteAccountAddress = 'Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC' as VoteAccountAddress;
 const transaction = await SinglePoolProgram.initialize(
@@ -195,6 +201,7 @@ const transaction = await SinglePoolProgram.initialize(
 
 // sign with the fee payer
 ```
+
   </TabItem>
 </Tabs>
 
@@ -205,25 +212,31 @@ If, for whatever reason, this was opted out of by the pool creator, anyone may c
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
+
 ```console
 spl-single-pool create-token-metadata --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb
 ```
+
   </TabItem>
 
   <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
 ```typescript
 const transaction = await SinglePoolProgram.createTokenMetadata(poolAddress, feePayerAddress);
 
 // sign with the fee payer
 ```
+
   </TabItem>
 
   <TabItem value="jsn" label="WEB3.JS NEXT">
+
 ```typescript
 const transaction = await SinglePoolProgram.createTokenMetadata(poolAddress, feePayerAddress);
 
 // sign with the fee payer
 ```
+
   </TabItem>
 </Tabs>
 
@@ -234,12 +247,15 @@ this is the only permissioned instruction on the pool.
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
+
 ```console
 spl-single-pool update-token-metadata DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb "My Cool Pool" cPool
 ```
+
   </TabItem>
 
   <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
 ```typescript
 const transaction = await SinglePoolProgram.updateTokenMetadata(
   voteAccountAddress,
@@ -250,9 +266,11 @@ const transaction = await SinglePoolProgram.updateTokenMetadata(
 
 // sign with the fee payer and authorizedWithdrawer
 ```
+
   </TabItem>
 
   <TabItem value="jsn" label="WEB3.JS NEXT">
+
 ```typescript
 const transaction = await SinglePoolProgram.updateTokenMetadata(
   voteAccountAddress,
@@ -263,6 +281,7 @@ const transaction = await SinglePoolProgram.updateTokenMetadata(
 
 // sign with the fee payer and authorized withdrawer
 ```
+
   </TabItem>
 </Tabs>
 
@@ -280,14 +299,17 @@ Assuming the stake account `9cc4cmLcZA89fYmcVPPTLmHPQ5gab3R6jMqj124abkSi` is in 
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
+
 ```console
 spl-single-pool deposit 9cc4cmLcZA89fYmcVPPTLmHPQ5gab3R6jMqj124abkSi
 ```
 
 When an explicit stake account address is provided, the CLI can determine the pool address automatically.
+
   </TabItem>
 
   <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
 ```typescript
 const transaction = await SinglePoolProgram.deposit({
   connection,
@@ -299,9 +321,11 @@ const transaction = await SinglePoolProgram.deposit({
 // sign with the fee payer and stake account withdraw authority, if these signers differ
 // userWallet is a convenience parameter to use one account as a payer, authority, and lamport recipient
 ```
+
   </TabItem>
 
   <TabItem value="jsn" label="WEB3.JS NEXT">
+
 ```typescript
 const transaction = await SinglePoolProgram.deposit({
   rpc,
@@ -313,6 +337,7 @@ const transaction = await SinglePoolProgram.deposit({
 // sign with the fee payer and stake account withdraw authority, if these signers differ
 // userWallet is a convenience parameter to use one account as a payer, authority, and lamport recipient
 ```
+
   </TabItem>
 </Tabs>
 
@@ -324,6 +349,7 @@ The user retains full authority on the stake account until they decide to deposi
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
+
 ```console
 spl-single-pool create-default-stake --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb 1000000000
 ```
@@ -333,9 +359,11 @@ spl-single-pool create-default-stake --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837
 ```console
 spl-single-pool deposit --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb --default-stake-account
 ```
+
   </TabItem>
 
   <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
 ```typescript
 const minimumDelegation = (await connection.getStakeMinimumDelegation()).value;
 const transaction = await SinglePoolProgram.createAndDelegateUserStake(
@@ -360,9 +388,12 @@ const transaction = await SinglePoolProgram.deposit({
 
 // sign with user wallet
 ```
+
   </TabItem>
 
   <TabItem value="jsn" label="WEB3.JS NEXT">
+
+```typescript
 const minimumDelegation = (await rpc.getStakeMinimumDelegation().send()).value;
 const transaction = await SinglePoolProgram.createAndDelegateUserStake(
   rpc,
@@ -386,6 +417,7 @@ const transaction = await SinglePoolProgram.deposit({
 
 // sign with user wallet, which is used as the fee payer and as the base address for a seeded account
 ```
+
   </TabItem>
 </Tabs>
 
@@ -398,14 +430,17 @@ This means the user does not have to provide a wallet signature to the single po
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
+
 ```console
 spl-single-pool withdraw --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb 1000000000
 ```
 
 The `--deactivate` flag may also be passed, as a convenience to start the undelegation process.
+
   </TabItem>
 
   <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
 ```typescript
 const withdrawAccount = new Keypair();
 const transaction = await SinglePoolProgram.withdraw({
@@ -419,9 +454,11 @@ const transaction = await SinglePoolProgram.withdraw({
 
 // sign with fee payer, and the stake account keypair if a new account is being created
 ```
+
   </TabItem>
 
   <TabItem value="jsn" label="WEB3.JS NEXT">
+
 ```typescript
 const { publicKey, privateKey } = await generateKeyPair();
 const transaction = await SinglePoolProgram.withdraw({
@@ -435,5 +472,6 @@ const transaction = await SinglePoolProgram.withdraw({
 
 // sign with fee payer, and the stake account keypair if a new account is being created
 ```
+
   </TabItem>
 </Tabs>
