@@ -10,6 +10,9 @@ use {
     spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool},
 };
 
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
+
 /// Instructions for the TransferHook extension
 pub mod instruction;
 /// Instruction processor for the TransferHook extension
@@ -17,6 +20,7 @@ pub mod processor;
 
 /// Transfer hook extension data for mints.
 #[repr(C)]
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct TransferHook {
     /// Authority that can set the transfer hook program id
@@ -26,6 +30,7 @@ pub struct TransferHook {
 }
 
 /// Indicates that the tokens from this account belong to a mint with a transfer hook
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct TransferHookAccount {

@@ -11,6 +11,9 @@ use {
     spl_pod::primitives::PodBool,
 };
 
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
+
 /// Memo Transfer extension instructions
 pub mod instruction;
 
@@ -19,6 +22,7 @@ pub mod processor;
 
 /// Memo Transfer extension for Accounts
 #[repr(C)]
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct MemoTransfer {
     /// Require transfers into this account to be accompanied by a memo
