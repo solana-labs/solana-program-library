@@ -16,6 +16,14 @@ export type DepthSizePair = {
 const allPairs: number[][] = [
     [3, 8],
     [5, 8],
+    [6, 16],
+    [7, 16],
+    [8, 16],
+    [9, 16],
+    [10, 32],
+    [11, 32],
+    [12, 32],
+    [13, 32],
     [14, 64],
     [14, 256],
     [14, 1024],
@@ -55,6 +63,14 @@ export const ALL_DEPTH_SIZE_PAIRS: ValidDepthSizePair[] = allPairs.map(pair => {
 export type ValidDepthSizePair =
     | { maxDepth: 3; maxBufferSize: 8 }
     | { maxDepth: 5; maxBufferSize: 8 }
+    | { maxDepth: 6; maxBufferSize: 16 }
+    | { maxDepth: 7; maxBufferSize: 16 }
+    | { maxDepth: 8; maxBufferSize: 16 }
+    | { maxDepth: 9; maxBufferSize: 16 }
+    | { maxDepth: 10; maxBufferSize: 32 }
+    | { maxDepth: 11; maxBufferSize: 32 }
+    | { maxDepth: 12; maxBufferSize: 32 }
+    | { maxDepth: 13; maxBufferSize: 32 }
     | { maxDepth: 14; maxBufferSize: 64 }
     | { maxDepth: 14; maxBufferSize: 256 }
     | { maxDepth: 14; maxBufferSize: 1024 }
