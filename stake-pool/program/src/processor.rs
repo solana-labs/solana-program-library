@@ -1193,16 +1193,16 @@ impl Processor {
                     ) =>
                 {
                     if stake.delegation.deactivation_epoch == Epoch::MAX {
-                        msg!(
-                            "Transient stake {} activating, can't remove stake {} on validator {}",
-                            transient_stake_account_info.key,
-                            stake_account_info.key,
-                            vote_account_address
-                        );
-                        return Err(StakePoolError::WrongStakeState.into());
-                    } else {
-                        StakeStatus::DeactivatingAll
+                        Self::stake_deactivate(
+                            transient_stake_account_info.clone(),
+                            clock_info.clone(),
+                            withdraw_authority_info.clone(),
+                            stake_pool_info.key,
+                            AUTHORITY_WITHDRAW,
+                            stake_pool.stake_withdraw_bump_seed,
+                        )?;
                     }
+                    StakeStatus::DeactivatingAll
                 }
                 _ => StakeStatus::DeactivatingValidator,
             }
@@ -1210,15 +1210,18 @@ impl Processor {
             StakeStatus::DeactivatingValidator
         };
 
-        // deactivate stake
-        Self::stake_deactivate(
-            stake_account_info.clone(),
-            clock_info.clone(),
-            withdraw_authority_info.clone(),
-            stake_pool_info.key,
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-        )?;
+        // If the stake was force-deactivated through deactivate-delinquent or
+        // some other means, we *do not* need to deactivate it again
+        if stake.delegation.deactivation_epoch == Epoch::MAX {
+            Self::stake_deactivate(
+                stake_account_info.clone(),
+                clock_info.clone(),
+                withdraw_authority_info.clone(),
+                stake_pool_info.key,
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+            )?;
+        }
 
         validator_stake_info.status = new_status.into();
 

@@ -2384,13 +2384,15 @@ pub async fn get_validator_list_sum(
     validator_sum + reserve_stake.lamports - rent - MINIMUM_RESERVE_LAMPORTS
 }
 
-pub fn add_vote_account(program_test: &mut ProgramTest) -> Pubkey {
+pub fn add_vote_account_with_pubkey(
+    voter_pubkey: &Pubkey,
+    program_test: &mut ProgramTest,
+) -> Pubkey {
     let authorized_voter = Pubkey::new_unique();
     let authorized_withdrawer = Pubkey::new_unique();
     let commission = 1;
 
     // create vote account
-    let vote_pubkey = Pubkey::new_unique();
     let node_pubkey = Pubkey::new_unique();
     let vote_state = VoteStateVersions::new_current(VoteState::new(
         &VoteInit {
@@ -2408,8 +2410,13 @@ pub fn add_vote_account(program_test: &mut ProgramTest) -> Pubkey {
         false,
         Epoch::default(),
     );
-    program_test.add_account(vote_pubkey, vote_account);
-    vote_pubkey
+    program_test.add_account(*voter_pubkey, vote_account);
+    *voter_pubkey
+}
+
+pub fn add_vote_account(program_test: &mut ProgramTest) -> Pubkey {
+    let voter_pubkey = Pubkey::new_unique();
+    add_vote_account_with_pubkey(&voter_pubkey, program_test)
 }
 
 #[allow(clippy::too_many_arguments)]

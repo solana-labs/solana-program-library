@@ -777,7 +777,7 @@ pub fn remove_validator_from_pool(
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
-        AccountMeta::new_readonly(*transient_stake_account, false),
+        AccountMeta::new(*transient_stake_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
     ];

@@ -4,6 +4,7 @@
 mod helpers;
 
 use {
+    bincode::deserialize,
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
@@ -389,7 +390,7 @@ async fn fail_no_signature() {
 }
 
 #[tokio::test]
-async fn fail_with_activating_transient_stake() {
+async fn success_with_activating_transient_stake() {
     let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     // increase the validator stake
@@ -415,19 +416,20 @@ async fn fail_with_activating_transient_stake() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
         )
-        .await
-        .unwrap()
-        .unwrap();
-    match error {
-        TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        ) => {
-            let program_error = StakePoolError::WrongStakeState as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs while removing validator stake account while transient stake is activating"),
-    }
+        .await;
+    assert!(error.is_none(), "{:?}", error);
+
+    // transient stake should be inactive now
+    let stake = get_account(
+        &mut context.banks_client,
+        &validator_stake.transient_stake_account,
+    )
+    .await;
+    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
+    assert_ne!(
+        stake_state.stake().unwrap().delegation.deactivation_epoch,
+        u64::MAX
+    );
 }
 
 #[tokio::test]

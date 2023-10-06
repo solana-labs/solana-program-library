@@ -749,7 +749,7 @@ def remove_validator_from_pool(params: RemoveValidatorFromPoolParams) -> Transac
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=True),
-            AccountMeta(pubkey=params.transient_stake, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.transient_stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
         ],
