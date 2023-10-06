@@ -101,15 +101,15 @@ All of these roles can be overrided by command-line flags.
 
 #### pnpm
 ```console
-pnpm install XXX TODO
+$ pnpm install XXX TODO
 ```
 #### Yarn
 ```console
-yarn add XXX TODO
+$ yarn add XXX TODO
 ```
 #### npm
 ```console
-npm install XXX TODO
+$ npm install XXX TODO
 ```
 
 ### Configuration
@@ -128,15 +128,15 @@ You can either get your keypair using [`Keypair`](https://solana-labs.github.io/
 
 #### pnpm
 ```console
-pnpm install XXX TODO
+$ pnpm install XXX TODO
 ```
 #### Yarn
 ```console
-yarn add XXX TODO
+$ yarn add XXX TODO
 ```
 #### npm
 ```console
-npm install XXX TODO
+$ npm install XXX TODO
 ```
 
 ### Configuration
@@ -169,7 +169,7 @@ Assuming a vote account `Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC` exists, w
   <TabItem value="cli" label="CLI" default>
 
 ```console
-spl-single-pool initialize Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC
+$ spl-single-pool initialize Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC
 ```
 
   </TabItem>
@@ -214,7 +214,7 @@ If, for whatever reason, this was opted out of by the pool creator, anyone may c
   <TabItem value="cli" label="CLI" default>
 
 ```console
-spl-single-pool create-token-metadata --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb
+$ spl-single-pool create-token-metadata --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb
 ```
 
   </TabItem>
@@ -240,7 +240,7 @@ const transaction = await SinglePoolProgram.createTokenMetadata(poolAddress, fee
   </TabItem>
 </Tabs>
 
-The default token metadata is only minimally helpful, spotlighting the address of the pool.
+The default token metadata is only minimally helpful, spotlighting the address of the validator vote account.
 The owner of the vote account, however, can change the metadata to anything they wish.
 They prove their identity by signing with the vote account's authorized withdrawer;
 this is the only permissioned instruction on the pool.
@@ -249,7 +249,7 @@ this is the only permissioned instruction on the pool.
   <TabItem value="cli" label="CLI" default>
 
 ```console
-spl-single-pool update-token-metadata DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb "My Cool Pool" cPool
+$ spl-single-pool update-token-metadata DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb "My Cool Pool" cPool "https://www.cool.pool/token.jpg"
 ```
 
   </TabItem>
@@ -262,6 +262,7 @@ const transaction = await SinglePoolProgram.updateTokenMetadata(
   authorizedWithdrawerAddress,
   'My Cool Pool',
   'cPool',
+  'https://www.cool.pool/token.jpg',
 );
 
 // sign with the fee payer and authorized withdrawer
@@ -277,6 +278,7 @@ const transaction = await SinglePoolProgram.updateTokenMetadata(
   authorizedWithdrawerAddress,
   'My Cool Pool',
   'cPool',
+  'https://www.cool.pool/token.jpg',
 );
 
 // sign with the fee payer and authorized withdrawer
@@ -285,7 +287,7 @@ const transaction = await SinglePoolProgram.updateTokenMetadata(
   </TabItem>
 </Tabs>
 
-A URL may also be included as an optional parameter.
+The URL parameter is optional.
 
 ### Using a single-validator pool
 
@@ -301,7 +303,7 @@ Assuming the stake account `9cc4cmLcZA89fYmcVPPTLmHPQ5gab3R6jMqj124abkSi` is in 
   <TabItem value="cli" label="CLI" default>
 
 ```console
-spl-single-pool deposit 9cc4cmLcZA89fYmcVPPTLmHPQ5gab3R6jMqj124abkSi
+$ spl-single-pool deposit 9cc4cmLcZA89fYmcVPPTLmHPQ5gab3R6jMqj124abkSi
 ```
 
 When an explicit stake account address is provided, the CLI can determine the pool address automatically.
@@ -351,13 +353,13 @@ The user retains full authority on the stake account until they decide to deposi
   <TabItem value="cli" label="CLI" default>
 
 ```console
-spl-single-pool create-default-stake --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb 1000000000
+$ spl-single-pool create-default-stake --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb 1000000000
 ```
 
-(some time passes)
+Once the stake becomes active, typically in the next epoch:
 
 ```console
-spl-single-pool deposit --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb --default-stake-account
+$ spl-single-pool deposit --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb --default-stake-account
 ```
 
   </TabItem>
@@ -365,18 +367,17 @@ spl-single-pool deposit --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb --de
   <TabItem value="jsc" label="WEB3.JS CLASSIC">
 
 ```typescript
-const minimumDelegation = (await connection.getStakeMinimumDelegation()).value;
 const transaction = await SinglePoolProgram.createAndDelegateUserStake(
   connection,
   voteAccountAddress,
   userWallet,
-  minimumDelegation,
+  1000000000,
 );
 
 // sign with user wallet
 ```
 
-(some time passes)
+Once the stake becomes active, typically in the next epoch:
 
 ```typescript
 const transaction = await SinglePoolProgram.deposit({
@@ -394,18 +395,17 @@ const transaction = await SinglePoolProgram.deposit({
   <TabItem value="jsn" label="WEB3.JS NEXT">
 
 ```typescript
-const minimumDelegation = (await rpc.getStakeMinimumDelegation().send()).value;
 const transaction = await SinglePoolProgram.createAndDelegateUserStake(
   rpc,
   voteAccountAddress,
   userWallet,
-  minimumDelegation,
+  1000000000n,
 );
 
 // sign with user wallet, which is used as the fee payer and as the base address for a seeded account
 ```
 
-(some time passes)
+Once the stake becomes active, typically in the next epoch:
 
 ```typescript
 const transaction = await SinglePoolProgram.deposit({
@@ -432,7 +432,7 @@ This means the user does not have to provide a wallet signature to the single po
   <TabItem value="cli" label="CLI" default>
 
 ```console
-spl-single-pool withdraw --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb 1000000000
+$ spl-single-pool withdraw --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb 1000000000
 ```
 
 The `--deactivate` flag may also be passed, as a convenience to start the undelegation process.
@@ -448,7 +448,7 @@ const transaction = await SinglePoolProgram.withdraw({
   pool: poolAddress,
   userWallet,
   userStakeAccount: withdrawAccount.publicKey,
-  tokenAmount: minimumDelegation,
+  tokenAmount: 1000000000,
   createStakeAccount: true,
 });
 
@@ -466,7 +466,7 @@ const transaction = await SinglePoolProgram.withdraw({
   pool: poolAddress,
   userWallet,
   userStakeAccount: publicKey,
-  tokenAmount: minimumDelegation,
+  tokenAmount: 1000000000n,
   createStakeAccount: true,
 });
 
