@@ -24,11 +24,11 @@ test = []
 [dependencies]
 borsh = "0.10"
 shank = "^0.2.1"
-solana-program = "1.16.13"
+solana-program = "1.16.16"
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [ "no-entrypoint", ] }
 spl-token = { version = "4.0", path = "../../token/program", features = ["no-entrypoint"] }
 thiserror = "^1.0.49"
 
 [dev-dependencies]
-solana-program-test = "1.16.13"
-solana-sdk = "1.16.13"
+solana-program-test = "1.16.16"
+solana-sdk = "1.16.16"
