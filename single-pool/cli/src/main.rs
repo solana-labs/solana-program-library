@@ -60,16 +60,22 @@ pub type CommandResult = Result<String, Error>;
 impl Command {
     pub async fn execute(self, config: &Config) -> CommandResult {
         match self {
-            Command::Initialize(command_config) => command_initialize(config, command_config).await,
-            Command::Reactivate(command_config) => command_reactivate(config, command_config).await,
+            Command::Manage(command) => match command.manage {
+                ManageCommand::Initialize(command_config) => {
+                    command_initialize(config, command_config).await
+                }
+                ManageCommand::Reactivate(command_config) => {
+                    command_reactivate(config, command_config).await
+                }
+                ManageCommand::CreateTokenMetadata(command_config) => {
+                    command_create_metadata(config, command_config).await
+                }
+                ManageCommand::UpdateTokenMetadata(command_config) => {
+                    command_update_metadata(config, command_config).await
+                }
+            },
             Command::Deposit(command_config) => command_deposit(config, command_config).await,
             Command::Withdraw(command_config) => command_withdraw(config, command_config).await,
-            Command::CreateTokenMetadata(command_config) => {
-                command_create_metadata(config, command_config).await
-            }
-            Command::UpdateTokenMetadata(command_config) => {
-                command_update_metadata(config, command_config).await
-            }
             Command::CreateDefaultStake(command_config) => {
                 command_create_stake(config, command_config).await
             }

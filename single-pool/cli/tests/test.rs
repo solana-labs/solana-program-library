@@ -39,6 +39,7 @@ pub struct Env {
     pub rpc_client: Arc<RpcClient>,
     pub program_client: PClient,
     pub payer: Keypair,
+    pub keypair_file_path: String,
     pub config_file_path: String,
     pub vote_account: Pubkey,
 
@@ -79,6 +80,7 @@ async fn setup(initialize: bool) -> Env {
     if initialize {
         let status = Command::new(SVSP_CLI)
             .args([
+                "manage",
                 "initialize",
                 "-C",
                 config_file_path,
@@ -93,6 +95,7 @@ async fn setup(initialize: bool) -> Env {
         rpc_client,
         program_client,
         payer,
+        keypair_file_path: keypair_file.path().to_str().unwrap().to_string(),
         config_file_path: config_file_path.to_string(),
         vote_account,
         validator,
@@ -257,6 +260,7 @@ async fn reactivate() {
     // so we just make sure the cli can send a well-formed instruction
     let output = Command::new(SVSP_CLI)
         .args([
+            "manage",
             "reactivate",
             "-C",
             &env.config_file_path,
@@ -360,6 +364,7 @@ async fn create_metadata() {
 
     let status = Command::new(SVSP_CLI)
         .args([
+            "manage",
             "initialize",
             "-C",
             &env.config_file_path,
@@ -372,6 +377,7 @@ async fn create_metadata() {
 
     let status = Command::new(SVSP_CLI)
         .args([
+            "manage",
             "create-token-metadata",
             "-C",
             &env.config_file_path,
@@ -390,6 +396,7 @@ async fn update_metadata() {
 
     let status = Command::new(SVSP_CLI)
         .args([
+            "manage",
             "update-token-metadata",
             "-C",
             &env.config_file_path,
@@ -397,6 +404,24 @@ async fn update_metadata() {
             &env.vote_account.to_string(),
             "whatever",
             "idk",
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    // testing this flag because the match is rather torturous
+    let status = Command::new(SVSP_CLI)
+        .args([
+            "manage",
+            "update-token-metadata",
+            "-C",
+            &env.config_file_path,
+            "--vote-account",
+            &env.vote_account.to_string(),
+            "--authorized-withdrawer",
+            &env.keypair_file_path,
+            "something",
+            "new",
         ])
         .status()
         .unwrap();
