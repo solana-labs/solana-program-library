@@ -61,6 +61,7 @@ impl Command {
     pub async fn execute(self, config: &Config) -> CommandResult {
         match self {
             Command::Initialize(command_config) => command_initialize(config, command_config).await,
+            Command::Reactivate(command_config) => command_reactivate(config, command_config).await,
             Command::Deposit(command_config) => command_deposit(config, command_config).await,
             Command::Withdraw(command_config) => command_withdraw(config, command_config).await,
             Command::CreateTokenMetadata(command_config) => {
@@ -154,6 +155,61 @@ async fn command_initialize(config: &Config, command_config: InitializeCli) -> C
             token_supply: 0,
             signature,
         },
+    ))
+}
+
+// reactivate stake account
+async fn command_reactivate(config: &Config, command_config: ReactivateCli) -> CommandResult {
+    let payer = config.fee_payer()?;
+    let pool_address = pool_address_from_args(
+        command_config.pool_address,
+        command_config.vote_account_address,
+    );
+
+    println_display(
+        config,
+        format!("Reactivating stake account for pool {}\n", pool_address),
+    );
+
+    let vote_account_address =
+        if let Some(pool_data) = config.program_client.get_account(pool_address).await? {
+            try_from_slice_unchecked::<SinglePool>(&pool_data.data)?.vote_account_address
+        } else {
+            return Err(format!("Pool {} has not been initialized", pool_address).into());
+        };
+
+    // the only reason this check is skippable is for testing, otherwise theres no reason
+    if !command_config.yolo {
+        let current_epoch = config.rpc_client.get_epoch_info().await?.epoch;
+        let pool_stake_address = find_pool_stake_address(&single_pool::id(), &pool_address);
+        let pool_stake_deactivated = quarantine::get_stake_info(config, &pool_stake_address)
+            .await?
+            .unwrap()
+            .1
+            .delegation
+            .deactivation_epoch
+            < current_epoch;
+
+        if !pool_stake_deactivated {
+            return Err("Pool stake account is not deactivated".into());
+        }
+    }
+
+    let instruction =
+        single_pool::instruction::reactivate_pool(&single_pool::id(), &vote_account_address);
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&payer.pubkey()),
+        &vec![payer],
+        config.program_client.get_latest_blockhash().await?,
+    );
+
+    let signature = process_transaction(config, transaction).await?;
+
+    Ok(format_output(
+        config,
+        "Reactivate".to_string(),
+        SignatureOutput { signature },
     ))
 }
 
@@ -572,7 +628,7 @@ async fn command_update_metadata(
             .into());
         }
     } else {
-        // we know the pool exists so the vote accound must exist
+        // we know the pool exists so the vote account must exist
         unreachable!();
     }
 

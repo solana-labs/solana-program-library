@@ -76,6 +76,11 @@ pub enum Command {
     /// along with the cluster-configured minimum stake delegation
     Initialize(InitializeCli),
 
+    /// Permissionlessly re-stake the pool stake account in the case when it has been deactivated.
+    /// This may happen if the validator is force-deactivated, and then later reactivated using
+    /// the same address for its vote account.
+    Reactivate(ReactivateCli),
+
     /// Deposit delegated stake into a pool in exchange for pool tokens, closing out
     /// the original stake account. Provide either a stake account address, or a
     /// pool or vote account address along with the --default-stake-account flag to
@@ -112,6 +117,22 @@ pub struct InitializeCli {
     /// Do not create MPL metadata for the pool mint
     #[clap(long)]
     pub skip_metadata: bool,
+}
+
+#[derive(Clone, Debug, Args)]
+#[clap(group(pool_source_group()))]
+pub struct ReactivateCli {
+    /// The pool to reactivate
+    #[clap(short, long = "pool", value_parser = |p: &str| parse_address(p, "pool_address"))]
+    pub pool_address: Option<Pubkey>,
+
+    /// The vote account corresponding to the pool to reactivate
+    #[clap(long = "vote-account", value_parser = |p: &str| parse_address(p, "vote_account_address"))]
+    pub vote_account_address: Option<Pubkey>,
+
+    // backdoor for testing, theres no reason to ever use this
+    #[clap(long, hide = true)]
+    pub yolo: bool,
 }
 
 #[derive(Clone, Debug, Args)]
