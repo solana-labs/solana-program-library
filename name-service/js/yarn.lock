@@ -275,9 +275,9 @@
     buffer "~6.0.3"
 
 "@solana/web3.js@^1.11.0":
-  version "1.78.6"
-  resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.78.6.tgz#461104dc26abb9ac07f01c4768273378fdf70d5b"
-  integrity sha512-x/zeWz+F5e+ng5MUc7PQkK4alIk/Xd41Ek3CK1E/0uJeFHysk03fhHuNo4SeiT7U/DIejf86p4S3/N9EW+8h0g==
+  version "1.87.1"
+  resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.87.1.tgz#da376cebbc4cc97ece0cb028d799163ea147f299"
+  integrity sha512-E8Y9bNlZ8TQlhOvCx1b7jG+TjA4SJLVwufmIk1+tcQctUhK5HiB1Q8ljd4yQDkFlk6OOeAlAeqvW0YntWJU94Q==
   dependencies:
     "@babel/runtime" "^7.22.6"
     "@noble/curves" "^1.2.0"
@@ -362,9 +362,11 @@
   integrity sha512-NaHL0+0lLNhX6d9rs+NSt97WH/gIlRHmszXbQ/8/MV/eVcFNdeJ/GYhrFuUc8K7WuPhRhTSdMkCp8VMzhUq85w==
 
 "@types/node@*", "@types/node@^20.0.0":
-  version "20.8.2"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.8.2.tgz#d76fb80d87d0d8abfe334fc6d292e83e5524efc4"
-  integrity sha512-Vvycsc9FQdwhxE3y3DzeIxuEJbWGDsnrxvMADzTDF/lcdR9/K+AQIeAghTQsHtotg/q0j3WEOYS/jQgSdWue3w==
+  version "20.8.4"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.8.4.tgz#0e9ebb2ff29d5c3302fc84477d066fa7c6b441aa"
+  integrity sha512-ZVPnqU58giiCjSxjVUESDtdPk4QR5WQhhINbc9UBrKLU68MX5BF6kbQzTrkwbolyr0X8ChBpXfavr5mZFKZQ5A==
+  dependencies:
+    undici-types "~5.25.1"
 
 "@types/node@^12.12.54":
   version "12.20.55"
@@ -2954,9 +2956,9 @@ typed-array-length@^1.0.4:
     is-typed-array "^1.1.9"
 
 typedoc@^0.25.0:
-  version "0.25.1"
-  resolved "https://registry.yarnpkg.com/typedoc/-/typedoc-0.25.1.tgz#50de2d8fb93623fbfb59e2fa6407ff40e3d3f438"
-  integrity sha512-c2ye3YUtGIadxN2O6YwPEXgrZcvhlZ6HlhWZ8jQRNzwLPn2ylhdGqdR8HbyDRyALP8J6lmSANILCkkIdNPFxqA==
+  version "0.25.2"
+  resolved "https://registry.yarnpkg.com/typedoc/-/typedoc-0.25.2.tgz#39f525c28b6eb61da54dda4ec6b1500df620bed8"
+  integrity sha512-286F7BeATBiWe/qC4PCOCKlSTwfnsLbC/4cZ68oGBbvAqb9vV33quEOXx7q176OXotD+JdEerdQ1OZGJ818lnA==
   dependencies:
     lunr "^2.3.9"
     marked "^4.3.0"
@@ -2977,6 +2979,11 @@ unbox-primitive@^1.0.2:
     has-bigints "^1.0.2"
     has-symbols "^1.0.3"
     which-boxed-primitive "^1.0.2"
+
+undici-types@~5.25.1:
+  version "5.25.3"
+  resolved "https://registry.yarnpkg.com/undici-types/-/undici-types-5.25.3.tgz#e044115914c85f0bcbb229f346ab739f064998c3"
+  integrity sha512-Ga1jfYwRn7+cP9v8auvEXN1rX3sWqlayd4HP7OKk4mZWylEmu3KzXDUGrQUN6Ol7qo1gPvB2e5gX6udnyEPgdA==
 
 uri-js@^4.2.2:
   version "4.4.1"
