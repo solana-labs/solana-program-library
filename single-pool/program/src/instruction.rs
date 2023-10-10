@@ -43,6 +43,19 @@ pub enum SinglePoolInstruction {
     ///  12. `[]` Stake program
     InitializePool,
 
+    ///   Restake the pool stake account if its validator is force-deactivated and later
+    ///   recreated with the same vote account.
+    ///
+    ///   0. `[]` Validator vote account
+    ///   1. `[]` Pool account
+    ///   2. `[w]` Pool stake account
+    ///   3. `[]` Pool stake authority
+    ///   4. `[]` Clock sysvar
+    ///   5. `[]` Stake history sysvar
+    ///   6. `[]` Stake config sysvar
+    ///   7. `[]` Stake program
+    ReactivatePool,
+
     ///   Deposit stake into the pool.  The output is a "pool" token representing fractional
     ///   ownership of the pool stake. Inputs are converted to the current ratio.
     ///
@@ -167,6 +180,33 @@ pub fn initialize_pool(program_id: &Pubkey, vote_account_address: &Pubkey) -> In
         AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
+    ];
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    }
+}
+
+/// Creates a `ReactivatePool` instruction.
+pub fn reactivate_pool(program_id: &Pubkey, vote_account_address: &Pubkey) -> Instruction {
+    let pool_address = find_pool_address(program_id, vote_account_address);
+
+    let data = SinglePoolInstruction::ReactivatePool.try_to_vec().unwrap();
+    let accounts = vec![
+        AccountMeta::new_readonly(*vote_account_address, false),
+        AccountMeta::new_readonly(pool_address, false),
+        AccountMeta::new(find_pool_stake_address(program_id, &pool_address), false),
+        AccountMeta::new_readonly(
+            find_pool_stake_authority_address(program_id, &pool_address),
+            false,
+        ),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        #[allow(deprecated)]
+        AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
     ];
 

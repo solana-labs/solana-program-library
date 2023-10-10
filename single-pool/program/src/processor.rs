@@ -707,6 +707,64 @@ impl Processor {
         Ok(())
     }
 
+    fn process_reactivate_pool(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let vote_account_info = next_account_info(account_info_iter)?;
+        let pool_info = next_account_info(account_info_iter)?;
+        let pool_stake_info = next_account_info(account_info_iter)?;
+        let pool_stake_authority_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
+        let stake_history_info = next_account_info(account_info_iter)?;
+        let stake_config_info = next_account_info(account_info_iter)?;
+        let stake_program_info = next_account_info(account_info_iter)?;
+
+        check_vote_account(vote_account_info)?;
+        check_pool_address(program_id, vote_account_info.key, pool_info.key)?;
+
+        SinglePool::from_account_info(pool_info, program_id)?;
+
+        check_pool_stake_address(program_id, pool_info.key, pool_stake_info.key)?;
+        let stake_authority_bump_seed = check_pool_stake_authority_address(
+            program_id,
+            pool_info.key,
+            pool_stake_authority_info.key,
+        )?;
+        check_stake_program(stake_program_info.key)?;
+
+        let (_, pool_stake_state) = get_stake_state(pool_stake_info)?;
+        if pool_stake_state.delegation.deactivation_epoch >= clock.epoch {
+            return Err(SinglePoolError::WrongStakeState.into());
+        }
+
+        let stake_authority_seeds = &[
+            POOL_STAKE_AUTHORITY_PREFIX,
+            pool_info.key.as_ref(),
+            &[stake_authority_bump_seed],
+        ];
+        let stake_authority_signers = &[&stake_authority_seeds[..]];
+
+        // delegate stake so it activates
+        invoke_signed(
+            &stake::instruction::delegate_stake(
+                pool_stake_info.key,
+                pool_stake_authority_info.key,
+                vote_account_info.key,
+            ),
+            &[
+                pool_stake_info.clone(),
+                vote_account_info.clone(),
+                clock_info.clone(),
+                stake_history_info.clone(),
+                stake_config_info.clone(),
+                pool_stake_authority_info.clone(),
+            ],
+            stake_authority_signers,
+        )?;
+
+        Ok(())
+    }
+
     fn process_deposit_stake(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let pool_info = next_account_info(account_info_iter)?;
@@ -1119,6 +1177,10 @@ impl Processor {
             SinglePoolInstruction::InitializePool => {
                 msg!("Instruction: InitializePool");
                 Self::process_initialize_pool(program_id, accounts)
+            }
+            SinglePoolInstruction::ReactivatePool => {
+                msg!("Instruction: ReactivatePool");
+                Self::process_reactivate_pool(program_id, accounts)
             }
             SinglePoolInstruction::DepositStake => {
                 msg!("Instruction: DepositStake");

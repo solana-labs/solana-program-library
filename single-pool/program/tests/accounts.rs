@@ -196,6 +196,7 @@ async fn fail_account_checks(test_mode: TestMode) {
 
 // make an individual instruction for all program instructions
 // the match is just so this will error if new instructions are added
+// if you are reading this because of that error, add the case to the `consistent_account_order` test!!!
 fn make_basic_instruction(
     accounts: &SinglePoolAccounts,
     instruction_type: SinglePoolInstruction,
@@ -203,6 +204,9 @@ fn make_basic_instruction(
     match instruction_type {
         SinglePoolInstruction::InitializePool => {
             instruction::initialize_pool(&id(), &accounts.vote_account.pubkey())
+        }
+        SinglePoolInstruction::ReactivatePool => {
+            instruction::reactivate_pool(&id(), &accounts.vote_account.pubkey())
         }
         SinglePoolInstruction::DepositStake => instruction::deposit_stake(
             &id(),
@@ -258,6 +262,7 @@ fn consistent_account_order() {
 
     let instructions = vec![
         make_basic_instruction(&accounts, SinglePoolInstruction::InitializePool),
+        make_basic_instruction(&accounts, SinglePoolInstruction::ReactivatePool),
         make_basic_instruction(&accounts, SinglePoolInstruction::DepositStake),
         make_basic_instruction(
             &accounts,
