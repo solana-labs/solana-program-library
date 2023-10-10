@@ -248,6 +248,29 @@ async fn create_and_delegate_stake_account(
     stake_account.pubkey()
 }
 
+#[tokio::test]
+#[serial]
+async fn reactivate() {
+    let env = setup(true).await;
+
+    // setting up a test validator for this to succeed is hell, and success is tested in program tests
+    // so we just make sure the cli can send a well-formed instruction
+    let output = Command::new(SVSP_CLI)
+        .args([
+            "reactivate",
+            "-C",
+            &env.config_file_path,
+            "--vote-account",
+            &env.vote_account.to_string(),
+            "--yolo",
+        ])
+        .output()
+        .unwrap();
+    assert!(String::from_utf8(output.stderr)
+        .unwrap()
+        .contains("custom program error: 0xc"));
+}
+
 #[test_case(true; "default_stake")]
 #[test_case(false; "normal_stake")]
 #[tokio::test]
