@@ -57,11 +57,11 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction')]),
   },
   DepositStake: {
-    index: 1,
+    index: 2,
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction')]),
   },
   WithdrawStake: {
-    index: 2,
+    index: 3,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
       BufferLayout.seq(BufferLayout.u8(), 32, 'userStakeAuthority'),
@@ -69,7 +69,7 @@ export const SINGLE_POOL_INSTRUCTION_LAYOUTS: {
     ]),
   },
   CreateTokenMetadata: {
-    index: 3,
+    index: 4,
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction')]),
   },
 });
@@ -92,7 +92,7 @@ export function updateTokenMetadataLayout(
   }
 
   return {
-    index: 4,
+    index: 5,
     layout: BufferLayout.struct<any>([
       BufferLayout.u8('instruction'),
       BufferLayout.u32('tokenNameLen'),
