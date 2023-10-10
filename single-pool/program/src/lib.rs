@@ -15,9 +15,7 @@ pub mod entrypoint;
 pub use solana_program;
 use solana_program::{pubkey::Pubkey, stake};
 
-// XXX TODO FIXME change this
-// (XXX ask how do we as a company handle privkeys for our onchain programs?)
-solana_program::declare_id!("3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY");
+solana_program::declare_id!("SVSPxpvHdN29nkVg9rPapPNDddN5DipNLRUFhyjFThE");
 
 const POOL_PREFIX: &[u8] = b"pool";
 const POOL_STAKE_PREFIX: &[u8] = b"stake";
