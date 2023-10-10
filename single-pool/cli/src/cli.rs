@@ -71,15 +71,9 @@ pub struct Cli {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum Command {
-    /// Permissionlessly create the single-validator stake pool for a given validator vote account
-    /// if one does not already exist. The fee payer also pays rent-exemption for accounts,
-    /// along with the cluster-configured minimum stake delegation
-    Initialize(InitializeCli),
-
-    /// Permissionlessly re-stake the pool stake account in the case when it has been deactivated.
-    /// This may happen if the validator is force-deactivated, and then later reactivated using
-    /// the same address for its vote account.
-    Reactivate(ReactivateCli),
+    /// Commands used to initialize or manage existing single-validator stake pools.
+    /// Other than initializing new pools, most users should never need to use these.
+    Manage(ManageCli),
 
     /// Deposit delegated stake into a pool in exchange for pool tokens, closing out
     /// the original stake account. Provide either a stake account address, or a
@@ -92,6 +86,32 @@ pub enum Command {
     /// or the ALL keyword to burn all.
     Withdraw(WithdrawCli),
 
+    /// Create and delegate a new stake account to a given validator, using a default address
+    /// linked to the intended depository pool
+    CreateDefaultStake(CreateStakeCli),
+
+    /// Display info for one or all single single-validator stake pool(s)
+    Display(DisplayCli),
+}
+
+#[derive(Clone, Debug, Parser)]
+pub struct ManageCli {
+    #[clap(subcommand)]
+    pub manage: ManageCommand,
+}
+
+#[derive(Clone, Debug, Subcommand)]
+pub enum ManageCommand {
+    /// Permissionlessly create the single-validator stake pool for a given validator vote account
+    /// if one does not already exist. The fee payer also pays rent-exemption for accounts,
+    /// along with the cluster-configured minimum stake delegation
+    Initialize(InitializeCli),
+
+    /// Permissionlessly re-stake the pool stake account in the case when it has been deactivated.
+    /// This may happen if the validator is force-deactivated, and then later reactivated using
+    /// the same address for its vote account.
+    Reactivate(ReactivateCli),
+
     /// Permissionlessly create default MPL token metadata for the pool mint. Normally this is done
     /// automatically upon initialization, so this does not need to be called.
     CreateTokenMetadata(CreateMetadataCli),
@@ -99,13 +119,6 @@ pub enum Command {
     /// Modify the MPL token metadata associated with the pool mint. This action can only be
     /// performed by the validator vote account's withdraw authority
     UpdateTokenMetadata(UpdateMetadataCli),
-
-    /// Create and delegate a new stake account to a given validator, using a default address
-    /// linked to the intended depository pool
-    CreateDefaultStake(CreateStakeCli),
-
-    /// Display info for one or all single single-validator stake pool(s)
-    Display(DisplayCli),
 }
 
 #[derive(Clone, Debug, Args)]
@@ -408,7 +421,9 @@ impl Command {
                     "token_authority",
                 )?;
             }
-            Command::UpdateTokenMetadata(ref mut config) => {
+            Command::Manage(ManageCli {
+                manage: ManageCommand::UpdateTokenMetadata(ref mut config),
+            }) => {
                 config.authorized_withdrawer = with_signer(
                     matches,
                     wallet_manager,
