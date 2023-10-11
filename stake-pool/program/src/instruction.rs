@@ -112,7 +112,7 @@ pub enum StakePoolInstruction {
     ///   2. `[]` Stake pool withdraw authority
     ///   3. `[w]` Validator stake list storage account
     ///   4. `[w]` Stake account to remove from the pool
-    ///   5. `[]` Transient stake account, to check that that we're not trying to activate
+    ///   5. `[w]` Transient stake account, to deactivate if necessary
     ///   6. `[]` Sysvar clock
     ///   7. `[]` Stake program id,
     RemoveValidatorFromPool,
