@@ -16,4 +16,4 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-solana-program = "1.16.13"
+solana-program = "1.16.16"
