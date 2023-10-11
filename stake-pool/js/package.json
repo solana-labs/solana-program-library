@@ -72,7 +72,7 @@
     "jest": "^27.5.1",
     "prettier": "^3.0.0",
     "rimraf": "^5.0.0",
-    "rollup": "^3.0.0",
+    "rollup": "^4.0.2",
     "rollup-plugin-dts": "^6.1.0",
     "rollup-plugin-node-polyfills": "^0.2.1",
     "ts-jest": "^27.1.3",
