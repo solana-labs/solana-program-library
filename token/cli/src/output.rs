@@ -704,7 +704,7 @@ fn display_ui_extension(
             writeln_name_value(f, "    Approved:", &format!("{approved}"))?;
             writeln_name_value(f, "    Encryption key:", elgamal_pubkey)?;
             writeln_name_value(f, "    Pending Balance Low:", pending_balance_lo)?;
-            writeln_name_value(f, "    Pending Balance Hi:", pending_balance_hi)?;
+            writeln_name_value(f, "    Pending Balance High:", pending_balance_hi)?;
             writeln_name_value(f, "    Available Balance:", available_balance)?;
             writeln_name_value(
                 f,
