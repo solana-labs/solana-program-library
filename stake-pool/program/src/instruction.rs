@@ -112,7 +112,7 @@ pub enum StakePoolInstruction {
     ///   2. `[]` Stake pool withdraw authority
     ///   3. `[w]` Validator stake list storage account
     ///   4. `[w]` Stake account to remove from the pool
-    ///   5. `[]` Transient stake account, to check that that we're not trying to activate
+    ///   5. `[w]` Transient stake account, to deactivate if necessary
     ///   6. `[]` Sysvar clock
     ///   7. `[]` Stake program id,
     RemoveValidatorFromPool,
@@ -777,7 +777,7 @@ pub fn remove_validator_from_pool(
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
-        AccountMeta::new_readonly(*transient_stake_account, false),
+        AccountMeta::new(*transient_stake_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
     ];
