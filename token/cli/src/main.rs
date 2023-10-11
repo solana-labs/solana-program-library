@@ -2168,9 +2168,6 @@ async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult 
 
     let token_data = parse_token(&account_data.data, decimals);
 
-    // remove on next `solana-account-decoder` upgrade
-    let ui_confidential_transfer_extension = has_confidential_transfer(&account_data.data);
-
     match token_data {
         Ok(TokenAccountType::Account(account)) => {
             let mint_address = Pubkey::from_str(&account.mint)?;
@@ -2198,7 +2195,6 @@ async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult 
                 epoch: epoch_info.epoch,
                 program_id: config.program_id.to_string(),
                 mint,
-                ui_confidential_transfer_extension,
             };
 
             Ok(config.output_format.formatted_string(&cli_output))
