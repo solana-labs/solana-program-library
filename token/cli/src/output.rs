@@ -4,20 +4,14 @@ use serde::{Deserialize, Serialize, Serializer};
 use solana_account_decoder::{
     parse_token::{UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount},
     parse_token_extension::{
-        UiCpiGuard, UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
-        UiMintCloseAuthority, UiPermanentDelegate, UiTransferFeeAmount, UiTransferFeeConfig,
+        UiConfidentialTransferAccount, UiConfidentialTransferFeeAmount,
+        UiConfidentialTransferFeeConfig, UiConfidentialTransferMint, UiCpiGuard,
+        UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
+        UiMetadataPointer, UiMintCloseAuthority, UiPermanentDelegate, UiTokenMetadata,
+        UiTransferFeeAmount, UiTransferFeeConfig, UiTransferHook, UiTransferHookAccount,
     },
 };
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
-use spl_token_2022::{
-    extension::{
-        confidential_transfer::ConfidentialTransferMint, BaseStateWithExtensions,
-        StateWithExtensions,
-    },
-    solana_program::pubkey::Pubkey,
-    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
-    state::Mint,
-};
 use std::fmt::{self, Display};
 
 pub(crate) trait Output: Serialize + fmt::Display + QuietDisplay + VerboseDisplay {}
@@ -259,7 +253,7 @@ impl fmt::Display for CliTokenAccount {
         if !self.account.extensions.is_empty() {
             writeln!(f, "{}", style("Extensions:").bold())?;
             for extension in &self.account.extensions {
-                display_ui_extension(f, 0, extension, None)?;
+                display_ui_extension(f, 0, extension)?;
             }
         }
 
@@ -297,8 +291,6 @@ pub(crate) struct CliMint {
     pub(crate) epoch: u64,
     #[serde(flatten)]
     pub(crate) mint: UiMint,
-    // NOTE: this should be removed in the next solana upgrade
-    pub(crate) ui_confidential_transfer_extension: Option<UiConfidentialTransferExtension>,
 }
 
 impl QuietDisplay for CliMint {}
@@ -330,12 +322,7 @@ impl fmt::Display for CliMint {
         if !self.mint.extensions.is_empty() {
             writeln!(f, "{}", style("Extensions").bold())?;
             for extension in &self.mint.extensions {
-                display_ui_extension(
-                    f,
-                    self.epoch,
-                    extension,
-                    self.ui_confidential_transfer_extension.as_ref(),
-                )?;
+                display_ui_extension(f, self.epoch, extension)?;
             }
         }
 
@@ -563,7 +550,6 @@ fn display_ui_extension(
     f: &mut fmt::Formatter,
     epoch: u64,
     ui_extension: &UiExtension,
-    ui_confidential_transfer_extension: Option<&UiConfidentialTransferExtension>,
 ) -> fmt::Result {
     match ui_extension {
         UiExtension::TransferFeeConfig(UiTransferFeeConfig {
@@ -660,7 +646,9 @@ fn display_ui_extension(
                 "Not required"
             },
         ),
-        UiExtension::NonTransferable => writeln!(f, "  {}", style("Non-transferable").bold()),
+        UiExtension::NonTransferable | UiExtension::NonTransferableAccount => {
+            writeln!(f, "  {}", style("Non-transferable").bold())
+        }
         UiExtension::InterestBearingConfig(UiInterestBearingConfig {
             rate_authority,
             pre_update_average_rate,
@@ -698,49 +686,230 @@ fn display_ui_extension(
                 Ok(())
             }
         }
+        UiExtension::ConfidentialTransferAccount(UiConfidentialTransferAccount {
+            approved,
+            elgamal_pubkey,
+            pending_balance_lo,
+            pending_balance_hi,
+            available_balance,
+            decryptable_available_balance,
+            allow_confidential_credits,
+            allow_non_confidential_credits,
+            pending_balance_credit_counter,
+            maximum_pending_balance_credit_counter,
+            expected_pending_balance_credit_counter,
+            actual_pending_balance_credit_counter,
+        }) => {
+            writeln!(f, "  {}", style("Confidential transfer:").bold())?;
+            writeln_name_value(f, "    Approved:", &format!("{approved}"))?;
+            writeln_name_value(f, "    Encryption key:", elgamal_pubkey)?;
+            writeln_name_value(f, "    Pending Balance Low:", pending_balance_lo)?;
+            writeln_name_value(f, "    Pending Balance High:", pending_balance_hi)?;
+            writeln_name_value(f, "    Available Balance:", available_balance)?;
+            writeln_name_value(
+                f,
+                "    Decryptable Available Balance:",
+                decryptable_available_balance,
+            )?;
+            writeln_name_value(
+                f,
+                "    Confidential Credits:",
+                if *allow_confidential_credits {
+                    "Enabled"
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(
+                f,
+                "    Non-Confidential Credits:",
+                if *allow_non_confidential_credits {
+                    "Enabled"
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(
+                f,
+                "    Pending Balance Credit Counter:",
+                &format!("{pending_balance_credit_counter}"),
+            )?;
+            writeln_name_value(
+                f,
+                "    Maximum Pending Balance Credit Counter:",
+                &format!("{maximum_pending_balance_credit_counter}"),
+            )?;
+            writeln_name_value(
+                f,
+                "    Expected Pending Balance Credit Counter:",
+                &format!("{expected_pending_balance_credit_counter}"),
+            )?;
+            writeln_name_value(
+                f,
+                "    Actual Pending Balance Credit Counter:",
+                &format!("{actual_pending_balance_credit_counter}"),
+            )
+        }
+        UiExtension::ConfidentialTransferMint(UiConfidentialTransferMint {
+            authority,
+            auto_approve_new_accounts,
+            auditor_elgamal_pubkey,
+        }) => {
+            writeln!(f, "  {}", style("Confidential transfer:").bold())?;
+            writeln!(
+                f,
+                "    {}: {}",
+                style("Authority:").bold(),
+                if let Some(authority) = authority.as_ref() {
+                    authority
+                } else {
+                    "authority disabled"
+                }
+            )?;
+            writeln!(
+                f,
+                "    {}: {}",
+                style("Account approve policy").bold(),
+                if *auto_approve_new_accounts {
+                    "auto"
+                } else {
+                    "manual"
+                },
+            )?;
+            writeln!(
+                f,
+                "    {}: {}",
+                style("Audit key:").bold(),
+                if let Some(auditor_pubkey) = auditor_elgamal_pubkey.as_ref() {
+                    auditor_pubkey
+                } else {
+                    "audits are disabled"
+                }
+            )
+        }
+        UiExtension::ConfidentialTransferFeeConfig(UiConfidentialTransferFeeConfig {
+            authority,
+            withdraw_withheld_authority_elgamal_pubkey,
+            harvest_to_mint_enabled,
+            withheld_amount,
+        }) => {
+            writeln!(f, "  {}", style("Confidential transfer fee:").bold())?;
+            writeln_name_value(
+                f,
+                "    Authority:",
+                if let Some(pubkey) = authority {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(
+                f,
+                "    Withdraw Withheld Encryption key:",
+                if let Some(pubkey) = withdraw_withheld_authority_elgamal_pubkey {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(
+                f,
+                "    Harvest to mint:",
+                if *harvest_to_mint_enabled {
+                    "Enabled"
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(f, "    Withheld Amount:", withheld_amount)
+        }
+        UiExtension::ConfidentialTransferFeeAmount(UiConfidentialTransferFeeAmount {
+            withheld_amount,
+        }) => writeln_name_value(f, "  Confidential Transfer Fee Amount:", withheld_amount),
+        UiExtension::TransferHook(UiTransferHook {
+            authority,
+            program_id,
+        }) => {
+            writeln!(f, "  {}", style("Transfer Hook:").bold())?;
+            writeln_name_value(
+                f,
+                "    Authority:",
+                if let Some(pubkey) = authority {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(
+                f,
+                "    Program Id:",
+                if let Some(pubkey) = program_id {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )
+        }
+        // don't display the "transferring" flag, since it's just for internal use
+        UiExtension::TransferHookAccount(UiTransferHookAccount { .. }) => Ok(()),
+        UiExtension::MetadataPointer(UiMetadataPointer {
+            authority,
+            metadata_address,
+        }) => {
+            writeln!(f, "  {}", style("Metadata Pointer:").bold())?;
+            writeln_name_value(
+                f,
+                "    Authority:",
+                if let Some(pubkey) = authority {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(
+                f,
+                "    Metadata address:",
+                if let Some(pubkey) = metadata_address {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )
+        }
+        UiExtension::TokenMetadata(UiTokenMetadata {
+            update_authority,
+            mint,
+            name,
+            symbol,
+            uri,
+            additional_metadata,
+        }) => {
+            writeln!(f, "  {}", style("Metadata:").bold())?;
+            writeln_name_value(
+                f,
+                "    Update Authority:",
+                if let Some(pubkey) = update_authority {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(f, "    Mint:", mint)?;
+            writeln_name_value(f, "    Name:", name)?;
+            writeln_name_value(f, "    Symbol:", symbol)?;
+            writeln_name_value(f, "    URI:", uri)?;
+            for (key, value) in additional_metadata {
+                writeln_name_value(f, &format!("    {key}:"), value)?;
+            }
+            Ok(())
+        }
         // ExtensionType::Uninitialized is a hack to ensure a mint/account is never the same length as a multisig
         UiExtension::Uninitialized => Ok(()),
-        UiExtension::ConfidentialTransferAccount(_) => writeln_name_value(
+        UiExtension::UnparseableExtension => writeln_name_value(
             f,
-            "  Confidential transfer:",
-            "ConfidentialTransferAccount is not presently supported",
+            "  Unparseable extension:",
+            "Consider upgrading to a newer version of spl-token",
         ),
-        _ => {
-            if let Some(ui_confidential_transfer_extension) = ui_confidential_transfer_extension {
-                match ui_confidential_transfer_extension {
-                    UiConfidentialTransferExtension::ConfidentialTransferMint(ui_mint) => {
-                        writeln!(f, "  {}", style("Confidential transfer:").bold())?;
-                        writeln!(
-                            f,
-                            "    {}: {}",
-                            style("Account approve policy").bold(),
-                            if ui_mint.auto_approve_new_accounts {
-                                "auto"
-                            } else {
-                                "manual"
-                            },
-                        )?;
-                        writeln!(
-                            f,
-                            "    {}: {}",
-                            style("Audit key:").bold(),
-                            if let Some(auditor_pubkey) = ui_mint.auditor_encryption_pubkey.as_ref()
-                            {
-                                auditor_pubkey
-                            } else {
-                                "audits are disabled"
-                            }
-                        )
-                    }
-                }
-            } else {
-                writeln_name_value(
-                    f,
-                    "  Unparseable extension:",
-                    "Consider upgrading to a newer version of spl-token",
-                )
-            }
-        }
     }
 }
 
@@ -750,47 +919,4 @@ fn flattened<S: Serializer>(
 ) -> Result<S::Ok, S::Error> {
     let flattened: Vec<_> = vec.iter().flatten().collect();
     flattened.serialize(serializer)
-}
-
-// Ui struct for confidential transfer extensions
-//
-// NOTE: this should be removed in the next Solana upgrade
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub(crate) enum UiConfidentialTransferExtension {
-    ConfidentialTransferMint(UiConfidentialTransferMint),
-    // TODO: add `ConfidentialTransferAccount`
-}
-
-// Ui struct for confidential transfer mint
-//
-// NOTE: this should be removed in the next Solana upgrade
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub(crate) struct UiConfidentialTransferMint {
-    pub authority: Option<String>,
-    pub auto_approve_new_accounts: bool,
-    pub auditor_encryption_pubkey: Option<String>,
-}
-
-// Checks whether a token 2022 state with extension contains the confidential transfer extension
-//
-// NOTE: this should be removed in the next Solana upgrade
-pub(crate) fn has_confidential_transfer(data: &[u8]) -> Option<UiConfidentialTransferExtension> {
-    if let Ok(mint) = StateWithExtensions::<Mint>::unpack(data) {
-        if let Ok(confidential_transfer_mint) = mint.get_extension::<ConfidentialTransferMint>() {
-            let authority: Option<Pubkey> = confidential_transfer_mint.authority.into();
-            let auditor_encryption_pubkey: Option<ElGamalPubkey> =
-                confidential_transfer_mint.auditor_elgamal_pubkey.into();
-            return Some(UiConfidentialTransferExtension::ConfidentialTransferMint(
-                UiConfidentialTransferMint {
-                    authority: authority.map(|pubkey| pubkey.to_string()),
-                    auto_approve_new_accounts: confidential_transfer_mint
-                        .auto_approve_new_accounts
-                        .into(),
-                    auditor_encryption_pubkey: auditor_encryption_pubkey
-                        .map(|pubkey| pubkey.to_string()),
-                },
-            ));
-        }
-    }
-    None
 }
