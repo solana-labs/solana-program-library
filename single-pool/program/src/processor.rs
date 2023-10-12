@@ -707,7 +707,10 @@ impl Processor {
         Ok(())
     }
 
-    fn process_reactivate_pool(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    fn process_reactivate_pool_stake(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let vote_account_info = next_account_info(account_info_iter)?;
         let pool_info = next_account_info(account_info_iter)?;
@@ -733,7 +736,7 @@ impl Processor {
         check_stake_program(stake_program_info.key)?;
 
         let (_, pool_stake_state) = get_stake_state(pool_stake_info)?;
-        if pool_stake_state.delegation.deactivation_epoch >= clock.epoch {
+        if pool_stake_state.delegation.deactivation_epoch > clock.epoch {
             return Err(SinglePoolError::WrongStakeState.into());
         }
 
@@ -1178,9 +1181,9 @@ impl Processor {
                 msg!("Instruction: InitializePool");
                 Self::process_initialize_pool(program_id, accounts)
             }
-            SinglePoolInstruction::ReactivatePool => {
-                msg!("Instruction: ReactivatePool");
-                Self::process_reactivate_pool(program_id, accounts)
+            SinglePoolInstruction::ReactivatePoolStake => {
+                msg!("Instruction: ReactivatePoolStake");
+                Self::process_reactivate_pool_stake(program_id, accounts)
             }
             SinglePoolInstruction::DepositStake => {
                 msg!("Instruction: DepositStake");

@@ -4,7 +4,6 @@
 mod helpers;
 
 use {
-    bincode::serialize,
     helpers::*,
     solana_program_test::*,
     solana_sdk::{
@@ -34,13 +33,17 @@ async fn success() {
         deactivation_epoch: 0,
         ..stake.unwrap().delegation
     };
-    let account_data = serialize(&StakeState::Stake(
-        meta,
-        Stake {
-            delegation,
-            ..stake.unwrap()
-        },
-    ))
+    let mut account_data = vec![0; std::mem::size_of::<StakeState>()];
+    bincode::serialize_into(
+        &mut account_data[..],
+        &StakeState::Stake(
+            meta,
+            Stake {
+                delegation,
+                ..stake.unwrap()
+            },
+        ),
+    )
     .unwrap();
 
     let mut stake_account = get_account(&mut context.banks_client, &accounts.stake_account).await;
@@ -74,7 +77,7 @@ async fn success() {
     check_error(e, SinglePoolError::WrongStakeState);
 
     // reactivate
-    let instruction = instruction::reactivate_pool(&id(), &accounts.vote_account.pubkey());
+    let instruction = instruction::reactivate_pool_stake(&id(), &accounts.vote_account.pubkey());
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
         Some(&context.payer.pubkey()),
@@ -132,7 +135,7 @@ async fn fail_not_deactivated(activate: bool) {
         advance_epoch(&mut context).await;
     }
 
-    let instruction = instruction::reactivate_pool(&id(), &accounts.vote_account.pubkey());
+    let instruction = instruction::reactivate_pool_stake(&id(), &accounts.vote_account.pubkey());
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
         Some(&context.payer.pubkey()),

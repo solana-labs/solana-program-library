@@ -43,8 +43,8 @@ pub enum SinglePoolInstruction {
     ///  12. `[]` Stake program
     InitializePool,
 
-    ///   Restake the pool stake account if its validator is force-deactivated and later
-    ///   recreated with the same vote account.
+    ///   Restake the pool stake account if it was deactivated. This can happen through the
+    ///   stake program's `DeactivateDelinquent` instruction, or during a cluster restart.
     ///
     ///   0. `[]` Validator vote account
     ///   1. `[]` Pool account
@@ -54,7 +54,7 @@ pub enum SinglePoolInstruction {
     ///   5. `[]` Stake history sysvar
     ///   6. `[]` Stake config sysvar
     ///   7. `[]` Stake program
-    ReactivatePool,
+    ReactivatePoolStake,
 
     ///   Deposit stake into the pool.  The output is a "pool" token representing fractional
     ///   ownership of the pool stake. Inputs are converted to the current ratio.
@@ -190,11 +190,13 @@ pub fn initialize_pool(program_id: &Pubkey, vote_account_address: &Pubkey) -> In
     }
 }
 
-/// Creates a `ReactivatePool` instruction.
-pub fn reactivate_pool(program_id: &Pubkey, vote_account_address: &Pubkey) -> Instruction {
+/// Creates a `ReactivatePoolStake` instruction.
+pub fn reactivate_pool_stake(program_id: &Pubkey, vote_account_address: &Pubkey) -> Instruction {
     let pool_address = find_pool_address(program_id, vote_account_address);
 
-    let data = SinglePoolInstruction::ReactivatePool.try_to_vec().unwrap();
+    let data = SinglePoolInstruction::ReactivatePoolStake
+        .try_to_vec()
+        .unwrap();
     let accounts = vec![
         AccountMeta::new_readonly(*vote_account_address, false),
         AccountMeta::new_readonly(pool_address, false),
