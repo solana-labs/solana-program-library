@@ -41,10 +41,12 @@ async fn setup(
     let (mut stake_pool, mut validator_list) = stake_pool_accounts.state();
 
     let _ = add_vote_account_with_pubkey(voter_pubkey, &mut program_test);
+    let mut data = vec![0; std::mem::size_of::<StakeState>()];
+    bincode::serialize_into(&mut data[..], forced_stake).unwrap();
 
     let stake_account = Account::create(
         TEST_STAKE_AMOUNT + STAKE_ACCOUNT_RENT_EXEMPTION,
-        bincode::serialize::<StakeState>(forced_stake).unwrap(),
+        data,
         stake::program::id(),
         false,
         Epoch::default(),
@@ -233,7 +235,6 @@ async fn fail_increase() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn success_remove_validator() {
     let stake_pool_accounts = StakePoolAccounts::default();
     let meta = Meta {
