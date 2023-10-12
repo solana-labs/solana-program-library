@@ -253,7 +253,7 @@ async fn create_and_delegate_stake_account(
 
 #[tokio::test]
 #[serial]
-async fn reactivate() {
+async fn reactivate_pool_stake() {
     let env = setup(true).await;
 
     // setting up a test validator for this to succeed is hell, and success is tested in program tests
@@ -261,12 +261,12 @@ async fn reactivate() {
     let output = Command::new(SVSP_CLI)
         .args([
             "manage",
-            "reactivate",
+            "reactivate-pool-stake",
             "-C",
             &env.config_file_path,
             "--vote-account",
             &env.vote_account.to_string(),
-            "--yolo",
+            "--skip-deactivation-check",
         ])
         .output()
         .unwrap();

@@ -110,7 +110,7 @@ pub enum ManageCommand {
     /// Permissionlessly re-stake the pool stake account in the case when it has been deactivated.
     /// This may happen if the validator is force-deactivated, and then later reactivated using
     /// the same address for its vote account.
-    Reactivate(ReactivateCli),
+    ReactivatePoolStake(ReactivateCli),
 
     /// Permissionlessly create default MPL token metadata for the pool mint. Normally this is done
     /// automatically upon initialization, so this does not need to be called.
@@ -145,7 +145,7 @@ pub struct ReactivateCli {
 
     // backdoor for testing, theres no reason to ever use this
     #[clap(long, hide = true)]
-    pub yolo: bool,
+    pub skip_deactivation_check: bool,
 }
 
 #[derive(Clone, Debug, Args)]

@@ -205,8 +205,8 @@ fn make_basic_instruction(
         SinglePoolInstruction::InitializePool => {
             instruction::initialize_pool(&id(), &accounts.vote_account.pubkey())
         }
-        SinglePoolInstruction::ReactivatePool => {
-            instruction::reactivate_pool(&id(), &accounts.vote_account.pubkey())
+        SinglePoolInstruction::ReactivatePoolStake => {
+            instruction::reactivate_pool_stake(&id(), &accounts.vote_account.pubkey())
         }
         SinglePoolInstruction::DepositStake => instruction::deposit_stake(
             &id(),
@@ -262,7 +262,7 @@ fn consistent_account_order() {
 
     let instructions = vec![
         make_basic_instruction(&accounts, SinglePoolInstruction::InitializePool),
-        make_basic_instruction(&accounts, SinglePoolInstruction::ReactivatePool),
+        make_basic_instruction(&accounts, SinglePoolInstruction::ReactivatePoolStake),
         make_basic_instruction(&accounts, SinglePoolInstruction::DepositStake),
         make_basic_instruction(
             &accounts,
