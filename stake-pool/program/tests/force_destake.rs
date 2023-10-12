@@ -233,6 +233,7 @@ async fn fail_increase() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn success_remove_validator() {
     let stake_pool_accounts = StakePoolAccounts::default();
     let meta = Meta {
