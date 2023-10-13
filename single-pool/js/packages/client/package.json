@@ -1,5 +1,6 @@
 {
-  "name": "single-pool",
+  "name": "@solana/single-pool",
+  "version": "1.0.0",
   "scripts": {
     "build": "pnpm tsc",
     "lint": "eslint --max-warnings 0 .",
