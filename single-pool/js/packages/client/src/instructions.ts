@@ -127,10 +127,11 @@ type UpdateTokenMetadataInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID
 
 const enum SinglePoolInstructionType {
   InitializePool = 0,
-  DepositStake,
-  WithdrawStake,
-  CreateTokenMetadata,
-  UpdateTokenMetadata,
+  // TODO reactivate
+  DepositStake = 2,
+  WithdrawStake = 3,
+  CreateTokenMetadata = 4,
+  UpdateTokenMetadata = 5,
 }
 
 export const SinglePoolInstruction = {
