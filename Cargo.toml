@@ -41,6 +41,7 @@ members = [
   "stake-pool/cli",
   "stake-pool/program",
   "stateless-asks/program",
+  "token-group/interface",
   "token-lending/cli",
   "token-lending/program",
   "token-metadata/example",
