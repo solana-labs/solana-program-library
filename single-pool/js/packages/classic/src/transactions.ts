@@ -1,5 +1,5 @@
 import { PublicKey, Connection } from '@solana/web3.js';
-import { SinglePoolProgram as PoolProgramModern } from 'single-pool';
+import { SinglePoolProgram as PoolProgramModern } from '@solana/single-pool';
 
 import { paramsToModern, modernTransactionToLegacy, rpc } from './internal';
 

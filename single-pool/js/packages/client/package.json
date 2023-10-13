@@ -5,7 +5,7 @@
     "build": "pnpm tsc",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint . --fix",
-    "test": "ava"
+    "test": "NODE_OPTIONS='--loader=tsx' ava"
   },
   "type": "module",
   "main": "./dist/index.js",

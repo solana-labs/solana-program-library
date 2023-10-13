@@ -1,5 +1,5 @@
 {
-  "name": "@solana/single-pool-legacy",
+  "name": "@solana/single-pool-classic",
   "version": "1.0.0",
   "scripts": {
     "build": "pnpm tsc",
@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@solana/web3.js": "^1.78.4",
-    "single-pool": "workspace:*"
+    "@solana/single-pool": "workspace:*"
   },
   "ava": {
     "extensions": {
