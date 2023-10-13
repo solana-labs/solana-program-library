@@ -3743,11 +3743,15 @@ where
         update_authority: &Pubkey,
         field: Field,
         value: String,
+        transfer_lamports: Option<u64>,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let additional_lamports = self
-            .get_additional_rent_for_updated_metadata(field.clone(), value.clone())
-            .await?;
+        let additional_lamports = if let Some(transfer_lamports) = transfer_lamports {
+            transfer_lamports
+        } else {
+            self.get_additional_rent_for_updated_metadata(field.clone(), value.clone())
+                .await?
+        };
         let mut instructions = vec![];
         if additional_lamports > 0 {
             instructions.push(system_instruction::transfer(

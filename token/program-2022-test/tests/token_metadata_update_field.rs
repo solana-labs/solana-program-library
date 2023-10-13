@@ -122,6 +122,7 @@ async fn success_update(field: Field, value: String) {
             &update_authority.pubkey(),
             field,
             value,
+            None,
             &[&update_authority],
         )
         .await

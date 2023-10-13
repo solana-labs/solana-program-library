@@ -110,6 +110,12 @@ pub const DELEGATE_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     help: "Address of delegate currently assigned to token account. Required by --sign-only",
 };
 
+pub const TRANSFER_LAMPORTS_ARG: ArgConstant<'static> = ArgConstant {
+    name: "transfer_lamports",
+    long: "transfer-lamports",
+    help: "Additional lamports to transfer to make account rent-exempt after reallocation. Required by --sign-only",
+};
+
 pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     name: "multisig_signer",
     long: "multisig-signer",
@@ -321,6 +327,15 @@ pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .value_name("DELEGATE_ADDRESS")
         .validator(is_valid_pubkey)
         .help(DELEGATE_ADDRESS_ARG.help)
+}
+
+pub fn transfer_lamports_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name(TRANSFER_LAMPORTS_ARG.name)
+        .long(TRANSFER_LAMPORTS_ARG.long)
+        .takes_value(true)
+        .value_name("LAMPORTS")
+        .validator(is_amount)
+        .help(TRANSFER_LAMPORTS_ARG.help)
 }
 
 pub fn multisig_signer_arg<'a, 'b>() -> Arg<'a, 'b> {
@@ -815,6 +830,7 @@ async fn command_update_metadata(
     authority: Pubkey,
     field: Field,
     value: Option<String>,
+    transfer_lamports: Option<u64>,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = token_client_from_config(config, &token_pubkey, None)?;
@@ -826,6 +842,7 @@ async fn command_update_metadata(
                 &authority,
                 field,
                 value,
+                transfer_lamports,
                 &bulk_signers,
             )
             .await?
@@ -2898,6 +2915,16 @@ impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
     }
 }
 
+struct SignOnlyNeedsTransferLamports {}
+impl offline::ArgsConfig for SignOnlyNeedsTransferLamports {
+    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[TRANSFER_LAMPORTS_ARG.name])
+    }
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+        arg.requires_all(&[TRANSFER_LAMPORTS_ARG.name])
+    }
+}
+
 fn minimum_signers_help_string() -> String {
     format!(
         "The minimum number of signers required to allow the operation. [{} <= M <= N]",
@@ -3295,7 +3322,8 @@ fn app<'a, 'b>(
                     .help("Specify the metadata update authority keypair. Defaults to the client keypair.")
                 )
                 .nonce_args(true)
-                .offline_args(),
+                .arg(transfer_lamports_arg())
+                .offline_args_config(&SignOnlyNeedsTransferLamports{}),
         )
         .subcommand(
             SubCommand::with_name(CommandName::CreateAccount.into())
@@ -4622,10 +4650,19 @@ async fn process_command<'a>(
                 _ => Field::Key(field.to_string()),
             };
             let value = arg_matches.value_of("value").map(|v| v.to_string());
+            let transfer_lamports = value_of::<u64>(arg_matches, TRANSFER_LAMPORTS_ARG.name);
             let bulk_signers = vec![authority_signer];
 
-            command_update_metadata(config, token_pubkey, authority, field, value, bulk_signers)
-                .await
+            command_update_metadata(
+                config,
+                token_pubkey,
+                authority,
+                field,
+                value,
+                transfer_lamports,
+                bulk_signers,
+            )
+            .await
         }
         (CommandName::CreateAccount, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)

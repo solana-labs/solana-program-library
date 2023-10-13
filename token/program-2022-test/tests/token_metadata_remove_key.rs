@@ -105,6 +105,7 @@ async fn success_remove() {
             &update_authority.pubkey(),
             field,
             value,
+            None,
             &[&update_authority],
         )
         .await
