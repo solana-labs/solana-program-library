@@ -158,6 +158,40 @@ test('initialize', async (t) => {
   );
 });
 
+test('reactivate pool stake', async (t) => {
+  const context = await startWithContext();
+  const client = context.banksClient;
+  const payer = context.payer;
+  const connection = new BanksConnection(client, payer);
+
+  const voteAccountAddress = new PublicKey(voteAccount.pubkey);
+
+  // initialize pool
+  let transaction = await SinglePoolProgram.initialize(
+    connection,
+    voteAccountAddress,
+    payer.publicKey,
+  );
+  await processTransaction(context, transaction);
+
+  const slot = await client.getSlot();
+  context.warpToSlot(slot + SLOTS_PER_EPOCH);
+
+  // reactivate pool stake
+  transaction = await SinglePoolProgram.reactivatePoolStake(connection, voteAccountAddress);
+
+  // setting up the validator state for this to succeed is very annoying
+  // we test success in program tests; here we just confirm we submit a well-formed transaction
+  let message = '';
+  try {
+    await processTransaction(context, transaction);
+  } catch (e) {
+    message = e.message;
+  } finally {
+    t.true(message.includes('custom program error: 0xc'), 'got expected stake mismatch error');
+  }
+});
+
 test('deposit', async (t) => {
   const context = await startWithContext();
   const client = context.banksClient;

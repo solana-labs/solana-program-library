@@ -61,6 +61,21 @@ type InitializePoolInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
   > &
   IInstructionWithData<Uint8Array>;
 
+type ReactivatePoolStakeInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
+  IInstructionWithAccounts<
+    [
+      ReadonlyAccount<VoteAccountAddress>,
+      ReadonlyAccount<PoolAddress>,
+      WritableAccount<PoolStakeAddress>,
+      ReadonlyAccount<PoolStakeAuthorityAddress>,
+      ReadonlyAccount<typeof SYSVAR_CLOCK_ID>,
+      ReadonlyAccount<typeof SYSVAR_STAKE_HISTORY_ID>,
+      ReadonlyAccount<typeof STAKE_CONFIG_ID>,
+      ReadonlyAccount<typeof STAKE_PROGRAM_ID>,
+    ]
+  > &
+  IInstructionWithData<Uint8Array>;
+
 type DepositStakeInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
   IInstructionWithAccounts<
     [
@@ -127,15 +142,16 @@ type UpdateTokenMetadataInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID
 
 const enum SinglePoolInstructionType {
   InitializePool = 0,
-  // TODO reactivate
-  DepositStake = 2,
-  WithdrawStake = 3,
-  CreateTokenMetadata = 4,
-  UpdateTokenMetadata = 5,
+  ReactivatePoolStake,
+  DepositStake,
+  WithdrawStake,
+  CreateTokenMetadata,
+  UpdateTokenMetadata,
 }
 
 export const SinglePoolInstruction = {
   initializePool: initializePoolInstruction,
+  reactivatePoolStake: reactivatePoolStakeInstruction,
   depositStake: depositStakeInstruction,
   withdrawStake: withdrawStakeInstruction,
   createTokenMetadata: createTokenMetadataInstruction,
@@ -171,6 +187,34 @@ export async function initializePoolInstruction(
       { address: STAKE_CONFIG_ID, role: AccountRole.READONLY },
       { address: SYSTEM_PROGRAM_ID, role: AccountRole.READONLY },
       { address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY },
+      { address: STAKE_PROGRAM_ID, role: AccountRole.READONLY },
+    ],
+    programAddress,
+  };
+}
+
+export async function reactivatePoolStakeInstruction(
+  voteAccount: VoteAccountAddress,
+): Promise<ReactivatePoolStakeInstruction> {
+  const programAddress = SINGLE_POOL_PROGRAM_ID;
+  const pool = await findPoolAddress(programAddress, voteAccount);
+  const [stake, stakeAuthority] = await Promise.all([
+    findPoolStakeAddress(programAddress, pool),
+    findPoolStakeAuthorityAddress(programAddress, pool),
+  ]);
+
+  const data = new Uint8Array([SinglePoolInstructionType.ReactivatePoolStake]);
+
+  return {
+    data,
+    accounts: [
+      { address: voteAccount, role: AccountRole.READONLY },
+      { address: pool, role: AccountRole.READONLY },
+      { address: stake, role: AccountRole.WRITABLE },
+      { address: stakeAuthority, role: AccountRole.READONLY },
+      { address: SYSVAR_CLOCK_ID, role: AccountRole.READONLY },
+      { address: SYSVAR_STAKE_HISTORY_ID, role: AccountRole.READONLY },
+      { address: STAKE_CONFIG_ID, role: AccountRole.READONLY },
       { address: STAKE_PROGRAM_ID, role: AccountRole.READONLY },
     ],
     programAddress,

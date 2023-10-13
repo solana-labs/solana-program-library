@@ -46,6 +46,12 @@ export class SinglePoolProgram {
     return modernTransactionToLegacy(modernTransaction);
   }
 
+  static async reactivatePoolStake(connection: Connection, voteAccount: PublicKey) {
+    const modernTransaction = await PoolProgramModern.reactivatePoolStake(voteAccount.toBase58());
+
+    return modernTransactionToLegacy(modernTransaction);
+  }
+
   static async deposit(params: DepositParams) {
     const modernParams = paramsToModern(params);
     const modernTransaction = await PoolProgramModern.deposit(modernParams);

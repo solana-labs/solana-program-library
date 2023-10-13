@@ -17,7 +17,14 @@ import {
   findPoolStakeAuthorityAddress,
   SINGLE_POOL_PROGRAM_ID,
 } from './addresses';
-import { SinglePoolInstruction } from './instructions';
+import {
+  initializePoolInstruction,
+  reactivatePoolStakeInstruction,
+  depositStakeInstruction,
+  withdrawStakeInstruction,
+  createTokenMetadataInstruction,
+  updateTokenMetadataInstruction,
+} from './instructions';
 import {
   STAKE_PROGRAM_ID,
   STAKE_ACCOUNT_SIZE,
@@ -58,6 +65,7 @@ export const SinglePoolProgram = {
   programAddress: SINGLE_POOL_PROGRAM_ID,
   space: SINGLE_POOL_ACCOUNT_SIZE,
   initialize: initializeTransaction,
+  reactivatePoolStake: reactivatePoolStakeTransaction,
   deposit: depositTransaction,
   withdraw: withdrawTransaction,
   createTokenMetadata: createTokenMetadataTransaction,
@@ -112,16 +120,28 @@ export async function initializeTransaction(
   );
 
   transaction = appendTransactionInstruction(
-    await SinglePoolInstruction.initializePool(voteAccount),
+    await initializePoolInstruction(voteAccount),
     transaction,
   );
 
   if (!skipMetadata) {
     transaction = appendTransactionInstruction(
-      await SinglePoolInstruction.createTokenMetadata(pool, payer),
+      await createTokenMetadataInstruction(pool, payer),
       transaction,
     );
   }
+
+  return transaction;
+}
+
+export async function reactivatePoolStakeTransaction(
+  voteAccount: VoteAccountAddress,
+): Promise<Transaction> {
+  let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
+  transaction = appendTransactionInstruction(
+    await reactivatePoolStakeInstruction(voteAccount),
+    transaction,
+  );
 
   return transaction;
 }
@@ -188,12 +208,7 @@ export async function depositTransaction(params: DepositParams) {
   );
 
   transaction = appendTransactionInstruction(
-    await SinglePoolInstruction.depositStake(
-      pool,
-      userStakeAccount,
-      userTokenAccount,
-      userLamportAccount,
-    ),
+    await depositStakeInstruction(pool, userStakeAccount, userTokenAccount, userLamportAccount),
     transaction,
   );
 
@@ -240,7 +255,7 @@ export async function withdrawTransaction(params: WithdrawParams) {
   );
 
   transaction = appendTransactionInstruction(
-    await SinglePoolInstruction.withdrawStake(
+    await withdrawStakeInstruction(
       pool,
       userStakeAccount,
       userStakeAuthority,
@@ -259,7 +274,7 @@ export async function createTokenMetadataTransaction(
 ): Promise<Transaction> {
   let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
   transaction = appendTransactionInstruction(
-    await SinglePoolInstruction.createTokenMetadata(pool, payer),
+    await createTokenMetadataInstruction(pool, payer),
     transaction,
   );
 
@@ -275,13 +290,7 @@ export async function updateTokenMetadataTransaction(
 ): Promise<Transaction> {
   let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
   transaction = appendTransactionInstruction(
-    await SinglePoolInstruction.updateTokenMetadata(
-      voteAccount,
-      authorizedWithdrawer,
-      name,
-      symbol,
-      uri,
-    ),
+    await updateTokenMetadataInstruction(voteAccount, authorizedWithdrawer, name, symbol, uri),
     transaction,
   );
 

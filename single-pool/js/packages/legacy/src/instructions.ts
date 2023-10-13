@@ -9,6 +9,11 @@ export class SinglePoolInstruction {
     return modernInstructionToLegacy(instruction);
   }
 
+  static async reactivatePoolStake(voteAccount: PublicKey): Promise<TransactionInstruction> {
+    const instruction = await PoolInstructionModern.reactivatePoolStake(voteAccount.toBase58());
+    return modernInstructionToLegacy(instruction);
+  }
+
   static async depositStake(
     pool: PublicKey,
     userStakeAccount: PublicKey,
