@@ -75,7 +75,16 @@ updates:
   labels:
     - "automerge"
 - package-ecosystem: npm
-  directory: "/single-pool/js"
+  directory: "/single-pool/js/packages/classic"
+  schedule:
+    interval: daily
+    time: "05:00"
+    timezone: America/Los_Angeles
+  open-pull-requests-limit: 3
+  labels:
+    - "automerge"
+- package-ecosystem: npm
+  directory: "/single-pool/js/packages/modern"
   schedule:
     interval: daily
     time: "05:00"

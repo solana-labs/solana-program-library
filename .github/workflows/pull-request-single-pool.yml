@@ -118,12 +118,12 @@ jobs:
   js-test:
     runs-on: ubuntu-latest
     env:
-      NODE_VERSION: 18.x
+      NODE_VERSION: 20
     needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
       - uses: pnpm/action-setup@v2

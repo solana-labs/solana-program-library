@@ -6,7 +6,6 @@
     "outDir": "dist",
     "declaration": true,
     "declarationDir": "dist",
-    "emitDeclarationOnly": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
@@ -16,6 +15,7 @@
     "isolatedModules": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
+    "lib": ["DOM"],
     "skipLibCheck": true // needed to avoid re-export errors from borsh
   },
   "include": ["src/**/*.ts"]

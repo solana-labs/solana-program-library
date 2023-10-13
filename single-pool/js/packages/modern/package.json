@@ -1,0 +1,40 @@
+{
+  "name": "@solana/single-pool",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "pnpm tsc",
+    "lint": "eslint --max-warnings 0 .",
+    "lint:fix": "eslint . --fix",
+    "test": "NODE_OPTIONS='--loader=tsx' ava"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "exports": {
+    "require": "./dist/index.js",
+    "import": "./dist/index.js"
+  },
+  "devDependencies": {
+    "@ava/typescript": "^4.1.0",
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "ava": "^5.3.1",
+    "eslint": "^8.49.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "solana-bankrun": "^0.1.1",
+    "ts-node": "^10.9.1",
+    "tsx": "^3.12.7",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@solana/web3.js": "2.0.0-experimental.21e994f"
+  },
+  "ava": {
+    "extensions": {
+      "ts": "module"
+    },
+    "nodeArguments": [
+      "--loader=tsx"
+    ]
+  }
+}
