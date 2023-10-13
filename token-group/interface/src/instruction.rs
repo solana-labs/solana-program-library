@@ -47,12 +47,7 @@ pub struct UpdateGroupAuthority {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_group_interface:initialize_member")]
-pub struct InitializeMember {
-    /// The pubkey of the `Group`
-    pub group: Pubkey,
-    /// The member number
-    pub member_number: u32,
-}
+pub struct InitializeMember;
 
 /// All instructions that must be implemented in the SPL Token Group Interface
 #[derive(Clone, Debug, PartialEq)]
@@ -93,10 +88,8 @@ pub enum TokenGroupInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[w]`  Member
-    ///   1. `[]`   Member Mint
-    ///   2. `[w]`  Group
-    ///   3. `[]`   Group Mint
-    ///   4. `[s]`  Group Mint authority
+    ///   1. `[w]`  Group
+    ///   2. `[s]`  Group update authority
     InitializeMember(InitializeMember),
 }
 impl TokenGroupInstruction {
@@ -227,28 +220,15 @@ pub fn update_group_authority(
 pub fn initialize_member(
     program_id: &Pubkey,
     group: &Pubkey,
-    group_mint: &Pubkey,
-    group_mint_authority: &Pubkey,
+    group_update_authority: &Pubkey,
     member: &Pubkey,
-    member_mint: &Pubkey,
-    member_mint_authority: &Pubkey,
-    member_number: u32,
-    extra_account_metas: &[AccountMeta],
 ) -> Instruction {
-    let data = TokenGroupInstruction::InitializeMember(InitializeMember {
-        group: *group,
-        member_number,
-    })
-    .pack();
-    let mut accounts = vec![
+    let data = TokenGroupInstruction::InitializeMember(InitializeMember {}).pack();
+    let accounts = vec![
         AccountMeta::new(*member, false),
-        AccountMeta::new_readonly(*member_mint, false),
-        AccountMeta::new_readonly(*member_mint_authority, true),
         AccountMeta::new(*group, false),
-        AccountMeta::new_readonly(*group_mint, false),
-        AccountMeta::new_readonly(*group_mint_authority, true),
+        AccountMeta::new_readonly(*group_update_authority, true),
     ];
-    accounts.extend_from_slice(extra_account_metas);
 
     Instruction {
         program_id: *program_id,
@@ -313,10 +293,7 @@ mod test {
 
     #[test]
     fn initialize_member_pack() {
-        let data = InitializeMember {
-            group: Pubkey::new_unique(),
-            member_number: 100,
-        };
+        let data = InitializeMember {};
         let instruction = TokenGroupInstruction::InitializeMember(data);
         let preimage = hash::hashv(&[format!("{NAMESPACE}:initialize_member").as_bytes()]);
         let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
