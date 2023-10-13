@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@solana/single-pool':
         specifier: workspace:*
-        version: link:../client
+        version: link:../modern
       '@solana/web3.js':
         specifier: ^1.78.4
         version: 1.87.1
@@ -46,7 +46,7 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2
 
-  packages/client:
+  packages/modern:
     dependencies:
       '@solana/web3.js':
         specifier: 2.0.0-experimental.21e994f
