@@ -55,11 +55,6 @@ pub struct InitializeMember {
 }
 
 /// All instructions that must be implemented in the SPL Token Group Interface
-///
-/// Note: Any instruction can be extended using additional required accounts by
-/// using the `InitializeExtraAccountMetaList` instruction to write
-/// configurations for extra required accounts into validation data
-/// corresponding to an instruction's unique discriminator.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenGroupInstruction {
     /// Initialize a new `Group`
