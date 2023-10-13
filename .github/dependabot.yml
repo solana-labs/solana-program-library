@@ -75,7 +75,7 @@ updates:
   labels:
     - "automerge"
 - package-ecosystem: npm
-  directory: "/single-pool/js/packages/client"
+  directory: "/single-pool/js/packages/classic"
   schedule:
     interval: daily
     time: "05:00"
@@ -84,7 +84,7 @@ updates:
   labels:
     - "automerge"
 - package-ecosystem: npm
-  directory: "/single-pool/js/packages/legacy"
+  directory: "/single-pool/js/packages/modern"
   schedule:
     interval: daily
     time: "05:00"

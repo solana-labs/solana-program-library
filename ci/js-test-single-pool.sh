@@ -7,11 +7,11 @@ source ./ci/solana-version.sh install
 cd single-pool/js
 pnpm install
 
-cd packages/client
+cd packages/modern
 pnpm run lint
 pnpm build
 
-cd ../legacy
+cd ../classic
 pnpm run lint
 pnpm build
 pnpm test
