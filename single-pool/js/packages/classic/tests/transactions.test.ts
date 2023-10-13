@@ -421,8 +421,8 @@ test('get vote account address', async (t) => {
 
 test('default account address', async (t) => {
   const voteAccountAddress = new PublicKey(voteAccount.pubkey);
-  const owner = new PublicKey('3No4rmsu36AGb9bitRNFFnMzXZmproBKEWvQr1FuBvR8');
-  const expectedDefault = new PublicKey('AcQyHnPczCxFj3EoyyapubjjsLy9bX9kYkcRNerreKvA');
+  const owner = new PublicKey('GtaYCtXWCrciizttN5mx9P38niTQPGWpfu6DnSgAr3Cj');
+  const expectedDefault = new PublicKey('BbfrNeJrd82cSFsULXT9zG8SvLLB8WsTc1gQsDFy3Sed');
 
   const actualDefault = await findDefaultDepositAccountAddress(
     await findPoolAddress(SinglePoolProgram.programId, voteAccountAddress),

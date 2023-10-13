@@ -9,7 +9,7 @@ import {
 import { MPL_METADATA_PROGRAM_ID } from './internal';
 import { STAKE_PROGRAM_ID } from './quarantine';
 
-export const SINGLE_POOL_PROGRAM_ID = address('3cqnsMsT6LE96pxv7GR4di5rLqHDZZbR3FbeSUeRLFqY');
+export const SINGLE_POOL_PROGRAM_ID = address('SVSPxpvHdN29nkVg9rPapPNDddN5DipNLRUFhyjFThE');
 
 export type VoteAccountAddress<TAddress extends string = string> =
   Base58EncodedAddress<TAddress> & {
