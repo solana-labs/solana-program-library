@@ -170,10 +170,10 @@ pub enum CommandName {
     UpdateMetadata,
     UpdateConfidentialTransferSettings,
     ConfigureConfidentialTransferAccount,
-    EnableConfidentialTransfers,
-    DisableConfidentialTransfers,
-    EnableNonConfidentialTransfers,
-    DisableNonConfidentialTransfers,
+    EnableConfidentialCredits,
+    DisableConfidentialCredits,
+    EnableNonConfidentialCredits,
+    DisableNonConfidentialCredits,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -4685,7 +4685,7 @@ fn app<'a, 'b>(
                 .nonce_args(true)
         )
         .subcommand(
-            SubCommand::with_name(CommandName::EnableConfidentialTransfers.into())
+            SubCommand::with_name(CommandName::EnableConfidentialCredits.into())
                 .about("Enable confidential transfers for token account. To enable confidential transfers \
                 for the first time, use `configure-confidential-transfer-account` instead.")
                 .arg(
@@ -4704,7 +4704,7 @@ fn app<'a, 'b>(
                 .nonce_args(true)
         )
         .subcommand(
-            SubCommand::with_name(CommandName::DisableConfidentialTransfers.into())
+            SubCommand::with_name(CommandName::DisableConfidentialCredits.into())
                 .about("Disable confidential transfers for token account")
                 .arg(
                     Arg::with_name("account")
@@ -4722,7 +4722,7 @@ fn app<'a, 'b>(
                 .nonce_args(true)
         )
         .subcommand(
-            SubCommand::with_name(CommandName::EnableNonConfidentialTransfers.into())
+            SubCommand::with_name(CommandName::EnableNonConfidentialCredits.into())
                 .about("Enable non-confidential transfers for token account.")
                 .arg(
                     Arg::with_name("account")
@@ -4740,7 +4740,7 @@ fn app<'a, 'b>(
                 .nonce_args(true)
         )
         .subcommand(
-            SubCommand::with_name(CommandName::DisableNonConfidentialTransfers.into())
+            SubCommand::with_name(CommandName::DisableNonConfidentialCredits.into())
                 .about("Disable non-confidential transfers for token account")
                 .arg(
                     Arg::with_name("account")
@@ -5641,7 +5641,7 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::EnableConfidentialTransfers, arg_matches) => {
+        (CommandName::EnableConfidentialCredits, arg_matches) => {
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
@@ -5662,7 +5662,7 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::DisableConfidentialTransfers, arg_matches) => {
+        (CommandName::DisableConfidentialCredits, arg_matches) => {
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
@@ -5683,7 +5683,7 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::EnableNonConfidentialTransfers, arg_matches) => {
+        (CommandName::EnableNonConfidentialCredits, arg_matches) => {
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
@@ -5704,7 +5704,7 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::DisableNonConfidentialTransfers, arg_matches) => {
+        (CommandName::DisableNonConfidentialCredits, arg_matches) => {
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
@@ -8370,7 +8370,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                CommandName::DisableConfidentialTransfers.into(),
+                CommandName::DisableConfidentialCredits.into(),
                 &token_account.to_string(),
             ],
         )
@@ -8389,7 +8389,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                CommandName::EnableConfidentialTransfers.into(),
+                CommandName::EnableConfidentialCredits.into(),
                 &token_account.to_string(),
             ],
         )
@@ -8409,7 +8409,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                CommandName::DisableNonConfidentialTransfers.into(),
+                CommandName::DisableNonConfidentialCredits.into(),
                 &token_account.to_string(),
             ],
         )
@@ -8428,7 +8428,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                CommandName::EnableNonConfidentialTransfers.into(),
+                CommandName::EnableNonConfidentialCredits.into(),
                 &token_account.to_string(),
             ],
         )
