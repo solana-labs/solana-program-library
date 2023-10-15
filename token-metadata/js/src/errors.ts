@@ -1,5 +1,5 @@
 /** Base class for errors */
-export abstract class TokenMetadataError extends Error {
+export class TokenMetadataError extends Error {
     constructor(message?: string) {
         super(message);
     }
