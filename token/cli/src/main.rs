@@ -172,6 +172,8 @@ pub enum CommandName {
     ConfigureConfidentialTransferAccount,
     EnableConfidentialTransfers,
     DisableConfidentialTransfers,
+    EnableNonConfidentialTransfers,
+    DisableNonConfidentialTransfers,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2961,8 +2963,10 @@ async fn command_enable_disable_confidential_transfers(
 
     let existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
     if !existing_extensions.contains(&ExtensionType::ConfidentialTransferAccount) {
-        panic!("Confidential transfer is not yet configured for this account. \
-        Use `configure-confidential-transfer-account` command instead.");
+        panic!(
+            "Confidential transfer is not yet configured for this account. \
+        Use `configure-confidential-transfer-account` command instead."
+        );
     }
 
     // Reallocation (if needed)
@@ -3001,21 +3005,58 @@ async fn command_enable_disable_confidential_transfers(
         }
 
         if allow_confidential_credits {
-            token.confidential_transfer_enable_confidential_credits(
-                &token_account_address,
-                &owner,
-                &bulk_signers,
-            ).await
+            token
+                .confidential_transfer_enable_confidential_credits(
+                    &token_account_address,
+                    &owner,
+                    &bulk_signers,
+                )
+                .await
         } else {
-            token.confidential_transfer_disable_confidential_credits(
-                &token_account_address,
-                &owner,
-                &bulk_signers,
-            ).await
+            token
+                .confidential_transfer_disable_confidential_credits(
+                    &token_account_address,
+                    &owner,
+                    &bulk_signers,
+                )
+                .await
+        }
+    } else {
+        let allow_non_confidential_credits =
+            allow_non_confidential_credits.expect("Nothing to be done");
+        let extension_state = state_with_extension
+            .get_extension::<ConfidentialTransferAccount>()?
+            .allow_non_confidential_credits
+            .into();
+
+        if extension_state == allow_non_confidential_credits {
+            return Ok(format!(
+                "Non-confidential transfers are already {}",
+                if extension_state {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            ));
         }
 
-    } else {
-        unimplemented!()
+        if allow_non_confidential_credits {
+            token
+                .confidential_transfer_enable_non_confidential_credits(
+                    &token_account_address,
+                    &owner,
+                    &bulk_signers,
+                )
+                .await
+        } else {
+            token
+                .confidential_transfer_disable_non_confidential_credits(
+                    &token_account_address,
+                    &owner,
+                    &bulk_signers,
+                )
+                .await
+        }
     }?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -4680,6 +4721,42 @@ fn app<'a, 'b>(
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::EnableNonConfidentialTransfers.into())
+                .about("Enable non-confidential transfers for token account.")
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token account to enable non-confidential transfers for")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::DisableNonConfidentialTransfers.into())
+                .about("Disable non-confidential transfers for token account")
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token account to disable non-confidential transfers for")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+        )
 }
 
 #[tokio::main]
@@ -5538,8 +5615,10 @@ async fn process_command<'a>(
 
             // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
             // supported in the future once upgrading to clap-v3.
-            let elgamal_keypair = ElGamalKeypair::new_from_signer(&*owner_signer, &token_account.to_bytes()).unwrap();
-            let aes_key = AeKey::new_from_signer(&*owner_signer, &token_account.to_bytes()).unwrap();
+            let elgamal_keypair =
+                ElGamalKeypair::new_from_signer(&*owner_signer, &token_account.to_bytes()).unwrap();
+            let aes_key =
+                AeKey::new_from_signer(&*owner_signer, &token_account.to_bytes()).unwrap();
 
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
@@ -5601,6 +5680,48 @@ async fn process_command<'a>(
                 bulk_signers,
                 Some(false),
                 None,
+            )
+            .await
+        }
+        (CommandName::EnableNonConfidentialTransfers, arg_matches) => {
+            let (owner_signer, owner) =
+                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+
+            let token_account =
+                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
+
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
+            }
+
+            command_enable_disable_confidential_transfers(
+                config,
+                token_account,
+                owner,
+                bulk_signers,
+                None,
+                Some(true),
+            )
+            .await
+        }
+        (CommandName::DisableNonConfidentialTransfers, arg_matches) => {
+            let (owner_signer, owner) =
+                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+
+            let token_account =
+                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
+
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
+            }
+
+            command_enable_disable_confidential_transfers(
+                config,
+                token_account,
+                owner,
+                bulk_signers,
+                None,
+                Some(false),
             )
             .await
         }
@@ -8243,7 +8364,7 @@ mod tests {
         assert_eq!(bool::from(extension.allow_confidential_credits), true);
         assert_eq!(bool::from(extension.allow_non_confidential_credits), true);
 
-        // disable and enable confidential trnasfers for an account
+        // disable and enable confidential transfers for an account
         process_test_command(
             &config,
             &payer,
@@ -8281,6 +8402,45 @@ mod tests {
             .get_extension::<ConfidentialTransferAccount>()
             .unwrap();
         assert_eq!(bool::from(extension.allow_confidential_credits), true);
+
+        // disable and eanble non-confidential transfers for an account
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::DisableNonConfidentialTransfers.into(),
+                &token_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let extension = account_state
+            .get_extension::<ConfidentialTransferAccount>()
+            .unwrap();
+        assert_eq!(bool::from(extension.allow_non_confidential_credits), false);
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::EnableNonConfidentialTransfers.into(),
+                &token_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let extension = account_state
+            .get_extension::<ConfidentialTransferAccount>()
+            .unwrap();
+        assert_eq!(bool::from(extension.allow_non_confidential_credits), true);
 
         // disable confidential transfers for mint
         process_test_command(
