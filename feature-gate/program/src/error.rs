@@ -11,4 +11,10 @@ pub enum FeatureGateError {
     /// Feature already activated
     #[error("Feature already activated")]
     FeatureAlreadyActivated,
+    /// Incorrect feature ID
+    #[error("Incorrect feature ID")]
+    IncorrectFeatureId,
+    /// Invalid feature account
+    #[error("Invalid feature account")]
+    InvalidFeatureAccount,
 }
