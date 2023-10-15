@@ -1,11 +1,11 @@
 import { PublicKey } from '@solana/web3.js';
 
 /** The field can be one of the required fields (name, symbol, URI), or a
- * totally new field denoted by a "key" string. 
-   *
- * Define explicitly o make it abundantly clear that 'name' | 'symbol' | 'uri' are fundamental parts of the interface, 
+ * totally new field denoted by a "key" string.
+ *
+ * Define explicitly o make it abundantly clear that 'name' | 'symbol' | 'uri' are fundamental parts of the interface,
  * while any other key is additional
-*/
+ */
 
 export type Field = 'name' | 'symbol' | 'uri' | string;
 
@@ -23,4 +23,3 @@ export interface TokenMetadata {
     // Any additional metadata about the token as key-value pairs
     additionalMetadata: [string, string][];
 }
-

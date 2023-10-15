@@ -4,7 +4,7 @@ A TypeScript interface describing the instructions required for a program to imp
 
 ## Links
 
-- [TypeScript Docs](https://solana-labs.github.io/solana-program-library/token/js/)
+- [TypeScript Docs](https://solana-labs.github.io/solana-program-library/token-metadata/js/)
 - [FAQs (Frequently Asked Questions)](#faqs)
 - [Install](#install)
 - [Build from Source](#build-from-source)
