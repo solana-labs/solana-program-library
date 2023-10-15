@@ -23,8 +23,8 @@ pub enum FeatureGateInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[w+s]` Feature account
-    ///   1. `[w]` Destination (for rent lamports)
+    ///   0. `[w+s]`    Feature account
+    ///   1. `[w]`      Destination (for rent lamports)
     RevokePendingActivation,
 }
 impl FeatureGateInstruction {
@@ -45,9 +45,9 @@ impl FeatureGateInstruction {
 }
 
 /// Creates a 'RevokePendingActivation' instruction.
-pub fn revoke_pending_activation(feature: &Pubkey, destination: &Pubkey) -> Instruction {
+pub fn revoke_pending_activation(feature_id: &Pubkey, destination: &Pubkey) -> Instruction {
     let accounts = vec![
-        AccountMeta::new(*feature, true),
+        AccountMeta::new(*feature_id, true),
         AccountMeta::new(*destination, false),
     ];
 
@@ -71,7 +71,7 @@ mod test {
     }
 
     #[test]
-    fn test_pack_unpack_revoke() {
+    fn test_pack_unpack_revoke_pending_activation() {
         test_pack_unpack(&FeatureGateInstruction::RevokePendingActivation);
     }
 }

@@ -1,4 +1,4 @@
-// #![cfg(feature = "test-sbf")]
+#![cfg(feature = "test-sbf")]
 
 use {
     solana_program::instruction::InstructionError,

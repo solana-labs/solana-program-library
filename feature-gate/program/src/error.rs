@@ -8,7 +8,7 @@ pub enum FeatureGateError {
     /// Operation overflowed
     #[error("Operation overflowed")]
     Overflow,
-    /// Feature not inactive
-    #[error("Feature not inactive")]
+    /// Feature already activated
+    #[error("Feature already activated")]
     FeatureAlreadyActivated,
 }
