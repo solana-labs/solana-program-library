@@ -38,7 +38,7 @@ use solana_sdk::{
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
-        confidential_transfer::ConfidentialTransferMint,
+        confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
         confidential_transfer_fee::ConfidentialTransferFeeConfig,
         cpi_guard::CpiGuard,
         default_account_state::DefaultAccountState,
@@ -52,7 +52,10 @@ use spl_token_2022::{
         BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
     },
     instruction::*,
-    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
+    solana_zk_token_sdk::{
+        encryption::{auth_encryption::AeKey, elgamal::ElGamalKeypair},
+        zk_token_elgamal::pod::ElGamalPubkey,
+    },
     state::{Account, AccountState, Mint},
 };
 use spl_token_client::{
@@ -166,6 +169,7 @@ pub enum CommandName {
     InitializeMetadata,
     UpdateMetadata,
     UpdateConfidentialTransferSettings,
+    ConfigureConfidentialTransferAccount,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2875,6 +2879,66 @@ async fn command_update_confidential_transfer_settings(
     })
 }
 
+async fn command_configure_confidential_transfer_account(
+    config: &Config<'_>,
+    token_account_address: Pubkey,
+    owner: Pubkey,
+    maximum_credit_counter: Option<u64>,
+    elgamal_keypair: &ElGamalKeypair,
+    aes_key: &AeKey,
+    bulk_signers: BulkSigners,
+) -> CommandResult {
+    if config.sign_only {
+        panic!("Sign-only is not yet supported.");
+    }
+
+    let account = config.get_account_checked(&token_account_address).await?;
+    let current_account_len = account.data.len();
+
+    let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
+    let token = token_client_from_config(config, &state_with_extension.base.mint, None)?;
+
+    // Reallocation (if needed)
+    let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
+    if !existing_extensions.contains(&ExtensionType::ConfidentialTransferAccount) {
+        existing_extensions.push(ExtensionType::ConfidentialTransferAccount);
+        let needed_account_len =
+            ExtensionType::try_calculate_account_len::<Account>(&existing_extensions)?;
+        if needed_account_len > current_account_len {
+            token
+                .reallocate(
+                    &token_account_address,
+                    &owner,
+                    &[ExtensionType::ConfidentialTransferAccount],
+                    &bulk_signers,
+                )
+                .await?;
+        }
+    }
+
+    let res = token
+        .confidential_transfer_configure_token_account(
+            &token_account_address,
+            &owner,
+            None,
+            maximum_credit_counter,
+            elgamal_keypair,
+            aes_key,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -4459,6 +4523,36 @@ fn app<'a, 'b>(
                 .nonce_args(true)
                 .offline_args(),
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::ConfigureConfidentialTransferAccount.into())
+                .about("Enable confidential transfers for token account")
+                .arg(
+                    Arg::with_name("account")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token account to enable confidential transfers for")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(
+                    Arg::with_name("maximum_pending_balance_credit_counter")
+                        .long("maximum-pending-balance-credit-counter")
+                        .value_name("MAXIMUM-CREDIT-COUNTER")
+                        .takes_value(true)
+                        .help(
+                            "The maximum pending balance credit counter. \
+                            This parameter limits the number of confidential transfers that a token account \
+                            can receive to facilitate decryption of the encrypted balance. \
+                            Defaults to 65536 (2^16)"
+                        )
+                )
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+        )
 }
 
 #[tokio::main]
@@ -5304,6 +5398,39 @@ async fn process_command<'a>(
                 authority_pubkey,
                 auto_approve,
                 auditor_encryption_pubkey,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::ConfigureConfidentialTransferAccount, arg_matches) => {
+            let (owner_signer, owner) =
+                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+
+            let token_account =
+                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
+
+            // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
+            // supported in the future once upgrading to clap-v3.
+            let elgamal_keypair = ElGamalKeypair::new_from_signer(&*owner_signer, &token_account.to_bytes()).unwrap();
+            let aes_key = AeKey::new_from_signer(&*owner_signer, &token_account.to_bytes()).unwrap();
+
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
+            }
+
+            let maximum_credit_counter = value_t!(
+                arg_matches.value_of("maximum_pending_balance_credit_counter"),
+                u64
+            )
+            .ok();
+
+            command_configure_confidential_transfer_account(
+                config,
+                token_account,
+                owner,
+                maximum_credit_counter,
+                &elgamal_keypair,
+                &aes_key,
                 bulk_signers,
             )
             .await
@@ -7921,6 +8048,31 @@ mod tests {
             Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
             Some(auditor_pubkey),
         );
+
+        // create a confidential transfer account
+        let token_account =
+            create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::ConfigureConfidentialTransferAccount.into(),
+                &token_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&token_account).await.unwrap();
+        let account_state = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let extension = account_state
+            .get_extension::<ConfidentialTransferAccount>()
+            .unwrap();
+        assert_eq!(bool::from(extension.approved), false);
+        assert_eq!(bool::from(extension.allow_confidential_credits), true);
+        assert_eq!(bool::from(extension.allow_non_confidential_credits), true);
 
         // disable confidential transfers
         process_test_command(
