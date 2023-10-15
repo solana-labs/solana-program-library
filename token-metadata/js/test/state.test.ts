@@ -4,21 +4,21 @@ import { TokenMetadata, TokenMetadataDiscriminate, schema, unpack } from '../src
 
 import { serialize } from 'borsh';
 describe('Token Metadata State', () => {
-    const lengthBuffer = (buffer: Buffer|Uint8Array): Buffer => {
+    const lengthBuffer = (buffer: Buffer | Uint8Array): Buffer => {
         const length = Buffer.alloc(4);
         length.writeUIntLE(buffer.length, 0, 4);
         return length;
     };
-    
+
     // Helper function to pack meta into tlv bytes slab
     const pack = (meta: TokenMetadata) => {
         const data = serialize(schema, {
-            ...meta, 
+            ...meta,
             updateAuthority: meta.updateAuthority?.toBuffer(),
             mint: meta.mint.toBuffer(),
         });
         return Buffer.concat([TokenMetadataDiscriminate, lengthBuffer(data), data]);
-    }
+    };
 
     it('Can unpack', () => {
         const data = Buffer.from([
@@ -72,7 +72,7 @@ describe('Token Metadata State', () => {
             symbol: 'symbol',
             uri: 'uri',
             additionalMetadata: [],
-        })
+        });
 
         const meta = unpack(input);
         expect(meta).to.deep.equal({

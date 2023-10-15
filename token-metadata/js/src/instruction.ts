@@ -18,7 +18,7 @@ export const SCHEMA = {
     Initialize: { struct: { name: 'string', symbol: 'string', uri: 'string' } },
     UpdateField: { struct: { field: 'string', value: 'string' } },
     RemoveKey: { struct: { idempotent: 'bool', key: 'string' } },
-    UpdateAuthorithy: { array: { type: 'u8', len: 32 } },
+    UpdateAuthorithy: { struct: { newAuthority: { array: { type: 'u8', len: 32 } } } },
     Emit: { struct: { start: { option: 'u64' }, end: { option: 'u64' } } },
 };
 
@@ -137,7 +137,7 @@ export function createUpdateAuthorityInstruction({
     oldAuthority,
     newAuthority,
 }: UpdateAuthority): TransactionInstruction {
-    const data = newAuthority.toBuffer();
+    const data = { newAuthority: newAuthority.toBuffer() };
     return new TransactionInstruction({
         programId,
         keys: [
