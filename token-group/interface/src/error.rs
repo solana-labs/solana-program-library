@@ -11,4 +11,10 @@ pub enum TokenGroupError {
     /// Size is greater than max size
     #[error("Size is greater than max size")]
     SizeExceedsMaxSize,
+    /// Group is immutable
+    #[error("Group is immutable")]
+    ImmutableGroup,
+    /// Incorrect authority
+    #[error("Incorrect authority")]
+    IncorrectAuthority,
 }
