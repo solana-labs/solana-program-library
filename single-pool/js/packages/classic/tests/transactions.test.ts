@@ -76,7 +76,7 @@ async function startWithContext(authorizedWithdrawer?: PublicKey) {
 
   return await start(
     [
-      { name: 'spl_single_validator_pool', programId: SinglePoolProgram.programId },
+      { name: 'spl_single_pool', programId: SinglePoolProgram.programId },
       { name: 'mpl_token_metadata', programId: MPL_METADATA_PROGRAM_ID },
     ],
     [

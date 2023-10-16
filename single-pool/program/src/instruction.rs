@@ -24,7 +24,7 @@ use {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum SinglePoolInstruction {
-    ///   Initialize the mint and stake account for a new single-validator pool.
+    ///   Initialize the mint and stake account for a new single-validator stake pool.
     ///   The pool stake account must contain the rent-exempt minimum plus the minimum delegation.
     ///   No tokens will be minted: to deposit more, use `Deposit` after `InitializeStake`.
     ///

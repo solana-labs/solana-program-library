@@ -1,5 +1,5 @@
 [package]
-name = "spl-single-validator-pool"
+name = "spl-single-pool"
 version = "1.0.0"
 description = "Solana Program Library Single-Validator Stake Pool"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]

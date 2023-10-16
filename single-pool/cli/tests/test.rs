@@ -23,7 +23,6 @@ use {
         vote_instruction::{self, CreateVoteAccountConfig},
         vote_state::{VoteInit, VoteState, VoteStateVersions},
     },
-    spl_single_validator_pool::{self as single_pool},
     spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction},
     std::{path::PathBuf, process::Command, str::FromStr, sync::Arc, time::Duration},
     tempfile::NamedTempFile,
@@ -122,9 +121,9 @@ async fn start_validator() -> (TestValidator, Keypair) {
             upgrade_authority: Pubkey::default(),
         },
         UpgradeableProgramInfo {
-            program_id: single_pool::id(),
+            program_id: spl_single_pool::id(),
             loader: bpf_loader_upgradeable::id(),
-            program_path: PathBuf::from("../../target/deploy/spl_single_validator_pool.so"),
+            program_path: PathBuf::from("../../target/deploy/spl_single_pool.so"),
             upgrade_authority: Pubkey::default(),
         },
     ]);

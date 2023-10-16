@@ -10,7 +10,7 @@ use {
         instruction::Instruction, program_error::ProgramError, pubkey::Pubkey, signature::Signer,
         stake, system_program, transaction::Transaction,
     },
-    spl_single_validator_pool::{
+    spl_single_pool::{
         error::SinglePoolError,
         id,
         instruction::{self, SinglePoolInstruction},

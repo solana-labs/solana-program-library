@@ -10,7 +10,7 @@ use {
         instruction::InstructionError, pubkey::Pubkey, signature::Signer,
         system_instruction::SystemError, transaction::Transaction,
     },
-    spl_single_validator_pool::{id, instruction},
+    spl_single_pool::{id, instruction},
 };
 
 fn assert_metadata(vote_account: &Pubkey, metadata: &Metadata) {
