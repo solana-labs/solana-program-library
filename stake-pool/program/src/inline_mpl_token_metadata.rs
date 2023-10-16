@@ -1,5 +1,5 @@
 //! Inlined MPL metadata types to avoid a direct dependency on `mpl-token-metadata'
-//! NOTE: this file is sym-linked in `spl-single-validator-pool`, so be careful
+//! NOTE: this file is sym-linked in `spl-single-pool`, so be careful
 //! with changes!
 
 solana_program::declare_id!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");

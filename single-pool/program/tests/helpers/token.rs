@@ -12,7 +12,7 @@ use {
         transaction::Transaction,
     },
     spl_associated_token_account as atoken,
-    spl_single_validator_pool::inline_mpl_token_metadata::pda::find_metadata_account,
+    spl_single_pool::inline_mpl_token_metadata::pda::find_metadata_account,
     spl_token::state::{Account, Mint},
 };
 

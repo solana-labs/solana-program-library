@@ -5,8 +5,8 @@ use {
     serde_with::{serde_as, DisplayFromStr},
     solana_cli_output::{display::writeln_name_value, QuietDisplay, VerboseDisplay},
     solana_sdk::{pubkey::Pubkey, signature::Signature},
-    spl_single_validator_pool::{
-        self as single_pool, find_pool_mint_address, find_pool_mint_authority_address,
+    spl_single_pool::{
+        self, find_pool_mint_address, find_pool_mint_authority_address,
         find_pool_mpl_authority_address, find_pool_stake_address,
         find_pool_stake_authority_address,
     },
@@ -113,27 +113,30 @@ impl VerboseDisplay for StakePoolOutput {
         writeln_name_value(
             w,
             "  Pool stake address:",
-            &find_pool_stake_address(&single_pool::id(), &self.pool_address).to_string(),
+            &find_pool_stake_address(&spl_single_pool::id(), &self.pool_address).to_string(),
         )?;
         writeln_name_value(
             w,
             "  Pool mint address:",
-            &find_pool_mint_address(&single_pool::id(), &self.pool_address).to_string(),
+            &find_pool_mint_address(&spl_single_pool::id(), &self.pool_address).to_string(),
         )?;
         writeln_name_value(
             w,
             "  Pool stake authority address:",
-            &find_pool_stake_authority_address(&single_pool::id(), &self.pool_address).to_string(),
+            &find_pool_stake_authority_address(&spl_single_pool::id(), &self.pool_address)
+                .to_string(),
         )?;
         writeln_name_value(
             w,
             "  Pool mint authority address:",
-            &find_pool_mint_authority_address(&single_pool::id(), &self.pool_address).to_string(),
+            &find_pool_mint_authority_address(&spl_single_pool::id(), &self.pool_address)
+                .to_string(),
         )?;
         writeln_name_value(
             w,
             "  Pool MPL authority address:",
-            &find_pool_mpl_authority_address(&single_pool::id(), &self.pool_address).to_string(),
+            &find_pool_mpl_authority_address(&spl_single_pool::id(), &self.pool_address)
+                .to_string(),
         )?;
 
         writeln_name_value(w, "  Available stake:", &self.available_stake.to_string())?;

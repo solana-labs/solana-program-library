@@ -16,10 +16,9 @@ use {
         transaction::Transaction,
     },
     solana_vote_program::{self as vote_program, vote_state::VoteState},
-    spl_single_validator_pool::{
-        self as single_pool, find_default_deposit_account_address, find_pool_address,
-        find_pool_mint_address, find_pool_stake_address, instruction::SinglePoolInstruction,
-        state::SinglePool,
+    spl_single_pool::{
+        self, find_default_deposit_account_address, find_pool_address, find_pool_mint_address,
+        find_pool_stake_address, instruction::SinglePoolInstruction, state::SinglePool,
     },
     spl_token_client::token::Token,
 };
@@ -106,7 +105,7 @@ async fn command_initialize(config: &Config, command_config: InitializeCli) -> C
         return Err(format!("{} is not a valid vote account", vote_account_address,).into());
     }
 
-    let pool_address = find_pool_address(&single_pool::id(), &vote_account_address);
+    let pool_address = find_pool_address(&spl_single_pool::id(), &vote_account_address);
 
     // check if the pool has already been initialized
     if config
@@ -122,8 +121,8 @@ async fn command_initialize(config: &Config, command_config: InitializeCli) -> C
         .into());
     }
 
-    let mut instructions = single_pool::instruction::initialize(
-        &single_pool::id(),
+    let mut instructions = spl_single_pool::instruction::initialize(
+        &spl_single_pool::id(),
         &vote_account_address,
         &payer.pubkey(),
         &quarantine::get_rent(config).await?,
@@ -190,7 +189,7 @@ async fn command_reactivate_pool_stake(
     // the only reason this check is skippable is for testing, otherwise theres no reason
     if !command_config.skip_deactivation_check {
         let current_epoch = config.rpc_client.get_epoch_info().await?.epoch;
-        let pool_stake_address = find_pool_stake_address(&single_pool::id(), &pool_address);
+        let pool_stake_address = find_pool_stake_address(&spl_single_pool::id(), &pool_address);
         let pool_stake_deactivated = quarantine::get_stake_info(config, &pool_stake_address)
             .await?
             .unwrap()
@@ -204,8 +203,10 @@ async fn command_reactivate_pool_stake(
         }
     }
 
-    let instruction =
-        single_pool::instruction::reactivate_pool_stake(&single_pool::id(), &vote_account_address);
+    let instruction = spl_single_pool::instruction::reactivate_pool_stake(
+        &spl_single_pool::id(),
+        &vote_account_address,
+    );
     let transaction = Transaction::new_signed_with_payer(
         &[instruction],
         Some(&payer.pubkey()),
@@ -240,7 +241,7 @@ async fn command_deposit(config: &Config, command_config: DepositCli) -> Command
     let provided_pool_address = command_config.pool_address.or_else(|| {
         command_config
             .vote_account_address
-            .map(|address| find_pool_address(&single_pool::id(), &address))
+            .map(|address| find_pool_address(&spl_single_pool::id(), &address))
     });
 
     // from there we can determine the stake account address
@@ -259,7 +260,7 @@ async fn command_deposit(config: &Config, command_config: DepositCli) -> Command
         quarantine::get_stake_info(config, &stake_account_address).await?
     {
         let derived_pool_address =
-            find_pool_address(&single_pool::id(), &stake.delegation.voter_pubkey);
+            find_pool_address(&spl_single_pool::id(), &stake.delegation.voter_pubkey);
 
         if let Some(provided_pool_address) = provided_pool_address {
             if provided_pool_address != derived_pool_address {
@@ -314,7 +315,7 @@ async fn command_deposit(config: &Config, command_config: DepositCli) -> Command
         return Err(format!("Pool {} has not been initialized", pool_address).into());
     }
 
-    let pool_stake_address = find_pool_stake_address(&single_pool::id(), &pool_address);
+    let pool_stake_address = find_pool_stake_address(&spl_single_pool::id(), &pool_address);
     let pool_stake_active = quarantine::get_stake_info(config, &pool_stake_address)
         .await?
         .unwrap()
@@ -327,7 +328,7 @@ async fn command_deposit(config: &Config, command_config: DepositCli) -> Command
         return Err("Activation status mismatch; try again next epoch".into());
     }
 
-    let pool_mint_address = find_pool_mint_address(&single_pool::id(), &pool_address);
+    let pool_mint_address = find_pool_mint_address(&spl_single_pool::id(), &pool_address);
     let token = Token::new(
         config.program_client.clone(),
         &spl_token::id(),
@@ -352,8 +353,8 @@ async fn command_deposit(config: &Config, command_config: DepositCli) -> Command
         .base
         .amount;
 
-    let instructions = single_pool::instruction::deposit(
-        &single_pool::id(),
+    let instructions = spl_single_pool::instruction::deposit(
+        &spl_single_pool::id(),
         &pool_address,
         &stake_account_address,
         &token_account_address,
@@ -423,7 +424,7 @@ async fn command_withdraw(config: &Config, command_config: WithdrawCli) -> Comma
     }
 
     // now all the mint and token info
-    let pool_mint_address = find_pool_mint_address(&single_pool::id(), &pool_address);
+    let pool_mint_address = find_pool_mint_address(&spl_single_pool::id(), &pool_address);
     let token = Token::new(
         config.program_client.clone(),
         &spl_token::id(),
@@ -484,8 +485,8 @@ async fn command_withdraw(config: &Config, command_config: WithdrawCli) -> Comma
     ];
 
     // perform the withdrawal
-    instructions.extend(single_pool::instruction::withdraw(
-        &single_pool::id(),
+    instructions.extend(spl_single_pool::instruction::withdraw(
+        &spl_single_pool::id(),
         &pool_address,
         &stake_account_address,
         &stake_authority_address,
@@ -570,8 +571,8 @@ async fn command_create_metadata(
 
     // and... i guess thats it?
 
-    let instruction = single_pool::instruction::create_token_metadata(
-        &single_pool::id(),
+    let instruction = spl_single_pool::instruction::create_token_metadata(
+        &spl_single_pool::id(),
         &pool_address,
         &payer.pubkey(),
     );
@@ -641,8 +642,8 @@ async fn command_update_metadata(
         unreachable!();
     }
 
-    let instruction = single_pool::instruction::update_token_metadata(
-        &single_pool::id(),
+    let instruction = spl_single_pool::instruction::update_token_metadata(
+        &spl_single_pool::id(),
         &vote_account_address,
         &authorized_withdrawer.pubkey(),
         command_config.token_name,
@@ -717,8 +718,8 @@ async fn command_create_stake(config: &Config, command_config: CreateStakeCli) -
         );
     }
 
-    let instructions = single_pool::instruction::create_and_delegate_user_stake(
-        &single_pool::id(),
+    let instructions = spl_single_pool::instruction::create_and_delegate_user_stake(
+        &spl_single_pool::id(),
         &vote_account_address,
         &stake_authority_address,
         &quarantine::get_rent(config).await?,
@@ -755,7 +756,7 @@ async fn command_display(config: &Config, command_config: DisplayCli) -> Command
         let pools = config
             .rpc_client
             .get_program_accounts_with_config(
-                &single_pool::id(),
+                &spl_single_pool::id(),
                 RpcProgramAccountsConfig {
                     filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new_raw_bytes(
                         0,
@@ -813,7 +814,7 @@ async fn get_pool_display(
         return Err(format!("Pool {} does not exist", pool_address).into());
     };
 
-    let pool_stake_address = find_pool_stake_address(&single_pool::id(), &pool_address);
+    let pool_stake_address = find_pool_stake_address(&spl_single_pool::id(), &pool_address);
     let available_stake =
         if let Some((_, stake)) = quarantine::get_stake_info(config, &pool_stake_address).await? {
             stake.delegation.stake - quarantine::get_minimum_delegation(config).await?
@@ -821,7 +822,7 @@ async fn get_pool_display(
             unreachable!()
         };
 
-    let pool_mint_address = find_pool_mint_address(&single_pool::id(), &pool_address);
+    let pool_mint_address = find_pool_mint_address(&spl_single_pool::id(), &pool_address);
     let token_supply = config
         .rpc_client
         .get_token_supply(&pool_mint_address)

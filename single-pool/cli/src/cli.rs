@@ -13,7 +13,7 @@ use {
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{pubkey::Pubkey, signer::Signer},
-    spl_single_validator_pool::{self as single_pool, find_pool_address},
+    spl_single_pool::{self, find_pool_address},
     std::{str::FromStr, sync::Arc},
 };
 
@@ -90,7 +90,7 @@ pub enum Command {
     /// linked to the intended depository pool
     CreateDefaultStake(CreateStakeCli),
 
-    /// Display info for one or all single single-validator stake pool(s)
+    /// Display info for one or all single-validator stake pool(s)
     Display(DisplayCli),
 }
 
@@ -355,7 +355,7 @@ pub fn pool_address_from_args(maybe_pool: Option<Pubkey>, maybe_vote: Option<Pub
     if let Some(pool_address) = maybe_pool {
         pool_address
     } else if let Some(vote_account_address) = maybe_vote {
-        find_pool_address(&single_pool::id(), &vote_account_address)
+        find_pool_address(&spl_single_pool::id(), &vote_account_address)
     } else {
         unreachable!()
     }

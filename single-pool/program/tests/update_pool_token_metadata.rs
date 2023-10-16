@@ -6,7 +6,7 @@ use {
     helpers::*,
     solana_program_test::*,
     solana_sdk::{signature::Signer, transaction::Transaction},
-    spl_single_validator_pool::{error::SinglePoolError, id, instruction},
+    spl_single_pool::{error::SinglePoolError, id, instruction},
     test_case::test_case,
 };
 

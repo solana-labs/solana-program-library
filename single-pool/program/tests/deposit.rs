@@ -13,7 +13,7 @@ use {
         transaction::Transaction,
     },
     spl_associated_token_account as atoken,
-    spl_single_validator_pool::{
+    spl_single_pool::{
         error::SinglePoolError, find_default_deposit_account_address, id, instruction,
     },
     test_case::test_case,

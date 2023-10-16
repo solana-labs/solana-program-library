@@ -12,7 +12,7 @@ use {
         stake::state::{Delegation, Stake, StakeState},
         transaction::Transaction,
     },
-    spl_single_validator_pool::{error::SinglePoolError, id, instruction},
+    spl_single_pool::{error::SinglePoolError, id, instruction},
     test_case::test_case,
 };
 
