@@ -11,6 +11,7 @@ use {
     spl_pod::{
         bytemuck::{pod_bytes_of, pod_from_bytes},
         optional_keys::OptionalNonZeroPubkey,
+        primitives::PodU32,
     },
 };
 
@@ -22,7 +23,7 @@ pub struct InitializeGroup {
     /// Update authority for the group
     pub update_authority: OptionalNonZeroPubkey,
     /// The maximum number of group members
-    pub max_size: u32,
+    pub max_size: PodU32,
 }
 
 /// Instruction data for updating the max size of a `Group`
@@ -31,7 +32,7 @@ pub struct InitializeGroup {
 #[discriminator_hash_input("spl_token_group_interface:update_group_max_size")]
 pub struct UpdateGroupMaxSize {
     /// New max size for the group
-    pub max_size: u32,
+    pub max_size: PodU32,
 }
 
 /// Instruction data for updating the authority of a `Group`
@@ -159,7 +160,7 @@ pub fn initialize_group(
         .expect("Failed to deserialize `Option<Pubkey>`");
     let data = TokenGroupInstruction::InitializeGroup(InitializeGroup {
         update_authority,
-        max_size,
+        max_size: max_size.into(),
     })
     .pack();
     let mut accounts = vec![
@@ -183,7 +184,10 @@ pub fn update_group_max_size(
     update_authority: &Pubkey,
     max_size: u32,
 ) -> Instruction {
-    let data = TokenGroupInstruction::UpdateGroupMaxSize(UpdateGroupMaxSize { max_size }).pack();
+    let data = TokenGroupInstruction::UpdateGroupMaxSize(UpdateGroupMaxSize {
+        max_size: max_size.into(),
+    })
+    .pack();
     Instruction {
         program_id: *program_id,
         accounts: vec![
@@ -263,7 +267,7 @@ mod test {
     fn initialize_group_pack() {
         let data = InitializeGroup {
             update_authority: OptionalNonZeroPubkey::default(),
-            max_size: 100,
+            max_size: 100.into(),
         };
         let instruction = TokenGroupInstruction::InitializeGroup(data);
         let preimage = hash::hashv(&[format!("{NAMESPACE}:initialize_group").as_bytes()]);
@@ -273,7 +277,9 @@ mod test {
 
     #[test]
     fn update_group_max_size_pack() {
-        let data = UpdateGroupMaxSize { max_size: 200 };
+        let data = UpdateGroupMaxSize {
+            max_size: 200.into(),
+        };
         let instruction = TokenGroupInstruction::UpdateGroupMaxSize(data);
         let preimage = hash::hashv(&[format!("{NAMESPACE}:update_group_max_size").as_bytes()]);
         let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
