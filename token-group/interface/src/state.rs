@@ -63,14 +63,14 @@ pub struct Member {
     /// The pubkey of the `Group`
     pub group: Pubkey,
     /// The member number
-    pub member_number: u32,
+    pub member_number: PodU32,
 }
 impl Member {
     /// Creates a new `Member` state
     pub fn new(group: Pubkey, member_number: u32) -> Self {
         Self {
             group,
-            member_number,
+            member_number: member_number.into(),
         }
     }
 }
@@ -110,7 +110,7 @@ mod tests {
 
         let member = Member {
             group: Pubkey::new_unique(),
-            member_number: 0,
+            member_number: 0.into(),
         };
 
         let account_size = TlvStateBorrowed::get_base_len()

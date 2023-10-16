@@ -18,7 +18,7 @@ use {
 /// Instruction data for initializing a new `Group`
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable, SplDiscriminate)]
-#[discriminator_hash_input("spl_token_group_interface:initialize_group")]
+#[discriminator_hash_input("spl_token_group_interface:initialize_token_group")]
 pub struct InitializeGroup {
     /// Update authority for the group
     pub update_authority: OptionalNonZeroPubkey,
@@ -38,7 +38,7 @@ pub struct UpdateGroupMaxSize {
 /// Instruction data for updating the authority of a `Group`
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable, SplDiscriminate)]
-#[discriminator_hash_input("spl_token_group_interface:update_group_authority")]
+#[discriminator_hash_input("spl_token_group_interface:update_authority")]
 pub struct UpdateGroupAuthority {
     /// New authority for the group, or unset if `None`
     pub new_authority: OptionalNonZeroPubkey,
@@ -89,7 +89,8 @@ pub enum TokenGroupInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[w]`  Member
-    ///   1. `[s]`  Member update authority
+    ///   1. `[]`   Member mint
+    ///   1. `[s]`  Member mint authority
     ///   2. `[w]`  Group
     ///   3. `[s]`  Group update authority
     InitializeMember(InitializeMember),
@@ -155,7 +156,6 @@ pub fn initialize_group(
     mint_authority: &Pubkey,
     update_authority: Option<Pubkey>,
     max_size: u32,
-    extra_account_metas: &[AccountMeta],
 ) -> Instruction {
     let update_authority = OptionalNonZeroPubkey::try_from(update_authority)
         .expect("Failed to deserialize `Option<Pubkey>`");
@@ -164,16 +164,13 @@ pub fn initialize_group(
         max_size: max_size.into(),
     })
     .pack();
-    let mut accounts = vec![
-        AccountMeta::new(*group, false),
-        AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(*mint_authority, true),
-    ];
-    accounts.extend_from_slice(extra_account_metas);
-
     Instruction {
         program_id: *program_id,
-        accounts,
+        accounts: vec![
+            AccountMeta::new(*group, false),
+            AccountMeta::new_readonly(*mint, false),
+            AccountMeta::new_readonly(*mint_authority, true),
+        ],
         data,
     }
 }
@@ -225,21 +222,21 @@ pub fn update_group_authority(
 pub fn initialize_member(
     program_id: &Pubkey,
     member: &Pubkey,
-    member_update_authority: &Pubkey,
+    member_mint: &Pubkey,
+    member_mint_authority: &Pubkey,
     group: &Pubkey,
     group_update_authority: &Pubkey,
 ) -> Instruction {
     let data = TokenGroupInstruction::InitializeMember(InitializeMember {}).pack();
-    let accounts = vec![
-        AccountMeta::new(*member, false),
-        AccountMeta::new_readonly(*member_update_authority, true),
-        AccountMeta::new(*group, false),
-        AccountMeta::new_readonly(*group_update_authority, true),
-    ];
-
     Instruction {
         program_id: *program_id,
-        accounts,
+        accounts: vec![
+            AccountMeta::new(*member, false),
+            AccountMeta::new_readonly(*member_mint, false),
+            AccountMeta::new_readonly(*member_mint_authority, true),
+            AccountMeta::new(*group, false),
+            AccountMeta::new_readonly(*group_update_authority, true),
+        ],
         data,
     }
 }
@@ -273,7 +270,7 @@ mod test {
             max_size: 100.into(),
         };
         let instruction = TokenGroupInstruction::InitializeGroup(data);
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:initialize_group").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:initialize_token_group").as_bytes()]);
         let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         instruction_pack_unpack::<InitializeGroup>(instruction, discriminator, data);
     }
@@ -295,7 +292,7 @@ mod test {
             new_authority: OptionalNonZeroPubkey::default(),
         };
         let instruction = TokenGroupInstruction::UpdateGroupAuthority(data);
-        let preimage = hash::hashv(&[format!("{NAMESPACE}:update_group_authority").as_bytes()]);
+        let preimage = hash::hashv(&[format!("{NAMESPACE}:update_authority").as_bytes()]);
         let discriminator = &preimage.as_ref()[..ArrayDiscriminator::LENGTH];
         instruction_pack_unpack::<UpdateGroupAuthority>(instruction, discriminator, data);
     }
