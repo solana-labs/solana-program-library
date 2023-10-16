@@ -11,4 +11,13 @@ pub enum TokenGroupError {
     /// Size is greater than max size
     #[error("Size is greater than max size")]
     SizeExceedsMaxSize,
+    /// Group is immutable
+    #[error("Group is immutable")]
+    ImmutableGroup,
+    /// Incorrect mint authority has signed the instruction
+    #[error("Incorrect mint authority has signed the instruction")]
+    IncorrectMintAuthority,
+    /// Incorrect update authority has signed the instruction
+    #[error("Incorrect update authority has signed the instruction")]
+    IncorrectUpdateAuthority,
 }
