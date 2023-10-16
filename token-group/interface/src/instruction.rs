@@ -89,8 +89,9 @@ pub enum TokenGroupInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[w]`  Member
-    ///   1. `[w]`  Group
-    ///   2. `[s]`  Group update authority
+    ///   1. `[s]`  Member update authority
+    ///   2. `[w]`  Group
+    ///   3. `[s]`  Group update authority
     InitializeMember(InitializeMember),
 }
 impl TokenGroupInstruction {
@@ -223,13 +224,15 @@ pub fn update_group_authority(
 #[allow(clippy::too_many_arguments)]
 pub fn initialize_member(
     program_id: &Pubkey,
+    member: &Pubkey,
+    member_update_authority: &Pubkey,
     group: &Pubkey,
     group_update_authority: &Pubkey,
-    member: &Pubkey,
 ) -> Instruction {
     let data = TokenGroupInstruction::InitializeMember(InitializeMember {}).pack();
     let accounts = vec![
         AccountMeta::new(*member, false),
+        AccountMeta::new_readonly(*member_update_authority, true),
         AccountMeta::new(*group, false),
         AccountMeta::new_readonly(*group_update_authority, true),
     ];
