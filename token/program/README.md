@@ -10,4 +10,4 @@ Full documentation is available at https://spl.solana.com/token
 ## Audit
 
 The repository [README](https://github.com/solana-labs/solana-program-library#audits)
-contains information about program audits.
+contains information about program audits. 
