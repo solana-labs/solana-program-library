@@ -100,13 +100,13 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
             return Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized);
         }
         let mut rightmost_proof = Path::default();
-        let mut empty_node_cache = Box::new([Node::default(); MAX_DEPTH]);
+        let empty_node_cache = [Node::default(); MAX_DEPTH];
         for (i, node) in rightmost_proof.proof.iter_mut().enumerate() {
-            *node = empty_node_cached::<MAX_DEPTH>(i as u32, &mut empty_node_cache);
+            *node = empty_node_cached::<MAX_DEPTH>(i as u32, &empty_node_cache);
         }
         let mut path = [Node::default(); MAX_DEPTH];
         for (i, node) in path.iter_mut().enumerate() {
-            *node = empty_node_cached::<MAX_DEPTH>(i as u32, &mut empty_node_cache);
+            *node = empty_node_cached::<MAX_DEPTH>(i as u32, &empty_node_cache);
         }
         self.change_logs[0].root = empty_node(MAX_DEPTH as u32);
         self.change_logs[0].path = path;
@@ -161,10 +161,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         if !self.is_initialized() {
             return Err(ConcurrentMerkleTreeError::TreeNotInitialized);
         }
-        let mut empty_node_cache = Box::new([EMPTY; MAX_DEPTH]);
-        if self.get_root()
-            != empty_node_cached::<MAX_DEPTH>(MAX_DEPTH as u32, &mut empty_node_cache)
-        {
+        let empty_node_cache = [EMPTY; MAX_DEPTH];
+        if self.get_root() != empty_node_cached::<MAX_DEPTH>(MAX_DEPTH as u32, &empty_node_cache) {
             return Err(ConcurrentMerkleTreeError::TreeNonEmpty);
         }
         Ok(())
@@ -262,14 +260,14 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         let intersection = self.rightmost_proof.index.trailing_zeros() as usize;
         let mut change_list = [EMPTY; MAX_DEPTH];
         let mut intersection_node = self.rightmost_proof.leaf;
-        let mut empty_node_cache = Box::new([Node::default(); MAX_DEPTH]);
+        let empty_node_cache = [Node::default(); MAX_DEPTH];
 
         for (i, cl_item) in change_list.iter_mut().enumerate().take(MAX_DEPTH) {
             *cl_item = node;
             match i {
                 i if i < intersection => {
                     // Compute proof to the appended node from empty nodes
-                    let sibling = empty_node_cached::<MAX_DEPTH>(i as u32, &mut empty_node_cache);
+                    let sibling = empty_node_cached::<MAX_DEPTH>(i as u32, &empty_node_cache);
                     hash_to_parent(
                         &mut intersection_node,
                         &self.rightmost_proof.proof[i],
