@@ -1,18 +1,14 @@
 //! Program instructions
 
-use {
-    num_enum::{IntoPrimitive, TryFromPrimitive},
-    solana_program::{
-        instruction::{AccountMeta, Instruction},
-        program_error::ProgramError,
-        pubkey::Pubkey,
-        system_program,
-    },
+use solana_program::{
+    instruction::{AccountMeta, Instruction},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    system_program,
 };
 
 /// Feature Gate program instructions
-#[derive(Clone, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
-#[repr(u8)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum FeatureGateInstruction {
     /// Queue a feature for activation by allocating and assigning a feature
     /// account.
@@ -20,12 +16,29 @@ pub enum FeatureGateInstruction {
     /// Note: This instruction expects the account to be owned by the system
     /// program.
     ///
+    /// If an optional feature activation authority is provided, then the
+    /// feature account will be a PDA derived from the authority and the
+    /// provided nonce.
+    /// Therefore, the feature account is not required to sign the transaction
+    /// if the authority is provided.
+    /// A nonce is required if the authority is provided.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[w+s]`    Feature account (must be a system account)
     ///   1. `[w+s]`    Payer (for rent lamports)
     ///   2. `[]`       System program
-    ActivateFeature,
+    ///
+    /// -- or --
+    ///
+    ///   0. `[w]`      Feature account (must be a system account)
+    ///   1. `[w+s]`    Payer (for rent lamports)
+    ///   2. `[]`       System program
+    ///   3. `[s]`      Feature activation authority
+    ActivateFeature {
+        /// The nonce used to derive the feature ID.
+        nonce: Option<u16>,
+    },
     /// Revoke a pending feature activation.
     ///
     /// A "pending" feature activation is a feature account that has been
@@ -44,28 +57,80 @@ impl FeatureGateInstruction {
     /// Unpacks a byte buffer into a
     /// [FeatureGateInstruction](enum.FeatureGateInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        if input.len() != 1 {
+        if input.is_empty() {
             return Err(ProgramError::InvalidInstructionData);
         }
-        Self::try_from(input[0]).map_err(|_| ProgramError::InvalidInstructionData)
+        let (instruction, rest) = input
+            .split_first()
+            .ok_or(ProgramError::InvalidInstructionData)?;
+        match instruction {
+            0 => {
+                if rest.is_empty() {
+                    return Err(ProgramError::InvalidInstructionData);
+                }
+                if rest[0] == 0 {
+                    Ok(Self::ActivateFeature { nonce: None })
+                } else if rest[0] == 1 {
+                    if rest.len() != 3 {
+                        return Err(ProgramError::InvalidInstructionData);
+                    }
+                    let nonce = u16::from_le_bytes([rest[1], rest[2]]);
+                    Ok(Self::ActivateFeature { nonce: Some(nonce) })
+                } else {
+                    Err(ProgramError::InvalidInstructionData)
+                }
+            }
+            1 => Ok(Self::RevokePendingActivation),
+            _ => Err(ProgramError::InvalidInstructionData),
+        }
     }
 
     /// Packs a [FeatureGateInstruction](enum.FeatureGateInstruction.html) into
     /// a byte buffer.
     pub fn pack(&self) -> Vec<u8> {
-        vec![self.to_owned().into()]
+        let mut buf = Vec::with_capacity(3);
+        match self {
+            Self::ActivateFeature { nonce } => {
+                buf.push(0);
+                if let Some(nonce) = nonce {
+                    buf.push(1);
+                    buf.extend_from_slice(&nonce.to_le_bytes());
+                } else {
+                    buf.push(0);
+                }
+            }
+            Self::RevokePendingActivation => buf.push(1),
+        }
+        buf
     }
 }
 
 /// Creates an 'ActivateFeature' instruction.
-pub fn activate_feature(feature_id: &Pubkey, payer: &Pubkey) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*feature_id, true),
-        AccountMeta::new(*payer, true),
-        AccountMeta::new_readonly(system_program::id(), false),
-    ];
-
-    let data = FeatureGateInstruction::ActivateFeature.pack();
+pub fn activate_feature(
+    feature_id: &Pubkey,
+    payer: &Pubkey,
+    authority_with_nonce: Option<(&Pubkey, u16)>,
+) -> Instruction {
+    let (accounts, data) = if let Some((authority, nonce)) = authority_with_nonce {
+        (
+            vec![
+                AccountMeta::new(*feature_id, false),
+                AccountMeta::new(*payer, true),
+                AccountMeta::new_readonly(system_program::id(), false),
+                AccountMeta::new_readonly(*authority, true),
+            ],
+            FeatureGateInstruction::ActivateFeature { nonce: Some(nonce) }.pack(),
+        )
+    } else {
+        (
+            vec![
+                AccountMeta::new(*feature_id, true),
+                AccountMeta::new(*payer, true),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+            FeatureGateInstruction::ActivateFeature { nonce: None }.pack(),
+        )
+    };
 
     Instruction {
         program_id: crate::id(),
@@ -102,7 +167,8 @@ mod test {
 
     #[test]
     fn test_pack_unpack_activate_feature() {
-        test_pack_unpack(&FeatureGateInstruction::ActivateFeature);
+        test_pack_unpack(&FeatureGateInstruction::ActivateFeature { nonce: None });
+        test_pack_unpack(&FeatureGateInstruction::ActivateFeature { nonce: Some(16) });
     }
 
     #[test]

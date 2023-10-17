@@ -22,6 +22,7 @@ async fn setup_pending_feature(context: &mut ProgramTestContext, feature_keypair
         &[activate_feature(
             &feature_keypair.pubkey(),
             &context.payer.pubkey(),
+            None,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, feature_keypair],
@@ -69,7 +70,8 @@ async fn test_activate_feature() {
     let mut context = program_test.start_with_context().await;
 
     // Fail: feature not signer
-    let mut activate_ix = activate_feature(&feature_keypair.pubkey(), &context.payer.pubkey());
+    let mut activate_ix =
+        activate_feature(&feature_keypair.pubkey(), &context.payer.pubkey(), None);
     activate_ix.accounts[0].is_signer = false;
     let transaction = Transaction::new_signed_with_payer(
         &[activate_ix],
@@ -89,7 +91,8 @@ async fn test_activate_feature() {
     );
 
     // Fail: payer not signer
-    let mut activate_ix = activate_feature(&feature_keypair.pubkey(), &context.payer.pubkey());
+    let mut activate_ix =
+        activate_feature(&feature_keypair.pubkey(), &context.payer.pubkey(), None);
     activate_ix.accounts[1].is_signer = false;
     let transaction = Transaction::new_signed_with_payer(
         &[activate_ix],
@@ -113,6 +116,7 @@ async fn test_activate_feature() {
         &[activate_feature(
             &mock_invalid_feature.pubkey(),
             &context.payer.pubkey(),
+            None,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &mock_invalid_feature],
@@ -137,6 +141,7 @@ async fn test_activate_feature() {
         &[activate_feature(
             &feature_keypair.pubkey(),
             &context.payer.pubkey(),
+            None,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &feature_keypair],
@@ -164,6 +169,7 @@ async fn test_activate_feature() {
         &[activate_feature(
             &feature_keypair.pubkey(),
             &context.payer.pubkey(),
+            None,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &feature_keypair],

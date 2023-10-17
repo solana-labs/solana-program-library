@@ -17,4 +17,7 @@ pub enum FeatureGateError {
     /// Invalid feature account
     #[error("Invalid feature account")]
     InvalidFeatureAccount,
+    /// Missing nonce for authority
+    #[error("Missing nonce for authority")]
+    MissingNonce,
 }
