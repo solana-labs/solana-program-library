@@ -1,10 +1,8 @@
 use {
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{
-        input_parsers::pubkey_of,
-        input_validators::{
-            is_url_or_moniker, is_valid_pubkey, is_valid_signer, normalize_to_url_if_moniker,
-        },
+        input_parsers::{parse_url_or_moniker, pubkey_of},
+        input_validators::{is_valid_pubkey, is_valid_signer, normalize_to_url_if_moniker},
         keypair::{
             signer_from_path, signer_from_path_with_config, DefaultSigner, SignerFromPathConfig,
         },
@@ -245,7 +243,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .value_name("URL")
                 .takes_value(true)
                 .global(true)
-                .validator(|s| is_url_or_moniker(s))
+                .value_parser(parse_url_or_moniker)
                 .help("JSON RPC URL for the cluster [default: value from configuration file]"),
         )
         .subcommand(
@@ -363,7 +361,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let json_rpc_url = normalize_to_url_if_moniker(
             matches
-                .value_of("json_rpc_url")
+                .get_one::<String>("json_rpc_url")
                 .unwrap_or(&cli_config.json_rpc_url),
         );
 
