@@ -62,6 +62,23 @@ pub enum FeatureGateInstruction {
     ///   0. `[w+s]`    Feature account
     ///   1. `[w]`      Destination (for rent lamports)
     RevokePendingActivation,
+    /// Revoke a pending feature activation using an authority signer.
+    ///
+    /// A "pending" feature activation is a feature account that has been
+    /// allocated and assigned, but hasn't been processed by the network yet.
+    ///
+    /// Features that _have_ been processed by the network are activated, and
+    /// cannot be revoked.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[w]`      Feature account
+    ///   1. `[s]`      Feature activation authority (can be multisig)
+    ///   2. `[w]`      Destination (for rent lamports)
+    RevokePendingActivationWithAuthority {
+        /// The nonce used to derive the feature ID.
+        nonce: u16,
+    },
 }
 impl FeatureGateInstruction {
     /// Unpacks a byte buffer into a
@@ -83,6 +100,13 @@ impl FeatureGateInstruction {
                 Ok(Self::ActivateFeatureWithAuthority { nonce })
             }
             2 => Ok(Self::RevokePendingActivation),
+            3 => {
+                if rest.len() != 2 {
+                    return Err(ProgramError::InvalidInstructionData);
+                }
+                let nonce = u16::from_le_bytes([rest[0], rest[1]]);
+                Ok(Self::RevokePendingActivationWithAuthority { nonce })
+            }
             _ => Err(ProgramError::InvalidInstructionData),
         }
     }
@@ -98,6 +122,10 @@ impl FeatureGateInstruction {
                 buf.extend_from_slice(&nonce.to_le_bytes());
             }
             Self::RevokePendingActivation => buf.push(2),
+            Self::RevokePendingActivationWithAuthority { nonce } => {
+                buf.push(3);
+                buf.extend_from_slice(&nonce.to_le_bytes());
+            }
         }
         buf
     }
@@ -186,6 +214,28 @@ pub fn revoke_pending_activation(feature_id: &Pubkey, destination: &Pubkey) -> I
     }
 }
 
+/// Creates a `RevokePendingActivationWithAuthority` instruction.
+pub fn revoke_pending_activation_with_authority(
+    feature_id: &Pubkey,
+    authority: &Pubkey,
+    destination: &Pubkey,
+    nonce: u16,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*feature_id, false),
+        AccountMeta::new_readonly(*authority, true),
+        AccountMeta::new(*destination, false),
+    ];
+
+    let data = FeatureGateInstruction::RevokePendingActivationWithAuthority { nonce }.pack();
+
+    Instruction {
+        program_id: crate::id(),
+        accounts,
+        data,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -209,5 +259,12 @@ mod test {
     #[test]
     fn test_pack_unpack_revoke_pending_activation() {
         test_pack_unpack(&FeatureGateInstruction::RevokePendingActivation);
+    }
+
+    #[test]
+    fn test_pack_unpack_revoke_pending_activation_with_authority() {
+        test_pack_unpack(
+            &FeatureGateInstruction::RevokePendingActivationWithAuthority { nonce: 8u16 },
+        );
     }
 }

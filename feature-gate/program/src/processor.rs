@@ -133,6 +133,55 @@ pub fn process_revoke_pending_activation(
     Ok(())
 }
 
+/// Processes a
+/// [RevokePendingActivationWithAuthority](enum.FeatureGateInstruction.html)
+/// instruction.
+pub fn process_revoke_pending_activation_with_authority(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    nonce: u16,
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let feature_info = next_account_info(account_info_iter)?;
+    let authority_info = next_account_info(account_info_iter)?;
+    let destination_info = next_account_info(account_info_iter)?;
+
+    if !authority_info.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    if feature_info.owner != program_id {
+        return Err(ProgramError::IllegalOwner);
+    }
+
+    let (feature_id, _) = derive_feature_id(authority_info.key, nonce)?;
+
+    if feature_info.key != &feature_id {
+        return Err(FeatureGateError::IncorrectFeatureId.into());
+    }
+
+    if Feature::from_account_info(feature_info)?
+        .activated_at
+        .is_some()
+    {
+        return Err(FeatureGateError::FeatureAlreadyActivated.into());
+    }
+
+    let new_destination_lamports = feature_info
+        .lamports()
+        .checked_add(destination_info.lamports())
+        .ok_or::<ProgramError>(FeatureGateError::Overflow.into())?;
+
+    **feature_info.try_borrow_mut_lamports()? = 0;
+    **destination_info.try_borrow_mut_lamports()? = new_destination_lamports;
+
+    feature_info.realloc(0, true)?;
+    feature_info.assign(&system_program::id());
+
+    Ok(())
+}
+
 /// Processes an [Instruction](enum.Instruction.html).
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
     let instruction = FeatureGateInstruction::unpack(input)?;
@@ -148,6 +197,10 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> P
         FeatureGateInstruction::RevokePendingActivation => {
             msg!("Instruction: RevokePendingActivation");
             process_revoke_pending_activation(program_id, accounts)
+        }
+        FeatureGateInstruction::RevokePendingActivationWithAuthority { nonce } => {
+            msg!("Instruction: RevokePendingActivationWithAuthority");
+            process_revoke_pending_activation_with_authority(program_id, accounts, nonce)
         }
     }
 }
