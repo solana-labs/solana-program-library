@@ -14,7 +14,7 @@ use {
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{pubkey::Pubkey, signer::Signer},
     spl_single_pool::{self, find_pool_address},
-    std::{str::FromStr, sync::Arc},
+    std::{rc::Rc, str::FromStr, sync::Arc},
 };
 
 #[derive(Clone, Debug, Parser)]
@@ -402,7 +402,7 @@ impl Command {
     pub fn with_signers(
         mut self,
         matches: &ArgMatches,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<Self, Error> {
         match self {
             Command::Deposit(ref mut config) => {
@@ -440,7 +440,7 @@ impl Command {
 
 pub fn with_signer(
     matches: &ArgMatches,
-    wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     arg: Option<SignerArg>,
     name: &str,
 ) -> Result<Option<SignerArg>, Error> {

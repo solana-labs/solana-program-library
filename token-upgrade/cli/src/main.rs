@@ -29,7 +29,7 @@ use {
         token::Token,
     },
     spl_token_upgrade::{get_token_upgrade_authority_address, instruction::exchange},
-    std::{error::Error, process::exit, sync::Arc},
+    std::{error::Error, process::exit, rc::Rc, sync::Arc},
 };
 
 struct Config {
@@ -344,7 +344,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .get_matches();
 
     let (command, matches) = app_matches.subcommand().unwrap();
-    let mut wallet_manager: Option<Arc<RemoteWalletManager>> = None;
+    let mut wallet_manager: Option<Rc<RemoteWalletManager>> = None;
 
     let config = {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {

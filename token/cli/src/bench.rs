@@ -21,7 +21,7 @@ use {
         instruction,
         state::{Account, Mint},
     },
-    std::{sync::Arc, time::Instant},
+    std::{rc::Rc, sync::Arc, time::Instant},
 };
 
 pub(crate) trait BenchSubCommand {
@@ -169,7 +169,7 @@ pub(crate) async fn bench_process_command(
     matches: &ArgMatches<'_>,
     config: &Config<'_>,
     mut signers: Vec<Arc<dyn Signer>>,
-    wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
 ) -> CommandResult {
     assert!(!config.sign_only);
 

@@ -51,7 +51,7 @@ use {
         MINIMUM_RESERVE_LAMPORTS,
     },
     std::cmp::Ordering,
-    std::{num::NonZeroU32, process::exit, sync::Arc},
+    std::{num::NonZeroU32, process::exit, rc::Rc, sync::Arc},
 };
 // use instruction::create_associated_token_account once ATA 1.0.5 is released
 #[allow(deprecated)]
@@ -127,7 +127,7 @@ fn get_signer(
     matches: &ArgMatches<'_>,
     keypair_name: &str,
     keypair_path: &str,
-    wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     signer_from_path_config: SignerFromPathConfig,
 ) -> Box<dyn Signer> {
     signer_from_path_with_config(

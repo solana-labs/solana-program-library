@@ -22,7 +22,7 @@ use spl_token_2022::{
 use spl_token_client::client::{
     ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
 };
-use std::{process::exit, sync::Arc};
+use std::{process::exit, rc::Rc, sync::Arc};
 
 pub(crate) struct MintInfo {
     pub program_id: Pubkey,
@@ -50,7 +50,7 @@ pub(crate) struct Config<'a> {
 impl<'a> Config<'a> {
     pub(crate) async fn new(
         matches: &ArgMatches<'_>,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
     ) -> Config<'a> {
@@ -101,7 +101,7 @@ impl<'a> Config<'a> {
 
     fn extract_multisig_signers(
         matches: &ArgMatches<'_>,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
     ) -> Vec<&'a Pubkey> {
@@ -121,7 +121,7 @@ impl<'a> Config<'a> {
 
     pub(crate) async fn new_with_clients_and_ws_url(
         matches: &ArgMatches<'_>,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
         multisigner_ids: &'a mut Vec<Pubkey>,
         rpc_client: Arc<RpcClient>,
@@ -305,7 +305,7 @@ impl<'a> Config<'a> {
         &self,
         arg_matches: &ArgMatches<'_>,
         override_name: &str,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
         let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
             .map_err(|e| -> Error { e.to_string().into() })?;
@@ -324,7 +324,7 @@ impl<'a> Config<'a> {
         &self,
         arg_matches: &ArgMatches<'_>,
         override_name: &str,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
         token: Option<Pubkey>,
     ) -> Result<Pubkey, Error> {
         if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager)
@@ -355,7 +355,7 @@ impl<'a> Config<'a> {
         &self,
         arg_matches: &ArgMatches<'_>,
         address_name: &str,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<Pubkey, Error> {
         if let Some(address) = pubkey_of_signer(arg_matches, address_name, wallet_manager)
             .map_err(|e| -> Error { e.to_string().into() })?
@@ -371,7 +371,7 @@ impl<'a> Config<'a> {
         &self,
         arg_matches: &ArgMatches,
         authority_name: &str,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> (Arc<dyn Signer>, Pubkey) {
         // If there are `--multisig-signers` on the command line, allow `NullSigner`s to
         // be returned for multisig account addresses
