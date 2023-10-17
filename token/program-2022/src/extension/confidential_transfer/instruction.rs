@@ -10,7 +10,7 @@ use {
         instruction::{encode_instruction, TokenInstruction},
         proof::ProofLocation,
     },
-    bytemuck::{Pod, Zeroable},
+    bytemuck::Zeroable, // `Pod` comes from zk_token_proof_instruction
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
         instruction::{AccountMeta, Instruction},
