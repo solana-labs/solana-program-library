@@ -48,6 +48,7 @@ async fn test_initialize_group_member() {
         ),
         &group_mint,
         &group_mint_authority,
+        vec![],
     )
     .await;
     setup_mint(
@@ -60,6 +61,7 @@ async fn test_initialize_group_member() {
         ),
         &member_mint,
         &member_mint_authority,
+        vec![],
     )
     .await;
 

@@ -8,8 +8,9 @@ use {
             ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient,
             SendTransaction, SimulateTransaction,
         },
-        token::Token,
+        token::{ExtensionInitializationParams, Token},
     },
+    spl_token_metadata_interface::state::TokenMetadata,
     std::sync::Arc,
 };
 
@@ -48,13 +49,52 @@ pub async fn setup_mint<T: SendTransaction + SimulateTransaction>(
     token_client: &Token<T>,
     mint_keypair: &Keypair,
     mint_authority_keypair: &Keypair,
+    extensions: Vec<ExtensionInitializationParams>,
 ) {
     token_client
         .create_mint(
             &mint_authority_keypair.pubkey(),
             None,
-            vec![],
+            extensions,
             &[mint_keypair],
+        )
+        .await
+        .unwrap();
+}
+
+/// Set up a Token-2022 mint and metadata
+///
+/// Note: Not every test uses this function, so we need to ignore the
+/// lint warning.
+#[allow(dead_code)]
+pub async fn setup_mint_and_metadata<T: SendTransaction + SimulateTransaction>(
+    token_client: &Token<T>,
+    mint_keypair: &Keypair,
+    mint_authority_keypair: &Keypair,
+    token_metadata: &TokenMetadata,
+    payer: Arc<Keypair>,
+) {
+    token_client
+        .create_mint(
+            &mint_authority_keypair.pubkey(),
+            None,
+            vec![ExtensionInitializationParams::MetadataPointer {
+                authority: Some(mint_authority_keypair.pubkey()),
+                metadata_address: Some(mint_keypair.pubkey()),
+            }],
+            &[mint_keypair],
+        )
+        .await
+        .unwrap();
+    token_client
+        .token_metadata_initialize_with_rent_transfer(
+            &payer.pubkey(),
+            &mint_authority_keypair.pubkey(), // Also the metadata update authority
+            &mint_authority_keypair.pubkey(),
+            token_metadata.name.clone(),
+            token_metadata.symbol.clone(),
+            token_metadata.uri.clone(),
+            &[&payer, mint_authority_keypair],
         )
         .await
         .unwrap();

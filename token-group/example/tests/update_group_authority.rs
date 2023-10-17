@@ -43,7 +43,13 @@ async fn test_update_group_authority() {
         Some(0),
         payer.clone(),
     );
-    setup_mint(&token_client, &group_mint, &group_mint_authority).await;
+    setup_mint(
+        &token_client,
+        &group_mint,
+        &group_mint_authority,
+        vec![],
+    )
+    .await;
 
     let mut context = context.lock().await;
 
