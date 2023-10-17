@@ -6,7 +6,7 @@ use solana_sdk::{
     pubkey::Pubkey,
     stake::{
         self,
-        state::{Meta, Stake, StakeState},
+        state::{Meta, Stake, StakeStateV2},
     },
     system_instruction,
     sysvar::{self, rent::Rent},
@@ -41,15 +41,15 @@ pub async fn get_stake_info(
         .get_account(*stake_account_address)
         .await?
     {
-        match bincode::deserialize::<StakeState>(&stake_account.data)? {
-            StakeState::Stake(meta, stake) => Ok(Some((meta, stake))),
-            StakeState::Initialized(_) => {
+        match bincode::deserialize::<StakeStateV2>(&stake_account.data)? {
+            StakeStateV2::Stake(meta, stake, _) => Ok(Some((meta, stake))),
+            StakeStateV2::Initialized(_) => {
                 Err(format!("Stake account {} is undelegated", stake_account_address).into())
             }
-            StakeState::Uninitialized => {
+            StakeStateV2::Uninitialized => {
                 Err(format!("Stake account {} is uninitialized", stake_account_address).into())
             }
-            StakeState::RewardsPool => unimplemented!(),
+            StakeStateV2::RewardsPool => unimplemented!(),
         }
     } else {
         Ok(None)
@@ -63,14 +63,14 @@ pub async fn create_uninitialized_stake_account_instruction(
 ) -> Result<Instruction, Error> {
     let rent_amount = config
         .program_client
-        .get_minimum_balance_for_rent_exemption(std::mem::size_of::<StakeState>())
+        .get_minimum_balance_for_rent_exemption(std::mem::size_of::<StakeStateV2>())
         .await?;
 
     Ok(system_instruction::create_account(
         payer,
         stake_account,
         rent_amount,
-        std::mem::size_of::<StakeState>() as u64,
+        std::mem::size_of::<StakeStateV2>() as u64,
         &stake::program::id(),
     ))
 }

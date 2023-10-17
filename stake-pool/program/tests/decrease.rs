@@ -30,7 +30,7 @@ async fn setup() -> (
 ) {
     let mut context = program_test().start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let current_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
@@ -125,7 +125,7 @@ async fn success(instruction_type: DecreaseInstruction) {
     let validator_stake_account =
         get_account(&mut context.banks_client, &validator_stake.stake_account).await;
     let validator_stake_state =
-        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&validator_stake_account.data).unwrap();
     assert_eq!(
         pre_validator_stake_account.lamports - decrease_lamports,
         validator_stake_account.lamports
@@ -140,7 +140,7 @@ async fn success(instruction_type: DecreaseInstruction) {
 
     // Check transient stake account state and balance
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     let transient_stake_account = get_account(
         &mut context.banks_client,
@@ -148,7 +148,7 @@ async fn success(instruction_type: DecreaseInstruction) {
     )
     .await;
     let transient_stake_state =
-        deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&transient_stake_account.data).unwrap();
     let transient_lamports = decrease_lamports + stake_rent;
     assert_eq!(transient_stake_account.lamports, transient_lamports);
     let reserve_lamports = if instruction_type == DecreaseInstruction::Deprecated {
@@ -390,7 +390,7 @@ async fn twice(
         get_account(&mut context.banks_client, &validator_stake.stake_account).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     let first_decrease = decrease_lamports / 3;
     let second_decrease = decrease_lamports / 2;
@@ -441,7 +441,7 @@ async fn twice(
         // Check validator stake account balance
         let stake_account =
             get_account(&mut context.banks_client, &validator_stake.stake_account).await;
-        let stake_state = deserialize::<stake::state::StakeState>(&stake_account.data).unwrap();
+        let stake_state = deserialize::<stake::state::StakeStateV2>(&stake_account.data).unwrap();
         assert_eq!(
             pre_stake_account.lamports - total_decrease,
             stake_account.lamports
@@ -458,7 +458,7 @@ async fn twice(
         )
         .await;
         let transient_stake_state =
-            deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
+            deserialize::<stake::state::StakeStateV2>(&transient_stake_account.data).unwrap();
         let mut transient_lamports = total_decrease + stake_rent;
         if second_instruction == DecreaseInstruction::Additional {
             transient_lamports += stake_rent;
@@ -514,7 +514,7 @@ async fn fail_with_small_lamport_amount(instruction_type: DecreaseInstruction) {
         setup().await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     let error = stake_pool_accounts
         .decrease_validator_stake_either(
@@ -575,7 +575,7 @@ async fn fail_overdraw(instruction_type: DecreaseInstruction) {
         setup().await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     let error = stake_pool_accounts
         .decrease_validator_stake_either(
@@ -662,6 +662,6 @@ async fn fail_additional_with_increasing() {
         TransactionError::InstructionError(
             _,
             InstructionError::Custom(code)
-        ) if code == StakePoolError::WrongStakeState as u32
+        ) if code == StakePoolError::WrongStakeStateV2 as u32
     );
 }

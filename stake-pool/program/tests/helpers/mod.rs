@@ -651,7 +651,7 @@ pub async fn create_independent_stake_account(
 ) -> u64 {
     let rent = banks_client.get_rent().await.unwrap();
     let lamports =
-        rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>()) + stake_amount;
+        rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>()) + stake_amount;
 
     let transaction = Transaction::new_signed_with_payer(
         &stake::instruction::create_account(
@@ -677,14 +677,14 @@ pub async fn create_blank_stake_account(
     stake: &Keypair,
 ) -> u64 {
     let rent = banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     let transaction = Transaction::new_signed_with_payer(
         &[system_instruction::create_account(
             &payer.pubkey(),
             &stake.pubkey(),
             lamports,
-            std::mem::size_of::<stake::state::StakeState>() as u64,
+            std::mem::size_of::<stake::state::StakeStateV2>() as u64,
             &stake::program::id(),
         )],
         Some(&payer.pubkey()),
@@ -2122,7 +2122,7 @@ pub async fn simple_add_validator_to_pool(
     );
 
     let rent = banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let current_minimum_delegation =
         stake_pool_get_minimum_delegation(banks_client, payer, recent_blockhash).await;
 
@@ -2380,7 +2380,7 @@ pub async fn get_validator_list_sum(
         .map(|info| info.stake_lamports().unwrap())
         .sum();
     let rent = banks_client.get_rent().await.unwrap();
-    let rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     validator_sum + reserve_stake.lamports - rent - MINIMUM_RESERVE_LAMPORTS
 }
 
@@ -2451,8 +2451,13 @@ pub fn add_validator_stake_account(
         credits_observed: 0,
     };
 
-    let mut data = vec![0u8; std::mem::size_of::<stake::state::StakeState>()];
-    let stake_data = bincode::serialize(&stake::state::StakeState::Stake(meta, stake)).unwrap();
+    let mut data = vec![0u8; std::mem::size_of::<stake::state::StakeStateV2>()];
+    let stake_data = bincode::serialize(&stake::state::StakeStateV2::Stake(
+        meta,
+        stake,
+        stake::stake_flags::StakeFlags::empty(),
+    ))
+    .unwrap();
     data[..stake_data.len()].copy_from_slice(&stake_data);
     let stake_account = SolanaAccount::create(
         stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
@@ -2505,7 +2510,7 @@ pub fn add_reserve_stake_account(
     };
     let reserve_stake_account = SolanaAccount::create(
         stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
-        bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Initialized(
+        bincode::serialize::<stake::state::StakeStateV2>(&stake::state::StakeStateV2::Initialized(
             meta,
         ))
         .unwrap(),

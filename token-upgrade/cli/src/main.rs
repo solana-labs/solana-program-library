@@ -567,13 +567,14 @@ mod test {
 
         let account_keypair = Keypair::new();
         assert!(process_create_escrow_account(
-                &rpc_client,
-                &payer,
-                original_token.get_address(),
-                new_token.get_address(),
-                Some(&account_keypair)
-            )
-            .await.is_ok());
+            &rpc_client,
+            &payer,
+            original_token.get_address(),
+            new_token.get_address(),
+            Some(&account_keypair)
+        )
+        .await
+        .is_ok());
         let escrow_authority = get_token_upgrade_authority_address(
             original_token.get_address(),
             new_token.get_address(),
@@ -587,13 +588,14 @@ mod test {
         assert_eq!(&escrow.base.mint, new_token.get_address());
 
         assert!(process_create_escrow_account(
-                &rpc_client,
-                &payer,
-                original_token.get_address(),
-                new_token.get_address(),
-                None
-            )
-            .await.is_ok());
+            &rpc_client,
+            &payer,
+            original_token.get_address(),
+            new_token.get_address(),
+            None
+        )
+        .await
+        .is_ok());
         let escrow = new_token
             .get_account_info(&new_token.get_associated_token_address(&escrow_authority))
             .await

@@ -1412,7 +1412,7 @@ async fn fail_with_bad_reserve() {
             error,
             TransactionError::InstructionError(
                 2,
-                InstructionError::Custom(error::StakePoolError::WrongStakeState as u32),
+                InstructionError::Custom(error::StakePoolError::WrongStakeStateV2 as u32),
             )
         );
     }
@@ -1464,7 +1464,7 @@ async fn fail_with_bad_reserve() {
             error,
             TransactionError::InstructionError(
                 2,
-                InstructionError::Custom(error::StakePoolError::WrongStakeState as u32),
+                InstructionError::Custom(error::StakePoolError::WrongStakeStateV2 as u32),
             )
         );
     }
@@ -1519,7 +1519,7 @@ async fn fail_with_bad_reserve() {
             error,
             TransactionError::InstructionError(
                 2,
-                InstructionError::Custom(error::StakePoolError::WrongStakeState as u32),
+                InstructionError::Custom(error::StakePoolError::WrongStakeStateV2 as u32),
             )
         );
     }
@@ -1527,7 +1527,7 @@ async fn fail_with_bad_reserve() {
     {
         let bad_stake = Keypair::new();
         let rent = banks_client.get_rent().await.unwrap();
-        let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>())
+        let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>())
             + MINIMUM_RESERVE_LAMPORTS;
 
         let transaction = Transaction::new_signed_with_payer(
@@ -1535,7 +1535,7 @@ async fn fail_with_bad_reserve() {
                 &payer.pubkey(),
                 &bad_stake.pubkey(),
                 lamports,
-                std::mem::size_of::<stake::state::StakeState>() as u64,
+                std::mem::size_of::<stake::state::StakeStateV2>() as u64,
                 &stake::program::id(),
             )],
             Some(&payer.pubkey()),
@@ -1575,7 +1575,7 @@ async fn fail_with_bad_reserve() {
             error,
             TransactionError::InstructionError(
                 2,
-                InstructionError::Custom(error::StakePoolError::WrongStakeState as u32),
+                InstructionError::Custom(error::StakePoolError::WrongStakeStateV2 as u32),
             )
         );
     }

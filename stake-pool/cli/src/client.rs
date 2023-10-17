@@ -73,7 +73,7 @@ pub fn get_token_mint(
 pub(crate) fn get_stake_state(
     rpc_client: &RpcClient,
     stake_address: &Pubkey,
-) -> Result<stake::state::StakeState, Error> {
+) -> Result<stake::state::StakeStateV2, Error> {
     let account_data = rpc_client.get_account_data(stake_address)?;
     let stake_state = deserialize(account_data.as_slice())
         .map_err(|err| format!("Invalid stake account {}: {}", stake_address, err))?;

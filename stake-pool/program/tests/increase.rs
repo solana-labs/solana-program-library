@@ -55,7 +55,7 @@ async fn setup() -> (
     )
     .await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     let _deposit_info = simple_deposit_stake(
         &mut context.banks_client,
@@ -98,7 +98,7 @@ async fn success(use_additional_instruction: bool) {
     assert!(transient_account.is_none());
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let increase_amount = reserve_lamports - stake_rent - MINIMUM_RESERVE_LAMPORTS;
     let error = stake_pool_accounts
         .increase_validator_stake_either(
@@ -122,7 +122,7 @@ async fn success(use_additional_instruction: bool) {
     )
     .await;
     let reserve_stake_state =
-        deserialize::<stake::state::StakeState>(&reserve_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&reserve_stake_account.data).unwrap();
     assert_eq!(
         pre_reserve_stake_account.lamports - increase_amount - stake_rent,
         reserve_stake_account.lamports
@@ -136,7 +136,7 @@ async fn success(use_additional_instruction: bool) {
     )
     .await;
     let transient_stake_state =
-        deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&transient_stake_account.data).unwrap();
     assert_eq!(
         transient_stake_account.lamports,
         increase_amount + stake_rent
@@ -389,7 +389,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
     if success {
         assert!(error.is_none(), "{:?}", error);
         let rent = context.banks_client.get_rent().await.unwrap();
-        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
         // no ephemeral account
         let ephemeral_stake = find_ephemeral_stake_program_address(
             &id(),
@@ -410,7 +410,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
         )
         .await;
         let reserve_stake_state =
-            deserialize::<stake::state::StakeState>(&reserve_stake_account.data).unwrap();
+            deserialize::<stake::state::StakeStateV2>(&reserve_stake_account.data).unwrap();
         assert_eq!(
             pre_reserve_stake_account.lamports - total_increase - stake_rent * 2,
             reserve_stake_account.lamports
@@ -424,7 +424,7 @@ async fn twice(success: bool, use_additional_first_time: bool, use_additional_se
         )
         .await;
         let transient_stake_state =
-            deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
+            deserialize::<stake::state::StakeStateV2>(&transient_stake_account.data).unwrap();
         assert_eq!(
             transient_stake_account.lamports,
             total_increase + stake_rent * 2
@@ -532,7 +532,7 @@ async fn fail_additional_with_decreasing() {
     )
     .await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     // warp forward to activation
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -586,7 +586,7 @@ async fn fail_additional_with_decreasing() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(StakePoolError::WrongStakeState as u32)
+            InstructionError::Custom(StakePoolError::WrongStakeStateV2 as u32)
         )
     );
 }
