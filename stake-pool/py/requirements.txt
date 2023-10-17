@@ -16,4 +16,4 @@ rfc3986==1.5.0
 sniffio==1.2.0
 solana==0.18.1
 typing_extensions==4.3.0
-urllib3==1.26.17
+urllib3==1.26.18
