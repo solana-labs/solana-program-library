@@ -12,7 +12,6 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-num_enum = "0.7.0"
 solana-program = "1.16.16"
 spl-program-error = { version = "0.3.0", path = "../../libraries/program-error" }
 

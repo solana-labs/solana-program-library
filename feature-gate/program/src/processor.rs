@@ -1,13 +1,15 @@
 //! Program state processor
 
 use {
-    crate::{error::FeatureGateError, instruction::FeatureGateInstruction},
+    crate::{
+        error::FeatureGateError, feature_id::derive_feature_id, instruction::FeatureGateInstruction,
+    },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
         feature::Feature,
         msg,
-        program::invoke,
+        program::{invoke, invoke_signed},
         program_error::ProgramError,
         pubkey::Pubkey,
         system_instruction, system_program,
@@ -37,6 +39,58 @@ pub fn process_activate_feature(program_id: &Pubkey, accounts: &[AccountInfo]) -
     invoke(
         &system_instruction::assign(feature_info.key, program_id),
         &[feature_info.clone()],
+    )?;
+
+    Ok(())
+}
+
+/// Processes an
+/// [ActivateFeatureWithAuthority](enum.FeatureGateInstruction.html)
+/// instruction.
+pub fn process_activate_feature_with_authority(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    nonce: u16,
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let feature_info = next_account_info(account_info_iter)?;
+    let authority_info = next_account_info(account_info_iter)?;
+    let _system_program_info = next_account_info(account_info_iter)?;
+
+    if !authority_info.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    if feature_info.owner != &system_program::id() {
+        return Err(FeatureGateError::InvalidFeatureAccount.into());
+    }
+
+    let (feature_id, feature_id_bump) = derive_feature_id(authority_info.key, nonce)?;
+
+    if feature_info.key != &feature_id {
+        return Err(FeatureGateError::IncorrectFeatureId.into());
+    }
+
+    invoke_signed(
+        &system_instruction::allocate(feature_info.key, Feature::size_of() as u64),
+        &[feature_info.clone()],
+        &[&[
+            b"feature",
+            &nonce.to_le_bytes(),
+            authority_info.key.as_ref(),
+            &[feature_id_bump],
+        ]],
+    )?;
+    invoke_signed(
+        &system_instruction::assign(feature_info.key, program_id),
+        &[feature_info.clone()],
+        &[&[
+            b"feature",
+            &nonce.to_le_bytes(),
+            authority_info.key.as_ref(),
+            &[feature_id_bump],
+        ]],
     )?;
 
     Ok(())
@@ -86,6 +140,10 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> P
         FeatureGateInstruction::ActivateFeature => {
             msg!("Instruction: ActivateFeature");
             process_activate_feature(program_id, accounts)
+        }
+        FeatureGateInstruction::ActivateFeatureWithAuthority { nonce } => {
+            msg!("Instruction: ActivateFeatureWithAuthority");
+            process_activate_feature_with_authority(program_id, accounts, nonce)
         }
         FeatureGateInstruction::RevokePendingActivation => {
             msg!("Instruction: RevokePendingActivation");
