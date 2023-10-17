@@ -3339,7 +3339,7 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn complete_proposal(
         &mut self,
-        proposal_cookie: &mut ProposalCookie,
+        proposal_cookie: &ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
         let complete_proposal_authority = token_owner_record_cookie.get_governance_authority();
