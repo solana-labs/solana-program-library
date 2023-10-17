@@ -46,7 +46,13 @@ async fn test_update_collection_max_size() {
         Some(0),
         payer.clone(),
     );
-    setup_mint(&token_client, &collection_mint, &collection_mint_authority).await;
+    setup_mint(
+        &token_client,
+        &collection_mint,
+        &collection_mint_authority,
+        vec![],
+    )
+    .await;
 
     let mut context = context.lock().await;
 
@@ -226,7 +232,13 @@ async fn test_update_collection_max_size_fail_immutable_group() {
         Some(0),
         payer.clone(),
     );
-    setup_mint(&token_client, &collection_mint, &collection_mint_authority).await;
+    setup_mint(
+        &token_client,
+        &collection_mint,
+        &collection_mint_authority,
+        vec![],
+    )
+    .await;
 
     let mut context = context.lock().await;
 

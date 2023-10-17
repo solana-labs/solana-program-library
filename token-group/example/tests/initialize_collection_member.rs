@@ -50,6 +50,7 @@ async fn test_initialize_collection_member() {
         ),
         &collection_mint,
         &collection_mint_authority,
+        vec![],
     )
     .await;
     setup_mint(
@@ -62,6 +63,7 @@ async fn test_initialize_collection_member() {
         ),
         &member_mint,
         &member_mint_authority,
+        vec![],
     )
     .await;
 
