@@ -8,6 +8,9 @@ use {
     spl_pod::primitives::PodBool,
 };
 
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
+
 /// CPI Guard extension instructions
 pub mod instruction;
 
@@ -16,6 +19,7 @@ pub mod processor;
 
 /// CPI Guard extension for Accounts
 #[repr(C)]
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct CpiGuard {
     /// Lock privileged token operations from happening via CPI

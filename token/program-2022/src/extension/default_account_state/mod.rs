@@ -3,6 +3,9 @@ use {
     bytemuck::{Pod, Zeroable},
 };
 
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
+
 /// Default Account state extension instructions
 pub mod instruction;
 
@@ -11,6 +14,7 @@ pub mod processor;
 
 /// Default Account::state extension data for mints.
 #[repr(C)]
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct DefaultAccountState {
     /// Default Account::state in which new Accounts should be initialized

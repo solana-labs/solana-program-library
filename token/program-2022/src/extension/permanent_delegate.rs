@@ -5,8 +5,12 @@ use {
     spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
 
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
+
 /// Permanent delegate extension data for mints.
 #[repr(C)]
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct PermanentDelegate {
     /// Optional permanent delegate for transferring or burning tokens
