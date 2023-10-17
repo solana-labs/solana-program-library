@@ -1110,7 +1110,7 @@ pub fn add_oracle(
         panic!("Unable to locate {}", filename);
     }));
 
-    let mut pyth_price = pyth::load_mut::<pyth::Price>(pyth_price_data.as_mut_slice()).unwrap();
+    let pyth_price = pyth::load_mut::<pyth::Price>(pyth_price_data.as_mut_slice()).unwrap();
 
     let decimals = 10u64
         .checked_pow(pyth_price.expo.checked_abs().unwrap().try_into().unwrap())

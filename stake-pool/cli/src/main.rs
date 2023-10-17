@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 mod client;
 mod output;
 
@@ -51,7 +51,7 @@ use {
         MINIMUM_RESERVE_LAMPORTS,
     },
     std::cmp::Ordering,
-    std::{num::NonZeroU32, process::exit, rc::Rc, sync::Arc},
+    std::{num::NonZeroU32, process::exit, rc::Rc},
 };
 // use instruction::create_associated_token_account once ATA 1.0.5 is released
 #[allow(deprecated)]

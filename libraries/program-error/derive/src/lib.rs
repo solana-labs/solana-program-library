@@ -7,7 +7,7 @@
 // `quote` crate
 //
 // Culprit is `macro_impl.rs:66`
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![deny(missing_docs)]
 #![cfg_attr(not(test), forbid(unsafe_code))]
 

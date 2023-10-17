@@ -1161,7 +1161,7 @@ impl Processor {
             );
             return Err(StakePoolError::ValidatorNotFound.into());
         }
-        let mut validator_stake_info = maybe_validator_stake_info.unwrap();
+        let validator_stake_info = maybe_validator_stake_info.unwrap();
         check_validator_stake_address(
             program_id,
             stake_pool_info.key,
@@ -1319,7 +1319,7 @@ impl Processor {
             );
             return Err(StakePoolError::ValidatorNotFound.into());
         }
-        let mut validator_stake_info = maybe_validator_stake_info.unwrap();
+        let validator_stake_info = maybe_validator_stake_info.unwrap();
         check_validator_stake_address(
             program_id,
             stake_pool_info.key,
@@ -1633,7 +1633,7 @@ impl Processor {
             );
             return Err(StakePoolError::ValidatorNotFound.into());
         }
-        let mut validator_stake_info = maybe_validator_stake_info.unwrap();
+        let validator_stake_info = maybe_validator_stake_info.unwrap();
         if u64::from(validator_stake_info.transient_stake_lamports) > 0 {
             if maybe_ephemeral_stake_seed.is_none() {
                 msg!("Attempting to increase stake on a validator with pending transient stake, use IncreaseAdditionalValidatorStake with the existing seed");
@@ -1957,7 +1957,7 @@ impl Processor {
                 );
                 return Err(StakePoolError::ValidatorNotFound.into());
             }
-            let mut validator_stake_info = maybe_validator_stake_info.unwrap();
+            let validator_stake_info = maybe_validator_stake_info.unwrap();
             check_validator_stake_address(
                 program_id,
                 stake_pool_info.key,
@@ -2080,7 +2080,7 @@ impl Processor {
                 );
                 return Err(StakePoolError::ValidatorNotFound.into());
             }
-            let mut validator_stake_info = maybe_validator_stake_info.unwrap();
+            let validator_stake_info = maybe_validator_stake_info.unwrap();
             check_validator_stake_account(
                 destination_validator_stake_account_info,
                 program_id,
@@ -2767,7 +2767,7 @@ impl Processor {
             }
         }
 
-        let mut validator_stake_info = validator_list
+        let validator_stake_info = validator_list
             .find_mut::<ValidatorStakeInfo, _>(|x| {
                 ValidatorStakeInfo::memcmp_pubkey(x, &vote_account_address)
             })

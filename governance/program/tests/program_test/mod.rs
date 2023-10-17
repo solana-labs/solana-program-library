@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 use std::str::FromStr;
 
 use borsh::BorshSerialize;
@@ -2729,7 +2729,7 @@ impl GovernanceProgramTest {
         let hold_up_time = hold_up_time.unwrap_or(15);
 
         let instruction_data: InstructionData = instruction.clone().into();
-        let mut yes_option = &mut proposal_cookie.account.options[0];
+        let yes_option = &mut proposal_cookie.account.options[0];
 
         let transaction_index = index.unwrap_or(yes_option.transactions_next_index);
 

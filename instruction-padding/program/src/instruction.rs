@@ -89,7 +89,7 @@ pub fn noop(
         return Err(ProgramError::InvalidAccountData);
     }
     let mut accounts = Vec::with_capacity(num_accounts);
-    accounts.extend(padding_accounts.into_iter());
+    accounts.extend(padding_accounts);
 
     Ok(Instruction {
         program_id,
@@ -128,7 +128,7 @@ pub fn wrap_instruction(
         .try_into()
         .map_err(|_| ProgramError::InvalidInstructionData)?;
     data.extend(data_size.to_le_bytes().iter());
-    data.extend(instruction.data.into_iter());
+    data.extend(instruction.data);
     for i in 0..padding_data {
         data.push(i.checked_rem(u8::MAX as u32).unwrap() as u8);
     }
@@ -146,9 +146,9 @@ pub fn wrap_instruction(
         return Err(ProgramError::InvalidAccountData);
     }
     let mut accounts = Vec::with_capacity(num_accounts);
-    accounts.extend(instruction.accounts.into_iter());
+    accounts.extend(instruction.accounts);
     accounts.push(AccountMeta::new_readonly(instruction.program_id, false));
-    accounts.extend(padding_accounts.into_iter());
+    accounts.extend(padding_accounts);
 
     Ok(Instruction {
         program_id,

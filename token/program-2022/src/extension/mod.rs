@@ -1521,7 +1521,7 @@ mod test {
         state.pack_base();
 
         // check unpacking
-        let mut unpacked_extension = state.get_extension_mut::<MintCloseAuthority>().unwrap();
+        let unpacked_extension = state.get_extension_mut::<MintCloseAuthority>().unwrap();
         assert_eq!(*unpacked_extension, MintCloseAuthority { close_authority });
 
         // update extension
@@ -1790,7 +1790,7 @@ mod test {
         state.pack_base();
 
         // check unpacking
-        let mut unpacked_extension = state.get_extension_mut::<TransferFeeAmount>().unwrap();
+        let unpacked_extension = state.get_extension_mut::<TransferFeeAmount>().unwrap();
         assert_eq!(*unpacked_extension, TransferFeeAmount { withheld_amount });
 
         // update extension

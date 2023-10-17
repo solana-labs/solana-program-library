@@ -262,7 +262,7 @@ impl Processor {
         match name_account.lamports().cmp(&required_lamports) {
             Ordering::Less => {
                 // Overflow cannot happen here because we already checked the sizes.
-                #[allow(clippy::integer_arithmetic)]
+                #[allow(clippy::arithmetic_side_effects)]
                 let lamports_to_add = required_lamports - name_account.lamports();
                 invoke(
                     &system_instruction::transfer(
@@ -279,7 +279,7 @@ impl Processor {
             }
             Ordering::Greater => {
                 // Overflow cannot happen here because we already checked the sizes.
-                #[allow(clippy::integer_arithmetic)]
+                #[allow(clippy::arithmetic_side_effects)]
                 let lamports_to_remove = name_account.lamports() - required_lamports;
                 let source_amount: &mut u64 = &mut name_account.lamports.borrow_mut();
                 let dest_amount: &mut u64 = &mut payer_account.lamports.borrow_mut();

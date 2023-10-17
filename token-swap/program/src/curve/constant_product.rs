@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     fn constant_product_swap_rounding() {
-        let curve = ConstantProductCurve::default();
+        let curve = ConstantProductCurve;
 
         // much too small
         assert!(curve

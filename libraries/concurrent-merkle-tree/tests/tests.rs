@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 use rand::thread_rng;
 use rand::{self, Rng};
 use spl_concurrent_merkle_tree::concurrent_merkle_tree::ConcurrentMerkleTree;
