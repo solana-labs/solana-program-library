@@ -2988,7 +2988,7 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn remove_transaction(
         &mut self,
-        proposal_cookie: &mut ProposalCookie,
+        proposal_cookie: &ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         proposal_transaction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
