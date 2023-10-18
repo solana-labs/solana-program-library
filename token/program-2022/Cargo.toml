@@ -33,7 +33,7 @@ spl-type-length-value = { version = "0.3.0", path = "../../libraries/type-length
 spl-pod = { version = "0.1.0", path = "../../libraries/pod" }
 thiserror = "1.0"
 serde = { version = "1.0.189", optional = true }
-serde_with = { version = "3.3.0", optional = true }
+serde_with = { version = "3.4.0", optional = true }
 base64 = { version = "0.21.4", optional = true }
 
 [dev-dependencies]
