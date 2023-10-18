@@ -2844,13 +2844,10 @@ async fn command_update_confidential_transfer_settings(
         if let Some(new_auditor_pubkey) = new_auditor_pubkey {
             println_display(
                 config,
-                format!(
-                    "  auditor encryption pubkey set to {}",
-                    new_auditor_pubkey.to_string(),
-                ),
+                format!("  auditor encryption pubkey set to {}", new_auditor_pubkey),
             );
         } else {
-            println_display(config, format!("  auditability disabled",))
+            println_display(config, "  auditability disabled".to_string())
         }
     }
 
@@ -4762,7 +4759,7 @@ async fn process_command<'a>(
             let no_recipient_is_ata_owner =
                 arg_matches.is_present("no_recipient_is_ata_owner") || !recipient_is_ata_owner;
             if recipient_is_ata_owner {
-                println_display(config, format!("recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release."));
+                println_display(config, "recipient-is-ata-owner is now the default behavior. The option has been deprecated and will be removed in a future release.".to_string());
             }
             let use_unchecked_instruction = arg_matches.is_present("use_unchecked_instruction");
             let expected_fee = value_of::<f64>(arg_matches, "expected_fee");
