@@ -4657,12 +4657,14 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::ConfigureConfidentialTransferAccount.into())
                 .about("Configure confidential transfers for token account")
                 .arg(
-                    Arg::with_name("account")
+                    Arg::with_name("address")
+                        .long("address")
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .index(1)
-                        .help("The address of the token account to configure confidential transfers for")
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
                 )
                 .arg(
                     owner_address_arg()
@@ -4673,6 +4675,8 @@ fn app<'a, 'b>(
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
+                        .index(1)
+                        .required_unless("address")
                         .help("The token address with confidential transfers enabled"),
                 )
                 .arg(
