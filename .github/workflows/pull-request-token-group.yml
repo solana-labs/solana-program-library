@@ -62,7 +62,6 @@ jobs:
         run: |
           cargo test \
             --manifest-path=token-group/interface/Cargo.toml \
-            --features serde-traits \
             -- --nocapture
 
       - name: Build and test example
