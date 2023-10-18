@@ -3743,4 +3743,25 @@ where
         )
         .await
     }
+
+    /// Update the token-group authority in a mint
+    pub async fn token_group_update_authority<S: Signers>(
+        &self,
+        current_authority: &Pubkey,
+        new_authority: Option<Pubkey>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[
+                spl_token_group_interface::instruction::update_group_authority(
+                    &self.program_id,
+                    &self.pubkey,
+                    current_authority,
+                    new_authority,
+                ),
+            ],
+            signing_keypairs,
+        )
+        .await
+    }
 }
