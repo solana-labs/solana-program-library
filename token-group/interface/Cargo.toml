@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 bytemuck = "1.14.0"
-solana-program = "1.16.16"
+solana-program = "1.17.2"
 spl-discriminator = { version = "0.1.0" , path = "../../libraries/discriminator" }
 spl-pod = { version = "0.1.0" , path = "../../libraries/pod", features = ["borsh"] }
 spl-program-error = { version = "0.3.0" , path = "../../libraries/program-error" }
