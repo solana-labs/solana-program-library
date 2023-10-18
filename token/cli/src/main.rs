@@ -2880,10 +2880,12 @@ async fn command_update_confidential_transfer_settings(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn command_configure_confidential_transfer_account(
     config: &Config<'_>,
-    token_account_address: Pubkey,
+    maybe_token: Option<Pubkey>,
     owner: Pubkey,
+    maybe_account: Option<Pubkey>,
     maximum_credit_counter: Option<u64>,
     elgamal_keypair: &ElGamalKeypair,
     aes_key: &AeKey,
@@ -2892,6 +2894,15 @@ async fn command_configure_confidential_transfer_account(
     if config.sign_only {
         panic!("Sign-only is not yet supported.");
     }
+
+    let token_account_address = if let Some(account) = maybe_account {
+        account
+    } else {
+        let token_pubkey =
+            maybe_token.expect("Either a valid token or account address must be provided");
+        let token = token_client_from_config(config, &token_pubkey, None)?;
+        token.get_associated_token_address(&owner)
+    };
 
     let account = config.get_account_checked(&token_account_address).await?;
     let current_account_len = account.data.len();
@@ -2942,8 +2953,9 @@ async fn command_configure_confidential_transfer_account(
 
 async fn command_enable_disable_confidential_transfers(
     config: &Config<'_>,
-    token_account_address: Pubkey,
+    maybe_token: Option<Pubkey>,
     owner: Pubkey,
+    maybe_account: Option<Pubkey>,
     bulk_signers: BulkSigners,
     allow_confidential_credits: Option<bool>,
     allow_non_confidential_credits: Option<bool>,
@@ -2951,6 +2963,15 @@ async fn command_enable_disable_confidential_transfers(
     if config.sign_only {
         panic!("Sign-only is not yet supported.");
     }
+
+    let token_account_address = if let Some(account) = maybe_account {
+        account
+    } else {
+        let token_pubkey =
+            maybe_token.expect("Either a valid token or account address must be provided");
+        let token = token_client_from_config(config, &token_pubkey, None)?;
+        token.get_associated_token_address(&owner)
+    };
 
     let account = config.get_account_checked(&token_account_address).await?;
 
@@ -4641,11 +4662,18 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
-                        .required(true)
                         .help("The address of the token account to configure confidential transfers for")
                 )
                 .arg(
                     owner_address_arg()
+                )
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .help("The token address with confidential transfers enabled"),
                 )
                 .arg(
                     Arg::with_name("maximum_pending_balance_credit_counter")
@@ -4672,8 +4700,15 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
-                        .required(true)
                         .help("The address of the token account to enable confidential transfers for")
+                )
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .help("The token address with confidential transfers enabled"),
                 )
                 .arg(
                     owner_address_arg()
@@ -4690,8 +4725,15 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
-                        .required(true)
                         .help("The address of the token account to disable confidential transfers for")
+                )
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .help("The token address with confidential transfers enabled"),
                 )
                 .arg(
                     owner_address_arg()
@@ -4708,8 +4750,15 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
-                        .required(true)
                         .help("The address of the token account to enable non-confidential transfers for")
+                )
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .help("The token address with confidential transfers enabled"),
                 )
                 .arg(
                     owner_address_arg()
@@ -4726,8 +4775,15 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
-                        .required(true)
                         .help("The address of the token account to disable non-confidential transfers for")
+                )
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .help("The token address with confidential transfers enabled"),
                 )
                 .arg(
                     owner_address_arg()
@@ -5585,18 +5641,20 @@ async fn process_command<'a>(
             .await
         }
         (CommandName::ConfigureConfidentialTransferAccount, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
-            let token_account =
-                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
+            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager).unwrap();
 
             // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
             // supported in the future once upgrading to clap-v3.
-            let elgamal_keypair =
-                ElGamalKeypair::new_from_signer(&*owner_signer, &token_account.to_bytes()).unwrap();
-            let aes_key =
-                AeKey::new_from_signer(&*owner_signer, &token_account.to_bytes()).unwrap();
+            //
+            // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be updated
+            // once custom ElGamal and AES keys are supported.
+            let elgamal_keypair = ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
+            let aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
 
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
@@ -5615,8 +5673,9 @@ async fn process_command<'a>(
 
             command_configure_confidential_transfer_account(
                 config,
-                token_account,
+                token,
                 owner,
+                account,
                 maximum_credit_counter,
                 &elgamal_keypair,
                 &aes_key,
@@ -5628,11 +5687,12 @@ async fn process_command<'a>(
         | (c @ CommandName::DisableConfidentialCredits, arg_matches)
         | (c @ CommandName::EnableNonConfidentialCredits, arg_matches)
         | (c @ CommandName::DisableNonConfidentialCredits, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
-            let token_account =
-                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
+            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager).unwrap();
 
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
@@ -5648,8 +5708,9 @@ async fn process_command<'a>(
 
             command_enable_disable_confidential_transfers(
                 config,
-                token_account,
+                token,
                 owner,
+                account,
                 bulk_signers,
                 allow_confidential_credits,
                 allow_non_confidential_credits,
