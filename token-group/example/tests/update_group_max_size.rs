@@ -22,17 +22,15 @@ use {
 };
 
 #[tokio::test]
-async fn test_update_collection_max_size() {
+async fn test_update_group_max_size() {
     let program_id = Pubkey::new_unique();
-    let collection = Keypair::new();
-    let collection_mint = Keypair::new();
-    let collection_mint_authority = Keypair::new();
-    let collection_update_authority = Keypair::new();
+    let group = Keypair::new();
+    let group_mint = Keypair::new();
+    let group_mint_authority = Keypair::new();
+    let group_update_authority = Keypair::new();
 
-    let collection_group_state = TokenGroup {
-        update_authority: Some(collection_update_authority.pubkey())
-            .try_into()
-            .unwrap(),
+    let group_state = TokenGroup {
+        update_authority: Some(group_update_authority.pubkey()).try_into().unwrap(),
         size: 30.into(),
         max_size: 50.into(),
     };
@@ -42,11 +40,11 @@ async fn test_update_collection_max_size() {
     let token_client = Token::new(
         client,
         &spl_token_2022::id(),
-        &collection_mint.pubkey(),
+        &group_mint.pubkey(),
         Some(0),
         payer.clone(),
     );
-    setup_mint(&token_client, &collection_mint, &collection_mint_authority).await;
+    setup_mint(&token_client, &group_mint, &group_mint_authority).await;
 
     let mut context = context.lock().await;
 
@@ -58,22 +56,22 @@ async fn test_update_collection_max_size() {
         &[
             system_instruction::create_account(
                 &context.payer.pubkey(),
-                &collection.pubkey(),
+                &group.pubkey(),
                 rent_lamports,
                 space.try_into().unwrap(),
                 &program_id,
             ),
             initialize_group(
                 &program_id,
-                &collection.pubkey(),
-                &collection_mint.pubkey(),
-                &collection_mint_authority.pubkey(),
-                collection_group_state.update_authority.try_into().unwrap(),
-                collection_group_state.max_size.into(),
+                &group.pubkey(),
+                &group_mint.pubkey(),
+                &group_mint_authority.pubkey(),
+                group_state.update_authority.try_into().unwrap(),
+                group_state.max_size.into(),
             ),
         ],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &collection_mint_authority, &collection],
+        &[&context.payer, &group_mint_authority, &group],
         context.last_blockhash,
     );
     context
@@ -83,8 +81,7 @@ async fn test_update_collection_max_size() {
         .unwrap();
 
     // Fail: update authority not signer
-    let mut update_ix =
-        update_group_max_size(&program_id, &collection.pubkey(), &collection.pubkey(), 100);
+    let mut update_ix = update_group_max_size(&program_id, &group.pubkey(), &group.pubkey(), 100);
     update_ix.accounts[1].is_signer = false;
     let transaction = Transaction::new_signed_with_payer(
         &[update_ix],
@@ -106,12 +103,12 @@ async fn test_update_collection_max_size() {
     let transaction = Transaction::new_signed_with_payer(
         &[update_group_max_size(
             &program_id,
-            &collection.pubkey(),
-            &collection.pubkey(),
+            &group.pubkey(),
+            &group.pubkey(),
             100,
         )],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &collection],
+        &[&context.payer, &group],
         context.last_blockhash,
     );
     assert_eq!(
@@ -128,33 +125,33 @@ async fn test_update_collection_max_size() {
     );
 
     // Fail: size exceeds new max size
-    let fetched_collection_account = context
+    let fetched_group_account = context
         .banks_client
-        .get_account(collection.pubkey())
+        .get_account(group.pubkey())
         .await
         .unwrap()
         .unwrap();
-    let mut data = fetched_collection_account.data;
+    let mut data = fetched_group_account.data;
     let mut state = TlvStateMut::unpack(&mut data).unwrap();
-    let collection_data = state.get_first_value_mut::<TokenGroup>().unwrap();
-    collection_data.size = 30.into();
+    let group_data = state.get_first_value_mut::<TokenGroup>().unwrap();
+    group_data.size = 30.into();
     context.set_account(
-        &collection.pubkey(),
+        &group.pubkey(),
         &SolanaAccount {
             data,
-            ..fetched_collection_account
+            ..fetched_group_account
         }
         .into(),
     );
     let transaction = Transaction::new_signed_with_payer(
         &[update_group_max_size(
             &program_id,
-            &collection.pubkey(),
-            &collection_update_authority.pubkey(),
+            &group.pubkey(),
+            &group_update_authority.pubkey(),
             20,
         )],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &collection_update_authority],
+        &[&context.payer, &group_update_authority],
         context.last_blockhash,
     );
     assert_eq!(
@@ -174,12 +171,12 @@ async fn test_update_collection_max_size() {
     let transaction = Transaction::new_signed_with_payer(
         &[update_group_max_size(
             &program_id,
-            &collection.pubkey(),
-            &collection_update_authority.pubkey(),
+            &group.pubkey(),
+            &group_update_authority.pubkey(),
             100,
         )],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &collection_update_authority],
+        &[&context.payer, &group_update_authority],
         context.last_blockhash,
     );
     context
@@ -189,30 +186,28 @@ async fn test_update_collection_max_size() {
         .unwrap();
 
     // Fetch the account and assert the new max size
-    let fetched_collection_account = context
+    let fetched_group_account = context
         .banks_client
-        .get_account(collection.pubkey())
+        .get_account(group.pubkey())
         .await
         .unwrap()
         .unwrap();
-    let fetched_meta = TlvStateBorrowed::unpack(&fetched_collection_account.data).unwrap();
-    let fetched_collection_group_state = fetched_meta.get_first_value::<TokenGroup>().unwrap();
-    assert_eq!(fetched_collection_group_state.max_size, 100.into());
+    let fetched_meta = TlvStateBorrowed::unpack(&fetched_group_account.data).unwrap();
+    let fetched_group_state = fetched_meta.get_first_value::<TokenGroup>().unwrap();
+    assert_eq!(fetched_group_state.max_size, 100.into());
 }
 
 // Fail: immutable group
 #[tokio::test]
-async fn test_update_collection_max_size_fail_immutable_group() {
+async fn test_update_group_max_size_fail_immutable_group() {
     let program_id = Pubkey::new_unique();
-    let collection = Keypair::new();
-    let collection_mint = Keypair::new();
-    let collection_mint_authority = Keypair::new();
-    let collection_update_authority = Keypair::new();
+    let group = Keypair::new();
+    let group_mint = Keypair::new();
+    let group_mint_authority = Keypair::new();
+    let group_update_authority = Keypair::new();
 
-    let collection_group_state = TokenGroup {
-        update_authority: Some(collection_update_authority.pubkey())
-            .try_into()
-            .unwrap(),
+    let group_state = TokenGroup {
+        update_authority: Some(group_update_authority.pubkey()).try_into().unwrap(),
         size: 30.into(),
         max_size: 50.into(),
     };
@@ -222,11 +217,11 @@ async fn test_update_collection_max_size_fail_immutable_group() {
     let token_client = Token::new(
         client,
         &spl_token_2022::id(),
-        &collection_mint.pubkey(),
+        &group_mint.pubkey(),
         Some(0),
         payer.clone(),
     );
-    setup_mint(&token_client, &collection_mint, &collection_mint_authority).await;
+    setup_mint(&token_client, &group_mint, &group_mint_authority).await;
 
     let mut context = context.lock().await;
 
@@ -238,22 +233,22 @@ async fn test_update_collection_max_size_fail_immutable_group() {
         &[
             system_instruction::create_account(
                 &context.payer.pubkey(),
-                &collection.pubkey(),
+                &group.pubkey(),
                 rent_lamports,
                 space.try_into().unwrap(),
                 &program_id,
             ),
             initialize_group(
                 &program_id,
-                &collection.pubkey(),
-                &collection_mint.pubkey(),
-                &collection_mint_authority.pubkey(),
+                &group.pubkey(),
+                &group_mint.pubkey(),
+                &group_mint_authority.pubkey(),
                 None,
-                collection_group_state.max_size.into(),
+                group_state.max_size.into(),
             ),
         ],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &collection_mint_authority, &collection],
+        &[&context.payer, &group_mint_authority, &group],
         context.last_blockhash,
     );
     context
@@ -265,12 +260,12 @@ async fn test_update_collection_max_size_fail_immutable_group() {
     let transaction = Transaction::new_signed_with_payer(
         &[update_group_max_size(
             &program_id,
-            &collection.pubkey(),
-            &collection_update_authority.pubkey(),
+            &group.pubkey(),
+            &group_update_authority.pubkey(),
             100,
         )],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &collection_update_authority],
+        &[&context.payer, &group_update_authority],
         context.last_blockhash,
     );
     assert_eq!(
