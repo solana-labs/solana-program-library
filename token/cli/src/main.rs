@@ -2953,7 +2953,6 @@ async fn command_enable_disable_confidential_transfers(
     }
 
     let account = config.get_account_checked(&token_account_address).await?;
-    let current_account_len = account.data.len();
 
     let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
     let token = token_client_from_config(config, &state_with_extension.base.mint, None)?;
@@ -5620,7 +5619,10 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::EnableConfidentialCredits, arg_matches) => {
+        (c @ CommandName::EnableConfidentialCredits, arg_matches)
+        | (c @ CommandName::DisableConfidentialCredits, arg_matches)
+        | (c @ CommandName::EnableNonConfidentialCredits, arg_matches)
+        | (c @ CommandName::DisableNonConfidentialCredits, arg_matches) => {
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
@@ -5631,76 +5633,21 @@ async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            command_enable_disable_confidential_transfers(
-                config,
-                token_account,
-                owner,
-                bulk_signers,
-                Some(true),
-                None,
-            )
-            .await
-        }
-        (CommandName::DisableConfidentialCredits, arg_matches) => {
-            let (owner_signer, owner) =
-                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-
-            let token_account =
-                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
-
-            if config.multisigner_pubkeys.is_empty() {
-                push_signer_with_dedup(owner_signer, &mut bulk_signers);
-            }
+            let (allow_confidential_credits, allow_non_confidential_credits) = match c {
+                CommandName::EnableConfidentialCredits => (Some(true), None),
+                CommandName::DisableConfidentialCredits => (Some(false), None),
+                CommandName::EnableNonConfidentialCredits => (None, Some(true)),
+                CommandName::DisableNonConfidentialCredits => (None, Some(false)),
+                _ => (None, None),
+            };
 
             command_enable_disable_confidential_transfers(
                 config,
                 token_account,
                 owner,
                 bulk_signers,
-                Some(false),
-                None,
-            )
-            .await
-        }
-        (CommandName::EnableNonConfidentialCredits, arg_matches) => {
-            let (owner_signer, owner) =
-                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-
-            let token_account =
-                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
-
-            if config.multisigner_pubkeys.is_empty() {
-                push_signer_with_dedup(owner_signer, &mut bulk_signers);
-            }
-
-            command_enable_disable_confidential_transfers(
-                config,
-                token_account,
-                owner,
-                bulk_signers,
-                None,
-                Some(true),
-            )
-            .await
-        }
-        (CommandName::DisableNonConfidentialCredits, arg_matches) => {
-            let (owner_signer, owner) =
-                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
-
-            let token_account =
-                config.pubkey_or_default(arg_matches, "account", &mut wallet_manager)?;
-
-            if config.multisigner_pubkeys.is_empty() {
-                push_signer_with_dedup(owner_signer, &mut bulk_signers);
-            }
-
-            command_enable_disable_confidential_transfers(
-                config,
-                token_account,
-                owner,
-                bulk_signers,
-                None,
-                Some(false),
+                allow_confidential_credits,
+                allow_non_confidential_credits,
             )
             .await
         }
