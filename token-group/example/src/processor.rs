@@ -37,21 +37,21 @@ fn check_update_authority(
 }
 
 /// Processes an [InitializeGroup](enum.GroupInterfaceInstruction.html)
-/// instruction for a `Collection`
-pub fn process_initialize_collection(
+/// instruction
+pub fn process_initialize_group(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
     data: InitializeGroup,
 ) -> ProgramResult {
-    // Assumes one has already created a mint for the collection.
+    // Assumes one has already created a mint for the group.
     let account_info_iter = &mut accounts.iter();
 
     // Accounts expected by this instruction:
     //
-    //   0. `[w]`   Collection (Group)
+    //   0. `[w]`   Group
     //   1. `[]`    Mint
     //   2. `[s]`   Mint authority
-    let collection_info = next_account_info(account_info_iter)?;
+    let group_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let mint_authority_info = next_account_info(account_info_iter)?;
 
@@ -71,18 +71,18 @@ pub fn process_initialize_collection(
     }
 
     // Allocate a TLV entry for the space and write it in
-    let mut buffer = collection_info.try_borrow_mut_data()?;
+    let mut buffer = group_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
-    let (collection, _) = state.init_value::<TokenGroup>(false)?;
-    *collection = TokenGroup::new(mint_info.key, data.update_authority, data.max_size.into());
+    let (group, _) = state.init_value::<TokenGroup>(false)?;
+    *group = TokenGroup::new(mint_info.key, data.update_authority, data.max_size.into());
 
     Ok(())
 }
 
 /// Processes an
 /// [UpdateGroupMaxSize](enum.GroupInterfaceInstruction.html)
-/// instruction for a `Collection`
-pub fn process_update_collection_max_size(
+/// instruction
+pub fn process_update_group_max_size(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
     data: UpdateGroupMaxSize,
@@ -91,27 +91,27 @@ pub fn process_update_collection_max_size(
 
     // Accounts expected by this instruction:
     //
-    //   0. `[w]`   Collection (Group)
+    //   0. `[w]`   Group
     //   1. `[s]`   Update authority
-    let collection_info = next_account_info(account_info_iter)?;
+    let group_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
 
-    let mut buffer = collection_info.try_borrow_mut_data()?;
+    let mut buffer = group_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
-    let collection = state.get_first_value_mut::<TokenGroup>()?;
+    let group = state.get_first_value_mut::<TokenGroup>()?;
 
-    check_update_authority(update_authority_info, &collection.update_authority)?;
+    check_update_authority(update_authority_info, &group.update_authority)?;
 
     // Update the max size (zero-copy)
-    collection.update_max_size(data.max_size.into())?;
+    group.update_max_size(data.max_size.into())?;
 
     Ok(())
 }
 
 /// Processes an
 /// [UpdateGroupAuthority](enum.GroupInterfaceInstruction.html)
-/// instruction for a `Collection`
-pub fn process_update_collection_authority(
+/// instruction
+pub fn process_update_group_authority(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
     data: UpdateGroupAuthority,
@@ -120,49 +120,46 @@ pub fn process_update_collection_authority(
 
     // Accounts expected by this instruction:
     //
-    //   0. `[w]`   Collection (Group)
+    //   0. `[w]`   Group
     //   1. `[s]`   Current update authority
-    let collection_info = next_account_info(account_info_iter)?;
+    let group_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
 
-    let mut buffer = collection_info.try_borrow_mut_data()?;
+    let mut buffer = group_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
-    let collection = state.get_first_value_mut::<TokenGroup>()?;
+    let group = state.get_first_value_mut::<TokenGroup>()?;
 
-    check_update_authority(update_authority_info, &collection.update_authority)?;
+    check_update_authority(update_authority_info, &group.update_authority)?;
 
     // Update the authority (zero-copy)
-    collection.update_authority = data.new_authority;
+    group.update_authority = data.new_authority;
 
     Ok(())
 }
 
 /// Processes an [InitializeMember](enum.GroupInterfaceInstruction.html)
-/// instruction for a `Collection`
-pub fn process_initialize_collection_member(
-    _program_id: &Pubkey,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
-    // For this group, we are going to assume the collection has been
+/// instruction
+pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    // For this group, we are going to assume the group has been
     // initialized, and we're also assuming a mint has been created for the
     // member.
-    // Collection members in this example can have their own separate
-    // metadata that differs from the metadata of the collection, since
+    // Group members in this example can have their own separate
+    // metadata that differs from the metadata of the group, since
     // metadata is not involved here.
     let account_info_iter = &mut accounts.iter();
 
     // Accounts expected by this instruction:
     //
-    //   0. `[w]`   Collection Member (Member)
-    //   1. `[]`    Collection Member (Member) Mint
-    //   2. `[s]`   Collection Member (Member) Mint authority
-    //   3. `[w]`   Collection (Group)
-    //   4. `[s]`   Collection (Group) update authority
+    //   0. `[w]`   Member
+    //   1. `[]`    Member Mint
+    //   2. `[s]`   Member Mint authority
+    //   3. `[w]`   Group
+    //   4. `[s]`   Group update authority
     let member_info = next_account_info(account_info_iter)?;
     let member_mint_info = next_account_info(account_info_iter)?;
     let member_mint_authority_info = next_account_info(account_info_iter)?;
-    let collection_info = next_account_info(account_info_iter)?;
-    let collection_update_authority_info = next_account_info(account_info_iter)?;
+    let group_info = next_account_info(account_info_iter)?;
+    let group_update_authority_info = next_account_info(account_info_iter)?;
 
     // Mint checks on the member
     {
@@ -181,22 +178,19 @@ pub fn process_initialize_collection_member(
         }
     }
 
-    // Increment the size of the collection
-    let mut buffer = collection_info.try_borrow_mut_data()?;
+    // Increment the size of the group
+    let mut buffer = group_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
-    let collection = state.get_first_value_mut::<TokenGroup>()?;
+    let group = state.get_first_value_mut::<TokenGroup>()?;
 
-    check_update_authority(
-        collection_update_authority_info,
-        &collection.update_authority,
-    )?;
-    let member_number = collection.increment_size()?;
+    check_update_authority(group_update_authority_info, &group.update_authority)?;
+    let member_number = group.increment_size()?;
 
     // Allocate a TLV entry for the space and write it in
     let mut buffer = member_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
     let (member, _) = state.init_value::<TokenGroupMember>(false)?;
-    *member = TokenGroupMember::new(member_mint_info.key, collection_info.key, member_number);
+    *member = TokenGroupMember::new(member_mint_info.key, group_info.key, member_number);
 
     Ok(())
 }
@@ -206,20 +200,20 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> P
     let instruction = TokenGroupInstruction::unpack(input)?;
     match instruction {
         TokenGroupInstruction::InitializeGroup(data) => {
-            msg!("Instruction: InitializeCollection");
-            process_initialize_collection(program_id, accounts, data)
+            msg!("Instruction: InitializeGroup");
+            process_initialize_group(program_id, accounts, data)
         }
         TokenGroupInstruction::UpdateGroupMaxSize(data) => {
-            msg!("Instruction: UpdateCollectionMaxSize");
-            process_update_collection_max_size(program_id, accounts, data)
+            msg!("Instruction: UpdateGroupMaxSize");
+            process_update_group_max_size(program_id, accounts, data)
         }
         TokenGroupInstruction::UpdateGroupAuthority(data) => {
-            msg!("Instruction: UpdateCollectionAuthority");
-            process_update_collection_authority(program_id, accounts, data)
+            msg!("Instruction: UpdateGroupAuthority");
+            process_update_group_authority(program_id, accounts, data)
         }
         TokenGroupInstruction::InitializeMember(_) => {
-            msg!("Instruction: InitializeCollectionMember");
-            process_initialize_collection_member(program_id, accounts)
+            msg!("Instruction: InitializeMember");
+            process_initialize_member(program_id, accounts)
         }
     }
 }
