@@ -3,3 +3,5 @@ members = [
     "programs/account-compression",
     "programs/noop"
 ]
+
+resolver = "2"
