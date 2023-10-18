@@ -311,9 +311,9 @@
     "@types/node" "*"
 
 "@types/eslint-plugin-prettier@^3.1.0":
-  version "3.1.1"
-  resolved "https://registry.yarnpkg.com/@types/eslint-plugin-prettier/-/eslint-plugin-prettier-3.1.1.tgz#edcc2b950723fe5db7a4b27ccddff2a4844b40bc"
-  integrity sha512-krH6gyMd1RiPQo6VoeVTLpEeNg4b3xMacalssrXf8xhLAa8M7LZz3nmXgy4WgCvhBbCLpwAG8TnllyLpEkR3ww==
+  version "3.1.2"
+  resolved "https://registry.yarnpkg.com/@types/eslint-plugin-prettier/-/eslint-plugin-prettier-3.1.2.tgz#3a169730b60e7c94aace778640ebc32726c648bd"
+  integrity sha512-+93WHgRJxdsNU+nhBJYs/o72QTVxAxrvIRDf13u0D4wLERt7Ab4Y5ezc3lh3oOSO8VUbnqdgG2m5U0AT77eFfg==
   dependencies:
     "@types/eslint" "*"
 
