@@ -13,10 +13,10 @@ use {
     },
 };
 
-/// Processes an [RevokePendingActivation](enum.FeatureGateInstruction.html)
+/// Processes a [RevokePendingActivation](enum.FeatureGateInstruction.html)
 /// instruction.
 pub fn process_revoke_pending_activation(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -28,10 +28,7 @@ pub fn process_revoke_pending_activation(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    if feature_info.owner != program_id {
-        return Err(ProgramError::IllegalOwner);
-    }
-
+    // This will also check the program ID
     if Feature::from_account_info(feature_info)?
         .activated_at
         .is_some()

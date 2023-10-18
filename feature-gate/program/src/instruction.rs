@@ -16,10 +16,10 @@ pub enum FeatureGateInstruction {
     /// Revoke a pending feature activation.
     ///
     /// A "pending" feature activation is a feature account that has been
-    /// allocated and assigned, but hasn't been processed by the network yet.
+    /// allocated and assigned, but hasn't yet been updated by the runtime
+    /// with an `activation_slot`.
     ///
-    /// Features that _have_ been processed by the network are activated, and
-    /// cannot be revoked.
+    /// Features that _have_ been activated by the runtime cannot be revoked.
     ///
     /// Accounts expected by this instruction:
     ///
