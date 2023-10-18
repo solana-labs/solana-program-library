@@ -4715,7 +4715,7 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
-                        .help("The address of the token account to configure confidential transfers for \
+                        .help("The address of the token account to enable confidential transfers for \
                             [default: owner's associated token account]")
                 )
                 .arg(
@@ -4744,7 +4744,7 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
-                        .help("The address of the token account to configure confidential transfers for \
+                        .help("The address of the token account to disable confidential transfers for \
                             [default: owner's associated token account]")
                 )
                 .arg(
@@ -4773,7 +4773,7 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
-                        .help("The address of the token account to configure confidential transfers for \
+                        .help("The address of the token account to enable non-confidential transfers for \
                             [default: owner's associated token account]")
                 )
                 .arg(
@@ -4802,7 +4802,7 @@ fn app<'a, 'b>(
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
-                        .help("The address of the token account to configure confidential transfers for \
+                        .help("The address of the token account to disable non-confidential transfers for \
                             [default: owner's associated token account]")
                 )
                 .arg(
