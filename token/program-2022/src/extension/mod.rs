@@ -29,6 +29,7 @@ use {
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack},
     },
+    spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_pod::{
         bytemuck::{pod_from_bytes, pod_from_bytes_mut, pod_get_packed_len},
         primitives::PodU16,
@@ -68,12 +69,16 @@ pub mod non_transferable;
 pub mod permanent_delegate;
 /// Utility to reallocate token accounts
 pub mod reallocate;
+/// Token-group extension
+pub mod token_group;
 /// Token-metadata extension
 pub mod token_metadata;
 /// Transfer Fee extension
 pub mod transfer_fee;
 /// Transfer Hook extension
 pub mod transfer_hook;
+/// Update Authority utility
+pub mod update_authority;
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -902,6 +907,10 @@ pub enum ExtensionType {
     ConfidentialTransferFeeAmount,
     /// Mint contains a pointer to another account (or the same account) that holds metadata
     MetadataPointer,
+    /// Mint contains token group configurations
+    TokenGroup,
+    /// Mint contains token group _member_ configurations
+    TokenGroupMember,
     /// Mint contains token-metadata
     TokenMetadata,
     /// Test variable-length mint extension
@@ -977,6 +986,8 @@ impl ExtensionType {
                 pod_get_packed_len::<ConfidentialTransferFeeAmount>()
             }
             ExtensionType::MetadataPointer => pod_get_packed_len::<MetadataPointer>(),
+            ExtensionType::TokenGroup => pod_get_packed_len::<TokenGroup>(),
+            ExtensionType::TokenGroupMember => pod_get_packed_len::<TokenGroupMember>(),
             ExtensionType::TokenMetadata => unreachable!(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
@@ -1037,6 +1048,8 @@ impl ExtensionType {
             | ExtensionType::TransferHook
             | ExtensionType::ConfidentialTransferFeeConfig
             | ExtensionType::MetadataPointer
+            | ExtensionType::TokenGroup
+            | ExtensionType::TokenGroupMember
             | ExtensionType::TokenMetadata => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
