@@ -8,11 +8,11 @@ use {
     spl_pod::{error::PodSliceError, optional_keys::OptionalNonZeroPubkey, primitives::PodU32},
 };
 
-/// Data struct for a `Group`
+/// Data struct for a `TokenGroup`
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_group_interface:group")]
-pub struct Group {
+pub struct TokenGroup {
     /// The authority that can sign to update the group
     pub update_authority: OptionalNonZeroPubkey,
     /// The current number of group members
@@ -21,8 +21,8 @@ pub struct Group {
     pub max_size: PodU32,
 }
 
-impl Group {
-    /// Creates a new `Group` state
+impl TokenGroup {
+    /// Creates a new `TokenGroup` state
     pub fn new(update_authority: OptionalNonZeroPubkey, max_size: u32) -> Self {
         Self {
             update_authority,
@@ -55,18 +55,18 @@ impl Group {
     }
 }
 
-/// Data struct for a `Member` of a `Group`
+/// Data struct for a `TokenGroupMember`
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_group_interface:member")]
-pub struct Member {
-    /// The pubkey of the `Group`
+pub struct TokenGroupMember {
+    /// The pubkey of the `TokenGroup`
     pub group: Pubkey,
     /// The member number
     pub member_number: PodU32,
 }
-impl Member {
-    /// Creates a new `Member` state
+impl TokenGroupMember {
+    /// Creates a new `TokenGroupMember` state
     pub fn new(group: Pubkey, member_number: u32) -> Self {
         Self {
             group,
@@ -91,50 +91,53 @@ mod tests {
         let preimage = hash::hashv(&[format!("{NAMESPACE}:group").as_bytes()]);
         let discriminator =
             ArrayDiscriminator::try_from(&preimage.as_ref()[..ArrayDiscriminator::LENGTH]).unwrap();
-        assert_eq!(Group::SPL_DISCRIMINATOR, discriminator);
+        assert_eq!(TokenGroup::SPL_DISCRIMINATOR, discriminator);
 
         let preimage = hash::hashv(&[format!("{NAMESPACE}:member").as_bytes()]);
         let discriminator =
             ArrayDiscriminator::try_from(&preimage.as_ref()[..ArrayDiscriminator::LENGTH]).unwrap();
-        assert_eq!(Member::SPL_DISCRIMINATOR, discriminator);
+        assert_eq!(TokenGroupMember::SPL_DISCRIMINATOR, discriminator);
     }
 
     #[test]
     fn tlv_state_pack() {
         // Make sure we can pack more than one instance of each type
-        let group = Group {
+        let group = TokenGroup {
             update_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new_unique())).unwrap(),
             size: 10.into(),
             max_size: 20.into(),
         };
 
-        let member = Member {
+        let member = TokenGroupMember {
             group: Pubkey::new_unique(),
             member_number: 0.into(),
         };
 
         let account_size = TlvStateBorrowed::get_base_len()
-            + size_of::<Group>()
+            + size_of::<TokenGroup>()
             + TlvStateBorrowed::get_base_len()
-            + size_of::<Member>();
+            + size_of::<TokenGroupMember>();
         let mut buffer = vec![0; account_size];
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 
-        let group_data = state.init_value::<Group>(false).unwrap().0;
+        let group_data = state.init_value::<TokenGroup>(false).unwrap().0;
         *group_data = group;
 
-        let member_data = state.init_value::<Member>(false).unwrap().0;
+        let member_data = state.init_value::<TokenGroupMember>(false).unwrap().0;
         *member_data = member;
 
-        assert_eq!(state.get_first_value::<Group>().unwrap(), &group);
-        assert_eq!(state.get_first_value::<Member>().unwrap(), &member);
+        assert_eq!(state.get_first_value::<TokenGroup>().unwrap(), &group);
+        assert_eq!(
+            state.get_first_value::<TokenGroupMember>().unwrap(),
+            &member
+        );
     }
 
     #[test]
     fn update_max_size() {
         // Test with a `Some` max size
         let max_size = 10;
-        let mut group = Group {
+        let mut group = TokenGroup {
             update_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new_unique())).unwrap(),
             size: 0.into(),
             max_size: max_size.into(),
@@ -161,7 +164,7 @@ mod tests {
 
     #[test]
     fn increment_current_size() {
-        let mut group = Group {
+        let mut group = TokenGroup {
             update_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new_unique())).unwrap(),
             size: 0.into(),
             max_size: 1.into(),
