@@ -5,7 +5,7 @@
     "build": "pnpm tsc",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint . --fix",
-    "test": "NODE_OPTIONS='--loader=tsx' ava"
+    "test": "NODE_OPTIONS='--import=tsx' ava"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -32,10 +32,10 @@
   },
   "ava": {
     "extensions": {
-      "ts": "module"
+      "ts": "commonjs"
     },
     "nodeArguments": [
-      "--loader=tsx"
+      "--import=tsx"
     ]
   }
 }
