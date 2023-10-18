@@ -5,8 +5,8 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
-            alloc_and_serialize, metadata_pointer::MetadataPointer, BaseStateWithExtensions,
-            StateWithExtensions,
+            alloc_and_serialize, metadata_pointer::MetadataPointer,
+            update_authority::check_update_authority, BaseStateWithExtensions, StateWithExtensions,
         },
         state::Mint,
     },
@@ -28,21 +28,6 @@ use {
         state::TokenMetadata,
     },
 };
-
-fn check_update_authority(
-    update_authority_info: &AccountInfo,
-    expected_update_authority: &OptionalNonZeroPubkey,
-) -> Result<(), ProgramError> {
-    if !update_authority_info.is_signer {
-        return Err(ProgramError::MissingRequiredSignature);
-    }
-    let update_authority = Option::<Pubkey>::from(*expected_update_authority)
-        .ok_or(TokenMetadataError::ImmutableMetadata)?;
-    if update_authority != *update_authority_info.key {
-        return Err(TokenMetadataError::IncorrectUpdateAuthority.into());
-    }
-    Ok(())
-}
 
 /// Processes a [Initialize](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_initialize(
