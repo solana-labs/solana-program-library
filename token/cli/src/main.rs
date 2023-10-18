@@ -5602,11 +5602,16 @@ async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            let maximum_credit_counter = value_t!(
-                arg_matches.value_of("maximum_pending_balance_credit_counter"),
-                u64
-            )
-            .ok();
+            let maximum_credit_counter =
+                if arg_matches.is_present("maximum_pending_balance_credit_counter") {
+                    let maximum_credit_counter = value_t_or_exit!(
+                        arg_matches.value_of("maximum_pending_balance_credit_counter"),
+                        u64
+                    );
+                    Some(maximum_credit_counter)
+                } else {
+                    None
+                };
 
             command_configure_confidential_transfer_account(
                 config,
