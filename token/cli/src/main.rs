@@ -2966,24 +2966,6 @@ async fn command_enable_disable_confidential_transfers(
         );
     }
 
-    // Reallocation (if needed)
-    let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
-    if !existing_extensions.contains(&ExtensionType::ConfidentialTransferAccount) {
-        existing_extensions.push(ExtensionType::ConfidentialTransferAccount);
-        let needed_account_len =
-            ExtensionType::try_calculate_account_len::<Account>(&existing_extensions)?;
-        if needed_account_len > current_account_len {
-            token
-                .reallocate(
-                    &token_account_address,
-                    &owner,
-                    &[ExtensionType::ConfidentialTransferAccount],
-                    &bulk_signers,
-                )
-                .await?;
-        }
-    }
-
     let res = if let Some(allow_confidential_credits) = allow_confidential_credits {
         let extension_state = state_with_extension
             .get_extension::<ConfidentialTransferAccount>()?
