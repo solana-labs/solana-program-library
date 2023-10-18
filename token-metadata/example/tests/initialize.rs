@@ -12,9 +12,8 @@ use {
         system_instruction,
         transaction::{Transaction, TransactionError},
     },
-    spl_token_metadata_interface::{
-        error::TokenMetadataError, instruction::initialize, state::TokenMetadata,
-    },
+    spl_token_2022::error::TokenError,
+    spl_token_metadata_interface::{instruction::initialize, state::TokenMetadata},
     spl_type_length_value::{
         error::TlvError,
         state::{TlvState, TlvStateBorrowed},
@@ -265,7 +264,7 @@ async fn fail_incorrect_authority() {
         error,
         TransactionError::InstructionError(
             1,
-            InstructionError::Custom(TokenMetadataError::IncorrectMintAuthority as u32)
+            InstructionError::Custom(TokenError::IncorrectMintAuthority as u32)
         )
     );
 }

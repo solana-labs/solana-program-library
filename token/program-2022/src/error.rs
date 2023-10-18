@@ -232,6 +232,9 @@ pub enum TokenError {
     /// Ciphertext arithmetic failed
     #[error("Ciphertext arithmetic failed")]
     CiphertextArithmeticFailed,
+    /// Incorrect mint authority has signed the instruction
+    #[error("Incorrect mint authority has signed the instruction")]
+    IncorrectMintAuthority,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -406,6 +409,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::CiphertextArithmeticFailed => {
                 msg!("Ciphertext arithmetic failed")
+            }
+            TokenError::IncorrectMintAuthority => {
+                msg!("Incorrect mint authority has signed the instruction")
             }
         }
     }
