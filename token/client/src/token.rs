@@ -3722,4 +3722,25 @@ where
         ));
         self.process_ixs(&instructions, signing_keypairs).await
     }
+
+    /// Update a token-group max size on a mint
+    pub async fn token_group_update_max_size<S: Signers>(
+        &self,
+        update_authority: &Pubkey,
+        new_max_size: u32,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[
+                spl_token_group_interface::instruction::update_group_max_size(
+                    &self.program_id,
+                    &self.pubkey,
+                    update_authority,
+                    new_max_size,
+                ),
+            ],
+            signing_keypairs,
+        )
+        .await
+    }
 }
