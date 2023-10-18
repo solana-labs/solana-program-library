@@ -36,6 +36,7 @@ use {
         bytemuck::{pod_from_bytes, pod_from_bytes_mut, pod_get_packed_len},
         primitives::PodU16,
     },
+    spl_token_group_interface::state::TokenGroup,
     spl_type_length_value::variable_len_pack::VariableLenPack,
     std::{
         cmp::Ordering,
@@ -70,6 +71,8 @@ pub mod non_transferable;
 pub mod permanent_delegate;
 /// Utility to reallocate token accounts
 pub mod reallocate;
+/// Token-group extension
+pub mod token_group;
 /// Token-metadata extension
 pub mod token_metadata;
 /// Transfer Fee extension
@@ -948,6 +951,8 @@ pub enum ExtensionType {
     /// Mint contains a pointer to another account (or the same account) that
     /// holds group configurations
     GroupPointer,
+    /// Mint contains token group configurations
+    TokenGroup,
     /// Test variable-length mint extension
     #[cfg(test)]
     VariableLenMintTest = u16::MAX - 2,
@@ -1025,6 +1030,7 @@ impl ExtensionType {
             ExtensionType::MetadataPointer => pod_get_packed_len::<MetadataPointer>(),
             ExtensionType::TokenMetadata => unreachable!(),
             ExtensionType::GroupPointer => pod_get_packed_len::<GroupPointer>(),
+            ExtensionType::TokenGroup => pod_get_packed_len::<TokenGroup>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -1085,7 +1091,8 @@ impl ExtensionType {
             | ExtensionType::ConfidentialTransferFeeConfig
             | ExtensionType::MetadataPointer
             | ExtensionType::TokenMetadata
-            | ExtensionType::GroupPointer => AccountType::Mint,
+            | ExtensionType::GroupPointer
+            | ExtensionType::TokenGroup => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
