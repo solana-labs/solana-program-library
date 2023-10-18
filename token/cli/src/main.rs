@@ -4657,6 +4657,16 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::ConfigureConfidentialTransferAccount.into())
                 .about("Configure confidential transfers for token account")
                 .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required_unless("address")
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
                     Arg::with_name("address")
                         .long("address")
                         .validator(is_valid_pubkey)
@@ -4668,16 +4678,6 @@ fn app<'a, 'b>(
                 )
                 .arg(
                     owner_address_arg()
-                )
-                .arg(
-                    Arg::with_name("token")
-                        .long("token")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_MINT_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .required_unless("address")
-                        .help("The token address with confidential transfers enabled"),
                 )
                 .arg(
                     Arg::with_name("maximum_pending_balance_credit_counter")
@@ -4699,20 +4699,24 @@ fn app<'a, 'b>(
                 .about("Enable confidential transfers for token account. To enable confidential transfers \
                 for the first time, use `configure-confidential-transfer-account` instead.")
                 .arg(
-                    Arg::with_name("account")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ACCOUNT_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .help("The address of the token account to enable confidential transfers for")
-                )
-                .arg(
                     Arg::with_name("token")
                         .long("token")
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
+                        .index(1)
+                        .required_unless("address")
                         .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
                 )
                 .arg(
                     owner_address_arg()
@@ -4724,20 +4728,24 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::DisableConfidentialCredits.into())
                 .about("Disable confidential transfers for token account")
                 .arg(
-                    Arg::with_name("account")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ACCOUNT_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .help("The address of the token account to disable confidential transfers for")
-                )
-                .arg(
                     Arg::with_name("token")
                         .long("token")
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
+                        .index(1)
+                        .required_unless("address")
                         .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
                 )
                 .arg(
                     owner_address_arg()
@@ -4749,20 +4757,24 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::EnableNonConfidentialCredits.into())
                 .about("Enable non-confidential transfers for token account.")
                 .arg(
-                    Arg::with_name("account")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ACCOUNT_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .help("The address of the token account to enable non-confidential transfers for")
-                )
-                .arg(
                     Arg::with_name("token")
                         .long("token")
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
+                        .index(1)
+                        .required_unless("address")
                         .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
                 )
                 .arg(
                     owner_address_arg()
@@ -4774,20 +4786,24 @@ fn app<'a, 'b>(
             SubCommand::with_name(CommandName::DisableNonConfidentialCredits.into())
                 .about("Disable non-confidential transfers for token account")
                 .arg(
-                    Arg::with_name("account")
-                        .validator(is_valid_pubkey)
-                        .value_name("TOKEN_ACCOUNT_ADDRESS")
-                        .takes_value(true)
-                        .index(1)
-                        .help("The address of the token account to disable non-confidential transfers for")
-                )
-                .arg(
                     Arg::with_name("token")
                         .long("token")
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
+                        .index(1)
+                        .required_unless("address")
                         .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
                 )
                 .arg(
                     owner_address_arg()
@@ -5650,7 +5666,7 @@ async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
-            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager).unwrap();
+            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
 
             // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
             // supported in the future once upgrading to clap-v3.
@@ -5696,7 +5712,7 @@ async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
-            let account = pubkey_of_signer(arg_matches, "account", &mut wallet_manager).unwrap();
+            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
 
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
@@ -8345,7 +8361,7 @@ mod tests {
             &[
                 "spl-token",
                 CommandName::ConfigureConfidentialTransferAccount.into(),
-                &token_account.to_string(),
+                &token_pubkey.to_string(),
             ],
         )
         .await
@@ -8367,7 +8383,7 @@ mod tests {
             &[
                 "spl-token",
                 CommandName::DisableConfidentialCredits.into(),
-                &token_account.to_string(),
+                &token_pubkey.to_string(),
             ],
         )
         .await
@@ -8386,7 +8402,7 @@ mod tests {
             &[
                 "spl-token",
                 CommandName::EnableConfidentialCredits.into(),
-                &token_account.to_string(),
+                &token_pubkey.to_string(),
             ],
         )
         .await
@@ -8406,7 +8422,7 @@ mod tests {
             &[
                 "spl-token",
                 CommandName::DisableNonConfidentialCredits.into(),
-                &token_account.to_string(),
+                &token_pubkey.to_string(),
             ],
         )
         .await
@@ -8425,7 +8441,7 @@ mod tests {
             &[
                 "spl-token",
                 CommandName::EnableNonConfidentialCredits.into(),
-                &token_account.to_string(),
+                &token_pubkey.to_string(),
             ],
         )
         .await
