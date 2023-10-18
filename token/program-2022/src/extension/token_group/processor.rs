@@ -5,8 +5,9 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
-            alloc_and_serialize, group_pointer::GroupPointer, BaseStateWithExtensions,
-            StateWithExtensions, StateWithExtensionsMut,
+            alloc_and_serialize, group_member_pointer::GroupMemberPointer,
+            group_pointer::GroupPointer, BaseStateWithExtensions, StateWithExtensions,
+            StateWithExtensionsMut,
         },
         state::Mint,
     },
@@ -24,7 +25,7 @@ use {
         instruction::{
             InitializeGroup, TokenGroupInstruction, UpdateGroupAuthority, UpdateGroupMaxSize,
         },
-        state::TokenGroup,
+        state::{TokenGroup, TokenGroupMember},
     },
 };
 
@@ -142,6 +143,72 @@ pub fn process_update_group_authority(
     Ok(())
 }
 
+/// Processes an [InitializeMember](enum.GroupInterfaceInstruction.html)
+/// instruction
+pub fn process_initialize_group_member(
+    _program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let member_info = next_account_info(account_info_iter)?;
+    let member_mint_info = next_account_info(account_info_iter)?;
+    let member_mint_authority_info = next_account_info(account_info_iter)?;
+    let group_info = next_account_info(account_info_iter)?;
+    let group_update_authority_info = next_account_info(account_info_iter)?;
+
+    // check that the mint and member accounts are the same, since the member
+    // extension should only describe itself
+    if member_info.key != member_mint_info.key {
+        msg!("Group member configurations for a mint must be initialized in the mint itself.");
+        return Err(TokenError::MintMismatch.into());
+    }
+
+    // scope the mint authority check, since the mint is in the same account!
+    {
+        // This check isn't really needed since we'll be writing into the account,
+        // but auditors like it
+        check_program_account(member_mint_info.owner)?;
+        let member_mint_data = member_mint_info.try_borrow_data()?;
+        let member_mint = StateWithExtensions::<Mint>::unpack(&member_mint_data)?;
+
+        if !member_mint_authority_info.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+        if member_mint.base.mint_authority.as_ref() != COption::Some(member_mint_authority_info.key)
+        {
+            return Err(TokenGroupError::IncorrectMintAuthority.into());
+        }
+
+        if member_mint.get_extension::<GroupMemberPointer>().is_err() {
+            msg!(
+                "A mint with group member configurations must have the group-member-pointer \
+                 extension initialized"
+            );
+            return Err(TokenError::InvalidExtensionCombination.into());
+        }
+    }
+
+    // Make sure the member mint is not the same as the group mint
+    if member_info.key == group_info.key {
+        return Err(TokenGroupError::MemberAccountIsGroupAccount.into());
+    }
+
+    // Increment the size of the group
+    let mut buffer = group_info.try_borrow_mut_data()?;
+    let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer)?;
+    let group = state.get_extension_mut::<TokenGroup>()?;
+
+    check_update_authority(group_update_authority_info, &group.update_authority)?;
+    let member_number = group.increment_size()?;
+
+    // Allocate a TLV entry for the space and write it in
+    let member = TokenGroupMember::new(member_mint_info.key, group_info.key, member_number);
+    alloc_and_serialize::<Mint, TokenGroupMember>(member_info, &member, false)?;
+
+    Ok(())
+}
+
 /// Processes an [Instruction](enum.Instruction.html).
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -161,6 +228,9 @@ pub fn process_instruction(
             msg!("TokenGroupInstruction: UpdateGroupAuthority");
             process_update_group_authority(program_id, accounts, data)
         }
-        _ => Err(ProgramError::InvalidInstructionData),
+        TokenGroupInstruction::InitializeMember(_) => {
+            msg!("TokenGroupInstruction: InitializeMember");
+            process_initialize_group_member(program_id, accounts)
+        }
     }
 }
