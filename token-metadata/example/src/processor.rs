@@ -12,7 +12,10 @@ use {
         pubkey::Pubkey,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
-    spl_token_2022::{extension::StateWithExtensions, state::Mint},
+    spl_token_2022::{
+        extension::{update_authority::check_update_authority, StateWithExtensions},
+        state::Mint,
+    },
     spl_token_metadata_interface::{
         error::TokenMetadataError,
         instruction::{
@@ -24,21 +27,6 @@ use {
         realloc_and_pack_first_variable_len, TlvState, TlvStateBorrowed, TlvStateMut,
     },
 };
-
-fn check_update_authority(
-    update_authority_info: &AccountInfo,
-    expected_update_authority: &OptionalNonZeroPubkey,
-) -> Result<(), ProgramError> {
-    if !update_authority_info.is_signer {
-        return Err(ProgramError::MissingRequiredSignature);
-    }
-    let update_authority = Option::<Pubkey>::from(*expected_update_authority)
-        .ok_or(TokenMetadataError::ImmutableMetadata)?;
-    if update_authority != *update_authority_info.key {
-        return Err(TokenMetadataError::IncorrectUpdateAuthority.into());
-    }
-    Ok(())
-}
 
 /// Processes a [Initialize](enum.TokenMetadataInstruction.html) instruction.
 pub fn process_initialize(

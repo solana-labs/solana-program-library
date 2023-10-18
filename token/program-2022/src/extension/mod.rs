@@ -74,6 +74,8 @@ pub mod token_metadata;
 pub mod transfer_fee;
 /// Transfer Hook extension
 pub mod transfer_hook;
+/// Update authority util
+pub mod update_authority;
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
