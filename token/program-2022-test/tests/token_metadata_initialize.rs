@@ -11,7 +11,7 @@ use {
     },
     spl_token_2022::{error::TokenError, extension::BaseStateWithExtensions, processor::Processor},
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
-    spl_token_metadata_interface::{error::TokenMetadataError, state::TokenMetadata},
+    spl_token_metadata_interface::state::TokenMetadata,
     std::{convert::TryInto, sync::Arc},
 };
 
@@ -110,7 +110,7 @@ async fn success_initialize() {
         TokenClientError::Client(Box::new(TransportError::TransactionError(
             TransactionError::InstructionError(
                 1,
-                InstructionError::Custom(TokenMetadataError::IncorrectMintAuthority as u32)
+                InstructionError::Custom(TokenError::OwnerMismatch as u32)
             )
         )))
     );

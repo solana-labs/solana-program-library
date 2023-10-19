@@ -61,7 +61,7 @@ pub fn process_initialize(
             return Err(ProgramError::MissingRequiredSignature);
         }
         if mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
-            return Err(TokenMetadataError::IncorrectMintAuthority.into());
+            return Err(TokenError::OwnerMismatch.into());
         }
 
         if mint.get_extension::<MetadataPointer>().is_err() {

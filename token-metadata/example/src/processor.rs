@@ -13,6 +13,7 @@ use {
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
     spl_token_2022::{
+        error::TokenError,
         extension::{update_authority::check_update_authority, StateWithExtensions},
         state::Mint,
     },
@@ -53,7 +54,7 @@ pub fn process_initialize(
             return Err(ProgramError::MissingRequiredSignature);
         }
         if mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
-            return Err(TokenMetadataError::IncorrectMintAuthority.into());
+            return Err(TokenError::OwnerMismatch.into());
         }
     }
 
