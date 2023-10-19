@@ -130,7 +130,7 @@ describe('Token Metadata Instructions', () => {
         const instruction = createEmitInstruction({
             programId,
             metadata,
-            end: 10,
+            end: BigInt(10),
         });
 
         expect(instruction).to.deep.equal(

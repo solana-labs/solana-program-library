@@ -152,8 +152,8 @@ export function createUpdateAuthorityInstruction({
 export interface Emit {
     programId: PublicKey;
     metadata: PublicKey;
-    start?: number;
-    end?: number;
+    start?: bigint;
+    end?: bigint;
 }
 
 export function createEmitInstruction({ programId, metadata, start, end }: Emit): TransactionInstruction {
