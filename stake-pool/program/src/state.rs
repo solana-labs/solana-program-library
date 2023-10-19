@@ -1030,7 +1030,7 @@ impl FeeType {
 
 #[cfg(test)]
 mod test {
-    #![allow(clippy::integer_arithmetic)]
+    #![allow(clippy::arithmetic_side_effects)]
     use {
         super::*,
         proptest::prelude::*,

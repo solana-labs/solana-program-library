@@ -48,7 +48,7 @@ class StakeAuthorize(IntEnum):
     WITHDRAWER = 1
 
 
-class StakeStateType(IntEnum):
+class StakeStakeType(IntEnum):
     """Stake State Types."""
     UNINITIALIZED = 0
     INITIALIZED = 1
@@ -56,8 +56,8 @@ class StakeStateType(IntEnum):
     REWARDS_POOL = 3
 
 
-class StakeState(NamedTuple):
-    state_type: StakeStateType
+class StakeStake(NamedTuple):
+    state_type: StakeStakeType
     state: Container
 
     """Stake state."""
@@ -65,7 +65,7 @@ class StakeState(NamedTuple):
     def decode(cls, data: str, encoding: str):
         data_bytes = decode_byte_string(data, encoding)
         parsed = STAKE_STATE_LAYOUT.parse(data_bytes)
-        return StakeState(
+        return StakeStake(
             state_type=parsed['state_type'],
             state=parsed['state'],
         )
@@ -122,9 +122,9 @@ STAKE_STATE_LAYOUT = Struct(
     # Switch(
     #     lambda this: this.state,
     #     {
-    #         StakeStateType.UNINITIALIZED: Pass,
-    #         StakeStateType.INITIALIZED: META_LAYOUT,
-    #         StakeStateType.STAKE: STAKE_AND_META_LAYOUT,
+    #         StakeStakeType.UNINITIALIZED: Pass,
+    #         StakeStakeType.INITIALIZED: META_LAYOUT,
+    #         StakeStakeType.STAKE: STAKE_AND_META_LAYOUT,
     #     }
     # ),
     #

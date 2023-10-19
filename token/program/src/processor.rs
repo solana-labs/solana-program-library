@@ -1147,9 +1147,11 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Custom(3)")]
-    fn test_error_unwrap() {
-        Err::<(), ProgramError>(return_token_error_as_program_error()).unwrap();
+    fn test_error_as_custom() {
+        assert_eq!(
+            return_token_error_as_program_error(),
+            ProgramError::Custom(3)
+        );
     }
 
     #[test]

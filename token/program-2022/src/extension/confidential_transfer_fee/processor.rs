@@ -125,7 +125,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     if destination_account.base.is_frozen() {
         return Err(TokenError::AccountFrozen.into());
     }
-    let mut destination_confidential_transfer_account =
+    let destination_confidential_transfer_account =
         destination_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     destination_confidential_transfer_account.valid_as_destination()?;
 
@@ -286,7 +286,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
         }
     }
 
-    let mut destination_confidential_transfer_account =
+    let destination_confidential_transfer_account =
         destination_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     destination_confidential_transfer_account.valid_as_destination()?;
 

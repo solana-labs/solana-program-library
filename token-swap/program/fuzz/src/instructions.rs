@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 use {
     arbitrary::Arbitrary,
     honggfuzz::fuzz,
@@ -390,7 +390,7 @@ fn run_fuzz_instruction(
                 || e == TokenError::InsufficientFunds.into())
             {
                 println!("{:?}", e);
-                Err(e).unwrap()
+                panic!("{:?}", e)
             }
         })
         .ok();

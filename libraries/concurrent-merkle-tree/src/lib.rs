@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 //! # Concurrent Merkle Tree
 //!
 //! This crate is a Solana-optimized implementation of the

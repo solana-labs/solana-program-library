@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 mod client;
 mod output;
 
@@ -51,7 +51,7 @@ use {
         MINIMUM_RESERVE_LAMPORTS,
     },
     std::cmp::Ordering,
-    std::{num::NonZeroU32, process::exit, sync::Arc},
+    std::{num::NonZeroU32, process::exit, rc::Rc},
 };
 // use instruction::create_associated_token_account once ATA 1.0.5 is released
 #[allow(deprecated)]
@@ -127,7 +127,7 @@ fn get_signer(
     matches: &ArgMatches<'_>,
     keypair_name: &str,
     keypair_path: &str,
-    wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     signer_from_path_config: SignerFromPathConfig,
 ) -> Box<dyn Signer> {
     signer_from_path_with_config(
@@ -683,7 +683,7 @@ fn command_deposit_stake(
         println!("Depositing stake account {:?}", stake_state);
     }
     let vote_account = match stake_state {
-        stake::state::StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
+        stake::state::StakeStateV2::Stake(_, stake, _) => Ok(stake.delegation.voter_pubkey),
         _ => Err("Wrong stake account state, must be delegated to validator"),
     }?;
 
@@ -865,7 +865,7 @@ fn command_deposit_all_stake(
         let stake_state = get_stake_state(&config.rpc_client, &stake_address)?;
 
         let vote_account = match stake_state {
-            stake::state::StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
+            stake::state::StakeStateV2::Stake(_, stake, _) => Ok(stake.delegation.voter_pubkey),
             _ => Err("Wrong stake account state, must be delegated to validator"),
         }?;
 
@@ -1399,9 +1399,12 @@ fn command_withdraw_stake(
     let maybe_stake_receiver_state = stake_receiver_param
         .map(|stake_receiver_pubkey| {
             let stake_account = config.rpc_client.get_account(&stake_receiver_pubkey).ok()?;
-            let stake_state: stake::state::StakeState = deserialize(stake_account.data.as_slice())
-                .map_err(|err| format!("Invalid stake account {}: {}", stake_receiver_pubkey, err))
-                .ok()?;
+            let stake_state: stake::state::StakeStateV2 =
+                deserialize(stake_account.data.as_slice())
+                    .map_err(|err| {
+                        format!("Invalid stake account {}: {}", stake_receiver_pubkey, err)
+                    })
+                    .ok()?;
             if stake_state.delegation().is_some() && stake_account.owner == stake::program::id() {
                 Some(stake_state)
             } else {

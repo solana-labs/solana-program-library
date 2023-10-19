@@ -14,7 +14,7 @@
 if [[ -n $ANCHOR_CLI_VERSION ]]; then
   anchor_cli_version="$ANCHOR_CLI_VERSION"
 else
-  anchor_cli_version=v0.28.0
+  anchor_cli_version=v0.29.0
 fi
 
 export anchor_cli_version="$anchor_cli_version"

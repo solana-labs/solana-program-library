@@ -1,5 +1,4 @@
-#![cfg(all(feature = "test-sbf"))]
-// #![cfg(twoxtx)]
+#![cfg(feature = "test-sbf")]
 
 mod program_test;
 use {

@@ -30,7 +30,7 @@ async fn test_complete_proposal() {
         .await
         .unwrap();
 
-    let mut proposal_cookie = governance_test
+    let proposal_cookie = governance_test
         .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
@@ -50,7 +50,7 @@ async fn test_complete_proposal() {
 
     // Act
     governance_test
-        .complete_proposal(&mut proposal_cookie, &token_owner_record_cookie)
+        .complete_proposal(&proposal_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -85,7 +85,7 @@ async fn test_complete_proposal_with_wrong_state_error() {
         .await
         .unwrap();
 
-    let mut proposal_cookie = governance_test
+    let proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut token_governance_cookie)
         .await
         .unwrap();
@@ -98,7 +98,7 @@ async fn test_complete_proposal_with_wrong_state_error() {
 
     // Act
     let err = governance_test
-        .complete_proposal(&mut proposal_cookie, &token_owner_record_cookie)
+        .complete_proposal(&proposal_cookie, &token_owner_record_cookie)
         .await
         .err()
         .unwrap();
@@ -172,7 +172,7 @@ async fn test_complete_proposal_with_completed_state_transaction_exists_error() 
 
     // Act
     let err = governance_test
-        .complete_proposal(&mut proposal_cookie, &token_owner_record_cookie)
+        .complete_proposal(&proposal_cookie, &token_owner_record_cookie)
         .await
         .err()
         .unwrap();
@@ -202,7 +202,7 @@ async fn test_complete_proposal_with_owner_or_delegate_must_sign_error() {
         .await
         .unwrap();
 
-    let mut proposal_cookie = governance_test
+    let proposal_cookie = governance_test
         .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
@@ -221,7 +221,7 @@ async fn test_complete_proposal_with_owner_or_delegate_must_sign_error() {
 
     // Act
     let err = governance_test
-        .complete_proposal(&mut proposal_cookie, &token_owner_record_cookie)
+        .complete_proposal(&proposal_cookie, &token_owner_record_cookie)
         .await
         .err()
         .unwrap();

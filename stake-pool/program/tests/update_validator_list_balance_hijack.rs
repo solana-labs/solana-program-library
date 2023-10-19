@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -11,7 +11,7 @@ use {
         hash::Hash,
         instruction::InstructionError,
         signature::Signer,
-        stake::state::{Authorized, Lockup, StakeState},
+        stake::state::{Authorized, Lockup, StakeStateV2},
         system_instruction,
         transaction::{Transaction, TransactionError},
     },
@@ -206,7 +206,7 @@ async fn check_ignored_hijacked_transient_stake(
     ) = setup(num_validators).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeStateV2>());
 
     let pre_lamports = get_validator_list_sum(
         &mut context.banks_client,
@@ -372,7 +372,7 @@ async fn check_ignored_hijacked_validator_stake(
     ) = setup(num_validators).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeStateV2>());
 
     let pre_lamports = get_validator_list_sum(
         &mut context.banks_client,

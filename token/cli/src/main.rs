@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     ArgGroup, ArgMatches, SubCommand,
@@ -63,7 +63,9 @@ use spl_token_client::{
     token::{ExtensionInitializationParams, Token},
 };
 use spl_token_metadata_interface::state::{Field, TokenMetadata};
-use std::{collections::HashMap, fmt, fmt::Display, process::exit, str::FromStr, sync::Arc};
+use std::{
+    collections::HashMap, fmt, fmt::Display, process::exit, rc::Rc, str::FromStr, sync::Arc,
+};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, EnumString, IntoStaticStr};
 
@@ -410,7 +412,7 @@ fn new_throwaway_signer() -> (Arc<dyn Signer>, Pubkey) {
 fn get_signer(
     matches: &ArgMatches<'_>,
     keypair_name: &str,
-    wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
 ) -> Option<(Arc<dyn Signer>, Pubkey)> {
     matches.value_of(keypair_name).map(|path| {
         let signer = signer_from_path(matches, path, keypair_name, wallet_manager)
@@ -464,7 +466,7 @@ type SignersOf = Vec<(Arc<dyn Signer>, Pubkey)>;
 pub fn signers_of(
     matches: &ArgMatches<'_>,
     name: &str,
-    wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
 ) -> Result<Option<SignersOf>, Box<dyn std::error::Error>> {
     if let Some(values) = matches.values_of(name) {
         let mut results = Vec::new();
@@ -4852,7 +4854,7 @@ async fn process_command<'a>(
     sub_command: &CommandName,
     sub_matches: &ArgMatches<'_>,
     config: &Config<'a>,
-    mut wallet_manager: Option<Arc<RemoteWalletManager>>,
+    mut wallet_manager: Option<Rc<RemoteWalletManager>>,
     mut bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     match (sub_command, sub_matches) {

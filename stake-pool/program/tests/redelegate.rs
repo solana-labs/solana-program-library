@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -34,7 +34,7 @@ async fn setup(
 ) {
     let mut context = program_test().start_with_context().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let current_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
@@ -185,7 +185,7 @@ async fn success() {
     )
     .await;
     let validator_stake_state =
-        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&validator_stake_account.data).unwrap();
     assert_eq!(
         pre_validator_stake_account.lamports - redelegate_lamports,
         validator_stake_account.lamports
@@ -200,7 +200,7 @@ async fn success() {
 
     // Check source transient stake account state and balance
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     let source_transient_stake_account = get_account(
         &mut context.banks_client,
@@ -208,7 +208,7 @@ async fn success() {
     )
     .await;
     let transient_stake_state =
-        deserialize::<stake::state::StakeState>(&source_transient_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&source_transient_stake_account.data).unwrap();
     assert_eq!(source_transient_stake_account.lamports, stake_rent);
     let transient_delegation = transient_stake_state.delegation().unwrap();
     assert_ne!(transient_delegation.deactivation_epoch, Epoch::MAX);
@@ -244,7 +244,8 @@ async fn success() {
     )
     .await;
     let transient_stake_state =
-        deserialize::<stake::state::StakeState>(&destination_transient_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&destination_transient_stake_account.data)
+            .unwrap();
     assert_eq!(
         destination_transient_stake_account.lamports,
         redelegate_lamports
@@ -386,7 +387,7 @@ async fn success_with_increasing_stake() {
     )
     .await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     let error = stake_pool_accounts
         .increase_validator_stake(
@@ -499,7 +500,8 @@ async fn success_with_increasing_stake() {
     )
     .await;
     let transient_stake_state =
-        deserialize::<stake::state::StakeState>(&destination_transient_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&destination_transient_stake_account.data)
+            .unwrap();
     assert_eq!(
         destination_transient_stake_account.lamports,
         redelegate_lamports + current_minimum_delegation + stake_rent
@@ -615,7 +617,7 @@ async fn fail_with_decreasing_stake() {
     )
     .await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let minimum_decrease_lamports = current_minimum_delegation + stake_rent;
 
     simple_deposit_stake(
@@ -695,7 +697,7 @@ async fn fail_with_decreasing_stake() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(StakePoolError::WrongStakeState as u32)
+            InstructionError::Custom(StakePoolError::WrongStakeStake as u32)
         )
     );
 }

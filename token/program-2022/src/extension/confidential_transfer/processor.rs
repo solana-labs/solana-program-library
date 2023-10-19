@@ -129,7 +129,7 @@ fn process_configure_account(
 
     // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
-    let mut confidential_transfer_account =
+    let confidential_transfer_account =
         token_account.init_extension::<ConfidentialTransferAccount>(false)?;
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
     confidential_transfer_account.elgamal_pubkey = proof_context.pubkey;
@@ -150,7 +150,7 @@ fn process_configure_account(
 
     // if the mint is extended for fees, then initialize account for confidential transfer fees
     if mint.get_extension::<TransferFeeConfig>().is_ok() {
-        let mut confidential_transfer_fee_amount =
+        let confidential_transfer_fee_amount =
             token_account.init_extension::<ConfidentialTransferFeeAmount>(false)?;
         confidential_transfer_fee_amount.withheld_amount = EncryptedWithheldAmount::zeroed();
     }
@@ -179,7 +179,7 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
         maybe_confidential_transfer_mint_authority.ok_or(TokenError::NoAuthorityExists)?;
 
     if authority_info.is_signer && *authority_info.key == confidential_transfer_mint_authority {
-        let mut confidential_transfer_state =
+        let confidential_transfer_state =
             token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
         confidential_transfer_state.approved = true.into();
         Ok(())
@@ -215,7 +215,7 @@ fn process_empty_account(
         account_info_iter.as_slice(),
     )?;
 
-    let mut confidential_transfer_account =
+    let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
     // Check that the encryption public key and ciphertext associated with the confidential
@@ -292,7 +292,7 @@ fn process_deposit(
         .ok_or(TokenError::Overflow)?;
     token_account.pack_base();
 
-    let mut confidential_transfer_account =
+    let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_destination()?;
 
@@ -384,7 +384,7 @@ fn process_withdraw(
     // Wrapped SOL withdrawals are not supported because lamports cannot be apparated.
     assert!(!token_account.base.is_native());
 
-    let mut confidential_transfer_account =
+    let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_source()?;
 
@@ -638,7 +638,7 @@ fn process_source_for_transfer(
         return Err(TokenError::MintMismatch.into());
     }
 
-    let mut confidential_transfer_account =
+    let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_source()?;
 
@@ -698,7 +698,7 @@ fn process_destination_for_transfer(
         check_previous_sibling_instruction_is_memo()?;
     }
 
-    let mut destination_confidential_transfer_account =
+    let destination_confidential_transfer_account =
         destination_token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     destination_confidential_transfer_account.valid_as_destination()?;
 
@@ -764,7 +764,7 @@ fn process_source_for_transfer_with_fee(
         return Err(TokenError::MintMismatch.into());
     }
 
-    let mut confidential_transfer_account =
+    let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_source()?;
 
@@ -827,7 +827,7 @@ fn process_destination_for_transfer_with_fee(
         check_previous_sibling_instruction_is_memo()?;
     }
 
-    let mut destination_confidential_transfer_account =
+    let destination_confidential_transfer_account =
         destination_token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     destination_confidential_transfer_account.valid_as_destination()?;
 
@@ -884,7 +884,7 @@ fn process_destination_for_transfer_with_fee(
             let withdraw_withheld_authority_fee_hi =
                 fee_amount_withdraw_withheld_authority_ciphertext(&proof_context.fee_ciphertext_hi);
 
-            let mut destination_confidential_transfer_fee_amount =
+            let destination_confidential_transfer_fee_amount =
                 destination_token_account.get_extension_mut::<ConfidentialTransferFeeAmount>()?;
 
             // Add the fee amount to the destination withheld fee
@@ -927,7 +927,7 @@ fn process_apply_pending_balance(
         account_info_iter.as_slice(),
     )?;
 
-    let mut confidential_transfer_account =
+    let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
     confidential_transfer_account.available_balance = syscall::add_with_lo_hi(
@@ -973,7 +973,7 @@ fn process_allow_confidential_credits(
         account_info_iter.as_slice(),
     )?;
 
-    let mut confidential_transfer_account =
+    let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.allow_confidential_credits = allow_confidential_credits.into();
 
@@ -1003,7 +1003,7 @@ fn process_allow_non_confidential_credits(
         account_info_iter.as_slice(),
     )?;
 
-    let mut confidential_transfer_account =
+    let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.allow_non_confidential_credits =
         allow_non_confidential_credits.into();

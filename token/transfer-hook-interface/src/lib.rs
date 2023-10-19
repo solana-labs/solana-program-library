@@ -3,7 +3,7 @@
 //! all other logic, to be sure that a transfer has accomplished all required
 //! preconditions.
 
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![deny(missing_docs)]
 #![cfg_attr(not(test), forbid(unsafe_code))]
 

@@ -46,9 +46,9 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     optimal_borrow_rate: 4,
     max_borrow_rate: 30,
     fees: ReserveFees {
-        /// 0.00001% (Aave borrow fee)
+        // 0.00001% (Aave borrow fee)
         borrow_fee_wad: 100_000_000_000,
-        /// 0.3% (Aave flash loan fee)
+        // 0.3% (Aave flash loan fee)
         flash_loan_fee_wad: 3_000_000_000_000_000,
         host_fee_percentage: 20,
     },
@@ -1110,7 +1110,7 @@ pub fn add_oracle(
         panic!("Unable to locate {}", filename);
     }));
 
-    let mut pyth_price = pyth::load_mut::<pyth::Price>(pyth_price_data.as_mut_slice()).unwrap();
+    let pyth_price = pyth::load_mut::<pyth::Price>(pyth_price_data.as_mut_slice()).unwrap();
 
     let decimals = 10u64
         .checked_pow(pyth_price.expo.checked_abs().unwrap().try_into().unwrap())

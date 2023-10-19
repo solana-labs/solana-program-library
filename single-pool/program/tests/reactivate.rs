@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -9,7 +9,10 @@ use {
     solana_sdk::{
         account::AccountSharedData,
         signature::Signer,
-        stake::state::{Delegation, Stake, StakeState},
+        stake::{
+            stake_flags::StakeFlags,
+            state::{Delegation, Stake, StakeStateV2},
+        },
         transaction::Transaction,
     },
     spl_single_pool::{error::SinglePoolError, id, instruction},
@@ -33,15 +36,16 @@ async fn success() {
         deactivation_epoch: 0,
         ..stake.unwrap().delegation
     };
-    let mut account_data = vec![0; std::mem::size_of::<StakeState>()];
+    let mut account_data = vec![0; std::mem::size_of::<StakeStateV2>()];
     bincode::serialize_into(
         &mut account_data[..],
-        &StakeState::Stake(
+        &StakeStateV2::Stake(
             meta,
             Stake {
                 delegation,
                 ..stake.unwrap()
             },
+            StakeFlags::empty(),
         ),
     )
     .unwrap();
@@ -74,7 +78,7 @@ async fn success() {
         .process_transaction(transaction)
         .await
         .unwrap_err();
-    check_error(e, SinglePoolError::WrongStakeState);
+    check_error(e, SinglePoolError::WrongStakeStake);
 
     // reactivate
     let instruction = instruction::reactivate_pool_stake(&id(), &accounts.vote_account.pubkey());
@@ -148,5 +152,5 @@ async fn fail_not_deactivated(activate: bool) {
         .process_transaction(transaction)
         .await
         .unwrap_err();
-    check_error(e, SinglePoolError::WrongStakeState);
+    check_error(e, SinglePoolError::WrongStakeStake);
 }

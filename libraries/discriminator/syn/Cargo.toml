@@ -14,8 +14,5 @@ sha2 = "0.10"
 syn = { version = "2.0", features = ["full"] }
 thiserror = "1.0"
 
-[lib]
-crate-type = ["cdylib", "lib"]
-
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

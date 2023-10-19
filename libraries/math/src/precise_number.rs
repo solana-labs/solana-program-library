@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 //! Defines PreciseNumber, a U256 wrapper with float-like operations
 
 use crate::uint::U256;

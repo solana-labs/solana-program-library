@@ -137,7 +137,7 @@ pub fn initialize(
     let pool_rent = rent.minimum_balance(std::mem::size_of::<SinglePool>());
 
     let stake_address = find_pool_stake_address(program_id, &pool_address);
-    let stake_space = std::mem::size_of::<stake::state::StakeState>();
+    let stake_space = std::mem::size_of::<stake::state::StakeStateV2>();
     let stake_rent_plus_minimum = rent
         .minimum_balance(stake_space)
         .saturating_add(minimum_delegation);
@@ -295,7 +295,7 @@ pub fn deposit_stake(
 
 /// Creates all necessary instructions to withdraw stake into a given stake account.
 /// If a new stake account is required, the user should first include `system_instruction::create_account`
-/// with account size `std::mem::size_of::<stake::state::StakeState>()` and owner `stake::program::id()`.
+/// with account size `std::mem::size_of::<stake::state::StakeStateV2>()` and owner `stake::program::id()`.
 pub fn withdraw(
     program_id: &Pubkey,
     pool_address: &Pubkey,
@@ -379,7 +379,7 @@ pub fn create_and_delegate_user_stake(
     stake_amount: u64,
 ) -> Vec<Instruction> {
     let pool_address = find_pool_address(program_id, vote_account_address);
-    let stake_space = std::mem::size_of::<stake::state::StakeState>();
+    let stake_space = std::mem::size_of::<stake::state::StakeStateV2>();
     let lamports = rent
         .minimum_balance(stake_space)
         .saturating_add(stake_amount);

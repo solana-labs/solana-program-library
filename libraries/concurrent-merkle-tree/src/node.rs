@@ -8,11 +8,11 @@ pub const EMPTY: Node = [0_u8; 32];
 
 /// Calculates the hash of empty nodes up to level i
 pub fn empty_node(level: u32) -> Node {
-    empty_node_cached::<0>(level, &mut Box::new([]))
+    empty_node_cached::<0>(level, &[])
 }
 
 /// Calculates and caches the hash of empty nodes up to level i
-pub fn empty_node_cached<const N: usize>(level: u32, cache: &mut Box<[Node; N]>) -> Node {
+pub fn empty_node_cached<const N: usize>(level: u32, cache: &[Node; N]) -> Node {
     let mut data = EMPTY;
     if level != 0 {
         let target = (level - 1) as usize;

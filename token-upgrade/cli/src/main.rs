@@ -1,10 +1,8 @@
 use {
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{
-        input_parsers::pubkey_of,
-        input_validators::{
-            is_url_or_moniker, is_valid_pubkey, is_valid_signer, normalize_to_url_if_moniker,
-        },
+        input_parsers::{parse_url_or_moniker, pubkey_of},
+        input_validators::{is_valid_pubkey, is_valid_signer, normalize_to_url_if_moniker},
         keypair::{
             signer_from_path, signer_from_path_with_config, DefaultSigner, SignerFromPathConfig,
         },
@@ -29,7 +27,7 @@ use {
         token::Token,
     },
     spl_token_upgrade::{get_token_upgrade_authority_address, instruction::exchange},
-    std::{error::Error, process::exit, sync::Arc},
+    std::{error::Error, process::exit, rc::Rc, sync::Arc},
 };
 
 struct Config {
@@ -245,7 +243,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .value_name("URL")
                 .takes_value(true)
                 .global(true)
-                .validator(|s| is_url_or_moniker(s))
+                .value_parser(parse_url_or_moniker)
                 .help("JSON RPC URL for the cluster [default: value from configuration file]"),
         )
         .subcommand(
@@ -344,7 +342,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .get_matches();
 
     let (command, matches) = app_matches.subcommand().unwrap();
-    let mut wallet_manager: Option<Arc<RemoteWalletManager>> = None;
+    let mut wallet_manager: Option<Rc<RemoteWalletManager>> = None;
 
     let config = {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
@@ -363,7 +361,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let json_rpc_url = normalize_to_url_if_moniker(
             matches
-                .value_of("json_rpc_url")
+                .get_one::<String>("json_rpc_url")
                 .unwrap_or(&cli_config.json_rpc_url),
         );
 
@@ -566,17 +564,15 @@ mod test {
         .await;
 
         let account_keypair = Keypair::new();
-        assert!(matches!(
-            process_create_escrow_account(
-                &rpc_client,
-                &payer,
-                original_token.get_address(),
-                new_token.get_address(),
-                Some(&account_keypair)
-            )
-            .await,
-            Ok(_)
-        ));
+        assert!(process_create_escrow_account(
+            &rpc_client,
+            &payer,
+            original_token.get_address(),
+            new_token.get_address(),
+            Some(&account_keypair)
+        )
+        .await
+        .is_ok());
         let escrow_authority = get_token_upgrade_authority_address(
             original_token.get_address(),
             new_token.get_address(),
@@ -589,17 +585,15 @@ mod test {
         assert_eq!(escrow.base.owner, escrow_authority);
         assert_eq!(&escrow.base.mint, new_token.get_address());
 
-        assert!(matches!(
-            process_create_escrow_account(
-                &rpc_client,
-                &payer,
-                original_token.get_address(),
-                new_token.get_address(),
-                None
-            )
-            .await,
-            Ok(_)
-        ));
+        assert!(process_create_escrow_account(
+            &rpc_client,
+            &payer,
+            original_token.get_address(),
+            new_token.get_address(),
+            None
+        )
+        .await
+        .is_ok());
         let escrow = new_token
             .get_account_info(&new_token.get_associated_token_address(&escrow_authority))
             .await

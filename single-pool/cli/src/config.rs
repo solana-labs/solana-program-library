@@ -6,7 +6,7 @@ use {
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{commitment_config::CommitmentConfig, signature::Signer},
     spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction},
-    std::{process::exit, sync::Arc},
+    std::{process::exit, rc::Rc, sync::Arc},
 };
 
 use crate::cli::*;
@@ -43,7 +43,7 @@ impl Config {
     pub fn new(
         cli: Cli,
         matches: ArgMatches,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Self {
         // get the generic cli config struct
         let cli_config = if let Some(config_file) = &cli.config_file {

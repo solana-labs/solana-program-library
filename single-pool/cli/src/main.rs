@@ -1,8 +1,9 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 
 use {
     borsh::BorshSerialize,
     clap::{CommandFactory, Parser},
+    solana_clap_v3_utils::input_parsers::Amount,
     solana_client::{
         rpc_config::RpcProgramAccountsConfig,
         rpc_filter::{Memcmp, RpcFilterType},
@@ -439,9 +440,10 @@ async fn command_withdraw(config: &Config, command_config: WithdrawCli) -> Comma
 
     let token_account = token.get_account_info(&token_account_address).await?;
 
-    let token_amount = match command_config.token_amount.as_ref() {
-        "ALL" => token_account.base.amount,
-        amount => amount.parse::<u64>()?,
+    let token_amount = match command_config.token_amount.sol_to_lamport() {
+        Amount::All => token_account.base.amount,
+        Amount::Raw(amount) => amount,
+        Amount::Decimal(_) => unreachable!(),
     };
 
     println_display(

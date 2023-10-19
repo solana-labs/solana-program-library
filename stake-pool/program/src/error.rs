@@ -48,8 +48,8 @@ pub enum StakePoolError {
     #[error("WrongPoolMint")]
     WrongPoolMint,
     /// Stake account is not in the state expected by the program.
-    #[error("WrongStakeState")]
-    WrongStakeState,
+    #[error("WrongStakeStake")]
+    WrongStakeStake,
     /// User stake is not active
     #[error("UserStakeNotActive")]
     UserStakeNotActive,

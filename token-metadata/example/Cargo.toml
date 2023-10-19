@@ -12,15 +12,15 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-solana-program = "1.16.16"
-spl-token-2022 = { version = "0.9", path = "../../token/program-2022" }
+solana-program = "1.17.2"
+spl-token-2022 = { version = "0.9", path = "../../token/program-2022", features = ["no-entrypoint"] }
 spl-token-metadata-interface = { version = "0.2.0", path = "../interface" }
 spl-type-length-value = { version = "0.3.0" , path = "../../libraries/type-length-value" }
 spl-pod = { version = "0.1.0", path = "../../libraries/pod" }
 
 [dev-dependencies]
-solana-program-test = "1.16.16"
-solana-sdk = "1.16.16"
+solana-program-test = "1.17.2"
+solana-sdk = "1.17.2"
 spl-token-client = { version = "0.7", path = "../../token/client" }
 test-case = "3.2"
 

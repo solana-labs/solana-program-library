@@ -1,5 +1,5 @@
 //! Big vector type, used with vectors that can't be serde'd
-#![allow(clippy::integer_arithmetic)] // checked math involves too many compute units
+#![allow(clippy::arithmetic_side_effects)] // checked math involves too many compute units
 
 use {
     arrayref::array_ref,
@@ -271,7 +271,7 @@ mod tests {
     fn find_mut() {
         let mut data = [0u8; 4 + 8 * 4];
         let mut v = from_slice(&mut data, &[1, 2, 3, 4]);
-        let mut test_struct = v
+        let test_struct = v
             .find_mut::<TestStruct, _>(|x| find_predicate(x, 1))
             .unwrap();
         test_struct.value = [0; 8];
@@ -283,7 +283,7 @@ mod tests {
     fn deserialize_mut_slice() {
         let mut data = [0u8; 4 + 8 * 4];
         let mut v = from_slice(&mut data, &[1, 2, 3, 4]);
-        let mut slice = v.deserialize_mut_slice::<TestStruct>(1, 2).unwrap();
+        let slice = v.deserialize_mut_slice::<TestStruct>(1, 2).unwrap();
         slice[0].value[0] = 10;
         slice[1].value[0] = 11;
         check_big_vec_eq(&v, &[1, 10, 11, 4]);

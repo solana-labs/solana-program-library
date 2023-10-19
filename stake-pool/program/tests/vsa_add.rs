@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -37,7 +37,7 @@ async fn setup(
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let rent = banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let current_minimum_delegation =
         stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
     let minimum_for_validator = stake_rent + current_minimum_delegation;
@@ -99,7 +99,7 @@ async fn success() {
     let validator_list =
         try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
     let rent = banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let current_minimum_delegation =
         stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
     assert_eq!(
@@ -128,9 +128,9 @@ async fn success() {
 
     // Check stake account existence and authority
     let stake = get_account(&mut banks_client, &validator_stake.stake_account).await;
-    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake::state::StakeStateV2>(&stake.data).unwrap();
     match stake_state {
-        stake::state::StakeState::Stake(meta, _) => {
+        stake::state::StakeStateV2::Stake(meta, _, _) => {
             assert_eq!(
                 &meta.authorized.staker,
                 &stake_pool_accounts.withdraw_authority
@@ -434,7 +434,7 @@ async fn fail_with_wrong_system_program_id() {
 async fn fail_add_too_many_validator_stake_accounts() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let rent = banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let current_minimum_delegation =
         stake_pool_get_minimum_delegation(&mut banks_client, &payer, &recent_blockhash).await;
     let minimum_for_validator = stake_rent + current_minimum_delegation;
@@ -597,9 +597,9 @@ async fn success_with_lamports_in_account() {
 
     // Check stake account existence and authority
     let stake = get_account(&mut banks_client, &validator_stake.stake_account).await;
-    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake::state::StakeStateV2>(&stake.data).unwrap();
     match stake_state {
-        stake::state::StakeState::Stake(meta, _) => {
+        stake::state::StakeStateV2::Stake(meta, _, _) => {
             assert_eq!(
                 &meta.authorized.staker,
                 &stake_pool_accounts.withdraw_authority

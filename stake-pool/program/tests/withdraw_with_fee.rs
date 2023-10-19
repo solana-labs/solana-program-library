@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -176,7 +176,7 @@ async fn success_empty_out_stake_with_fee() {
     )
     .await;
     let stake_state =
-        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     let stake_minimum_delegation =
         stake_get_minimum_delegation(&mut context.banks_client, &context.payer, &last_blockhash)
@@ -226,7 +226,7 @@ async fn success_empty_out_stake_with_fee() {
     )
     .await;
     let stake_state =
-        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeStateV2>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
         validator_stake_account.lamports,

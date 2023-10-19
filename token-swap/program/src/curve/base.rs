@@ -382,7 +382,7 @@ mod test {
         let swap_source_amount: u128 = 1_000;
         let swap_destination_amount: u128 = 50_000;
         let source_amount: u128 = 100;
-        let curve = ConstantProductCurve::default();
+        let curve = ConstantProductCurve;
         let fees = Fees::default();
         let swap_curve = SwapCurve {
             curve_type: CurveType::ConstantProduct,
@@ -409,7 +409,7 @@ mod test {
         pool_supply: u128,
         fees: Fees,
     ) -> (u128, u128) {
-        let curve = ConstantProductCurve::default();
+        let curve = ConstantProductCurve;
         let swap_curve = SwapCurve {
             curve_type: CurveType::ConstantProduct,
             calculator: Arc::new(curve),

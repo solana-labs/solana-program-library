@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 
 use {
     serial_test::serial,
@@ -13,7 +13,7 @@ use {
         signature::{write_keypair_file, Keypair, Signer},
         stake::{
             self,
-            state::{Authorized, Lockup, StakeState},
+            state::{Authorized, Lockup, StakeStateV2},
         },
         system_instruction, system_program,
         transaction::Transaction,
@@ -209,7 +209,7 @@ async fn create_and_delegate_stake_account(
     let stake_account = Keypair::new();
 
     let stake_rent = program_client
-        .get_minimum_balance_for_rent_exemption(StakeState::size_of())
+        .get_minimum_balance_for_rent_exemption(StakeStateV2::size_of())
         .await
         .unwrap();
     let blockhash = program_client.get_latest_blockhash().await.unwrap();

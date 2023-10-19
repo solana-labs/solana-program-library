@@ -1,4 +1,5 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
+#![allow(clippy::items_after_test_module)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -123,7 +124,7 @@ async fn success_remove_validator(multiple: u64) {
         .await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let stake_pool = stake_pool_accounts
         .get_stake_pool(&mut context.banks_client)
         .await;
@@ -312,7 +313,7 @@ async fn success_with_reserve() {
     ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     // decrease all of stake
     let error = stake_pool_accounts
@@ -400,7 +401,8 @@ async fn success_with_reserve() {
         &stake_pool_accounts.reserve_stake.pubkey(),
     )
     .await;
-    let stake_state = deserialize::<stake::state::StakeState>(&reserve_stake_account.data).unwrap();
+    let stake_state =
+        deserialize::<stake::state::StakeStateV2>(&reserve_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
         meta.rent_exempt_reserve + withdrawal_fee + deposit_fee + stake_rent,
@@ -606,7 +608,7 @@ async fn fail_withdraw_from_transient() {
         .unwrap();
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     // decrease to minimum stake + 2 lamports
     let error = stake_pool_accounts
@@ -688,7 +690,7 @@ async fn success_withdraw_from_transient() {
         .await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     let last_blockhash = context
         .banks_client
@@ -794,7 +796,7 @@ async fn success_with_small_preferred_withdraw() {
 
     // add a tiny bit of stake, less than lamports per pool token to preferred validator
     let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_exempt = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let rent_exempt = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let stake_minimum_delegation =
         stake_get_minimum_delegation(&mut context.banks_client, &context.payer, &last_blockhash)
             .await;

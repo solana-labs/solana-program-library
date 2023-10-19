@@ -30,7 +30,7 @@ use {
         rent::Rent,
         stake::{
             self,
-            state::{Meta, Stake, StakeState},
+            state::{Meta, Stake, StakeStateV2},
         },
         stake_history::Epoch,
         system_instruction, system_program,
@@ -75,11 +75,11 @@ fn calculate_withdraw_amount(
 
 /// Deserialize the stake state from AccountInfo
 fn get_stake_state(stake_account_info: &AccountInfo) -> Result<(Meta, Stake), ProgramError> {
-    let stake_state = try_from_slice_unchecked::<StakeState>(&stake_account_info.data.borrow())?;
+    let stake_state = try_from_slice_unchecked::<StakeStateV2>(&stake_account_info.data.borrow())?;
 
     match stake_state {
-        StakeState::Stake(meta, stake) => Ok((meta, stake)),
-        _ => Err(SinglePoolError::WrongStakeState.into()),
+        StakeStateV2::Stake(meta, stake, _) => Ok((meta, stake)),
+        _ => Err(SinglePoolError::WrongStakeStake.into()),
     }
 }
 
@@ -652,7 +652,7 @@ impl Processor {
 
         // create the pool stake account. user has already transferred in rent plus at least the minimum
         let minimum_delegation = minimum_delegation()?;
-        let stake_space = std::mem::size_of::<stake::state::StakeState>();
+        let stake_space = std::mem::size_of::<stake::state::StakeStateV2>();
         let stake_rent_plus_initial = rent
             .minimum_balance(stake_space)
             .saturating_add(minimum_delegation);
@@ -737,7 +737,7 @@ impl Processor {
 
         let (_, pool_stake_state) = get_stake_state(pool_stake_info)?;
         if pool_stake_state.delegation.deactivation_epoch > clock.epoch {
-            return Err(SinglePoolError::WrongStakeState.into());
+            return Err(SinglePoolError::WrongStakeStake.into());
         }
 
         let stake_authority_seeds = &[
@@ -821,7 +821,7 @@ impl Processor {
             || is_stake_active_without_history(&pool_stake_state, clock.epoch)
                 != is_stake_active_without_history(&user_stake_state, clock.epoch)
         {
-            return Err(SinglePoolError::WrongStakeState.into());
+            return Err(SinglePoolError::WrongStakeStake.into());
         }
 
         // merge the user stake account, which is preauthed to us, into the pool stake account
@@ -1214,7 +1214,7 @@ impl Processor {
 }
 
 #[cfg(test)]
-#[allow(clippy::integer_arithmetic)]
+#[allow(clippy::arithmetic_side_effects)]
 mod tests {
     use {
         super::*,

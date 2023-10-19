@@ -5,7 +5,7 @@ from spl.token.instructions import get_associated_token_address
 
 from stake.actions import create_stake, delegate_stake
 from stake.constants import STAKE_LEN
-from stake.state import StakeState
+from stake.state import StakeStake
 from stake_pool.actions import deposit_stake, withdraw_stake, update_stake_pool
 from stake_pool.constants import MINIMUM_ACTIVE_STAKE
 from stake_pool.state import StakePool
@@ -25,7 +25,7 @@ async def test_deposit_withdraw_stake(async_client, validators, payer, stake_poo
     await delegate_stake(async_client, payer, payer, stake, validator)
     resp = await async_client.get_account_info(stake, commitment=Confirmed)
     data = resp['result']['value']['data']
-    stake_state = StakeState.decode(data[0], data[1])
+    stake_state = StakeStake.decode(data[0], data[1])
     token_account = get_associated_token_address(payer.public_key, stake_pool.pool_mint)
     pre_pool_token_balance = await async_client.get_token_account_balance(token_account, Confirmed)
     pre_pool_token_balance = int(pre_pool_token_balance['result']['value']['amount'])

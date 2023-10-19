@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -140,7 +140,7 @@ async fn success(token_program_id: Pubkey) {
     ) = setup(token_program_id).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     // Save stake pool state before depositing
     let pre_stake_pool = get_account(
@@ -312,7 +312,7 @@ async fn success_with_extra_stake_lamports() {
     .await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     // Save stake pool state before depositing
     let pre_stake_pool = get_account(
@@ -821,7 +821,7 @@ async fn success_with_slippage(token_program_id: Pubkey) {
     ) = setup(token_program_id).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
 
     // Save stake pool state before depositing
     let pre_stake_pool = get_account(

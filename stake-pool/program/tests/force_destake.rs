@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -11,7 +11,8 @@ use {
         pubkey::Pubkey,
         stake::{
             self,
-            state::{Authorized, Delegation, Lockup, Meta, Stake, StakeState},
+            stake_flags::StakeFlags,
+            state::{Authorized, Delegation, Lockup, Meta, Stake, StakeStateV2},
         },
     },
     solana_program_test::*,
@@ -32,7 +33,7 @@ use {
 
 async fn setup(
     stake_pool_accounts: &StakePoolAccounts,
-    forced_stake: &StakeState,
+    forced_stake: &StakeStateV2,
     voter_pubkey: &Pubkey,
 ) -> (ProgramTestContext, Option<NonZeroU32>) {
     let mut program_test = program_test();
@@ -41,7 +42,7 @@ async fn setup(
     let (mut stake_pool, mut validator_list) = stake_pool_accounts.state();
 
     let _ = add_vote_account_with_pubkey(voter_pubkey, &mut program_test);
-    let mut data = vec![0; std::mem::size_of::<StakeState>()];
+    let mut data = vec![0; std::mem::size_of::<StakeStateV2>()];
     bincode::serialize_into(&mut data[..], forced_stake).unwrap();
 
     let stake_account = Account::create(
@@ -124,7 +125,7 @@ async fn success_update() {
     let voter_pubkey = Pubkey::new_unique();
     let (mut context, validator_seed) = setup(
         &stake_pool_accounts,
-        &StakeState::Initialized(meta),
+        &StakeStateV2::Initialized(meta),
         &voter_pubkey,
     )
     .await;
@@ -193,7 +194,7 @@ async fn fail_increase() {
     let voter_pubkey = Pubkey::new_unique();
     let (mut context, validator_seed) = setup(
         &stake_pool_accounts,
-        &StakeState::Initialized(meta),
+        &StakeStateV2::Initialized(meta),
         &voter_pubkey,
     )
     .await;
@@ -229,7 +230,7 @@ async fn fail_increase() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(StakePoolError::WrongStakeState as u32)
+            InstructionError::Custom(StakePoolError::WrongStakeStake as u32)
         )
     );
 }
@@ -258,7 +259,7 @@ async fn success_remove_validator() {
     };
     let (mut context, validator_seed) = setup(
         &stake_pool_accounts,
-        &StakeState::Stake(meta, stake),
+        &StakeStateV2::Stake(meta, stake, StakeFlags::empty()),
         &voter_pubkey,
     )
     .await;

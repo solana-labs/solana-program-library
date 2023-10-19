@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -373,7 +373,7 @@ async fn fail_bad_account(activate: bool, automorph: bool) {
     if automorph {
         check_error(e, SinglePoolError::InvalidPoolStakeAccountUsage);
     } else {
-        check_error(e, SinglePoolError::WrongStakeState);
+        check_error(e, SinglePoolError::WrongStakeStake);
     }
 }
 
@@ -454,5 +454,5 @@ async fn fail_activation_mismatch(pool_first: bool) {
         .process_transaction(transaction)
         .await
         .unwrap_err();
-    check_error(e, SinglePoolError::WrongStakeState);
+    check_error(e, SinglePoolError::WrongStakeStake);
 }

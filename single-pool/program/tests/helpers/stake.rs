@@ -10,7 +10,7 @@ use {
         signature::{Keypair, Signer},
         stake::{
             self,
-            state::{Meta, Stake, StakeState},
+            state::{Meta, Stake, StakeStateV2},
         },
         system_instruction,
         transaction::Transaction,
@@ -26,16 +26,16 @@ pub async fn get_stake_account(
 ) -> (Meta, Option<Stake>, u64) {
     let stake_account = get_account(banks_client, pubkey).await;
     let lamports = stake_account.lamports;
-    match deserialize::<StakeState>(&stake_account.data).unwrap() {
-        StakeState::Initialized(meta) => (meta, None, lamports),
-        StakeState::Stake(meta, stake) => (meta, Some(stake), lamports),
+    match deserialize::<StakeStateV2>(&stake_account.data).unwrap() {
+        StakeStateV2::Initialized(meta) => (meta, None, lamports),
+        StakeStateV2::Stake(meta, stake, _) => (meta, Some(stake), lamports),
         _ => unimplemented!(),
     }
 }
 
 pub async fn get_stake_account_rent(banks_client: &mut BanksClient) -> u64 {
     let rent = banks_client.get_rent().await.unwrap();
-    rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>())
+    rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>())
 }
 
 pub async fn get_minimum_delegation(
@@ -104,7 +104,7 @@ pub async fn create_blank_stake_account(
             &rent_payer.pubkey(),
             &stake.pubkey(),
             lamports,
-            std::mem::size_of::<stake::state::StakeState>() as u64,
+            std::mem::size_of::<stake::state::StakeStateV2>() as u64,
             &stake::program::id(),
         )],
         Some(&fee_payer.pubkey()),

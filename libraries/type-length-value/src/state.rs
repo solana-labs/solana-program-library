@@ -801,7 +801,7 @@ mod test {
 
         // check unpacking
         let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
-        let mut unpacked = state.get_first_value_mut::<TestValue>().unwrap();
+        let unpacked = state.get_first_value_mut::<TestValue>().unwrap();
         assert_eq!(*unpacked, TestValue { data });
 
         // update extension

@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -425,7 +425,7 @@ async fn success_with_activating_transient_stake() {
         &validator_stake.transient_stake_account,
     )
     .await;
-    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake::state::StakeStateV2>(&stake.data).unwrap();
     assert_ne!(
         stake_state.stake().unwrap().delegation.deactivation_epoch,
         u64::MAX
@@ -437,7 +437,7 @@ async fn success_with_deactivating_transient_stake() {
     let (mut context, stake_pool_accounts, validator_stake) = setup().await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let current_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
@@ -667,7 +667,7 @@ async fn success_resets_preferred_validator() {
 async fn success_with_hijacked_transient_account() {
     let (mut context, stake_pool_accounts, validator_stake) = setup().await;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let current_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,

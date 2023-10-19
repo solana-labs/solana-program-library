@@ -1,4 +1,5 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
+#![allow(clippy::items_after_test_module)]
 #![cfg(feature = "test-sbf")]
 mod helpers;
 

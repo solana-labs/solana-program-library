@@ -5,16 +5,14 @@ use {
         ArgGroup, ArgMatches, Args, Parser, Subcommand,
     },
     solana_clap_v3_utils::{
-        input_validators::{
-            is_amount_or_all, is_url_or_moniker, is_valid_pubkey, is_valid_signer,
-            normalize_to_url_if_moniker,
-        },
+        input_parsers::{parse_url_or_moniker, Amount},
+        input_validators::{is_valid_pubkey, is_valid_signer},
         keypair::{pubkey_from_path, signer_from_path},
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{pubkey::Pubkey, signer::Signer},
     spl_single_pool::{self, find_pool_address},
-    std::{str::FromStr, sync::Arc},
+    std::{rc::Rc, str::FromStr, sync::Arc},
 };
 
 #[derive(Clone, Debug, Parser)]
@@ -40,7 +38,7 @@ pub struct Cli {
         short = 'u',
         long = "url",
         id = "URL_OR_MONIKER",
-        value_parser = parse_json_rpc_url,
+        value_parser = parse_url_or_moniker,
     )]
     pub json_rpc_url: Option<String>,
 
@@ -190,8 +188,8 @@ pub struct DepositCli {
 #[clap(group(pool_source_group()))]
 pub struct WithdrawCli {
     /// Amount of tokens to burn for withdrawal
-    #[clap(validator = |s| is_amount_or_all(s))]
-    pub token_amount: String,
+    #[clap(value_parser = Amount::parse_decimal_or_all)]
+    pub token_amount: Amount,
 
     /// The token account to withdraw from. Defaults to the associated token account for the pool mint
     #[clap(long = "token-account", value_parser = |p: &str| parse_address(p, "token_account_address"))]
@@ -299,10 +297,6 @@ fn pool_source_group() -> ArgGroup<'static> {
         .args(&["pool-address", "vote-account-address"])
 }
 
-pub fn parse_json_rpc_url(url_or_moniker: &str) -> Result<String, String> {
-    is_url_or_moniker(url_or_moniker).map(|_| normalize_to_url_if_moniker(url_or_moniker))
-}
-
 pub fn parse_address(path: &str, name: &str) -> Result<Pubkey, String> {
     if is_valid_pubkey(path).is_ok() {
         // this all is ugly but safe
@@ -402,7 +396,7 @@ impl Command {
     pub fn with_signers(
         mut self,
         matches: &ArgMatches,
-        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     ) -> Result<Self, Error> {
         match self {
             Command::Deposit(ref mut config) => {
@@ -440,7 +434,7 @@ impl Command {
 
 pub fn with_signer(
     matches: &ArgMatches,
-    wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
     arg: Option<SignerArg>,
     name: &str,
 ) -> Result<Option<SignerArg>, Error> {

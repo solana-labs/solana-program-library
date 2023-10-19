@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
@@ -7,7 +7,7 @@ use {
     helpers::*,
     solana_program::{borsh0_10::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey},
     solana_program_test::*,
-    solana_sdk::{hash::Hash, signature::Signer, stake::state::StakeState},
+    solana_sdk::{hash::Hash, signature::Signer, stake::state::StakeStateV2},
     spl_stake_pool::{
         state::{StakePool, StakeStatus, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_RESERVE_LAMPORTS,
@@ -183,7 +183,7 @@ async fn success_with_normal() {
 
     // Check current balance in the list
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeStateV2>());
     let stake_pool_info = get_account(
         &mut context.banks_client,
         &stake_pool_accounts.stake_pool.pubkey(),
@@ -395,7 +395,7 @@ async fn merge_into_validator_stake() {
     .await;
 
     // Increase stake to all validators
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeStateV2>());
     let current_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
@@ -544,7 +544,7 @@ async fn merge_transient_stake_after_remove() {
     ) = setup(1).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<StakeStateV2>());
     let current_minimum_delegation = stake_pool_get_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
