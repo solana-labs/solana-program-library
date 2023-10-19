@@ -1,25 +1,68 @@
 import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { splDiscriminate } from '@solana/spl-type-length-value';
-import { serialize } from 'borsh';
+import { serialize, Schema } from 'borsh';
 
 import { Field } from './state';
 
-// Taken from https://github.com/solana-labs/solana-program-library/blob/master/token-metadata/interface/src/instruction.rs
-export const DISCRIMINATOR = {
-    Initialize: splDiscriminate('spl_token_metadata_interface:initialize_account'),
-    UpdateField: splDiscriminate('spl_token_metadata_interface:updating_field'),
-    RemoveKey: splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
-    UpdateAuthority: splDiscriminate('spl_token_metadata_interface:update_the_authority'),
-    Emit: splDiscriminate('spl_token_metadata_interface:emitter'),
+// Values from https://github.com/solana-labs/solana-program-library/blob/master/token-metadata/interface/src/instruction.rs
+interface TokenMetadataInstructionType<T> {
+    discriminator: Uint8Array;
+    layout: Schema;
+    pack: (values: T) => Buffer;
+}
+
+const Initialize: TokenMetadataInstructionType<{
+    name: string;
+    symbol: string;
+    uri: string;
+}> = {
+    discriminator: splDiscriminate('spl_token_metadata_interface:initialize_account'),
+    layout: { struct: { name: 'string', symbol: 'string', uri: 'string' } },
+    pack: (values) => Buffer.concat([Initialize.discriminator, serialize(Initialize.layout, values)]),
 };
 
-// Order of keys matters
-export const SCHEMA = {
-    Initialize: { struct: { name: 'string', symbol: 'string', uri: 'string' } },
-    UpdateField: { struct: { field: 'string', value: 'string' } },
-    RemoveKey: { struct: { idempotent: 'bool', key: 'string' } },
-    UpdateAuthority: { struct: { newAuthority: { array: { type: 'u8', len: 32 } } } },
-    Emit: { struct: { start: { option: 'u64' }, end: { option: 'u64' } } },
+const UpdateField: TokenMetadataInstructionType<{
+    field: Field;
+    value: string;
+}> = {
+    discriminator: splDiscriminate('spl_token_metadata_interface:updating_field'),
+    layout: { struct: { field: 'string', value: 'string' } },
+    pack: (values) =>
+        Buffer.concat([
+            UpdateField.discriminator,
+            Buffer.from([3]), // TODO explain this. It comes from field being typed as "Field" rather than string
+            serialize(UpdateField.layout, values),
+        ]),
+};
+
+const RemoveKey: TokenMetadataInstructionType<{
+    field: Field;
+    idempotent: boolean;
+}> = {
+    discriminator: splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
+    layout: { struct: { idempotent: 'bool', field: 'string' } },
+    pack: (values) => Buffer.concat([RemoveKey.discriminator, serialize(RemoveKey.layout, values)]),
+};
+
+const UpdateAuthority: TokenMetadataInstructionType<{
+    newAuthority: PublicKey;
+}> = {
+    discriminator: splDiscriminate('spl_token_metadata_interface:update_the_authority'),
+    layout: { struct: { newAuthority: { array: { type: 'u8', len: 32 } } } },
+    pack: ({ newAuthority }) =>
+        Buffer.concat([
+            UpdateAuthority.discriminator,
+            serialize(UpdateAuthority.layout, { newAuthority: newAuthority.toBuffer() }),
+        ]),
+};
+
+const Emit: TokenMetadataInstructionType<{
+    start?: bigint;
+    end?: bigint;
+}> = {
+    discriminator: splDiscriminate('spl_token_metadata_interface:emitter'),
+    layout: { struct: { start: { option: 'u64' }, end: { option: 'u64' } } },
+    pack: (values) => Buffer.concat([Emit.discriminator, serialize(Emit.layout, values)]),
 };
 
 /* 
@@ -56,7 +99,7 @@ export function createInitializeInstruction({
     symbol,
     uri,
 }: Initialize): TransactionInstruction {
-    const data = { name, symbol, uri };
+    const values = { name, symbol, uri };
     return new TransactionInstruction({
         programId,
         keys: [
@@ -65,7 +108,7 @@ export function createInitializeInstruction({
             { isSigner: false, isWritable: false, pubkey: mint },
             { isSigner: true, isWritable: false, pubkey: mintAuthority },
         ],
-        data: Buffer.concat([DISCRIMINATOR.Initialize, serialize(SCHEMA.Initialize, data)]),
+        data: Initialize.pack(values),
     });
 }
 
@@ -86,18 +129,14 @@ export function createUpdateFieldInstruction({
     field,
     value,
 }: UpdateField): TransactionInstruction {
-    const data = { field, value };
+    const values = { field, value };
     return new TransactionInstruction({
         programId,
         keys: [
             { isSigner: false, isWritable: true, pubkey: metadata },
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
-        data: Buffer.concat([
-            DISCRIMINATOR.UpdateField,
-            Buffer.from([3]), // TODO explain this. It comes from field being typed as "Field" rather than string
-            serialize(SCHEMA.UpdateField, data),
-        ]),
+        data: UpdateField.pack(values),
     });
 }
 
@@ -112,14 +151,14 @@ export interface RemoveKey {
 }
 
 export function createRemoveKeyInstruction({ programId, metadata, updateAuthority, field, idempotent }: RemoveKey) {
-    const data = { idempotent, key: field };
+    const values = { idempotent, field };
     return new TransactionInstruction({
         programId,
         keys: [
             { isSigner: false, isWritable: true, pubkey: metadata },
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
-        data: Buffer.concat([DISCRIMINATOR.RemoveKey, serialize(SCHEMA.RemoveKey, data)]),
+        data: RemoveKey.pack(values),
     });
 }
 
@@ -137,14 +176,14 @@ export function createUpdateAuthorityInstruction({
     oldAuthority,
     newAuthority,
 }: UpdateAuthority): TransactionInstruction {
-    const data = { newAuthority: newAuthority.toBuffer() };
+    const values = { newAuthority };
     return new TransactionInstruction({
         programId,
         keys: [
             { isSigner: false, isWritable: true, pubkey: metadata },
             { isSigner: true, isWritable: false, pubkey: oldAuthority },
         ],
-        data: Buffer.concat([DISCRIMINATOR.UpdateAuthority, serialize(SCHEMA.UpdateAuthority, data)]),
+        data: UpdateAuthority.pack(values),
     });
 }
 
@@ -157,10 +196,10 @@ export interface Emit {
 }
 
 export function createEmitInstruction({ programId, metadata, start, end }: Emit): TransactionInstruction {
-    const data = { start, end };
+    const values = { start, end };
     return new TransactionInstruction({
         programId,
         keys: [{ isSigner: false, isWritable: false, pubkey: metadata }],
-        data: Buffer.concat([DISCRIMINATOR.Emit, serialize(SCHEMA.Emit, data)]),
+        data: Emit.pack(values),
     });
 }
