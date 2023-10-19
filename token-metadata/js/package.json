@@ -47,7 +47,7 @@
         "@solana/web3.js": "^1.47.4"
     },
     "dependencies": {
-        "@solana/spl-type-length-value": "link:../../libraries/type-length-value/js",
+        "@solana/spl-type-length-value": "0.1.0",
         "borsh": "^1.0.0"
     },
     "devDependencies": {
