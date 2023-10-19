@@ -10,7 +10,9 @@ use {
         program::invoke,
         program_error::ProgramError,
         pubkey::Pubkey,
+        rent::Rent,
         system_instruction, system_program,
+        sysvar::Sysvar,
     },
 };
 
@@ -20,6 +22,7 @@ pub fn process_activate_feature(program_id: &Pubkey, accounts: &[AccountInfo]) -
     let account_info_iter = &mut accounts.iter();
 
     let feature_info = next_account_info(account_info_iter)?;
+    let payer_info = next_account_info(account_info_iter)?;
     let _system_program_info = next_account_info(account_info_iter)?;
 
     if !feature_info.is_signer {
@@ -30,10 +33,27 @@ pub fn process_activate_feature(program_id: &Pubkey, accounts: &[AccountInfo]) -
         return Err(FeatureGateError::InvalidFeatureAccount.into());
     }
 
+    let rent = Rent::get()?;
+    let space = Feature::size_of() as u64;
+
+    // Just in case the account already has some lamports
+    let required_lamports = rent
+        .minimum_balance(space as usize)
+        .max(1)
+        .saturating_sub(feature_info.lamports());
+
+    if required_lamports > 0 {
+        invoke(
+            &system_instruction::transfer(payer_info.key, feature_info.key, required_lamports),
+            &[payer_info.clone(), feature_info.clone()],
+        )?;
+    }
+
     invoke(
-        &system_instruction::allocate(feature_info.key, Feature::size_of() as u64),
+        &system_instruction::allocate(feature_info.key, space),
         &[feature_info.clone()],
     )?;
+
     invoke(
         &system_instruction::assign(feature_info.key, program_id),
         &[feature_info.clone()],

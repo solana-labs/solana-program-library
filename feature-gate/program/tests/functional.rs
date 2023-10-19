@@ -8,20 +8,21 @@ use {
         feature::Feature,
         pubkey::Pubkey,
         signature::{Keypair, Signer},
-        system_instruction, system_program,
+        system_program,
         transaction::{Transaction, TransactionError},
     },
     spl_feature_gate::{
         error::FeatureGateError,
-        instruction::{
-            activate_feature, activate_feature_with_rent_transfer, revoke_pending_activation,
-        },
+        instruction::{activate_feature, revoke_pending_activation},
     },
 };
 
 async fn setup_pending_feature(context: &mut ProgramTestContext, feature_keypair: &Keypair) {
     let transaction = Transaction::new_signed_with_payer(
-        &activate_feature_with_rent_transfer(&feature_keypair.pubkey(), &context.payer.pubkey()),
+        &[activate_feature(
+            &feature_keypair.pubkey(),
+            &context.payer.pubkey(),
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer, feature_keypair],
         context.last_blockhash,
@@ -66,23 +67,14 @@ async fn test_activate_feature() {
     );
 
     let mut context = program_test.start_with_context().await;
-    let rent = context.banks_client.get_rent().await.unwrap();
-    let rent_lamports = rent.minimum_balance(Feature::size_of());
 
     // Fail: feature not signer
-    let mut activate_ix = activate_feature(&feature_keypair.pubkey());
+    let mut activate_ix = activate_feature(&feature_keypair.pubkey(), &context.payer.pubkey());
     activate_ix.accounts[0].is_signer = false;
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            system_instruction::transfer(
-                &mock_invalid_signer.pubkey(),
-                &feature_keypair.pubkey(),
-                rent_lamports,
-            ),
-            activate_ix,
-        ],
-        Some(&mock_invalid_signer.pubkey()),
-        &[&mock_invalid_signer],
+        &[activate_ix],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
         context.last_blockhash,
     );
     let error = context
@@ -93,12 +85,35 @@ async fn test_activate_feature() {
         .unwrap();
     assert_eq!(
         error,
-        TransactionError::InstructionError(1, InstructionError::MissingRequiredSignature)
+        TransactionError::InstructionError(0, InstructionError::MissingRequiredSignature)
+    );
+
+    // Fail: payer not signer
+    let mut activate_ix = activate_feature(&feature_keypair.pubkey(), &context.payer.pubkey());
+    activate_ix.accounts[1].is_signer = false;
+    let transaction = Transaction::new_signed_with_payer(
+        &[activate_ix],
+        Some(&mock_invalid_signer.pubkey()),
+        &[&mock_invalid_signer, &feature_keypair],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::PrivilegeEscalation)
     );
 
     // Fail: feature not owned by system program
     let transaction = Transaction::new_signed_with_payer(
-        &[activate_feature(&mock_invalid_feature.pubkey())],
+        &[activate_feature(
+            &mock_invalid_feature.pubkey(),
+            &context.payer.pubkey(),
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &mock_invalid_feature],
         context.last_blockhash,
@@ -119,14 +134,10 @@ async fn test_activate_feature() {
 
     // Success: Submit a feature for activation
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            system_instruction::transfer(
-                &context.payer.pubkey(),
-                &feature_keypair.pubkey(),
-                rent_lamports,
-            ),
-            activate_feature(&feature_keypair.pubkey()),
-        ],
+        &[activate_feature(
+            &feature_keypair.pubkey(),
+            &context.payer.pubkey(),
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &feature_keypair],
         context.last_blockhash,
@@ -148,11 +159,15 @@ async fn test_activate_feature() {
     assert_eq!(feature_account.owner, spl_feature_gate::id());
 
     // Cannot activate the same feature again
+    let new_latest_blockhash = context.get_new_latest_blockhash().await.unwrap();
     let transaction = Transaction::new_signed_with_payer(
-        &[activate_feature(&feature_keypair.pubkey())],
+        &[activate_feature(
+            &feature_keypair.pubkey(),
+            &context.payer.pubkey(),
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &feature_keypair],
-        context.last_blockhash,
+        new_latest_blockhash,
     );
     let error = context
         .banks_client
