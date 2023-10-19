@@ -78,7 +78,7 @@ async fn success() {
         .process_transaction(transaction)
         .await
         .unwrap_err();
-    check_error(e, SinglePoolError::WrongStakeStateV2);
+    check_error(e, SinglePoolError::WrongStakeStake);
 
     // reactivate
     let instruction = instruction::reactivate_pool_stake(&id(), &accounts.vote_account.pubkey());
@@ -152,5 +152,5 @@ async fn fail_not_deactivated(activate: bool) {
         .process_transaction(transaction)
         .await
         .unwrap_err();
-    check_error(e, SinglePoolError::WrongStakeStateV2);
+    check_error(e, SinglePoolError::WrongStakeStake);
 }

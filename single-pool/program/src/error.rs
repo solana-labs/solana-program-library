@@ -55,8 +55,8 @@ pub enum SinglePoolError {
     #[error("SignatureMissing")]
     SignatureMissing,
     /// Stake account is not in the state expected by the program.
-    #[error("WrongStakeStateV2")]
-    WrongStakeStateV2,
+    #[error("WrongStakeStake")]
+    WrongStakeStake,
     /// Unsigned subtraction crossed the zero.
     #[error("ArithmeticOverflow")]
     ArithmeticOverflow,
@@ -127,7 +127,7 @@ impl PrintProgramError for SinglePoolError {
                 msg!("Error: Not enough stake to cover the provided quantity of pool tokens. \
                      (Generally this should not happen absent user error, but may if the minimum delegation increases.)"),
             SinglePoolError::SignatureMissing => msg!("Error: Required signature is missing."),
-            SinglePoolError::WrongStakeStateV2 => msg!("Error: Stake account is not in the state expected by the program."),
+            SinglePoolError::WrongStakeStake => msg!("Error: Stake account is not in the state expected by the program."),
             SinglePoolError::ArithmeticOverflow => msg!("Error: Unsigned subtraction crossed the zero."),
             SinglePoolError::UnexpectedMathError =>
                 msg!("Error: A calculation failed unexpectedly. \
