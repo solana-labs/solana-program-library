@@ -78,6 +78,31 @@ describe('Token Metadata Instructions', () => {
         );
     });
 
+    it('Can create Update Field Instruction with Field Enum', () => {
+        const instruction = createUpdateFieldInstruction({
+            programId,
+            metadata,
+            updateAuthority,
+            field: 'Name',
+            value: 'http://test.uri',
+        });
+
+        expect(instruction).to.deep.equal(
+            new TransactionInstruction({
+                programId,
+                keys: [
+                    { isSigner: false, isWritable: true, pubkey: metadata },
+                    { isSigner: true, isWritable: false, pubkey: updateAuthority },
+                ],
+                data: Buffer.from([
+                    // Output of rust implementation
+                    221, 233, 49, 45, 181, 202, 220, 200, 0, 15, 0, 0, 0, 104, 116, 116, 112, 58, 47, 47, 116, 101, 115,
+                    116, 46, 117, 114, 105,
+                ]),
+            })
+        );
+    });
+
     it('Can create Remove Key Instruction', () => {
         const instruction = createRemoveKeyInstruction({
             programId,
