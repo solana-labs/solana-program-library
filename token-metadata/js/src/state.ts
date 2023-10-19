@@ -42,7 +42,7 @@ export const schema = {
 export const TokenMetadataDiscriminate = Buffer.from([112, 132, 90, 90, 11, 88, 157, 87]);
 
 // buffer is a tlv |--discriminate--|--length--|--bytes--|
-// Where bytes is serialised Tokenmetadata with Borsh
+// Where bytes is serialized Token Metadata with Borsh
 export function unpack(buffer: Buffer): TokenMetadata {
     const tlv = new TlvState(buffer, 8, 4);
     const bytes = tlv.firstBytes(TokenMetadataDiscriminate);

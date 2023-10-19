@@ -1,8 +1,9 @@
 import { PublicKey } from '@solana/web3.js';
+import { serialize } from 'borsh';
 import { expect } from 'chai';
+
 import { TokenMetadata, TokenMetadataDiscriminate, schema, unpack } from '../src/state';
 
-import { serialize } from 'borsh';
 describe('Token Metadata State', () => {
     const lengthBuffer = (buffer: Buffer | Uint8Array): Buffer => {
         const length = Buffer.alloc(4);
@@ -22,7 +23,7 @@ describe('Token Metadata State', () => {
 
     it('Can unpack', () => {
         const data = Buffer.from([
-            // From rust implimentation
+            // From rust implementation
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 110, 97,
             109, 101, 6, 0, 0, 0, 115, 121, 109, 98, 111, 108, 3, 0, 0, 0, 117, 114, 105, 0, 0, 0, 0,
@@ -42,7 +43,7 @@ describe('Token Metadata State', () => {
 
     it('Can unpack with additionalMetadata', () => {
         const data = Buffer.from([
-            // From rust implimentation
+            // From rust implementation
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 110, 101,
             119, 95, 110, 97, 109, 101, 10, 0, 0, 0, 110, 101, 119, 95, 115, 121, 109, 98, 111, 108, 7, 0, 0, 0, 110,

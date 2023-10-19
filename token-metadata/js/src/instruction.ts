@@ -5,11 +5,11 @@ import { serialize } from 'borsh';
 import { Field } from './state';
 
 // Taken from https://github.com/solana-labs/solana-program-library/blob/master/token-metadata/interface/src/instruction.rs
-export const DISCRIMNATOR = {
+export const DISCRIMINATOR = {
     Initialize: splDiscriminate('spl_token_metadata_interface:initialize_account'),
     UpdateField: splDiscriminate('spl_token_metadata_interface:updating_field'),
     RemoveKey: splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
-    UpdateAuthorithy: splDiscriminate('spl_token_metadata_interface:update_the_authority'),
+    UpdateAuthority: splDiscriminate('spl_token_metadata_interface:update_the_authority'),
     Emit: splDiscriminate('spl_token_metadata_interface:emitter'),
 };
 
@@ -18,7 +18,7 @@ export const SCHEMA = {
     Initialize: { struct: { name: 'string', symbol: 'string', uri: 'string' } },
     UpdateField: { struct: { field: 'string', value: 'string' } },
     RemoveKey: { struct: { idempotent: 'bool', key: 'string' } },
-    UpdateAuthorithy: { struct: { newAuthority: { array: { type: 'u8', len: 32 } } } },
+    UpdateAuthority: { struct: { newAuthority: { array: { type: 'u8', len: 32 } } } },
     Emit: { struct: { start: { option: 'u64' }, end: { option: 'u64' } } },
 };
 
@@ -65,13 +65,13 @@ export function createInitializeInstruction({
             { isSigner: false, isWritable: false, pubkey: mint },
             { isSigner: true, isWritable: false, pubkey: mintAuthority },
         ],
-        data: Buffer.concat([DISCRIMNATOR.Initialize, serialize(SCHEMA.Initialize, data)]),
+        data: Buffer.concat([DISCRIMINATOR.Initialize, serialize(SCHEMA.Initialize, data)]),
     });
 }
 
 /** If the field does not exist on the account, it will be created.
  * If the field does exist, it will be overwritten. */
-interface UpdateFeild {
+interface UpdateField {
     programId: PublicKey;
     metadata: PublicKey;
     updateAuthority: PublicKey;
@@ -85,7 +85,7 @@ export function createUpdateFieldInstruction({
     updateAuthority,
     field,
     value,
-}: UpdateFeild): TransactionInstruction {
+}: UpdateField): TransactionInstruction {
     const data = { field, value };
     return new TransactionInstruction({
         programId,
@@ -94,7 +94,7 @@ export function createUpdateFieldInstruction({
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
         data: Buffer.concat([
-            DISCRIMNATOR.UpdateField,
+            DISCRIMINATOR.UpdateField,
             Buffer.from([3]), // TODO explain this. It comes from field being typed as "Field" rather than string
             serialize(SCHEMA.UpdateField, data),
         ]),
@@ -119,7 +119,7 @@ export function createRemoveKeyInstruction({ programId, metadata, updateAuthorit
             { isSigner: false, isWritable: true, pubkey: metadata },
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
-        data: Buffer.concat([DISCRIMNATOR.RemoveKey, serialize(SCHEMA.RemoveKey, data)]),
+        data: Buffer.concat([DISCRIMINATOR.RemoveKey, serialize(SCHEMA.RemoveKey, data)]),
     });
 }
 
@@ -144,7 +144,7 @@ export function createUpdateAuthorityInstruction({
             { isSigner: false, isWritable: true, pubkey: metadata },
             { isSigner: true, isWritable: false, pubkey: oldAuthority },
         ],
-        data: Buffer.concat([DISCRIMNATOR.UpdateAuthorithy, serialize(SCHEMA.UpdateAuthorithy, data)]),
+        data: Buffer.concat([DISCRIMINATOR.UpdateAuthority, serialize(SCHEMA.UpdateAuthority, data)]),
     });
 }
 
@@ -161,6 +161,6 @@ export function createEmitInstruction({ programId, metadata, start, end }: Emit)
     return new TransactionInstruction({
         programId,
         keys: [{ isSigner: false, isWritable: false, pubkey: metadata }],
-        data: Buffer.concat([DISCRIMNATOR.Emit, serialize(SCHEMA.Emit, data)]),
+        data: Buffer.concat([DISCRIMINATOR.Emit, serialize(SCHEMA.Emit, data)]),
     });
 }
