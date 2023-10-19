@@ -53,7 +53,7 @@ fn get_stake_state(
         try_from_slice_unchecked::<stake::state::StakeStateV2>(&stake_account_info.data.borrow())?;
     match stake_state {
         stake::state::StakeStateV2::Stake(meta, stake, _) => Ok((meta, stake)),
-        _ => Err(StakePoolError::WrongStakeStateV2.into()),
+        _ => Err(StakePoolError::WrongStakeStake.into()),
     }
 }
 
@@ -224,7 +224,7 @@ fn check_if_stake_deactivating(
             vote_account_address,
             epoch,
         );
-        Err(StakePoolError::WrongStakeStateV2.into())
+        Err(StakePoolError::WrongStakeStake.into())
     } else {
         Ok(())
     }
@@ -246,7 +246,7 @@ fn check_if_stake_activating(
             vote_account_address,
             epoch,
         );
-        Err(StakePoolError::WrongStakeStateV2.into())
+        Err(StakePoolError::WrongStakeStake.into())
     } else {
         Ok(())
     }
@@ -266,7 +266,7 @@ fn check_stake_state(
             "Validator stake for {} not usable by pool, must be owned by withdraw authority",
             vote_account_address
         );
-        return Err(StakePoolError::WrongStakeStateV2.into());
+        return Err(StakePoolError::WrongStakeStake.into());
     }
     if stake.delegation.voter_pubkey != *vote_account_address {
         msg!(
@@ -274,7 +274,7 @@ fn check_stake_state(
             stake_account_info.key,
             vote_account_address
         );
-        return Err(StakePoolError::WrongStakeStateV2.into());
+        return Err(StakePoolError::WrongStakeStake.into());
     }
     Ok(())
 }
@@ -869,7 +869,7 @@ impl Processor {
         let total_lamports = if let stake::state::StakeStateV2::Initialized(meta) = stake_state {
             if meta.lockup != stake::state::Lockup::default() {
                 msg!("Reserve stake account has some lockup");
-                return Err(StakePoolError::WrongStakeStateV2.into());
+                return Err(StakePoolError::WrongStakeStake.into());
             }
 
             if meta.authorized.staker != withdraw_authority_key {
@@ -878,7 +878,7 @@ impl Processor {
                     meta.authorized.staker,
                     withdraw_authority_key
                 );
-                return Err(StakePoolError::WrongStakeStateV2.into());
+                return Err(StakePoolError::WrongStakeStake.into());
             }
 
             if meta.authorized.withdrawer != withdraw_authority_key {
@@ -887,7 +887,7 @@ impl Processor {
                     meta.authorized.staker,
                     withdraw_authority_key
                 );
-                return Err(StakePoolError::WrongStakeStateV2.into());
+                return Err(StakePoolError::WrongStakeStake.into());
             }
             reserve_stake_info
                 .lamports()
@@ -895,7 +895,7 @@ impl Processor {
                 .ok_or(StakePoolError::CalculationFailure)?
         } else {
             msg!("Reserve stake account not in intialized state");
-            return Err(StakePoolError::WrongStakeStateV2.into());
+            return Err(StakePoolError::WrongStakeStake.into());
         };
 
         if total_lamports > 0 {
@@ -1047,7 +1047,7 @@ impl Processor {
         )?;
         let reserve_meta = reserve_stake
             .meta()
-            .ok_or(StakePoolError::WrongStakeStateV2)?;
+            .ok_or(StakePoolError::WrongStakeStake)?;
         let minimum_lamports = minimum_reserve_lamports(&reserve_meta);
         let reserve_lamports = reserve_stake_info.lamports();
         if reserve_lamports.saturating_sub(required_lamports) < minimum_lamports {
@@ -2589,7 +2589,7 @@ impl Processor {
                     .ok_or(StakePoolError::CalculationFailure)?
             } else {
                 msg!("Reserve stake account in unknown state, aborting");
-                return Err(StakePoolError::WrongStakeStateV2.into());
+                return Err(StakePoolError::WrongStakeStake.into());
             };
         for validator_stake_record in validator_list
             .deserialize_slice::<ValidatorStakeInfo>(0, validator_list.len() as usize)?
@@ -3191,9 +3191,7 @@ impl Processor {
         let stake_state = try_from_slice_unchecked::<stake::state::StakeStateV2>(
             &stake_split_from.data.borrow(),
         )?;
-        let meta = stake_state
-            .meta()
-            .ok_or(StakePoolError::WrongStakeStateV2)?;
+        let meta = stake_state.meta().ok_or(StakePoolError::WrongStakeStake)?;
         let required_lamports = minimum_stake_lamports(&meta, stake_minimum_delegation);
 
         let lamports_per_pool_token = stake_pool
@@ -3235,7 +3233,7 @@ impl Processor {
         } else {
             let delegation = stake_state
                 .delegation()
-                .ok_or(StakePoolError::WrongStakeStateV2)?;
+                .ok_or(StakePoolError::WrongStakeStake)?;
             let vote_account_address = delegation.voter_pubkey;
 
             if let Some(preferred_withdraw_validator) =
@@ -3515,7 +3513,7 @@ impl Processor {
             }
         } else {
             msg!("Reserve stake account not in intialized state");
-            return Err(StakePoolError::WrongStakeStateV2.into());
+            return Err(StakePoolError::WrongStakeStake.into());
         };
 
         Self::token_burn(
@@ -4086,7 +4084,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::InvalidValidatorStakeList => msg!("Error: Invalid validator stake list account"),
             StakePoolError::InvalidFeeAccount => msg!("Error: Invalid manager fee account"),
             StakePoolError::WrongPoolMint => msg!("Error: Specified pool mint account is wrong"),
-            StakePoolError::WrongStakeStateV2 => msg!("Error: Stake account is not in the state expected by the program"),
+            StakePoolError::WrongStakeStake => msg!("Error: Stake account is not in the state expected by the program"),
             StakePoolError::UserStakeNotActive => msg!("Error: User stake is not active"),
             StakePoolError::ValidatorAlreadyAdded => msg!("Error: Stake account voting for this validator already exists in the pool"),
             StakePoolError::ValidatorNotFound => msg!("Error: Stake account for this validator not found in the pool"),

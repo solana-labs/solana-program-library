@@ -1413,7 +1413,7 @@ async fn fail_with_bad_reserve() {
             error,
             TransactionError::InstructionError(
                 2,
-                InstructionError::Custom(error::StakePoolError::WrongStakeStateV2 as u32),
+                InstructionError::Custom(error::StakePoolError::WrongStakeStake as u32),
             )
         );
     }
@@ -1465,7 +1465,7 @@ async fn fail_with_bad_reserve() {
             error,
             TransactionError::InstructionError(
                 2,
-                InstructionError::Custom(error::StakePoolError::WrongStakeStateV2 as u32),
+                InstructionError::Custom(error::StakePoolError::WrongStakeStake as u32),
             )
         );
     }
@@ -1520,7 +1520,7 @@ async fn fail_with_bad_reserve() {
             error,
             TransactionError::InstructionError(
                 2,
-                InstructionError::Custom(error::StakePoolError::WrongStakeStateV2 as u32),
+                InstructionError::Custom(error::StakePoolError::WrongStakeStake as u32),
             )
         );
     }
@@ -1576,7 +1576,7 @@ async fn fail_with_bad_reserve() {
             error,
             TransactionError::InstructionError(
                 2,
-                InstructionError::Custom(error::StakePoolError::WrongStakeStateV2 as u32),
+                InstructionError::Custom(error::StakePoolError::WrongStakeStake as u32),
             )
         );
     }

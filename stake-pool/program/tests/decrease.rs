@@ -663,6 +663,6 @@ async fn fail_additional_with_increasing() {
         TransactionError::InstructionError(
             _,
             InstructionError::Custom(code)
-        ) if code == StakePoolError::WrongStakeStateV2 as u32
+        ) if code == StakePoolError::WrongStakeStake as u32
     );
 }

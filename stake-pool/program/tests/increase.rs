@@ -587,7 +587,7 @@ async fn fail_additional_with_decreasing() {
         error,
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(StakePoolError::WrongStakeStateV2 as u32)
+            InstructionError::Custom(StakePoolError::WrongStakeStake as u32)
         )
     );
 }
