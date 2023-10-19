@@ -16,7 +16,8 @@ use {
 #[derive(Clone, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum FeatureGateInstruction {
-    /// Submit a feature for activation.
+    /// Queue a feature for activation by allocating and assigning a feature
+    /// account.
     ///
     /// Note: This instruction expects the account to exist and be owned by the
     /// system program. The account should also have enough rent-exempt lamports
