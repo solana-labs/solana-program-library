@@ -189,6 +189,8 @@ pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo])
     // Allocate a TLV entry for the space and write it in
     let mut buffer = member_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
+    // Note if `allow_repetition: true` is instead used here, one can initialize
+    // the same token as a member of multiple groups!
     let (member, _) = state.init_value::<TokenGroupMember>(false)?;
     *member = TokenGroupMember::new(member_mint_info.key, group_info.key, member_number);
 
