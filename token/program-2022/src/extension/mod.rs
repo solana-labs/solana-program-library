@@ -10,6 +10,7 @@ use {
             },
             cpi_guard::CpiGuard,
             default_account_state::DefaultAccountState,
+            group_pointer::GroupPointer,
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::InterestBearingConfig,
             memo_transfer::MemoTransfer,
@@ -52,6 +53,8 @@ pub mod confidential_transfer_fee;
 pub mod cpi_guard;
 /// Default Account State extension
 pub mod default_account_state;
+/// Group Pointer extension
+pub mod group_pointer;
 /// Immutable Owner extension
 pub mod immutable_owner;
 /// Interest-Bearing Mint extension
@@ -905,6 +908,9 @@ pub enum ExtensionType {
     /// Mint contains token-metadata
     TokenMetadata,
     /// Test variable-length mint extension
+    /// Mint contains a pointer to another account (or the same account) that holds group
+    /// configurations
+    GroupPointer,
     #[cfg(test)]
     VariableLenMintTest = u16::MAX - 2,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
@@ -978,6 +984,7 @@ impl ExtensionType {
             }
             ExtensionType::MetadataPointer => pod_get_packed_len::<MetadataPointer>(),
             ExtensionType::TokenMetadata => unreachable!(),
+            ExtensionType::GroupPointer => pod_get_packed_len::<GroupPointer>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -1037,7 +1044,8 @@ impl ExtensionType {
             | ExtensionType::TransferHook
             | ExtensionType::ConfidentialTransferFeeConfig
             | ExtensionType::MetadataPointer
-            | ExtensionType::TokenMetadata => AccountType::Mint,
+            | ExtensionType::TokenMetadata
+            | ExtensionType::GroupPointer => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
