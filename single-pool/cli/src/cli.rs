@@ -9,6 +9,7 @@ use {
         input_validators::{is_valid_pubkey, is_valid_signer},
         keypair::{pubkey_from_path, signer_from_path},
     },
+    solana_cli_output::OutputFormat,
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{pubkey::Pubkey, signer::Signer},
     spl_single_pool::{self, find_pool_address},
@@ -61,7 +62,7 @@ pub struct Cli {
         conflicts_with = "verbose",
         value_parser = PossibleValuesParser::new(["json", "json-compact"]).map(|o| parse_output_format(&o)),
     )]
-    pub output_format: Option<OutputFormatArg>,
+    pub output_format: Option<OutputFormat>,
 
     #[clap(subcommand)]
     pub command: Command,
@@ -313,10 +314,10 @@ pub fn parse_address(path: &str, name: &str) -> Result<Pubkey, String> {
     }
 }
 
-pub fn parse_output_format(output_format: &str) -> OutputFormatArg {
+pub fn parse_output_format(output_format: &str) -> OutputFormat {
     match output_format {
-        "json" => OutputFormatArg::Json,
-        "json-compact" => OutputFormatArg::JsonCompact,
+        "json" => OutputFormat::Json,
+        "json-compact" => OutputFormat::JsonCompact,
         _ => unreachable!(),
     }
 }
@@ -450,11 +451,4 @@ pub fn with_signer(
         }
         a => a,
     })
-}
-
-// TODO replace with monorepo OutputFormat once it has Clone
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum OutputFormatArg {
-    Json,
-    JsonCompact,
 }

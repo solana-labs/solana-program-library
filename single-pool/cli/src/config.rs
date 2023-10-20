@@ -85,8 +85,7 @@ impl Config {
 
         // determine output format
         let output_format = match (cli.output_format, cli.verbose) {
-            (Some(OutputFormatArg::Json), _) => OutputFormat::Json,
-            (Some(OutputFormatArg::JsonCompact), _) => OutputFormat::JsonCompact,
+            (Some(json_format), _) => json_format,
             (None, true) => OutputFormat::DisplayVerbose,
             (None, false) => OutputFormat::Display,
         };
