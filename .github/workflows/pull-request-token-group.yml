@@ -58,7 +58,7 @@ jobs:
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Test token-group with "serde" activated
+      - name: Test token-group interface
         run: |
           cargo test \
             --manifest-path=token-group/interface/Cargo.toml \

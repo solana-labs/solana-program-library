@@ -26,12 +26,7 @@ async fn test_initialize_group() {
     let group_mint = Keypair::new();
     let group_mint_authority = Keypair::new();
 
-    let group_state = TokenGroup {
-        update_authority: None.try_into().unwrap(),
-        mint: group_mint.pubkey(),
-        size: 0.into(),
-        max_size: 50.into(),
-    };
+    let group_state = TokenGroup::new(&group_mint.pubkey(), None.try_into().unwrap(), 50);
 
     let (context, client, payer) = setup_program_test(&program_id).await;
 

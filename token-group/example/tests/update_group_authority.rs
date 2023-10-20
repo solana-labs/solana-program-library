@@ -28,12 +28,11 @@ async fn test_update_group_authority() {
     let group_mint_authority = Keypair::new();
     let group_update_authority = Keypair::new();
 
-    let group_state = TokenGroup {
-        update_authority: Some(group_update_authority.pubkey()).try_into().unwrap(),
-        mint: group_mint.pubkey(),
-        size: 30.into(),
-        max_size: 50.into(),
-    };
+    let group_state = TokenGroup::new(
+        &group_mint.pubkey(),
+        Some(group_update_authority.pubkey()).try_into().unwrap(),
+        50,
+    );
 
     let (context, client, payer) = setup_program_test(&program_id).await;
 
