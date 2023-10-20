@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// Indicates that the Account owner authority cannot be changed
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct ImmutableOwner;

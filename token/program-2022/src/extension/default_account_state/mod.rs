@@ -15,6 +15,7 @@ pub mod processor;
 /// Default Account::state extension data for mints.
 #[repr(C)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct DefaultAccountState {
     /// Default Account::state in which new Accounts should be initialized
