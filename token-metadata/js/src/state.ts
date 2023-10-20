@@ -1,7 +1,8 @@
 import { PublicKey } from '@solana/web3.js';
 import { deserialize } from 'borsh';
 import { TlvState } from '@solana/spl-type-length-value';
-import { TokenMetadataError } from './errors';
+
+import { TokenMetadataError } from './errors.js';
 
 /** The field can be one of the required fields (name, symbol, URI), or a
  * totally new field denoted by a "key" string.

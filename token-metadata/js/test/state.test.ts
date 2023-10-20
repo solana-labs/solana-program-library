@@ -2,7 +2,8 @@ import { PublicKey } from '@solana/web3.js';
 import { serialize } from 'borsh';
 import { expect } from 'chai';
 
-import { TokenMetadata, TokenMetadataDiscriminate, schema, unpack } from '../src/state';
+import { TokenMetadataDiscriminate, schema, unpack } from '../src';
+import type { TokenMetadata } from '../src';
 
 describe('Token Metadata State', () => {
     const lengthBuffer = (buffer: Buffer | Uint8Array): Buffer => {

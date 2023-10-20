@@ -1,8 +1,10 @@
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import type { PublicKey } from '@solana/web3.js';
+import { TransactionInstruction } from '@solana/web3.js';
 import { splDiscriminate } from '@solana/spl-type-length-value';
-import { serialize, Schema } from 'borsh';
+import type { Schema } from 'borsh';
+import { serialize } from 'borsh';
 
-import { Field } from './state';
+import type { Field } from './state.js';
 
 // Values from https://github.com/solana-labs/solana-program-library/blob/master/token-metadata/interface/src/instruction.rs
 interface TokenMetadataInstructionType<T> {
