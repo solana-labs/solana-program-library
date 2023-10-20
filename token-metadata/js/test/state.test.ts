@@ -1,9 +1,10 @@
 import { PublicKey } from '@solana/web3.js';
-import { serialize } from 'borsh';
 import { expect } from 'chai';
 
-import { TokenMetadataDiscriminate, schema, unpack } from '../src';
-import type { TokenMetadata } from '../src';
+import type { TokenMetadata } from '../src/state';
+import { TOKEN_METADATA_DISCRIMINATOR, unpack } from '../src/state';
+import { getArrayEncoder, getBytesEncoder, getStructEncoder, getTupleEncoder } from '@solana/codecs-data-structures';
+import { getStringEncoder } from '@solana/codecs-strings';
 
 describe('Token Metadata State', () => {
     const lengthBuffer = (buffer: Buffer | Uint8Array): Buffer => {
@@ -14,12 +15,20 @@ describe('Token Metadata State', () => {
 
     // Helper function to pack meta into tlv bytes slab
     const pack = (meta: TokenMetadata) => {
-        const data = serialize(schema, {
+        const encoder = getStructEncoder([
+            ['updateAuthority', getBytesEncoder({ size: 32 })],
+            ['mint', getBytesEncoder({ size: 32 })],
+            ['name', getStringEncoder()],
+            ['symbol', getStringEncoder()],
+            ['uri', getStringEncoder()],
+            ['additionalMetadata', getArrayEncoder(getTupleEncoder([getStringEncoder(), getStringEncoder()]))],
+        ]);
+        const data = encoder.encode({
             ...meta,
             updateAuthority: meta.updateAuthority?.toBuffer(),
             mint: meta.mint.toBuffer(),
         });
-        return Buffer.concat([TokenMetadataDiscriminate, lengthBuffer(data), data]);
+        return Buffer.concat([TOKEN_METADATA_DISCRIMINATOR, lengthBuffer(data), data]);
     };
 
     it('Can unpack', () => {
@@ -30,7 +39,7 @@ describe('Token Metadata State', () => {
             109, 101, 6, 0, 0, 0, 115, 121, 109, 98, 111, 108, 3, 0, 0, 0, 117, 114, 105, 0, 0, 0, 0,
         ]);
 
-        const input = Buffer.concat([TokenMetadataDiscriminate, lengthBuffer(data), data]);
+        const input = Buffer.concat([TOKEN_METADATA_DISCRIMINATOR, lengthBuffer(data), data]);
 
         const meta = unpack(input);
         expect(meta).to.deep.equal({
@@ -52,7 +61,7 @@ describe('Token Metadata State', () => {
             49, 4, 0, 0, 0, 107, 101, 121, 50, 6, 0, 0, 0, 118, 97, 108, 117, 101, 50,
         ]);
 
-        const input = Buffer.concat([TokenMetadataDiscriminate, lengthBuffer(data), data]);
+        const input = Buffer.concat([TOKEN_METADATA_DISCRIMINATOR, lengthBuffer(data), data]);
         const meta = unpack(input);
         expect(meta).to.deep.equal({
             mint: PublicKey.default,

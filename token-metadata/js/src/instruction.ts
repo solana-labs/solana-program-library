@@ -1,86 +1,33 @@
+import type { StructToEncoderTuple } from '@solana/codecs-data-structures';
+import { getBooleanEncoder, getBytesEncoder, getDataEnumCodec, getStructEncoder } from '@solana/codecs-data-structures';
+import { getU64Encoder } from '@solana/codecs-numbers';
+import { getStringEncoder } from '@solana/codecs-strings';
+import { getOptionEncoder } from '@solana/options';
+import { splDiscriminate } from '@solana/spl-type-length-value';
 import type { PublicKey } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
-import { splDiscriminate } from '@solana/spl-type-length-value';
-import type { Schema } from 'borsh';
-import { serialize } from 'borsh';
 
-import type { Field } from './state.js';
+import type { Field } from './field.js';
+import { getFieldCodec, getFieldConfig } from './field.js';
 
-// Values from https://github.com/solana-labs/solana-program-library/blob/master/token-metadata/interface/src/instruction.rs
-interface TokenMetadataInstructionType<T> {
-    discriminator: Uint8Array;
-    layout: Schema;
-    pack: (values: T) => Buffer;
+function packInstruction<T extends object>(
+    layout: StructToEncoderTuple<T>,
+    discriminator: Uint8Array,
+    values: T
+): Buffer {
+    const encoder = getStructEncoder(layout);
+    const data = encoder.encode(values);
+    return Buffer.concat([discriminator, data]);
 }
 
-const Initialize: TokenMetadataInstructionType<{
-    name: string;
-    symbol: string;
-    uri: string;
-}> = {
-    discriminator: splDiscriminate('spl_token_metadata_interface:initialize_account'),
-    layout: { struct: { name: 'string', symbol: 'string', uri: 'string' } },
-    pack: (values) => Buffer.concat([Initialize.discriminator, serialize(Initialize.layout, values)]),
-};
-
-const UpdateField: TokenMetadataInstructionType<{
-    field: Field;
-    value: string;
-}> = {
-    discriminator: splDiscriminate('spl_token_metadata_interface:updating_field'),
-    layout: { struct: { field: 'string', value: 'string' } },
-    pack: (values) =>
-        Buffer.concat([
-            UpdateField.discriminator,
-            Buffer.from([3]), // TODO explain this. It comes from field being typed as "Field" rather than string
-            serialize(UpdateField.layout, values),
-        ]),
-};
-
-const RemoveKey: TokenMetadataInstructionType<{
-    field: Field;
-    idempotent: boolean;
-}> = {
-    discriminator: splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
-    layout: { struct: { idempotent: 'bool', field: 'string' } },
-    pack: (values) => Buffer.concat([RemoveKey.discriminator, serialize(RemoveKey.layout, values)]),
-};
-
-const UpdateAuthority: TokenMetadataInstructionType<{
-    newAuthority: PublicKey;
-}> = {
-    discriminator: splDiscriminate('spl_token_metadata_interface:update_the_authority'),
-    layout: { struct: { newAuthority: { array: { type: 'u8', len: 32 } } } },
-    pack: ({ newAuthority }) =>
-        Buffer.concat([
-            UpdateAuthority.discriminator,
-            serialize(UpdateAuthority.layout, { newAuthority: newAuthority.toBuffer() }),
-        ]),
-};
-
-const Emit: TokenMetadataInstructionType<{
-    start?: bigint;
-    end?: bigint;
-}> = {
-    discriminator: splDiscriminate('spl_token_metadata_interface:emitter'),
-    layout: { struct: { start: { option: 'u64' }, end: { option: 'u64' } } },
-    pack: (values) => Buffer.concat([Emit.discriminator, serialize(Emit.layout, values)]),
-};
-
-/* 
-    Initializes a TLV entry with the basic token-metadata fields.
-    
-    Assumes that the provided mint is an SPL token mint, that the metadata
-    account is allocated and assigned to the program, and that the metadata
-    account has enough lamports to cover the rent-exempt reserve.
-
-    Accounts expected by this instruction:
-      0. `[w]` Metadata
-      1. `[]` Update authority
-      2. `[]` Mint
-      3. `[s]` Mint authority
-*/
-export interface Initialize {
+/**
+ * Initializes a TLV entry with the basic token-metadata fields.
+ *
+ * Assumes that the provided mint is an SPL token mint, that the metadata
+ * account is allocated and assigned to the program, and that the metadata
+ * account has enough lamports to cover the rent-exempt reserve.
+ */
+export function createInitializeInstruction(args: {
     programId: PublicKey;
     metadata: PublicKey;
     updateAuthority: PublicKey;
@@ -89,19 +36,8 @@ export interface Initialize {
     name: string;
     symbol: string;
     uri: string;
-}
-
-export function createInitializeInstruction({
-    programId,
-    metadata,
-    updateAuthority,
-    mint,
-    mintAuthority,
-    name,
-    symbol,
-    uri,
-}: Initialize): TransactionInstruction {
-    const values = { name, symbol, uri };
+}): TransactionInstruction {
+    const { programId, metadata, updateAuthority, mint, mintAuthority, name, symbol, uri } = args;
     return new TransactionInstruction({
         programId,
         keys: [
@@ -110,98 +46,118 @@ export function createInitializeInstruction({
             { isSigner: false, isWritable: false, pubkey: mint },
             { isSigner: true, isWritable: false, pubkey: mintAuthority },
         ],
-        data: Initialize.pack(values),
+        data: packInstruction(
+            [
+                ['name', getStringEncoder()],
+                ['symbol', getStringEncoder()],
+                ['uri', getStringEncoder()],
+            ],
+            splDiscriminate('spl_token_metadata_interface:initialize_account'),
+            { name, symbol, uri }
+        ),
     });
 }
 
-/** If the field does not exist on the account, it will be created.
- * If the field does exist, it will be overwritten. */
-interface UpdateField {
+/**
+ * If the field does not exist on the account, it will be created.
+ * If the field does exist, it will be overwritten.
+ */
+export function createUpdateFieldInstruction(args: {
     programId: PublicKey;
     metadata: PublicKey;
     updateAuthority: PublicKey;
-    field: Field;
+    field: Field | string;
     value: string;
-}
-
-export function createUpdateFieldInstruction({
-    programId,
-    metadata,
-    updateAuthority,
-    field,
-    value,
-}: UpdateField): TransactionInstruction {
-    const values = { field, value };
+}): TransactionInstruction {
+    const { programId, metadata, updateAuthority, field, value } = args;
     return new TransactionInstruction({
         programId,
         keys: [
             { isSigner: false, isWritable: true, pubkey: metadata },
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
-        data: UpdateField.pack(values),
+        data: packInstruction(
+            [
+                ['field', getDataEnumCodec(getFieldCodec())],
+                ['value', getStringEncoder()],
+            ],
+            splDiscriminate('spl_token_metadata_interface:updating_field'),
+            { field: getFieldConfig(field), value }
+        ),
     });
 }
 
-/** Removes a key-value pair in a token-metadata account. This only applies
- * to additional fields, and not the base name / symbol / URI fields. */
-export interface RemoveKey {
+export function createRemoveKeyInstruction(args: {
     programId: PublicKey;
     metadata: PublicKey;
     updateAuthority: PublicKey;
-    field: Field;
+    key: string;
     idempotent: boolean;
-}
-
-export function createRemoveKeyInstruction({ programId, metadata, updateAuthority, field, idempotent }: RemoveKey) {
-    const values = { idempotent, field };
+}) {
+    const { programId, metadata, updateAuthority, key, idempotent } = args;
     return new TransactionInstruction({
         programId,
         keys: [
             { isSigner: false, isWritable: true, pubkey: metadata },
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
-        data: RemoveKey.pack(values),
+        data: packInstruction(
+            [
+                ['idempotent', getBooleanEncoder()],
+                ['key', getStringEncoder()],
+            ],
+            splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
+            { idempotent, key }
+        ),
     });
 }
 
-/** Updates the token-metadata authority */
-export interface UpdateAuthority {
+export function createUpdateAuthorityInstruction(args: {
     programId: PublicKey;
     metadata: PublicKey;
     oldAuthority: PublicKey;
-    newAuthority: PublicKey;
-}
+    newAuthority: PublicKey | null;
+}): TransactionInstruction {
+    const { programId, metadata, oldAuthority, newAuthority } = args;
 
-export function createUpdateAuthorityInstruction({
-    programId,
-    metadata,
-    oldAuthority,
-    newAuthority,
-}: UpdateAuthority): TransactionInstruction {
-    const values = { newAuthority };
+    const newAuthorityBuffer = Buffer.alloc(32);
+    if (newAuthority) {
+        newAuthorityBuffer.set(newAuthority.toBuffer());
+    } else {
+        newAuthorityBuffer.fill(0);
+    }
+
     return new TransactionInstruction({
         programId,
         keys: [
             { isSigner: false, isWritable: true, pubkey: metadata },
             { isSigner: true, isWritable: false, pubkey: oldAuthority },
         ],
-        data: UpdateAuthority.pack(values),
+        data: packInstruction(
+            [['newAuthority', getBytesEncoder({ size: 32 })]],
+            splDiscriminate('spl_token_metadata_interface:update_the_authority'),
+            { newAuthority: newAuthorityBuffer }
+        ),
     });
 }
 
-// Emits the token-metadata as return data
-export interface Emit {
+export function createEmitInstruction(args: {
     programId: PublicKey;
     metadata: PublicKey;
     start?: bigint;
     end?: bigint;
-}
-
-export function createEmitInstruction({ programId, metadata, start, end }: Emit): TransactionInstruction {
-    const values = { start, end };
+}): TransactionInstruction {
+    const { programId, metadata, start, end } = args;
     return new TransactionInstruction({
         programId,
         keys: [{ isSigner: false, isWritable: false, pubkey: metadata }],
-        data: Emit.pack(values),
+        data: packInstruction(
+            [
+                ['start', getOptionEncoder(getU64Encoder())],
+                ['end', getOptionEncoder(getU64Encoder())],
+            ],
+            splDiscriminate('spl_token_metadata_interface:emitter'),
+            { start: start ?? null, end: end ?? null }
+        ),
     });
 }

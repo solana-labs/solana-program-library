@@ -47,15 +47,19 @@
         "@solana/web3.js": "^1.47.4"
     },
     "dependencies": {
-        "@solana/spl-type-length-value": "0.1.0",
-        "borsh": "^1.0.0"
+        "@solana/codecs-core": "2.0.0-experimental.398c396",
+        "@solana/codecs-data-structures": "2.0.0-experimental.398c396",
+        "@solana/codecs-numbers": "2.0.0-experimental.398c396",
+        "@solana/codecs-strings": "2.0.0-experimental.398c396",
+        "@solana/options": "2.0.0-experimental.398c396",
+        "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
         "@solana/web3.js": "^1.47.4",
         "@types/chai": "^4.3.3",
         "@types/chai-as-promised": "^7.1.4",
         "@types/mocha": "^10.0.0",
-        "@types/node": "^20.1.1",
+        "@types/node": "^20.8.7",
         "@types/prettier": "^3.0.0",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",

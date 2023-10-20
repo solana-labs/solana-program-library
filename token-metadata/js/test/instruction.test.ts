@@ -58,7 +58,7 @@ describe('Token Metadata Instructions', () => {
             programId,
             metadata,
             updateAuthority,
-            field: 'MyTest',
+            field: 'MyTestField',
             value: 'http://test.uri',
         });
 
@@ -71,8 +71,8 @@ describe('Token Metadata Instructions', () => {
                 ],
                 data: Buffer.from([
                     // Output of rust implementation
-                    221, 233, 49, 45, 181, 202, 220, 200, 3, 6, 0, 0, 0, 77, 121, 84, 101, 115, 116, 15, 0, 0, 0, 104,
-                    116, 116, 112, 58, 47, 47, 116, 101, 115, 116, 46, 117, 114, 105,
+                    221, 233, 49, 45, 181, 202, 220, 200, 3, 11, 0, 0, 0, 77, 121, 84, 101, 115, 116, 70, 105, 101, 108,
+                    100, 15, 0, 0, 0, 104, 116, 116, 112, 58, 47, 47, 116, 101, 115, 116, 46, 117, 114, 105,
                 ]),
             })
         );
@@ -108,7 +108,7 @@ describe('Token Metadata Instructions', () => {
             programId,
             metadata,
             updateAuthority: updateAuthority,
-            field: 'MyTestField',
+            key: 'MyTestField',
             idempotent: true,
         });
 

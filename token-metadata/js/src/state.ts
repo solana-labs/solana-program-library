@@ -1,17 +1,11 @@
-import { PublicKey } from '@solana/web3.js';
-import { deserialize } from 'borsh';
+import { getArrayDecoder, getBytesDecoder, getStructDecoder, getTupleDecoder } from '@solana/codecs-data-structures';
+import { getStringDecoder } from '@solana/codecs-strings';
 import { TlvState } from '@solana/spl-type-length-value';
+import { PublicKey } from '@solana/web3.js';
 
 import { TokenMetadataError } from './errors.js';
 
-/** The field can be one of the required fields (name, symbol, URI), or a
- * totally new field denoted by a "key" string.
- *
- * Define explicitly o make it abundantly clear that 'name' | 'symbol' | 'uri' are fundamental parts of the interface,
- * while any other key is additional
- */
-
-export type Field = 'name' | 'symbol' | 'uri' | string;
+export const TOKEN_METADATA_DISCRIMINATOR = Buffer.from([112, 132, 90, 90, 11, 88, 157, 87]);
 
 export interface TokenMetadata {
     // The authority that can sign to update the metadata
@@ -28,43 +22,47 @@ export interface TokenMetadata {
     additionalMetadata: [string, string][];
 }
 
-export const schema = {
-    struct: {
-        updateAuthority: { array: { type: 'u8', len: 32 } },
-        mint: { array: { type: 'u8', len: 32 } },
-        name: 'string',
-        symbol: 'string',
-        uri: 'string',
-        additionalMetadata: { array: { type: { array: { type: 'string', len: 2 } } } },
-    },
-};
+// Checks if all elements in the array are 0
+function isNonePubkey(buffer: Uint8Array): boolean {
+    for (let i = 0; i < buffer.length; i++) {
+        if (buffer[i] !== 0) {
+            return false;
+        }
+    }
+    return true;
+}
 
-// From https://github.com/solana-labs/solana-program-library/blob/master/token-metadata/interface/src/state.rs#L45C43-L45C43
-export const TokenMetadataDiscriminate = Buffer.from([112, 132, 90, 90, 11, 88, 157, 87]);
-
-// buffer is a tlv |--discriminate--|--length--|--bytes--|
-// Where bytes is serialized Token Metadata with Borsh
 export function unpack(buffer: Buffer): TokenMetadata {
     const tlv = new TlvState(buffer, 8, 4);
-    const bytes = tlv.firstBytes(TokenMetadataDiscriminate);
+    const bytes = tlv.firstBytes(TOKEN_METADATA_DISCRIMINATOR);
     if (bytes === null) {
         throw new TokenMetadataError('Invalid Data');
     }
-    const data = deserialize(schema, bytes) as any;
+    const decoder = getStructDecoder([
+        ['updateAuthority', getBytesDecoder({ size: 32 })],
+        ['mint', getBytesDecoder({ size: 32 })],
+        ['name', getStringDecoder()],
+        ['symbol', getStringDecoder()],
+        ['uri', getStringDecoder()],
+        ['additionalMetadata', getArrayDecoder(getTupleDecoder([getStringDecoder(), getStringDecoder()]))],
+    ]);
 
-    const meta: TokenMetadata = {
-        updateAuthority: new PublicKey(data.updateAuthority as Buffer),
-        mint: new PublicKey(data.mint as Buffer),
-        name: data.name,
-        symbol: data.symbol,
-        uri: data.uri,
-        additionalMetadata: data.additionalMetadata,
-    };
+    const data = decoder.decode(bytes);
 
-    if (meta.updateAuthority && meta.updateAuthority.toString() === PublicKey.default.toString()) {
-        // If update Authority is empty, treat as if it doesn't exist
-        delete meta.updateAuthority;
-    }
-
-    return meta;
+    return isNonePubkey(data[0].updateAuthority)
+        ? {
+              mint: new PublicKey(data[0].mint),
+              name: data[0].name,
+              symbol: data[0].symbol,
+              uri: data[0].uri,
+              additionalMetadata: data[0].additionalMetadata,
+          }
+        : {
+              updateAuthority: new PublicKey(data[0].updateAuthority),
+              mint: new PublicKey(data[0].mint),
+              name: data[0].name,
+              symbol: data[0].symbol,
+              uri: data[0].uri,
+              additionalMetadata: data[0].additionalMetadata,
+          };
 }
