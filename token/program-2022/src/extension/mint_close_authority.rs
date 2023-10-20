@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 /// Close authority extension data for mints.
 #[repr(C)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct MintCloseAuthority {
     /// Optional authority to close the mint

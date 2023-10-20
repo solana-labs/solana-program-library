@@ -36,6 +36,7 @@ pub type UnixTimestamp = PodI64;
 /// rate.
 #[repr(C)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct InterestBearingConfig {
     /// Authority that can set the interest rate and authority
