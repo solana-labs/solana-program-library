@@ -20,4 +20,7 @@ pub enum TokenGroupError {
     /// Incorrect update authority has signed the instruction
     #[error("Incorrect update authority has signed the instruction")]
     IncorrectUpdateAuthority,
+    /// Member account should not be the same as the group account
+    #[error("Member account should not be the same as the group account")]
+    MemberAccountIsGroupAccount,
 }

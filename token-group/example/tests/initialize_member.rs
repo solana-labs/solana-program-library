@@ -13,6 +13,7 @@ use {
     },
     spl_token_client::token::Token,
     spl_token_group_interface::{
+        error::TokenGroupError,
         instruction::{initialize_group, initialize_member},
         state::{TokenGroup, TokenGroupMember},
     },
@@ -168,6 +169,47 @@ async fn test_initialize_group_member() {
             .unwrap_err()
             .unwrap(),
         TransactionError::InstructionError(1, InstructionError::MissingRequiredSignature)
+    );
+
+    // Fail: member account is group account
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            system_instruction::create_account(
+                &context.payer.pubkey(),
+                &member.pubkey(),
+                member_rent_lamports,
+                member_space.try_into().unwrap(),
+                &program_id,
+            ),
+            initialize_member(
+                &program_id,
+                &member.pubkey(),
+                &member_mint.pubkey(),
+                &member_mint_authority.pubkey(),
+                &member.pubkey(),
+                &group_update_authority.pubkey(),
+            ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[
+            &context.payer,
+            &member,
+            &member_mint_authority,
+            &group_update_authority,
+        ],
+        context.last_blockhash,
+    );
+    assert_eq!(
+        context
+            .banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(
+            1,
+            InstructionError::Custom(TokenGroupError::MemberAccountIsGroupAccount as u32)
+        )
     );
 
     // Success: initialize member

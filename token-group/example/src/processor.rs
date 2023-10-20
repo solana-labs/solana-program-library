@@ -178,6 +178,11 @@ pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo])
         }
     }
 
+    // Make sure the member account is not the same as the group accout
+    if member_info.key == group_info.key {
+        return Err(TokenGroupError::MemberAccountIsGroupAccount.into());
+    }
+
     // Increment the size of the group
     let mut buffer = group_info.try_borrow_mut_data()?;
     let mut state = TlvStateMut::unpack(&mut buffer)?;
