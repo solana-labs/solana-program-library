@@ -15,6 +15,9 @@ use {
 pub struct TokenGroup {
     /// The authority that can sign to update the group
     pub update_authority: OptionalNonZeroPubkey,
+    /// The associated mint, used to counter spoofing to be sure that group
+    /// belongs to a particular mint
+    pub mint: Pubkey,
     /// The current number of group members
     pub size: PodU32,
     /// The maximum number of group members
@@ -23,8 +26,9 @@ pub struct TokenGroup {
 
 impl TokenGroup {
     /// Creates a new `TokenGroup` state
-    pub fn new(update_authority: OptionalNonZeroPubkey, max_size: u32) -> Self {
+    pub fn new(mint: &Pubkey, update_authority: OptionalNonZeroPubkey, max_size: u32) -> Self {
         Self {
+            mint: *mint,
             update_authority,
             size: PodU32::default(), // [0, 0, 0, 0]
             max_size: max_size.into(),
@@ -60,6 +64,9 @@ impl TokenGroup {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable, SplDiscriminate)]
 #[discriminator_hash_input("spl_token_group_interface:member")]
 pub struct TokenGroupMember {
+    /// The associated mint, used to counter spoofing to be sure that member
+    /// belongs to a particular mint
+    pub mint: Pubkey,
     /// The pubkey of the `TokenGroup`
     pub group: Pubkey,
     /// The member number
@@ -67,9 +74,10 @@ pub struct TokenGroupMember {
 }
 impl TokenGroupMember {
     /// Creates a new `TokenGroupMember` state
-    pub fn new(group: Pubkey, member_number: u32) -> Self {
+    pub fn new(mint: &Pubkey, group: &Pubkey, member_number: u32) -> Self {
         Self {
-            group,
+            mint: *mint,
+            group: *group,
             member_number: member_number.into(),
         }
     }
@@ -103,12 +111,14 @@ mod tests {
     fn tlv_state_pack() {
         // Make sure we can pack more than one instance of each type
         let group = TokenGroup {
+            mint: Pubkey::new_unique(),
             update_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new_unique())).unwrap(),
             size: 10.into(),
             max_size: 20.into(),
         };
 
         let member = TokenGroupMember {
+            mint: Pubkey::new_unique(),
             group: Pubkey::new_unique(),
             member_number: 0.into(),
         };
@@ -138,6 +148,7 @@ mod tests {
         // Test with a `Some` max size
         let max_size = 10;
         let mut group = TokenGroup {
+            mint: Pubkey::new_unique(),
             update_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new_unique())).unwrap(),
             size: 0.into(),
             max_size: max_size.into(),
@@ -165,6 +176,7 @@ mod tests {
     #[test]
     fn increment_current_size() {
         let mut group = TokenGroup {
+            mint: Pubkey::new_unique(),
             update_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new_unique())).unwrap(),
             size: 0.into(),
             max_size: 1.into(),
