@@ -11,6 +11,7 @@ use {
             },
             cpi_guard::{self, in_cpi, CpiGuard},
             default_account_state::{self, DefaultAccountState},
+            group_member_pointer::{self, GroupMemberPointer},
             group_pointer::{self, GroupPointer},
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::{self, InterestBearingConfig},
@@ -866,6 +867,19 @@ impl Processor {
                     )?;
                     extension.authority = new_authority.try_into()?;
                 }
+                AuthorityType::GroupMemberPointer => {
+                    let extension = mint.get_extension_mut::<GroupMemberPointer>()?;
+                    let maybe_authority: Option<Pubkey> = extension.authority.into();
+                    let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.authority = new_authority.try_into()?;
+                }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
@@ -1687,6 +1701,13 @@ impl Processor {
                 }
                 TokenInstruction::GroupPointerExtension => {
                     group_pointer::processor::process_instruction(program_id, accounts, &input[1..])
+                }
+                TokenInstruction::GroupMemberPointerExtension => {
+                    group_member_pointer::processor::process_instruction(
+                        program_id,
+                        accounts,
+                        &input[1..],
+                    )
                 }
             }
         } else if let Ok(instruction) = TokenMetadataInstruction::unpack(input) {

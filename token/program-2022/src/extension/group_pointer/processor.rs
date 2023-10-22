@@ -35,9 +35,6 @@ fn process_initialize(
     let mut mint_data = mint_account_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
 
-    let extension = mint.init_extension::<GroupPointer>(true)?;
-    extension.authority = *authority;
-
     if Option::<Pubkey>::from(*authority).is_none()
         && Option::<Pubkey>::from(*group_address).is_none()
     {
@@ -47,6 +44,9 @@ fn process_initialize(
         );
         Err(TokenError::InvalidInstruction)?;
     }
+
+    let extension = mint.init_extension::<GroupPointer>(true)?;
+    extension.authority = *authority;
     extension.group_address = *group_address;
     Ok(())
 }
