@@ -2,27 +2,16 @@
 
 mod program_test;
 use {
-    program_test::{TestContext, TokenContext},
-    solana_program_test::{
-        processor,
-        tokio::{self, sync::Mutex},
-        ProgramTest, ProgramTestContext,
-    },
+    program_test::TestContext,
+    solana_program_test::{processor, tokio, ProgramTest},
     solana_sdk::{
-        account::Account as SolanaAccount,
-        instruction::InstructionError,
-        pubkey::Pubkey,
-        signature::Signer,
-        signer::keypair::Keypair,
-        transaction::{Transaction, TransactionError},
-        transport::TransportError,
+        instruction::InstructionError, pubkey::Pubkey, signature::Signer, signer::keypair::Keypair,
+        transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{
-            group_member_pointer::{instruction::update, GroupMemberPointer},
-            BaseStateWithExtensions,
-        },
+        extension::{group_member_pointer::GroupMemberPointer, BaseStateWithExtensions},
+        instruction,
         processor::Processor,
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
@@ -40,65 +29,21 @@ fn setup_program_test() -> ProgramTest {
     program_test
 }
 
-async fn setup_group_mint(
-    context: Arc<Mutex<ProgramTestContext>>,
-    mint: Keypair,
-    authority: &Pubkey,
-) -> TestContext {
+async fn setup(mint: Keypair, member_address: &Pubkey, authority: &Pubkey) -> TestContext {
+    let program_test = setup_program_test();
+
+    let context = program_test.start_with_context().await;
+    let context = Arc::new(tokio::sync::Mutex::new(context));
     let mut context = TestContext {
         context,
         token_context: None,
     };
-    let group_address = Some(mint.pubkey());
-    context
-        .init_token_with_mint_keypair_and_freeze_authority(
-            mint,
-            vec![ExtensionInitializationParams::GroupPointer {
-                authority: Some(*authority),
-                group_address,
-            }],
-            None,
-        )
-        .await
-        .unwrap();
-    context
-}
-
-async fn setup_token_group(
-    token_context: &TokenContext,
-    mint_authority: &Keypair,
-    update_authority: &Pubkey,
-    payer: &Keypair,
-) {
-    token_context
-        .token
-        .token_group_initialize_with_rent_transfer(
-            &payer.pubkey(),
-            &mint_authority.pubkey(),
-            update_authority,
-            3,
-            &[&payer, &mint_authority],
-        )
-        .await
-        .unwrap();
-}
-
-async fn setup_member_mint(
-    context: Arc<Mutex<ProgramTestContext>>,
-    mint: Keypair,
-    authority: &Pubkey,
-) -> TestContext {
-    let mut context = TestContext {
-        context,
-        token_context: None,
-    };
-    let member_address = Some(mint.pubkey());
     context
         .init_token_with_mint_keypair_and_freeze_authority(
             mint,
             vec![ExtensionInitializationParams::GroupMemberPointer {
                 authority: Some(*authority),
-                member_address,
+                member_address: Some(*member_address),
             }],
             None,
         )
@@ -109,103 +54,37 @@ async fn setup_member_mint(
 
 #[tokio::test]
 async fn success_init() {
-    let payer = Keypair::new();
-    let group_mint = Keypair::new();
-    let group_update_authority = Keypair::new();
-    let member_mint = Keypair::new();
-    let member_authority = Keypair::new();
+    let authority = Pubkey::new_unique();
+    let member_address = Pubkey::new_unique();
+    let mint_keypair = Keypair::new();
+    let token = setup(mint_keypair, &member_address, &authority)
+        .await
+        .token_context
+        .take()
+        .unwrap()
+        .token;
 
-    let program_test = setup_program_test();
-    let mut context = program_test.start_with_context().await;
-    context.set_account(
-        &payer.pubkey(),
-        &SolanaAccount {
-            lamports: 500_000_000,
-            ..SolanaAccount::default()
-        }
-        .into(),
-    );
-    let context = Arc::new(tokio::sync::Mutex::new(context));
-
-    let group_token = setup_group_mint(
-        context.clone(),
-        group_mint.insecure_clone(),
-        &group_update_authority.pubkey(),
-    )
-    .await
-    .token_context
-    .take()
-    .unwrap();
-
-    setup_token_group(
-        &group_token,
-        &group_token.mint_authority,
-        &group_update_authority.pubkey(),
-        &payer,
-    )
-    .await;
-
-    let member_token = setup_member_mint(
-        context,
-        member_mint.insecure_clone(),
-        &member_authority.pubkey(),
-    )
-    .await
-    .token_context
-    .take()
-    .unwrap()
-    .token;
-
-    let state = member_token.get_mint_info().await.unwrap();
+    let state = token.get_mint_info().await.unwrap();
     assert!(state.base.is_initialized);
     let extension = state.get_extension::<GroupMemberPointer>().unwrap();
-    assert_eq!(
-        extension.authority,
-        Some(member_authority.pubkey()).try_into().unwrap()
-    );
+    assert_eq!(extension.authority, Some(authority).try_into().unwrap());
     assert_eq!(
         extension.member_address,
-        Some(member_mint.pubkey()).try_into().unwrap()
+        Some(member_address).try_into().unwrap()
     );
 }
 
 #[tokio::test]
-async fn fail_init() {
-    let payer = Keypair::new();
-    let group_mint = Keypair::new();
-    let group_update_authority = Keypair::new();
-
-    let program_test = setup_program_test();
-    let mut context = program_test.start_with_context().await;
-    context.set_account(
-        &payer.pubkey(),
-        &SolanaAccount {
-            lamports: 500_000_000,
-            ..SolanaAccount::default()
-        }
-        .into(),
+async fn fail_init_all_none() {
+    let mut program_test = ProgramTest::default();
+    program_test.prefer_bpf(false);
+    program_test.add_program(
+        "spl_token_2022",
+        spl_token_2022::id(),
+        processor!(Processor::process),
     );
+    let context = program_test.start_with_context().await;
     let context = Arc::new(tokio::sync::Mutex::new(context));
-
-    let group_token = setup_group_mint(
-        context.clone(),
-        group_mint.insecure_clone(),
-        &group_update_authority.pubkey(),
-    )
-    .await
-    .token_context
-    .take()
-    .unwrap();
-
-    setup_token_group(
-        &group_token,
-        &group_token.mint_authority,
-        &group_update_authority.pubkey(),
-        &payer,
-    )
-    .await;
-
-    // fail with all none
     let mut context = TestContext {
         context,
         token_context: None,
@@ -233,154 +112,27 @@ async fn fail_init() {
 }
 
 #[tokio::test]
-async fn success_update() {
-    let payer = Keypair::new();
-    let group_mint = Keypair::new();
-    let group_update_authority = Keypair::new();
-    let member_mint = Keypair::new();
-    let member_authority = Keypair::new();
-
-    let program_test = setup_program_test();
-    let mut context = program_test.start_with_context().await;
-    context.set_account(
-        &payer.pubkey(),
-        &SolanaAccount {
-            lamports: 500_000_000,
-            ..SolanaAccount::default()
-        }
-        .into(),
-    );
-    let context = Arc::new(tokio::sync::Mutex::new(context));
-
-    let group_token = setup_group_mint(
-        context.clone(),
-        group_mint.insecure_clone(),
-        &group_update_authority.pubkey(),
-    )
-    .await
-    .token_context
-    .take()
-    .unwrap();
-
-    setup_token_group(
-        &group_token,
-        &group_token.mint_authority,
-        &group_update_authority.pubkey(),
-        &payer,
-    )
-    .await;
-
-    let member_token = setup_member_mint(
-        context.clone(),
-        member_mint.insecure_clone(),
-        &member_authority.pubkey(),
-    )
-    .await
-    .token_context
-    .take()
-    .unwrap()
-    .token;
-
-    let new_member_address = Pubkey::new_unique();
-
-    // success
-    member_token
-        .update_group_member_address(
-            &member_authority.pubkey(),
-            Some(new_member_address),
-            &[&group_update_authority, &member_authority],
-        )
+async fn set_authority() {
+    let authority = Keypair::new();
+    let member_address = Pubkey::new_unique();
+    let mint_keypair = Keypair::new();
+    let token = setup(mint_keypair, &member_address, &authority.pubkey())
         .await
-        .unwrap();
-    let state = member_token.get_mint_info().await.unwrap();
-    assert!(state.base.is_initialized);
-    let extension = state.get_extension::<GroupMemberPointer>().unwrap();
-    assert_eq!(
-        extension.authority,
-        Some(member_authority.pubkey()).try_into().unwrap()
-    );
-    assert_eq!(
-        extension.member_address,
-        Some(new_member_address).try_into().unwrap()
-    );
+        .token_context
+        .take()
+        .unwrap()
+        .token;
+    let new_authority = Keypair::new();
 
-    // set to none
-    member_token
-        .update_group_member_address(
-            &member_authority.pubkey(),
-            None,
-            &[&group_update_authority, &member_authority],
-        )
-        .await
-        .unwrap();
-    let state = member_token.get_mint_info().await.unwrap();
-    assert!(state.base.is_initialized);
-    let extension = state.get_extension::<GroupMemberPointer>().unwrap();
-    assert_eq!(
-        extension.authority,
-        Some(member_authority.pubkey()).try_into().unwrap()
-    );
-    assert_eq!(extension.member_address, None.try_into().unwrap());
-}
-
-#[tokio::test]
-async fn fail_update() {
-    let payer = Keypair::new();
-    let group_mint = Keypair::new();
-    let group_update_authority = Keypair::new();
-    let member_mint = Keypair::new();
-    let member_authority = Keypair::new();
-
-    let program_test = setup_program_test();
-    let mut context = program_test.start_with_context().await;
-    context.set_account(
-        &payer.pubkey(),
-        &SolanaAccount {
-            lamports: 500_000_000,
-            ..SolanaAccount::default()
-        }
-        .into(),
-    );
-    let context = Arc::new(tokio::sync::Mutex::new(context));
-
-    let group_token = setup_group_mint(
-        context.clone(),
-        group_mint.insecure_clone(),
-        &group_update_authority.pubkey(),
-    )
-    .await
-    .token_context
-    .take()
-    .unwrap();
-
-    setup_token_group(
-        &group_token,
-        &group_token.mint_authority,
-        &group_update_authority.pubkey(),
-        &payer,
-    )
-    .await;
-
-    let member_token = setup_member_mint(
-        context.clone(),
-        member_mint.insecure_clone(),
-        &member_authority.pubkey(),
-    )
-    .await
-    .token_context
-    .take()
-    .unwrap()
-    .token;
-
+    // fail, wrong signature
     let wrong = Keypair::new();
-    let new_member_address = Pubkey::new_unique();
-
-    // fail, wrong signature for authority
-    let err = member_token
-        .update_group_member_address(
+    let err = token
+        .set_authority(
+            token.get_address(),
             &wrong.pubkey(),
-            Some(new_member_address),
-            &[&group_update_authority, &wrong],
+            Some(&new_authority.pubkey()),
+            instruction::AuthorityType::GroupMemberPointer,
+            &[&wrong],
         )
         .await
         .unwrap_err();
@@ -394,32 +146,108 @@ async fn fail_update() {
         )))
     );
 
-    let mut context = context.lock().await;
-
-    // fail, missing authority signature
-    let mut instruction = update(
-        &spl_token_2022::id(),
-        &member_mint.pubkey(),
-        &member_authority.pubkey(),
-        &[],
-        Some(member_mint.pubkey()),
-    )
-    .unwrap();
-    instruction.accounts[1].is_signer = false;
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction],
-        Some(&payer.pubkey()),
-        &[&payer],
-        context.last_blockhash,
-    );
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
+    // success
+    token
+        .set_authority(
+            token.get_address(),
+            &authority.pubkey(),
+            Some(&new_authority.pubkey()),
+            instruction::AuthorityType::GroupMemberPointer,
+            &[&authority],
+        )
         .await
-        .unwrap_err()
         .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<GroupMemberPointer>().unwrap();
     assert_eq!(
-        error,
-        TransactionError::InstructionError(0, InstructionError::MissingRequiredSignature,)
+        extension.authority,
+        Some(new_authority.pubkey()).try_into().unwrap(),
     );
+
+    // set to none
+    token
+        .set_authority(
+            token.get_address(),
+            &new_authority.pubkey(),
+            None,
+            instruction::AuthorityType::GroupMemberPointer,
+            &[&new_authority],
+        )
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<GroupMemberPointer>().unwrap();
+    assert_eq!(extension.authority, None.try_into().unwrap(),);
+
+    // fail set again
+    let err = token
+        .set_authority(
+            token.get_address(),
+            &new_authority.pubkey(),
+            Some(&authority.pubkey()),
+            instruction::AuthorityType::GroupMemberPointer,
+            &[&new_authority],
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::AuthorityTypeNotSupported as u32)
+            )
+        )))
+    );
+}
+
+#[tokio::test]
+async fn update_member_address() {
+    let authority = Keypair::new();
+    let member_address = Pubkey::new_unique();
+    let mint_keypair = Keypair::new();
+    let token = setup(mint_keypair, &member_address, &authority.pubkey())
+        .await
+        .token_context
+        .take()
+        .unwrap()
+        .token;
+    let new_member_address = Pubkey::new_unique();
+
+    // fail, wrong signature
+    let wrong = Keypair::new();
+    let err = token
+        .update_group_member_address(&wrong.pubkey(), Some(new_member_address), &[&wrong])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::OwnerMismatch as u32)
+            )
+        )))
+    );
+
+    // success
+    token
+        .update_group_member_address(&authority.pubkey(), Some(new_member_address), &[&authority])
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<GroupMemberPointer>().unwrap();
+    assert_eq!(
+        extension.member_address,
+        Some(new_member_address).try_into().unwrap(),
+    );
+
+    // set to none
+    token
+        .update_group_member_address(&authority.pubkey(), None, &[&authority])
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<GroupMemberPointer>().unwrap();
+    assert_eq!(extension.member_address, None.try_into().unwrap(),);
 }
