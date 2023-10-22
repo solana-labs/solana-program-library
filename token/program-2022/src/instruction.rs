@@ -693,6 +693,13 @@ pub enum TokenInstruction<'a> {
     /// for further details about the extended instructions that share this
     /// instruction prefix
     GroupPointerExtension,
+    /// The common instruction prefix for group member pointer extension
+    /// instructions.
+    ///
+    /// See `extension::group_member_pointer::instruction::GroupMemberPointerInstruction`
+    /// for further details about the extended instructions that share this
+    /// instruction prefix
+    GroupMemberPointerExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a
@@ -834,6 +841,7 @@ impl<'a> TokenInstruction<'a> {
             38 => Self::WithdrawExcessLamports,
             39 => Self::MetadataPointerExtension,
             40 => Self::GroupPointerExtension,
+            41 => Self::GroupMemberPointerExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -1003,6 +1011,9 @@ impl<'a> TokenInstruction<'a> {
             &Self::GroupPointerExtension => {
                 buf.push(40);
             }
+            &Self::GroupMemberPointerExtension => {
+                buf.push(41);
+            }
         };
         buf
     }
@@ -1098,6 +1109,8 @@ pub enum AuthorityType {
     MetadataPointer,
     /// Authority to set the group address
     GroupPointer,
+    /// Authority to set the group member address
+    GroupMemberPointer,
 }
 
 impl AuthorityType {
@@ -1117,6 +1130,7 @@ impl AuthorityType {
             AuthorityType::ConfidentialTransferFeeConfig => 11,
             AuthorityType::MetadataPointer => 12,
             AuthorityType::GroupPointer => 13,
+            AuthorityType::GroupMemberPointer => 14,
         }
     }
 
@@ -1136,6 +1150,7 @@ impl AuthorityType {
             11 => Ok(AuthorityType::ConfidentialTransferFeeConfig),
             12 => Ok(AuthorityType::MetadataPointer),
             13 => Ok(AuthorityType::GroupPointer),
+            14 => Ok(AuthorityType::GroupMemberPointer),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
