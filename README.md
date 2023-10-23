@@ -46,7 +46,6 @@ Only a subset of programs within the Solana Program Library repo are audited. Cu
 | [stake-pool](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program) | [2023-01-31](https://github.com/solana-labs/security-audits/blob/master/spl/NeodymeStakePoolAudit-2023-01-31.pdf) | 1.0.0 (currently untagged) |
 | [account-compression](https://github.com/solana-labs/solana-program-library/tree/master/account-compression/programs/account-compression) | [2022-12-05](https://github.com/solana-labs/security-audits/blob/master/spl/OtterSecAccountCompressionAudit-2022-12-03.pdf) | [0.1.3](https://github.com/solana-labs/solana-program-library/releases/tag/account-compression-v0.1.3) |
 | [shared-memory](https://github.com/solana-labs/solana-program-library/tree/master/shared-memory/program) | [2021-02-25](https://github.com/solana-labs/security-audits/blob/master/spl/KudelskiTokenSwapSharedMemAudit-2021-02-25.pdf) | [1.0.0](https://github.com/solana-labs/solana-program-library/commit/b40e0dd3fd6c0e509dc1e8dd3da0a6d609035bbd) |
-| [memo](https://github.com/solana-labs/solana-program-library/tree/master/memo/program) | Not audited | [3.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/memo-v3.0.0) |
 
 All other programs may be updated from time to time. These programs are not
 audited, so fork and deploy them at your own risk. Here is the full list of
@@ -57,6 +56,7 @@ unaudited programs:
 * [feature-proposal](https://github.com/solana-labs/solana-program-library/tree/master/feature-proposal/program)
 * [instruction-padding](https://github.com/solana-labs/solana-program-library/tree/master/instruction-padding/program)
 * [managed-token](https://github.com/solana-labs/solana-program-library/tree/master/managed-token/program)
+* [memo](https://github.com/solana-labs/solana-program-library/tree/master/memo/program)
 * [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program)
 * [record](https://github.com/solana-labs/solana-program-library/tree/master/record/program)
 * [stateless-asks](https://github.com/solana-labs/solana-program-library/tree/master/stateless-asks/program)
