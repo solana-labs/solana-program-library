@@ -84,9 +84,4 @@ jobs:
           key: node-${{ hashFiles('token-metadata/js/package-lock.json') }}
           restore-keys: |
             node-
-      - name: Download programs
-        uses: actions/download-artifact@v2
-        with:
-          name: token-lending-programs
-          path: target/deploy
       - run: ./ci/js-test-token-metadata.sh
