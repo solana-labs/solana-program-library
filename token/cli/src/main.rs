@@ -176,6 +176,7 @@ pub enum CommandName {
     DisableConfidentialCredits,
     EnableNonConfidentialCredits,
     DisableNonConfidentialCredits,
+    DepositConfidentialTokens,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -3071,6 +3072,108 @@ async fn command_enable_disable_confidential_transfers(
     })
 }
 
+async fn command_deposit_confidential_tokens(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    owner: Pubkey,
+    maybe_account: Option<Pubkey>,
+    bulk_signers: BulkSigners,
+    ui_amount: Option<f64>,
+    mint_decimals: Option<u8>,
+) -> CommandResult {
+    if config.sign_only {
+        panic!("Sign-only is not yet supported.");
+    }
+
+    // check if mint decimals provided is consistent
+    let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
+
+    if !config.sign_only && mint_decimals.is_some() && mint_decimals != Some(mint_info.decimals) {
+        return Err(format!(
+            "Decimals {} was provided, but actual value is {}",
+            mint_decimals.unwrap(),
+            mint_info.decimals
+        )
+        .into());
+    }
+
+    let decimals = if let Some(decimals) = mint_decimals {
+        decimals
+    } else {
+        mint_info.decimals
+    };
+
+    // derive ATA if account address not provided
+    let token_account_address = if let Some(account) = maybe_account {
+        account
+    } else {
+        let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
+        token.get_associated_token_address(&owner)
+    };
+
+    let account = config.get_account_checked(&token_account_address).await?;
+
+    let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
+    let token = token_client_from_config(config, &state_with_extension.base.mint, None)?;
+
+    // the amount the user wants to deposit, as an f64
+    let maybe_deposit_balance =
+        ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
+
+    // the amount we will deposit, as a u64
+    let deposit_balance = if !config.sign_only {
+        let current_balance = token
+            .get_account_info(&token_account_address)
+            .await?
+            .base
+            .amount;
+        let deposit_balance = maybe_deposit_balance.unwrap_or(current_balance);
+
+        println_display(
+            config,
+            format!(
+                "Deposit {} tokens",
+                spl_token::amount_to_ui_amount(deposit_balance, mint_info.decimals),
+            ),
+        );
+
+        if deposit_balance > current_balance {
+            return Err(format!(
+                "Error: Insufficient funds, current balance is {}",
+                spl_token_2022::amount_to_ui_amount_string_trimmed(
+                    current_balance,
+                    mint_info.decimals
+                )
+            )
+            .into());
+        }
+
+        deposit_balance
+    } else {
+        maybe_deposit_balance.unwrap()
+    };
+
+    let res = token
+        .confidential_transfer_deposit(
+            &token_account_address,
+            &owner,
+            deposit_balance,
+            decimals,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -4813,6 +4916,45 @@ fn app<'a, 'b>(
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::DepositConfidentialTokens.into())
+                .about("Deposit amounts for confidential transfers")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .validator(is_amount_or_all)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to deposit; accepts keyword ALL"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
 }
 
 #[tokio::main]
@@ -5736,6 +5878,36 @@ async fn process_command<'a>(
                 bulk_signers,
                 allow_confidential_credits,
                 allow_non_confidential_credits,
+            )
+            .await
+        }
+        (CommandName::DepositConfidentialTokens, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let amount = match arg_matches.value_of("amount").unwrap() {
+                "ALL" => None,
+                amount => Some(amount.parse::<f64>().unwrap()),
+            };
+            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+
+            let (owner_signer, owner) =
+                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
+            }
+
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+
+            command_deposit_confidential_tokens(
+                config,
+                token,
+                owner,
+                account,
+                bulk_signers,
+                amount,
+                mint_decimals,
             )
             .await
         }
@@ -8279,7 +8451,7 @@ mod tests {
         let bulk_signers: Vec<Arc<dyn Signer>> =
             vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
         let confidential_transfer_mint_authority = payer.pubkey();
-        let auto_approve = true;
+        let auto_approve = false;
 
         command_create_token(
             &config,
@@ -8325,7 +8497,7 @@ mod tests {
         // update confidential transfer mint settings
         let auditor_keypair = ElGamalKeypair::new_rand();
         let auditor_pubkey: ElGamalPubkey = (*auditor_keypair.pubkey()).into();
-        let new_auto_approve = false;
+        let new_auto_approve = true;
 
         command_update_confidential_transfer_settings(
             &config,
@@ -8374,7 +8546,7 @@ mod tests {
         let extension = account_state
             .get_extension::<ConfidentialTransferAccount>()
             .unwrap();
-        assert!(!bool::from(extension.approved));
+        assert!(bool::from(extension.approved));
         assert!(bool::from(extension.allow_confidential_credits));
         assert!(bool::from(extension.allow_non_confidential_credits));
 
@@ -8455,6 +8627,23 @@ mod tests {
             .get_extension::<ConfidentialTransferAccount>()
             .unwrap();
         assert!(bool::from(extension.allow_non_confidential_credits));
+
+        // deposit confidential tokens
+        let deposit_amount = 100.0;
+        mint_tokens(&config, &payer, token_pubkey, deposit_amount, token_account).await;
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::DepositConfidentialTokens.into(),
+                &token_pubkey.to_string(),
+                &deposit_amount.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
 
         // disable confidential transfers for mint
         process_test_command(
