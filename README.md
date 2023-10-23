@@ -32,7 +32,7 @@ In addition, one program is planned for deployment to Solana Mainnet Beta:
 
 | Program | Version |
 | --- | --- |
-| [single-pool](https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program) | n/a |
+| [single-pool](https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/single-pool-v1.0.0) |
 
 ## Audits
 
@@ -46,6 +46,7 @@ Only a subset of programs within the Solana Program Library repo are audited. Cu
 | [stake-pool](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program) | [2023-01-31](https://github.com/solana-labs/security-audits/blob/master/spl/NeodymeStakePoolAudit-2023-01-31.pdf) | 1.0.0 (currently untagged) |
 | [account-compression](https://github.com/solana-labs/solana-program-library/tree/master/account-compression/programs/account-compression) | [2022-12-05](https://github.com/solana-labs/security-audits/blob/master/spl/OtterSecAccountCompressionAudit-2022-12-03.pdf) | [0.1.3](https://github.com/solana-labs/solana-program-library/releases/tag/account-compression-v0.1.3) |
 | [shared-memory](https://github.com/solana-labs/solana-program-library/tree/master/shared-memory/program) | [2021-02-25](https://github.com/solana-labs/security-audits/blob/master/spl/KudelskiTokenSwapSharedMemAudit-2021-02-25.pdf) | [1.0.0](https://github.com/solana-labs/solana-program-library/commit/b40e0dd3fd6c0e509dc1e8dd3da0a6d609035bbd) |
+| [single-pool](https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program) | [2023-08-08](https://github.com/solana-labs/security-audits/blob/master/spl/NeodymeSinglePoolAudit-2023-08-08.pdf) | (untagged version prior to 1.0.0) |
 
 All other programs may be updated from time to time. These programs are not
 audited, so fork and deploy them at your own risk. Here is the full list of
