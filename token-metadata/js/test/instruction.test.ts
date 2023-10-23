@@ -9,12 +9,6 @@ import {
     createUpdateFieldInstruction,
 } from '../src';
 
-// Buffer outputs are verified against rust implementation
-// To print packed values in rust file:
-// Add `use std::fmt::Write;` to the top of instructions.rs and
-// use `println!("{:?}", &packed);` inside check_pack_unpack to print buffer
-// Run with `cargo test -- --nocapture`
-
 describe('Token Metadata Instructions', () => {
     const programId = new PublicKey('22222222222222222222222222222222222222222222');
     const metadata = new PublicKey('33333333333333333333333333333333333333333333');
