@@ -177,6 +177,7 @@ pub enum CommandName {
     EnableNonConfidentialCredits,
     DisableNonConfidentialCredits,
     DepositConfidentialTokens,
+    WithdrawConfidentialTokens,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -3072,7 +3073,14 @@ async fn command_enable_disable_confidential_transfers(
     })
 }
 
-async fn command_deposit_confidential_tokens(
+#[derive(PartialEq, Eq)]
+enum ConfidentialInstructionType {
+    Deposit,
+    Withdraw,
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn command_deposit_withdraw_confidential_tokens(
     config: &Config<'_>,
     token_pubkey: Pubkey,
     owner: Pubkey,
@@ -3080,6 +3088,9 @@ async fn command_deposit_confidential_tokens(
     bulk_signers: BulkSigners,
     ui_amount: Option<f64>,
     mint_decimals: Option<u8>,
+    instruction_type: ConfidentialInstructionType,
+    elgamal_keypair: Option<&ElGamalKeypair>,
+    aes_key: Option<&AeKey>,
 ) -> CommandResult {
     if config.sign_only {
         panic!("Sign-only is not yet supported.");
@@ -3116,28 +3127,28 @@ async fn command_deposit_confidential_tokens(
     let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
     let token = token_client_from_config(config, &state_with_extension.base.mint, None)?;
 
-    // the amount the user wants to deposit, as an f64
-    let maybe_deposit_balance =
+    // the amount the user wants to deposit or withdraw, as an f64
+    let maybe_amount =
         ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
 
-    // the amount we will deposit, as a u64
-    let deposit_balance = if !config.sign_only {
+    // the amount we will deposit or withdraw, as a u64
+    let amount = if !config.sign_only && instruction_type == ConfidentialInstructionType::Deposit {
         let current_balance = token
             .get_account_info(&token_account_address)
             .await?
             .base
             .amount;
-        let deposit_balance = maybe_deposit_balance.unwrap_or(current_balance);
+        let deposit_amount = maybe_amount.unwrap_or(current_balance);
 
         println_display(
             config,
             format!(
-                "Deposit {} tokens",
-                spl_token::amount_to_ui_amount(deposit_balance, mint_info.decimals),
+                "Depositing {} confidential tokens",
+                spl_token::amount_to_ui_amount(deposit_amount, mint_info.decimals),
             ),
         );
 
-        if deposit_balance > current_balance {
+        if deposit_amount > current_balance {
             return Err(format!(
                 "Error: Insufficient funds, current balance is {}",
                 spl_token_2022::amount_to_ui_amount_string_trimmed(
@@ -3148,20 +3159,59 @@ async fn command_deposit_confidential_tokens(
             .into());
         }
 
-        deposit_balance
+        deposit_amount
+    } else if !config.sign_only && instruction_type == ConfidentialInstructionType::Withdraw {
+        // // TODO: expose account balance decryption in token
+        // let aes_key = aes_key.expect("AES key must be provided");
+        // let current_balance = token
+        //     .confidential_transfer_get_available_balance_with_key(&token_account_address, aes_key)
+        //     .await?;
+        let withdraw_amount =
+            maybe_amount.expect("ALL keyword is not currently supported for withdraw");
+
+        println_display(
+            config,
+            format!(
+                "Withdrawing {} confidential tokens",
+                spl_token::amount_to_ui_amount(withdraw_amount, mint_info.decimals)
+            ),
+        );
+
+        withdraw_amount
     } else {
-        maybe_deposit_balance.unwrap()
+        maybe_amount.unwrap()
     };
 
-    let res = token
-        .confidential_transfer_deposit(
-            &token_account_address,
-            &owner,
-            deposit_balance,
-            decimals,
-            &bulk_signers,
-        )
-        .await?;
+    let res = if instruction_type == ConfidentialInstructionType::Deposit {
+        token
+            .confidential_transfer_deposit(
+                &token_account_address,
+                &owner,
+                amount,
+                decimals,
+                &bulk_signers,
+            )
+            .await?
+    } else if instruction_type == ConfidentialInstructionType::Withdraw {
+        let elgamal_keypair = elgamal_keypair.expect("ElGamal keypair must be provided");
+        let aes_key = aes_key.expect("AES key must be provided");
+
+        token
+            .confidential_transfer_withdraw(
+                &token_account_address,
+                &owner,
+                None,
+                amount,
+                decimals,
+                None,
+                elgamal_keypair,
+                aes_key,
+                &bulk_signers,
+            )
+            .await?
+    } else {
+        panic!("Command not supported");
+    };
 
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {
@@ -4955,6 +5005,45 @@ fn app<'a, 'b>(
                 .arg(mint_decimals_arg())
                 .nonce_args(true)
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::WithdrawConfidentialTokens.into())
+                .about("Withdraw amounts for confidential transfers")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .validator(is_amount_or_all)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to deposit; accepts keyword ALL"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
 }
 
 #[tokio::main]
@@ -5881,7 +5970,8 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::DepositConfidentialTokens, arg_matches) => {
+        (c @ CommandName::DepositConfidentialTokens, arg_matches)
+        | (c @ CommandName::WithdrawConfidentialTokens, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -5894,13 +5984,36 @@ async fn process_command<'a>(
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
 
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+
+            let (instruction_type, elgamal_keypair, aes_key) = match c {
+                CommandName::DepositConfidentialTokens => {
+                    (ConfidentialInstructionType::Deposit, None, None)
+                }
+                CommandName::WithdrawConfidentialTokens => {
+                    // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
+                    // supported in the future once upgrading to clap-v3.
+                    //
+                    // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be updated
+                    // once custom ElGamal and AES keys are supported.
+                    let elgamal_keypair =
+                        ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
+                    let aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
+
+                    (
+                        ConfidentialInstructionType::Withdraw,
+                        Some(elgamal_keypair),
+                        Some(aes_key),
+                    )
+                }
+                _ => panic!("Instruction not supported"),
+            };
+
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-
-            command_deposit_confidential_tokens(
+            command_deposit_withdraw_confidential_tokens(
                 config,
                 token,
                 owner,
@@ -5908,6 +6021,9 @@ async fn process_command<'a>(
                 bulk_signers,
                 amount,
                 mint_decimals,
+                instruction_type,
+                elgamal_keypair.as_ref(),
+                aes_key.as_ref(),
             )
             .await
         }
@@ -8640,6 +8756,23 @@ mod tests {
                 CommandName::DepositConfidentialTokens.into(),
                 &token_pubkey.to_string(),
                 &deposit_amount.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        // withdraw confidential tokens
+        let withdraw_amount = 100.0;
+
+        // NOTE: this test will fail since we don't have `apply-pending-balance`
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::WithdrawConfidentialTokens.into(),
+                &token_pubkey.to_string(),
+                &withdraw_amount.to_string(),
             ],
         )
         .await
