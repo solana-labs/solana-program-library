@@ -19,7 +19,7 @@ the Solana Mainnet Beta. Currently, this includes:
 | --- | --- |
 | [token](https://github.com/solana-labs/solana-program-library/tree/master/token/program) | [3.4.0](https://github.com/solana-labs/solana-program-library/releases/tag/token-v3.4.0) |
 | [associated-token-account](https://github.com/solana-labs/solana-program-library/tree/master/associated-token-account/program) | [1.1.0](https://github.com/solana-labs/solana-program-library/releases/tag/associated-token-account-v1.1.0) |
-| [token-2022](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022) | [0.5.0](https://github.com/solana-labs/solana-program-library/releases/tag/token-2022-v0.5.0) |
+| [token-2022](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022) | [0.9.0](https://github.com/solana-labs/solana-program-library/releases/tag/token-2022-v0.9.0) |
 | [governance](https://github.com/solana-labs/solana-program-library/tree/master/governance/program) | [3.1.0](https://github.com/solana-labs/solana-program-library/releases/tag/governance-v3.1.0) |
 | [stake-pool](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program) | [0.6.4](https://github.com/solana-labs/solana-program-library/releases/tag/stake-pool-v0.6.4) |
 | [account-compression](https://github.com/solana-labs/solana-program-library/tree/master/account-compression/programs/account-compression) | [0.1.3](https://github.com/solana-labs/solana-program-library/releases/tag/account-compression-v0.1.3) |
