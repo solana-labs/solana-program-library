@@ -4,7 +4,7 @@ Full example program and tests implementing the `spl-transfer-hook-interface`,
 to be used for testing a program that calls into the `spl-transfer-hook-interface`.
 
 See the
-[SPL Transfer Hook Interface](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface)
+[SPL Transfer Hook Interface](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface)
 code for more information.
 
 ### Example usage of example

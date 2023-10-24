@@ -142,8 +142,8 @@ program:
 
 The `spl-transfer-hook-interface` library provides offchain and onchain helpers
 for resolving the additional accounts required. See
-[invoke.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/src/invoke.rs)
+[invoke.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface/src/invoke.rs)
 for usage on-chain, and
-[offchain.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/src/offchain.rs)
+[offchain.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface/src/offchain.rs)
 for fetching the additional required account metas with any async off-chain client
 like `BanksClient` or `RpcClient`.

@@ -1346,22 +1346,22 @@ explained in detail in many of the linked `README` files below under
 #### Resources
 
 The interface description and structs exist at
-[spl-transfer-hook-interface](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface),
+[spl-transfer-hook-interface](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface),
 along with a sample minimal program implementation. You can find detailed
 instructions on how to implement this interface for an on-chain program or
 interact with a program that implements transfer-hook in the repository's
-[README](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/README.md).
+[README](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface/README.md).
 
 The `spl-transfer-hook-interface` library provides offchain and onchain helpers
 for resolving the additional accounts required. See
-[invoke.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/src/invoke.rs)
+[invoke.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface/src/invoke.rs)
 for usage on-chain, and
-[offchain.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-interface/src/offchain.rs)
+[offchain.rs](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/interface/src/offchain.rs)
 for fetching the additional required account metas with any async off-chain client
 like `BanksClient` or `RpcClient`.
 
 A usable example program exists at
-[spl-transfer-hook-example](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook-example).
+[spl-transfer-hook-example](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/example).
 Token-2022 uses this example program in tests to ensure that it properly uses
 the transfer hook interface.
 
