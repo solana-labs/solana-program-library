@@ -27,7 +27,7 @@ function packInstruction<T extends object>(
  * account is allocated and assigned to the program, and that the metadata
  * account has enough lamports to cover the rent-exempt reserve.
  */
-export function createInitializeInstruction(args: {
+export interface InitializeInstructionArgs {
     programId: PublicKey;
     metadata: PublicKey;
     updateAuthority: PublicKey;
@@ -36,7 +36,9 @@ export function createInitializeInstruction(args: {
     name: string;
     symbol: string;
     uri: string;
-}): TransactionInstruction {
+}
+
+export function createInitializeInstruction(args: InitializeInstructionArgs): TransactionInstruction {
     const { programId, metadata, updateAuthority, mint, mintAuthority, name, symbol, uri } = args;
     return new TransactionInstruction({
         programId,
@@ -62,13 +64,15 @@ export function createInitializeInstruction(args: {
  * If the field does not exist on the account, it will be created.
  * If the field does exist, it will be overwritten.
  */
-export function createUpdateFieldInstruction(args: {
+export interface UpdateFieldInstruction {
     programId: PublicKey;
     metadata: PublicKey;
     updateAuthority: PublicKey;
     field: Field | string;
     value: string;
-}): TransactionInstruction {
+}
+
+export function createUpdateFieldInstruction(args: UpdateFieldInstruction): TransactionInstruction {
     const { programId, metadata, updateAuthority, field, value } = args;
     return new TransactionInstruction({
         programId,
@@ -87,13 +91,15 @@ export function createUpdateFieldInstruction(args: {
     });
 }
 
-export function createRemoveKeyInstruction(args: {
+export interface RemoveKeyInstructionArgs {
     programId: PublicKey;
     metadata: PublicKey;
     updateAuthority: PublicKey;
     key: string;
     idempotent: boolean;
-}) {
+}
+
+export function createRemoveKeyInstruction(args: RemoveKeyInstructionArgs) {
     const { programId, metadata, updateAuthority, key, idempotent } = args;
     return new TransactionInstruction({
         programId,
@@ -112,12 +118,14 @@ export function createRemoveKeyInstruction(args: {
     });
 }
 
-export function createUpdateAuthorityInstruction(args: {
+export interface UpdateAuthorityInstructionArgs {
     programId: PublicKey;
     metadata: PublicKey;
     oldAuthority: PublicKey;
     newAuthority: PublicKey | null;
-}): TransactionInstruction {
+}
+
+export function createUpdateAuthorityInstruction(args: UpdateAuthorityInstructionArgs): TransactionInstruction {
     const { programId, metadata, oldAuthority, newAuthority } = args;
 
     const newAuthorityBuffer = Buffer.alloc(32);
@@ -141,12 +149,14 @@ export function createUpdateAuthorityInstruction(args: {
     });
 }
 
-export function createEmitInstruction(args: {
+export interface EmitInstructionArgs {
     programId: PublicKey;
     metadata: PublicKey;
     start?: bigint;
     end?: bigint;
-}): TransactionInstruction {
+}
+
+export function createEmitInstruction(args: EmitInstructionArgs): TransactionInstruction {
     const { programId, metadata, start, end } = args;
     return new TransactionInstruction({
         programId,
