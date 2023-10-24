@@ -12,7 +12,7 @@ version = "3.2.0"
 walkdir = "2"
 
 [dependencies]
-base64 = "0.21.4"
+base64 = "0.21.5"
 clap = "2.33.3"
 console = "0.15.7"
 serde = "1.0.189"
