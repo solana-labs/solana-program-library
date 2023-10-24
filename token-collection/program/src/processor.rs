@@ -18,9 +18,7 @@ use {
     },
     spl_token_group_interface::{
         error::TokenGroupError,
-        instruction::{
-            InitializeGroup, TokenGroupInstruction, UpdateGroupAuthority, UpdateGroupMaxSize,
-        },
+        instruction::{InitializeGroup, TokenGroupInstruction},
         state::{TokenGroup, TokenGroupMember},
     },
     spl_token_metadata_interface::state::TokenMetadata,
@@ -93,54 +91,6 @@ pub fn process_initialize_collection(
     Ok(())
 }
 
-/// Processes an
-/// [UpdateGroupMaxSize](enum.GroupInterfaceInstruction.html)
-/// instruction to update the max size of a collection.
-pub fn process_update_collection_max_size(
-    _program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    data: UpdateGroupMaxSize,
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-
-    let collection_info = next_account_info(account_info_iter)?;
-    let update_authority_info = next_account_info(account_info_iter)?;
-
-    let mut buffer = collection_info.try_borrow_mut_data()?;
-    let mut state = TlvStateMut::unpack(&mut buffer)?;
-    let collection = state.get_first_value_mut::<TokenGroup>()?;
-
-    check_update_authority(update_authority_info, &collection.update_authority)?;
-
-    collection.update_max_size(data.max_size.into())?;
-
-    Ok(())
-}
-
-/// Processes an
-/// [UpdateGroupAuthority](enum.GroupInterfaceInstruction.html)
-/// instruction to update the authority of a collection.
-pub fn process_update_collection_authority(
-    _program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    data: UpdateGroupAuthority,
-) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-
-    let collection_info = next_account_info(account_info_iter)?;
-    let update_authority_info = next_account_info(account_info_iter)?;
-
-    let mut buffer = collection_info.try_borrow_mut_data()?;
-    let mut state = TlvStateMut::unpack(&mut buffer)?;
-    let collection = state.get_first_value_mut::<TokenGroup>()?;
-
-    check_update_authority(update_authority_info, &collection.update_authority)?;
-
-    collection.update_authority = data.new_authority;
-
-    Ok(())
-}
-
 /// Processes an [InitializeMember](enum.GroupInterfaceInstruction.html)
 /// instruction
 pub fn process_initialize_collection_member(
@@ -192,11 +142,17 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> P
         }
         TokenGroupInstruction::UpdateGroupMaxSize(data) => {
             msg!("Instruction: UpdateCollectionMaxSize");
-            process_update_collection_max_size(program_id, accounts, data)
+            // Same functionality as the example program
+            spl_token_group_example::processor::process_update_group_max_size(
+                program_id, accounts, data,
+            )
         }
         TokenGroupInstruction::UpdateGroupAuthority(data) => {
             msg!("Instruction: UpdateCollectionAuthority");
-            process_update_collection_authority(program_id, accounts, data)
+            // Same functionality as the example program
+            spl_token_group_example::processor::process_update_group_authority(
+                program_id, accounts, data,
+            )
         }
         TokenGroupInstruction::InitializeMember(_) => {
             msg!("Instruction: InitializeCollectionMember");
