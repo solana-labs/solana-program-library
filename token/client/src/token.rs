@@ -40,7 +40,7 @@ use {
                 self, account_info::WithheldTokensInfo, ConfidentialTransferFeeAmount,
                 ConfidentialTransferFeeConfig,
             },
-            cpi_guard, default_account_state, interest_bearing_mint, memo_transfer,
+            cpi_guard, default_account_state, group_pointer, interest_bearing_mint, memo_transfer,
             metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
             StateWithExtensionsOwned,
         },
@@ -178,6 +178,10 @@ pub enum ExtensionInitializationParams {
         authority: Option<Pubkey>,
         withdraw_withheld_authority_elgamal_pubkey: PodElGamalPubkey,
     },
+    GroupPointer {
+        authority: Option<Pubkey>,
+        group_address: Option<Pubkey>,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -195,6 +199,7 @@ impl ExtensionInitializationParams {
             Self::ConfidentialTransferFeeConfig { .. } => {
                 ExtensionType::ConfidentialTransferFeeConfig
             }
+            Self::GroupPointer { .. } => ExtensionType::GroupPointer,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -286,6 +291,15 @@ impl ExtensionInitializationParams {
                     withdraw_withheld_authority_elgamal_pubkey,
                 )
             }
+            Self::GroupPointer {
+                authority,
+                group_address,
+            } => group_pointer::instruction::initialize(
+                token_program_id,
+                mint,
+                authority,
+                group_address,
+            ),
         }
     }
 }
@@ -1660,6 +1674,29 @@ where
                 authority,
                 &multisig_signers,
                 new_metadata_address,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Update group pointer address
+    pub async fn update_group_address<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        new_group_address: Option<Pubkey>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        self.process_ixs(
+            &[group_pointer::instruction::update(
+                &self.program_id,
+                self.get_address(),
+                authority,
+                &multisig_signers,
+                new_group_address,
             )?],
             signing_keypairs,
         )

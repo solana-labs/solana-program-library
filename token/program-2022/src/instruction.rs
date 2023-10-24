@@ -670,6 +670,12 @@ pub enum TokenInstruction<'a> {
     /// for further details about the extended instructions that share this instruction
     /// prefix
     MetadataPointerExtension,
+    /// The common instruction prefix for group pointer extension instructions.
+    ///
+    /// See `extension::group_pointer::instruction::GroupPointerInstruction`
+    /// for further details about the extended instructions that share this instruction
+    /// prefix
+    GroupPointerExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -809,6 +815,7 @@ impl<'a> TokenInstruction<'a> {
             37 => Self::ConfidentialTransferFeeExtension,
             38 => Self::WithdrawExcessLamports,
             39 => Self::MetadataPointerExtension,
+            40 => Self::GroupPointerExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -974,6 +981,9 @@ impl<'a> TokenInstruction<'a> {
             &Self::MetadataPointerExtension => {
                 buf.push(39);
             }
+            &Self::GroupPointerExtension => {
+                buf.push(40);
+            }
         };
         buf
     }
@@ -1067,6 +1077,8 @@ pub enum AuthorityType {
     ConfidentialTransferFeeConfig,
     /// Authority to set the metadata address
     MetadataPointer,
+    /// Authority to set the group address
+    GroupPointer,
 }
 
 impl AuthorityType {
@@ -1085,6 +1097,7 @@ impl AuthorityType {
             AuthorityType::TransferHookProgramId => 10,
             AuthorityType::ConfidentialTransferFeeConfig => 11,
             AuthorityType::MetadataPointer => 12,
+            AuthorityType::GroupPointer => 13,
         }
     }
 
@@ -1103,6 +1116,7 @@ impl AuthorityType {
             10 => Ok(AuthorityType::TransferHookProgramId),
             11 => Ok(AuthorityType::ConfidentialTransferFeeConfig),
             12 => Ok(AuthorityType::MetadataPointer),
+            13 => Ok(AuthorityType::GroupPointer),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
