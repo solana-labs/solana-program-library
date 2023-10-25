@@ -39,8 +39,8 @@ use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
         confidential_transfer::{
-            account_info::WithdrawAccountInfo, ConfidentialTransferAccount,
-            ConfidentialTransferMint,
+            account_info::{ApplyPendingBalanceAccountInfo, WithdrawAccountInfo},
+            ConfidentialTransferAccount, ConfidentialTransferMint,
         },
         confidential_transfer_fee::ConfidentialTransferFeeConfig,
         cpi_guard::CpiGuard,
@@ -3367,11 +3367,14 @@ async fn command_apply_pending_balance(
     let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
     let token = token_client_from_config(config, &state_with_extension.base.mint, None)?;
 
+    let extension_state = state_with_extension.get_extension::<ConfidentialTransferAccount>()?;
+    let account_info = ApplyPendingBalanceAccountInfo::new(extension_state);
+
     let res = token
         .confidential_transfer_apply_pending_balance(
             &token_account_address,
             &owner,
-            None,
+            Some(account_info),
             elgamal_keypair.secret(),
             aes_key,
             &bulk_signers,
