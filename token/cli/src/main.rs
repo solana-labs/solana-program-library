@@ -1606,11 +1606,11 @@ async fn command_transfer(
                     && expected_auditor_elgamal_pubkey != args.auditor_elgamal_pubkey
                 {
                     return Err(format!(
-                        "Mint {} has confidential transfer authority {}, but {} was provided",
+                        "Mint {} has confidential transfer auditor {}, but {} was provided",
                         token_pubkey,
                         expected_auditor_elgamal_pubkey
                             .map(|pubkey| pubkey.to_string())
-                            .unwrap_or_else(|| "auditor disabled".to_string()),
+                            .unwrap_or_else(|| "disabled".to_string()),
                         args.auditor_elgamal_pubkey.unwrap(),
                     )
                     .into());
