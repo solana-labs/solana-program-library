@@ -12,7 +12,7 @@ use {
         instruction::AccountMeta,
         pubkey::Pubkey,
         signature::{Signature, Signer},
-        system_instruction,
+        system_instruction, system_program,
         transaction::Transaction,
     },
     spl_tlv_account_resolution::state::ExtraAccountMetaList,
@@ -83,11 +83,13 @@ async fn process_create_extra_account_metas(
         .get_minimum_balance_for_rent_exemption(account_size)
         .await
         .map_err(|err| format!("error: unable to fetch rent-exemption: {err}"))?;
-    let current_lamports = rpc_client
-        .get_account(&extra_account_metas_address)
-        .await
-        .map(|a| a.lamports)
-        .unwrap_or(0);
+    let extra_account_metas_account = rpc_client.get_account(&extra_account_metas_address).await;
+    if let Ok(account) = &extra_account_metas_account {
+        if account.owner != system_program::id() {
+            return Err(format!("error: extra account metas for mint {token} and program {program_id} already exists").into());
+        }
+    }
+    let current_lamports = extra_account_metas_account.map(|a| a.lamports).unwrap_or(0);
     let transfer_lamports = required_lamports.saturating_sub(current_lamports);
 
     let mut ixs = vec![];
@@ -174,7 +176,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("JSON RPC URL for the cluster [default: value from configuration file]"),
         )
         .subcommand(
-            Command::new("create-extra-account-metas")
+            Command::new("create-extra-metas")
                 .about("Create the extra account metas account for a transfer hook program")
                 .arg(
                     Arg::with_name("program_id")
@@ -262,7 +264,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         RpcClient::new_with_commitment(config.json_rpc_url.clone(), config.commitment_config);
 
     match (command, matches) {
-        ("create-extra-account-metas", arg_matches) => {
+        ("create-extra-metas", arg_matches) => {
             let program_id = pubkey_of_signer(arg_matches, "program_id", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
