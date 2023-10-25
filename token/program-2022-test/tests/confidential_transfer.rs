@@ -2463,10 +2463,10 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
             transfer_context_state_accounts,
             &equality_proof_data,
             &ciphertext_validity_proof_data,
-            None,
-            &equality_proof_context_state_account,
-            &ciphertext_validity_proof_context_state_account,
-            None,
+            &[
+                &equality_proof_context_state_account,
+                &ciphertext_validity_proof_context_state_account,
+            ],
         )
         .await
         .unwrap();
