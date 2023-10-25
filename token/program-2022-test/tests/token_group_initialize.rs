@@ -131,7 +131,7 @@ async fn success_initialize() {
             &payer_pubkey,
             &token_context.mint_authority.pubkey(),
             &update_authority,
-            max_size,
+            12, // Change so we get a different transaction
             &[&token_context.mint_authority],
         )
         .await
@@ -140,7 +140,7 @@ async fn success_initialize() {
         error,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
             TransactionError::InstructionError(
-                1,
+                0, // No additional rent
                 InstructionError::Custom(TokenError::ExtensionAlreadyInitialized as u32)
             )
         )))

@@ -5,8 +5,8 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
-            group_pointer::GroupPointer, BaseStateWithExtensions, ExtensionType,
-            StateWithExtensions, StateWithExtensionsMut,
+            alloc_and_serialize, group_pointer::GroupPointer, BaseStateWithExtensions,
+            StateWithExtensions,
         },
         state::Mint,
     },
@@ -24,16 +24,6 @@ use {
         state::TokenGroup,
     },
 };
-
-fn realloc_mint(mint_info: &AccountInfo, extension: ExtensionType) -> Result<(), ProgramError> {
-    let extension_len = extension.try_get_tlv_len()?;
-    let new_account_len = mint_info
-        .data_len()
-        .checked_add(extension_len)
-        .ok_or::<ProgramError>(TokenError::Overflow.into())?;
-    mint_info.realloc(new_account_len, false)?;
-    Ok(())
-}
 
 /// Processes a [InitializeGroup](enum.TokenGroupInstruction.html) instruction.
 pub fn process_initialize_group(
@@ -78,15 +68,10 @@ pub fn process_initialize_group(
         }
     }
 
-    // Reallocate the mint for the new extension
-    realloc_mint(mint_info, ExtensionType::TokenGroup)?;
-
     // Allocate a TLV entry for the space and write it in
     // Assumes that there's enough SOL for the new rent-exemption
-    let mut mint_data = mint_info.try_borrow_mut_data()?;
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
-    let group = mint.init_extension::<TokenGroup>(false)?;
-    *group = TokenGroup::new(mint_info.key, data.update_authority, data.max_size.into());
+    let group = TokenGroup::new(mint_info.key, data.update_authority, data.max_size.into());
+    alloc_and_serialize::<Mint, TokenGroup>(group_info, &group, false)?;
 
     Ok(())
 }

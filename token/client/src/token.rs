@@ -43,8 +43,8 @@ use {
                 ConfidentialTransferFeeConfig,
             },
             cpi_guard, default_account_state, group_pointer, interest_bearing_mint, memo_transfer,
-            metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
-            StateWithExtensions, StateWithExtensionsOwned,
+            metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, Extension,
+            ExtensionType, StateWithExtensionsOwned,
         },
         instruction, offchain,
         proof::ProofLocation,
@@ -3678,14 +3678,18 @@ where
     ) -> TokenResult<u64> {
         let account = self.get_account(self.pubkey).await?;
         let account_lamports = account.lamports;
-        let mint_state = StateWithExtensions::<Mint>::unpack(&account.data)?;
-        let new_account_len = mint_state.try_get_new_account_len::<V>(size_of::<V>())?;
-        let new_rent_exempt_minimum = self
-            .client
-            .get_minimum_balance_for_rent_exemption(new_account_len)
-            .await
-            .map_err(TokenError::Client)?;
-        Ok(new_rent_exempt_minimum.saturating_sub(account_lamports))
+        let mint_state = self.unpack_mint_info(account)?;
+        if mint_state.get_extension::<V>().is_ok() {
+            Ok(0)
+        } else {
+            let new_account_len = mint_state.try_get_new_account_len::<V>()?;
+            let new_rent_exempt_minimum = self
+                .client
+                .get_minimum_balance_for_rent_exemption(new_account_len)
+                .await
+                .map_err(TokenError::Client)?;
+            Ok(new_rent_exempt_minimum.saturating_sub(account_lamports))
+        }
     }
 
     /// Initialize token-group on a mint
