@@ -38,7 +38,10 @@ use solana_sdk::{
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
-        confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+        confidential_transfer::{
+            account_info::WithdrawAccountInfo, ConfidentialTransferAccount,
+            ConfidentialTransferMint,
+        },
         confidential_transfer_fee::ConfidentialTransferFeeConfig,
         cpi_guard::CpiGuard,
         default_account_state::DefaultAccountState,
@@ -1581,6 +1584,9 @@ async fn command_transfer(
         confidential_transfer_args
     {
         if !config.sign_only {
+            // we can use the mint data from the start of the function, but will require
+            // non-trivial amount of refactoring the code due to ownership; for now, we fetch the mint
+            // a second time. This can potentially be optimized in the future.
             let confidential_transfer_mint = config.get_account_checked(&token_pubkey).await?;
             let mint_state =
                 StateWithExtensionsOwned::<Mint>::unpack(confidential_transfer_mint.data)
@@ -3241,11 +3247,7 @@ async fn command_deposit_withdraw_confidential_tokens(
 
     // the amount we will deposit or withdraw, as a u64
     let amount = if !config.sign_only && instruction_type == ConfidentialInstructionType::Deposit {
-        let current_balance = token
-            .get_account_info(&token_account_address)
-            .await?
-            .base
-            .amount;
+        let current_balance = state_with_extension.base.amount;
         let deposit_amount = maybe_amount.unwrap_or(current_balance);
 
         println_display(
@@ -3304,6 +3306,10 @@ async fn command_deposit_withdraw_confidential_tokens(
         let elgamal_keypair = elgamal_keypair.expect("ElGamal keypair must be provided");
         let aes_key = aes_key.expect("AES key must be provided");
 
+        let extension_state =
+            state_with_extension.get_extension::<ConfidentialTransferAccount>()?;
+        let withdraw_account_info = WithdrawAccountInfo::new(extension_state);
+
         token
             .confidential_transfer_withdraw(
                 &token_account_address,
@@ -3311,7 +3317,7 @@ async fn command_deposit_withdraw_confidential_tokens(
                 None,
                 amount,
                 decimals,
-                None,
+                Some(withdraw_account_info),
                 elgamal_keypair,
                 aes_key,
                 &bulk_signers,
