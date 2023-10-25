@@ -58,6 +58,7 @@ members = [
   "token/program",
   "token/program-2022",
   "token/program-2022-test",
+  "token/transfer-hook/cli",
   "token/transfer-hook/example",
   "token/transfer-hook/interface",
   "token/client",
