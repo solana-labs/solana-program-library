@@ -2379,14 +2379,16 @@ where
                 &equality_and_ciphertext_signers,
             );
 
+        let mut range_proof_signers = vec![source_authority_keypair, range_proof_account_keypair];
+        if let Some(context_state_authority_keypair) = &context_state_authority_keypair {
+            range_proof_signers.push(context_state_authority_keypair);
+        }
         let transfer_with_range_proof = self
             .create_range_proof_context_state_for_transfer_parallel(
                 context_state_accounts,
                 &range_proof_data,
                 &transfer_instruction,
-                Some(source_authority_keypair),
-                range_proof_account_keypair,
-                context_state_authority_keypair,
+                &range_proof_signers,
             );
 
         try_join!(
@@ -2516,64 +2518,46 @@ where
     }
 
     /// Create a range proof context state account for a confidential transfer.
-    pub async fn create_range_proof_context_state_for_transfer<S: Signer>(
+    pub async fn create_range_proof_context_state_for_transfer<S: Signers>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
-        source_authority_keypair: Option<&S>,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_range_proof_context_state_with_optional_transfer(
             context_state_accounts,
             range_proof_data,
             None,
-            source_authority_keypair,
-            range_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
 
     /// Create a range proof context state account with a confidential transfer instruction.
-    pub async fn create_range_proof_context_state_for_transfer_parallel<S: Signer>(
+    pub async fn create_range_proof_context_state_for_transfer_parallel<S: Signers>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
         transfer_instruction: &Instruction,
-        source_authority_keypair: Option<&S>,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_range_proof_context_state_with_optional_transfer(
             context_state_accounts,
             range_proof_data,
             Some(transfer_instruction),
-            source_authority_keypair,
-            range_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
 
     /// Create a range proof context state account and an optional confidential transfer instruction.
-    async fn create_range_proof_context_state_with_optional_transfer<S: Signer>(
+    async fn create_range_proof_context_state_with_optional_transfer<S: Signers>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
         transfer_instruction: Option<&Instruction>,
-        source_authority_keypair: Option<&S>,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let mut signers = vec![range_proof_account_keypair];
-        if let Some(source_authority_keypair) = source_authority_keypair {
-            signers.push(source_authority_keypair);
-        }
-        if let Some(context_state_authority_keypair) = context_state_authority_keypair {
-            signers.push(context_state_authority_keypair);
-        }
-
         let instruction_type = ProofInstruction::VerifyBatchedRangeProofU128;
         let space = size_of::<ProofContextState<BatchedRangeProofContext>>();
         let rent = self
@@ -2602,7 +2586,7 @@ where
             instructions.push(transfer_instruction.clone());
         }
 
-        self.process_ixs(&instructions, &signers).await
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Close a ZK Token proof program context state

@@ -2475,9 +2475,7 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
         .create_range_proof_context_state_for_transfer(
             transfer_context_state_accounts,
             &range_proof_data,
-            None,
-            &range_proof_context_state_account,
-            None,
+            &[&range_proof_context_state_account],
         )
         .await
         .unwrap();
