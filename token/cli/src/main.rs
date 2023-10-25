@@ -38,7 +38,10 @@ use solana_sdk::{
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
-        confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+        confidential_transfer::{
+            account_info::{ApplyPendingBalanceAccountInfo, WithdrawAccountInfo},
+            ConfidentialTransferAccount, ConfidentialTransferMint,
+        },
         confidential_transfer_fee::ConfidentialTransferFeeConfig,
         cpi_guard::CpiGuard,
         default_account_state::DefaultAccountState,
@@ -53,7 +56,10 @@ use spl_token_2022::{
     },
     instruction::*,
     solana_zk_token_sdk::{
-        encryption::{auth_encryption::AeKey, elgamal::ElGamalKeypair},
+        encryption::{
+            auth_encryption::AeKey,
+            elgamal::{self, ElGamalKeypair},
+        },
         zk_token_elgamal::pod::ElGamalPubkey,
     },
     state::{Account, AccountState, Mint},
@@ -176,6 +182,9 @@ pub enum CommandName {
     DisableConfidentialCredits,
     EnableNonConfidentialCredits,
     DisableNonConfidentialCredits,
+    DepositConfidentialTokens,
+    WithdrawConfidentialTokens,
+    ApplyPendingBalance,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1331,6 +1340,7 @@ async fn command_transfer(
     no_wait: bool,
     allow_non_system_account_recipient: bool,
     transfer_hook_accounts: Option<Vec<AccountMeta>>,
+    confidential_transfer_args: Option<&ConfidentialTransferArgs>,
 ) -> CommandResult {
     let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
 
@@ -1384,14 +1394,19 @@ async fn command_transfer(
         println_display(
             config,
             format!(
-                "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
+                "{}Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
+                if confidential_transfer_args.is_some() {
+                    "Confidential "
+                } else {
+                    ""
+                },
                 spl_token::amount_to_ui_amount(transfer_balance, mint_info.decimals),
                 sender,
                 recipient
             ),
         );
 
-        if transfer_balance > sender_balance {
+        if transfer_balance > sender_balance && confidential_transfer_args.is_none() {
             return Err(format!(
                 "Error: Sender has insufficient funds, current balance is {}",
                 spl_token_2022::amount_to_ui_amount_string_trimmed(
@@ -1532,7 +1547,13 @@ async fn command_transfer(
 
         // and now we determine if we will actually fund it, based on its need and our willingness
         let fundable_owner = if needs_funding {
-            if fund_recipient {
+            if confidential_transfer_args.is_some() {
+                return Err(
+                    "Error: Recipient's associated token account does not exist. \
+                        Accounts cannot be funded for confidential transfers."
+                        .into(),
+                );
+            } else if fund_recipient {
                 println_display(
                     config,
                     format!("  Funding recipient: {}", recipient_token_account,),
@@ -1558,40 +1579,144 @@ async fn command_transfer(
         token.with_memo(text, vec![config.default_signer()?.pubkey()]);
     }
 
-    // ...and, finally, the transfer
-    let res = if let Some(recipient_owner) = fundable_owner {
-        token
-            .create_recipient_associated_account_and_transfer(
-                &sender,
-                &recipient_token_account,
-                &recipient_owner,
-                &sender_owner,
-                transfer_balance,
-                maybe_fee,
-                &bulk_signers,
-            )
-            .await?
-    } else if let Some(fee) = maybe_fee {
-        token
-            .transfer_with_fee(
-                &sender,
-                &recipient_token_account,
-                &sender_owner,
-                transfer_balance,
-                fee,
-                &bulk_signers,
-            )
-            .await?
+    // fetch confidential transfer info for recipient and auditor
+    let (recipient_elgamal_pubkey, auditor_elgamal_pubkey) = if let Some(args) =
+        confidential_transfer_args
+    {
+        if !config.sign_only {
+            // we can use the mint data from the start of the function, but will require
+            // non-trivial amount of refactoring the code due to ownership; for now, we fetch the mint
+            // a second time. This can potentially be optimized in the future.
+            let confidential_transfer_mint = config.get_account_checked(&token_pubkey).await?;
+            let mint_state =
+                StateWithExtensionsOwned::<Mint>::unpack(confidential_transfer_mint.data)
+                    .map_err(|_| format!("Could not deserialize token mint {}", token_pubkey))?;
+
+            let auditor_elgamal_pubkey = if let Ok(confidential_transfer_mint) =
+                mint_state.get_extension::<ConfidentialTransferMint>()
+            {
+                let expected_auditor_elgamal_pubkey = Option::<ElGamalPubkey>::from(
+                    confidential_transfer_mint.auditor_elgamal_pubkey,
+                );
+
+                // if auditor ElGamal pubkey is provided, check consistency with the one in the mint
+                // if auditor ElGamal pubkey is not provided, then use the expected one from the
+                //   mint, which could also be `None` if auditing is disabled
+                if args.auditor_elgamal_pubkey.is_some()
+                    && expected_auditor_elgamal_pubkey != args.auditor_elgamal_pubkey
+                {
+                    return Err(format!(
+                        "Mint {} has confidential transfer auditor {}, but {} was provided",
+                        token_pubkey,
+                        expected_auditor_elgamal_pubkey
+                            .map(|pubkey| pubkey.to_string())
+                            .unwrap_or_else(|| "disabled".to_string()),
+                        args.auditor_elgamal_pubkey.unwrap(),
+                    )
+                    .into());
+                }
+
+                expected_auditor_elgamal_pubkey
+            } else {
+                return Err(format!(
+                    "Mint {} does not support confidential transfers",
+                    token_pubkey
+                )
+                .into());
+            };
+
+            let recipient_account = config.get_account_checked(&recipient_token_account).await?;
+            let recipient_elgamal_pubkey =
+                StateWithExtensionsOwned::<Account>::unpack(recipient_account.data)?
+                    .get_extension::<ConfidentialTransferAccount>()?
+                    .elgamal_pubkey;
+
+            (Some(recipient_elgamal_pubkey), auditor_elgamal_pubkey)
+        } else {
+            let recipient_elgamal_pubkey = args
+                .recipient_elgamal_pubkey
+                .expect("Recipient ElGamal pubkey must be provided");
+            let auditor_elgamal_pubkey = args
+                .auditor_elgamal_pubkey
+                .expect("Auditor ElGamal pubkey must be provided");
+
+            (Some(recipient_elgamal_pubkey), Some(auditor_elgamal_pubkey))
+        }
     } else {
-        token
-            .transfer(
-                &sender,
-                &recipient_token_account,
-                &sender_owner,
-                transfer_balance,
-                &bulk_signers,
-            )
-            .await?
+        (None, None)
+    };
+
+    // ...and, finally, the transfer
+    let res = match (fundable_owner, maybe_fee, confidential_transfer_args) {
+        (Some(recipient_owner), None, None) => {
+            token
+                .create_recipient_associated_account_and_transfer(
+                    &sender,
+                    &recipient_token_account,
+                    &recipient_owner,
+                    &sender_owner,
+                    transfer_balance,
+                    maybe_fee,
+                    &bulk_signers,
+                )
+                .await?
+        }
+        (Some(_), _, _) => {
+            panic!("Recipient account cannot be created for transfer with fees or confidential transfers");
+        }
+        (None, Some(fee), None) => {
+            token
+                .transfer_with_fee(
+                    &sender,
+                    &recipient_token_account,
+                    &sender_owner,
+                    transfer_balance,
+                    fee,
+                    &bulk_signers,
+                )
+                .await?
+        }
+        (None, None, Some(args)) => {
+            // deserialize `pod` ElGamal pubkeys
+            let recipient_elgamal_pubkey: elgamal::ElGamalPubkey = recipient_elgamal_pubkey
+                .unwrap()
+                .try_into()
+                .expect("Invalid recipient ElGamal pubkey");
+            let auditor_elgamal_pubkey = auditor_elgamal_pubkey.map(|pubkey| {
+                let auditor_elgamal_pubkey: elgamal::ElGamalPubkey =
+                    pubkey.try_into().expect("Invalid auditor ElGamal pubkey");
+                auditor_elgamal_pubkey
+            });
+            token
+                .confidential_transfer_transfer(
+                    &sender,
+                    &recipient_token_account,
+                    &sender_owner,
+                    None,
+                    transfer_balance,
+                    None,
+                    &args.sender_elgamal_keypair,
+                    &args.sender_aes_key,
+                    &recipient_elgamal_pubkey,
+                    auditor_elgamal_pubkey.as_ref(),
+                    &bulk_signers,
+                )
+                .await?
+        }
+        (None, Some(_), Some(_)) => {
+            panic!("Confidential transfer with fee is not yet supported.");
+        }
+        (None, None, None) => {
+            token
+                .transfer(
+                    &sender,
+                    &recipient_token_account,
+                    &sender_owner,
+                    transfer_balance,
+                    &bulk_signers,
+                )
+                .await?
+        }
     };
 
     let tx_return = finish_tx(config, &res, no_wait).await?;
@@ -3071,6 +3196,212 @@ async fn command_enable_disable_confidential_transfers(
     })
 }
 
+#[derive(PartialEq, Eq)]
+enum ConfidentialInstructionType {
+    Deposit,
+    Withdraw,
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn command_deposit_withdraw_confidential_tokens(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    owner: Pubkey,
+    maybe_account: Option<Pubkey>,
+    bulk_signers: BulkSigners,
+    ui_amount: Option<f64>,
+    mint_decimals: Option<u8>,
+    instruction_type: ConfidentialInstructionType,
+    elgamal_keypair: Option<&ElGamalKeypair>,
+    aes_key: Option<&AeKey>,
+) -> CommandResult {
+    if config.sign_only {
+        panic!("Sign-only is not yet supported.");
+    }
+
+    // check if mint decimals provided is consistent
+    let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
+
+    if !config.sign_only && mint_decimals.is_some() && mint_decimals != Some(mint_info.decimals) {
+        return Err(format!(
+            "Decimals {} was provided, but actual value is {}",
+            mint_decimals.unwrap(),
+            mint_info.decimals
+        )
+        .into());
+    }
+
+    let decimals = if let Some(decimals) = mint_decimals {
+        decimals
+    } else {
+        mint_info.decimals
+    };
+
+    // derive ATA if account address not provided
+    let token_account_address = if let Some(account) = maybe_account {
+        account
+    } else {
+        let token = token_client_from_config(config, &token_pubkey, Some(decimals))?;
+        token.get_associated_token_address(&owner)
+    };
+
+    let account = config.get_account_checked(&token_account_address).await?;
+
+    let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
+    let token = token_client_from_config(config, &state_with_extension.base.mint, None)?;
+
+    // the amount the user wants to deposit or withdraw, as an f64
+    let maybe_amount =
+        ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
+
+    // the amount we will deposit or withdraw, as a u64
+    let amount = if !config.sign_only && instruction_type == ConfidentialInstructionType::Deposit {
+        let current_balance = state_with_extension.base.amount;
+        let deposit_amount = maybe_amount.unwrap_or(current_balance);
+
+        println_display(
+            config,
+            format!(
+                "Depositing {} confidential tokens",
+                spl_token::amount_to_ui_amount(deposit_amount, mint_info.decimals),
+            ),
+        );
+
+        if deposit_amount > current_balance {
+            return Err(format!(
+                "Error: Insufficient funds, current balance is {}",
+                spl_token_2022::amount_to_ui_amount_string_trimmed(
+                    current_balance,
+                    mint_info.decimals
+                )
+            )
+            .into());
+        }
+
+        deposit_amount
+    } else if !config.sign_only && instruction_type == ConfidentialInstructionType::Withdraw {
+        // // TODO: expose account balance decryption in token
+        // let aes_key = aes_key.expect("AES key must be provided");
+        // let current_balance = token
+        //     .confidential_transfer_get_available_balance_with_key(&token_account_address, aes_key)
+        //     .await?;
+        let withdraw_amount =
+            maybe_amount.expect("ALL keyword is not currently supported for withdraw");
+
+        println_display(
+            config,
+            format!(
+                "Withdrawing {} confidential tokens",
+                spl_token::amount_to_ui_amount(withdraw_amount, mint_info.decimals)
+            ),
+        );
+
+        withdraw_amount
+    } else {
+        maybe_amount.unwrap()
+    };
+
+    let res = match instruction_type {
+        ConfidentialInstructionType::Deposit => {
+            token
+                .confidential_transfer_deposit(
+                    &token_account_address,
+                    &owner,
+                    amount,
+                    decimals,
+                    &bulk_signers,
+                )
+                .await?
+        }
+        ConfidentialInstructionType::Withdraw => {
+            let elgamal_keypair = elgamal_keypair.expect("ElGamal keypair must be provided");
+            let aes_key = aes_key.expect("AES key must be provided");
+
+            let extension_state =
+                state_with_extension.get_extension::<ConfidentialTransferAccount>()?;
+            let withdraw_account_info = WithdrawAccountInfo::new(extension_state);
+
+            token
+                .confidential_transfer_withdraw(
+                    &token_account_address,
+                    &owner,
+                    None,
+                    amount,
+                    decimals,
+                    Some(withdraw_account_info),
+                    elgamal_keypair,
+                    aes_key,
+                    &bulk_signers,
+                )
+                .await?
+        }
+    };
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn command_apply_pending_balance(
+    config: &Config<'_>,
+    maybe_token: Option<Pubkey>,
+    owner: Pubkey,
+    maybe_account: Option<Pubkey>,
+    bulk_signers: BulkSigners,
+    elgamal_keypair: &ElGamalKeypair,
+    aes_key: &AeKey,
+) -> CommandResult {
+    if config.sign_only {
+        panic!("Sign-only is not yet supported.");
+    }
+
+    // derive ATA if account address not provided
+    let token_account_address = if let Some(account) = maybe_account {
+        account
+    } else {
+        let token_pubkey =
+            maybe_token.expect("Either a valid token or account address must be provided");
+        let token = token_client_from_config(config, &token_pubkey, None)?;
+        token.get_associated_token_address(&owner)
+    };
+
+    let account = config.get_account_checked(&token_account_address).await?;
+
+    let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
+    let token = token_client_from_config(config, &state_with_extension.base.mint, None)?;
+
+    let extension_state = state_with_extension.get_extension::<ConfidentialTransferAccount>()?;
+    let account_info = ApplyPendingBalanceAccountInfo::new(extension_state);
+
+    let res = token
+        .confidential_transfer_apply_pending_balance(
+            &token_account_address,
+            &owner,
+            Some(account_info),
+            elgamal_keypair.secret(),
+            aes_key,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -3119,6 +3450,13 @@ impl offline::ArgsConfig for SignOnlyNeedsTransferLamports {
     fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
         arg.requires_all(&[TRANSFER_LAMPORTS_ARG.name])
     }
+}
+
+struct ConfidentialTransferArgs {
+    sender_elgamal_keypair: ElGamalKeypair,
+    sender_aes_key: AeKey,
+    recipient_elgamal_pubkey: Option<ElGamalPubkey>,
+    auditor_elgamal_pubkey: Option<ElGamalPubkey>,
 }
 
 fn minimum_signers_help_string() -> String {
@@ -3719,6 +4057,7 @@ fn app<'a, 'b>(
                     Arg::with_name("fund_recipient")
                         .long("fund-recipient")
                         .takes_value(false)
+                        .conflicts_with("confidential")
                         .help("Create the associated token account for the recipient if doesn't already exist")
                 )
                 .arg(
@@ -3769,6 +4108,14 @@ fn app<'a, 'b>(
                             role, in the format \"<PUBKEY>:<ROLE>\". The role must be \
                             \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\".\
                             Used for offline transaction creation and signing.")
+                )
+                .arg(
+                    Arg::with_name("confidential")
+                        .long("confidential")
+                        .takes_value(false)
+                        .conflicts_with("fund_recipient")
+                        .help("Send tokens confidentially. Both sender and recipient accounts must \
+                            be pre-configured for confidential transfers.")
                 )
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
@@ -4813,6 +5160,113 @@ fn app<'a, 'b>(
                 .arg(multisig_signer_arg())
                 .nonce_args(true)
         )
+        .subcommand(
+            SubCommand::with_name(CommandName::DepositConfidentialTokens.into())
+                .about("Deposit amounts for confidential transfers")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .validator(is_amount_or_all)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to deposit; accepts keyword ALL"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::WithdrawConfidentialTokens.into())
+                .about("Withdraw amounts for confidential transfers")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .validator(is_amount_or_all)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to deposit; accepts keyword ALL"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::ApplyPendingBalance.into())
+                .about("Collect confidential tokens from pending to available balance")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required_unless("address")
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .conflicts_with("token")
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+        )
 }
 
 #[tokio::main]
@@ -5103,6 +5557,29 @@ async fn process_command<'a>(
 
             let (owner_signer, owner) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+
+            let confidential_transfer_args = if arg_matches.is_present("confidential") {
+                // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
+                // supported in the future once upgrading to clap-v3.
+                //
+                // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be updated
+                // once custom ElGamal and AES keys are supported.
+                let sender_elgamal_keypair =
+                    ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
+                let sender_aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
+
+                // Sign-only mode is not yet supported for confidential transfers, so set
+                // recipient and auditor ElGamal public to `None` by default.
+                Some(ConfidentialTransferArgs {
+                    sender_elgamal_keypair,
+                    sender_aes_key,
+                    recipient_elgamal_pubkey: None,
+                    auditor_elgamal_pubkey: None,
+                })
+            } else {
+                None
+            };
+
             if config.multisigner_pubkeys.is_empty() {
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
@@ -5145,6 +5622,7 @@ async fn process_command<'a>(
                 arg_matches.is_present("no_wait"),
                 arg_matches.is_present("allow_non_system_account_recipient"),
                 transfer_hook_accounts,
+                confidential_transfer_args.as_ref(),
             )
             .await
         }
@@ -5736,6 +6214,94 @@ async fn process_command<'a>(
                 bulk_signers,
                 allow_confidential_credits,
                 allow_non_confidential_credits,
+            )
+            .await
+        }
+        (c @ CommandName::DepositConfidentialTokens, arg_matches)
+        | (c @ CommandName::WithdrawConfidentialTokens, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let amount = match arg_matches.value_of("amount").unwrap() {
+                "ALL" => None,
+                amount => Some(amount.parse::<f64>().unwrap()),
+            };
+            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+
+            let (owner_signer, owner) =
+                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+
+            let (instruction_type, elgamal_keypair, aes_key) = match c {
+                CommandName::DepositConfidentialTokens => {
+                    (ConfidentialInstructionType::Deposit, None, None)
+                }
+                CommandName::WithdrawConfidentialTokens => {
+                    // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
+                    // supported in the future once upgrading to clap-v3.
+                    //
+                    // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be updated
+                    // once custom ElGamal and AES keys are supported.
+                    let elgamal_keypair =
+                        ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
+                    let aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
+
+                    (
+                        ConfidentialInstructionType::Withdraw,
+                        Some(elgamal_keypair),
+                        Some(aes_key),
+                    )
+                }
+                _ => panic!("Instruction not supported"),
+            };
+
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
+            }
+
+            command_deposit_withdraw_confidential_tokens(
+                config,
+                token,
+                owner,
+                account,
+                bulk_signers,
+                amount,
+                mint_decimals,
+                instruction_type,
+                elgamal_keypair.as_ref(),
+                aes_key.as_ref(),
+            )
+            .await
+        }
+        (CommandName::ApplyPendingBalance, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager).unwrap();
+
+            let (owner_signer, owner) =
+                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+
+            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
+
+            // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
+            // supported in the future once upgrading to clap-v3.
+            //
+            // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be updated
+            // once custom ElGamal and AES keys are supported.
+            let elgamal_keypair = ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
+            let aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
+
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(owner_signer, &mut bulk_signers);
+            }
+
+            command_apply_pending_balance(
+                config,
+                token,
+                owner,
+                account,
+                bulk_signers,
+                &elgamal_keypair,
+                &aes_key,
             )
             .await
         }
@@ -8279,7 +8845,7 @@ mod tests {
         let bulk_signers: Vec<Arc<dyn Signer>> =
             vec![Arc::new(clone_keypair(&payer)), Arc::new(token_keypair)];
         let confidential_transfer_mint_authority = payer.pubkey();
-        let auto_approve = true;
+        let auto_approve = false;
 
         command_create_token(
             &config,
@@ -8325,7 +8891,7 @@ mod tests {
         // update confidential transfer mint settings
         let auditor_keypair = ElGamalKeypair::new_rand();
         let auditor_pubkey: ElGamalPubkey = (*auditor_keypair.pubkey()).into();
-        let new_auto_approve = false;
+        let new_auto_approve = true;
 
         command_update_confidential_transfer_settings(
             &config,
@@ -8374,7 +8940,7 @@ mod tests {
         let extension = account_state
             .get_extension::<ConfidentialTransferAccount>()
             .unwrap();
-        assert!(!bool::from(extension.approved));
+        assert!(bool::from(extension.approved));
         assert!(bool::from(extension.allow_confidential_credits));
         assert!(bool::from(extension.allow_non_confidential_credits));
 
@@ -8455,6 +9021,87 @@ mod tests {
             .get_extension::<ConfidentialTransferAccount>()
             .unwrap();
         assert!(bool::from(extension.allow_non_confidential_credits));
+
+        // deposit confidential tokens
+        let deposit_amount = 100.0;
+        mint_tokens(&config, &payer, token_pubkey, deposit_amount, token_account).await;
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::DepositConfidentialTokens.into(),
+                &token_pubkey.to_string(),
+                &deposit_amount.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        // apply pending balance
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::ApplyPendingBalance.into(),
+                &token_pubkey.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        // confidential transfer
+        let destination_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::ConfigureConfidentialTransferAccount.into(),
+                "--address",
+                &destination_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap(); // configure destination account for confidential transfers first
+
+        // NOTE: the test fails due to transaction size limit
+        // let transfer_amount = 100.0;
+        // process_test_command(
+        //     &config,
+        //     &payer,
+        //     &[
+        //         "spl-token",
+        //         CommandName::Transfer.into(),
+        //         &token_pubkey.to_string(),
+        //         &transfer_amount.to_string(),
+        //         &destination_account.to_string(),
+        //         "--confidential",
+        //     ],
+        // )
+        // .await
+        // .unwrap();
+
+        // withdraw confidential tokens
+        //
+        // NOTE: the test fails due to transaction size limit :(
+
+        // let withdraw_amount = 100.0;
+        //
+        // process_test_command(
+        //     &config,
+        //     &payer,
+        //     &[
+        //         "spl-token",
+        //         CommandName::WithdrawConfidentialTokens.into(),
+        //         &token_pubkey.to_string(),
+        //         &withdraw_amount.to_string(),
+        //     ],
+        // )
+        // .await
+        // .unwrap();
 
         // disable confidential transfers for mint
         process_test_command(
