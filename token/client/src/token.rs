@@ -2305,7 +2305,7 @@ where
     /// This function internally generates the ZK Token proof instructions to create the necessary
     /// proof context states.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_split_proofs_in_parallel<S: Signer>(
+    pub async fn confidential_transfer_transfer_with_split_proofs_in_parallel<S: Signers>(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2317,11 +2317,8 @@ where
         source_aes_key: &AeKey,
         destination_elgamal_pubkey: &ElGamalPubkey,
         auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
-        source_authority_keypair: &S,
-        equality_proof_account_keypair: &S,
-        ciphertext_validity_proof_account_keypair: &S,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        equality_and_ciphertext_validity_proof_signers: &S,
+        range_proof_signers: &S,
     ) -> TokenResult<(T::Output, T::Output)> {
         let account_info = if let Some(account_info) = account_info {
             account_info
@@ -2362,33 +2359,21 @@ where
             &source_decrypt_handles,
         )?;
 
-        let mut equality_and_ciphertext_signers = vec![
-            &source_authority_keypair,
-            &equality_proof_account_keypair,
-            &ciphertext_validity_proof_account_keypair,
-        ];
-        if let Some(context_state_authority_keypair) = &context_state_authority_keypair {
-            equality_and_ciphertext_signers.push(context_state_authority_keypair);
-        }
         let transfer_with_equality_and_ciphertext_validity = self
             .create_equality_and_ciphertext_validity_proof_context_states_for_transfer_parallel(
                 context_state_accounts,
                 &equality_proof_data,
                 &ciphertext_validity_proof_data,
                 &transfer_instruction,
-                &equality_and_ciphertext_signers,
+                equality_and_ciphertext_validity_proof_signers,
             );
 
-        let mut range_proof_signers = vec![source_authority_keypair, range_proof_account_keypair];
-        if let Some(context_state_authority_keypair) = &context_state_authority_keypair {
-            range_proof_signers.push(context_state_authority_keypair);
-        }
         let transfer_with_range_proof = self
             .create_range_proof_context_state_for_transfer_parallel(
                 context_state_accounts,
                 &range_proof_data,
                 &transfer_instruction,
-                &range_proof_signers,
+                range_proof_signers,
             );
 
         try_join!(

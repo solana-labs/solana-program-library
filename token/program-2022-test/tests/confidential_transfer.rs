@@ -2616,6 +2616,12 @@ async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() 
         close_split_context_state_accounts: None,
     };
 
+    let equality_signers = vec![
+        &alice,
+        &equality_proof_context_state_account,
+        &ciphertext_validity_proof_context_state_account,
+    ];
+    let range_proof_signers = vec![&alice, &range_proof_context_state_account];
     token
         .confidential_transfer_transfer_with_split_proofs_in_parallel(
             &alice_meta.token_account,
@@ -2628,11 +2634,8 @@ async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() 
             &alice_meta.aes_key,
             bob_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
-            &alice,
-            &equality_proof_context_state_account,
-            &ciphertext_validity_proof_context_state_account,
-            &range_proof_context_state_account,
-            None,
+            &equality_signers,
+            &range_proof_signers,
         )
         .await
         .unwrap();
