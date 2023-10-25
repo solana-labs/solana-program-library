@@ -1647,67 +1647,76 @@ async fn command_transfer(
     };
 
     // ...and, finally, the transfer
-    let res = if let Some(recipient_owner) = fundable_owner {
-        token
-            .create_recipient_associated_account_and_transfer(
-                &sender,
-                &recipient_token_account,
-                &recipient_owner,
-                &sender_owner,
-                transfer_balance,
-                maybe_fee,
-                &bulk_signers,
-            )
-            .await?
-    } else if maybe_fee.is_some() && confidential_transfer_args.is_none() {
-        token
-            .transfer_with_fee(
-                &sender,
-                &recipient_token_account,
-                &sender_owner,
-                transfer_balance,
-                maybe_fee.unwrap(),
-                &bulk_signers,
-            )
-            .await?
-    } else if maybe_fee.is_none() && confidential_transfer_args.is_some() {
-        // deserialize `pod` ElGamal pubkeys
-        let recipient_elgamal_pubkey: elgamal::ElGamalPubkey = recipient_elgamal_pubkey
-            .unwrap()
-            .try_into()
-            .expect("Invalid recipient ElGamal pubkey");
-        let auditor_elgamal_pubkey = auditor_elgamal_pubkey.map(|pubkey| {
-            let auditor_elgamal_pubkey: elgamal::ElGamalPubkey =
-                pubkey.try_into().expect("Invalid auditor ElGamal pubkey");
-            auditor_elgamal_pubkey
-        });
-        token
-            .confidential_transfer_transfer(
-                &sender,
-                &recipient_token_account,
-                &sender_owner,
-                None,
-                transfer_balance,
-                None,
-                &confidential_transfer_args.unwrap().sender_elgamal_keypair,
-                &confidential_transfer_args.unwrap().sender_aes_key,
-                &recipient_elgamal_pubkey,
-                auditor_elgamal_pubkey.as_ref(),
-                &bulk_signers,
-            )
-            .await?
-    } else if maybe_fee.is_some() && confidential_transfer_args.is_some() {
-        panic!("Confidential transfer with fee is not yet supported.");
-    } else {
-        token
-            .transfer(
-                &sender,
-                &recipient_token_account,
-                &sender_owner,
-                transfer_balance,
-                &bulk_signers,
-            )
-            .await?
+    let res = match (fundable_owner, maybe_fee, confidential_transfer_args) {
+        (Some(recipient_owner), None, None) => {
+            token
+                .create_recipient_associated_account_and_transfer(
+                    &sender,
+                    &recipient_token_account,
+                    &recipient_owner,
+                    &sender_owner,
+                    transfer_balance,
+                    maybe_fee,
+                    &bulk_signers,
+                )
+                .await?
+        }
+        (Some(_), _, _) => {
+            panic!("Recipient account cannot be created for transfer with fees or confidential transfers");
+        }
+        (None, Some(fee), None) => {
+            token
+                .transfer_with_fee(
+                    &sender,
+                    &recipient_token_account,
+                    &sender_owner,
+                    transfer_balance,
+                    fee,
+                    &bulk_signers,
+                )
+                .await?
+        }
+        (None, None, Some(args)) => {
+            // deserialize `pod` ElGamal pubkeys
+            let recipient_elgamal_pubkey: elgamal::ElGamalPubkey = recipient_elgamal_pubkey
+                .unwrap()
+                .try_into()
+                .expect("Invalid recipient ElGamal pubkey");
+            let auditor_elgamal_pubkey = auditor_elgamal_pubkey.map(|pubkey| {
+                let auditor_elgamal_pubkey: elgamal::ElGamalPubkey =
+                    pubkey.try_into().expect("Invalid auditor ElGamal pubkey");
+                auditor_elgamal_pubkey
+            });
+            token
+                .confidential_transfer_transfer(
+                    &sender,
+                    &recipient_token_account,
+                    &sender_owner,
+                    None,
+                    transfer_balance,
+                    None,
+                    &args.sender_elgamal_keypair,
+                    &args.sender_aes_key,
+                    &recipient_elgamal_pubkey,
+                    auditor_elgamal_pubkey.as_ref(),
+                    &bulk_signers,
+                )
+                .await?
+        }
+        (None, Some(_), Some(_)) => {
+            panic!("Confidential transfer with fee is not yet supported.");
+        }
+        (None, None, None) => {
+            token
+                .transfer(
+                    &sender,
+                    &recipient_token_account,
+                    &sender_owner,
+                    transfer_balance,
+                    &bulk_signers,
+                )
+                .await?
+        }
     };
 
     let tx_return = finish_tx(config, &res, no_wait).await?;
@@ -3292,39 +3301,40 @@ async fn command_deposit_withdraw_confidential_tokens(
         maybe_amount.unwrap()
     };
 
-    let res = if instruction_type == ConfidentialInstructionType::Deposit {
-        token
-            .confidential_transfer_deposit(
-                &token_account_address,
-                &owner,
-                amount,
-                decimals,
-                &bulk_signers,
-            )
-            .await?
-    } else if instruction_type == ConfidentialInstructionType::Withdraw {
-        let elgamal_keypair = elgamal_keypair.expect("ElGamal keypair must be provided");
-        let aes_key = aes_key.expect("AES key must be provided");
+    let res = match instruction_type {
+        ConfidentialInstructionType::Deposit => {
+            token
+                .confidential_transfer_deposit(
+                    &token_account_address,
+                    &owner,
+                    amount,
+                    decimals,
+                    &bulk_signers,
+                )
+                .await?
+        }
+        ConfidentialInstructionType::Withdraw => {
+            let elgamal_keypair = elgamal_keypair.expect("ElGamal keypair must be provided");
+            let aes_key = aes_key.expect("AES key must be provided");
 
-        let extension_state =
-            state_with_extension.get_extension::<ConfidentialTransferAccount>()?;
-        let withdraw_account_info = WithdrawAccountInfo::new(extension_state);
+            let extension_state =
+                state_with_extension.get_extension::<ConfidentialTransferAccount>()?;
+            let withdraw_account_info = WithdrawAccountInfo::new(extension_state);
 
-        token
-            .confidential_transfer_withdraw(
-                &token_account_address,
-                &owner,
-                None,
-                amount,
-                decimals,
-                Some(withdraw_account_info),
-                elgamal_keypair,
-                aes_key,
-                &bulk_signers,
-            )
-            .await?
-    } else {
-        panic!("Command not supported");
+            token
+                .confidential_transfer_withdraw(
+                    &token_account_address,
+                    &owner,
+                    None,
+                    amount,
+                    decimals,
+                    Some(withdraw_account_info),
+                    elgamal_keypair,
+                    aes_key,
+                    &bulk_signers,
+                )
+                .await?
+        }
     };
 
     let tx_return = finish_tx(config, &res, false).await?;
