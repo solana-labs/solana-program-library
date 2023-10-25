@@ -2492,8 +2492,8 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
             42,
             None,
             &alice_meta.aes_key,
-            &alice,
             &source_decrypt_handles,
+            &[&alice],
         )
         .await
         .unwrap();
@@ -2833,8 +2833,8 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
             100,
             None,
             &alice_meta.aes_key,
-            &alice,
             &source_decrypt_handles,
+            &[&alice],
         )
         .await
         .unwrap();

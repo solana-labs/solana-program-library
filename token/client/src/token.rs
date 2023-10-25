@@ -1989,7 +1989,7 @@ where
 
     /// Fetch the ElGamal public key associated with a confidential token account
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_elgamal_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_elgamal_pubkey(
         &self,
         token_account: &Pubkey,
     ) -> TokenResult<ElGamalPubkey> {
@@ -2006,7 +2006,7 @@ where
 
     /// Fetch the ElGamal pubkey key of the auditor associated with a confidential token mint
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_auditor_elgamal_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_auditor_elgamal_pubkey(
         &self,
     ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
@@ -2026,7 +2026,7 @@ where
     /// Fetch the ElGamal pubkey key of the withdraw withheld authority associated with a
     /// confidential token mint
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_withdraw_withheld_authority_elgamal_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_withdraw_withheld_authority_elgamal_pubkey(
         &self,
     ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
@@ -2139,16 +2139,17 @@ where
     /// keys
     #[allow(clippy::too_many_arguments)]
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_withdraw_with_key<S: Signer>(
+    pub async fn confidential_transfer_withdraw_with_key<S: Signers>(
         &self,
         token_account: &Pubkey,
-        token_authority: &S,
+        token_authority: &Pubkey,
         amount: u64,
         decimals: u8,
         available_balance: u64,
         available_balance_ciphertext: &ElGamalCiphertext,
         elgamal_keypair: &ElGamalKeypair,
         authenticated_encryption_key: &AeKey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let proof_data = confidential_transfer::instruction::WithdrawData::new(
             amount,
@@ -2172,11 +2173,11 @@ where
                 amount,
                 decimals,
                 new_decryptable_available_balance,
-                &token_authority.pubkey(),
+                token_authority,
                 &[],
                 &proof_data,
             )?,
-            &[token_authority],
+            signing_keypairs,
         )
         .await
     }
@@ -2256,7 +2257,7 @@ where
     ///
     /// This function assumes that proof context states have already been created.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_split_proofs<S: Signer>(
+    pub async fn confidential_transfer_transfer_with_split_proofs<S: Signers>(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2265,8 +2266,8 @@ where
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_aes_key: &AeKey,
-        source_authority_keypair: &S,
         source_decrypt_handles: &SourceDecryptHandles,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let account_info = if let Some(account_info) = account_info {
             account_info
@@ -2294,7 +2295,7 @@ where
                     source_decrypt_handles,
                 )?,
             ],
-            &[source_authority_keypair],
+            signing_keypairs,
         )
         .await
     }
@@ -2728,7 +2729,7 @@ where
     ///
     /// This function assumes that proof context states have already been created.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_fee_and_split_proofs<S: Signer>(
+    pub async fn confidential_transfer_transfer_with_fee_and_split_proofs<S: Signers>(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2737,8 +2738,8 @@ where
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_aes_key: &AeKey,
-        source_authority_keypair: &S,
         source_decrypt_handles: &SourceDecryptHandles,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let account_info = if let Some(account_info) = account_info {
             account_info
@@ -2766,7 +2767,7 @@ where
                     source_decrypt_handles,
                 )?,
             ],
-            &[source_authority_keypair],
+            signing_keypairs,
         )
         .await
     }
