@@ -2791,10 +2791,10 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
             transfer_context_state_accounts,
             &equality_proof_data,
             &transfer_amount_ciphertext_validity_proof_data,
-            None,
-            &equality_proof_context_state_account,
-            &transfer_amount_ciphertext_validity_proof_context_state_account,
-            None,
+            &[
+                &equality_proof_context_state_account,
+                &transfer_amount_ciphertext_validity_proof_context_state_account,
+            ],
         )
         .await
         .unwrap();
