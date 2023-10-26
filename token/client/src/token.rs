@@ -2743,7 +2743,7 @@ where
         fee_rate_basis_points: u16,
         maximum_fee: u64,
         equality_and_ciphertext_validity_proof_signers: &S,
-        fee_sigma_signers: &S,
+        fee_sigma_proof_signers: &S,
         range_proof_signers: &S,
     ) -> TokenResult<(T::Output, T::Output, T::Output)> {
         let account_info = if let Some(account_info) = account_info {
@@ -2820,7 +2820,7 @@ where
                 &fee_sigma_proof_data,
                 &fee_ciphertext_validity_proof_data,
                 &transfer_instruction,
-                fee_sigma_signers,
+                fee_sigma_proof_signers,
             );
 
         let transfer_with_range_proof = self
