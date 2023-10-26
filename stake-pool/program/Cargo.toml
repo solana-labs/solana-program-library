@@ -18,7 +18,7 @@ bytemuck = "1.13"
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.0"
-serde = "1.0.189"
+serde = "1.0.190"
 serde_derive = "1.0.103"
 solana-program = "1.17.2"
 spl-math = { version = "0.2", path = "../../libraries/math", features = [ "no-entrypoint" ] }
