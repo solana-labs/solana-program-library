@@ -1989,7 +1989,7 @@ where
 
     /// Fetch the ElGamal public key associated with a confidential token account
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_elgamal_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_elgamal_pubkey(
         &self,
         token_account: &Pubkey,
     ) -> TokenResult<ElGamalPubkey> {
@@ -2006,7 +2006,7 @@ where
 
     /// Fetch the ElGamal pubkey key of the auditor associated with a confidential token mint
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_auditor_elgamal_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_auditor_elgamal_pubkey(
         &self,
     ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
@@ -2026,7 +2026,7 @@ where
     /// Fetch the ElGamal pubkey key of the withdraw withheld authority associated with a
     /// confidential token mint
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_get_withdraw_withheld_authority_elgamal_pubkey<S: Signer>(
+    pub async fn confidential_transfer_get_withdraw_withheld_authority_elgamal_pubkey(
         &self,
     ) -> TokenResult<Option<ElGamalPubkey>> {
         let mint_state = self.get_mint_info().await.unwrap();
@@ -2139,16 +2139,17 @@ where
     /// keys
     #[allow(clippy::too_many_arguments)]
     #[cfg(feature = "proof-program")]
-    pub async fn confidential_transfer_withdraw_with_key<S: Signer>(
+    pub async fn confidential_transfer_withdraw_with_key<S: Signers>(
         &self,
         token_account: &Pubkey,
-        token_authority: &S,
+        token_authority: &Pubkey,
         amount: u64,
         decimals: u8,
         available_balance: u64,
         available_balance_ciphertext: &ElGamalCiphertext,
         elgamal_keypair: &ElGamalKeypair,
         authenticated_encryption_key: &AeKey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let proof_data = confidential_transfer::instruction::WithdrawData::new(
             amount,
@@ -2172,11 +2173,11 @@ where
                 amount,
                 decimals,
                 new_decryptable_available_balance,
-                &token_authority.pubkey(),
+                token_authority,
                 &[],
                 &proof_data,
             )?,
-            &[token_authority],
+            signing_keypairs,
         )
         .await
     }
@@ -2256,7 +2257,7 @@ where
     ///
     /// This function assumes that proof context states have already been created.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_split_proofs<S: Signer>(
+    pub async fn confidential_transfer_transfer_with_split_proofs<S: Signers>(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2265,8 +2266,8 @@ where
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_aes_key: &AeKey,
-        source_authority_keypair: &S,
         source_decrypt_handles: &SourceDecryptHandles,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let account_info = if let Some(account_info) = account_info {
             account_info
@@ -2294,7 +2295,7 @@ where
                     source_decrypt_handles,
                 )?,
             ],
-            &[source_authority_keypair],
+            signing_keypairs,
         )
         .await
     }
@@ -2304,7 +2305,7 @@ where
     /// This function internally generates the ZK Token proof instructions to create the necessary
     /// proof context states.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_split_proofs_in_parallel<S: Signer>(
+    pub async fn confidential_transfer_transfer_with_split_proofs_in_parallel<S: Signers>(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2316,11 +2317,8 @@ where
         source_aes_key: &AeKey,
         destination_elgamal_pubkey: &ElGamalPubkey,
         auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
-        source_authority_keypair: &S,
-        equality_proof_account_keypair: &S,
-        ciphertext_validity_proof_account_keypair: &S,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        equality_and_ciphertext_validity_proof_signers: &S,
+        range_proof_signers: &S,
     ) -> TokenResult<(T::Output, T::Output)> {
         let account_info = if let Some(account_info) = account_info {
             account_info
@@ -2367,10 +2365,7 @@ where
                 &equality_proof_data,
                 &ciphertext_validity_proof_data,
                 &transfer_instruction,
-                Some(source_authority_keypair),
-                equality_proof_account_keypair,
-                ciphertext_validity_proof_account_keypair,
-                context_state_authority_keypair,
+                equality_and_ciphertext_validity_proof_signers,
             );
 
         let transfer_with_range_proof = self
@@ -2378,9 +2373,7 @@ where
                 context_state_accounts,
                 &range_proof_data,
                 &transfer_instruction,
-                Some(source_authority_keypair),
-                range_proof_account_keypair,
-                context_state_authority_keypair,
+                range_proof_signers,
             );
 
         try_join!(
@@ -2392,26 +2385,20 @@ where
     /// Create equality and ciphertext validity proof context state accounts for a confidential transfer.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer<
-        S: Signer,
+        S: Signers,
     >(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         equality_proof_data: &CiphertextCommitmentEqualityProofData,
         ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
-        source_authority_keypair: Option<&S>,
-        equality_proof_account_keypair: &S,
-        ciphertext_validity_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_equality_and_ciphertext_validity_proof_context_state_with_optional_transfer(
             context_state_accounts,
             equality_proof_data,
             ciphertext_validity_proof_data,
             None,
-            source_authority_keypair,
-            equality_proof_account_keypair,
-            ciphertext_validity_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
@@ -2420,27 +2407,21 @@ where
     /// transfer instruction.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer_parallel<
-        S: Signer,
+        S: Signers,
     >(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         equality_proof_data: &CiphertextCommitmentEqualityProofData,
         ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
         transfer_instruction: &Instruction,
-        source_authority_keypair: Option<&S>,
-        equality_proof_account_keypair: &S,
-        ciphertext_validity_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_equality_and_ciphertext_validity_proof_context_state_with_optional_transfer(
             context_state_accounts,
             equality_proof_data,
             ciphertext_validity_proof_data,
             Some(transfer_instruction),
-            source_authority_keypair,
-            equality_proof_account_keypair,
-            ciphertext_validity_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
@@ -2451,29 +2432,15 @@ where
     /// to the same transaction.
     #[allow(clippy::too_many_arguments)]
     async fn create_equality_and_ciphertext_validity_proof_context_state_with_optional_transfer<
-        S: Signer,
+        S: Signers,
     >(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         equality_proof_data: &CiphertextCommitmentEqualityProofData,
         ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
         transfer_instruction: Option<&Instruction>,
-        source_authority_keypair: Option<&S>,
-        equality_proof_account_keypair: &S,
-        ciphertext_validity_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let mut signers = vec![
-            equality_proof_account_keypair,
-            ciphertext_validity_proof_account_keypair,
-        ];
-        if let Some(source_authority_keypair) = source_authority_keypair {
-            signers.push(source_authority_keypair);
-        }
-        if let Some(context_state_authority_keypair) = context_state_authority_keypair {
-            signers.push(context_state_authority_keypair);
-        }
-
         let mut instructions = vec![];
 
         // create equality proof context state
@@ -2532,68 +2499,50 @@ where
             instructions.push(transfer_instruction.clone());
         }
 
-        self.process_ixs(&instructions, &signers).await
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Create a range proof context state account for a confidential transfer.
-    pub async fn create_range_proof_context_state_for_transfer<S: Signer>(
+    pub async fn create_range_proof_context_state_for_transfer<S: Signers>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
-        source_authority_keypair: Option<&S>,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_range_proof_context_state_with_optional_transfer(
             context_state_accounts,
             range_proof_data,
             None,
-            source_authority_keypair,
-            range_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
 
     /// Create a range proof context state account with a confidential transfer instruction.
-    pub async fn create_range_proof_context_state_for_transfer_parallel<S: Signer>(
+    pub async fn create_range_proof_context_state_for_transfer_parallel<S: Signers>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
         transfer_instruction: &Instruction,
-        source_authority_keypair: Option<&S>,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_range_proof_context_state_with_optional_transfer(
             context_state_accounts,
             range_proof_data,
             Some(transfer_instruction),
-            source_authority_keypair,
-            range_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
 
     /// Create a range proof context state account and an optional confidential transfer instruction.
-    async fn create_range_proof_context_state_with_optional_transfer<S: Signer>(
+    async fn create_range_proof_context_state_with_optional_transfer<S: Signers>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
         transfer_instruction: Option<&Instruction>,
-        source_authority_keypair: Option<&S>,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let mut signers = vec![range_proof_account_keypair];
-        if let Some(source_authority_keypair) = source_authority_keypair {
-            signers.push(source_authority_keypair);
-        }
-        if let Some(context_state_authority_keypair) = context_state_authority_keypair {
-            signers.push(context_state_authority_keypair);
-        }
-
         let instruction_type = ProofInstruction::VerifyBatchedRangeProofU128;
         let space = size_of::<ProofContextState<BatchedRangeProofContext>>();
         let rent = self
@@ -2622,7 +2571,7 @@ where
             instructions.push(transfer_instruction.clone());
         }
 
-        self.process_ixs(&instructions, &signers).await
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Close a ZK Token proof program context state
@@ -2728,7 +2677,7 @@ where
     ///
     /// This function assumes that proof context states have already been created.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_fee_and_split_proofs<S: Signer>(
+    pub async fn confidential_transfer_transfer_with_fee_and_split_proofs<S: Signers>(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2737,8 +2686,8 @@ where
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_aes_key: &AeKey,
-        source_authority_keypair: &S,
         source_decrypt_handles: &SourceDecryptHandles,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let account_info = if let Some(account_info) = account_info {
             account_info
@@ -2766,7 +2715,7 @@ where
                     source_decrypt_handles,
                 )?,
             ],
-            &[source_authority_keypair],
+            signing_keypairs,
         )
         .await
     }
@@ -2776,7 +2725,9 @@ where
     /// This function internally generates the ZK Token proof instructions to create the necessary
     /// proof context states.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_fee_and_split_proofs_in_parallel<S: Signer>(
+    pub async fn confidential_transfer_transfer_with_fee_and_split_proofs_in_parallel<
+        S: Signers,
+    >(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2791,13 +2742,9 @@ where
         withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
         fee_rate_basis_points: u16,
         maximum_fee: u64,
-        source_authority_keypair: &S,
-        equality_proof_account_keypair: &S,
-        transfer_amount_ciphertext_validity_proof_account_keypair: &S,
-        fee_sigma_proof_account_keypair: &S,
-        fee_ciphertext_validity_proof_account_keypair: &S,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        equality_and_ciphertext_validity_proof_signers: &S,
+        fee_sigma_proof_signers: &S,
+        range_proof_signers: &S,
     ) -> TokenResult<(T::Output, T::Output, T::Output)> {
         let account_info = if let Some(account_info) = account_info {
             account_info
@@ -2864,10 +2811,7 @@ where
                 &equality_proof_data,
                 &transfer_amount_ciphertext_validity_proof_data,
                 &transfer_instruction,
-                Some(source_authority_keypair),
-                equality_proof_account_keypair,
-                transfer_amount_ciphertext_validity_proof_account_keypair,
-                context_state_authority_keypair,
+                equality_and_ciphertext_validity_proof_signers
             );
 
         let transfer_with_fee_sigma_and_ciphertext_validity = self
@@ -2876,10 +2820,7 @@ where
                 &fee_sigma_proof_data,
                 &fee_ciphertext_validity_proof_data,
                 &transfer_instruction,
-                Some(source_authority_keypair),
-                fee_sigma_proof_account_keypair,
-                fee_ciphertext_validity_proof_account_keypair,
-                context_state_authority_keypair,
+                fee_sigma_proof_signers,
             );
 
         let transfer_with_range_proof = self
@@ -2887,9 +2828,7 @@ where
                 context_state_accounts,
                 &range_proof_data,
                 &transfer_instruction,
-                Some(source_authority_keypair),
-                range_proof_account_keypair,
-                context_state_authority_keypair,
+                range_proof_signers,
             );
 
         try_join!(
@@ -2903,26 +2842,20 @@ where
     /// confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer_with_fee<
-        S: Signer,
+        S: Signers,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         equality_proof_data: &CiphertextCommitmentEqualityProofData,
         ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
-        source_authority_keypair: Option<&S>,
-        equality_proof_account_keypair: &S,
-        ciphertext_validity_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_equality_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee(
             context_state_accounts,
             equality_proof_data,
             ciphertext_validity_proof_data,
             None,
-            source_authority_keypair,
-            equality_proof_account_keypair,
-            ciphertext_validity_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
@@ -2931,27 +2864,21 @@ where
     /// transfer instruction.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer_with_fee_parallel<
-        S: Signer,
+        S: Signers,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         equality_proof_data: &CiphertextCommitmentEqualityProofData,
         ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
         transfer_instruction: &Instruction,
-        source_authority_keypair: Option<&S>,
-        equality_proof_account_keypair: &S,
-        ciphertext_validity_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_equality_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee(
             context_state_accounts,
             equality_proof_data,
             ciphertext_validity_proof_data,
             Some(transfer_instruction),
-            source_authority_keypair,
-            equality_proof_account_keypair,
-            ciphertext_validity_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
@@ -2963,29 +2890,15 @@ where
     /// to the same transaction.
     #[allow(clippy::too_many_arguments)]
     async fn create_equality_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee<
-        S: Signer,
+        S: Signers,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         equality_proof_data: &CiphertextCommitmentEqualityProofData,
         transfer_amount_ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
         transfer_instruction: Option<&Instruction>,
-        source_authority_keypair: Option<&S>,
-        equality_proof_account_keypair: &S,
-        ciphertext_validity_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let mut signers = vec![
-            equality_proof_account_keypair,
-            ciphertext_validity_proof_account_keypair,
-        ];
-        if let Some(source_authority_keypair) = source_authority_keypair {
-            signers.push(source_authority_keypair);
-        }
-        if let Some(context_state_authority_keypair) = context_state_authority_keypair {
-            signers.push(context_state_authority_keypair);
-        }
-
         let mut instructions = vec![];
 
         // create equality proof context state
@@ -3044,33 +2957,27 @@ where
             instructions.push(transfer_instruction.clone());
         }
 
-        self.process_ixs(&instructions, &signers).await
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Create fee sigma and fee ciphertext validity proof context state accounts for a
     /// confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_fee_sigma_and_ciphertext_validity_proof_context_states_for_transfer_with_fee<
-        S: Signer,
+        S: Signers,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         fee_sigma_proof_data: &FeeSigmaProofData,
         fee_ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
-        source_authority_keypair: Option<&S>,
-        fee_sigma_proof_account_keypair: &S,
-        fee_ciphertext_validity_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_fee_sigma_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee(
             context_state_accounts,
             fee_sigma_proof_data,
             fee_ciphertext_validity_proof_data,
             None,
-            source_authority_keypair,
-            fee_sigma_proof_account_keypair,
-            fee_ciphertext_validity_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
@@ -3079,27 +2986,21 @@ where
     /// transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_fee_sigma_and_ciphertext_validity_proof_context_states_for_transfer_with_fee_parallel<
-        S: Signer,
+        S: Signers,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         fee_sigma_proof_data: &FeeSigmaProofData,
         fee_ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
         transfer_instruction: &Instruction,
-        source_authority_keypair: Option<&S>,
-        fee_sigma_proof_account_keypair: &S,
-        fee_ciphertext_validity_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_fee_sigma_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee(
             context_state_accounts,
             fee_sigma_proof_data,
             fee_ciphertext_validity_proof_data,
             Some(transfer_instruction),
-            source_authority_keypair,
-            fee_sigma_proof_account_keypair,
-            fee_ciphertext_validity_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
@@ -3111,29 +3012,15 @@ where
     /// to the same transaction.
     #[allow(clippy::too_many_arguments)]
     async fn create_fee_sigma_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee<
-        S: Signer,
+        S: Signers,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         fee_sigma_proof_data: &FeeSigmaProofData,
         fee_ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
         transfer_instruction: Option<&Instruction>,
-        source_authority_keypair: Option<&S>,
-        fee_sigma_proof_account_keypair: &S,
-        fee_ciphertext_validity_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let mut signers = vec![
-            fee_sigma_proof_account_keypair,
-            fee_ciphertext_validity_proof_account_keypair,
-        ];
-        if let Some(source_authority_keypair) = source_authority_keypair {
-            signers.push(source_authority_keypair);
-        }
-        if let Some(context_state_authority_keypair) = context_state_authority_keypair {
-            signers.push(context_state_authority_keypair);
-        }
-
         let mut instructions = vec![];
 
         // create fee sigma proof context state
@@ -3192,70 +3079,52 @@ where
             instructions.push(transfer_instruction.clone());
         }
 
-        self.process_ixs(&instructions, &signers).await
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Create range proof context state account for a confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
-    pub async fn create_range_proof_context_state_for_transfer_with_fee<S: Signer>(
+    pub async fn create_range_proof_context_state_for_transfer_with_fee<S: Signers>(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU256Data,
-        source_authority_keypair: Option<&S>,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_range_proof_context_state_with_optional_transfer_with_fee(
             context_state_accounts,
             range_proof_data,
             None,
-            source_authority_keypair,
-            range_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
 
     /// Create range proof context state account for a confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
-    pub async fn create_range_proof_context_state_for_transfer_with_fee_parallel<S: Signer>(
+    pub async fn create_range_proof_context_state_for_transfer_with_fee_parallel<S: Signers>(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU256Data,
         transfer_instruction: &Instruction,
-        source_authority_keypair: Option<&S>,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.create_range_proof_context_state_with_optional_transfer_with_fee(
             context_state_accounts,
             range_proof_data,
             Some(transfer_instruction),
-            source_authority_keypair,
-            range_proof_account_keypair,
-            context_state_authority_keypair,
+            signing_keypairs,
         )
         .await
     }
 
     /// Create a range proof context state account and an optional confidential transfer instruction.
-    async fn create_range_proof_context_state_with_optional_transfer_with_fee<S: Signer>(
+    async fn create_range_proof_context_state_with_optional_transfer_with_fee<S: Signers>(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU256Data,
         transfer_instruction: Option<&Instruction>,
-        source_authority_keypair: Option<&S>,
-        range_proof_account_keypair: &S,
-        context_state_authority_keypair: Option<&S>,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        let mut signers = vec![range_proof_account_keypair];
-        if let Some(source_authority_keypair) = source_authority_keypair {
-            signers.push(source_authority_keypair);
-        }
-        if let Some(context_state_authority_keypair) = context_state_authority_keypair {
-            signers.push(context_state_authority_keypair);
-        }
-
         let instruction_type = ProofInstruction::VerifyBatchedRangeProofU256;
         let space = size_of::<ProofContextState<BatchedRangeProofContext>>();
         let rent = self
@@ -3284,7 +3153,7 @@ where
             instructions.push(transfer_instruction.clone());
         }
 
-        self.process_ixs(&instructions, &signers).await
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Applies the confidential transfer pending balance to the available balance

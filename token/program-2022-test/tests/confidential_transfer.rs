@@ -2463,10 +2463,10 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
             transfer_context_state_accounts,
             &equality_proof_data,
             &ciphertext_validity_proof_data,
-            None,
-            &equality_proof_context_state_account,
-            &ciphertext_validity_proof_context_state_account,
-            None,
+            &[
+                &equality_proof_context_state_account,
+                &ciphertext_validity_proof_context_state_account,
+            ],
         )
         .await
         .unwrap();
@@ -2475,9 +2475,7 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
         .create_range_proof_context_state_for_transfer(
             transfer_context_state_accounts,
             &range_proof_data,
-            None,
-            &range_proof_context_state_account,
-            None,
+            &[&range_proof_context_state_account],
         )
         .await
         .unwrap();
@@ -2492,8 +2490,8 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
             42,
             None,
             &alice_meta.aes_key,
-            &alice,
             &source_decrypt_handles,
+            &[&alice],
         )
         .await
         .unwrap();
@@ -2618,6 +2616,12 @@ async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() 
         close_split_context_state_accounts: None,
     };
 
+    let equality_and_ciphertext_proof_signers = vec![
+        &alice,
+        &equality_proof_context_state_account,
+        &ciphertext_validity_proof_context_state_account,
+    ];
+    let range_proof_signers = vec![&alice, &range_proof_context_state_account];
     token
         .confidential_transfer_transfer_with_split_proofs_in_parallel(
             &alice_meta.token_account,
@@ -2630,11 +2634,8 @@ async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() 
             &alice_meta.aes_key,
             bob_meta.elgamal_keypair.pubkey(),
             Some(auditor_elgamal_keypair.pubkey()),
-            &alice,
-            &equality_proof_context_state_account,
-            &ciphertext_validity_proof_context_state_account,
-            &range_proof_context_state_account,
-            None,
+            &equality_and_ciphertext_proof_signers,
+            &range_proof_signers,
         )
         .await
         .unwrap();
@@ -2791,10 +2792,10 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
             transfer_context_state_accounts,
             &equality_proof_data,
             &transfer_amount_ciphertext_validity_proof_data,
-            None,
-            &equality_proof_context_state_account,
-            &transfer_amount_ciphertext_validity_proof_context_state_account,
-            None,
+            &[
+                &equality_proof_context_state_account,
+                &transfer_amount_ciphertext_validity_proof_context_state_account,
+            ],
         )
         .await
         .unwrap();
@@ -2804,10 +2805,10 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
             transfer_context_state_accounts,
             &fee_sigma_proof_data,
             &fee_ciphertext_validity_proof_data,
-            None,
-            &fee_sigma_proof_context_state_account,
-            &fee_ciphertext_validity_proof_context_state_account,
-            None,
+            &[
+                &fee_sigma_proof_context_state_account,
+                &fee_ciphertext_validity_proof_context_state_account,
+            ],
         )
         .await
         .unwrap();
@@ -2816,9 +2817,7 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
         .create_range_proof_context_state_for_transfer_with_fee(
             transfer_context_state_accounts,
             &range_proof_data,
-            None,
-            &range_proof_context_state_account,
-            None,
+            &[&range_proof_context_state_account],
         )
         .await
         .unwrap();
@@ -2833,8 +2832,8 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
             100,
             None,
             &alice_meta.aes_key,
-            &alice,
             &source_decrypt_handles,
+            &[&alice],
         )
         .await
         .unwrap();
@@ -2991,6 +2990,17 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context_in_para
         close_split_context_state_accounts: None,
     };
 
+    let equality_and_ciphertext_proof_signers = vec![
+        &alice,
+        &equality_proof_context_state_account,
+        &transfer_amount_ciphertext_validity_proof_context_state_account,
+    ];
+    let fee_sigma_proof_signers = vec![
+        &alice,
+        &fee_sigma_proof_context_state_account,
+        &fee_ciphertext_validity_proof_context_state_account,
+    ];
+    let range_proof_signers = vec![&alice, &range_proof_context_state_account];
     token
         .confidential_transfer_transfer_with_fee_and_split_proofs_in_parallel(
             &alice_meta.token_account,
@@ -3006,13 +3016,9 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context_in_para
             withdraw_withheld_authority_elgamal_keypair.pubkey(),
             TEST_FEE_BASIS_POINTS,
             TEST_MAXIMUM_FEE,
-            &alice,
-            &equality_proof_context_state_account,
-            &transfer_amount_ciphertext_validity_proof_context_state_account,
-            &fee_sigma_proof_context_state_account,
-            &fee_ciphertext_validity_proof_context_state_account,
-            &range_proof_context_state_account,
-            None,
+            &equality_and_ciphertext_proof_signers,
+            &fee_sigma_proof_signers,
+            &range_proof_signers,
         )
         .await
         .unwrap();
