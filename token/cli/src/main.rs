@@ -3,6 +3,7 @@ use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     ArgGroup, ArgMatches, SubCommand,
 };
+use futures::try_join;
 use serde::Serialize;
 use solana_account_decoder::{
     parse_token::{get_token_account_mint, parse_token, TokenAccountType, UiAccountState},
@@ -39,7 +40,10 @@ use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_2022::{
     extension::{
         confidential_transfer::{
-            account_info::{ApplyPendingBalanceAccountInfo, WithdrawAccountInfo},
+            account_info::{
+                ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
+            },
+            instruction::TransferSplitContextStateAccounts,
             ConfidentialTransferAccount, ConfidentialTransferMint,
         },
         confidential_transfer_fee::ConfidentialTransferFeeConfig,
@@ -1687,21 +1691,105 @@ async fn command_transfer(
                     pubkey.try_into().expect("Invalid auditor ElGamal pubkey");
                 auditor_elgamal_pubkey
             });
-            token
-                .confidential_transfer_transfer(
-                    &sender,
-                    &recipient_token_account,
-                    &sender_owner,
-                    None,
+
+            let context_state_authority = config.fee_payer()?;
+            let equality_proof_context_state_account = Keypair::new();
+            let equality_proof_pubkey = equality_proof_context_state_account.pubkey();
+            let ciphertext_validity_proof_context_state_account = Keypair::new();
+            let ciphertext_validity_proof_pubkey =
+                ciphertext_validity_proof_context_state_account.pubkey();
+            let range_proof_context_state_account = Keypair::new();
+            let range_proof_pubkey = range_proof_context_state_account.pubkey();
+
+            let transfer_context_state_accounts = TransferSplitContextStateAccounts {
+                equality_proof: &equality_proof_pubkey,
+                ciphertext_validity_proof: &ciphertext_validity_proof_pubkey,
+                range_proof: &range_proof_pubkey,
+                authority: &context_state_authority.pubkey(),
+                no_op_on_uninitialized_split_context_state: false,
+                close_split_context_state_accounts: None,
+            };
+
+            let state = token.get_account_info(&sender).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferAccount>()
+                .unwrap();
+            let transfer_account_info = TransferAccountInfo::new(extension);
+
+            let (
+                equality_proof_data,
+                ciphertext_validity_proof_data,
+                range_proof_data,
+                source_decrypt_handles,
+            ) = transfer_account_info
+                .generate_split_transfer_proof_data(
                     transfer_balance,
-                    None,
                     &args.sender_elgamal_keypair,
                     &args.sender_aes_key,
                     &recipient_elgamal_pubkey,
                     auditor_elgamal_pubkey.as_ref(),
+                )
+                .unwrap();
+
+            // setup proofs
+            let _ = try_join!(
+                token.create_range_proof_context_state_for_transfer(
+                    transfer_context_state_accounts,
+                    &range_proof_data,
+                    &range_proof_context_state_account,
+                ),
+                token.create_equality_proof_context_state_for_transfer(
+                    transfer_context_state_accounts,
+                    &equality_proof_data,
+                    &equality_proof_context_state_account,
+                ),
+                token.create_ciphertext_validity_proof_context_state_for_transfer(
+                    transfer_context_state_accounts,
+                    &ciphertext_validity_proof_data,
+                    &ciphertext_validity_proof_context_state_account,
+                )
+            )?;
+
+            // do the transfer
+            let transfer_result = token
+                .confidential_transfer_transfer_with_split_proofs(
+                    &sender,
+                    &recipient_token_account,
+                    &sender_owner,
+                    transfer_context_state_accounts,
+                    transfer_balance,
+                    Some(transfer_account_info),
+                    &args.sender_aes_key,
+                    &source_decrypt_handles,
                     &bulk_signers,
                 )
-                .await?
+                .await?;
+
+            // close context state accounts
+            let context_state_authority_pubkey = context_state_authority.pubkey();
+            let close_context_state_signers = &[context_state_authority];
+            let _ = try_join!(
+                token.confidential_transfer_close_context_state(
+                    &equality_proof_pubkey,
+                    &sender,
+                    &context_state_authority_pubkey,
+                    close_context_state_signers,
+                ),
+                token.confidential_transfer_close_context_state(
+                    &ciphertext_validity_proof_pubkey,
+                    &sender,
+                    &context_state_authority_pubkey,
+                    close_context_state_signers,
+                ),
+                token.confidential_transfer_close_context_state(
+                    &range_proof_pubkey,
+                    &sender,
+                    &context_state_authority_pubkey,
+                    close_context_state_signers,
+                ),
+            )?;
+
+            transfer_result
         }
         (None, Some(_), Some(_)) => {
             panic!("Confidential transfer with fee is not yet supported.");
@@ -6369,7 +6457,7 @@ mod tests {
         super::*,
         serial_test::serial,
         solana_sdk::{
-            bpf_loader_upgradeable,
+            bpf_loader_upgradeable, feature_set,
             hash::Hash,
             program_pack::Pack,
             signature::{write_keypair_file, Keypair, Signer},
@@ -6414,6 +6502,9 @@ mod tests {
                 upgrade_authority: Pubkey::new_unique(),
             },
         ]);
+        // TODO Remove this once the Range Proof cost goes under 200k compute units
+        test_validator_genesis
+            .deactivate_features(&[feature_set::native_programs_consume_cu::id()]);
         test_validator_genesis.start_async().await
     }
 
@@ -9067,22 +9158,21 @@ mod tests {
         .await
         .unwrap(); // configure destination account for confidential transfers first
 
-        // NOTE: the test fails due to transaction size limit
-        // let transfer_amount = 100.0;
-        // process_test_command(
-        //     &config,
-        //     &payer,
-        //     &[
-        //         "spl-token",
-        //         CommandName::Transfer.into(),
-        //         &token_pubkey.to_string(),
-        //         &transfer_amount.to_string(),
-        //         &destination_account.to_string(),
-        //         "--confidential",
-        //     ],
-        // )
-        // .await
-        // .unwrap();
+        let transfer_amount = 100.0;
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                &token_pubkey.to_string(),
+                &transfer_amount.to_string(),
+                &destination_account.to_string(),
+                "--confidential",
+            ],
+        )
+        .await
+        .unwrap();
 
         // withdraw confidential tokens
         //

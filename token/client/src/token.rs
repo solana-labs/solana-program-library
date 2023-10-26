@@ -2382,6 +2382,88 @@ where
         )
     }
 
+    /// Create equality proof context state account for a confidential transfer.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_equality_proof_context_state_for_transfer<S: Signer>(
+        &self,
+        context_state_accounts: TransferSplitContextStateAccounts<'_>,
+        equality_proof_data: &CiphertextCommitmentEqualityProofData,
+        equality_proof_signer: &S,
+    ) -> TokenResult<T::Output> {
+        // create equality proof context state
+        let instruction_type = ProofInstruction::VerifyCiphertextCommitmentEquality;
+        let space = size_of::<ProofContextState<CiphertextCommitmentEqualityProofContext>>();
+        let rent = self
+            .client
+            .get_minimum_balance_for_rent_exemption(space)
+            .await
+            .map_err(TokenError::Client)?;
+
+        let equality_proof_context_state_info = ContextStateInfo {
+            context_state_account: context_state_accounts.equality_proof,
+            context_state_authority: context_state_accounts.authority,
+        };
+
+        self.process_ixs(
+            &[
+                system_instruction::create_account(
+                    &self.payer.pubkey(),
+                    context_state_accounts.equality_proof,
+                    rent,
+                    space as u64,
+                    &zk_token_proof_program::id(),
+                ),
+                instruction_type.encode_verify_proof(
+                    Some(equality_proof_context_state_info),
+                    equality_proof_data,
+                ),
+            ],
+            &[equality_proof_signer],
+        )
+        .await
+    }
+
+    /// Create ciphertext validity proof context state account for a confidential transfer.
+    pub async fn create_ciphertext_validity_proof_context_state_for_transfer<S: Signer>(
+        &self,
+        context_state_accounts: TransferSplitContextStateAccounts<'_>,
+        ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
+        ciphertext_validity_proof_signer: &S,
+    ) -> TokenResult<T::Output> {
+        // create ciphertext validity proof context state
+        let instruction_type = ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity;
+        let space =
+            size_of::<ProofContextState<BatchedGroupedCiphertext2HandlesValidityProofContext>>();
+        let rent = self
+            .client
+            .get_minimum_balance_for_rent_exemption(space)
+            .await
+            .map_err(TokenError::Client)?;
+
+        let ciphertext_validity_proof_context_state_info = ContextStateInfo {
+            context_state_account: context_state_accounts.ciphertext_validity_proof,
+            context_state_authority: context_state_accounts.authority,
+        };
+
+        self.process_ixs(
+            &[
+                system_instruction::create_account(
+                    &self.payer.pubkey(),
+                    context_state_accounts.ciphertext_validity_proof,
+                    rent,
+                    space as u64,
+                    &zk_token_proof_program::id(),
+                ),
+                instruction_type.encode_verify_proof(
+                    Some(ciphertext_validity_proof_context_state_info),
+                    ciphertext_validity_proof_data,
+                ),
+            ],
+            &[ciphertext_validity_proof_signer],
+        )
+        .await
+    }
+
     /// Create equality and ciphertext validity proof context state accounts for a confidential transfer.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer<
@@ -2503,17 +2585,41 @@ where
     }
 
     /// Create a range proof context state account for a confidential transfer.
-    pub async fn create_range_proof_context_state_for_transfer<S: Signers>(
+    pub async fn create_range_proof_context_state_for_transfer<S: Signer>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
-        signing_keypairs: &S,
+        range_proof_keypair: &S,
     ) -> TokenResult<T::Output> {
-        self.create_range_proof_context_state_with_optional_transfer(
-            context_state_accounts,
-            range_proof_data,
-            None,
-            signing_keypairs,
+        let instruction_type = ProofInstruction::VerifyBatchedRangeProofU128;
+        let space = size_of::<ProofContextState<BatchedRangeProofContext>>();
+        let rent = self
+            .client
+            .get_minimum_balance_for_rent_exemption(space)
+            .await
+            .map_err(TokenError::Client)?;
+        let range_proof_context_state_info = ContextStateInfo {
+            context_state_account: context_state_accounts.range_proof,
+            context_state_authority: context_state_accounts.authority,
+        };
+        self.process_ixs(
+            &[system_instruction::create_account(
+                &self.payer.pubkey(),
+                context_state_accounts.range_proof,
+                rent,
+                space as u64,
+                &zk_token_proof_program::id(),
+            )],
+            &[range_proof_keypair],
+        )
+        .await?;
+
+        // This instruction is right at the transaction size limit, but in the
+        // future it might be able to support the transfer too
+        self.process_ixs(
+            &[instruction_type
+                .encode_verify_proof(Some(range_proof_context_state_info), range_proof_data)],
+            &[] as &[&dyn Signer; 0],
         )
         .await
     }
@@ -2575,15 +2681,16 @@ where
     }
 
     /// Close a ZK Token proof program context state
-    pub async fn confidential_transfer_close_context_state<S: Signer>(
+    pub async fn confidential_transfer_close_context_state<S: Signers>(
         &self,
         context_state_account: &Pubkey,
         lamport_destination_account: &Pubkey,
-        context_state_authority: &S,
+        context_state_authority: &Pubkey,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let context_state_info = ContextStateInfo {
             context_state_account,
-            context_state_authority: &context_state_authority.pubkey(),
+            context_state_authority,
         };
 
         self.process_ixs(
@@ -2591,7 +2698,7 @@ where
                 context_state_info,
                 lamport_destination_account,
             )],
-            &[context_state_authority],
+            signing_keypairs,
         )
         .await
     }
