@@ -11,7 +11,7 @@ version = "0.7.0"
 [dependencies]
 borsh = "0.10"
 clap = "2.33.3"
-serde = "1.0.189"
+serde = "1.0.190"
 serde_derive = "1.0.130"
 serde_json = "1.0.107"
 solana-account-decoder = "=1.17.2"
