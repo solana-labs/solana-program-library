@@ -7339,6 +7339,7 @@ dependencies = [
  "spl-token-2022 0.9.0",
  "spl-token-metadata-interface 0.2.0",
  "spl-transfer-hook-interface 0.3.0",
+ "spl-type-length-value 0.3.0",
  "thiserror",
 ]
 

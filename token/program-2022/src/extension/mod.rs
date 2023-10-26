@@ -404,12 +404,12 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     ///
     /// Provides the correct answer regardless if the extension is already present
     /// in the TLV data.
-    fn try_get_new_account_len<V: Extension + VariableLenPack>(
+    fn try_get_new_account_len<V: Extension>(
         &self,
-        new_extension: &V,
+        new_extension_len: usize,
     ) -> Result<usize, ProgramError> {
         // get the new length used by the extension
-        let new_extension_len = add_type_and_length_to_len(new_extension.get_packed_len()?);
+        let new_extension_tlv_len = add_type_and_length_to_len(new_extension_len);
         let tlv_info = get_tlv_data_info(self.get_tlv_data())?;
         // If we're adding an extension, then we must have at least BASE_ACCOUNT_LENGTH
         // and account type
@@ -417,7 +417,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
             .used_len
             .saturating_add(BASE_ACCOUNT_AND_TYPE_LENGTH);
         let new_len = if tlv_info.extension_types.is_empty() {
-            current_len.saturating_add(new_extension_len)
+            current_len.saturating_add(new_extension_tlv_len)
         } else {
             // get the current length used by the extension
             let current_extension_len = self
@@ -426,7 +426,7 @@ pub trait BaseStateWithExtensions<S: BaseState> {
                 .unwrap_or(0);
             current_len
                 .saturating_sub(current_extension_len)
-                .saturating_add(new_extension_len)
+                .saturating_add(new_extension_tlv_len)
         };
         Ok(adjust_len_for_multisig(new_len))
     }
@@ -1178,15 +1178,21 @@ impl Extension for AccountPaddingTest {
     const TYPE: ExtensionType = ExtensionType::AccountPaddingTest;
 }
 
-/// Packs a variable-length extension into a TLV space
+/// Packs a fixed-length extension into a TLV space
 ///
 /// This function reallocates the account as needed to accommodate for the
-/// change in space, then reallocates in the TLV buffer, and finally writes the
-/// bytes.
+/// change in space.
 ///
-/// NOTE: Unlike the `reallocate` instruction, this function will reduce the
-/// size of an account if it has too many bytes allocated for the given value.
-pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
+/// If the extension already exists, it will overwrite the existing extension
+/// if `overwrite` is `true`, otherwise it will return an error.
+///
+/// If the extension does not exist, it will reallocate the account and write
+/// the extension into the TLV buffer.
+///
+/// NOTE: Since this function deals with fixed-size extensions, it does not
+/// handle _decreasing_ the size of an account's data buffer, like the function
+/// `alloc_and_serialize_variable_len_extension` does.
+pub fn alloc_and_serialize<S: BaseState, V: Default + Extension + Pod>(
     account_info: &AccountInfo,
     new_extension: &V,
     overwrite: bool,
@@ -1195,7 +1201,54 @@ pub fn alloc_and_serialize<S: BaseState, V: Extension + VariableLenPack>(
     let (new_account_len, extension_already_exists) = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        let new_account_len = state.try_get_new_account_len(new_extension)?;
+        let new_account_len = state.try_get_new_account_len::<V>(pod_get_packed_len::<V>())?;
+        let extension_already_exists = state.get_extension_bytes::<V>().is_ok();
+        (new_account_len, extension_already_exists)
+    };
+
+    if extension_already_exists {
+        if !overwrite {
+            return Err(TokenError::ExtensionAlreadyInitialized.into());
+        } else {
+            // Overwrite the extension
+            let mut buffer = account_info.try_borrow_mut_data()?;
+            let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
+            let extension = state.get_extension_mut::<V>()?;
+            *extension = *new_extension;
+        }
+    } else {
+        // Realloc the account, then write the new extension
+        account_info.realloc(new_account_len, false)?;
+        let mut buffer = account_info.try_borrow_mut_data()?;
+        if previous_account_len <= BASE_ACCOUNT_LENGTH {
+            set_account_type::<S>(*buffer)?;
+        }
+        let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
+        let extension = state.init_extension::<V>(false)?;
+        *extension = *new_extension;
+    }
+    Ok(())
+}
+
+/// Packs a variable-length extension into a TLV space
+///
+/// This function reallocates the account as needed to accommodate for the
+/// change in space, then reallocates in the TLV buffer, and finally writes the
+/// bytes.
+///
+/// NOTE: Unlike the `reallocate` instruction, this function will reduce the
+/// size of an account if it has too many bytes allocated for the given value.
+pub fn alloc_and_serialize_variable_len_extension<S: BaseState, V: Extension + VariableLenPack>(
+    account_info: &AccountInfo,
+    new_extension: &V,
+    overwrite: bool,
+) -> Result<(), ProgramError> {
+    let previous_account_len = account_info.try_data_len()?;
+    let (new_account_len, extension_already_exists) = {
+        let data = account_info.try_borrow_data()?;
+        let state = StateWithExtensions::<S>::unpack(&data)?;
+        let new_account_len =
+            state.try_get_new_account_len::<V>(new_extension.get_packed_len()?)?;
         let extension_already_exists = state.get_extension_bytes::<V>().is_ok();
         (new_account_len, extension_already_exists)
     };
@@ -2282,7 +2335,7 @@ mod test {
         let current_len = state.try_get_account_len().unwrap();
         assert_eq!(current_len, Mint::LEN);
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(&variable_len)
+            .try_get_new_account_len::<VariableLenMintTest>(value_len)
             .unwrap();
         assert_eq!(
             new_len,
@@ -2297,19 +2350,23 @@ mod test {
 
         // Reduce the extension size
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(&small_variable_len)
+            .try_get_new_account_len::<VariableLenMintTest>(
+                small_variable_len.get_packed_len().unwrap(),
+            )
             .unwrap();
         assert_eq!(current_len.checked_sub(new_len).unwrap(), 1);
 
         // Increase the extension size
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(&big_variable_len)
+            .try_get_new_account_len::<VariableLenMintTest>(
+                big_variable_len.get_packed_len().unwrap(),
+            )
             .unwrap();
         assert_eq!(new_len.checked_sub(current_len).unwrap(), 1);
 
         // Maintain the extension size
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(&variable_len)
+            .try_get_new_account_len::<VariableLenMintTest>(variable_len.get_packed_len().unwrap())
             .unwrap();
         assert_eq!(new_len, current_len);
     }
@@ -2382,7 +2439,8 @@ mod test {
         let key = Pubkey::new_unique();
         let account_info = (&key, &mut data).into_account_info();
 
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, false).unwrap();
+        alloc_and_serialize_variable_len_extension::<Mint, _>(&account_info, &variable_len, false)
+            .unwrap();
         let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH + add_type_and_length_to_len(value_len);
         assert_eq!(data.len(), new_account_len);
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
@@ -2395,12 +2453,18 @@ mod test {
 
         // alloc again succeeds with "overwrite"
         let account_info = (&key, &mut data).into_account_info();
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
+        alloc_and_serialize_variable_len_extension::<Mint, _>(&account_info, &variable_len, true)
+            .unwrap();
 
         // alloc again fails without "overwrite"
         let account_info = (&key, &mut data).into_account_info();
         assert_eq!(
-            alloc_and_serialize::<Mint, _>(&account_info, &variable_len, false).unwrap_err(),
+            alloc_and_serialize_variable_len_extension::<Mint, _>(
+                &account_info,
+                &variable_len,
+                false,
+            )
+            .unwrap_err(),
             TokenError::ExtensionAlreadyInitialized.into()
         );
     }
@@ -2429,7 +2493,8 @@ mod test {
         let key = Pubkey::new_unique();
         let account_info = (&key, &mut data).into_account_info();
 
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, false).unwrap();
+        alloc_and_serialize_variable_len_extension::<Mint, _>(&account_info, &variable_len, false)
+            .unwrap();
         let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH
             + add_type_and_length_to_len(value_len)
             + add_type_and_length_to_len(size_of::<MetadataPointer>());
@@ -2447,12 +2512,18 @@ mod test {
 
         // alloc again succeeds with "overwrite"
         let account_info = (&key, &mut data).into_account_info();
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
+        alloc_and_serialize_variable_len_extension::<Mint, _>(&account_info, &variable_len, true)
+            .unwrap();
 
         // alloc again fails without "overwrite"
         let account_info = (&key, &mut data).into_account_info();
         assert_eq!(
-            alloc_and_serialize::<Mint, _>(&account_info, &variable_len, false).unwrap_err(),
+            alloc_and_serialize_variable_len_extension::<Mint, _>(
+                &account_info,
+                &variable_len,
+                false,
+            )
+            .unwrap_err(),
             TokenError::ExtensionAlreadyInitialized.into()
         );
     }
@@ -2488,7 +2559,8 @@ mod test {
         let key = Pubkey::new_unique();
         let account_info = (&key, &mut data).into_account_info();
         let variable_len = VariableLenMintTest { data: vec![1, 2] };
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
+        alloc_and_serialize_variable_len_extension::<Mint, _>(&account_info, &variable_len, true)
+            .unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
@@ -2505,7 +2577,8 @@ mod test {
         let variable_len = VariableLenMintTest {
             data: vec![1, 2, 3, 4, 5, 6, 7],
         };
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
+        alloc_and_serialize_variable_len_extension::<Mint, _>(&account_info, &variable_len, true)
+            .unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
@@ -2522,7 +2595,8 @@ mod test {
         let variable_len = VariableLenMintTest {
             data: vec![7, 6, 5, 4, 3, 2, 1],
         };
-        alloc_and_serialize::<Mint, _>(&account_info, &variable_len, true).unwrap();
+        alloc_and_serialize_variable_len_extension::<Mint, _>(&account_info, &variable_len, true)
+            .unwrap();
 
         let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
         let extension = state.get_extension::<MetadataPointer>().unwrap();
