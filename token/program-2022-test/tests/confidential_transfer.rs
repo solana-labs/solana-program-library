@@ -2475,7 +2475,7 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
         .create_range_proof_context_state_for_transfer(
             transfer_context_state_accounts,
             &range_proof_data,
-            &[&range_proof_context_state_account],
+            &range_proof_context_state_account,
         )
         .await
         .unwrap();
@@ -2501,7 +2501,8 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
         .confidential_transfer_close_context_state(
             &equality_proof_context_state_account.pubkey(),
             &alice_meta.token_account,
-            &context_state_authority,
+            &context_state_authority.pubkey(),
+            &[&context_state_authority],
         )
         .await
         .unwrap();
@@ -2510,7 +2511,8 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
         .confidential_transfer_close_context_state(
             &ciphertext_validity_proof_context_state_account.pubkey(),
             &alice_meta.token_account,
-            &context_state_authority,
+            &context_state_authority.pubkey(),
+            &[&context_state_authority],
         )
         .await
         .unwrap();
@@ -2519,7 +2521,8 @@ async fn confidential_transfer_transfer_with_split_proof_context() {
         .confidential_transfer_close_context_state(
             &range_proof_context_state_account.pubkey(),
             &alice_meta.token_account,
-            &context_state_authority,
+            &context_state_authority.pubkey(),
+            &[&context_state_authority],
         )
         .await
         .unwrap();
@@ -2843,7 +2846,8 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
         .confidential_transfer_close_context_state(
             &equality_proof_context_state_account.pubkey(),
             &alice_meta.token_account,
-            &context_state_authority,
+            &context_state_authority.pubkey(),
+            &[&context_state_authority],
         )
         .await
         .unwrap();
@@ -2852,7 +2856,8 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
         .confidential_transfer_close_context_state(
             &transfer_amount_ciphertext_validity_proof_context_state_account.pubkey(),
             &alice_meta.token_account,
-            &context_state_authority,
+            &context_state_authority.pubkey(),
+            &[&context_state_authority],
         )
         .await
         .unwrap();
@@ -2861,7 +2866,8 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
         .confidential_transfer_close_context_state(
             &fee_sigma_proof_context_state_account.pubkey(),
             &alice_meta.token_account,
-            &context_state_authority,
+            &context_state_authority.pubkey(),
+            &[&context_state_authority],
         )
         .await
         .unwrap();
@@ -2870,7 +2876,8 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
         .confidential_transfer_close_context_state(
             &fee_ciphertext_validity_proof_context_state_account.pubkey(),
             &alice_meta.token_account,
-            &context_state_authority,
+            &context_state_authority.pubkey(),
+            &[&context_state_authority],
         )
         .await
         .unwrap();
@@ -2879,7 +2886,8 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
         .confidential_transfer_close_context_state(
             &range_proof_context_state_account.pubkey(),
             &alice_meta.token_account,
-            &context_state_authority,
+            &context_state_authority.pubkey(),
+            &[&context_state_authority],
         )
         .await
         .unwrap();

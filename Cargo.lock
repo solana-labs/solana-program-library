@@ -7291,6 +7291,7 @@ dependencies = [
  "base64 0.21.5",
  "clap 2.34.0",
  "console",
+ "futures 0.3.28",
  "serde",
  "serde_derive",
  "serde_json",
