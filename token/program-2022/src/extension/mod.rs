@@ -353,6 +353,37 @@ fn get_extension_bytes_mut<S: BaseState, V: Extension>(
     Ok(&mut tlv_data[value_start..value_end])
 }
 
+/// Calculate the new expected size if the state allocates the given number
+/// of bytes for the given extension type.
+///
+/// Provides the correct answer regardless if the extension is already present
+/// in the TLV data.
+fn try_get_new_account_len_for_extension_len<S: BaseState, V: Extension>(
+    tlv_data: &[u8],
+    new_extension_len: usize,
+) -> Result<usize, ProgramError> {
+    // get the new length used by the extension
+    let new_extension_tlv_len = add_type_and_length_to_len(new_extension_len);
+    let tlv_info = get_tlv_data_info(tlv_data)?;
+    // If we're adding an extension, then we must have at least BASE_ACCOUNT_LENGTH
+    // and account type
+    let current_len = tlv_info
+        .used_len
+        .saturating_add(BASE_ACCOUNT_AND_TYPE_LENGTH);
+    let new_len = if tlv_info.extension_types.is_empty() {
+        current_len.saturating_add(new_extension_tlv_len)
+    } else {
+        // get the current length used by the extension
+        let current_extension_len = get_extension_bytes::<S, V>(tlv_data)
+            .map(|x| add_type_and_length_to_len(x.len()))
+            .unwrap_or(0);
+        current_len
+            .saturating_sub(current_extension_len)
+            .saturating_add(new_extension_tlv_len)
+    };
+    Ok(adjust_len_for_multisig(new_len))
+}
+
 /// Trait for base state with extension
 pub trait BaseStateWithExtensions<S: BaseState> {
     /// Get the buffer containing all extension data
@@ -398,37 +429,25 @@ pub trait BaseStateWithExtensions<S: BaseState> {
             Ok(adjust_len_for_multisig(total_len))
         }
     }
+    /// Calculate the new expected size if the state allocates the given number
+    /// of bytes for the given fixed-length extension type.
+    fn try_get_new_account_len<V: Extension + Pod>(&self) -> Result<usize, ProgramError> {
+        try_get_new_account_len_for_extension_len::<S, V>(
+            self.get_tlv_data(),
+            pod_get_packed_len::<V>(),
+        )
+    }
 
     /// Calculate the new expected size if the state allocates the given number
-    /// of bytes for the given extension type.
-    ///
-    /// Provides the correct answer regardless if the extension is already present
-    /// in the TLV data.
-    fn try_get_new_account_len<V: Extension>(
+    /// of bytes for the given variable-length extension type.
+    fn try_get_new_account_len_for_variable_len_extension<V: Extension + VariableLenPack>(
         &self,
-        new_extension_len: usize,
+        new_extension: &V,
     ) -> Result<usize, ProgramError> {
-        // get the new length used by the extension
-        let new_extension_tlv_len = add_type_and_length_to_len(new_extension_len);
-        let tlv_info = get_tlv_data_info(self.get_tlv_data())?;
-        // If we're adding an extension, then we must have at least BASE_ACCOUNT_LENGTH
-        // and account type
-        let current_len = tlv_info
-            .used_len
-            .saturating_add(BASE_ACCOUNT_AND_TYPE_LENGTH);
-        let new_len = if tlv_info.extension_types.is_empty() {
-            current_len.saturating_add(new_extension_tlv_len)
-        } else {
-            // get the current length used by the extension
-            let current_extension_len = self
-                .get_extension_bytes::<V>()
-                .map(|x| add_type_and_length_to_len(x.len()))
-                .unwrap_or(0);
-            current_len
-                .saturating_sub(current_extension_len)
-                .saturating_add(new_extension_tlv_len)
-        };
-        Ok(adjust_len_for_multisig(new_len))
+        try_get_new_account_len_for_extension_len::<S, V>(
+            self.get_tlv_data(),
+            new_extension.get_packed_len()?,
+        )
     }
 }
 
@@ -1201,7 +1220,7 @@ pub fn alloc_and_serialize<S: BaseState, V: Default + Extension + Pod>(
     let (new_account_len, extension_already_exists) = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        let new_account_len = state.try_get_new_account_len::<V>(pod_get_packed_len::<V>())?;
+        let new_account_len = state.try_get_new_account_len::<V>()?;
         let extension_already_exists = state.get_extension_bytes::<V>().is_ok();
         (new_account_len, extension_already_exists)
     };
@@ -1248,7 +1267,7 @@ pub fn alloc_and_serialize_variable_len_extension<S: BaseState, V: Extension + V
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
         let new_account_len =
-            state.try_get_new_account_len::<V>(new_extension.get_packed_len()?)?;
+            state.try_get_new_account_len_for_variable_len_extension::<V>(new_extension)?;
         let extension_already_exists = state.get_extension_bytes::<V>().is_ok();
         (new_account_len, extension_already_exists)
     };
@@ -2335,7 +2354,9 @@ mod test {
         let current_len = state.try_get_account_len().unwrap();
         assert_eq!(current_len, Mint::LEN);
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(value_len)
+            .try_get_new_account_len_for_variable_len_extension::<VariableLenMintTest>(
+                &variable_len,
+            )
             .unwrap();
         assert_eq!(
             new_len,
@@ -2350,23 +2371,25 @@ mod test {
 
         // Reduce the extension size
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(
-                small_variable_len.get_packed_len().unwrap(),
+            .try_get_new_account_len_for_variable_len_extension::<VariableLenMintTest>(
+                &small_variable_len,
             )
             .unwrap();
         assert_eq!(current_len.checked_sub(new_len).unwrap(), 1);
 
         // Increase the extension size
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(
-                big_variable_len.get_packed_len().unwrap(),
+            .try_get_new_account_len_for_variable_len_extension::<VariableLenMintTest>(
+                &big_variable_len,
             )
             .unwrap();
         assert_eq!(new_len.checked_sub(current_len).unwrap(), 1);
 
         // Maintain the extension size
         let new_len = state
-            .try_get_new_account_len::<VariableLenMintTest>(variable_len.get_packed_len().unwrap())
+            .try_get_new_account_len_for_variable_len_extension::<VariableLenMintTest>(
+                &variable_len,
+            )
             .unwrap();
         assert_eq!(new_len, current_len);
     }

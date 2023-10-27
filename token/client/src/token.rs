@@ -60,7 +60,6 @@ use {
         state::{Account, AccountState, Mint, Multisig},
     },
     spl_token_metadata_interface::state::{Field, TokenMetadata},
-    spl_type_length_value::variable_len_pack::VariableLenPack,
     std::{
         fmt, io,
         mem::size_of,
@@ -3460,7 +3459,7 @@ where
         let account_lamports = account.lamports;
         let mint_state = self.unpack_mint_info(account)?;
         let new_account_len = mint_state
-            .try_get_new_account_len::<TokenMetadata>(token_metadata.get_packed_len()?)?;
+            .try_get_new_account_len_for_variable_len_extension::<TokenMetadata>(token_metadata)?;
         let new_rent_exempt_minimum = self
             .client
             .get_minimum_balance_for_rent_exemption(new_account_len)
@@ -3543,7 +3542,7 @@ where
         let mut token_metadata = mint_state.get_variable_len_extension::<TokenMetadata>()?;
         token_metadata.update(field, value);
         let new_account_len = mint_state
-            .try_get_new_account_len::<TokenMetadata>(token_metadata.get_packed_len()?)?;
+            .try_get_new_account_len_for_variable_len_extension::<TokenMetadata>(&token_metadata)?;
         let new_rent_exempt_minimum = self
             .client
             .get_minimum_balance_for_rent_exemption(new_account_len)
