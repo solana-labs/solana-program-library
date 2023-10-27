@@ -2135,6 +2135,49 @@ where
         .await
     }
 
+    /// Create withdraw proof context state account for a confidential transfer withdraw
+    /// instruction.
+    pub async fn create_withdraw_proof_context_state<S: Signer>(
+        &self,
+        context_state_account: &Pubkey,
+        context_state_authority: &Pubkey,
+        withdraw_proof_data: &WithdrawData,
+        withdraw_proof_signer: &S,
+    ) -> TokenResult<T::Output> {
+        // create withdraw proof context state
+        let instruction_type = ProofInstruction::VerifyWithdraw;
+        let space = size_of::<ProofContextState<WithdrawProofContext>>();
+        let rent = self
+            .client
+            .get_minimum_balance_for_rent_exemption(space)
+            .await
+            .map_err(TokenError::Client)?;
+
+        let withdraw_proof_context_state_info = ContextStateInfo {
+            context_state_account,
+            context_state_authority,
+        };
+
+        self.process_ixs(
+            &[system_instruction::create_account(
+                &self.payer.pubkey(),
+                context_state_account,
+                rent,
+                space as u64,
+                &zk_token_proof_program::id(),
+            )],
+            &[withdraw_proof_signer],
+        )
+        .await?;
+
+        self.process_ixs(
+            &[instruction_type
+                .encode_verify_proof(Some(withdraw_proof_context_state_info), withdraw_proof_data)],
+            &[] as &[&dyn Signer; 0],
+        )
+        .await
+    }
+
     /// Withdraw SPL Tokens from the available balance of a confidential token account using custom
     /// keys
     #[allow(clippy::too_many_arguments)]
