@@ -3409,17 +3409,47 @@ async fn command_deposit_withdraw_confidential_tokens(
                 state_with_extension.get_extension::<ConfidentialTransferAccount>()?;
             let withdraw_account_info = WithdrawAccountInfo::new(extension_state);
 
+            let context_state_authority = config.fee_payer()?;
+            let context_state_keypair = Keypair::new();
+            let context_state_pubkey = context_state_keypair.pubkey();
+
+            let withdraw_proof_data =
+                withdraw_account_info.generate_proof_data(amount, elgamal_keypair, aes_key)?;
+
+            // setup proof
+            token
+                .create_withdraw_proof_context_state(
+                    &context_state_pubkey,
+                    &context_state_authority.pubkey(),
+                    &withdraw_proof_data,
+                    &context_state_keypair,
+                )
+                .await?;
+
+            // do the withdrawal
             token
                 .confidential_transfer_withdraw(
                     &token_account_address,
                     &owner,
-                    None,
+                    Some(&context_state_pubkey),
                     amount,
                     decimals,
                     Some(withdraw_account_info),
                     elgamal_keypair,
                     aes_key,
                     &bulk_signers,
+                )
+                .await?;
+
+            // close context state account
+            let context_state_authority_pubkey = context_state_authority.pubkey();
+            let close_context_state_signers = &[context_state_authority];
+            token
+                .confidential_transfer_close_context_state(
+                    &context_state_pubkey,
+                    &token_account_address,
+                    &context_state_authority_pubkey,
+                    close_context_state_signers,
                 )
                 .await?
         }
@@ -5315,7 +5345,6 @@ fn app<'a, 'b>(
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .conflicts_with("token")
                         .help("The address of the token account to configure confidential transfers for \
                             [default: owner's associated token account]")
                 )
@@ -9175,23 +9204,35 @@ mod tests {
         .unwrap();
 
         // withdraw confidential tokens
-        //
-        // NOTE: the test fails due to transaction size limit :(
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::ApplyPendingBalance.into(),
+                "--address",
+                &destination_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap(); // apply pending balance first
 
-        // let withdraw_amount = 100.0;
-        //
-        // process_test_command(
-        //     &config,
-        //     &payer,
-        //     &[
-        //         "spl-token",
-        //         CommandName::WithdrawConfidentialTokens.into(),
-        //         &token_pubkey.to_string(),
-        //         &withdraw_amount.to_string(),
-        //     ],
-        // )
-        // .await
-        // .unwrap();
+        let withdraw_amount = 100.0;
+
+        process_test_command(
+            &config,
+            &payer,
+            &[
+                "spl-token",
+                CommandName::WithdrawConfidentialTokens.into(),
+                &token_pubkey.to_string(),
+                &withdraw_amount.to_string(),
+                "--address",
+                &destination_account.to_string(),
+            ],
+        )
+        .await
+        .unwrap();
 
         // disable confidential transfers for mint
         process_test_command(
