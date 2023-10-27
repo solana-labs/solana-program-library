@@ -1217,35 +1217,26 @@ pub fn alloc_and_serialize<S: BaseState, V: Default + Extension + Pod>(
     overwrite: bool,
 ) -> Result<(), ProgramError> {
     let previous_account_len = account_info.try_data_len()?;
-    let (new_account_len, extension_already_exists) = {
+    let new_account_len = {
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
-        let new_account_len = state.try_get_new_account_len::<V>()?;
-        let extension_already_exists = state.get_extension_bytes::<V>().is_ok();
-        (new_account_len, extension_already_exists)
+        state.try_get_new_account_len::<V>()?
     };
-
-    if extension_already_exists {
-        if !overwrite {
-            return Err(TokenError::ExtensionAlreadyInitialized.into());
-        } else {
-            // Overwrite the extension
-            let mut buffer = account_info.try_borrow_mut_data()?;
-            let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-            let extension = state.get_extension_mut::<V>()?;
-            *extension = *new_extension;
-        }
-    } else {
-        // Realloc the account, then write the new extension
+    
+    // Realloc the account first, if needed
+    if new_account_len > previous_account_len {
         account_info.realloc(new_account_len, false)?;
-        let mut buffer = account_info.try_borrow_mut_data()?;
-        if previous_account_len <= BASE_ACCOUNT_LENGTH {
-            set_account_type::<S>(*buffer)?;
-        }
-        let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-        let extension = state.init_extension::<V>(false)?;
-        *extension = *new_extension;
     }
+    let mut buffer = account_info.try_borrow_mut_data()?;
+    if previous_account_len <= BASE_ACCOUNT_LENGTH {
+        set_account_type::<S>(*buffer)?;
+    }
+    let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
+
+    // Write the extension
+    let extension = state.init_extension::<V>(overwrite)?;
+    *extension = *new_extension;
+
     Ok(())
 }
 
