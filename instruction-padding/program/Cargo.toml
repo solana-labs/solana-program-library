@@ -13,7 +13,7 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-num_enum = "0.7.0"
+num_enum = "0.7.1"
 solana-program = "1.17.2"
 
 [dev-dependencies]
