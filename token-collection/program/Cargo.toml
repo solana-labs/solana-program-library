@@ -25,7 +25,7 @@ spl-type-length-value = { version = "0.3.0", path = "../../libraries/type-length
 solana-program-test = "1.17.2"
 solana-sdk = "1.17.2"
 spl-discriminator = { version = "0.1.0", path = "../../libraries/discriminator" }
-spl-token-client = { version = "0.7", path = "../../token/client" }
+spl-token-client = { version = "0.8", path = "../../token/client" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

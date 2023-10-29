@@ -7285,7 +7285,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-cli"
-version = "3.2.0"
+version = "3.3.0"
 dependencies = [
  "assert_cmd",
  "base64 0.21.5",
@@ -7321,7 +7321,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-client"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "curve25519-dalek",
