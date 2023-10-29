@@ -926,12 +926,15 @@ pub enum ExtensionType {
     MetadataPointer,
     /// Mint contains token-metadata
     TokenMetadata,
-    /// Test variable-length mint extension
     /// Mint contains a pointer to another account (or the same account) that holds group
     /// configurations
     GroupPointer,
+    /// Test variable-length mint extension
     #[cfg(test)]
-    VariableLenMintTest = u16::MAX - 2,
+    VariableLenMintTest = u16::MAX - 4,
+    /// Test fixed-length mint extension
+    #[cfg(test)]
+    FixedLenMintTest = u16::MAX - 3,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest,
@@ -1010,6 +1013,8 @@ impl ExtensionType {
             ExtensionType::MintPaddingTest => pod_get_packed_len::<MintPaddingTest>(),
             #[cfg(test)]
             ExtensionType::VariableLenMintTest => unreachable!(),
+            #[cfg(test)]
+            ExtensionType::FixedLenMintTest => unreachable!(),
         })
     }
 
@@ -1075,6 +1080,8 @@ impl ExtensionType {
             | ExtensionType::ConfidentialTransferFeeAmount => AccountType::Account,
             #[cfg(test)]
             ExtensionType::VariableLenMintTest => AccountType::Mint,
+            #[cfg(test)]
+            ExtensionType::FixedLenMintTest => AccountType::Mint,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
@@ -1222,7 +1229,7 @@ pub fn alloc_and_serialize<S: BaseState, V: Default + Extension + Pod>(
         let state = StateWithExtensions::<S>::unpack(&data)?;
         state.try_get_new_account_len::<V>()?
     };
-    
+
     // Realloc the account first, if needed
     if new_account_len > previous_account_len {
         account_info.realloc(new_account_len, false)?;
@@ -1310,6 +1317,7 @@ mod test {
     use {
         super::*,
         crate::state::test::{TEST_ACCOUNT, TEST_ACCOUNT_SLICE, TEST_MINT, TEST_MINT_SLICE},
+        bytemuck::Pod,
         solana_program::{
             account_info::{Account as GetAccount, IntoAccountInfo},
             clock::Epoch,
@@ -1321,6 +1329,16 @@ mod test {
         },
         transfer_fee::test::test_transfer_fee_config,
     };
+
+    /// Test fixed-length struct
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+    struct FixedLenMintTest {
+        data: [u8; 8],
+    }
+    impl Extension for FixedLenMintTest {
+        const TYPE: ExtensionType = ExtensionType::FixedLenMintTest;
+    }
 
     /// Test variable-length struct
     #[derive(Clone, Debug, PartialEq)]
@@ -2440,7 +2458,44 @@ mod test {
     }
 
     #[test]
-    fn alloc_new_tlv_in_account_info_from_base_size() {
+    fn alloc_new_fixed_len_tlv_in_account_info_from_base_size() {
+        let fixed_len = FixedLenMintTest {
+            data: [1, 2, 3, 4, 5, 6, 7, 8],
+        };
+        let value_len = pod_get_packed_len::<FixedLenMintTest>();
+        let base_account_size = Mint::LEN;
+        let mut buffer = vec![0; base_account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+
+        let mut data = SolanaAccountData::new(&buffer);
+        let key = Pubkey::new_unique();
+        let account_info = (&key, &mut data).into_account_info();
+
+        alloc_and_serialize::<Mint, _>(&account_info, &fixed_len, false).unwrap();
+        let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH + add_type_and_length_to_len(value_len);
+        assert_eq!(data.len(), new_account_len);
+        let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
+        assert_eq!(
+            state.get_extension::<FixedLenMintTest>().unwrap(),
+            &fixed_len,
+        );
+
+        // alloc again succeeds with "overwrite"
+        let account_info = (&key, &mut data).into_account_info();
+        alloc_and_serialize::<Mint, _>(&account_info, &fixed_len, true).unwrap();
+
+        // alloc again fails without "overwrite"
+        let account_info = (&key, &mut data).into_account_info();
+        assert_eq!(
+            alloc_and_serialize::<Mint, _>(&account_info, &fixed_len, false).unwrap_err(),
+            TokenError::ExtensionAlreadyInitialized.into()
+        );
+    }
+
+    #[test]
+    fn alloc_new_variable_len_tlv_in_account_info_from_base_size() {
         let variable_len = VariableLenMintTest { data: vec![20, 99] };
         let value_len = variable_len.get_packed_len().unwrap();
         let base_account_size = Mint::LEN;
@@ -2484,7 +2539,59 @@ mod test {
     }
 
     #[test]
-    fn alloc_new_tlv_in_account_info_from_extended_size() {
+    fn alloc_new_fixed_len_tlv_in_account_info_from_extended_size() {
+        let fixed_len = FixedLenMintTest {
+            data: [1, 2, 3, 4, 5, 6, 7, 8],
+        };
+        let value_len = pod_get_packed_len::<FixedLenMintTest>();
+        let account_size =
+            ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::GroupPointer])
+                .unwrap()
+                + add_type_and_length_to_len(value_len);
+        let mut buffer = vec![0; account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+
+        let test_key =
+            OptionalNonZeroPubkey::try_from(Some(Pubkey::new_from_array([20; 32]))).unwrap();
+        let extension = state.init_extension::<GroupPointer>(false).unwrap();
+        extension.authority = test_key;
+        extension.group_address = test_key;
+
+        let mut data = SolanaAccountData::new(&buffer);
+        let key = Pubkey::new_unique();
+        let account_info = (&key, &mut data).into_account_info();
+
+        alloc_and_serialize::<Mint, _>(&account_info, &fixed_len, false).unwrap();
+        let new_account_len = BASE_ACCOUNT_AND_TYPE_LENGTH
+            + add_type_and_length_to_len(value_len)
+            + add_type_and_length_to_len(size_of::<GroupPointer>());
+        assert_eq!(data.len(), new_account_len);
+        let state = StateWithExtensions::<Mint>::unpack(data.data()).unwrap();
+        assert_eq!(
+            state.get_extension::<FixedLenMintTest>().unwrap(),
+            &fixed_len,
+        );
+        let extension = state.get_extension::<GroupPointer>().unwrap();
+        assert_eq!(extension.authority, test_key);
+        assert_eq!(extension.group_address, test_key);
+
+        // alloc again succeeds with "overwrite"
+        let account_info = (&key, &mut data).into_account_info();
+        alloc_and_serialize::<Mint, _>(&account_info, &fixed_len, true).unwrap();
+
+        // alloc again fails without "overwrite"
+        let account_info = (&key, &mut data).into_account_info();
+        assert_eq!(
+            alloc_and_serialize::<Mint, _>(&account_info, &fixed_len, false).unwrap_err(),
+            TokenError::ExtensionAlreadyInitialized.into()
+        );
+    }
+
+    #[test]
+    fn alloc_new_variable_len_tlv_in_account_info_from_extended_size() {
         let variable_len = VariableLenMintTest { data: vec![42, 6] };
         let value_len = variable_len.get_packed_len().unwrap();
         let account_size =
@@ -2543,7 +2650,7 @@ mod test {
     }
 
     #[test]
-    fn realloc_tlv_in_account_info() {
+    fn realloc_variable_len_tlv_in_account_info() {
         let variable_len = VariableLenMintTest {
             data: vec![1, 2, 3, 4, 5],
         };
