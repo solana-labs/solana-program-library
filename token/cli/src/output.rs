@@ -759,7 +759,7 @@ fn display_ui_extension(
             writeln!(
                 f,
                 "    {}: {}",
-                style("Authority:").bold(),
+                style("Authority").bold(),
                 if let Some(authority) = authority.as_ref() {
                     authority
                 } else {
@@ -779,7 +779,7 @@ fn display_ui_extension(
             writeln!(
                 f,
                 "    {}: {}",
-                style("Audit key:").bold(),
+                style("Audit key").bold(),
                 if let Some(auditor_pubkey) = auditor_elgamal_pubkey.as_ref() {
                     auditor_pubkey
                 } else {
