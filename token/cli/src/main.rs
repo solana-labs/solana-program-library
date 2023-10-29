@@ -5306,7 +5306,6 @@ fn app<'a, 'b>(
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .conflicts_with("token")
                         .help("The address of the token account to configure confidential transfers for \
                             [default: owner's associated token account]")
                 )
@@ -5374,7 +5373,6 @@ fn app<'a, 'b>(
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .conflicts_with("token")
                         .help("The address of the token account to configure confidential transfers for \
                             [default: owner's associated token account]")
                 )
