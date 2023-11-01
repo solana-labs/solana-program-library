@@ -18,7 +18,7 @@ walkdir = "2"
 
 [dev-dependencies]
 async-trait = "0.1"
-borsh = "0.10"
+borsh = "1.1"
 futures-util = "0.3"
 solana-program = "=1.17.2"
 solana-program-test = "=1.17.2"

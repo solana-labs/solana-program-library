@@ -19,7 +19,7 @@ test-sbf = []
 [dependencies]
 solana-program = "1.17.2"
 num-traits = "0.2"
-borsh = "0.10"
+borsh = "1.1"
 num-derive = "0.4.1"
 thiserror = "1.0.50"
 

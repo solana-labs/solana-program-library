@@ -17,7 +17,7 @@ solana-program = "1.17.2"
 spl-token = { version = "4.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 uint = "0.9"
-borsh = "0.10"
+borsh = "1.1"
 
 [dev-dependencies]
 solana-program-test = "1.17.2"
