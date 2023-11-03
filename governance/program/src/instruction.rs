@@ -127,10 +127,9 @@ pub enum GovernanceInstruction {
     ///   3. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
-    ///   6. `[]` Sysvar Rent
-    ///   7. `[signer]` Governance authority
-    ///   8. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
-    ///   9. `[]` Optional Voter Weight Record
+    ///   6. `[signer]` Governance authority
+    ///   7. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   8. `[]` Optional Voter Weight Record
     CreateGovernance {
         /// Governance config
         #[allow(dead_code)]
