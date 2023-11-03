@@ -3861,12 +3861,12 @@ fn app<'a, 'b>(
                         .help("Disable transfer hook functionality by setting the program id to None.")
                 )
                 .arg(
-                    Arg::with_name("program_authority")
-                    .long("program-authority")
+                    Arg::with_name("mint_authority")
+                    .long("mint-authority")
                     .validator(is_valid_signer)
                     .value_name("SIGNER")
                     .takes_value(true)
-                    .help("Specify the authority keypair. Defaults to the client keypair address.")
+                    .help("Specify the mint authority keypair. Defaults to the client keypair.")
                 )
         )
         .subcommand(
@@ -5522,7 +5522,7 @@ async fn process_command<'a>(
             let new_program_id =
                 pubkey_of_signer(arg_matches, "new_program_id", &mut wallet_manager).unwrap();
             let (authority_signer, authority_pubkey) =
-                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+                config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             let bulk_signers = vec![authority_signer];
 
             command_set_transfer_hook_program(
