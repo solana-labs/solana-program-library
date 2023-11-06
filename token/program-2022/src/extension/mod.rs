@@ -370,17 +370,13 @@ fn try_get_new_account_len_for_extension_len<S: BaseState, V: Extension>(
     let current_len = tlv_info
         .used_len
         .saturating_add(BASE_ACCOUNT_AND_TYPE_LENGTH);
-    let new_len = if tlv_info.extension_types.is_empty() {
-        current_len.saturating_add(new_extension_tlv_len)
-    } else {
-        // get the current length used by the extension
-        let current_extension_len = get_extension_bytes::<S, V>(tlv_data)
-            .map(|x| add_type_and_length_to_len(x.len()))
-            .unwrap_or(0);
-        current_len
-            .saturating_sub(current_extension_len)
-            .saturating_add(new_extension_tlv_len)
-    };
+    // get the current length used by the extension
+    let current_extension_len = get_extension_bytes::<S, V>(tlv_data)
+        .map(|x| add_type_and_length_to_len(x.len()))
+        .unwrap_or(0);
+    let new_len = current_len
+        .saturating_sub(current_extension_len)
+        .saturating_add(new_extension_tlv_len);
     Ok(adjust_len_for_multisig(new_len))
 }
 
@@ -429,8 +425,10 @@ pub trait BaseStateWithExtensions<S: BaseState> {
             Ok(adjust_len_for_multisig(total_len))
         }
     }
-    /// Calculate the new expected size if the state allocates the given number
-    /// of bytes for the given fixed-length extension type.
+    /// Calculate the new expected size if the state allocates the given
+    /// fixed-length extension instance.
+    /// If the state already has the extension, the resulting account length
+    /// will be unchanged.
     fn try_get_new_account_len<V: Extension + Pod>(&self) -> Result<usize, ProgramError> {
         try_get_new_account_len_for_extension_len::<S, V>(
             self.get_tlv_data(),
@@ -438,8 +436,8 @@ pub trait BaseStateWithExtensions<S: BaseState> {
         )
     }
 
-    /// Calculate the new expected size if the state allocates the given number
-    /// of bytes for the given variable-length extension type.
+    /// Calculate the new expected size if the state allocates the given
+    /// variable-length extension instance.
     fn try_get_new_account_len_for_variable_len_extension<V: Extension + VariableLenPack>(
         &self,
         new_extension: &V,
@@ -931,10 +929,7 @@ pub enum ExtensionType {
     GroupPointer,
     /// Test variable-length mint extension
     #[cfg(test)]
-    VariableLenMintTest = u16::MAX - 4,
-    /// Test fixed-length mint extension
-    #[cfg(test)]
-    FixedLenMintTest = u16::MAX - 3,
+    VariableLenMintTest = u16::MAX - 2,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest,
@@ -1013,8 +1008,6 @@ impl ExtensionType {
             ExtensionType::MintPaddingTest => pod_get_packed_len::<MintPaddingTest>(),
             #[cfg(test)]
             ExtensionType::VariableLenMintTest => unreachable!(),
-            #[cfg(test)]
-            ExtensionType::FixedLenMintTest => unreachable!(),
         })
     }
 
@@ -1080,8 +1073,6 @@ impl ExtensionType {
             | ExtensionType::ConfidentialTransferFeeAmount => AccountType::Account,
             #[cfg(test)]
             ExtensionType::VariableLenMintTest => AccountType::Mint,
-            #[cfg(test)]
-            ExtensionType::FixedLenMintTest => AccountType::Mint,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
@@ -1265,7 +1256,7 @@ pub fn alloc_and_serialize_variable_len_extension<S: BaseState, V: Extension + V
         let data = account_info.try_borrow_data()?;
         let state = StateWithExtensions::<S>::unpack(&data)?;
         let new_account_len =
-            state.try_get_new_account_len_for_variable_len_extension::<V>(new_extension)?;
+            state.try_get_new_account_len_for_variable_len_extension(new_extension)?;
         let extension_already_exists = state.get_extension_bytes::<V>().is_ok();
         (new_account_len, extension_already_exists)
     };
@@ -1337,7 +1328,7 @@ mod test {
         data: [u8; 8],
     }
     impl Extension for FixedLenMintTest {
-        const TYPE: ExtensionType = ExtensionType::FixedLenMintTest;
+        const TYPE: ExtensionType = ExtensionType::MintPaddingTest;
     }
 
     /// Test variable-length struct
