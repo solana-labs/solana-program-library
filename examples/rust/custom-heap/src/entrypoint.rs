@@ -4,7 +4,6 @@
 
 use solana_program::{
     account_info::AccountInfo,
-    entrypoint,
     entrypoint::{ProgramResult, HEAP_LENGTH, HEAP_START_ADDRESS},
     pubkey::Pubkey,
 };
@@ -44,7 +43,7 @@ unsafe impl std::alloc::GlobalAlloc for BumpAllocator {
 #[global_allocator]
 static A: BumpAllocator = BumpAllocator;
 
-entrypoint!(process_instruction);
+solana_program::entrypoint!(process_instruction);
 fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

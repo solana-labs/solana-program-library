@@ -9,7 +9,7 @@ use {
     spl_transfer_hook_interface::error::TransferHookError,
 };
 
-entrypoint!(process_instruction);
+solana_program::entrypoint!(process_instruction);
 fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
