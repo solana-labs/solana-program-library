@@ -28,11 +28,11 @@ jobs:
       - name: Set env vars
         run: |
           source ci/rust-version.sh
-          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          echo "RUST_NIGHTLY=$rust_nightly" >> $GITHUB_ENV
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ env.RUST_STABLE }}
+          toolchain: ${{ env.RUST_NIGHTLY }}
           override: true
           profile: minimal
           components: rustfmt
