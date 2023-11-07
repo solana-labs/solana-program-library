@@ -35,7 +35,8 @@ pub fn program_test(token_mint_address: Pubkey, use_latest_spl_token: bool) -> P
         "token-mint-data.bin",
     );
 
-    // Dial down the BPF compute budget to detect if the program gets bloated in the future
+    // Dial down the BPF compute budget to detect if the program gets bloated in the
+    // future
     pc.set_compute_max_units(60_000);
 
     pc
@@ -75,7 +76,8 @@ pub fn program_test_2022(
         "token-mint-data.bin",
     );
 
-    // Dial down the BPF compute budget to detect if the program gets bloated in the future
+    // Dial down the BPF compute budget to detect if the program gets bloated in the
+    // future
     pc.set_compute_max_units(50_000);
 
     pc

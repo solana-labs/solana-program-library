@@ -37,7 +37,6 @@ pub enum TransferHookInstruction {
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::transfer_hook::instruction::InitializeInstructionData`
-    ///
     Initialize,
     /// Update the transfer hook program id. Only supported for mints that
     /// include the `TransferHook` extension.
@@ -55,7 +54,6 @@ pub enum TransferHookInstruction {
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::transfer_hook::UpdateInstructionData`
-    ///
     Update,
 }
 

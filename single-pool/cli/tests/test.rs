@@ -255,8 +255,9 @@ async fn create_and_delegate_stake_account(
 async fn reactivate_pool_stake() {
     let env = setup(true).await;
 
-    // setting up a test validator for this to succeed is hell, and success is tested in program tests
-    // so we just make sure the cli can send a well-formed instruction
+    // setting up a test validator for this to succeed is hell, and success is
+    // tested in program tests so we just make sure the cli can send a
+    // well-formed instruction
     let output = Command::new(SVSP_CLI)
         .args([
             "manage",

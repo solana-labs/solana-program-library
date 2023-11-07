@@ -530,8 +530,8 @@ async fn confidential_transfer_empty_account() {
 
     let mut context = TestContext::new().await;
 
-    // newly created confidential transfer account should hold no balance and therefore,
-    // immediately closable
+    // newly created confidential transfer account should hold no balance and
+    // therefore, immediately closable
     context
         .init_token_with_mint(vec![
             ExtensionInitializationParams::ConfidentialTransferMint {

@@ -34,7 +34,8 @@ pub fn process_instruction(
     let rent_via_account = Rent::from_account_info(rent_sysvar_info)?;
     // Both produce the same sysvar
     assert_eq!(rent_via_sysvar, rent_via_account);
-    // Can't print `exemption_threshold` because BPF does not support printing floats
+    // Can't print `exemption_threshold` because BPF does not support printing
+    // floats
     msg!(
         "Rent: lamports_per_byte_year: {:?}, burn_percent: {:?}",
         rent_via_sysvar.lamports_per_byte_year,

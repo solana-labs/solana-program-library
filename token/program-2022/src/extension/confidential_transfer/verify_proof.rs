@@ -18,8 +18,8 @@ use {
     std::slice::Iter,
 };
 
-/// Verify zero-knowledge proof needed for a [ConfigureAccount] instruction and return the
-/// corresponding proof context.
+/// Verify zero-knowledge proof needed for a [ConfigureAccount] instruction and
+/// return the corresponding proof context.
 pub fn verify_configure_account_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
@@ -52,8 +52,8 @@ pub fn verify_configure_account_proof(
     }
 }
 
-/// Verify zero-knowledge proof needed for a [EmptyAccount] instruction and return the
-/// corresponding proof context.
+/// Verify zero-knowledge proof needed for a [EmptyAccount] instruction and
+/// return the corresponding proof context.
 pub fn verify_empty_account_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
@@ -86,8 +86,8 @@ pub fn verify_empty_account_proof(
     }
 }
 
-/// Verify zero-knowledge proof needed for a [Withdraw] instruction and return the
-/// corresponding proof context.
+/// Verify zero-knowledge proof needed for a [Withdraw] instruction and return
+/// the corresponding proof context.
 pub fn verify_withdraw_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
@@ -119,14 +119,16 @@ pub fn verify_withdraw_proof(
     }
 }
 
-/// Verify zero-knowledge proof needed for a [Transfer] instruction without fee and return the
-/// corresponding proof context.
+/// Verify zero-knowledge proof needed for a [Transfer] instruction without fee
+/// and return the corresponding proof context.
 ///
-/// This returns a `Result` type for an `Option<TransferProofContextInfo>` type. If the proof
-/// verification fails, then the function returns a suitable error variant. If the proof succeeds
-/// to verify, then the function returns a `TransferProofContextInfo` that is wrapped inside
-/// `Ok(Some(TransferProofContextInfo))`. If `no_op_on_split_proof_context_state` is `true` and
-/// some a split context state account is not initialized, then it returns `Ok(None)`.
+/// This returns a `Result` type for an `Option<TransferProofContextInfo>` type.
+/// If the proof verification fails, then the function returns a suitable error
+/// variant. If the proof succeeds to verify, then the function returns a
+/// `TransferProofContextInfo` that is wrapped inside
+/// `Ok(Some(TransferProofContextInfo))`. If
+/// `no_op_on_split_proof_context_state` is `true` and some a split context
+/// state account is not initialized, then it returns `Ok(None)`.
 #[cfg(feature = "zk-ops")]
 pub fn verify_transfer_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
@@ -174,8 +176,8 @@ pub fn verify_transfer_proof(
             verify_transfer_range_proof(range_proof_context_state_account_info)?;
 
         // The `TransferProofContextInfo` constructor verifies the consistency of the
-        // individual proof context and generates a `TransferWithFeeProofInfo` struct that is used
-        // to process the rest of the token-2022 logic.
+        // individual proof context and generates a `TransferWithFeeProofInfo` struct
+        // that is used to process the rest of the token-2022 logic.
         let transfer_proof_context = TransferProofContextInfo::verify_and_extract(
             &equality_proof_context,
             &ciphertext_validity_proof_context,
@@ -266,8 +268,8 @@ pub fn verify_transfer_proof(
     }
 }
 
-/// Verify zero-knowledge proof needed for a [Transfer] instruction with fee and return the
-/// corresponding proof context.
+/// Verify zero-knowledge proof needed for a [Transfer] instruction with fee and
+/// return the corresponding proof context.
 #[cfg(feature = "zk-ops")]
 pub fn verify_transfer_with_fee_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
@@ -342,11 +344,12 @@ pub fn verify_transfer_with_fee_proof(
         let range_proof_context =
             verify_transfer_with_fee_range_proof(range_proof_context_state_account_info)?;
 
-        // The `TransferWithFeeProofContextInfo` constructor verifies the consistency of the
-        // individual proof context and generates a `TransferWithFeeProofInfo` struct that is used
-        // to process the rest of the token-2022 logic. The consistency check includes verifying
-        // whether the fee-related zkps were generated with respect to the correct fee parameter
-        // that is stored in the mint extension.
+        // The `TransferWithFeeProofContextInfo` constructor verifies the consistency of
+        // the individual proof context and generates a
+        // `TransferWithFeeProofInfo` struct that is used to process the rest of
+        // the token-2022 logic. The consistency check includes verifying
+        // whether the fee-related zkps were generated with respect to the correct fee
+        // parameter that is stored in the mint extension.
         let transfer_with_fee_proof_context = TransferWithFeeProofContextInfo::verify_and_extract(
             &equality_proof_context,
             &transfer_amount_ciphertext_validity_proof_context,
@@ -469,8 +472,8 @@ pub fn verify_transfer_with_fee_proof(
             .maximum_fee
             .into();
 
-        // check consistency of the transfer fee parameters in the mint extension with what were
-        // used to generate the zkp, which is not checked in the
+        // check consistency of the transfer fee parameters in the mint extension with
+        // what were used to generate the zkp, which is not checked in the
         // `From<TransferWithFeeProofContext>` implementation for
         // `TransferWithFeeProofContextInfo`.
         if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
@@ -494,8 +497,8 @@ pub fn verify_transfer_with_fee_proof(
             proof_context.fee_parameters.fee_rate_basis_points.into();
         let proof_maximum_fee: u64 = proof_context.fee_parameters.maximum_fee.into();
 
-        // check consistency of the transfer fee parameters in the mint extension with what were
-        // used to generate the zkp, which is not checked in the
+        // check consistency of the transfer fee parameters in the mint extension with
+        // what were used to generate the zkp, which is not checked in the
         // `From<TransferWithFeeProofContext>` implementation for
         // `TransferWithFeeProofContextInfo`.
         if u16::from(fee_parameters.transfer_fee_basis_points) != proof_tranfer_fee_basis_points
@@ -508,7 +511,8 @@ pub fn verify_transfer_with_fee_proof(
     }
 }
 
-/// Verify and process equality proof for [Transfer] and [TransferWithFee] instructions.
+/// Verify and process equality proof for [Transfer] and [TransferWithFee]
+/// instructions.
 fn verify_equality_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<CiphertextCommitmentEqualityProofContext, ProgramError> {
@@ -525,7 +529,8 @@ fn verify_equality_proof(
     Ok(equality_proof_context_state.proof_context)
 }
 
-/// Verify and process ciphertext validity proof for [Transfer] and [TransferWithFee] instructions.
+/// Verify and process ciphertext validity proof for [Transfer] and
+/// [TransferWithFee] instructions.
 fn verify_ciphertext_validity_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<BatchedGroupedCiphertext2HandlesValidityProofContext, ProgramError> {

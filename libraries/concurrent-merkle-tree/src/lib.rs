@@ -10,7 +10,8 @@
 /// Private macros to enable logging in the Solana runtime
 #[macro_use]
 mod log;
-/// Changelog implementation to keep track of information necessary to fast forward proofs
+/// Changelog implementation to keep track of information necessary to fast
+/// forward proofs
 pub mod changelog;
 /// Core implementation of the concurrent merkle tree structure
 pub mod concurrent_merkle_tree;

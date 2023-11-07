@@ -1,8 +1,8 @@
-//! Helper functions to generate split zero-knowledge proofs for confidential transfers in the
-//! Confidential Transfer Extension.
+//! Helper functions to generate split zero-knowledge proofs for confidential
+//! transfers in the Confidential Transfer Extension.
 //!
-//! The logic in this submodule should belong to the `solana-zk-token-sdk` and will be removed with
-//! the next upgrade to the Solana program.
+//! The logic in this submodule should belong to the `solana-zk-token-sdk` and
+//! will be removed with the next upgrade to the Solana program.
 
 use crate::{
     extension::confidential_transfer::{
@@ -119,7 +119,8 @@ pub fn transfer_split_proof_data(
         hi: source_decrypt_handle_hi.into(),
     };
 
-    // encrypt the transfer amount under the destination and auditor ElGamal public key
+    // encrypt the transfer amount under the destination and auditor ElGamal public
+    // key
     let transfer_amount_destination_auditor_ciphertext_lo = GroupedElGamal::encrypt_with(
         [destination_elgamal_pubkey, auditor_elgamal_pubkey],
         transfer_amount_lo,

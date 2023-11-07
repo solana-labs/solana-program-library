@@ -352,7 +352,8 @@ impl<'a> Config<'a> {
         ))
     }
 
-    // Checks if an explicit address was provided, otherwise return the default address if there is one
+    // Checks if an explicit address was provided, otherwise return the default
+    // address if there is one
     pub(crate) fn pubkey_or_default(
         &self,
         arg_matches: &ArgMatches<'_>,
@@ -368,7 +369,8 @@ impl<'a> Config<'a> {
         Ok(self.default_signer()?.pubkey())
     }
 
-    // Checks if an explicit signer was provided, otherwise return the default signer.
+    // Checks if an explicit signer was provided, otherwise return the default
+    // signer.
     pub(crate) fn signer_or_default(
         &self,
         arg_matches: &ArgMatches,

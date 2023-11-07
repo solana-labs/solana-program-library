@@ -9,7 +9,8 @@ type InnerUint = U256;
 /// The representation of the number one as a precise number as 10^12
 pub const ONE: u128 = 1_000_000_000_000;
 
-/// Struct encapsulating a fixed-point number that allows for decimal calculations
+/// Struct encapsulating a fixed-point number that allows for decimal
+/// calculations
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreciseNumber {
     /// Wrapper over the inner value, which is multiplied by ONE
@@ -179,7 +180,8 @@ impl PreciseNumber {
         Some(Self { value })
     }
 
-    /// Performs a subtraction, returning the result and whether the result is negative
+    /// Performs a subtraction, returning the result and whether the result is
+    /// negative
     pub fn unsigned_sub(&self, rhs: &Self) -> (Self, bool) {
         match self.value.checked_sub(rhs.value) {
             None => {
@@ -348,7 +350,8 @@ impl PreciseNumber {
     }
 
     /// Approximate the square root using Newton's method.  Based on testing,
-    /// this provides a precision of 11 digits for inputs between 0 and u128::MAX
+    /// this provides a precision of 11 digits for inputs between 0 and
+    /// u128::MAX
     pub fn sqrt(&self) -> Option<Self> {
         if self.less_than(&Self::minimum_sqrt_base())
             || self.greater_than(&Self::maximum_sqrt_base())

@@ -43,9 +43,9 @@ pub struct Cli {
     )]
     pub json_rpc_url: Option<String>,
 
-    /// Specify the fee-payer account. This may be a keypair file, the ASK keyword
-    /// or the pubkey of an offline signer, provided an appropriate --signer argument
-    /// is also passed. Defaults to the client keypair.
+    /// Specify the fee-payer account. This may be a keypair file, the ASK
+    /// keyword or the pubkey of an offline signer, provided an appropriate
+    /// --signer argument is also passed. Defaults to the client keypair.
     #[clap(
         global(true),
         long,
@@ -70,23 +70,25 @@ pub struct Cli {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum Command {
-    /// Commands used to initialize or manage existing single-validator stake pools.
-    /// Other than initializing new pools, most users should never need to use these.
+    /// Commands used to initialize or manage existing single-validator stake
+    /// pools. Other than initializing new pools, most users should never
+    /// need to use these.
     Manage(ManageCli),
 
-    /// Deposit delegated stake into a pool in exchange for pool tokens, closing out
-    /// the original stake account. Provide either a stake account address, or a
-    /// pool or vote account address along with the --default-stake-account flag to
-    /// use an account created with create-stake.
+    /// Deposit delegated stake into a pool in exchange for pool tokens, closing
+    /// out the original stake account. Provide either a stake account
+    /// address, or a pool or vote account address along with the
+    /// --default-stake-account flag to use an account created with
+    /// create-stake.
     Deposit(DepositCli),
 
     /// Withdraw stake into a new stake account, burning tokens in exchange.
-    /// Provide either pool or vote account address, plus either an amount of tokens to burn
-    /// or the ALL keyword to burn all.
+    /// Provide either pool or vote account address, plus either an amount of
+    /// tokens to burn or the ALL keyword to burn all.
     Withdraw(WithdrawCli),
 
-    /// Create and delegate a new stake account to a given validator, using a default address
-    /// linked to the intended depository pool
+    /// Create and delegate a new stake account to a given validator, using a
+    /// default address linked to the intended depository pool
     CreateDefaultStake(CreateStakeCli),
 
     /// Display info for one or all single-validator stake pool(s)
@@ -101,22 +103,26 @@ pub struct ManageCli {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum ManageCommand {
-    /// Permissionlessly create the single-validator stake pool for a given validator vote account
-    /// if one does not already exist. The fee payer also pays rent-exemption for accounts,
-    /// along with the cluster-configured minimum stake delegation
+    /// Permissionlessly create the single-validator stake pool for a given
+    /// validator vote account if one does not already exist. The fee payer
+    /// also pays rent-exemption for accounts, along with the
+    /// cluster-configured minimum stake delegation
     Initialize(InitializeCli),
 
-    /// Permissionlessly re-stake the pool stake account in the case when it has been deactivated.
-    /// This may happen if the validator is force-deactivated, and then later reactivated using
-    /// the same address for its vote account.
+    /// Permissionlessly re-stake the pool stake account in the case when it has
+    /// been deactivated. This may happen if the validator is
+    /// force-deactivated, and then later reactivated using the same address
+    /// for its vote account.
     ReactivatePoolStake(ReactivateCli),
 
-    /// Permissionlessly create default MPL token metadata for the pool mint. Normally this is done
-    /// automatically upon initialization, so this does not need to be called.
+    /// Permissionlessly create default MPL token metadata for the pool mint.
+    /// Normally this is done automatically upon initialization, so this
+    /// does not need to be called.
     CreateTokenMetadata(CreateMetadataCli),
 
-    /// Modify the MPL token metadata associated with the pool mint. This action can only be
-    /// performed by the validator vote account's withdraw authority
+    /// Modify the MPL token metadata associated with the pool mint. This action
+    /// can only be performed by the validator vote account's withdraw
+    /// authority
     UpdateTokenMetadata(UpdateMetadataCli),
 }
 
@@ -151,11 +157,13 @@ pub struct ReactivateCli {
 #[clap(group(ArgGroup::new("stake-source").required(true).args(&["stake-account-address", "default-stake-account"])))]
 #[clap(group(pool_source_group().required(false)))]
 pub struct DepositCli {
-    /// The stake account to deposit from. Must be in the same activation state as the pool's stake account
+    /// The stake account to deposit from. Must be in the same activation state
+    /// as the pool's stake account
     #[clap(value_parser = |p: &str| parse_address(p, "stake_account_address"))]
     pub stake_account_address: Option<Pubkey>,
 
-    /// Instead of using a stake account by address, use the user's default account for a specified pool
+    /// Instead of using a stake account by address, use the user's default
+    /// account for a specified pool
     #[clap(
         short,
         long,
@@ -168,19 +176,23 @@ pub struct DepositCli {
     #[clap(short, long = "pool", value_parser = |p: &str| parse_address(p, "pool_address"))]
     pub pool_address: Option<Pubkey>,
 
-    /// The vote account corresponding to the pool to deposit into. Optional when stake account or pool is provided
+    /// The vote account corresponding to the pool to deposit into. Optional
+    /// when stake account or pool is provided
     #[clap(long = "vote-account", value_parser = |p: &str| parse_address(p, "vote_account_address"))]
     pub vote_account_address: Option<Pubkey>,
 
-    /// Signing authority on the stake account to be deposited. Defaults to the client keypair
+    /// Signing authority on the stake account to be deposited. Defaults to the
+    /// client keypair
     #[clap(long = "withdraw-authority", id = "STAKE_WITHDRAW_AUTHORITY_KEYPAIR", validator = |s| is_valid_signer(s))]
     pub stake_withdraw_authority: Option<SignerArg>,
 
-    /// The token account to mint to. Defaults to the client keypair's associated token account
+    /// The token account to mint to. Defaults to the client keypair's
+    /// associated token account
     #[clap(long = "token-account", value_parser = |p: &str| parse_address(p, "token_account_address"))]
     pub token_account_address: Option<Pubkey>,
 
-    /// The wallet to refund stake account rent to. Defaults to the client keypair's pubkey
+    /// The wallet to refund stake account rent to. Defaults to the client
+    /// keypair's pubkey
     #[clap(long = "recipient", value_parser = |p: &str| parse_address(p, "lamport_recipient_address"))]
     pub lamport_recipient_address: Option<Pubkey>,
 }
@@ -192,7 +204,8 @@ pub struct WithdrawCli {
     #[clap(value_parser = Amount::parse_decimal_or_all)]
     pub token_amount: Amount,
 
-    /// The token account to withdraw from. Defaults to the associated token account for the pool mint
+    /// The token account to withdraw from. Defaults to the associated token
+    /// account for the pool mint
     #[clap(long = "token-account", value_parser = |p: &str| parse_address(p, "token_account_address"))]
     pub token_account_address: Option<Pubkey>,
 
@@ -208,7 +221,8 @@ pub struct WithdrawCli {
     #[clap(long = "token-authority", id = "TOKEN_AUTHORITY_KEYPAIR", validator = |s| is_valid_signer(s))]
     pub token_authority: Option<SignerArg>,
 
-    /// Authority to assign to the new stake account. Defaults to the pubkey of the client keypair
+    /// Authority to assign to the new stake account. Defaults to the pubkey of
+    /// the client keypair
     #[clap(long = "stake-authority", value_parser = |p: &str| parse_address(p, "stake_authority_address"))]
     pub stake_authority_address: Option<Pubkey>,
 
@@ -240,7 +254,8 @@ pub struct UpdateMetadataCli {
     #[clap(validator = is_valid_token_symbol)]
     pub token_symbol: String,
 
-    /// Optional external URI for the pool token. Leaving this argument blank will clear any existing value
+    /// Optional external URI for the pool token. Leaving this argument blank
+    /// will clear any existing value
     #[clap(validator = is_valid_token_uri)]
     pub token_uri: Option<String>,
 
@@ -252,7 +267,8 @@ pub struct UpdateMetadataCli {
     #[clap(long = "vote-account", value_parser = |p: &str| parse_address(p, "vote_account_address"))]
     pub vote_account_address: Option<Pubkey>,
 
-    /// Authorized withdrawer for the vote account, to prove validator ownership. Defaults to the client keypair
+    /// Authorized withdrawer for the vote account, to prove validator
+    /// ownership. Defaults to the client keypair
     #[clap(long, id = "AUTHORIZED_WITHDRAWER_KEYPAIR", validator = |s| is_valid_signer(s))]
     pub authorized_withdrawer: Option<SignerArg>,
 }
@@ -271,7 +287,8 @@ pub struct CreateStakeCli {
     #[clap(long = "vote-account", value_parser = |p: &str| parse_address(p, "vote_account_address"))]
     pub vote_account_address: Option<Pubkey>,
 
-    /// Authority to assign to the new stake account. Defaults to the pubkey of the client keypair
+    /// Authority to assign to the new stake account. Defaults to the pubkey of
+    /// the client keypair
     #[clap(long = "stake-authority", value_parser = |p: &str| parse_address(p, "stake_authority_address"))]
     pub stake_authority_address: Option<Pubkey>,
 }
@@ -302,10 +319,11 @@ pub fn parse_address(path: &str, name: &str) -> Result<Pubkey, String> {
     if is_valid_pubkey(path).is_ok() {
         // this all is ugly but safe
         // wallet_manager doesnt need to be shared, it just saves cycles to cache it
-        // and the only way argmatches default fails with an unchecked lookup is in the prompt branch
-        // which seems unlikely to ever be used for pubkeys
+        // and the only way argmatches default fails with an unchecked lookup is in the
+        // prompt branch which seems unlikely to ever be used for pubkeys
         // the usb lookup in signer_from_path_with_config is safe
-        // and the pubkey lookups are unreachable because pubkey_from_path short circuits that case
+        // and the pubkey lookups are unreachable because pubkey_from_path short
+        // circuits that case
         let mut wallet_manager = None;
         pubkey_from_path(&ArgMatches::default(), path, name, &mut wallet_manager)
             .map_err(|_| format!("Failed to load pubkey {} at {}", name, path))
@@ -356,10 +374,11 @@ pub fn pool_address_from_args(maybe_pool: Option<Pubkey>, maybe_vote: Option<Pub
     }
 }
 
-// all this is because solana clap v3 utils signer handlers dont work with derive syntax
-// which means its impossible to parse keypairs or addresses in value_parser
-// instead, we take the input into a string wrapper from the cli
-// and then once the first pass is over, we do a second manual pass converting to signer wrappers
+// all this is because solana clap v3 utils signer handlers dont work with
+// derive syntax which means its impossible to parse keypairs or addresses in
+// value_parser instead, we take the input into a string wrapper from the cli
+// and then once the first pass is over, we do a second manual pass converting
+// to signer wrappers
 #[derive(Clone, Debug)]
 pub enum SignerArg {
     Source(String),

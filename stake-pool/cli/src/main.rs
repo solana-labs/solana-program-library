@@ -1761,7 +1761,8 @@ fn command_set_manager(
     let new_fee_receiver = match new_fee_receiver {
         None => stake_pool.manager_fee_account,
         Some(value) => {
-            // Check for fee receiver being a valid token account and have to same mint as the stake pool
+            // Check for fee receiver being a valid token account and have to same mint as
+            // the stake pool
             let token_account =
                 get_token_account(&config.rpc_client, value, &stake_pool.pool_mint)?;
             if token_account.mint != stake_pool.pool_mint {

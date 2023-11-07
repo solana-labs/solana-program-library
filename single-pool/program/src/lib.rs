@@ -11,7 +11,8 @@ pub mod state;
 #[cfg(not(feature = "no-entrypoint"))]
 pub mod entrypoint;
 
-// export current sdk types for downstream users building with a different sdk version
+// export current sdk types for downstream users building with a different sdk
+// version
 pub use solana_program;
 use solana_program::{pubkey::Pubkey, stake};
 
@@ -114,7 +115,8 @@ pub fn find_pool_mpl_authority_address(program_id: &Pubkey, pool_address: &Pubke
     find_pool_mpl_authority_address_and_bump(program_id, pool_address).0
 }
 
-/// Find the address of the default intermediate account that holds activating user stake before deposit.
+/// Find the address of the default intermediate account that holds activating
+/// user stake before deposit.
 pub fn find_default_deposit_account_address(
     pool_address: &Pubkey,
     user_wallet_address: &Pubkey,

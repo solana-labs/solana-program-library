@@ -12,11 +12,13 @@ use {
 /// Criteria for accepting a feature proposal
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, BorshSchema, PartialEq)]
 pub struct AcceptanceCriteria {
-    /// The balance of the feature proposal's token account must be greater than this amount, and
-    /// tallied before the deadline for the feature to be accepted.
+    /// The balance of the feature proposal's token account must be greater than
+    /// this amount, and tallied before the deadline for the feature to be
+    /// accepted.
     pub tokens_required: u64,
 
-    /// If the required tokens are not tallied by this deadline then the proposal will expire.
+    /// If the required tokens are not tallied by this deadline then the
+    /// proposal will expire.
     pub deadline: UnixTimestamp,
 }
 
@@ -29,7 +31,8 @@ pub enum FeatureProposal {
     Pending(AcceptanceCriteria),
     /// Feature proposal was accepted and the feature is now active
     Accepted {
-        /// The balance of the feature proposal's token account at the time of activation.
+        /// The balance of the feature proposal's token account at the time of
+        /// activation.
         #[allow(dead_code)] // not dead code..
         tokens_upon_acceptance: u64,
     },

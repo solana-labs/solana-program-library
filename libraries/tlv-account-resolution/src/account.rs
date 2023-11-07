@@ -84,8 +84,8 @@ pub struct ExtraAccountMeta {
     /// Whether the account should be writable
     pub is_writable: PodBool,
 }
-/// Helper used to to know when the top bit is set, to interpret the discriminator
-/// as an index rather than as a type
+/// Helper used to to know when the top bit is set, to interpret the
+/// discriminator as an index rather than as a type
 const U8_TOP_BIT: u8 = 1 << 7;
 impl ExtraAccountMeta {
     /// Create a `ExtraAccountMeta` from a public key,
@@ -118,8 +118,8 @@ impl ExtraAccountMeta {
         })
     }
 
-    /// Create a `ExtraAccountMeta` from a list of seed configurations, representing
-    /// a PDA for an external program
+    /// Create a `ExtraAccountMeta` from a list of seed configurations,
+    /// representing a PDA for an external program
     ///
     /// This PDA belongs to a program elsewhere in the account list, rather
     /// than the executing program. For a PDA on the executing program, use

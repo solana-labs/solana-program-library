@@ -25,7 +25,8 @@ pub mod addins;
 pub mod cookies;
 pub mod tools;
 
-/// Program's test bench which captures test context, rent and payer and common utility functions
+/// Program's test bench which captures test context, rent and payer and common
+/// utility functions
 pub struct ProgramTestBench {
     pub context: ProgramTestContext,
     pub rent: Rent,
@@ -347,7 +348,8 @@ impl ProgramTestBench {
             .unwrap_or_else(|| panic!("GET-TEST-ACCOUNT-ERROR: Account {} not found", address))
     }
 
-    /// Overrides or creates Borsh serialized account with arbitrary account data subverting normal runtime checks
+    /// Overrides or creates Borsh serialized account with arbitrary account
+    /// data subverting normal runtime checks
     pub fn set_borsh_account<T: BorshSerialize>(
         &mut self,
         program_id: &Pubkey,

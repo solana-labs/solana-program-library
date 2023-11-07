@@ -144,7 +144,8 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
     );
 
     // alice got her rent back if active, or everything otherwise
-    // and if someone sent lamports to the stake account, the next depositor gets them
+    // and if someone sent lamports to the stake account, the next depositor gets
+    // them
     assert_eq!(
         wallet_lamports_after_deposit,
         USER_STARTING_LAMPORTS - expected_deposit + extra_lamports,

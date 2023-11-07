@@ -509,7 +509,8 @@ async fn merge_into_validator_stake() {
     }
 
     // Check validator stake accounts have the expected balance now:
-    // validator stake account minimum + deposited lamports + rents + increased lamports
+    // validator stake account minimum + deposited lamports + rents + increased
+    // lamports
     let expected_lamports = current_minimum_delegation + lamports + increase_amount + stake_rent;
     for stake_account in &stake_accounts {
         let validator_stake =

@@ -38,12 +38,12 @@ pub enum ConfidentialTransferFeeInstruction {
     /// Initializes confidential transfer fees for a mint.
     ///
     /// The `ConfidentialTransferFeeInstruction::InitializeConfidentialTransferFeeConfig`
-    /// instruction requires no signers and MUST be included within the same Transaction as
-    /// `TokenInstruction::InitializeMint`. Otherwise another party can initialize the
-    /// configuration.
+    /// instruction requires no signers and MUST be included within the same
+    /// Transaction as `TokenInstruction::InitializeMint`. Otherwise another
+    /// party can initialize the configuration.
     ///
-    /// The instruction fails if the `TokenInstruction::InitializeMint` instruction has already
-    /// executed for the mint.
+    /// The instruction fails if the `TokenInstruction::InitializeMint`
+    /// instruction has already executed for the mint.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -51,100 +51,113 @@ pub enum ConfidentialTransferFeeInstruction {
     ///
     /// Data expected by this instruction:
     ///   `InitializeConfidentialTransferFeeConfigData`
-    ///
     InitializeConfidentialTransferFeeConfig,
 
-    /// Transfer all withheld confidential tokens in the mint to an account. Signed by the mint's
-    /// withdraw withheld tokens authority.
+    /// Transfer all withheld confidential tokens in the mint to an account.
+    /// Signed by the mint's withdraw withheld tokens authority.
     ///
-    /// The withheld confidential tokens are aggregated directly into the destination available
-    /// balance.
+    /// The withheld confidential tokens are aggregated directly into the
+    /// destination available balance.
     ///
-    /// In order for this instruction to be successfully processed, it must be accompanied by the
-    /// `VerifyCiphertextCiphertextEquality` instruction of the `zk_token_proof` program in the
-    /// same transaction or the address of a context state account for the proof must be provided.
+    /// In order for this instruction to be successfully processed, it must be
+    /// accompanied by the `VerifyCiphertextCiphertextEquality` instruction
+    /// of the `zk_token_proof` program in the same transaction or the
+    /// address of a context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The token mint. Must include the `TransferFeeConfig` extension.
-    ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount` and
-    ///      `ConfidentialTransferAccount` extensions.
-    ///   2. `[]` Instructions sysvar if `VerifyCiphertextCiphertextEquality` is included in the same
-    ///      transaction or context state account if `VerifyCiphertextCiphertextEquality` is
-    ///      pre-verified into a context state account.
+    ///   0. `[writable]` The token mint. Must include the `TransferFeeConfig`
+    ///      extension.
+    ///   1. `[writable]` The fee receiver account. Must include the
+    ///      `TransferFeeAmount` and `ConfidentialTransferAccount` extensions.
+    ///   2. `[]` Instructions sysvar if `VerifyCiphertextCiphertextEquality` is
+    ///      included in the same transaction or context state account if
+    ///      `VerifyCiphertextCiphertextEquality` is pre-verified into a context
+    ///      state account.
     ///   3. `[signer]` The mint's `withdraw_withheld_authority`.
     ///
     ///   * Multisignature owner/delegate
-    ///   0. `[writable]` The token mint. Must include the `TransferFeeConfig` extension.
-    ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount` and
-    ///      `ConfidentialTransferAccount` extensions.
-    ///   2. `[]` Instructions sysvar if `VerifyCiphertextCiphertextEquality` is included in the same
-    ///      transaction or context state account if `VerifyCiphertextCiphertextEquality` is
-    ///      pre-verified into a context state account.
+    ///   0. `[writable]` The token mint. Must include the `TransferFeeConfig`
+    ///      extension.
+    ///   1. `[writable]` The fee receiver account. Must include the
+    ///      `TransferFeeAmount` and `ConfidentialTransferAccount` extensions.
+    ///   2. `[]` Instructions sysvar if `VerifyCiphertextCiphertextEquality` is
+    ///      included in the same transaction or context state account if
+    ///      `VerifyCiphertextCiphertextEquality` is pre-verified into a context
+    ///      state account.
     ///   3. `[]` The mint's multisig `withdraw_withheld_authority`.
     ///   4. ..3+M `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
     ///   WithdrawWithheldTokensFromMintData
-    ///
     WithdrawWithheldTokensFromMint,
 
-    /// Transfer all withheld tokens to an account. Signed by the mint's withdraw withheld tokens
-    /// authority. This instruction is susceptible to front-running. Use
-    /// `HarvestWithheldTokensToMint` and `WithdrawWithheldTokensFromMint` as an alternative.
+    /// Transfer all withheld tokens to an account. Signed by the mint's
+    /// withdraw withheld tokens authority. This instruction is susceptible
+    /// to front-running. Use `HarvestWithheldTokensToMint` and
+    /// `WithdrawWithheldTokensFromMint` as an alternative.
     ///
-    /// The withheld confidential tokens are aggregated directly into the destination available
-    /// balance.
+    /// The withheld confidential tokens are aggregated directly into the
+    /// destination available balance.
     ///
-    /// Note on front-running: This instruction requires a zero-knowledge proof verification
-    /// instruction that is checked with respect to the account state (the currently withheld
-    /// fees). Suppose that a withdraw withheld authority generates the
-    /// `WithdrawWithheldTokensFromAccounts` instruction along with a corresponding zero-knowledge
-    /// proof for a specified set of accounts, and submits it on chain. If the withheld fees at any
-    /// of the specified accounts change before the `WithdrawWithheldTokensFromAccounts` is
-    /// executed on chain, the zero-knowledge proof will not verify with respect to the new state,
+    /// Note on front-running: This instruction requires a zero-knowledge proof
+    /// verification instruction that is checked with respect to the account
+    /// state (the currently withheld fees). Suppose that a withdraw
+    /// withheld authority generates the
+    /// `WithdrawWithheldTokensFromAccounts` instruction along with a
+    /// corresponding zero-knowledge proof for a specified set of accounts,
+    /// and submits it on chain. If the withheld fees at any
+    /// of the specified accounts change before the
+    /// `WithdrawWithheldTokensFromAccounts` is executed on chain, the
+    /// zero-knowledge proof will not verify with respect to the new state,
     /// forcing the transaction to fail.
     ///
-    /// If front-running occurs, then users can look up the updated states of the accounts,
-    /// generate a new zero-knowledge proof and try again. Alternatively, withdraw withheld
-    /// authority can first move the withheld amount to the mint using
-    /// `HarvestWithheldTokensToMint` and then move the withheld fees from mint to a specified
-    /// destination account using `WithdrawWithheldTokensFromMint`.
+    /// If front-running occurs, then users can look up the updated states of
+    /// the accounts, generate a new zero-knowledge proof and try again.
+    /// Alternatively, withdraw withheld authority can first move the
+    /// withheld amount to the mint using `HarvestWithheldTokensToMint` and
+    /// then move the withheld fees from mint to a specified destination
+    /// account using `WithdrawWithheldTokensFromMint`.
     ///
-    /// In order for this instruction to be successfully processed, it must be accompanied by the
-    /// `VerifyWithdrawWithheldTokens` instruction of the `zk_token_proof` program in the same
-    /// transaction or the address of a context state account for the proof must be provided.
+    /// In order for this instruction to be successfully processed, it must be
+    /// accompanied by the `VerifyWithdrawWithheldTokens` instruction of the
+    /// `zk_token_proof` program in the same transaction or the address of a
+    /// context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[]` The token mint. Must include the `TransferFeeConfig` extension.
-    ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount` and
-    ///      `ConfidentialTransferAccount` extensions.
-    ///   2. `[]` Instructions sysvar if `VerifyCiphertextCiphertextEquality` is included in the
-    ///      same transaction or context state account if `VerifyCiphertextCiphertextEquality` is
-    ///      pre-verified into a context state account.
+    ///   0. `[]` The token mint. Must include the `TransferFeeConfig`
+    ///      extension.
+    ///   1. `[writable]` The fee receiver account. Must include the
+    ///      `TransferFeeAmount` and `ConfidentialTransferAccount` extensions.
+    ///   2. `[]` Instructions sysvar if `VerifyCiphertextCiphertextEquality` is
+    ///      included in the same transaction or context state account if
+    ///      `VerifyCiphertextCiphertextEquality` is pre-verified into a context
+    ///      state account.
     ///   3. `[signer]` The mint's `withdraw_withheld_authority`.
     ///   4. ..3+N `[writable]` The source accounts to withdraw from.
     ///
     ///   * Multisignature owner/delegate
-    ///   0. `[]` The token mint. Must include the `TransferFeeConfig` extension.
-    ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount` and
-    ///      `ConfidentialTransferAccount` extensions.
-    ///   2. `[]` Instructions sysvar if `VerifyCiphertextCiphertextEquality` is included in the
-    ///      same transaction or context state account if `VerifyCiphertextCiphertextEquality` is
-    ///      pre-verified into a context state account.
+    ///   0. `[]` The token mint. Must include the `TransferFeeConfig`
+    ///      extension.
+    ///   1. `[writable]` The fee receiver account. Must include the
+    ///      `TransferFeeAmount` and `ConfidentialTransferAccount` extensions.
+    ///   2. `[]` Instructions sysvar if `VerifyCiphertextCiphertextEquality` is
+    ///      included in the same transaction or context state account if
+    ///      `VerifyCiphertextCiphertextEquality` is pre-verified into a context
+    ///      state account.
     ///   3. `[]` The mint's multisig `withdraw_withheld_authority`.
     ///   4. ..4+M `[signer]` M signer accounts.
     ///   4+M+1. ..4+M+N `[writable]` The source accounts to withdraw from.
     ///
     /// Data expected by this instruction:
     ///   WithdrawWithheldTokensFromAccountsData
-    ///
     WithdrawWithheldTokensFromAccounts,
 
-    /// Permissionless instruction to transfer all withheld confidential tokens to the mint.
+    /// Permissionless instruction to transfer all withheld confidential tokens
+    /// to the mint.
     ///
     /// Succeeds for frozen accounts.
     ///
@@ -158,10 +171,10 @@ pub enum ConfidentialTransferFeeInstruction {
     ///
     /// Data expected by this instruction:
     ///   None
-    ///
     HarvestWithheldTokensToMint,
 
-    /// Configure a confidential transfer fee mint to accept harvested confidential fees.
+    /// Configure a confidential transfer fee mint to accept harvested
+    /// confidential fees.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -172,13 +185,15 @@ pub enum ConfidentialTransferFeeInstruction {
     ///   *Multisignature owner/delegate
     ///   0. `[writable]` The token mint.
     ///   1. `[]` The confidential transfer fee multisig authority,
-    ///   2. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   2. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   None
     EnableHarvestToMint,
 
-    /// Configure a confidential transfer fee mint to reject any harvested confidential fees.
+    /// Configure a confidential transfer fee mint to reject any harvested
+    /// confidential fees.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -189,7 +204,8 @@ pub enum ConfidentialTransferFeeInstruction {
     ///   *Multisignature owner/delegate
     ///   0. `[writable]` The token mint.
     ///   1. `[]` The confidential transfer fee multisig authority,
-    ///   2. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   2. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///      account.
     ///
     /// Data expected by this instruction:
     ///   None
@@ -210,22 +226,25 @@ pub struct InitializeConfidentialTransferFeeConfigData {
     pub withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
 }
 
-/// Data expected by `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint`
+/// Data expected by
+/// `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromMint`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromMintData {
-    /// Relative location of the `ProofInstruction::VerifyWithdrawWithheld` instruction to the
-    /// `WithdrawWithheldTokensFromMint` instruction in the transaction. If the offset is `0`, then
-    /// use a context state account for the proof.
+    /// Relative location of the `ProofInstruction::VerifyWithdrawWithheld`
+    /// instruction to the `WithdrawWithheldTokensFromMint` instruction in
+    /// the transaction. If the offset is `0`, then use a context state
+    /// account for the proof.
     pub proof_instruction_offset: i8,
     /// The new decryptable balance in the destination token account.
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
 }
 
-/// Data expected by `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts`
+/// Data expected by
+/// `ConfidentialTransferFeeInstruction::WithdrawWithheldTokensFromAccounts`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -233,9 +252,10 @@ pub struct WithdrawWithheldTokensFromMintData {
 pub struct WithdrawWithheldTokensFromAccountsData {
     /// Number of token accounts harvested
     pub num_token_accounts: u8,
-    /// Relative location of the `ProofInstruction::VerifyWithdrawWithheld` instruction to the
-    /// `VerifyWithdrawWithheldTokensFromAccounts` instruction in the transaction. If the offset is
-    /// `0`, then use a context state account for the proof.
+    /// Relative location of the `ProofInstruction::VerifyWithdrawWithheld`
+    /// instruction to the `VerifyWithdrawWithheldTokensFromAccounts`
+    /// instruction in the transaction. If the offset is `0`, then use a
+    /// context state account for the proof.
     pub proof_instruction_offset: i8,
     /// The new decryptable balance in the destination token account.
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
@@ -338,8 +358,9 @@ pub fn withdraw_withheld_tokens_from_mint(
         proof_data_location
     {
         // This constructor appends the proof instruction right after the
-        // `WithdrawWithheldTokensFromMint` instruction. This means that the proof instruction
-        // offset must be always be 1. To use an arbitrary proof instruction offset, use the
+        // `WithdrawWithheldTokensFromMint` instruction. This means that the proof
+        // instruction offset must be always be 1. To use an arbitrary proof
+        // instruction offset, use the
         // `inner_withdraw_withheld_tokens_from_mint` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
@@ -437,8 +458,9 @@ pub fn withdraw_withheld_tokens_from_accounts(
         proof_data_location
     {
         // This constructor appends the proof instruction right after the
-        // `WithdrawWithheldTokensFromAccounts` instruction. This means that the proof instruction
-        // offset must always be 1. To use an arbitrary proof instruction offset, use the
+        // `WithdrawWithheldTokensFromAccounts` instruction. This means that the proof
+        // instruction offset must always be 1. To use an arbitrary proof
+        // instruction offset, use the
         // `inner_withdraw_withheld_tokens_from_accounts` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {

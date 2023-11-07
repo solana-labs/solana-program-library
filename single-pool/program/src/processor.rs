@@ -40,7 +40,8 @@ use {
     spl_token::state::Mint,
 };
 
-/// Calculate pool tokens to mint, given outstanding token supply, pool active stake, and deposit active stake
+/// Calculate pool tokens to mint, given outstanding token supply, pool active
+/// stake, and deposit active stake
 fn calculate_deposit_amount(
     pre_token_supply: u64,
     pre_pool_stake: u64,
@@ -58,7 +59,8 @@ fn calculate_deposit_amount(
     }
 }
 
-/// Calculate pool stake to return, given outstanding token supply, pool active stake, and tokens to redeem
+/// Calculate pool stake to return, given outstanding token supply, pool active
+/// stake, and tokens to redeem
 fn calculate_withdraw_amount(
     pre_token_supply: u64,
     pre_pool_stake: u64,
@@ -317,7 +319,8 @@ fn check_account_owner(
 }
 
 /// Minimum delegation to create a pool
-/// We floor at 1sol to avoid over-minting tokens before the relevant feature is active
+/// We floor at 1sol to avoid over-minting tokens before the relevant feature is
+/// active
 fn minimum_delegation() -> Result<u64, ProgramError> {
     Ok(std::cmp::max(
         stake::tools::get_minimum_delegation()?,
@@ -650,7 +653,8 @@ impl Processor {
             mint_authority_signers,
         )?;
 
-        // create the pool stake account. user has already transferred in rent plus at least the minimum
+        // create the pool stake account. user has already transferred in rent plus at
+        // least the minimum
         let minimum_delegation = minimum_delegation()?;
         let stake_space = std::mem::size_of::<stake::state::StakeStateV2>();
         let stake_rent_plus_initial = rent
@@ -814,7 +818,8 @@ impl Processor {
             .saturating_sub(minimum_delegation);
         msg!("Available stake pre merge {}", pre_pool_stake);
 
-        // user can deposit active stake into an active pool or inactive stake into an activating pool
+        // user can deposit active stake into an active pool or inactive stake into an
+        // activating pool
         let (user_stake_meta, user_stake_state) = get_stake_state(user_stake_info)?;
         if user_stake_meta.authorized
             != stake::state::Authorized::auto(pool_stake_authority_info.key)
@@ -824,8 +829,9 @@ impl Processor {
             return Err(SinglePoolError::WrongStakeStake.into());
         }
 
-        // merge the user stake account, which is preauthed to us, into the pool stake account
-        // this merge succeeding implicitly validates authority/lockup of the user stake account
+        // merge the user stake account, which is preauthed to us, into the pool stake
+        // account this merge succeeding implicitly validates authority/lockup
+        // of the user stake account
         Self::stake_merge(
             pool_info.key,
             user_stake_info.clone(),
@@ -849,7 +855,8 @@ impl Processor {
             .checked_sub(pre_pool_stake)
             .ok_or(SinglePoolError::ArithmeticOverflow)?;
 
-        // we calculate absolute rather than relative to deposit amount to allow claiming lamports mistakenly transferred in
+        // we calculate absolute rather than relative to deposit amount to allow
+        // claiming lamports mistakenly transferred in
         let excess_lamports = post_pool_lamports
             .checked_sub(pool_stake_state.delegation.stake)
             .and_then(|amount| amount.checked_sub(pool_stake_meta.rent_exempt_reserve))
@@ -1120,9 +1127,10 @@ impl Processor {
         check_mpl_metadata_program(mpl_token_metadata_program_info.key)?;
         check_mpl_metadata_account_address(metadata_info.key, &pool_mint_address)?;
 
-        // we use authorized_withdrawer to authenticate the caller controls the vote account
-        // this is safer than using an authorized_voter since those keys live hot
-        // and validator-operators we spoke with indicated this would be their preference as well
+        // we use authorized_withdrawer to authenticate the caller controls the vote
+        // account this is safer than using an authorized_voter since those keys
+        // live hot and validator-operators we spoke with indicated this would
+        // be their preference as well
         let vote_account_data = &vote_account_info.try_borrow_data()?;
         let vote_account_withdrawer = vote_account_data
             .get(VOTE_STATE_AUTHORIZED_WITHDRAWER_START..VOTE_STATE_AUTHORIZED_WITHDRAWER_END)
@@ -1307,7 +1315,8 @@ mod tests {
         }
     }
 
-    // this deterministically tests basic behavior of calculate_deposit_amount and calculate_withdraw_amount
+    // this deterministically tests basic behavior of calculate_deposit_amount and
+    // calculate_withdraw_amount
     #[test]
     fn simple_deposit_withdraw() {
         let mut pool = PoolState::default();
@@ -1327,8 +1336,9 @@ mod tests {
         assert_eq!(pool.token_supply, 1000);
         assert_eq!(pool.total_stake, 1000);
 
-        // alice controls 25% of the pool and bob controls 75%. rewards should accrue likewise
-        // use nice even numbers, we can test fiddly stuff in the stochastic cases
+        // alice controls 25% of the pool and bob controls 75%. rewards should accrue
+        // likewise use nice even numbers, we can test fiddly stuff in the
+        // stochastic cases
         assert_relative_eq!(pool.share(&alice), 0.25);
         assert_relative_eq!(pool.share(&bob), 0.75);
         pool.reward(1000);
@@ -1337,9 +1347,10 @@ mod tests {
         assert_relative_eq!(pool.share(&alice), 0.25);
         assert_relative_eq!(pool.share(&bob), 0.75);
 
-        // alice harvests rewards, reducing her share of the *previous* pool size to 12.5%
-        // but because the pool itself has shrunk to 87.5%, its actually more like 14.3%
-        // luckily chad deposits immediately after to make our math easier
+        // alice harvests rewards, reducing her share of the *previous* pool size to
+        // 12.5% but because the pool itself has shrunk to 87.5%, its actually
+        // more like 14.3% luckily chad deposits immediately after to make our
+        // math easier
         let stake_removed = pool.withdraw(&alice, 125).unwrap();
         pool.deposit(&chad, 250).unwrap();
         assert_eq!(stake_removed, 250);
@@ -1354,9 +1365,11 @@ mod tests {
         assert_relative_eq!(pool.share(&alice), 1.0);
     }
 
-    // this stochastically tests calculate_deposit_amount and calculate_withdraw_amount
-    // the objective is specifically to ensure that the math does not fail on any combination of state changes
-    // the no_minimum case is to account for a future where small deposits are possible through multistake
+    // this stochastically tests calculate_deposit_amount and
+    // calculate_withdraw_amount the objective is specifically to ensure that
+    // the math does not fail on any combination of state changes the no_minimum
+    // case is to account for a future where small deposits are possible through
+    // multistake
     #[test_case(rand::random(), false, false; "no_rewards")]
     #[test_case(rand::random(), true, false; "with_rewards")]
     #[test_case(rand::random(), true, true; "no_minimum")]
@@ -1387,13 +1400,15 @@ mod tests {
         // run everything a number of times to get a good sample
         for _ in 0..100 {
             // PoolState tracks all outstanding tokens and the total combined stake
-            // there is no reasonable way to track "deposited stake" because reward accrual makes this concept incoherent
-            // a token corresponds to a percentage, not a stake value
+            // there is no reasonable way to track "deposited stake" because reward accrual
+            // makes this concept incoherent a token corresponds to a
+            // percentage, not a stake value
             let mut pool = PoolState::default();
 
             // generate between 1 and 100 users and have ~half of them deposit
             // note for most of these tests we adhere to the minimum delegation
-            // one of the thing we want to see is deposit size being many ooms larger than reward size
+            // one of the thing we want to see is deposit size being many ooms larger than
+            // reward size
             let mut users = vec![];
             let user_count: usize = prng.gen_range(1..=100);
             for _ in 0..user_count {
@@ -1407,7 +1422,8 @@ mod tests {
             }
 
             // now we do a set of arbitrary operations and confirm invariants hold
-            // we underweight withdraw a little bit to lessen the chances we random walk to an empty pool
+            // we underweight withdraw a little bit to lessen the chances we random walk to
+            // an empty pool
             for _ in 0..1000 {
                 match op_range.sample(&mut prng) {
                     // deposit a random amount of stake for tokens with a random user
@@ -1495,7 +1511,8 @@ mod tests {
                     }
 
                     // run a single epoch worth of rewards
-                    // check all user shares stay the same and stakes increase by the expected amount
+                    // check all user shares stay the same and stakes increase by the expected
+                    // amount
                     _ => {
                         assert!(with_rewards);
 
@@ -1515,7 +1532,8 @@ mod tests {
                             let stake_share = prev_stake as f64 * INFLATION_BASE_RATE;
                             let stake_diff = (curr_stake - prev_stake) as f64;
 
-                            // stake increase is within 2 lamps when calculated as a difference or a percentage
+                            // stake increase is within 2 lamps when calculated as a difference or a
+                            // percentage
                             assert!((stake_share - stake_diff).abs() <= 2.0);
                         }
                     }

@@ -1572,7 +1572,8 @@ fn process_flash_loan(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    // @FIXME: if u64::MAX is flash loaned, fees should be inclusive as with ordinary borrows
+    // @FIXME: if u64::MAX is flash loaned, fees should be inclusive as with
+    // ordinary borrows
     let flash_loan_amount = if liquidity_amount == u64::MAX {
         reserve.liquidity.available_amount
     } else {
@@ -1717,8 +1718,9 @@ fn process_modify_reserve_config(
 
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow_mut())?;
     // Validate that the reserve account corresponds to the correct lending market,
-    // after validating above that the lending market and lending market owner correspond,
-    // to prevent one compromised lending market owner from changing configs on other lending markets
+    // after validating above that the lending market and lending market owner
+    // correspond, to prevent one compromised lending market owner from changing
+    // configs on other lending markets
     if reserve.lending_market != *lending_market_info.key {
         msg!("Reserve account does not match the lending market");
         return Err(LendingError::InvalidAccountInput.into());

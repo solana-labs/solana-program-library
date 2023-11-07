@@ -82,7 +82,8 @@ pub fn process_create_proposal(
         realm_info.key,
     )?;
 
-    // Proposal owner (TokenOwner) or its governance_delegate must sign this transaction
+    // Proposal owner (TokenOwner) or its governance_delegate must sign this
+    // transaction
     proposal_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
@@ -98,7 +99,8 @@ pub fn process_create_proposal(
         governance_info.key,
     )?;
 
-    // Ensure proposal owner (TokenOwner) has enough tokens to create proposal and no outstanding proposals
+    // Ensure proposal owner (TokenOwner) has enough tokens to create proposal and
+    // no outstanding proposals
     proposal_owner_record_data.assert_can_create_proposal(
         &realm_data,
         &governance_data.config,

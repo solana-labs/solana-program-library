@@ -1,6 +1,6 @@
-//! Inlined MPL metadata types to avoid a direct dependency on `mpl-token-metadata'
-//! NOTE: this file is sym-linked in `spl-single-pool`, so be careful
-//! with changes!
+//! Inlined MPL metadata types to avoid a direct dependency on
+//! `mpl-token-metadata' NOTE: this file is sym-linked in `spl-single-pool`, so
+//! be careful with changes!
 
 solana_program::declare_id!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
@@ -127,7 +127,8 @@ pub(crate) mod state {
         pub symbol: String,
         /// URI pointing to JSON representing the asset
         pub uri: String,
-        /// Royalty basis points that goes to creators in secondary sales (0-10000)
+        /// Royalty basis points that goes to creators in secondary sales
+        /// (0-10000)
         pub seller_fee_basis_points: u16,
         /// UNUSED Array of creators, optional
         pub creators: Option<u8>,

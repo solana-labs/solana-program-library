@@ -36,7 +36,6 @@ pub enum TokenInstruction<'a> {
     ///
     ///   0. `[writable]` The mint to initialize.
     ///   1. `[]` Rent sysvar
-    ///
     InitializeMint {
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
@@ -352,10 +351,10 @@ pub enum TokenInstruction<'a> {
         /// Expected number of base 10 digits to the right of the decimal place.
         decimals: u8,
     },
-    /// Like InitializeAccount, but the owner pubkey is passed via instruction data
-    /// rather than the accounts list. This variant may be preferable when using
-    /// Cross Program Invocation from an instruction that does not need the owner's
-    /// `AccountInfo` otherwise.
+    /// Like InitializeAccount, but the owner pubkey is passed via instruction
+    /// data rather than the accounts list. This variant may be preferable
+    /// when using Cross Program Invocation from an instruction that does
+    /// not need the owner's `AccountInfo` otherwise.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -368,15 +367,17 @@ pub enum TokenInstruction<'a> {
     },
     /// Given a wrapped / native token account (a token account containing SOL)
     /// updates its amount field based on the account's underlying `lamports`.
-    /// This is useful if a non-wrapped SOL account uses `system_instruction::transfer`
-    /// to move lamports to a wrapped token account, and needs to have its token
-    /// `amount` field updated.
+    /// This is useful if a non-wrapped SOL account uses
+    /// `system_instruction::transfer` to move lamports to a wrapped token
+    /// account, and needs to have its token `amount` field updated.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[writable]`  The native token account to sync with its underlying lamports.
+    ///   0. `[writable]`  The native token account to sync with its underlying
+    ///      lamports.
     SyncNative,
-    /// Like InitializeAccount2, but does not require the Rent sysvar to be provided
+    /// Like InitializeAccount2, but does not require the Rent sysvar to be
+    /// provided
     ///
     /// Accounts expected by this instruction:
     ///
@@ -386,7 +387,8 @@ pub enum TokenInstruction<'a> {
         /// The new account's owner/multisignature.
         owner: Pubkey,
     },
-    /// Like InitializeMultisig, but does not require the Rent sysvar to be provided
+    /// Like InitializeMultisig, but does not require the Rent sysvar to be
+    /// provided
     ///
     /// Accounts expected by this instruction:
     ///
@@ -398,12 +400,12 @@ pub enum TokenInstruction<'a> {
         /// account.
         m: u8,
     },
-    /// Like [`InitializeMint`], but does not require the Rent sysvar to be provided
+    /// Like [`InitializeMint`], but does not require the Rent sysvar to be
+    /// provided
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    ///
     InitializeMint2 {
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
@@ -412,8 +414,8 @@ pub enum TokenInstruction<'a> {
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
     },
-    /// Gets the required size of an account for the given mint as a little-endian
-    /// `u64`.
+    /// Gets the required size of an account for the given mint as a
+    /// little-endian `u64`.
     ///
     /// Return data can be fetched using `sol_get_return_data` and deserializing
     /// the return data as a little-endian `u64`.
@@ -424,8 +426,8 @@ pub enum TokenInstruction<'a> {
     GetAccountDataSize, // typically, there's also data, but this program ignores it
     /// Initialize the Immutable Owner extension for the given token account
     ///
-    /// Fails if the account has already been initialized, so must be called before
-    /// `InitializeAccount`.
+    /// Fails if the account has already been initialized, so must be called
+    /// before `InitializeAccount`.
     ///
     /// No-ops in this version of the program, but is included for compatibility
     /// with the Associated Token Account program.
@@ -437,13 +439,14 @@ pub enum TokenInstruction<'a> {
     /// Data expected by this instruction:
     ///   None
     InitializeImmutableOwner,
-    /// Convert an Amount of tokens to a UiAmount `string`, using the given mint.
-    /// In this version of the program, the mint can only specify the number of decimals.
+    /// Convert an Amount of tokens to a UiAmount `string`, using the given
+    /// mint. In this version of the program, the mint can only specify the
+    /// number of decimals.
     ///
     /// Fails on an invalid mint.
     ///
-    /// Return data can be fetched using `sol_get_return_data` and deserialized with
-    /// `String::from_utf8`.
+    /// Return data can be fetched using `sol_get_return_data` and deserialized
+    /// with `String::from_utf8`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -452,8 +455,9 @@ pub enum TokenInstruction<'a> {
         /// The amount of tokens to reformat.
         amount: u64,
     },
-    /// Convert a UiAmount of tokens to a little-endian `u64` raw Amount, using the given mint.
-    /// In this version of the program, the mint can only specify the number of decimals.
+    /// Convert a UiAmount of tokens to a little-endian `u64` raw Amount, using
+    /// the given mint. In this version of the program, the mint can only
+    /// specify the number of decimals.
     ///
     /// Return data can be fetched using `sol_get_return_data` and deserializing
     /// the return data as a little-endian `u64`.
@@ -470,7 +474,8 @@ pub enum TokenInstruction<'a> {
     // token/js/src/instructions/types.ts to maintain @solana/spl-token compatibility
 }
 impl<'a> TokenInstruction<'a> {
-    /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
+    /// Unpacks a byte buffer into a
+    /// [TokenInstruction](enum.TokenInstruction.html).
     pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
         use TokenError::InvalidInstruction;
 
@@ -574,7 +579,8 @@ impl<'a> TokenInstruction<'a> {
         })
     }
 
-    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
+    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte
+    /// buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match self {

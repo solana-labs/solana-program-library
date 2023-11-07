@@ -536,7 +536,8 @@ async fn fail_invalid_extensions_combination() {
     )
     .unwrap();
 
-    // initialize transfer fee and confidential transfers, but no confidential transfer fee
+    // initialize transfer fee and confidential transfers, but no confidential
+    // transfer fee
     let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
@@ -577,7 +578,8 @@ async fn fail_invalid_extensions_combination() {
         )
     );
 
-    // initialize transfer fee and confidential transfer fees, but no confidential transfers
+    // initialize transfer fee and confidential transfer fees, but no confidential
+    // transfers
     let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferFeeConfig,
@@ -618,8 +620,8 @@ async fn fail_invalid_extensions_combination() {
         )
     );
 
-    // initialize all of transfer fee, confidential transfers, and confidential transfer fees
-    // (success case)
+    // initialize all of transfer fee, confidential transfers, and confidential
+    // transfer fees (success case)
     let mint_space = ExtensionType::try_calculate_account_len::<Mint>(&[
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,

@@ -40,8 +40,8 @@ pub fn process_instruction_fail(
     Err(ProgramError::InvalidInstructionData)
 }
 
-/// Test program to check signer / write downgrade for repeated accounts, conforms
-/// to transfer-hook-interface
+/// Test program to check signer / write downgrade for repeated accounts,
+/// conforms to transfer-hook-interface
 pub fn process_instruction_downgrade(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],

@@ -34,7 +34,8 @@ pub fn get_max_voter_weight_record_data(
     get_account_data::<MaxVoterWeightRecord>(program_id, max_voter_weight_record_info)
 }
 
-/// Deserializes MaxVoterWeightRecord account, checks owner program and asserts it's for the given realm and governing_token_mint
+/// Deserializes MaxVoterWeightRecord account, checks owner program and asserts
+/// it's for the given realm and governing_token_mint
 pub fn get_max_voter_weight_record_data_for_realm_and_governing_token_mint(
     program_id: &Pubkey,
     max_voter_weight_record_info: &AccountInfo,

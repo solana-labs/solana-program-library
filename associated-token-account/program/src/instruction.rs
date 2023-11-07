@@ -13,8 +13,8 @@ use {
 /// Instructions supported by the AssociatedTokenAccount program
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum AssociatedTokenAccountInstruction {
-    /// Creates an associated token account for the given wallet address and token mint
-    /// Returns an error if the account exists.
+    /// Creates an associated token account for the given wallet address and
+    /// token mint Returns an error if the account exists.
     ///
     ///   0. `[writeable,signer]` Funding account (must be a system account)
     ///   1. `[writeable]` Associated token account address to be created
@@ -23,9 +23,9 @@ pub enum AssociatedTokenAccountInstruction {
     ///   4. `[]` System program
     ///   5. `[]` SPL Token program
     Create,
-    /// Creates an associated token account for the given wallet address and token mint,
-    /// if it doesn't already exist.  Returns an error if the account exists,
-    /// but with a different owner.
+    /// Creates an associated token account for the given wallet address and
+    /// token mint, if it doesn't already exist.  Returns an error if the
+    /// account exists, but with a different owner.
     ///
     ///   0. `[writeable,signer]` Funding account (must be a system account)
     ///   1. `[writeable]` Associated token account address to be created
@@ -50,7 +50,8 @@ pub enum AssociatedTokenAccountInstruction {
     ///   2. `[writeable]` Wallet's associated token account
     ///   3. `[]` Owner associated token account address, must be owned by `5`
     ///   4. `[]` Token mint for the owner associated token account
-    ///   5. `[writeable, signer]` Wallet address for the owner associated token account
+    ///   5. `[writeable, signer]` Wallet address for the owner associated token
+    ///      account
     ///   6. `[]` SPL Token program
     RecoverNested,
 }

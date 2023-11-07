@@ -69,9 +69,10 @@ pub fn process_cast_vote(
 
     let vote_kind = get_vote_kind(&vote);
 
-    // Get the governing_token_mint which the Proposal should be configured with as the voting population for the given vote
-    // For Approve, Deny and Abstain votes it's the same as vote_governing_token_mint
-    // For Veto it's the governing token mint of the opposite voting population
+    // Get the governing_token_mint which the Proposal should be configured with as
+    // the voting population for the given vote For Approve, Deny and Abstain
+    // votes it's the same as vote_governing_token_mint For Veto it's the
+    // governing token mint of the opposite voting population
     let proposal_governing_token_mint = realm_data.get_proposal_governing_token_mint_for_vote(
         vote_governing_token_mint_info.key,
         &vote_kind,
@@ -174,7 +175,8 @@ pub fn process_cast_vote(
             &proposal_data.token_owner_record,
         )?;
 
-        // If the voter is also the proposal owner then update the voter record which is serialized for the voter later on
+        // If the voter is also the proposal owner then update the voter record which is
+        // serialized for the voter later on
         if proposal_owner_record_info.key == voter_token_owner_record_info.key {
             voter_token_owner_record_data.decrease_outstanding_proposal_count();
         } else {

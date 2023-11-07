@@ -19,7 +19,8 @@ use {
     },
 };
 
-/// Max number of collateral and liquidity reserve accounts combined for an obligation
+/// Max number of collateral and liquidity reserve accounts combined for an
+/// obligation
 pub const MAX_OBLIGATION_RESERVES: usize = 10;
 
 /// Lending market obligation state
@@ -33,7 +34,8 @@ pub struct Obligation {
     pub lending_market: Pubkey,
     /// Owner authority which can borrow liquidity
     pub owner: Pubkey,
-    /// Deposited collateral for the obligation, unique by deposit reserve address
+    /// Deposited collateral for the obligation, unique by deposit reserve
+    /// address
     pub deposits: Vec<ObligationCollateral>,
     /// Borrowed liquidity for the obligation, unique by borrow reserve address
     pub borrows: Vec<ObligationLiquidity>,
@@ -217,7 +219,8 @@ pub struct InitObligationParams {
     pub lending_market: Pubkey,
     /// Owner authority which can borrow liquidity
     pub owner: Pubkey,
-    /// Deposited collateral for the obligation, unique by deposit reserve address
+    /// Deposited collateral for the obligation, unique by deposit reserve
+    /// address
     pub deposits: Vec<ObligationCollateral>,
     /// Borrowed liquidity for the obligation, unique by borrow reserve address
     pub borrows: Vec<ObligationLiquidity>,
@@ -413,7 +416,8 @@ impl Pack for Obligation {
         }
     }
 
-    /// Unpacks a byte buffer into an [ObligationInfo](struct.ObligationInfo.html).
+    /// Unpacks a byte buffer into an
+    /// [ObligationInfo](struct.ObligationInfo.html).
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![src, 0, OBLIGATION_LEN];
         #[allow(clippy::ptr_offset_with_cast)]

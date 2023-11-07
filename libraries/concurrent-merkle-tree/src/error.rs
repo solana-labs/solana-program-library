@@ -31,7 +31,8 @@ pub enum ConcurrentMerkleTreeError {
     #[error("Root not found in changelog buffer")]
     RootNotFound,
 
-    /// The tree's current leaf value does not match the supplied proof's leaf value
+    /// The tree's current leaf value does not match the supplied proof's leaf
+    /// value
     #[error("This tree's current leaf value does not match the supplied proof's leaf value")]
     LeafContentsModified,
 

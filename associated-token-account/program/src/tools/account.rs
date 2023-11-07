@@ -14,7 +14,8 @@ use {
     std::convert::TryInto,
 };
 
-/// Creates associated token account using Program Derived Address for the given seeds
+/// Creates associated token account using Program Derived Address for the given
+/// seeds
 pub fn create_pda_account<'a>(
     payer: &AccountInfo<'a>,
     rent: &Rent,
@@ -71,8 +72,8 @@ pub fn create_pda_account<'a>(
     }
 }
 
-/// Determines the required initial data length for a new token account based on the extensions
-/// initialized on the Mint
+/// Determines the required initial data length for a new token account based on
+/// the extensions initialized on the Mint
 pub fn get_account_len<'a>(
     mint: &AccountInfo<'a>,
     spl_token_program: &AccountInfo<'a>,

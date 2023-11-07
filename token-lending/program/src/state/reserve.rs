@@ -60,7 +60,8 @@ impl Reserve {
         self.config = params.config;
     }
 
-    /// Record deposited liquidity and return amount of collateral tokens to mint
+    /// Record deposited liquidity and return amount of collateral tokens to
+    /// mint
     pub fn deposit_liquidity(&mut self, liquidity_amount: u64) -> Result<u64, ProgramError> {
         let collateral_amount = self
             .collateral_exchange_rate()?
@@ -257,7 +258,8 @@ impl Reserve {
                 }
             }
         } else {
-            // calculate settle_amount and withdraw_amount, repay_amount is settle_amount rounded
+            // calculate settle_amount and withdraw_amount, repay_amount is settle_amount
+            // rounded
             let liquidation_amount = obligation
                 .max_liquidation_amount(liquidity)?
                 .min(max_amount);
@@ -429,7 +431,8 @@ impl ReserveLiquidity {
         Ok(())
     }
 
-    /// Add repay amount to available liquidity and subtract settle amount from total borrows
+    /// Add repay amount to available liquidity and subtract settle amount from
+    /// total borrows
     pub fn repay(&mut self, repay_amount: u64, settle_amount: Decimal) -> ProgramResult {
         self.available_amount = self
             .available_amount
@@ -596,9 +599,11 @@ pub struct ReserveConfig {
     /// Target ratio of the value of borrows to deposits, as a percentage
     /// 0 if use as collateral is disabled
     pub loan_to_value_ratio: u8,
-    /// Bonus a liquidator gets when repaying part of an unhealthy obligation, as a percentage
+    /// Bonus a liquidator gets when repaying part of an unhealthy obligation,
+    /// as a percentage
     pub liquidation_bonus: u8,
-    /// Loan to value ratio at which an obligation can be liquidated, as a percentage
+    /// Loan to value ratio at which an obligation can be liquidated, as a
+    /// percentage
     pub liquidation_threshold: u8,
     /// Min borrow APY
     pub min_borrow_rate: u8,
@@ -611,7 +616,8 @@ pub struct ReserveConfig {
 }
 
 impl ReserveConfig {
-    /// Validate the reserve configs, when initializing or modifying the reserve configs
+    /// Validate the reserve configs, when initializing or modifying the reserve
+    /// configs
     pub fn validate(&self) -> ProgramResult {
         if self.optimal_utilization_rate > 100 {
             msg!("Optimal utilization rate must be in range [0, 100]");
@@ -658,9 +664,9 @@ impl ReserveConfig {
 
 /// Additional fee information on a reserve
 ///
-/// These exist separately from interest accrual fees, and are specifically for the program owner
-/// and frontend host. The fees are paid out as a percentage of liquidity token amounts during
-/// repayments and liquidations.
+/// These exist separately from interest accrual fees, and are specifically for
+/// the program owner and frontend host. The fees are paid out as a percentage
+/// of liquidity token amounts during repayments and liquidations.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ReserveFees {
     /// Fee assessed on `BorrowObligationLiquidity`, expressed as a Wad.
@@ -764,7 +770,8 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 571; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
+const RESERVE_LEN: usize = 571; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 +
+                                // 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
@@ -1004,7 +1011,8 @@ mod test {
         }
     }
 
-    // Creates rates (threshold, ltv) where 2 <= threshold <= 100 and threshold <= ltv <= 1,000%
+    // Creates rates (threshold, ltv) where 2 <= threshold <= 100 and threshold <=
+    // ltv <= 1,000%
     prop_compose! {
         fn unhealthy_rates()(threshold in 2..=100u8)(
             ltv_rate in threshold as u64..=1000u64,

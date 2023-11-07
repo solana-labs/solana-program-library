@@ -32,11 +32,13 @@ use {
 
 /// Extract the commitment component from a grouped ciphertext with 2 handles.
 ///
-/// A grouped ciphertext with 2 handles consists of the following 32-bytes components that are
-/// serialized in order:
+/// A grouped ciphertext with 2 handles consists of the following 32-bytes
+/// components that are serialized in order:
 ///   1. The `commitment` component that encodes the fee amount.
-///   3. The `decryption handle` component with respect to the destination public key.
-///   4. The `decryption handle` component with respect to the withdraw withheld authority public key.
+///   3. The `decryption handle` component with respect to the destination
+///      public key.
+///   4. The `decryption handle` component with respect to the withdraw withheld
+///      authority public key.
 ///
 /// The fee commitment component consists of the first 32-byte.
 pub(crate) fn extract_commitment_from_grouped_ciphertext(
@@ -48,17 +50,21 @@ pub(crate) fn extract_commitment_from_grouped_ciphertext(
     PedersenCommitment(transfer_amount_commitment_bytes)
 }
 
-/// Extract the transfer amount ciphertext encrypted under the source ElGamal public key.
+/// Extract the transfer amount ciphertext encrypted under the source ElGamal
+/// public key.
 ///
-/// A transfer amount ciphertext consists of the following 32-byte components that are serialized
-/// in order:
+/// A transfer amount ciphertext consists of the following 32-byte components
+/// that are serialized in order:
 ///   1. The `commitment` component that encodes the transfer amount.
-///   2. The `decryption handle` component with respect to the source public key.
-///   3. The `decryption handle` component with respect to the destination public key.
-///   4. The `decryption handle` component with respect to the auditor public key.
+///   2. The `decryption handle` component with respect to the source public
+///      key.
+///   3. The `decryption handle` component with respect to the destination
+///      public key.
+///   4. The `decryption handle` component with respect to the auditor public
+///      key.
 ///
-/// An ElGamal ciphertext for the source consists of the `commitment` component and the `decryption
-/// handle` component with respect to the source.
+/// An ElGamal ciphertext for the source consists of the `commitment` component
+/// and the `decryption handle` component with respect to the source.
 pub fn transfer_amount_source_ciphertext(
     transfer_amount_ciphertext: &TransferAmountCiphertext,
 ) -> ElGamalCiphertext {
@@ -71,17 +77,22 @@ pub fn transfer_amount_source_ciphertext(
     ElGamalCiphertext(source_ciphertext_bytes)
 }
 
-/// Extract the transfer amount ciphertext encrypted under the destination ElGamal public key.
+/// Extract the transfer amount ciphertext encrypted under the destination
+/// ElGamal public key.
 ///
-/// A transfer amount ciphertext consists of the following 32-byte components that are serialized
-/// in order:
+/// A transfer amount ciphertext consists of the following 32-byte components
+/// that are serialized in order:
 ///   1. The `commitment` component that encodes the transfer amount.
-///   2. The `decryption handle` component with respect to the source public key.
-///   3. The `decryption handle` component with respect to the destination public key.
-///   4. The `decryption handle` component with respect to the auditor public key.
+///   2. The `decryption handle` component with respect to the source public
+///      key.
+///   3. The `decryption handle` component with respect to the destination
+///      public key.
+///   4. The `decryption handle` component with respect to the auditor public
+///      key.
 ///
-/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
-/// `decryption handle` component with respect to the destination public key.
+/// An ElGamal ciphertext for the destination consists of the `commitment`
+/// component and the `decryption handle` component with respect to the
+/// destination public key.
 #[cfg(feature = "zk-ops")]
 pub(crate) fn transfer_amount_destination_ciphertext(
     transfer_amount_ciphertext: &TransferAmountCiphertext,
@@ -95,17 +106,20 @@ pub(crate) fn transfer_amount_destination_ciphertext(
     ElGamalCiphertext(destination_ciphertext_bytes)
 }
 
-/// Extract the fee amount ciphertext encrypted under the destination ElGamal public key.
+/// Extract the fee amount ciphertext encrypted under the destination ElGamal
+/// public key.
 ///
-/// A fee encryption amount consists of the following 32-byte components that are serialized in
-/// order:
+/// A fee encryption amount consists of the following 32-byte components that
+/// are serialized in order:
 ///   1. The `commitment` component that encodes the fee amount.
-///   2. The `decryption handle` component with respect to the destination public key.
-///   3. The `decryption handle` component with respect to the withdraw withheld authority public
-///      key.
+///   2. The `decryption handle` component with respect to the destination
+///      public key.
+///   3. The `decryption handle` component with respect to the withdraw withheld
+///      authority public key.
 ///
-/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
-/// `decryption handle` component with respect to the destination public key.
+/// An ElGamal ciphertext for the destination consists of the `commitment`
+/// component and the `decryption handle` component with respect to the
+/// destination public key.
 #[cfg(feature = "zk-ops")]
 pub(crate) fn fee_amount_destination_ciphertext(
     transfer_amount_ciphertext: &EncryptedFee,
@@ -119,18 +133,20 @@ pub(crate) fn fee_amount_destination_ciphertext(
     ElGamalCiphertext(source_ciphertext_bytes)
 }
 
-/// Extract the transfer amount ciphertext encrypted under the withdraw withheld authority ElGamal
-/// public key.
+/// Extract the transfer amount ciphertext encrypted under the withdraw withheld
+/// authority ElGamal public key.
 ///
-/// A fee encryption amount consists of the following 32-byte components that are serialized in
-/// order:
+/// A fee encryption amount consists of the following 32-byte components that
+/// are serialized in order:
 ///   1. The `commitment` component that encodes the fee amount.
-///   2. The `decryption handle` component with respect to the destination public key.
-///   3. The `decryption handle` component with respect to the withdraw withheld authority public
-///      key.
+///   2. The `decryption handle` component with respect to the destination
+///      public key.
+///   3. The `decryption handle` component with respect to the withdraw withheld
+///      authority public key.
 ///
-/// An ElGamal ciphertext for the destination consists of the `commitment` component and the
-/// `decryption handle` component with respect to the withdraw withheld authority public key.
+/// An ElGamal ciphertext for the destination consists of the `commitment`
+/// component and the `decryption handle` component with respect to the withdraw
+/// withheld authority public key.
 #[cfg(feature = "zk-ops")]
 pub(crate) fn fee_amount_withdraw_withheld_authority_ciphertext(
     transfer_amount_ciphertext: &EncryptedFee,
@@ -206,28 +222,31 @@ impl From<TransferProofContext> for TransferProofContextInfo {
 
 #[cfg(feature = "zk-ops")]
 impl TransferProofContextInfo {
-    /// Create a transfer proof context information needed to process a [Transfer] instruction from
-    /// split proof contexts after verifying their consistency.
+    /// Create a transfer proof context information needed to process a
+    /// [Transfer] instruction from split proof contexts after verifying
+    /// their consistency.
     pub fn verify_and_extract(
         equality_proof_context: &CiphertextCommitmentEqualityProofContext,
         ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
         range_proof_context: &BatchedRangeProofContext,
         source_decrypt_handles: &SourceDecryptHandles,
     ) -> Result<Self, ProgramError> {
-        // The equality proof context consists of the source ElGamal public key, the new source
-        // available balance ciphertext, and the new source available commitment. The public key
-        // and ciphertext should be returned as parts of `TransferProofContextInfo` and the
-        // commitment should be checked with range proof for consistency.
+        // The equality proof context consists of the source ElGamal public key, the new
+        // source available balance ciphertext, and the new source available
+        // commitment. The public key and ciphertext should be returned as parts
+        // of `TransferProofContextInfo` and the commitment should be checked
+        // with range proof for consistency.
         let CiphertextCommitmentEqualityProofContext {
             pubkey: source_pubkey,
             ciphertext: new_source_ciphertext,
             commitment: new_source_commitment,
         } = equality_proof_context;
 
-        // The ciphertext validity proof context consists of the destination ElGamal public key,
-        // auditor ElGamal public key, and the transfer amount ciphertexts. All of these fields
-        // should be returned as part of `TransferProofContextInfo`. In addition, the commitments
-        // pertaining to the transfer amount ciphertexts should be checked with range proof for
+        // The ciphertext validity proof context consists of the destination ElGamal
+        // public key, auditor ElGamal public key, and the transfer amount
+        // ciphertexts. All of these fields should be returned as part of
+        // `TransferProofContextInfo`. In addition, the commitments pertaining
+        // to the transfer amount ciphertexts should be checked with range proof for
         // consistency.
         let BatchedGroupedCiphertext2HandlesValidityProofContext {
             destination_pubkey,
@@ -236,17 +255,19 @@ impl TransferProofContextInfo {
             grouped_ciphertext_hi: transfer_amount_ciphertext_hi,
         } = ciphertext_validity_proof_context;
 
-        // The range proof context consists of the Pedersen commitments and bit-lengths for which
-        // the range proof is proved. The commitments must consist of three commitments pertaining
-        // to the new source available balance, the low bits of the transfer amount, and high bits
-        // of the transfer amount. These commitments must be checked for bit lengths `64`, `16`,
+        // The range proof context consists of the Pedersen commitments and bit-lengths
+        // for which the range proof is proved. The commitments must consist of
+        // three commitments pertaining to the new source available balance, the
+        // low bits of the transfer amount, and high bits of the transfer
+        // amount. These commitments must be checked for bit lengths `64`, `16`,
         // and `32`.
         let BatchedRangeProofContext {
             commitments: range_proof_commitments,
             bit_lengths: range_proof_bit_lengths,
         } = range_proof_context;
 
-        // check that the range proof was created for the correct set of Pedersen commitments
+        // check that the range proof was created for the correct set of Pedersen
+        // commitments
         let transfer_amount_commitment_lo =
             extract_commitment_from_grouped_ciphertext(transfer_amount_ciphertext_lo);
         let transfer_amount_commitment_hi =
@@ -326,18 +347,21 @@ pub struct TransferWithFeePubkeysInfo {
     pub withdraw_withheld_authority: ElGamalPubkey,
 }
 
-/// The proof context information needed to process a [Transfer] instruction with fee.
+/// The proof context information needed to process a [Transfer] instruction
+/// with fee.
 #[cfg(feature = "zk-ops")]
 pub struct TransferWithFeeProofContextInfo {
     /// Group encryption of the low 16 bits of the transfer amount
     pub ciphertext_lo: TransferAmountCiphertext,
     /// Group encryption of the high 48 bits of the transfer amount
     pub ciphertext_hi: TransferAmountCiphertext,
-    /// The public encryption keys associated with the transfer: source, dest, auditor, and withdraw withheld authority
+    /// The public encryption keys associated with the transfer: source, dest,
+    /// auditor, and withdraw withheld authority
     pub transfer_with_fee_pubkeys: TransferWithFeePubkeysInfo,
     /// The final spendable ciphertext after the transfer,
     pub new_source_ciphertext: ElGamalCiphertext,
-    /// The transfer fee encryption of the low 16 bits of the transfer fee amount
+    /// The transfer fee encryption of the low 16 bits of the transfer fee
+    /// amount
     pub fee_ciphertext_lo: EncryptedFee,
     /// The transfer fee encryption of the hi 32 bits of the transfer fee amount
     pub fee_ciphertext_hi: EncryptedFee,
@@ -368,8 +392,9 @@ impl From<TransferWithFeeProofContext> for TransferWithFeeProofContextInfo {
 
 #[cfg(feature = "zk-ops")]
 impl TransferWithFeeProofContextInfo {
-    /// Create a transfer proof context information needed to process a [Transfer] instruction from
-    /// split proof contexts after verifying their consistency.
+    /// Create a transfer proof context information needed to process a
+    /// [Transfer] instruction from split proof contexts after verifying
+    /// their consistency.
     pub fn verify_and_extract(
         equality_proof_context: &CiphertextCommitmentEqualityProofContext,
         transfer_amount_ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
@@ -379,20 +404,22 @@ impl TransferWithFeeProofContextInfo {
         source_decrypt_handles: &SourceDecryptHandles,
         fee_parameters: &TransferFee,
     ) -> Result<Self, ProgramError> {
-        // The equality proof context consists of the source ElGamal public key, the new source
-        // available balance ciphertext, and the new source available commitment. The public key
-        // and ciphertext should be returned as part of `TransferWithFeeProofContextInfo` and the
-        // commitment should be checked with range proof for consistency.
+        // The equality proof context consists of the source ElGamal public key, the new
+        // source available balance ciphertext, and the new source available
+        // commitment. The public key and ciphertext should be returned as part
+        // of `TransferWithFeeProofContextInfo` and the commitment should be
+        // checked with range proof for consistency.
         let CiphertextCommitmentEqualityProofContext {
             pubkey: source_pubkey,
             ciphertext: new_source_ciphertext,
             commitment: new_source_commitment,
         } = equality_proof_context;
 
-        // The transfer amount ciphertext validity proof context consists of the destination
-        // ElGamal public key, auditor ElGamal public key, and the transfer amount ciphertexts. All
-        // of these fields should be returned as part of `TransferWithFeeProofContextInfo`. In
-        // addition, the commitments pertaining to the transfer amount ciphertexts should be
+        // The transfer amount ciphertext validity proof context consists of the
+        // destination ElGamal public key, auditor ElGamal public key, and the
+        // transfer amount ciphertexts. All of these fields should be returned
+        // as part of `TransferWithFeeProofContextInfo`. In addition, the
+        // commitments pertaining to the transfer amount ciphertexts should be
         // checked with range proof for consistency.
         let BatchedGroupedCiphertext2HandlesValidityProofContext {
             destination_pubkey,
@@ -401,10 +428,11 @@ impl TransferWithFeeProofContextInfo {
             grouped_ciphertext_hi: transfer_amount_ciphertext_hi,
         } = transfer_amount_ciphertext_validity_proof_context;
 
-        // The fee sigma proof context consists of the fee commitment, delta commitment, claimed
-        // commitment, and max fee. The fee and claimed commitment should be checked with range
-        // proof for consistency. The delta commitment should be checked whether it is properly
-        // generated with respect to the fee parameters. The max fee should be checked for
+        // The fee sigma proof context consists of the fee commitment, delta commitment,
+        // claimed commitment, and max fee. The fee and claimed commitment
+        // should be checked with range proof for consistency. The delta
+        // commitment should be checked whether it is properly generated with
+        // respect to the fee parameters. The max fee should be checked for
         // consistency with the fee parameters.
         let FeeSigmaProofContext {
             fee_commitment,
@@ -419,13 +447,15 @@ impl TransferWithFeeProofContextInfo {
             return Err(ProgramError::InvalidInstructionData);
         }
 
-        // The transfer fee ciphertext validity proof context consists of the destination ElGamal
-        // public key, withdraw withheld authority ElGamal public key, and the transfer fee
-        // ciphertexts. The rest of the fields should be return as part of
-        // `TransferWithFeeProofContextInfo`. In addition, the destination public key should be
-        // checked for consistency with the destination public key contained in the transfer amount
-        // ciphertext validity proof, and the commitments pertaining to the transfer fee amount
-        // ciphertexts should be checked with range proof for consistency.
+        // The transfer fee ciphertext validity proof context consists of the
+        // destination ElGamal public key, withdraw withheld authority ElGamal
+        // public key, and the transfer fee ciphertexts. The rest of the fields
+        // should be return as part of `TransferWithFeeProofContextInfo`. In
+        // addition, the destination public key should be checked for
+        // consistency with the destination public key contained in the transfer amount
+        // ciphertext validity proof, and the commitments pertaining to the transfer fee
+        // amount ciphertexts should be checked with range proof for
+        // consistency.
         let BatchedGroupedCiphertext2HandlesValidityProofContext {
             destination_pubkey: destination_pubkey_from_transfer_fee_validity_proof,
             auditor_pubkey: withdraw_withheld_authority_pubkey,
@@ -437,9 +467,9 @@ impl TransferWithFeeProofContextInfo {
             return Err(ProgramError::InvalidInstructionData);
         }
 
-        // The range proof context consists of the Pedersen commitments and bit-lengths for which
-        // the range proof is proved. The commitments must consist of seven commitments pertaining
-        // to
+        // The range proof context consists of the Pedersen commitments and bit-lengths
+        // for which the range proof is proved. The commitments must consist of
+        // seven commitments pertaining to
         // - the new source available balance (64 bits)
         // - the low bits of the transfer amount (16 bits)
         // - the high bits of the transfer amount (32 bits)
@@ -452,7 +482,8 @@ impl TransferWithFeeProofContextInfo {
             bit_lengths: range_proof_bit_lengths,
         } = range_proof_context;
 
-        // check that the range proof was created for the correct set of Pedersen commitments
+        // check that the range proof was created for the correct set of Pedersen
+        // commitments
         let transfer_amount_commitment_lo =
             extract_commitment_from_grouped_ciphertext(transfer_amount_ciphertext_lo);
         let transfer_amount_commitment_hi =
@@ -563,23 +594,26 @@ impl TransferWithFeeProofContextInfo {
     }
 }
 
-/// The ElGamal ciphertext decryption handle pertaining to the low and high bits of the transfer
-/// amount under the source public key of the transfer.
+/// The ElGamal ciphertext decryption handle pertaining to the low and high bits
+/// of the transfer amount under the source public key of the transfer.
 ///
-/// The `TransferProofContext` contains decryption handles for the low and high bits of the
-/// transfer amount. Howver, these decryption handles were (mistakenly) removed from the split
-/// proof contexts as a form of optimization. These components should be added back into these
-/// split proofs in `zk-token-sdk`. Until this modifications is made, include `SourceDecryptHandle`
-/// in the transfer instruction data.
+/// The `TransferProofContext` contains decryption handles for the low and high
+/// bits of the transfer amount. Howver, these decryption handles were
+/// (mistakenly) removed from the split proof contexts as a form of
+/// optimization. These components should be added back into these split proofs
+/// in `zk-token-sdk`. Until this modifications is made, include
+/// `SourceDecryptHandle` in the transfer instruction data.
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct SourceDecryptHandles {
-    /// The ElGamal decryption handle pertaining to the low 16 bits of the transfer amount.
+    /// The ElGamal decryption handle pertaining to the low 16 bits of the
+    /// transfer amount.
     #[cfg_attr(feature = "serde-traits", serde(with = "decrypthandle_fromstr"))]
     pub lo: DecryptHandle,
-    /// The ElGamal decryption handle pertaining to the low 32 bits of the transfer amount.
+    /// The ElGamal decryption handle pertaining to the low 32 bits of the
+    /// transfer amount.
     #[cfg_attr(feature = "serde-traits", serde(with = "decrypthandle_fromstr"))]
     pub hi: DecryptHandle,
 }

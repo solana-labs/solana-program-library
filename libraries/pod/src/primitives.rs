@@ -36,7 +36,8 @@ impl From<PodBool> for bool {
     }
 }
 
-/// Simple macro for implementing conversion functions between Pod* ints and standard ints.
+/// Simple macro for implementing conversion functions between Pod* ints and
+/// standard ints.
 ///
 /// The standard int types can cause alignment issues when placed in a `Pod`,
 /// so these replacements are usable in all `Pod`s.

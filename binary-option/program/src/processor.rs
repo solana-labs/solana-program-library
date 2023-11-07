@@ -542,8 +542,9 @@ pub fn process_trade(
             binary_option.decrement_supply(n_b)?;
         }
     }
-    // Delegate the burn authority to the PDA, so a private key is unnecessary on collection
-    // This can probably be optimized to reduce the number of instructions needed at some point
+    // Delegate the burn authority to the PDA, so a private key is unnecessary on
+    // collection This can probably be optimized to reduce the number of
+    // instructions needed at some point
     spl_approve(
         token_program_info,
         buyer_long_token_account_info,
@@ -589,8 +590,9 @@ pub fn process_trade(
 
 pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     // This should NEVER be called directly (otherwise this is literally a rug)
-    // The `pool_owner_info` needs to approve this action, so the recommended use case is to have a higher
-    // level program own the pool and use an oracle to resolve settlements
+    // The `pool_owner_info` needs to approve this action, so the recommended use
+    // case is to have a higher level program own the pool and use an oracle to
+    // resolve settlements
     let account_info_iter = &mut accounts.iter();
     let binary_option_account_info = next_account_info(account_info_iter)?;
     let winning_mint_account_info = next_account_info(account_info_iter)?;

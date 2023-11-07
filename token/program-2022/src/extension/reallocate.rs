@@ -55,7 +55,8 @@ pub fn process_reallocate(
     {
         return Err(TokenError::InvalidState.into());
     }
-    // ExtensionType::try_calculate_account_len() dedupes types, so just a dumb concatenation is fine here
+    // ExtensionType::try_calculate_account_len() dedupes types, so just a dumb
+    // concatenation is fine here
     current_extension_types.extend_from_slice(&new_extension_types);
     let needed_account_len =
         ExtensionType::try_calculate_account_len::<Account>(&current_extension_types)?;

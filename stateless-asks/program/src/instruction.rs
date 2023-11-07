@@ -16,15 +16,16 @@ pub enum StatelessOfferInstruction {
     ///  Accept a StatelessOffer
     ///  Let's walk through the actions of Alice (maker) and Bob (taker)
     ///
-    ///  Alice has some amount Token A in mkr_src_account and she creates mkr_dst_account if it doesn't exist
-    ///  Alice calls Approve on mkr_src_account for maker_size to some transfer_authority owned by the Stateless Ask program.
-    ///  This transfer_authority's approval size/mint are expressed in the seeds of the PDA
+    ///  Alice has some amount Token A in mkr_src_account and she creates
+    /// mkr_dst_account if it doesn't exist  Alice calls Approve on
+    /// mkr_src_account for maker_size to some transfer_authority owned by the
+    /// Stateless Ask program.  This transfer_authority's approval size/mint
+    /// are expressed in the seeds of the PDA
     ///
     ///  Some time later:
     ///
-    ///  Bob initializes tkr_src_account (Token B) and tkr_dst_account (Token A) if they don't exist
-    ///  Bob (or anyone) executes AcceptOffer
-    ///
+    ///  Bob initializes tkr_src_account (Token B) and tkr_dst_account (Token A)
+    /// if they don't exist  Bob (or anyone) executes AcceptOffer
     AcceptOffer {
         #[allow(dead_code)]
         has_metadata: bool,

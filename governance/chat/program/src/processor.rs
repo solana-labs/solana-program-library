@@ -89,7 +89,8 @@ pub fn process_post_message(
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    // deserialize proposal to assert it belongs to the given governance and hence belongs to the same realm as the token owner
+    // deserialize proposal to assert it belongs to the given governance and hence
+    // belongs to the same realm as the token owner
     let _proposal_data = get_proposal_data_for_governance(
         governance_program_id,
         proposal_info,
@@ -110,8 +111,9 @@ pub fn process_post_message(
     )?;
 
     // The owner needs to have at least voter weight of 1 to comment on proposals
-    // Note: It can be either community or council token and is irrelevant to the proposal's governing token
-    // Note: 1 is currently hardcoded but if different level is required then it should be added to realm config
+    // Note: It can be either community or council token and is irrelevant to the
+    // proposal's governing token Note: 1 is currently hardcoded but if
+    // different level is required then it should be added to realm config
     if voter_weight < 1 {
         return Err(GovernanceChatError::NotEnoughTokensToCommentProposal.into());
     }

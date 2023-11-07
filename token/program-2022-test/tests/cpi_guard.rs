@@ -32,7 +32,8 @@ use {
 // set up a bank and bank client with spl token 2022 and the instruction padder
 // also creates a token with no extensions and inits two token accounts
 async fn make_context() -> TestContext {
-    // TODO this may be removed when we upgrade to a solana version with a fixed `get_stack_height()` stub
+    // TODO this may be removed when we upgrade to a solana version with a fixed
+    // `get_stack_height()` stub
     if std::env::var("BPF_OUT_DIR").is_err() && std::env::var("SBF_OUT_DIR").is_err() {
         panic!("CpiGuard tests MUST be invoked with `cargo test-sbf`, NOT `cargo test --feature test-sbf`. \
                 In a non-BPF context, `get_stack_height()` always returns 0, and all tests WILL fail.");
@@ -659,7 +660,8 @@ async fn test_cpi_guard_set_authority() {
         token, alice, bob, ..
     } = context.token_context.unwrap();
 
-    // the behavior of cpi guard and close authority is so complicated that its best to test all cases exhaustively
+    // the behavior of cpi guard and close authority is so complicated that its best
+    // to test all cases exhaustively
     let mut states = vec![];
     for action in [
         SetAuthTest::ChangeOwner,
@@ -698,7 +700,8 @@ async fn test_cpi_guard_set_authority() {
                 .unwrap();
         }
 
-        // if we are changing or removing close auth, we need to have one to change/remove
+        // if we are changing or removing close auth, we need to have one to
+        // change/remove
         if action == SetAuthTest::ChangeCloseAuth || action == SetAuthTest::RemoveCloseAuth {
             token
                 .set_authority(

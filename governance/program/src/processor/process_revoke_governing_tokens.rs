@@ -58,13 +58,15 @@ pub fn process_revoke_governing_tokens(
         governing_token_mint_info.key,
     )?;
 
-    // If the governing token owner voluntarily revokes their own membership then the owner must sign the transaction
+    // If the governing token owner voluntarily revokes their own membership then
+    // the owner must sign the transaction
     if *revoke_authority_info.key == token_owner_record_data.governing_token_owner {
         if !revoke_authority_info.is_signer {
             return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
         }
     } else {
-        // If its a forceful membership revocation then the governing_token_mint authority must sign the transaction
+        // If its a forceful membership revocation then the governing_token_mint
+        // authority must sign the transaction
         assert_spl_token_mint_authority_is_signer(
             governing_token_mint_info,
             revoke_authority_info,

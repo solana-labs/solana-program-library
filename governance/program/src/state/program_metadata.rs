@@ -10,7 +10,8 @@ use {
     spl_governance_tools::account::{get_account_data, AccountMaxSize},
 };
 
-/// Program metadata account. It stores information about the particular SPL-Governance program instance
+/// Program metadata account. It stores information about the particular
+/// SPL-Governance program instance
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProgramMetadata {
     /// Governance account type

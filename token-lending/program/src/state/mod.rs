@@ -15,7 +15,8 @@ use {
 };
 pub use {last_update::*, lending_market::*, obligation::*, reserve::*};
 
-/// Collateral tokens are initially valued at a ratio of 5:1 (collateral:liquidity)
+/// Collateral tokens are initially valued at a ratio of 5:1
+/// (collateral:liquidity)
 // @FIXME: restore to 5
 pub const INITIAL_COLLATERAL_RATIO: u64 = 1;
 const INITIAL_COLLATERAL_RATE: u64 = INITIAL_COLLATERAL_RATIO * WAD;

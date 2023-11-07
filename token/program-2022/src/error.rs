@@ -119,13 +119,15 @@ pub enum TokenError {
     /// Transfer fee exceeds maximum of 10,000 basis points
     #[error("Transfer fee exceeds maximum of 10,000 basis points")]
     TransferFeeExceedsMaximum,
-    /// Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`
+    /// Mint required for this account to transfer tokens, use
+    /// `transfer_checked` or `transfer_checked_with_fee`
     #[error("Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`")]
     MintRequiredForTransfer,
     /// Calculated fee does not match expected fee
     #[error("Calculated fee does not match expected fee")]
     FeeMismatch,
-    /// Fee parameters associated with confidential transfer zero-knowledge proofs do not match fee parameters in mint
+    /// Fee parameters associated with confidential transfer zero-knowledge
+    /// proofs do not match fee parameters in mint
     #[error(
         "Fee parameters associated with zero-knowledge proofs do not match fee parameters in mint"
     )]
@@ -135,21 +137,24 @@ pub enum TokenError {
     ImmutableOwner,
 
     // 35
-    /// An account can only be closed if its withheld fee balance is zero, harvest fees to the
-    /// mint and try again
+    /// An account can only be closed if its withheld fee balance is zero,
+    /// harvest fees to the mint and try again
     #[error("An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again")]
     AccountHasWithheldTransferFees,
-    /// No memo in previous instruction; required for recipient to receive a transfer
+    /// No memo in previous instruction; required for recipient to receive a
+    /// transfer
     #[error("No memo in previous instruction; required for recipient to receive a transfer")]
     NoMemo,
     /// Transfer is disabled for this mint
     #[error("Transfer is disabled for this mint")]
     NonTransferable,
-    /// Non-transferable tokens can't be minted to an account without immutable ownership
+    /// Non-transferable tokens can't be minted to an account without immutable
+    /// ownership
     #[error("Non-transferable tokens can't be minted to an account without immutable ownership")]
     NonTransferableNeedsImmutableOwnership,
-    /// The total number of `Deposit` and `Transfer` instructions to an account cannot exceed the
-    /// associated `maximum_pending_balance_credit_counter`
+    /// The total number of `Deposit` and `Transfer` instructions to an account
+    /// cannot exceed the associated
+    /// `maximum_pending_balance_credit_counter`
     #[error(
         "The total number of `Deposit` and `Transfer` instructions to an account cannot exceed
             the associated `maximum_pending_balance_credit_counter`"
@@ -157,21 +162,25 @@ pub enum TokenError {
     MaximumPendingBalanceCreditCounterExceeded,
 
     // 40
-    /// The deposit amount for the confidential extension exceeds the maximum limit
+    /// The deposit amount for the confidential extension exceeds the maximum
+    /// limit
     #[error("Deposit amount exceeds maximum limit")]
     MaximumDepositAmountExceeded,
     /// CPI Guard cannot be enabled or disabled in CPI
     #[error("CPI Guard cannot be enabled or disabled in CPI")]
     CpiGuardSettingsLocked,
-    /// CPI Guard is enabled, and a program attempted to transfer user funds without using a delegate
+    /// CPI Guard is enabled, and a program attempted to transfer user funds
+    /// without using a delegate
     #[error("CPI Guard is enabled, and a program attempted to transfer user funds via CPI without using a delegate")]
     CpiGuardTransferBlocked,
-    /// CPI Guard is enabled, and a program attempted to burn user funds without using a delegate
+    /// CPI Guard is enabled, and a program attempted to burn user funds without
+    /// using a delegate
     #[error(
         "CPI Guard is enabled, and a program attempted to burn user funds via CPI without using a delegate"
     )]
     CpiGuardBurnBlocked,
-    /// CPI Guard is enabled, and a program attempted to close an account without returning lamports to owner
+    /// CPI Guard is enabled, and a program attempted to close an account
+    /// without returning lamports to owner
     #[error("CPI Guard is enabled, and a program attempted to close an account via CPI without returning lamports to owner")]
     CpiGuardCloseAccountBlocked,
 
@@ -179,7 +188,8 @@ pub enum TokenError {
     /// CPI Guard is enabled, and a program attempted to approve a delegate
     #[error("CPI Guard is enabled, and a program attempted to approve a delegate via CPI")]
     CpiGuardApproveBlocked,
-    /// CPI Guard is enabled, and a program attempted to add or replace an authority
+    /// CPI Guard is enabled, and a program attempted to add or replace an
+    /// authority
     #[error(
         "CPI Guard is enabled, and a program attempted to add or replace an authority via CPI"
     )]
@@ -198,7 +208,8 @@ pub enum TokenError {
     /// An account can only be closed if the confidential withheld fee is zero
     #[error("An account can only be closed if the confidential withheld fee is zero")]
     ConfidentialTransferFeeAccountHasWithheldFee,
-    /// A mint or an account is initialized to an invalid combination of extensions
+    /// A mint or an account is initialized to an invalid combination of
+    /// extensions
     #[error("A mint or an account is initialized to an invalid combination of extensions")]
     InvalidExtensionCombination,
     /// Extension allocation with overwrite must use the same length

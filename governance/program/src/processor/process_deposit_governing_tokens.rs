@@ -92,7 +92,8 @@ pub fn process_deposit_governing_tokens(
     );
 
     if token_owner_record_info.data_is_empty() {
-        // Deposited tokens can only be withdrawn by the owner so let's make sure the owner signed the transaction
+        // Deposited tokens can only be withdrawn by the owner so let's make sure the
+        // owner signed the transaction
         if !governing_token_owner_info.is_signer {
             return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
         }

@@ -75,7 +75,8 @@ pub fn process_insert_transaction(
     match instruction_index.cmp(&option.transactions_next_index) {
         Ordering::Greater => return Err(GovernanceError::InvalidTransactionIndex.into()),
         // If the index is the same as instructions_next_index then we are adding a new instruction
-        // If the index is below instructions_next_index then we are inserting into an existing empty space
+        // If the index is below instructions_next_index then we are inserting into an existing
+        // empty space
         Ordering::Equal => {
             option.transactions_next_index = option.transactions_next_index.checked_add(1).unwrap();
         }

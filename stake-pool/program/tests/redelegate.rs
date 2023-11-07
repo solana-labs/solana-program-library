@@ -572,8 +572,8 @@ async fn success_with_increasing_stake() {
         .find(&destination_validator_stake.vote.pubkey())
         .unwrap();
     assert_eq!(u64::from(destination_item.transient_stake_lamports), 0);
-    // redelegate is smart enough to activate *everything*, so there's no rent-exemption
-    // worth of inactive stake!
+    // redelegate is smart enough to activate *everything*, so there's no
+    // rent-exemption worth of inactive stake!
     assert_eq!(
         u64::from(destination_item.active_stake_lamports),
         pre_validator_stake_account.lamports + redelegate_lamports + current_minimum_delegation

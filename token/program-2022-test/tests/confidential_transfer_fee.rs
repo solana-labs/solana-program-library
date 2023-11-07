@@ -575,7 +575,8 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
         .unwrap();
     assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
 
-    // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint` instruction data
+    // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint`
+    // instruction data
     let fee = transfer_fee_parameters.calculate_fee(100).unwrap();
     let new_decryptable_available_balance = alice_meta.aes_key.encrypt(fee);
 
@@ -875,7 +876,8 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_proof_con
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
 
-    // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint` instruction data
+    // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint`
+    // instruction data
     let fee = transfer_fee_parameters.calculate_fee(100).unwrap();
     let new_decryptable_available_balance = alice_meta.aes_key.encrypt(fee);
     token
@@ -1226,7 +1228,8 @@ async fn confidential_transfer_harvest_withheld_tokens_to_mint() {
         .unwrap();
     assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
 
-    // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint` instruction data
+    // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint`
+    // instruction data
     let fee = transfer_fee_parameters.calculate_fee(100).unwrap();
 
     check_withheld_amount_in_mint(&token, &withdraw_withheld_authority_elgamal_keypair, fee).await;

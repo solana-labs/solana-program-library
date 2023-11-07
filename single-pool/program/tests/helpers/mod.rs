@@ -65,8 +65,9 @@ pub struct SinglePoolAccounts {
     pub token_program_id: Pubkey,
 }
 impl SinglePoolAccounts {
-    // does everything in initialize_for_deposit plus performs the deposit(s) and creates blank account(s)
-    // optionally advances to activation before the deposit
+    // does everything in initialize_for_deposit plus performs the deposit(s) and
+    // creates blank account(s) optionally advances to activation before the
+    // deposit
     pub async fn initialize_for_withdraw(
         &self,
         context: &mut ProgramTestContext,
@@ -147,8 +148,9 @@ impl SinglePoolAccounts {
         minimum_delegation
     }
 
-    // does everything in initialize plus creates/delegates one or both stake accounts for our users
-    // note this does not advance time, so everything is in an activating state
+    // does everything in initialize plus creates/delegates one or both stake
+    // accounts for our users note this does not advance time, so everything is
+    // in an activating state
     pub async fn initialize_for_deposit(
         &self,
         context: &mut ProgramTestContext,
@@ -206,8 +208,9 @@ impl SinglePoolAccounts {
         minimum_delegation
     }
 
-    // creates a vote account and stake pool for it. also sets up two users with sol and token accounts
-    // note this leaves the pool in an activating state. caller can advance to next epoch if they please
+    // creates a vote account and stake pool for it. also sets up two users with sol
+    // and token accounts note this leaves the pool in an activating state.
+    // caller can advance to next epoch if they please
     pub async fn initialize(&self, context: &mut ProgramTestContext) -> u64 {
         let slot = context.genesis_config().epoch_schedule.first_normal_slot + 1;
         context.warp_to_slot(slot).unwrap();
@@ -423,10 +426,10 @@ where
     };
 
     // this silly thing is because we can guarantee From<T> has a Debug for T
-    // but TryFrom<T> produces Result<T, E> and E may not have Debug. so we cant call unwrap
-    // also we use TryFrom because we have to go `instruction error-> program error`
-    // because StakeError impls the former but not the latter...
-    // and that conversion is merely surjective........
+    // but TryFrom<T> produces Result<T, E> and E may not have Debug. so we cant
+    // call unwrap also we use TryFrom because we have to go `instruction
+    // error-> program error` because StakeError impls the former but not the
+    // latter... and that conversion is merely surjective........
     // infomercial lady: "if only there were a better way!"
     let expected_p = match expected.clone().try_into() {
         Ok(v) => v,

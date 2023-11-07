@@ -41,9 +41,11 @@ pub fn process_set_realm_config(
         return Err(GovernanceError::RealmAuthorityMustSign.into());
     }
 
-    // Note: Config change leaves voting proposals in unpredictable state and it's DAOs responsibility
-    // to ensure the changes are made when there are no proposals in voting state
-    // For example changing voter-weight or max-voter-weight addin could accidentally make proposals to succeed which would otherwise be defeated
+    // Note: Config change leaves voting proposals in unpredictable state and it's
+    // DAOs responsibility to ensure the changes are made when there are no
+    // proposals in voting state For example changing voter-weight or
+    // max-voter-weight addin could accidentally make proposals to succeed which
+    // would otherwise be defeated
 
     assert_valid_realm_config_args(&realm_config_args)?;
 
@@ -52,9 +54,10 @@ pub fn process_set_realm_config(
         let council_token_mint_info = next_account_info(account_info_iter)?; // 2
         let _council_token_holding_info = next_account_info(account_info_iter)?; // 3
 
-        // Council mint can only be at present set to None (removed) and changing it to other mint is not supported
-        // It might be implemented in future versions but it needs careful planning
-        // It can potentially open a can of warms like what happens with existing deposits or pending proposals
+        // Council mint can only be at present set to None (removed) and changing it to
+        // other mint is not supported It might be implemented in future
+        // versions but it needs careful planning It can potentially open a can
+        // of warms like what happens with existing deposits or pending proposals
         if let Some(council_token_mint) = realm_data.config.council_mint {
             // Council mint can't be changed to different one
             if council_token_mint != *council_token_mint_info.key {
@@ -66,7 +69,8 @@ pub fn process_set_realm_config(
         }
     } else {
         // Remove council mint from realm
-        // Note: In the current implementation this also makes it impossible to withdraw council tokens
+        // Note: In the current implementation this also makes it impossible to withdraw
+        // council tokens
         realm_data.config.council_mint = None;
     }
 
@@ -97,7 +101,8 @@ pub fn process_set_realm_config(
 
     // Update or create RealmConfigAccount
     if realm_config_info.data_is_empty() {
-        // For older Realm accounts (pre program V3) RealmConfigAccount might not exist yet and we have to create it
+        // For older Realm accounts (pre program V3) RealmConfigAccount might not exist
+        // yet and we have to create it
 
         // We need the payer to pay for the new account if it's created
         let payer_info = next_account_info(account_info_iter)?; // 10

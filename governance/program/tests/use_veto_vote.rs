@@ -398,7 +398,8 @@ async fn test_cast_multiple_veto_votes_for_partially_approved_proposal() {
         .await
         .unwrap();
 
-    // Mint extra council tokens for total supply of 210 to prevent single vote tipping
+    // Mint extra council tokens for total supply of 210 to prevent single vote
+    // tipping
     governance_test.mint_council_tokens(&realm_cookie, 10).await;
 
     let mut governance_cookie = governance_test
@@ -415,7 +416,8 @@ async fn test_cast_multiple_veto_votes_for_partially_approved_proposal() {
         .await
         .unwrap();
 
-    // Mint extra council tokens for total supply of 200 to prevent single vote tipping
+    // Mint extra council tokens for total supply of 200 to prevent single vote
+    // tipping
     governance_test
         .mint_community_tokens(&realm_cookie, 100)
         .await;
@@ -621,7 +623,8 @@ async fn test_relinquish_veto_vote_with_vote_record_for_different_voting_mint_er
         .await
         .unwrap();
 
-    // Create Community TokenOwnerRecord for council_token_owner and Cast Community vote
+    // Create Community TokenOwnerRecord for council_token_owner and Cast Community
+    // vote
     let community_token_owner_record_cookie = governance_test
         .with_community_token_deposit_by_owner(
             &realm_cookie,
@@ -652,7 +655,8 @@ async fn test_relinquish_veto_vote_with_vote_record_for_different_voting_mint_er
             &proposal_cookie,
             &council_token_owner_record_cookie,
             |i| {
-                // Try to use a vote_record from community Yes vote to relinquish council Veto vote
+                // Try to use a vote_record from community Yes vote to relinquish council Veto
+                // vote
                 i.accounts[4] = AccountMeta::new(community_vote_record_cookie.address, false)
             },
         )
@@ -729,7 +733,8 @@ async fn test_cast_yes_and_veto_votes_with_yes_as_winning_vote() {
         .await
         .unwrap();
 
-    // Mint extra council tokens for total supply of 210 to prevent single vote tipping
+    // Mint extra council tokens for total supply of 210 to prevent single vote
+    // tipping
     governance_test
         .mint_council_tokens(&realm_cookie, 110)
         .await;

@@ -33,7 +33,8 @@ impl IsInitialized for RequiredSignatory {
     }
 }
 
-/// Deserializes RequiredSignatory account, checks the owner program, and asserts that required signatory belongs to the given governance
+/// Deserializes RequiredSignatory account, checks the owner program, and
+/// asserts that required signatory belongs to the given governance
 pub fn get_required_signatory_data_for_governance(
     program_id: &Pubkey,
     required_signatory_info: &AccountInfo,

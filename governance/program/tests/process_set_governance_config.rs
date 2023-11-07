@@ -137,7 +137,8 @@ async fn test_set_governance_config_with_fake_governance_signer_error() {
         new_governance_config.clone(),
     );
 
-    // Set Governance signer to fake account we have authority over and can use to sign the transaction
+    // Set Governance signer to fake account we have authority over and can use to
+    // sign the transaction
     let governance_signer = Keypair::new();
     set_governance_config_ix.accounts[0].pubkey = governance_signer.pubkey();
 
@@ -189,7 +190,8 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .await
         .unwrap();
 
-    // Try to maliciously use a different governance account to change the given governance config
+    // Try to maliciously use a different governance account to change the given
+    // governance config
     let governed_account_cookie2 = governance_test.with_governed_account().await;
 
     let governance_cookie2 = governance_test

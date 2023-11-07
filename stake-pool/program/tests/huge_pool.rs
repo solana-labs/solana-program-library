@@ -21,8 +21,8 @@ use {
     test_case::test_case,
 };
 
-// Note: this is not the real max! The testing framework starts to blow out because
-// the test require so many helper accounts.
+// Note: this is not the real max! The testing framework starts to blow out
+// because the test require so many helper accounts.
 // 20k is also a very safe number for the current upper bound of the network.
 const MAX_POOL_SIZE_WITH_REQUESTED_COMPUTE_UNITS: u32 = 20_000;
 const MAX_POOL_SIZE: u32 = 3_000;

@@ -32,25 +32,30 @@ pub struct LegacyGovernanceConfigV1 {
     /// The type of the vote threshold used for voting
     pub vote_threshold_percentage: VoteThresholdPercentage,
 
-    /// Minimum number of community tokens a governance token owner must possess to be able to create a proposal
+    /// Minimum number of community tokens a governance token owner must possess
+    /// to be able to create a proposal
     pub min_community_tokens_to_create_proposal: u64,
 
-    /// Minimum waiting time in seconds for an instruction to be executed after proposal is voted on
+    /// Minimum waiting time in seconds for an instruction to be executed after
+    /// proposal is voted on
     pub min_instruction_hold_up_time: u32,
 
     /// Time limit in seconds for proposal to be open for voting
     pub max_voting_time: u32,
 
     /// The source of vote weight for voters
-    /// Note: In the current version only token deposits are accepted as vote weight
+    /// Note: In the current version only token deposits are accepted as vote
+    /// weight
     pub vote_weight_source: VoteWeightSource,
 
-    /// The time period in seconds within which a Proposal can be still cancelled after being voted on
-    /// Once cool off time expires Proposal can't be cancelled any longer and becomes a law
-    /// Note: This field is not implemented in the current version
+    /// The time period in seconds within which a Proposal can be still
+    /// cancelled after being voted on Once cool off time expires Proposal
+    /// can't be cancelled any longer and becomes a law Note: This field is
+    /// not implemented in the current version
     pub proposal_cool_off_time: u32,
 
-    /// Minimum number of council tokens a governance token owner must possess to be able to create a proposal
+    /// Minimum number of council tokens a governance token owner must possess
+    /// to be able to create a proposal
     pub min_council_tokens_to_create_proposal: u64,
 }
 
@@ -59,9 +64,10 @@ pub struct LegacyGovernanceConfigV1 {
 pub enum VoteWeightSource {
     /// Governing token deposits into the Realm are used as voter weights
     Deposit,
-    /// Governing token account snapshots as of the time a proposal entered voting state are used as voter weights
-    /// Note: Snapshot source is not supported in the current version
-    /// Support for account snapshots are required in solana and/or arweave as a prerequisite
+    /// Governing token account snapshots as of the time a proposal entered
+    /// voting state are used as voter weights Note: Snapshot source is not
+    /// supported in the current version Support for account snapshots are
+    /// required in solana and/or arweave as a prerequisite
     Snapshot,
 }
 
@@ -70,15 +76,18 @@ pub enum VoteWeightSource {
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteThresholdPercentage {
     /// Voting threshold of Yes votes in % required to tip the vote
-    /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-    /// Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated
-    /// In other words a '+1 vote' tie breaker is always required to have a successful vote
+    /// It's the percentage of tokens out of the entire pool of governance
+    /// tokens eligible to vote Note: If the threshold is below or equal to
+    /// 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as
+    /// Defeated In other words a '+1 vote' tie breaker is always required
+    /// to have a successful vote
     YesVote(u8),
 
-    /// The minimum number of votes in % out of the entire pool of governance tokens eligible to vote
-    /// which must be cast for the vote to be valid
-    /// Once the quorum is achieved a simple majority (50%+1) of Yes votes is required for the vote to succeed
-    /// Note: Quorum is not implemented in the current version
+    /// The minimum number of votes in % out of the entire pool of governance
+    /// tokens eligible to vote which must be cast for the vote to be valid
+    /// Once the quorum is achieved a simple majority (50%+1) of Yes votes is
+    /// required for the vote to succeed Note: Quorum is not implemented in
+    /// the current version
     Quorum(u8),
 }
 

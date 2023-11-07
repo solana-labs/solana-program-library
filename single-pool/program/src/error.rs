@@ -13,30 +13,37 @@ use {
 #[derive(Clone, Debug, Eq, Error, num_derive::FromPrimitive, PartialEq)]
 pub enum SinglePoolError {
     // 0.
-    /// Provided pool account has the wrong address for its vote account, is uninitialized, or otherwise invalid.
+    /// Provided pool account has the wrong address for its vote account, is
+    /// uninitialized, or otherwise invalid.
     #[error("InvalidPoolAccount")]
     InvalidPoolAccount,
-    /// Provided pool stake account does not match address derived from the pool account.
+    /// Provided pool stake account does not match address derived from the pool
+    /// account.
     #[error("InvalidPoolStakeAccount")]
     InvalidPoolStakeAccount,
     /// Provided pool mint does not match address derived from the pool account.
     #[error("InvalidPoolMint")]
     InvalidPoolMint,
-    /// Provided pool stake authority does not match address derived from the pool account.
+    /// Provided pool stake authority does not match address derived from the
+    /// pool account.
     #[error("InvalidPoolStakeAuthority")]
     InvalidPoolStakeAuthority,
-    /// Provided pool mint authority does not match address derived from the pool account.
+    /// Provided pool mint authority does not match address derived from the
+    /// pool account.
     #[error("InvalidPoolMintAuthority")]
     InvalidPoolMintAuthority,
 
     // 5.
-    /// Provided pool MPL authority does not match address derived from the pool account.
+    /// Provided pool MPL authority does not match address derived from the pool
+    /// account.
     #[error("InvalidPoolMplAuthority")]
     InvalidPoolMplAuthority,
-    /// Provided metadata account does not match metadata account derived for pool mint.
+    /// Provided metadata account does not match metadata account derived for
+    /// pool mint.
     #[error("InvalidMetadataAccount")]
     InvalidMetadataAccount,
-    /// Authorized withdrawer provided for metadata update does not match the vote account.
+    /// Authorized withdrawer provided for metadata update does not match the
+    /// vote account.
     #[error("InvalidMetadataSigner")]
     InvalidMetadataSigner,
     /// Not enough lamports provided for deposit to result in one pool token.
@@ -48,7 +55,8 @@ pub enum SinglePoolError {
 
     // 10
     /// Not enough stake to cover the provided quantity of pool tokens.
-    /// (Generally this should not happen absent user error, but may if the minimum delegation increases.)
+    /// (Generally this should not happen absent user error, but may if the
+    /// minimum delegation increases.)
     #[error("WithdrawalTooLarge")]
     WithdrawalTooLarge,
     /// Required signature is missing.
@@ -61,18 +69,21 @@ pub enum SinglePoolError {
     #[error("ArithmeticOverflow")]
     ArithmeticOverflow,
     /// A calculation failed unexpectedly.
-    /// (This error should never be surfaced; it stands in for failure conditions that should never be reached.)
+    /// (This error should never be surfaced; it stands in for failure
+    /// conditions that should never be reached.)
     #[error("UnexpectedMathError")]
     UnexpectedMathError,
 
     // 15
-    /// The V0_23_5 vote account type is unsupported and should be upgraded via `convert_to_current()`.
+    /// The V0_23_5 vote account type is unsupported and should be upgraded via
+    /// `convert_to_current()`.
     #[error("LegacyVoteAccount")]
     LegacyVoteAccount,
     /// Failed to parse vote account.
     #[error("UnparseableVoteAccount")]
     UnparseableVoteAccount,
-    /// Incorrect number of lamports provided for rent-exemption when initializing.
+    /// Incorrect number of lamports provided for rent-exemption when
+    /// initializing.
     #[error("WrongRentAmount")]
     WrongRentAmount,
     /// Attempted to deposit from or withdraw to pool stake account.

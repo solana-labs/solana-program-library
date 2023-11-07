@@ -11,7 +11,8 @@ use {
     std::future::Future,
 };
 
-/// Offchain helper to get all additional required account metas for a checked transfer
+/// Offchain helper to get all additional required account metas for a checked
+/// transfer
 ///
 /// To be client-agnostic and to avoid pulling in the full solana-sdk, this
 /// simply takes a function that will return its data as `Future<Vec<u8>>` for

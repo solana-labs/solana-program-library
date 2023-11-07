@@ -1,8 +1,8 @@
-//! Helper functions to generate split zero-knowledge proofs for confidential transfers in the
-//! Confidential Transfer Extension.
+//! Helper functions to generate split zero-knowledge proofs for confidential
+//! transfers in the Confidential Transfer Extension.
 //!
-//! The logic in this submodule should belong to the `solana-zk-token-sdk` and will be removed with
-//! an upgrade to the Solana program.
+//! The logic in this submodule should belong to the `solana-zk-token-sdk` and
+//! will be removed with an upgrade to the Solana program.
 
 use {
     curve25519_dalek::scalar::Scalar,
@@ -131,7 +131,8 @@ pub fn transfer_with_fee_split_proof_data(
         hi: source_decrypt_handle_hi.into(),
     };
 
-    // encrypt the transfer amount under the destination and auditor ElGamal public key
+    // encrypt the transfer amount under the destination and auditor ElGamal public
+    // key
     let transfer_amount_destination_auditor_ciphertext_lo = GroupedElGamal::encrypt_with(
         [destination_elgamal_pubkey, auditor_elgamal_pubkey],
         transfer_amount_lo,
@@ -164,7 +165,8 @@ pub fn transfer_with_fee_split_proof_data(
         calculate_raw_fee_and_delta(transfer_amount, transfer_fee_basis_points)
             .ok_or(TokenError::Overflow)?;
 
-    // if raw fee is greater than the maximum fee, then use the maximum fee for the fee amount
+    // if raw fee is greater than the maximum fee, then use the maximum fee for the
+    // fee amount
     let fee_amount = std::cmp::min(transfer_fee_maximum_fee, raw_fee_amount);
 
     // split and encrypt fee
@@ -227,7 +229,8 @@ pub fn transfer_with_fee_split_proof_data(
     )
     .map_err(|_| TokenError::ProofGeneration)?;
 
-    // encrypt the fee amount under the destination and withdraw withheld authority ElGamal public key
+    // encrypt the fee amount under the destination and withdraw withheld authority
+    // ElGamal public key
     let fee_destination_withdraw_withheld_authority_ciphertext_lo = GroupedElGamal::encrypt_with(
         [
             destination_elgamal_pubkey,
@@ -323,15 +326,17 @@ pub fn transfer_with_fee_split_proof_data(
     ))
 }
 
-/// Calculate transfer fee and the "delta" value. The function returns the raw fee, which could be
-/// greater than the maximum fee amount of a fee parameter.
+/// Calculate transfer fee and the "delta" value. The function returns the raw
+/// fee, which could be greater than the maximum fee amount of a fee parameter.
 ///
-/// The "delta" value is a number that captures the round-off value when the fee is computed. The
-/// fee is computed according to the formula `fee = transfer_amount * fee_rate_basis_points /
-/// 10_000`. If no rounding occurred, then we must have `fee * 10_000 - transfer_amount *
-/// fee_rate_basis_points = 0`. If there is rounding involved (`10_000` does not divide cleanly),
-/// then the difference `fee * 10_000 - transfer_amount * fee_rate_basis_points` can be a non-zero
-/// number between `0` and `9_999` inclusively. We call this number the "delta" value.
+/// The "delta" value is a number that captures the round-off value when the fee
+/// is computed. The fee is computed according to the formula `fee =
+/// transfer_amount * fee_rate_basis_points / 10_000`. If no rounding occurred,
+/// then we must have `fee * 10_000 - transfer_amount * fee_rate_basis_points =
+/// 0`. If there is rounding involved (`10_000` does not divide cleanly),
+/// then the difference `fee * 10_000 - transfer_amount * fee_rate_basis_points`
+/// can be a non-zero number between `0` and `9_999` inclusively. We call this
+/// number the "delta" value.
 fn calculate_raw_fee_and_delta(
     transfer_amount: u64,
     fee_rate_basis_points: u16,
@@ -355,8 +360,8 @@ fn calculate_raw_fee_and_delta(
     Some((fee as u64, delta_fee as u64))
 }
 
-/// Calculate the "delta" commitment-opening pair from a transfer amount and fee commitment-opening
-/// pairs.
+/// Calculate the "delta" commitment-opening pair from a transfer amount and fee
+/// commitment-opening pairs.
 fn compute_delta_commitment_and_opening(
     (transfer_amount_commitment, transfer_amount_opening): (&PedersenCommitment, &PedersenOpening),
     (fee_commitment, fee_opening): (&PedersenCommitment, &PedersenOpening),

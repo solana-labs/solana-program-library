@@ -27,7 +27,8 @@ enum TestMode {
 }
 
 // build a full transaction for initialize, deposit, and withdraw
-// this is used to test knocking out individual accounts, for the sake of confirming the pubkeys are checked
+// this is used to test knocking out individual accounts, for the sake of
+// confirming the pubkeys are checked
 async fn build_instructions(
     context: &mut ProgramTestContext,
     accounts: &SinglePoolAccounts,
@@ -197,7 +198,8 @@ async fn fail_account_checks(test_mode: TestMode) {
 
 // make an individual instruction for all program instructions
 // the match is just so this will error if new instructions are added
-// if you are reading this because of that error, add the case to the `consistent_account_order` test!!!
+// if you are reading this because of that error, add the case to the
+// `consistent_account_order` test!!!
 fn make_basic_instruction(
     accounts: &SinglePoolAccounts,
     instruction_type: SinglePoolInstruction,
@@ -246,7 +248,8 @@ where
     data.windows(2).all(|w| w[0] <= w[1])
 }
 
-// check that major accounts always show up in the same order, to spare developer confusion
+// check that major accounts always show up in the same order, to spare
+// developer confusion
 #[test]
 fn consistent_account_order() {
     let accounts = SinglePoolAccounts::default();

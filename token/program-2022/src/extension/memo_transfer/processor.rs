@@ -17,7 +17,8 @@ use {
     },
 };
 
-/// Toggle the RequiredMemoTransfers extension, initializing the extension if not already present.
+/// Toggle the RequiredMemoTransfers extension, initializing the extension if
+/// not already present.
 fn process_toggle_required_memo_transfers(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

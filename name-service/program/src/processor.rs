@@ -84,7 +84,8 @@ impl Processor {
         if name_account.data.borrow().len() == 0 {
             // Issue the name registry account
             // The creation is done in three steps: transfer, allocate and assign, because
-            // one cannot `system_instruction::create` an account to which lamports have been transfered before.
+            // one cannot `system_instruction::create` an account to which lamports have
+            // been transfered before.
             invoke(
                 &system_instruction::transfer(payer_account.key, &name_account_key, lamports),
                 &[

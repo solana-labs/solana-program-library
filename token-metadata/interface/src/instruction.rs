@@ -103,7 +103,8 @@ pub enum TokenMetadataInstruction {
     ///
     /// By the end of the instruction, the metadata account must be properly
     /// resized based on the new size of the TLV entry.
-    ///   * If the new size is larger, the program must first reallocate to avoid
+    ///   * If the new size is larger, the program must first reallocate to
+    ///     avoid
     ///   overwriting other TLV entries.
     ///   * If the new size is smaller, the program must reallocate at the end
     ///   so that it's possible to iterate over TLV entries
@@ -113,9 +114,9 @@ pub enum TokenMetadataInstruction {
     ///   0. `[w]` Metadata account
     ///   1. `[s]` Update authority
     ///
-    /// Data: `UpdateField` data, specifying the new field and value. If the field
-    /// does not exist on the account, it will be created. If the field does exist,
-    /// it will be overwritten.
+    /// Data: `UpdateField` data, specifying the new field and value. If the
+    /// field does not exist on the account, it will be created. If the
+    /// field does exist, it will be overwritten.
     UpdateField(UpdateField),
 
     /// Removes a key-value pair in a token-metadata account.
@@ -161,7 +162,8 @@ pub enum TokenMetadataInstruction {
     Emit(Emit),
 }
 impl TokenMetadataInstruction {
-    /// Unpacks a byte buffer into a [TokenMetadataInstruction](enum.TokenMetadataInstruction.html).
+    /// Unpacks a byte buffer into a
+    /// [TokenMetadataInstruction](enum.TokenMetadataInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < ArrayDiscriminator::LENGTH {
             return Err(ProgramError::InvalidInstructionData);
@@ -192,7 +194,8 @@ impl TokenMetadataInstruction {
         })
     }
 
-    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
+    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte
+    /// buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = vec![];
         match self {

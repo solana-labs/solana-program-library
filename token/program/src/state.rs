@@ -16,9 +16,10 @@ use {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Mint {
-    /// Optional authority used to mint new tokens. The mint authority may only be provided during
-    /// mint creation. If no mint authority is present then the mint has a fixed supply and no
-    /// further tokens may be minted.
+    /// Optional authority used to mint new tokens. The mint authority may only
+    /// be provided during mint creation. If no mint authority is present
+    /// then the mint has a fixed supply and no further tokens may be
+    /// minted.
     pub mint_authority: COption<Pubkey>,
     /// Total supply of tokens.
     pub supply: u64,
@@ -97,9 +98,10 @@ pub struct Account {
     pub delegate: COption<Pubkey>,
     /// The account's state
     pub state: AccountState,
-    /// If is_native.is_some, this is a native token, and the value logs the rent-exempt reserve. An
-    /// Account is required to be rent-exempt, so the value is used by the Processor to ensure that
-    /// wrapped SOL accounts do not drop below this threshold.
+    /// If is_native.is_some, this is a native token, and the value logs the
+    /// rent-exempt reserve. An Account is required to be rent-exempt, so
+    /// the value is used by the Processor to ensure that wrapped SOL
+    /// accounts do not drop below this threshold.
     pub is_native: COption<u64>,
     /// The amount delegated
     pub delegated_amount: u64,
@@ -115,7 +117,8 @@ impl Account {
     pub fn is_native(&self) -> bool {
         self.is_native.is_some()
     }
-    /// Checks if a token Account's owner is the system_program or the incinerator
+    /// Checks if a token Account's owner is the system_program or the
+    /// incinerator
     pub fn is_owned_by_system_program_or_incinerator(&self) -> bool {
         solana_program::system_program::check_id(&self.owner)
             || solana_program::incinerator::check_id(&self.owner)
@@ -185,11 +188,12 @@ pub enum AccountState {
     /// Account is not yet initialized
     #[default]
     Uninitialized,
-    /// Account is initialized; the account owner and/or delegate may perform permitted operations
-    /// on this account
+    /// Account is initialized; the account owner and/or delegate may perform
+    /// permitted operations on this account
     Initialized,
-    /// Account has been frozen by the mint freeze authority. Neither the account owner nor
-    /// the delegate are able to perform operations on this account.
+    /// Account has been frozen by the mint freeze authority. Neither the
+    /// account owner nor the delegate are able to perform operations on
+    /// this account.
     Frozen,
 }
 
@@ -292,24 +296,27 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
 const SPL_TOKEN_ACCOUNT_MINT_OFFSET: usize = 0;
 const SPL_TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
 
-/// A trait for token Account structs to enable efficiently unpacking various fields
-/// without unpacking the complete state.
+/// A trait for token Account structs to enable efficiently unpacking various
+/// fields without unpacking the complete state.
 pub trait GenericTokenAccount {
     /// Check if the account data is a valid token account
     fn valid_account_data(account_data: &[u8]) -> bool;
 
-    /// Call after account length has already been verified to unpack the account owner
+    /// Call after account length has already been verified to unpack the
+    /// account owner
     fn unpack_account_owner_unchecked(account_data: &[u8]) -> &Pubkey {
         Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_OWNER_OFFSET)
     }
 
-    /// Call after account length has already been verified to unpack the account mint
+    /// Call after account length has already been verified to unpack the
+    /// account mint
     fn unpack_account_mint_unchecked(account_data: &[u8]) -> &Pubkey {
         Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_MINT_OFFSET)
     }
 
-    /// Call after account length has already been verified to unpack a Pubkey at
-    /// the specified offset. Panics if `account_data.len()` is less than `PUBKEY_BYTES`
+    /// Call after account length has already been verified to unpack a Pubkey
+    /// at the specified offset. Panics if `account_data.len()` is less than
+    /// `PUBKEY_BYTES`
     fn unpack_pubkey_unchecked(account_data: &[u8], offset: usize) -> &Pubkey {
         bytemuck::from_bytes(&account_data[offset..offset + PUBKEY_BYTES])
     }

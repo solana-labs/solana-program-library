@@ -24,7 +24,8 @@ use {
     spl_pod::primitives::PodU64,
 };
 
-/// Confidential transfer extension information needed to construct an `EmptyAccount` instruction.
+/// Confidential transfer extension information needed to construct an
+/// `EmptyAccount` instruction.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct EmptyAccountAccountInfo {
@@ -32,7 +33,8 @@ pub struct EmptyAccountAccountInfo {
     pub(crate) available_balance: EncryptedBalance,
 }
 impl EmptyAccountAccountInfo {
-    /// Create the `EmptyAccount` instruction account information from `ConfidentialTransferAccount`.
+    /// Create the `EmptyAccount` instruction account information from
+    /// `ConfidentialTransferAccount`.
     pub fn new(account: &ConfidentialTransferAccount) -> Self {
         Self {
             available_balance: account.available_balance,
@@ -54,13 +56,13 @@ impl EmptyAccountAccountInfo {
     }
 }
 
-/// Confidential Transfer extension information needed to construct an `ApplyPendingBalance`
-/// instruction.
+/// Confidential Transfer extension information needed to construct an
+/// `ApplyPendingBalance` instruction.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ApplyPendingBalanceAccountInfo {
-    /// The total number of `Deposit` and `Transfer` instructions that have credited
-    /// `pending_balance`
+    /// The total number of `Deposit` and `Transfer` instructions that have
+    /// credited `pending_balance`
     pub(crate) pending_balance_credit_counter: PodU64,
     /// The low 16 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub(crate) pending_balance_lo: EncryptedBalance,
@@ -142,7 +144,8 @@ impl ApplyPendingBalanceAccountInfo {
     }
 }
 
-/// Confidential Transfer extension information needed to construct a `Withdraw` instruction.
+/// Confidential Transfer extension information needed to construct a `Withdraw`
+/// instruction.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct WithdrawAccountInfo {
@@ -208,7 +211,8 @@ impl WithdrawAccountInfo {
     }
 }
 
-/// Confidential Transfer extension information needed to construct a `Transfer` instruction.
+/// Confidential Transfer extension information needed to construct a `Transfer`
+/// instruction.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct TransferAccountInfo {
@@ -218,7 +222,8 @@ pub struct TransferAccountInfo {
     pub decryptable_available_balance: DecryptableBalance,
 }
 impl TransferAccountInfo {
-    /// Create the `Transfer` instruction account information from `ConfidentialTransferAccount`.
+    /// Create the `Transfer` instruction account information from
+    /// `ConfidentialTransferAccount`.
     pub fn new(account: &ConfidentialTransferAccount) -> Self {
         Self {
             available_balance: account.available_balance,
@@ -267,8 +272,8 @@ impl TransferAccountInfo {
         .map_err(|_| TokenError::ProofGeneration)
     }
 
-    /// Create a transfer proof data that is split into equality, ciphertext validity, and range
-    /// proofs.
+    /// Create a transfer proof data that is split into equality, ciphertext
+    /// validity, and range proofs.
     pub fn generate_split_transfer_proof_data(
         &self,
         transfer_amount: u64,

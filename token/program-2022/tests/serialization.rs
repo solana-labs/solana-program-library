@@ -45,7 +45,8 @@ fn serde_instruction_coption_pubkey_with_none() {
 
 #[test]
 fn serde_instruction_optional_nonzero_pubkeys_podbool() {
-    // tests serde of ix containing OptionalNonZeroPubkey, PodBool and OptionalNonZeroElGamalPubkey
+    // tests serde of ix containing OptionalNonZeroPubkey, PodBool and
+    // OptionalNonZeroElGamalPubkey
     let authority_option: Option<Pubkey> =
         Some(Pubkey::from_str("4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM").unwrap());
     let authority: OptionalNonZeroPubkey = authority_option.try_into().unwrap();
@@ -75,8 +76,8 @@ fn serde_instruction_optional_nonzero_pubkeys_podbool() {
 
 #[test]
 fn serde_instruction_optional_nonzero_pubkeys_podbool_with_none() {
-    // tests serde of ix containing OptionalNonZeroPubkey, PodBool and OptionalNonZeroElGamalPubkey
-    // with null values
+    // tests serde of ix containing OptionalNonZeroPubkey, PodBool and
+    // OptionalNonZeroElGamalPubkey with null values
     let authority: OptionalNonZeroPubkey = None.try_into().unwrap();
 
     let auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey =

@@ -19,14 +19,14 @@ pub enum GovernanceChatInstruction {
     ///
     ///   0. `[]` Governance program id
     ///   1. `[]` Realm account of the Proposal
-    ///   2. `[]` Governance account the Proposal is for    
-    ///   3. `[]` Proposal account   
+    ///   2. `[]` Governance account the Proposal is for
+    ///   3. `[]` Proposal account
     ///   4. `[]` TokenOwnerRecord account for the message author
     ///   5. `[signer]` Governance Authority (TokenOwner or Governance Delegate)
     ///   6. `[writable, signer]` ChatMessage account
-    ///   7. `[signer]` Payer    
-    ///   8. `[]` System program    
-    ///   9. `[]` ReplyTo Message account (optional)  
+    ///   7. `[signer]` Payer
+    ///   8. `[]` System program
+    ///   9. `[]` ReplyTo Message account (optional)
     ///    10. `[]` Optional Voter Weight Record
     PostMessage {
         #[allow(dead_code)]

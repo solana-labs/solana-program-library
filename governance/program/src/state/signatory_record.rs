@@ -70,9 +70,11 @@ impl SignatoryRecordV2 {
         if self.account_type == GovernanceAccountType::SignatoryRecordV2 {
             borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::SignatoryRecordV1 {
-            // V1 account can't be resized and we have to translate it back to the original format
+            // V1 account can't be resized and we have to translate it back to the original
+            // format
 
-            // If reserved_v2 is used it must be individually asses for v1 backward compatibility impact
+            // If reserved_v2 is used it must be individually asses for v1 backward
+            // compatibility impact
             if self.reserved_v2 != [0; 8] {
                 panic!("Extended data not supported by SignatoryRecordV1")
             }
