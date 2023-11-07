@@ -1,12 +1,14 @@
 solana_program::declare_id!("mTok58Lg4YfcmwqyrDHpf7ogp599WRhzb6PxjaBqAxS");
 
-use borsh::BorshDeserialize;
-use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, msg, program::invoke,
-    program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
-    system_instruction, sysvar::Sysvar,
+use {
+    borsh::BorshDeserialize,
+    solana_program::{
+        account_info::AccountInfo, entrypoint::ProgramResult, msg, program::invoke,
+        program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
+        system_instruction, sysvar::Sysvar,
+    },
+    spl_associated_token_account::instruction::create_associated_token_account,
 };
-use spl_associated_token_account::instruction::create_associated_token_account;
 
 #[track_caller]
 #[inline(always)]
@@ -23,9 +25,11 @@ pub fn assert_with_msg(v: bool, err: impl Into<ProgramError>, msg: &str) -> Prog
 pub mod accounts;
 pub mod instruction;
 pub mod token;
-use accounts::{Approve, Burn, Close, InitializeAccount, InitializeMint, Mint, Revoke, Transfer};
-use instruction::ManagedTokenInstruction;
-use token::{approve, burn, close, freeze, initialize_mint, mint_to, revoke, thaw, transfer};
+use {
+    accounts::{Approve, Burn, Close, InitializeAccount, InitializeMint, Mint, Revoke, Transfer},
+    instruction::ManagedTokenInstruction,
+    token::{approve, burn, close, freeze, initialize_mint, mint_to, revoke, thaw, transfer},
+};
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_program::entrypoint!(process_instruction);

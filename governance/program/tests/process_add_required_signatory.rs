@@ -2,16 +2,16 @@
 
 mod program_test;
 
-use solana_program_test::tokio;
-
-use num_traits::cast::ToPrimitive;
-use program_test::*;
-use solana_program::{
-    program_error::ProgramError, pubkey::Pubkey, system_instruction::SystemError,
+use {
+    num_traits::cast::ToPrimitive,
+    program_test::*,
+    solana_program::{
+        program_error::ProgramError, pubkey::Pubkey, system_instruction::SystemError,
+    },
+    solana_program_test::tokio,
+    solana_sdk::signature::Signer,
+    spl_governance::{error::GovernanceError, instruction::add_required_signatory},
 };
-use solana_sdk::signature::Signer;
-use spl_governance::error::GovernanceError;
-use spl_governance::instruction::add_required_signatory;
 
 #[tokio::test]
 async fn test_add_required_signatory() {

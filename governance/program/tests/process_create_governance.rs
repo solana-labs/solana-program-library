@@ -1,13 +1,14 @@
 #![cfg(feature = "test-sbf")]
 mod program_test;
 
-use solana_program_test::*;
-
-use crate::program_test::args::RealmSetupArgs;
-use program_test::*;
-use solana_sdk::signature::Keypair;
-use spl_governance::{error::GovernanceError, state::enums::VoteThreshold};
-use spl_governance_tools::error::GovernanceToolsError;
+use {
+    crate::program_test::args::RealmSetupArgs,
+    program_test::*,
+    solana_program_test::*,
+    solana_sdk::signature::Keypair,
+    spl_governance::{error::GovernanceError, state::enums::VoteThreshold},
+    spl_governance_tools::error::GovernanceToolsError,
+};
 
 #[tokio::test]
 async fn test_create_governance() {

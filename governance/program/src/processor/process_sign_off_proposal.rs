@@ -1,21 +1,23 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    sysvar::Sysvar,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::ProposalState, governance::get_governance_data_for_realm,
+            proposal::get_proposal_data_for_governance, realm::assert_is_valid_realm,
+            signatory_record::get_signatory_record_data_for_seeds,
+            token_owner_record::get_token_owner_record_data_for_proposal_owner,
+        },
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        sysvar::Sysvar,
+    },
 };
-
-use crate::state::{
-    enums::ProposalState, governance::get_governance_data_for_realm,
-    proposal::get_proposal_data_for_governance, realm::assert_is_valid_realm,
-    signatory_record::get_signatory_record_data_for_seeds,
-    token_owner_record::get_token_owner_record_data_for_proposal_owner,
-};
-
-use crate::error::GovernanceError;
 
 /// Processes SignOffProposal instruction
 pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {

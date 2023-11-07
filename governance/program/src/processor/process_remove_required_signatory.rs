@@ -1,13 +1,17 @@
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-};
-use spl_governance_tools::account::dispose_account;
-
-use crate::{
-    error::GovernanceError, state::governance::get_governance_data,
-    state::required_signatory::get_required_signatory_data_for_governance,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            governance::get_governance_data,
+            required_signatory::get_required_signatory_data_for_governance,
+        },
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::dispose_account,
 };
 
 pub fn process_remove_required_signatory(

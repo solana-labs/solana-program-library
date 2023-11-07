@@ -2,6 +2,9 @@
 mod client;
 mod output;
 
+// use instruction::create_associated_token_account once ATA 1.0.5 is released
+#[allow(deprecated)]
+use spl_associated_token_account::create_associated_token_account;
 use {
     crate::{
         client::*,
@@ -41,21 +44,16 @@ use {
         transaction::Transaction,
     },
     spl_associated_token_account::get_associated_token_address,
-    spl_stake_pool::state::ValidatorStakeInfo,
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
         instruction::{FundingType, PreferredValidatorType},
         minimum_delegation,
-        state::{Fee, FeeType, StakePool, ValidatorList},
+        state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
         MINIMUM_RESERVE_LAMPORTS,
     },
-    std::cmp::Ordering,
-    std::{num::NonZeroU32, process::exit, rc::Rc},
+    std::{cmp::Ordering, num::NonZeroU32, process::exit, rc::Rc},
 };
-// use instruction::create_associated_token_account once ATA 1.0.5 is released
-#[allow(deprecated)]
-use spl_associated_token_account::create_associated_token_account;
 
 pub(crate) struct Config {
     rpc_client: RpcClient,

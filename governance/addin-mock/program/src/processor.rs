@@ -1,22 +1,22 @@
 //! Program processor
 
-use borsh::BorshDeserialize;
-
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Slot,
-    entrypoint::ProgramResult,
-    msg,
-    program_error::ProgramError,
-    pubkey::Pubkey,
+use {
+    crate::instruction::VoterWeightAddinInstruction,
+    borsh::BorshDeserialize,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Slot,
+        entrypoint::ProgramResult,
+        msg,
+        program_error::ProgramError,
+        pubkey::Pubkey,
+    },
+    spl_governance_addin_api::{
+        max_voter_weight::MaxVoterWeightRecord,
+        voter_weight::{VoterWeightAction, VoterWeightRecord},
+    },
+    spl_governance_tools::account::create_and_serialize_account,
 };
-use spl_governance_addin_api::{
-    max_voter_weight::MaxVoterWeightRecord,
-    voter_weight::{VoterWeightAction, VoterWeightRecord},
-};
-use spl_governance_tools::account::create_and_serialize_account;
-
-use crate::instruction::VoterWeightAddinInstruction;
 
 /// Processes an instruction
 pub fn process_instruction(

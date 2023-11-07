@@ -2,17 +2,18 @@
 
 mod program_test;
 
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    sysvar::clock,
-};
-use solana_program_test::tokio;
-
-use program_test::*;
-use spl_governance::{
-    error::GovernanceError,
-    state::enums::{ProposalState, TransactionExecutionStatus},
+use {
+    program_test::*,
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        sysvar::clock,
+    },
+    solana_program_test::tokio,
+    spl_governance::{
+        error::GovernanceError,
+        state::enums::{ProposalState, TransactionExecutionStatus},
+    },
 };
 
 #[tokio::test]

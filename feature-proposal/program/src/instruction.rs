@@ -1,14 +1,16 @@
 //! Program instructions
 
-use crate::{state::AcceptanceCriteria, *};
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    msg,
-    program_error::ProgramError,
-    program_pack::{Pack, Sealed},
-    pubkey::Pubkey,
-    sysvar,
+use {
+    crate::{state::AcceptanceCriteria, *},
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        msg,
+        program_error::ProgramError,
+        program_pack::{Pack, Sealed},
+        pubkey::Pubkey,
+        sysvar,
+    },
 };
 
 /// Instructions supported by the Feature Proposal program

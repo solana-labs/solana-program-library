@@ -4,10 +4,11 @@ use solana_program_test::*;
 
 mod program_test;
 
-use program_test::*;
-use spl_governance::state::{enums::MintMaxVoterWeightSource, realm::get_realm_address};
-
-use crate::program_test::args::RealmSetupArgs;
+use {
+    crate::program_test::args::RealmSetupArgs,
+    program_test::*,
+    spl_governance::state::{enums::MintMaxVoterWeightSource, realm::get_realm_address},
+};
 
 #[tokio::test]
 async fn test_create_realm() {

@@ -4,9 +4,10 @@ use solana_program_test::*;
 
 mod program_test;
 
-use program_test::args::*;
-use program_test::*;
-use spl_governance::state::enums::ProposalState;
+use {
+    program_test::{args::*, *},
+    spl_governance::state::enums::ProposalState,
+};
 
 #[tokio::test]
 async fn test_cast_community_vote_with_all_addin() {

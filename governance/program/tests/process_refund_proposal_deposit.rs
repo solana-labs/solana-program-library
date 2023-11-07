@@ -1,12 +1,10 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_program::program_error::ProgramError;
-use solana_program_test::*;
+use {solana_program::program_error::ProgramError, solana_program_test::*};
 
 mod program_test;
 
-use program_test::*;
-use spl_governance::error::GovernanceError;
+use {program_test::*, spl_governance::error::GovernanceError};
 
 #[tokio::test]
 async fn test_refund_proposal_deposit() {

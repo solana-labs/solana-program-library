@@ -1,13 +1,14 @@
 //! Proposal deposit account
 
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey,
+use {
+    crate::{error::GovernanceError, state::enums::GovernanceAccountType},
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::{get_account_data, AccountMaxSize},
 };
-use spl_governance_tools::account::{get_account_data, AccountMaxSize};
-
-use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
 
 /// Proposal deposit account
 /// The account is used to limit spam of proposals

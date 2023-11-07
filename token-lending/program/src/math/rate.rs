@@ -18,13 +18,15 @@
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::manual_range_contains)]
 
-use crate::{
-    error::LendingError,
-    math::{common::*, decimal::Decimal},
+use {
+    crate::{
+        error::LendingError,
+        math::{common::*, decimal::Decimal},
+    },
+    solana_program::program_error::ProgramError,
+    std::{convert::TryFrom, fmt},
+    uint::construct_uint,
 };
-use solana_program::program_error::ProgramError;
-use std::{convert::TryFrom, fmt};
-use uint::construct_uint;
 
 // U128 with 128 bits consisting of 2 x 64-bit words
 construct_uint! {

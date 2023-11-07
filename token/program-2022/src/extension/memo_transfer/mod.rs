@@ -1,3 +1,5 @@
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::{
         error::TokenError,
@@ -10,9 +12,6 @@ use {
     },
     spl_pod::primitives::PodBool,
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Memo Transfer extension instructions
 pub mod instruction;

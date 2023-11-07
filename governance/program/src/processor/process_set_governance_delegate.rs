@@ -1,12 +1,13 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
+use {
+    crate::state::token_owner_record::get_token_owner_record_data,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+    },
 };
-
-use crate::state::token_owner_record::get_token_owner_record_data;
 
 /// Processes SetGovernanceDelegate instruction
 pub fn process_set_governance_delegate(

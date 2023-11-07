@@ -1,14 +1,15 @@
 // Program test does not support calling a raw program entrypoint, only `process_instruction`
 #![cfg(feature = "test-sbf")]
 
-use solana_program_test::*;
-use solana_sdk::{
-    account::Account,
-    instruction::InstructionError,
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    signature::Signer,
-    transaction::{Transaction, TransactionError},
+use {
+    solana_program_test::*,
+    solana_sdk::{
+        account::Account,
+        instruction::{AccountMeta, Instruction, InstructionError},
+        pubkey::Pubkey,
+        signature::Signer,
+        transaction::{Transaction, TransactionError},
+    },
 };
 
 #[tokio::test]

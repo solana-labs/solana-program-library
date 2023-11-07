@@ -1,8 +1,9 @@
-use crate::native_account_data::NativeAccountData;
-
-use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, instruction::Instruction,
-    program_error::ProgramError, program_stubs, pubkey::Pubkey,
+use {
+    crate::native_account_data::NativeAccountData,
+    solana_program::{
+        account_info::AccountInfo, entrypoint::ProgramResult, instruction::Instruction,
+        program_error::ProgramError, program_stubs, pubkey::Pubkey,
+    },
 };
 
 struct TestSyscallStubs {}

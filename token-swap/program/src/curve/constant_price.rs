@@ -262,16 +262,18 @@ impl DynPack for ConstantPriceCurve {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::curve::calculator::{
-        test::{
-            check_curve_value_from_swap, check_deposit_token_conversion,
-            check_withdraw_token_conversion, total_and_intermediate,
-            CONVERSION_BASIS_POINTS_GUARANTEE,
+    use {
+        super::*,
+        crate::curve::calculator::{
+            test::{
+                check_curve_value_from_swap, check_deposit_token_conversion,
+                check_withdraw_token_conversion, total_and_intermediate,
+                CONVERSION_BASIS_POINTS_GUARANTEE,
+            },
+            INITIAL_SWAP_POOL_AMOUNT,
         },
-        INITIAL_SWAP_POOL_AMOUNT,
+        proptest::prelude::*,
     };
-    use proptest::prelude::*;
 
     #[test]
     fn swap_calculation_no_price() {

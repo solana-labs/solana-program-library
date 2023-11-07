@@ -1,8 +1,7 @@
 use {
     serde::{Deserialize, Serialize},
     solana_cli_output::{QuietDisplay, VerboseDisplay},
-    solana_sdk::native_token::Sol,
-    solana_sdk::{pubkey::Pubkey, stake::state::Lockup},
+    solana_sdk::{native_token::Sol, pubkey::Pubkey, stake::state::Lockup},
     spl_stake_pool::state::{
         Fee, PodStakeStatus, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo,
     },

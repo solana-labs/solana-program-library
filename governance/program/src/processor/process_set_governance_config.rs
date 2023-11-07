@@ -1,14 +1,17 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-};
-
-use crate::{
-    error::GovernanceError,
-    state::governance::{assert_is_valid_governance_config, get_governance_data, GovernanceConfig},
+use {
+    crate::{
+        error::GovernanceError,
+        state::governance::{
+            assert_is_valid_governance_config, get_governance_data, GovernanceConfig,
+        },
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+    },
 };
 
 /// Processes SetGovernanceConfig instruction

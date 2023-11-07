@@ -2,16 +2,16 @@
 
 mod program_test;
 
-use solana_program::program_error::ProgramError;
-use solana_program_test::tokio;
-
-use borsh::BorshSerialize;
-use program_test::*;
-use solana_sdk::{pubkey::Pubkey, signature::Signer};
-
-use spl_governance::{
-    error::GovernanceError,
-    instruction::{add_signatory, AddSignatoryAuthority, GovernanceInstruction},
+use {
+    borsh::BorshSerialize,
+    program_test::*,
+    solana_program::program_error::ProgramError,
+    solana_program_test::tokio,
+    solana_sdk::{pubkey::Pubkey, signature::Signer},
+    spl_governance::{
+        error::GovernanceError,
+        instruction::{add_signatory, AddSignatoryAuthority, GovernanceInstruction},
+    },
 };
 
 #[tokio::test]

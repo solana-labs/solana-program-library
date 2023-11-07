@@ -1,16 +1,16 @@
-use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey};
-
-use crate::helpers::flash_loan_receiver::FlashLoanReceiverError::InvalidInstruction;
-use spl_token::{
-    solana_program::{
-        account_info::next_account_info, program::invoke_signed, program_error::ProgramError,
-        program_pack::Pack,
+use {
+    crate::helpers::flash_loan_receiver::FlashLoanReceiverError::InvalidInstruction,
+    solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, pubkey::Pubkey},
+    spl_token::{
+        solana_program::{
+            account_info::next_account_info, program::invoke_signed, program_error::ProgramError,
+            program_pack::Pack,
+        },
+        state::Account,
     },
-    state::Account,
+    std::{cmp::min, convert::TryInto},
+    thiserror::Error,
 };
-use std::cmp::min;
-use std::convert::TryInto;
-use thiserror::Error;
 
 pub enum FlashLoanReceiverInstruction {
     /// Receive a flash loan and perform user-defined operation and finally return the fund back.

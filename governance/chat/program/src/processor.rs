@@ -1,28 +1,31 @@
 //! Program processor
 
-use crate::{
-    error::GovernanceChatError,
-    instruction::GovernanceChatInstruction,
-    state::{assert_is_valid_chat_message, ChatMessage, GovernanceChatAccountType, MessageBody},
+use {
+    crate::{
+        error::GovernanceChatError,
+        instruction::GovernanceChatInstruction,
+        state::{
+            assert_is_valid_chat_message, ChatMessage, GovernanceChatAccountType, MessageBody,
+        },
+    },
+    borsh::BorshDeserialize,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        entrypoint::ProgramResult,
+        msg,
+        program_error::ProgramError,
+        pubkey::Pubkey,
+        sysvar::Sysvar,
+    },
+    spl_governance::state::{
+        governance::get_governance_data_for_realm, proposal::get_proposal_data_for_governance,
+        realm::get_realm_data, realm_config::get_realm_config_data_for_realm,
+        token_owner_record::get_token_owner_record_data_for_realm,
+    },
+    spl_governance_addin_api::voter_weight::VoterWeightAction,
+    spl_governance_tools::account::create_and_serialize_account,
 };
-use borsh::BorshDeserialize;
-
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    entrypoint::ProgramResult,
-    msg,
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    sysvar::Sysvar,
-};
-use spl_governance::state::{
-    governance::get_governance_data_for_realm, proposal::get_proposal_data_for_governance,
-    realm::get_realm_data, realm_config::get_realm_config_data_for_realm,
-    token_owner_record::get_token_owner_record_data_for_realm,
-};
-use spl_governance_addin_api::voter_weight::VoterWeightAction;
-use spl_governance_tools::account::create_and_serialize_account;
 
 /// Processes an instruction
 pub fn process_instruction(

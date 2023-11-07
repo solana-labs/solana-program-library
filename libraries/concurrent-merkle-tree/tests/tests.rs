@@ -1,10 +1,13 @@
 #![allow(clippy::arithmetic_side_effects)]
-use rand::thread_rng;
-use rand::{self, Rng};
-use spl_concurrent_merkle_tree::concurrent_merkle_tree::ConcurrentMerkleTree;
-use spl_concurrent_merkle_tree::error::ConcurrentMerkleTreeError;
-use spl_concurrent_merkle_tree::node::{Node, EMPTY};
-use spl_merkle_tree_reference::MerkleTree;
+use {
+    rand::{self, thread_rng, Rng},
+    spl_concurrent_merkle_tree::{
+        concurrent_merkle_tree::ConcurrentMerkleTree,
+        error::ConcurrentMerkleTreeError,
+        node::{Node, EMPTY},
+    },
+    spl_merkle_tree_reference::MerkleTree,
+};
 
 const DEPTH: usize = 10;
 const BUFFER_SIZE: usize = 64;

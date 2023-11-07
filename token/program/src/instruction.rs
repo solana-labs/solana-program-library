@@ -1,15 +1,16 @@
 //! Instruction types
 
-use crate::{check_program_account, error::TokenError};
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    program_option::COption,
-    pubkey::Pubkey,
-    sysvar,
+use {
+    crate::{check_program_account, error::TokenError},
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        program_option::COption,
+        pubkey::Pubkey,
+        sysvar,
+    },
+    std::{convert::TryInto, mem::size_of},
 };
-use std::convert::TryInto;
-use std::mem::size_of;
 
 /// Minimum number of multisignature signers (min N)
 pub const MIN_SIGNERS: usize = 1;

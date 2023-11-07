@@ -1,10 +1,10 @@
 #![cfg(feature = "test-sbf")]
 
-use program_test::GovernanceChatProgramTest;
-use solana_program_test::tokio;
-use solana_sdk::signature::Keypair;
-use spl_governance::error::GovernanceError;
-use spl_governance_chat::error::GovernanceChatError;
+use {
+    program_test::GovernanceChatProgramTest, solana_program_test::tokio,
+    solana_sdk::signature::Keypair, spl_governance::error::GovernanceError,
+    spl_governance_chat::error::GovernanceChatError,
+};
 
 mod program_test;
 

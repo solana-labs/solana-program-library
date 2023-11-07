@@ -29,8 +29,7 @@ impl<T> DecodeError<T> for MathError {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use solana_program::program_error::ProgramError;
+    use {super::*, solana_program::program_error::ProgramError};
 
     #[test]
     fn test_math_error_from() {

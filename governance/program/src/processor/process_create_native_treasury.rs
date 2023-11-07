@@ -1,18 +1,19 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    rent::Rent,
-    system_program,
-    sysvar::Sysvar,
-};
-use spl_governance_tools::account::create_and_serialize_account_with_owner_signed;
-
-use crate::state::{
-    governance::assert_is_valid_governance,
-    native_treasury::{get_native_treasury_address_seeds, NativeTreasury},
+use {
+    crate::state::{
+        governance::assert_is_valid_governance,
+        native_treasury::{get_native_treasury_address_seeds, NativeTreasury},
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        rent::Rent,
+        system_program,
+        sysvar::Sysvar,
+    },
+    spl_governance_tools::account::create_and_serialize_account_with_owner_signed,
 };
 
 /// Processes CreateNativeTreasury instruction

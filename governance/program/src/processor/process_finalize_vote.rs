@@ -1,18 +1,20 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    sysvar::Sysvar,
-};
-
-use crate::state::{
-    governance::get_governance_data_for_realm,
-    proposal::get_proposal_data_for_governance_and_governing_mint,
-    realm::get_realm_data_for_governing_token_mint, realm_config::get_realm_config_data_for_realm,
-    token_owner_record::get_token_owner_record_data_for_proposal_owner, vote_record::VoteKind,
+use {
+    crate::state::{
+        governance::get_governance_data_for_realm,
+        proposal::get_proposal_data_for_governance_and_governing_mint,
+        realm::get_realm_data_for_governing_token_mint,
+        realm_config::get_realm_config_data_for_realm,
+        token_owner_record::get_token_owner_record_data_for_proposal_owner, vote_record::VoteKind,
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        sysvar::Sysvar,
+    },
 };
 
 /// Processes FinalizeVote instruction

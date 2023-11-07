@@ -1,3 +1,5 @@
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::{
         extension::{BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsMut},
@@ -7,9 +9,6 @@ use {
     solana_program::instruction::{get_stack_height, TRANSACTION_LEVEL_STACK_HEIGHT},
     spl_pod::primitives::PodBool,
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// CPI Guard extension instructions
 pub mod instruction;

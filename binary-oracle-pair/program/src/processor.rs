@@ -1,25 +1,26 @@
 //! Program state processor
 
-use crate::{
-    error::PoolError,
-    instruction::PoolInstruction,
-    state::{Decision, Pool, POOL_VERSION},
+use {
+    crate::{
+        error::PoolError,
+        instruction::PoolInstruction,
+        state::{Decision, Pool, POOL_VERSION},
+    },
+    borsh::BorshDeserialize,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::{Clock, Slot},
+        entrypoint::ProgramResult,
+        msg,
+        program::{invoke, invoke_signed},
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack},
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
+    },
+    spl_token::state::{Account, Mint},
 };
-use borsh::BorshDeserialize;
-use solana_program::{
-    account_info::next_account_info,
-    account_info::AccountInfo,
-    clock::{Clock, Slot},
-    entrypoint::ProgramResult,
-    msg,
-    program::{invoke, invoke_signed},
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack},
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-use spl_token::state::{Account, Mint};
 
 /// Program state handler.
 pub struct Processor {}

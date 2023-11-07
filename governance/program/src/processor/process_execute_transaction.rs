@@ -1,21 +1,22 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    entrypoint::ProgramResult,
-    instruction::Instruction,
-    program::invoke_signed,
-    pubkey::Pubkey,
-    sysvar::Sysvar,
-};
-
-use crate::state::{
-    enums::{ProposalState, TransactionExecutionStatus},
-    governance::get_governance_data,
-    native_treasury::get_native_treasury_address_seeds,
-    proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_transaction::get_proposal_transaction_data_for_proposal,
+use {
+    crate::state::{
+        enums::{ProposalState, TransactionExecutionStatus},
+        governance::get_governance_data,
+        native_treasury::get_native_treasury_address_seeds,
+        proposal::{get_proposal_data_for_governance, OptionVoteResult},
+        proposal_transaction::get_proposal_transaction_data_for_proposal,
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        entrypoint::ProgramResult,
+        instruction::Instruction,
+        program::invoke_signed,
+        pubkey::Pubkey,
+        sysvar::Sysvar,
+    },
 };
 
 /// Processes ExecuteTransaction instruction

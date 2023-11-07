@@ -1,15 +1,17 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_program::{
-    instruction::{AccountMeta, Instruction, InstructionError},
-    pubkey::Pubkey,
+use {
+    solana_program::{
+        instruction::{AccountMeta, Instruction, InstructionError},
+        pubkey::Pubkey,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+    },
+    spl_memo::*,
 };
-use solana_program_test::*;
-use solana_sdk::{
-    signature::{Keypair, Signer},
-    transaction::{Transaction, TransactionError},
-};
-use spl_memo::*;
 
 fn program_test() -> ProgramTest {
     ProgramTest::new("spl_memo", id(), processor!(processor::process_instruction))

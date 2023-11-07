@@ -1,11 +1,10 @@
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::extension::{Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
     spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Instructions for the GroupPointer extension
 pub mod instruction;

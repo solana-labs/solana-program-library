@@ -1,27 +1,25 @@
 #![allow(clippy::arithmetic_side_effects)]
-use std::borrow::Borrow;
-
-use borsh::{BorshDeserialize, BorshSerialize};
-use cookies::{TokenAccountCookie, WalletCookie};
-use solana_program::{
-    borsh0_10::try_from_slice_unchecked, clock::Clock, instruction::Instruction,
-    program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
-    stake_history::Epoch, system_instruction, system_program, sysvar,
+use {
+    crate::tools::map_transaction_error,
+    bincode::deserialize,
+    borsh::{BorshDeserialize, BorshSerialize},
+    cookies::{TokenAccountCookie, WalletCookie},
+    solana_program::{
+        borsh0_10::try_from_slice_unchecked, clock::Clock, instruction::Instruction,
+        program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
+        stake_history::Epoch, system_instruction, system_program, sysvar,
+    },
+    solana_program_test::{ProgramTest, ProgramTestContext},
+    solana_sdk::{
+        account::{Account, AccountSharedData, WritableAccount},
+        signature::Keypair,
+        signer::Signer,
+        transaction::Transaction,
+    },
+    spl_token::instruction::{set_authority, AuthorityType},
+    std::borrow::Borrow,
+    tools::clone_keypair,
 };
-use solana_program_test::{ProgramTest, ProgramTestContext};
-use solana_sdk::{
-    account::{Account, AccountSharedData, WritableAccount},
-    signature::Keypair,
-    signer::Signer,
-    transaction::Transaction,
-};
-
-use bincode::deserialize;
-
-use spl_token::instruction::{set_authority, AuthorityType};
-use tools::clone_keypair;
-
-use crate::tools::map_transaction_error;
 
 pub mod addins;
 pub mod cookies;

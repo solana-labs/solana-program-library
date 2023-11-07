@@ -1,12 +1,11 @@
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::extension::{BaseState, BaseStateWithExtensions, Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
     solana_program::pubkey::Pubkey,
     spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Permanent delegate extension data for mints.
 #[repr(C)]

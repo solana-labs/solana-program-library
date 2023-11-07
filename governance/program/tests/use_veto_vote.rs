@@ -1,21 +1,20 @@
 #![cfg(feature = "test-sbf")]
 
 mod program_test;
-use program_test::*;
-
-use solana_program::instruction::AccountMeta;
-use solana_program_test::tokio;
-
-use spl_governance::{
-    error::GovernanceError,
-    state::{
-        enums::{ProposalState, VoteThreshold},
-        vote_record::Vote,
+use {
+    crate::program_test::args::{PluginSetupArgs, RealmSetupArgs},
+    program_test::*,
+    solana_program::instruction::AccountMeta,
+    solana_program_test::tokio,
+    spl_governance::{
+        error::GovernanceError,
+        state::{
+            enums::{ProposalState, VoteThreshold},
+            vote_record::Vote,
+        },
     },
+    spl_governance_test_sdk::tools::clone_keypair,
 };
-use spl_governance_test_sdk::tools::clone_keypair;
-
-use crate::program_test::args::{PluginSetupArgs, RealmSetupArgs};
 
 #[tokio::test]
 async fn test_cast_council_veto_vote() {

@@ -1,16 +1,17 @@
 //! Various constraints as required for production environments
 
-use crate::{
-    curve::{
-        base::{CurveType, SwapCurve},
-        fees::Fees,
-    },
-    error::SwapError,
-};
-use solana_program::program_error::ProgramError;
-
 #[cfg(feature = "production")]
 use std::env;
+use {
+    crate::{
+        curve::{
+            base::{CurveType, SwapCurve},
+            fees::Fees,
+        },
+        error::SwapError,
+    },
+    solana_program::program_error::ProgramError,
+};
 
 /// Encodes fee constraints, used in multihost environments where the program
 /// may be used by multiple frontends, to ensure that proper fees are being
@@ -98,9 +99,11 @@ pub const SWAP_CONSTRAINTS: Option<SwapConstraints> = {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::curve::{base::CurveType, constant_product::ConstantProductCurve};
-    use std::sync::Arc;
+    use {
+        super::*,
+        crate::curve::{base::CurveType, constant_product::ConstantProductCurve},
+        std::sync::Arc,
+    };
 
     #[test]
     fn validate_fees() {

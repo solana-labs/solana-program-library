@@ -1,7 +1,8 @@
-use lazy_static::lazy_static;
-
-use solana_program_test::find_file;
-use std::{process::Command, sync::Mutex};
+use {
+    lazy_static::lazy_static,
+    solana_program_test::find_file,
+    std::{process::Command, sync::Mutex},
+};
 
 lazy_static! {
     pub static ref VOTER_WEIGHT_ADDIN_BUILD_GUARD: Mutex::<u8> = Mutex::new(0);

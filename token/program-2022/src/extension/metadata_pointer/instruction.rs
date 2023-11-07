@@ -1,3 +1,5 @@
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::{
         check_program_account,
@@ -13,9 +15,6 @@ use {
     spl_pod::optional_keys::OptionalNonZeroPubkey,
     std::convert::TryInto,
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Metadata pointer extension instructions
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]

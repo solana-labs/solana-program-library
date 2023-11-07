@@ -2,34 +2,36 @@
 
 pub mod flash_loan_receiver;
 
-use assert_matches::*;
-use solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey};
-use solana_program_test::*;
-use solana_sdk::{
-    account::Account,
-    signature::{read_keypair_file, Keypair, Signer},
-    system_instruction::create_account,
-    transaction::{Transaction, TransactionError},
-};
-use spl_token::{
-    instruction::approve,
-    state::{Account as Token, AccountState, Mint},
-};
-use spl_token_lending::{
-    instruction::{
-        borrow_obligation_liquidity, deposit_reserve_liquidity, init_lending_market,
-        init_obligation, init_reserve, liquidate_obligation, refresh_reserve,
+use {
+    assert_matches::*,
+    solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey},
+    solana_program_test::*,
+    solana_sdk::{
+        account::Account,
+        signature::{read_keypair_file, Keypair, Signer},
+        system_instruction::create_account,
+        transaction::{Transaction, TransactionError},
     },
-    math::{Decimal, Rate, TryAdd, TryMul},
-    pyth,
-    state::{
-        InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
-        NewReserveCollateralParams, NewReserveLiquidityParams, Obligation, ObligationCollateral,
-        ObligationLiquidity, Reserve, ReserveCollateral, ReserveConfig, ReserveFees,
-        ReserveLiquidity, INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION,
+    spl_token::{
+        instruction::approve,
+        state::{Account as Token, AccountState, Mint},
     },
+    spl_token_lending::{
+        instruction::{
+            borrow_obligation_liquidity, deposit_reserve_liquidity, init_lending_market,
+            init_obligation, init_reserve, liquidate_obligation, refresh_reserve,
+        },
+        math::{Decimal, Rate, TryAdd, TryMul},
+        pyth,
+        state::{
+            InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
+            NewReserveCollateralParams, NewReserveLiquidityParams, Obligation,
+            ObligationCollateral, ObligationLiquidity, Reserve, ReserveCollateral, ReserveConfig,
+            ReserveFees, ReserveLiquidity, INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION,
+        },
+    },
+    std::{convert::TryInto, str::FromStr},
 };
-use std::{convert::TryInto, str::FromStr};
 
 pub const QUOTE_CURRENCY: [u8; 32] =
     *b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";

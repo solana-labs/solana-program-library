@@ -1,36 +1,34 @@
-use std::str::FromStr;
-
-use solana_program::{program_error::ProgramError, pubkey::Pubkey};
-use solana_program_test::{processor, ProgramTest};
-
-use solana_sdk::{signature::Keypair, signer::Signer};
-use spl_governance::{
-    instruction::{
-        create_governance, create_proposal, create_realm, create_token_owner_record,
-        deposit_governing_tokens,
-    },
-    state::{
-        enums::{MintMaxVoterWeightSource, VoteThreshold},
-        governance::{
-            get_governance_address, GovernanceConfig, DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+use {
+    self::cookies::TokenOwnerRecordCookie,
+    crate::program_test::cookies::{ChatMessageCookie, ProposalCookie},
+    solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    solana_program_test::{processor, ProgramTest},
+    solana_sdk::{signature::Keypair, signer::Signer},
+    spl_governance::{
+        instruction::{
+            create_governance, create_proposal, create_realm, create_token_owner_record,
+            deposit_governing_tokens,
         },
-        proposal::{get_proposal_address, VoteType},
-        realm::{get_realm_address, GoverningTokenConfigAccountArgs},
-        realm_config::GoverningTokenType,
-        token_owner_record::get_token_owner_record_address,
+        state::{
+            enums::{MintMaxVoterWeightSource, VoteThreshold},
+            governance::{
+                get_governance_address, GovernanceConfig, DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+            },
+            proposal::{get_proposal_address, VoteType},
+            realm::{get_realm_address, GoverningTokenConfigAccountArgs},
+            realm_config::GoverningTokenType,
+            token_owner_record::get_token_owner_record_address,
+        },
     },
+    spl_governance_addin_mock::instruction::setup_voter_weight_record,
+    spl_governance_chat::{
+        instruction::post_message,
+        processor::process_instruction,
+        state::{ChatMessage, GovernanceChatAccountType, MessageBody},
+    },
+    spl_governance_test_sdk::{addins::ensure_addin_mock_is_built, ProgramTestBench},
+    std::str::FromStr,
 };
-use spl_governance_addin_mock::instruction::setup_voter_weight_record;
-use spl_governance_chat::{
-    instruction::post_message,
-    processor::process_instruction,
-    state::{ChatMessage, GovernanceChatAccountType, MessageBody},
-};
-use spl_governance_test_sdk::{addins::ensure_addin_mock_is_built, ProgramTestBench};
-
-use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
-
-use self::cookies::TokenOwnerRecordCookie;
 
 pub mod cookies;
 

@@ -1,28 +1,30 @@
-use crate::{
-    error::BinaryOptionError,
-    instruction::BinaryOptionInstruction,
-    spl_utils::{
-        spl_approve, spl_burn, spl_burn_signed, spl_initialize, spl_mint_initialize, spl_mint_to,
-        spl_set_authority, spl_token_transfer, spl_token_transfer_signed,
+use {
+    crate::{
+        error::BinaryOptionError,
+        instruction::BinaryOptionInstruction,
+        spl_utils::{
+            spl_approve, spl_burn, spl_burn_signed, spl_initialize, spl_mint_initialize,
+            spl_mint_to, spl_set_authority, spl_token_transfer, spl_token_transfer_signed,
+        },
+        state::BinaryOption,
+        system_utils::{create_new_account, create_or_allocate_account_raw},
+        validation_utils::{
+            assert_initialized, assert_keys_equal, assert_keys_unequal, assert_owned_by,
+        },
     },
-    state::BinaryOption,
-    system_utils::{create_new_account, create_or_allocate_account_raw},
-    validation_utils::{
-        assert_initialized, assert_keys_equal, assert_keys_unequal, assert_owned_by,
+    borsh::BorshDeserialize,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        msg,
+        program_error::ProgramError,
+        program_pack::Pack,
+        pubkey::Pubkey,
     },
-};
-use borsh::BorshDeserialize;
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    msg,
-    program_error::ProgramError,
-    program_pack::Pack,
-    pubkey::Pubkey,
-};
-use spl_token::{
-    instruction::AuthorityType,
-    state::{Account, Mint},
+    spl_token::{
+        instruction::AuthorityType,
+        state::{Account, Mint},
+    },
 };
 
 pub struct Processor;

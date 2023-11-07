@@ -1,19 +1,21 @@
 //! Legacy Accounts
 
-use crate::state::{
-    enums::{
-        GovernanceAccountType, InstructionExecutionFlags, ProposalState,
-        TransactionExecutionStatus, VoteThreshold,
+use {
+    crate::state::{
+        enums::{
+            GovernanceAccountType, InstructionExecutionFlags, ProposalState,
+            TransactionExecutionStatus, VoteThreshold,
+        },
+        governance::GovernanceConfig,
+        proposal_transaction::InstructionData,
+        realm::RealmConfig,
     },
-    governance::GovernanceConfig,
-    proposal_transaction::InstructionData,
-    realm::RealmConfig,
-};
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    clock::{Slot, UnixTimestamp},
-    program_pack::IsInitialized,
-    pubkey::Pubkey,
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        clock::{Slot, UnixTimestamp},
+        program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
 };
 
 /// Governance Realm Account

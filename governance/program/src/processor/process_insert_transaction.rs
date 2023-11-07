@@ -1,27 +1,27 @@
 //! Program state processor
 
-use std::cmp::Ordering;
-
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-use spl_governance_tools::account::create_and_serialize_account_signed;
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::{GovernanceAccountType, TransactionExecutionStatus},
-        governance::get_governance_data,
-        proposal::get_proposal_data_for_governance,
-        proposal_transaction::{
-            get_proposal_transaction_address_seeds, InstructionData, ProposalTransactionV2,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::{GovernanceAccountType, TransactionExecutionStatus},
+            governance::get_governance_data,
+            proposal::get_proposal_data_for_governance,
+            proposal_transaction::{
+                get_proposal_transaction_address_seeds, InstructionData, ProposalTransactionV2,
+            },
+            token_owner_record::get_token_owner_record_data_for_proposal_owner,
         },
-        token_owner_record::get_token_owner_record_data_for_proposal_owner,
     },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
+    },
+    spl_governance_tools::account::create_and_serialize_account_signed,
+    std::cmp::Ordering,
 };
 
 /// Processes InsertTransaction instruction

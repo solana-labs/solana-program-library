@@ -1,10 +1,9 @@
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::extension::{Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Indicates that the Account owner authority cannot be changed
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]

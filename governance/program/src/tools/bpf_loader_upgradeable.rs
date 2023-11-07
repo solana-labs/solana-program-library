@@ -1,16 +1,16 @@
 //! General purpose bpf_loader_upgradeable utility functions
 
-use solana_program::{
-    account_info::AccountInfo,
-    bpf_loader_upgradeable::{self, UpgradeableLoaderState},
-    program::invoke,
-    program_error::ProgramError,
-    pubkey::Pubkey,
+use {
+    crate::error::GovernanceError,
+    bincode::deserialize,
+    solana_program::{
+        account_info::AccountInfo,
+        bpf_loader_upgradeable::{self, UpgradeableLoaderState},
+        program::invoke,
+        program_error::ProgramError,
+        pubkey::Pubkey,
+    },
 };
-
-use bincode::deserialize;
-
-use crate::error::GovernanceError;
 
 /// Returns ProgramData account address for the given Program
 pub fn get_program_data_address(program: &Pubkey) -> Pubkey {

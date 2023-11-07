@@ -1,11 +1,13 @@
 //! RequiredSignatory account
-use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey,
+use {
+    crate::{error::GovernanceError, state::enums::GovernanceAccountType},
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::{get_account_data, AccountMaxSize},
 };
-use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 /// Required signatory
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]

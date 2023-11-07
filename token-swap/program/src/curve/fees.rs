@@ -1,12 +1,14 @@
 //! All fee information, to be used for validation currently
 
-use crate::error::SwapError;
-use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use solana_program::{
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
+use {
+    crate::error::SwapError,
+    arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
+    solana_program::{
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack, Sealed},
+    },
+    std::convert::TryFrom,
 };
-use std::convert::TryFrom;
 
 /// Encapsulates all fee information and calculations for swap operations
 #[derive(Clone, Debug, Default, PartialEq)]

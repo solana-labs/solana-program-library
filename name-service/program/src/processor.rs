@@ -1,8 +1,7 @@
 use {
     crate::{
         instruction::NameRegistryInstruction,
-        state::get_seeds_and_key,
-        state::{write_data, NameRecordHeader},
+        state::{get_seeds_and_key, write_data, NameRecordHeader},
     },
     borsh::BorshDeserialize,
     solana_program::{

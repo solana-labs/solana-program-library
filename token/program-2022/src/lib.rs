@@ -21,7 +21,6 @@ pub mod state;
 mod entrypoint;
 
 // Export current sdk types for downstream users building with a different sdk version
-pub use solana_program;
 use solana_program::{
     entrypoint::ProgramResult,
     program_error::ProgramError,
@@ -29,7 +28,7 @@ use solana_program::{
     pubkey::{Pubkey, PUBKEY_BYTES},
     system_program,
 };
-pub use solana_zk_token_sdk;
+pub use {solana_program, solana_zk_token_sdk};
 
 /// Convert the UI representation of a token amount (using the decimals field defined in its mint)
 /// to the raw amount

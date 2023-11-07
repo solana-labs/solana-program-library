@@ -4,8 +4,9 @@ use solana_program_test::*;
 
 mod program_test;
 
-use program_test::*;
-use spl_governance::state::token_owner_record::TOKEN_OWNER_RECORD_LAYOUT_VERSION;
+use {
+    program_test::*, spl_governance::state::token_owner_record::TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+};
 
 #[tokio::test]
 async fn test_create_token_owner_record() {

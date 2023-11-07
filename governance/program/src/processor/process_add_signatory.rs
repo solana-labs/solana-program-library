@@ -1,24 +1,25 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-use spl_governance_tools::account::create_and_serialize_account_signed;
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::GovernanceAccountType,
-        governance::get_governance_data,
-        proposal::get_proposal_data_for_governance,
-        required_signatory::get_required_signatory_data_for_governance,
-        signatory_record::{get_signatory_record_address_seeds, SignatoryRecordV2},
-        token_owner_record::get_token_owner_record_data_for_proposal_owner,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::GovernanceAccountType,
+            governance::get_governance_data,
+            proposal::get_proposal_data_for_governance,
+            required_signatory::get_required_signatory_data_for_governance,
+            signatory_record::{get_signatory_record_address_seeds, SignatoryRecordV2},
+            token_owner_record::get_token_owner_record_data_for_proposal_owner,
+        },
     },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
+    },
+    spl_governance_tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes AddSignatory instruction

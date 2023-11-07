@@ -1,18 +1,19 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    sysvar::Sysvar,
-};
-
-use crate::state::{
-    enums::{ProposalState, TransactionExecutionStatus},
-    proposal::get_proposal_data,
-    proposal_transaction::get_proposal_transaction_data_for_proposal,
-    token_owner_record::get_token_owner_record_data_for_proposal_owner,
+use {
+    crate::state::{
+        enums::{ProposalState, TransactionExecutionStatus},
+        proposal::get_proposal_data,
+        proposal_transaction::get_proposal_transaction_data_for_proposal,
+        token_owner_record::get_token_owner_record_data_for_proposal_owner,
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        sysvar::Sysvar,
+    },
 };
 
 /// Processes FlagTransactionError instruction

@@ -1,7 +1,6 @@
 extern crate cbindgen;
 
-use std::env;
-use std::path::Path;
+use std::{env, path::Path};
 
 fn token<P: AsRef<Path>>(crate_dir: P) {
     let output_file = crate_dir.as_ref().join("inc/token.h");

@@ -1,8 +1,10 @@
 //! VoterWeight Addin interface
 
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{clock::Slot, program_pack::IsInitialized, pubkey::Pubkey};
-use spl_governance_tools::account::AccountMaxSize;
+use {
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{clock::Slot, program_pack::IsInitialized, pubkey::Pubkey},
+    spl_governance_tools::account::AccountMaxSize,
+};
 
 /// The governance action VoterWeight is evaluated for
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]

@@ -1,27 +1,28 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-use spl_governance_tools::account::create_and_serialize_account_signed;
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::GovernanceAccountType,
-        realm::{
-            assert_valid_realm_config_args, get_governing_token_holding_address_seeds,
-            get_realm_address_seeds, RealmConfig, RealmConfigArgs, RealmV2,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::GovernanceAccountType,
+            realm::{
+                assert_valid_realm_config_args, get_governing_token_holding_address_seeds,
+                get_realm_address_seeds, RealmConfig, RealmConfigArgs, RealmV2,
+            },
+            realm_config::{
+                get_realm_config_address_seeds, resolve_governing_token_config, RealmConfigAccount,
+            },
         },
-        realm_config::{
-            get_realm_config_address_seeds, resolve_governing_token_config, RealmConfigAccount,
-        },
+        tools::{spl_token::create_spl_token_account_signed, structs::Reserved110},
     },
-    tools::{spl_token::create_spl_token_account_signed, structs::Reserved110},
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
+    },
+    spl_governance_tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes CreateRealm instruction

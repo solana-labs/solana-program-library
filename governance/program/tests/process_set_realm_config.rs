@@ -1,17 +1,17 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_program::pubkey::Pubkey;
-use solana_program_test::*;
+use {solana_program::pubkey::Pubkey, solana_program_test::*};
 
 mod program_test;
 
-use program_test::*;
-use spl_governance::{
-    error::GovernanceError,
-    state::{realm::GoverningTokenConfigAccountArgs, realm_config::GoverningTokenType},
+use {
+    crate::program_test::args::RealmSetupArgs,
+    program_test::*,
+    spl_governance::{
+        error::GovernanceError,
+        state::{realm::GoverningTokenConfigAccountArgs, realm_config::GoverningTokenType},
+    },
 };
-
-use crate::program_test::args::RealmSetupArgs;
 
 #[tokio::test]
 async fn test_set_realm_config() {

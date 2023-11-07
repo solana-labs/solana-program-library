@@ -1,3 +1,6 @@
+// Remove feature once zk ops syscalls are enabled on all networks
+#[cfg(feature = "zk-ops")]
+use solana_zk_token_sdk::zk_token_elgamal::ops as syscall;
 use {
     crate::{
         check_program_account, check_zk_token_proof_program_account,
@@ -40,10 +43,6 @@ use {
     },
     spl_pod::{bytemuck::pod_from_bytes, optional_keys::OptionalNonZeroPubkey},
 };
-
-// Remove feature once zk ops syscalls are enabled on all networks
-#[cfg(feature = "zk-ops")]
-use solana_zk_token_sdk::zk_token_elgamal::ops as syscall;
 
 /// Processes an [InitializeConfidentialTransferFeeConfig] instruction.
 fn process_initialize_confidential_transfer_fee_config(

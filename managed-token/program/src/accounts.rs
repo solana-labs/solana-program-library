@@ -1,8 +1,10 @@
-use crate::assert_with_msg;
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    program_error::ProgramError,
-    system_program,
+use {
+    crate::assert_with_msg,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        program_error::ProgramError,
+        system_program,
+    },
 };
 
 pub struct InitializeMint<'a, 'info> {

@@ -1,31 +1,31 @@
 //! Program state processor
 
-use crate::{
-    state::governance::GovernanceV2,
-    state::{
-        enums::GovernanceAccountType,
-        governance::{
-            assert_valid_create_governance_args, get_program_governance_address_seeds,
-            GovernanceConfig,
+use {
+    crate::{
+        state::{
+            enums::GovernanceAccountType,
+            governance::{
+                assert_valid_create_governance_args, get_program_governance_address_seeds,
+                GovernanceConfig, GovernanceV2,
+            },
+            realm::get_realm_data,
         },
-        realm::get_realm_data,
-    },
-    tools::{
-        bpf_loader_upgradeable::{
-            assert_program_upgrade_authority_is_signer, set_program_upgrade_authority,
+        tools::{
+            bpf_loader_upgradeable::{
+                assert_program_upgrade_authority_is_signer, set_program_upgrade_authority,
+            },
+            structs::Reserved119,
         },
-        structs::Reserved119,
     },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
+    },
+    spl_governance_tools::account::create_and_serialize_account_signed,
 };
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-
-use spl_governance_tools::account::create_and_serialize_account_signed;
 
 /// Processes CreateProgramGovernance instruction
 pub fn process_create_program_governance(

@@ -1,10 +1,12 @@
 //! Program entrypoint definitions
 #![cfg(all(target_os = "solana", not(feature = "no-entrypoint")))]
 
-use crate::{error::GovernanceError, processor};
-use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, program_error::PrintProgramError,
-    pubkey::Pubkey,
+use {
+    crate::{error::GovernanceError, processor},
+    solana_program::{
+        account_info::AccountInfo, entrypoint::ProgramResult, program_error::PrintProgramError,
+        pubkey::Pubkey,
+    },
 };
 
 solana_program::entrypoint!(process_instruction);

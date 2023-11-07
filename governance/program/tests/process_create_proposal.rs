@@ -1,17 +1,21 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_program::{instruction::AccountMeta, pubkey::Pubkey};
-use solana_program_test::*;
+use {
+    solana_program::{instruction::AccountMeta, pubkey::Pubkey},
+    solana_program_test::*,
+};
 
 mod program_test;
 
-use program_test::*;
-use solana_sdk::signature::Keypair;
-use spl_governance::{
-    error::GovernanceError,
-    state::{enums::VoteThreshold, governance::SECURITY_DEPOSIT_BASE_LAMPORTS},
+use {
+    program_test::*,
+    solana_sdk::signature::Keypair,
+    spl_governance::{
+        error::GovernanceError,
+        state::{enums::VoteThreshold, governance::SECURITY_DEPOSIT_BASE_LAMPORTS},
+    },
+    spl_governance_tools::account::AccountMaxSize,
 };
-use spl_governance_tools::account::AccountMaxSize;
 
 #[tokio::test]
 async fn test_create_community_proposal() {

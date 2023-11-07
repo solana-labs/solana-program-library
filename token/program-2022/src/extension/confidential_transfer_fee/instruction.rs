@@ -1,3 +1,8 @@
+#[cfg(feature = "serde-traits")]
+use {
+    crate::serialization::{aeciphertext_fromstr, elgamalpubkey_fromstr},
+    serde::{Deserialize, Serialize},
+};
 use {
     crate::{
         check_program_account,
@@ -22,12 +27,6 @@ use {
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
     std::convert::TryFrom,
-};
-
-#[cfg(feature = "serde-traits")]
-use {
-    crate::serialization::{aeciphertext_fromstr, elgamalpubkey_fromstr},
-    serde::{Deserialize, Serialize},
 };
 
 /// Confidential Transfer extension instructions

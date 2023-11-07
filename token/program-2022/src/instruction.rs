@@ -2,6 +2,12 @@
 
 #![allow(deprecated)] // needed to avoid deprecation warning when generating serde implementation for TokenInstruction
 
+#[cfg(feature = "serde-traits")]
+use {
+    crate::serialization::coption_fromstr,
+    serde::{Deserialize, Serialize},
+    serde_with::{As, DisplayFromStr},
+};
 use {
     crate::{
         check_program_account, check_spl_token_program_account,
@@ -21,13 +27,6 @@ use {
         convert::{TryFrom, TryInto},
         mem::size_of,
     },
-};
-
-#[cfg(feature = "serde-traits")]
-use {
-    crate::serialization::coption_fromstr,
-    serde::{Deserialize, Serialize},
-    serde_with::{As, DisplayFromStr},
 };
 
 /// Minimum number of multisignature signers (min N)

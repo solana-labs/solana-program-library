@@ -1,36 +1,38 @@
 //! Program instructions
 
-use crate::{
-    state::{
-        enums::MintMaxVoterWeightSource,
-        governance::{
-            get_governance_address, get_mint_governance_address, get_program_governance_address,
-            get_token_governance_address, GovernanceConfig,
+use {
+    crate::{
+        state::{
+            enums::MintMaxVoterWeightSource,
+            governance::{
+                get_governance_address, get_mint_governance_address,
+                get_program_governance_address, get_token_governance_address, GovernanceConfig,
+            },
+            native_treasury::get_native_treasury_address,
+            program_metadata::get_program_metadata_address,
+            proposal::{get_proposal_address, VoteType},
+            proposal_deposit::get_proposal_deposit_address,
+            proposal_transaction::{get_proposal_transaction_address, InstructionData},
+            realm::{
+                get_governing_token_holding_address, get_realm_address,
+                GoverningTokenConfigAccountArgs, GoverningTokenConfigArgs, RealmConfigArgs,
+                SetRealmAuthorityAction,
+            },
+            realm_config::get_realm_config_address,
+            required_signatory::get_required_signatory_address,
+            signatory_record::get_signatory_record_address,
+            token_owner_record::get_token_owner_record_address,
+            vote_record::{get_vote_record_address, Vote},
         },
-        native_treasury::get_native_treasury_address,
-        program_metadata::get_program_metadata_address,
-        proposal::{get_proposal_address, VoteType},
-        proposal_deposit::get_proposal_deposit_address,
-        proposal_transaction::{get_proposal_transaction_address, InstructionData},
-        realm::{
-            get_governing_token_holding_address, get_realm_address,
-            GoverningTokenConfigAccountArgs, RealmConfigArgs,
-        },
-        realm::{GoverningTokenConfigArgs, SetRealmAuthorityAction},
-        realm_config::get_realm_config_address,
-        required_signatory::get_required_signatory_address,
-        signatory_record::get_signatory_record_address,
-        token_owner_record::get_token_owner_record_address,
-        vote_record::{get_vote_record_address, Vote},
+        tools::bpf_loader_upgradeable::get_program_data_address,
     },
-    tools::bpf_loader_upgradeable::get_program_data_address,
-};
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    bpf_loader_upgradeable,
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    system_program, sysvar,
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        bpf_loader_upgradeable,
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+        system_program, sysvar,
+    },
 };
 
 /// Instructions supported by the Governance program

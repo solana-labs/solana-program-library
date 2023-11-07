@@ -1,18 +1,20 @@
 //! Program state processor
 
-use crate::{instruction::*, state::*, *};
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    entrypoint::ProgramResult,
-    feature::{self, Feature},
-    msg,
-    program::{invoke, invoke_signed},
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    rent::Rent,
-    system_instruction,
-    sysvar::Sysvar,
+use {
+    crate::{instruction::*, state::*, *},
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        entrypoint::ProgramResult,
+        feature::{self, Feature},
+        msg,
+        program::{invoke, invoke_signed},
+        program_error::ProgramError,
+        pubkey::Pubkey,
+        rent::Rent,
+        system_instruction,
+        sysvar::Sysvar,
+    },
 };
 
 /// Instruction processor

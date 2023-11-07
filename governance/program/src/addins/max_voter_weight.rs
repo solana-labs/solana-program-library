@@ -1,13 +1,14 @@
 //! MaxVoterWeight Addin interface
 
-use solana_program::{
-    account_info::AccountInfo, clock::Clock, program_error::ProgramError, pubkey::Pubkey,
-    sysvar::Sysvar,
+use {
+    crate::error::GovernanceError,
+    solana_program::{
+        account_info::AccountInfo, clock::Clock, program_error::ProgramError, pubkey::Pubkey,
+        sysvar::Sysvar,
+    },
+    spl_governance_addin_api::max_voter_weight::MaxVoterWeightRecord,
+    spl_governance_tools::account::get_account_data,
 };
-use spl_governance_addin_api::max_voter_weight::MaxVoterWeightRecord;
-use spl_governance_tools::account::get_account_data;
-
-use crate::error::GovernanceError;
 
 /// Asserts MaxVoterWeightRecord hasn't expired
 pub fn assert_is_valid_max_voter_weight(

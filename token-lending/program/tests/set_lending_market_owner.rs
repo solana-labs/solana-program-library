@@ -3,19 +3,21 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program::instruction::{AccountMeta, Instruction};
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError,
-    pubkey::Pubkey,
-    signature::{Keypair, Signer},
-    transaction::{Transaction, TransactionError},
-};
-use spl_token_lending::{
-    error::LendingError,
-    instruction::{set_lending_market_owner, LendingInstruction},
-    processor::process_instruction,
+use {
+    helpers::*,
+    solana_program::instruction::{AccountMeta, Instruction},
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError,
+        pubkey::Pubkey,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+    },
+    spl_token_lending::{
+        error::LendingError,
+        instruction::{set_lending_market_owner, LendingInstruction},
+        processor::process_instruction,
+    },
 };
 
 #[tokio::test]

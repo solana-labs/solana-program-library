@@ -11,8 +11,7 @@ use {
     solana_sdk::{
         borsh0_10::try_from_slice_unchecked,
         pubkey::Pubkey,
-        signature::Signature,
-        signature::{Keypair, Signer},
+        signature::{Keypair, Signature, Signer},
         stake,
         transaction::Transaction,
     },

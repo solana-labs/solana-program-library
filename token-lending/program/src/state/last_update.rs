@@ -1,6 +1,8 @@
-use crate::error::LendingError;
-use solana_program::{clock::Slot, program_error::ProgramError};
-use std::cmp::Ordering;
+use {
+    crate::error::LendingError,
+    solana_program::{clock::Slot, program_error::ProgramError},
+    std::cmp::Ordering,
+};
 
 /// Number of slots to consider stale after
 pub const STALE_AFTER_SLOTS_ELAPSED: u64 = 1;

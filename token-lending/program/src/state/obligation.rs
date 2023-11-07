@@ -1,20 +1,22 @@
-use super::*;
-use crate::{
-    error::LendingError,
-    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
-};
-use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use solana_program::{
-    clock::Slot,
-    entrypoint::ProgramResult,
-    msg,
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::{Pubkey, PUBKEY_BYTES},
-};
-use std::{
-    cmp::Ordering,
-    convert::{TryFrom, TryInto},
+use {
+    super::*,
+    crate::{
+        error::LendingError,
+        math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
+    },
+    arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
+    solana_program::{
+        clock::Slot,
+        entrypoint::ProgramResult,
+        msg,
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack, Sealed},
+        pubkey::{Pubkey, PUBKEY_BYTES},
+    },
+    std::{
+        cmp::Ordering,
+        convert::{TryFrom, TryInto},
+    },
 };
 
 /// Max number of collateral and liquidity reserve accounts combined for an obligation
@@ -502,9 +504,7 @@ impl Pack for Obligation {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::math::TryAdd;
-    use proptest::prelude::*;
+    use {super::*, crate::math::TryAdd, proptest::prelude::*};
 
     const MAX_COMPOUNDED_INTEREST: u64 = 100; // 10,000%
 

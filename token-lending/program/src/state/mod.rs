@@ -5,17 +5,15 @@ mod lending_market;
 mod obligation;
 mod reserve;
 
-pub use last_update::*;
-pub use lending_market::*;
-pub use obligation::*;
-pub use reserve::*;
-
-use crate::math::{Decimal, WAD};
-use solana_program::{
-    clock::{DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT, SECONDS_PER_DAY},
-    msg,
-    program_error::ProgramError,
+use {
+    crate::math::{Decimal, WAD},
+    solana_program::{
+        clock::{DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT, SECONDS_PER_DAY},
+        msg,
+        program_error::ProgramError,
+    },
 };
+pub use {last_update::*, lending_market::*, obligation::*, reserve::*};
 
 /// Collateral tokens are initially valued at a ratio of 5:1 (collateral:liquidity)
 // @FIXME: restore to 5

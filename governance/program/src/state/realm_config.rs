@@ -1,22 +1,23 @@
 //! RealmConfig account
-use std::slice::Iter;
-
-use solana_program::account_info::next_account_info;
-
-use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::GovernanceAccountType,
+            realm::{GoverningTokenConfigArgs, RealmConfigArgs, RealmV2},
+        },
+        tools::structs::Reserved110,
+    },
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        program_error::ProgramError,
+        program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::{get_account_data, AccountMaxSize},
+    std::slice::Iter,
 };
-
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use spl_governance_tools::account::{get_account_data, AccountMaxSize};
-
-use crate::tools::structs::Reserved110;
-use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
-
-use crate::state::realm::GoverningTokenConfigArgs;
-
-use crate::state::realm::{RealmConfigArgs, RealmV2};
 
 /// The type of the governing token defines:
 /// 1) Who retains the authority over deposited tokens
@@ -281,8 +282,10 @@ pub fn resolve_governing_token_config(
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::state::{enums::GovernanceAccountType, realm_config::RealmConfigAccount};
+    use {
+        super::*,
+        crate::state::{enums::GovernanceAccountType, realm_config::RealmConfigAccount},
+    };
 
     #[test]
     fn test_max_size() {

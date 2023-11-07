@@ -1,16 +1,17 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    sysvar::Sysvar,
-};
-
-use crate::state::{
-    enums::ProposalState, proposal::get_proposal_data,
-    token_owner_record::get_token_owner_record_data_for_proposal_owner,
+use {
+    crate::state::{
+        enums::ProposalState, proposal::get_proposal_data,
+        token_owner_record::get_token_owner_record_data_for_proposal_owner,
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        sysvar::Sysvar,
+    },
 };
 
 /// Processes CompleteProposal instruction

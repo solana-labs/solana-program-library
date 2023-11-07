@@ -1,7 +1,9 @@
 //! State transition types
 
-use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::pubkey::Pubkey;
+use {
+    borsh::{BorshDeserialize, BorshSerialize},
+    solana_program::pubkey::Pubkey,
+};
 
 /// Uninitialized version value, all instances are at least version 1
 pub const UNINITIALIZED_VERSION: u8 = 0;

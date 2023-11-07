@@ -1,10 +1,6 @@
 //! Optional pubkeys that can be used a `Pod`s
-use {
-    bytemuck::{Pod, Zeroable},
-    solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
-    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
-};
-
+#[cfg(feature = "borsh")]
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 #[cfg(feature = "serde-traits")]
 use {
     base64::{prelude::BASE64_STANDARD, Engine},
@@ -12,9 +8,11 @@ use {
     serde::{Deserialize, Deserializer, Serialize, Serializer},
     std::{convert::TryFrom, fmt, str::FromStr},
 };
-
-#[cfg(feature = "borsh")]
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use {
+    bytemuck::{Pod, Zeroable},
+    solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
+    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
+};
 
 /// A Pubkey that encodes `None` as all `0`, meant to be usable as a Pod type, similar to all
 /// NonZero* number types from the bytemuck library.

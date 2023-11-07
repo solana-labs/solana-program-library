@@ -1,29 +1,30 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-use spl_governance_tools::account::create_and_serialize_account_signed;
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::GovernanceAccountType,
-        realm::get_realm_data,
-        realm_config::get_realm_config_data_for_realm,
-        token_owner_record::{
-            get_token_owner_record_address_seeds, get_token_owner_record_data_for_seeds,
-            TokenOwnerRecordV2, TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::GovernanceAccountType,
+            realm::get_realm_data,
+            realm_config::get_realm_config_data_for_realm,
+            token_owner_record::{
+                get_token_owner_record_address_seeds, get_token_owner_record_data_for_seeds,
+                TokenOwnerRecordV2, TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+            },
+        },
+        tools::spl_token::{
+            get_spl_token_mint, is_spl_token_account, is_spl_token_mint, mint_spl_tokens_to,
+            transfer_spl_tokens,
         },
     },
-    tools::spl_token::{
-        get_spl_token_mint, is_spl_token_account, is_spl_token_mint, mint_spl_tokens_to,
-        transfer_spl_tokens,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
     },
+    spl_governance_tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes DepositGoverningTokens instruction

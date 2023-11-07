@@ -1,11 +1,13 @@
 //! Program state
 
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    account_info::AccountInfo, clock::UnixTimestamp, program_error::ProgramError, pubkey::Pubkey,
+use {
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::AccountInfo, clock::UnixTimestamp, program_error::ProgramError,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::{assert_is_valid_account_of_type, AccountMaxSize},
 };
-
-use spl_governance_tools::account::{assert_is_valid_account_of_type, AccountMaxSize};
 
 /// Defines all GovernanceChat accounts types
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
