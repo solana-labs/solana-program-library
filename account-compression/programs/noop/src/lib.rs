@@ -6,10 +6,7 @@ use solana_program::{
 declare_id!("noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
 
 #[cfg(not(feature = "no-entrypoint"))]
-use solana_program::entrypoint;
-
-#[cfg(not(feature = "no-entrypoint"))]
-entrypoint!(noop);
+solana_program::entrypoint!(noop);
 
 pub fn noop(
     _program_id: &Pubkey,

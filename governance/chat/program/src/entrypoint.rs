@@ -3,11 +3,11 @@
 
 use crate::{error::GovernanceChatError, processor};
 use solana_program::{
-    account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,
-    program_error::PrintProgramError, pubkey::Pubkey,
+    account_info::AccountInfo, entrypoint::ProgramResult, program_error::PrintProgramError,
+    pubkey::Pubkey,
 };
 
-entrypoint!(process_instruction);
+solana_program::entrypoint!(process_instruction);
 fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
