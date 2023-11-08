@@ -302,7 +302,7 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
       '@solana/spl-token':
-        specifier: ^0.3.7
+        specifier: workspace:*
         version: link:../../token/js
       '@solana/web3.js':
         specifier: ^1.76.0
@@ -418,7 +418,7 @@ importers:
         specifier: ^11.1.1
         version: 11.1.5(rollup@4.3.0)(tslib@2.6.2)(typescript@5.2.2)
       '@solana/spl-token':
-        specifier: ^0.3.7
+        specifier: workspace:*
         version: link:../../token/js
       '@solana/web3.js':
         specifier: ^1.36.0
@@ -490,7 +490,7 @@ importers:
         specifier: 2.0.0-experimental.398c396
         version: 2.0.0-experimental.398c396
       '@solana/spl-type-length-value':
-        specifier: 0.1.0
+        specifier: workspace:*
         version: link:../../libraries/type-length-value/js
     devDependencies:
       '@solana/web3.js':
@@ -567,7 +567,7 @@ importers:
         version: 1.87.5
     devDependencies:
       '@solana/spl-token':
-        specifier: 0.3.8
+        specifier: workspace:*
         version: link:../../token/js
       '@types/bn.js':
         specifier: ^5.1.0
@@ -613,7 +613,7 @@ importers:
         version: 6.0.3
     devDependencies:
       '@solana/spl-memo':
-        specifier: ^0.2.2
+        specifier: workspace:*
         version: link:../../memo/js
       '@solana/web3.js':
         specifier: ^1.47.4

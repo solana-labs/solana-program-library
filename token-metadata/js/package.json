@@ -52,7 +52,7 @@
         "@solana/codecs-numbers": "2.0.0-experimental.398c396",
         "@solana/codecs-strings": "2.0.0-experimental.398c396",
         "@solana/options": "2.0.0-experimental.398c396",
-        "@solana/spl-type-length-value": "0.1.0"
+        "@solana/spl-type-length-value": "workspace:*"
     },
     "devDependencies": {
         "@solana/web3.js": "^1.47.4",
