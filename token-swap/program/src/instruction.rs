@@ -160,8 +160,8 @@ pub enum SwapInstruction {
     DepositAllTokenTypes(DepositAllTokenTypes),
 
     ///   Withdraw both types of tokens from the pool at the current ratio,
-    /// given   pool tokens.  The pool tokens are burned in exchange for an
-    /// equivalent   amount of token A and B.
+    ///   given pool tokens. The pool tokens are burned in exchange for an
+    ///   equivalent amount of token A and B.
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` swap authority
@@ -181,9 +181,9 @@ pub enum SwapInstruction {
     ///   14. `[]` Token B program id
     WithdrawAllTokenTypes(WithdrawAllTokenTypes),
 
-    ///   Deposit one type of tokens into the pool.  The output is a "pool"
-    /// token   representing ownership into the pool. Input token is
-    /// converted as if   a swap and deposit all token types were performed.
+    ///   Deposit one type of tokens into the pool. The output is a "pool"
+    ///   token representing ownership into the pool. Input token is
+    ///   converted as if a swap and deposit all token types were performed.
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` swap authority

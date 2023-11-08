@@ -367,9 +367,9 @@ async fn correct_owner_providing_wrong_lending_market_fails() {
             new_config,
             sol_test_reserve.pubkey,
             other_lending_market.pubkey,
-            lending_market.owner.pubkey(), /* lending_market.owner ==
-                                            * other_lending_market.owner, defined by
-                                            * `add_lending_market` */
+            // lending_market.owner == other_lending_market.owner, defined by
+            // `add_lending_market`
+            lending_market.owner.pubkey(),
         )],
         Some(&payer.pubkey()),
     );
