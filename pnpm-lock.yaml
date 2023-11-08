@@ -236,6 +236,9 @@ importers:
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
+      superstruct:
+        specifier: ^0.14.2
+        version: 0.14.2
     devDependencies:
       '@rollup/plugin-alias':
         specifier: ^5.0.0
