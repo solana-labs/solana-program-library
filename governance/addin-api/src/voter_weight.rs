@@ -59,7 +59,7 @@ pub struct VoterWeightRecord {
     /// The slot when the voting weight expires
     /// It should be set to None if the weight never expires
     /// If the voter weight decays with time, for example for time locked based
-    /// weights, then the expiry must be set As a common pattern Revise
+    /// weights, then the expiry must be set. As a common pattern Revise
     /// instruction to update the weight should be invoked before governance
     /// instruction within the same transaction and the expiry set to the
     /// current slot to provide up to date weight
@@ -67,16 +67,16 @@ pub struct VoterWeightRecord {
 
     /// The governance action the voter's weight pertains to
     /// It allows to provided voter's weight specific to the particular action
-    /// the weight is evaluated for When the action is provided then the
+    /// the weight is evaluated for. When the action is provided then the
     /// governance program asserts the executing action is the same as specified
     /// by the addin
     pub weight_action: Option<VoterWeightAction>,
 
     /// The target the voter's weight  action pertains to
     /// It allows to provided voter's weight specific to the target the weight
-    /// is evaluated for For example when addin supplies weight to vote on a
+    /// is evaluated for. For example when addin supplies weight to vote on a
     /// particular proposal then it must specify the proposal as the action
-    /// target When the target is provided then the governance program
+    /// target. When the target is provided then the governance program
     /// asserts the target is the same as specified by the addin
     pub weight_action_target: Option<Pubkey>,
 

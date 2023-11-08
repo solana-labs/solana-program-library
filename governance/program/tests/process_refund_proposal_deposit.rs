@@ -306,18 +306,18 @@ async fn test_refund_proposal_deposit_with_invalid_proposal_deposit_account_erro
         .unwrap();
 
     // Act
-    let err =
-        governance_test
-            .refund_proposal_deposit_using_instruction(
-                &proposal_cookie,
-                |i| {
-                    i.accounts[1].pubkey = proposal_cookie.address; // Try to drain the Proposal account
-                },
-                None,
-            )
-            .await
-            .err()
-            .unwrap();
+    let err = governance_test
+        .refund_proposal_deposit_using_instruction(
+            &proposal_cookie,
+            |i| {
+                // Try to drain the Proposal account
+                i.accounts[1].pubkey = proposal_cookie.address;
+            },
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
 
     // Assert
 

@@ -50,7 +50,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
         .map(Instruction::from);
 
     // In the current implementation accounts for all instructions are passed to
-    // each instruction invocation This is an overhead but shouldn't be a
+    // each instruction invocation. This is an overhead but shouldn't be a
     // showstopper because if we can invoke the parent instruction with that many
     // accounts then we should also be able to invoke all the nested ones
     // TODO: Optimize the invocation to split the provided accounts for each

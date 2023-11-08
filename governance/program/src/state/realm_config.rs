@@ -25,18 +25,20 @@ use {
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GoverningTokenType {
     /// Liquid token is a token which is fully liquid and the token owner
-    /// retains full authority over it Deposit - Yes
+    /// retains full authority over it.
+    /// Deposit - Yes
     /// Withdraw - Yes  
     /// Revoke - No, Realm authority cannot revoke liquid tokens
     Liquid,
 
     /// Membership token is a token controlled by Realm authority
     /// Deposit - Yes, membership tokens can be deposited to gain governance
-    /// power           The membership tokens are conventionally minted into
-    /// the holding account to keep them out of members possession
+    /// power.
+    /// The membership tokens are conventionally minted into the holding
+    /// account to keep them out of members possession.
     /// Withdraw - No, after membership tokens are deposited they are no longer
-    /// transferable and can't be withdrawn Revoke - Yes, Realm authority
-    /// can Revoke (burn) membership tokens
+    /// transferable and can't be withdrawn.
+    /// Revoke - Yes, Realm authority can Revoke (burn) membership tokens.
     Membership,
 
     /// Dormant token is a token which is only a placeholder and its deposits
@@ -55,7 +57,8 @@ pub enum GoverningTokenType {
     /// Deposit - No, dormant tokens can't be deposited into the Realm
     /// Withdraw - Yes, tokens can still be withdrawn from Realm to support
     /// scenario where the config is changed while some tokens are still
-    /// deposited Revoke - No, Realm authority cannot revoke dormant tokens
+    /// deposited.
+    /// Revoke - No, Realm authority cannot revoke dormant tokens
     Dormant,
 }
 

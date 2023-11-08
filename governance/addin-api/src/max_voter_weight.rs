@@ -12,10 +12,10 @@ use {
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct MaxVoterWeightRecord {
     /// VoterWeightRecord discriminator
-    /// sha256("account:MaxVoterWeightRecord")[..8] Note: The discriminator
-    /// size must match the addin implementing program discriminator size to
-    /// ensure it's stored in the private space of the account data and it's
-    /// unique
+    /// sha256("account:MaxVoterWeightRecord")[..8]
+    /// Note: The discriminator size must match the addin implementing program
+    /// discriminator size to ensure it's stored in the private space of the
+    /// account data and it's unique
     pub account_discriminator: [u8; 8],
 
     /// The Realm the MaxVoterWeightRecord belongs to
@@ -35,7 +35,7 @@ pub struct MaxVoterWeightRecord {
     /// The slot when the max voting weight expires
     /// It should be set to None if the weight never expires
     /// If the max vote weight decays with time, for example for time locked
-    /// based weights, then the expiry must be set As a pattern Revise
+    /// based weights, then the expiry must be set. As a pattern Revise
     /// instruction to update the max weight should be invoked before governance
     /// instruction within the same transaction and the expiry set to the
     /// current slot to provide up to date weight

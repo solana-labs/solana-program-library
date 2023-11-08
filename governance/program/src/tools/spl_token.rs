@@ -269,8 +269,13 @@ pub fn assert_is_valid_spl_token_account(account_info: &AccountInfo) -> Result<(
         return Err(GovernanceError::SplTokenInvalidTokenAccountData.into());
     }
 
-    // TokeAccount layout:   mint(32), owner(32), amount(8), delegate(36), state(1),
-    // ...
+    // TokenAccount layout:
+    //  mint(32)
+    //  owner(32)
+    //  amount(8)
+    //  delegate(36)
+    //  state(1)
+    //  ...
     let data = account_info.try_borrow_data()?;
     let state = array_ref![data, 108, 1];
 

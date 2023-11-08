@@ -88,9 +88,10 @@ pub enum SetRealmAuthorityAction {
 
     /// Sets realm authority and checks the new new authority is one of the
     /// realm's governances
-    // Note: This is not a security feature because governance creation is only gated with
-    // min_community_weight_to_create_governance       The check is done to prevent scenarios
-    // where the authority could be accidentally set to a wrong or none existing account
+    // Note: This is not a security feature because governance creation is only
+    // gated with min_community_weight_to_create_governance.
+    // The check is done to prevent scenarios where the authority could be
+    // accidentally set to a wrong or none existing account.
     SetChecked,
 
     /// Removes realm authority

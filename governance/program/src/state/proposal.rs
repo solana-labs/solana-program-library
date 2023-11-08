@@ -74,9 +74,10 @@ pub struct ProposalOption {
 pub enum VoteType {
     /// Single choice vote with mutually exclusive choices
     /// In the SingeChoice mode there can ever be a single winner
-    /// If multiple options score the same highest vote then the Proposal is not
-    /// resolved and considered as Failed Note: Yes/No vote is a single
-    /// choice (Yes) vote with the deny option (No)
+    /// If multiple options score the same highest vote then the Proposal is
+    /// not resolved and considered as Failed.
+    /// Note: Yes/No vote is a single choice (Yes) vote with the deny
+    /// option (No)
     SingleChoice,
 
     /// Multiple options can be selected with up to max_voter_options per voter
@@ -122,9 +123,10 @@ pub enum MultiChoiceType {
     /// approved option
     FullWeight,
 
-    /// Multiple options can be approved with weight allocated proportionally to
-    /// the percentage of the total weight The full weight has to be voted
-    /// among the approved options, i.e., 100% of the weight has to be allocated
+    /// Multiple options can be approved with weight allocated proportionally
+    /// to the percentage of the total weight.
+    /// The full weight has to be voted among the approved options, i.e.,
+    /// 100% of the weight has to be allocated
     Weighted,
 }
 
@@ -215,21 +217,23 @@ pub struct ProposalV2 {
     pub execution_flags: InstructionExecutionFlags,
 
     /// The max vote weight for the Governing Token mint at the time Proposal
-    /// was decided It's used to show correct vote results for historical
-    /// proposals in cases when the mint supply or max weight source changed
-    /// after vote was completed.
+    /// was decided.
+    /// It's used to show correct vote results for historical proposals in
+    /// cases when the mint supply or max weight source changed after vote was
+    /// completed.
     pub max_vote_weight: Option<u64>,
 
     /// Max voting time for the proposal if different from parent Governance
-    /// (only higher value possible) Note: This field is not used in the
-    /// current version
+    /// (only higher value possible).
+    /// Note: This field is not used in the current version
     pub max_voting_time: Option<u32>,
 
     /// The vote threshold at the time Proposal was decided
     /// It's used to show correct vote results for historical proposals in cases
     /// when the threshold was changed for governance config after vote was
-    /// completed. TODO: Use this field to override the threshold from
-    /// parent Governance (only higher value possible)
+    /// completed.
+    /// TODO: Use this field to override the threshold from parent Governance
+    /// (only higher value possible)
     pub vote_threshold: Option<VoteThreshold>,
 
     /// Reserved space for future versions
@@ -682,8 +686,8 @@ impl ProposalV2 {
     }
 
     /// Checks if vote can be tipped and automatically transitioned to
-    /// Succeeded, Defeated or Vetoed state If yes then Some(ProposalState)
-    /// is returned and None otherwise
+    /// Succeeded, Defeated or Vetoed state.
+    /// If yes then Some(ProposalState) is returned and None otherwise
     pub fn try_get_tipped_vote_state(
         &mut self,
         max_voter_weight: u64,
@@ -705,21 +709,22 @@ impl ProposalV2 {
     }
 
     /// Checks if Electorate vote can be tipped and automatically transitioned
-    /// to Succeeded or Defeated state If yes then Some(ProposalState) is
-    /// returned and None otherwise
+    /// to Succeeded or Defeated state.
+    /// If yes then Some(ProposalState) is returned and None otherwise
     fn try_get_tipped_electorate_vote_state(
         &mut self,
         max_voter_weight: u64,
         vote_tipping: &VoteTipping,
         min_vote_threshold_weight: u64,
     ) -> Option<ProposalState> {
-        // Vote tipping is currently supported for SingleChoice votes with single Yes
-        // and No (rejection) options only Note: Tipping for multiple options
-        // (single choice and multiple choices) should be possible but it requires a
-        // great deal of considerations       and I decided to fight it another
-        // day
+        // Vote tipping is currently supported for SingleChoice votes with
+        // single Yes and No (rejection) options only.
+        // Note: Tipping for multiple options (single choice and multiple
+        // choices) should be possible but it requires a great deal of
+        // considerations and I decided to fight it another day
         if self.vote_type != VoteType::SingleChoice
-            // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
+            // Tipping should not be allowed for opinion only proposals (surveys
+            // without rejection) to allow everybody's voice to be heard
             || self.deny_vote_weight.is_none()
             || self.options.len() != 1
         {
@@ -935,7 +940,7 @@ impl ProposalV2 {
                                 max_winning_options: _,
                             } => {
                                 // Calculate the total percentage for all choices for weighted
-                                // choice vote The total must add up
+                                // choice vote. The total must add up
                                 // to exactly 100%
                                 total_choice_weight_percentage = total_choice_weight_percentage
                                     .checked_add(choice.weight_percentage)
