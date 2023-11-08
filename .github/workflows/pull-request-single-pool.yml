@@ -129,6 +129,12 @@ jobs:
       - uses: pnpm/action-setup@v2
         with:
           version: 8
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: node-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            node-
       - name: Download programs
         uses: actions/download-artifact@v2
         with:
