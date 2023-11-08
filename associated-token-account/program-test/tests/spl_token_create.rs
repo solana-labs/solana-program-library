@@ -3,6 +3,8 @@
 
 mod program_test;
 
+#[allow(deprecated)]
+use spl_associated_token_account::create_associated_token_account as deprecated_create_associated_token_account;
 use {
     program_test::program_test,
     solana_program::pubkey::Pubkey,
@@ -13,9 +15,6 @@ use {
     },
     spl_token::state::Account,
 };
-
-#[allow(deprecated)]
-use spl_associated_token_account::create_associated_token_account as deprecated_create_associated_token_account;
 
 #[tokio::test]
 async fn success_create() {

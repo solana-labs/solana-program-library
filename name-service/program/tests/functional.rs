@@ -1,21 +1,20 @@
 #![cfg(feature = "test-sbf")]
-use std::str::FromStr;
-
-use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubkey};
-use solana_program_test::{
-    processor, tokio, ProgramTest, ProgramTestBanksClientExt, ProgramTestContext,
-};
-
-use solana_program::hash::hashv;
-use solana_sdk::{
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-    transport::TransportError,
-};
-use spl_name_service::{
-    instruction::{create, delete, realloc, transfer, update, NameRegistryInstruction},
-    processor::Processor,
-    state::{get_seeds_and_key, NameRecordHeader, HASH_PREFIX},
+use {
+    solana_program::{hash::hashv, instruction::Instruction, program_pack::Pack, pubkey::Pubkey},
+    solana_program_test::{
+        processor, tokio, ProgramTest, ProgramTestBanksClientExt, ProgramTestContext,
+    },
+    solana_sdk::{
+        signature::{Keypair, Signer},
+        transaction::Transaction,
+        transport::TransportError,
+    },
+    spl_name_service::{
+        instruction::{create, delete, realloc, transfer, update, NameRegistryInstruction},
+        processor::Processor,
+        state::{get_seeds_and_key, NameRecordHeader, HASH_PREFIX},
+    },
+    std::str::FromStr,
 };
 
 #[tokio::test]

@@ -3,6 +3,11 @@ use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
 pub use solana_zk_token_sdk::{
     zk_token_proof_instruction::*, zk_token_proof_state::ProofContextState,
 };
+#[cfg(feature = "serde-traits")]
+use {
+    crate::serialization::aeciphertext_fromstr,
+    serde::{Deserialize, Serialize},
+};
 use {
     crate::{
         check_program_account,
@@ -18,12 +23,6 @@ use {
         pubkey::Pubkey,
         sysvar,
     },
-};
-
-#[cfg(feature = "serde-traits")]
-use {
-    crate::serialization::aeciphertext_fromstr,
-    serde::{Deserialize, Serialize},
 };
 
 /// Confidential Transfer extension instructions

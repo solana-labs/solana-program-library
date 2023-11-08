@@ -1,27 +1,27 @@
 //! Governance Account
-use borsh::maybestd::io::Write;
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::{GovernanceAccountType, VoteThreshold, VoteTipping},
-        legacy::{is_governance_v1_account_type, GovernanceV1},
-        realm::{assert_is_valid_realm, RealmV2},
-        vote_record::VoteKind,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::{GovernanceAccountType, VoteThreshold, VoteTipping},
+            legacy::{is_governance_v1_account_type, GovernanceV1},
+            realm::{assert_is_valid_realm, RealmV2},
+            vote_record::VoteKind,
+        },
+        tools::structs::Reserved119,
     },
-    tools::structs::Reserved119,
-};
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey, rent::Rent,
-};
-use spl_governance_tools::{
-    account::{
-        assert_is_valid_account_of_types, extend_account_size, get_account_data, get_account_type,
-        AccountMaxSize,
+    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+        pubkey::Pubkey, rent::Rent,
     },
-    error::GovernanceToolsError,
+    spl_governance_tools::{
+        account::{
+            assert_is_valid_account_of_types, extend_account_size, get_account_data,
+            get_account_type, AccountMaxSize,
+        },
+        error::GovernanceToolsError,
+    },
 };
 
 /// Governance config
@@ -629,9 +629,7 @@ pub fn assert_is_valid_vote_threshold(vote_threshold: &VoteThreshold) -> Result<
 
 #[cfg(test)]
 mod test {
-    use solana_program::clock::Epoch;
-
-    use super::*;
+    use {super::*, solana_program::clock::Epoch};
 
     fn create_test_governance_config() -> GovernanceConfig {
         GovernanceConfig {

@@ -1,9 +1,8 @@
 #![allow(clippy::arithmetic_side_effects)]
-use solana_program::keccak::hashv;
-use std::cell::RefCell;
-use std::collections::VecDeque;
-use std::iter::FromIterator;
-use std::rc::Rc;
+use {
+    solana_program::keccak::hashv,
+    std::{cell::RefCell, collections::VecDeque, iter::FromIterator, rc::Rc},
+};
 
 pub type Node = [u8; 32];
 pub const EMPTY: Node = [0; 32];

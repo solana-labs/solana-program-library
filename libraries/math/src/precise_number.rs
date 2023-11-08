@@ -366,8 +366,7 @@ impl PreciseNumber {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use proptest::prelude::*;
+    use {super::*, proptest::prelude::*};
 
     fn check_pow_approximation(base: InnerUint, exponent: InnerUint, expected: InnerUint) {
         let precision = InnerUint::from(5_000_000); // correct to at least 3 decimal places

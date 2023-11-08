@@ -4,9 +4,10 @@ use solana_program_test::*;
 
 mod program_test;
 
-use program_test::args::*;
-use program_test::*;
-use spl_governance::{error::GovernanceError, state::enums::ProposalState};
+use {
+    program_test::{args::*, *},
+    spl_governance::{error::GovernanceError, state::enums::ProposalState},
+};
 
 #[tokio::test]
 async fn test_cast_vote_with_community_max_voter_weight_addin() {

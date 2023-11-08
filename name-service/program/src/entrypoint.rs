@@ -1,6 +1,5 @@
 use {
-    crate::error::NameServiceError,
-    crate::processor::Processor,
+    crate::{error::NameServiceError, processor::Processor},
     num_traits::FromPrimitive,
     solana_program::{
         account_info::AccountInfo, decode_error::DecodeError, entrypoint::ProgramResult, msg,

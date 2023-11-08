@@ -1,15 +1,17 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-};
-use spl_governance_tools::account::dispose_account;
-
-use crate::state::{
-    proposal::get_proposal_data, proposal_transaction::get_proposal_transaction_data_for_proposal,
-    token_owner_record::get_token_owner_record_data_for_proposal_owner,
+use {
+    crate::state::{
+        proposal::get_proposal_data,
+        proposal_transaction::get_proposal_transaction_data_for_proposal,
+        token_owner_record::get_token_owner_record_data_for_proposal_owner,
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::dispose_account,
 };
 
 /// Processes RemoveTransaction instruction

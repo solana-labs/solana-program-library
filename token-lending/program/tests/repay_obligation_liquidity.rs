@@ -3,17 +3,19 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program_test::*;
-use solana_sdk::{
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-};
-use spl_token::instruction::approve;
-use spl_token_lending::instruction::refresh_obligation;
-use spl_token_lending::{
-    instruction::repay_obligation_liquidity, processor::process_instruction,
-    state::INITIAL_COLLATERAL_RATIO,
+use {
+    helpers::*,
+    solana_program_test::*,
+    solana_sdk::{
+        signature::{Keypair, Signer},
+        transaction::Transaction,
+    },
+    spl_token::instruction::approve,
+    spl_token_lending::{
+        instruction::{refresh_obligation, repay_obligation_liquidity},
+        processor::process_instruction,
+        state::INITIAL_COLLATERAL_RATIO,
+    },
 };
 
 #[tokio::test]

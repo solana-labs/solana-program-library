@@ -1,28 +1,30 @@
-use crate::{signers_of, Error, MULTISIG_SIGNER_ARG};
-use clap::ArgMatches;
-use solana_clap_utils::{
-    input_parsers::{pubkey_of_signer, value_of},
-    input_validators::normalize_to_url_if_moniker,
-    keypair::{signer_from_path, signer_from_path_with_config, SignerFromPathConfig},
-    nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
-    offline::{BLOCKHASH_ARG, DUMP_TRANSACTION_MESSAGE, SIGN_ONLY_ARG},
+use {
+    crate::{signers_of, Error, MULTISIG_SIGNER_ARG},
+    clap::ArgMatches,
+    solana_clap_utils::{
+        input_parsers::{pubkey_of_signer, value_of},
+        input_validators::normalize_to_url_if_moniker,
+        keypair::{signer_from_path, signer_from_path_with_config, SignerFromPathConfig},
+        nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
+        offline::{BLOCKHASH_ARG, DUMP_TRANSACTION_MESSAGE, SIGN_ONLY_ARG},
+    },
+    solana_cli_output::OutputFormat,
+    solana_client::nonblocking::rpc_client::RpcClient,
+    solana_remote_wallet::remote_wallet::RemoteWalletManager,
+    solana_sdk::{
+        account::Account as RawAccount, commitment_config::CommitmentConfig, hash::Hash,
+        pubkey::Pubkey, signature::Signer,
+    },
+    spl_associated_token_account::*,
+    spl_token_2022::{
+        extension::StateWithExtensionsOwned,
+        state::{Account, Mint},
+    },
+    spl_token_client::client::{
+        ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
+    },
+    std::{process::exit, rc::Rc, sync::Arc},
 };
-use solana_cli_output::OutputFormat;
-use solana_client::nonblocking::rpc_client::RpcClient;
-use solana_remote_wallet::remote_wallet::RemoteWalletManager;
-use solana_sdk::{
-    account::Account as RawAccount, commitment_config::CommitmentConfig, hash::Hash,
-    pubkey::Pubkey, signature::Signer,
-};
-use spl_associated_token_account::*;
-use spl_token_2022::{
-    extension::StateWithExtensionsOwned,
-    state::{Account, Mint},
-};
-use spl_token_client::client::{
-    ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
-};
-use std::{process::exit, rc::Rc, sync::Arc};
 
 pub(crate) struct MintInfo {
     pub program_id: Pubkey,

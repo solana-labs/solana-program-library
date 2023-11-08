@@ -1,31 +1,28 @@
 //! Token Owner Record Account
 
-use borsh::maybestd::io::Write;
-use std::slice::Iter;
-
-use crate::{
-    addins::voter_weight::{
-        assert_is_valid_voter_weight, get_voter_weight_record_data_for_token_owner_record,
+use {
+    crate::{
+        addins::voter_weight::{
+            assert_is_valid_voter_weight, get_voter_weight_record_data_for_token_owner_record,
+        },
+        error::GovernanceError,
+        state::{
+            enums::GovernanceAccountType, governance::GovernanceConfig, legacy::TokenOwnerRecordV1,
+            realm::RealmV2, realm_config::RealmConfigAccount,
+        },
+        PROGRAM_AUTHORITY_SEED,
     },
-    error::GovernanceError,
-    state::{
-        enums::GovernanceAccountType, governance::GovernanceConfig, legacy::TokenOwnerRecordV1,
-        realm::RealmV2,
+    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        program_error::ProgramError,
+        program_pack::IsInitialized,
+        pubkey::Pubkey,
     },
-    PROGRAM_AUTHORITY_SEED,
+    spl_governance_addin_api::voter_weight::VoterWeightAction,
+    spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize},
+    std::slice::Iter,
 };
-
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    program_error::ProgramError,
-    program_pack::IsInitialized,
-    pubkey::Pubkey,
-};
-use spl_governance_addin_api::voter_weight::VoterWeightAction;
-use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
-
-use crate::state::realm_config::RealmConfigAccount;
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
@@ -422,9 +419,10 @@ pub fn get_token_owner_record_data_for_proposal_owner(
 
 #[cfg(test)]
 mod test {
-    use solana_program::{borsh0_10::get_packed_len, stake_history::Epoch};
-
-    use super::*;
+    use {
+        super::*,
+        solana_program::{borsh0_10::get_packed_len, stake_history::Epoch},
+    };
 
     fn create_test_token_owner_record() -> TokenOwnerRecordV2 {
         TokenOwnerRecordV2 {

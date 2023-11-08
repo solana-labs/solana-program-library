@@ -1,10 +1,12 @@
 //! Program state
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    clock::UnixTimestamp,
-    msg,
-    program_error::ProgramError,
-    program_pack::{Pack, Sealed},
+use {
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        clock::UnixTimestamp,
+        msg,
+        program_error::ProgramError,
+        program_pack::{Pack, Sealed},
+    },
 };
 
 /// Criteria for accepting a feature proposal

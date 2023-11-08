@@ -1,23 +1,26 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-use spl_governance_tools::account::create_and_serialize_account_signed;
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        realm::{assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs},
-        realm_config::{
-            get_realm_config_address_seeds, get_realm_config_data_for_realm,
-            resolve_governing_token_config, RealmConfigAccount,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            realm::{
+                assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs,
+            },
+            realm_config::{
+                get_realm_config_address_seeds, get_realm_config_data_for_realm,
+                resolve_governing_token_config, RealmConfigAccount,
+            },
         },
     },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
+    },
+    spl_governance_tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes SetRealmConfig instruction

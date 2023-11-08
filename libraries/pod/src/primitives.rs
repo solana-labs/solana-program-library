@@ -1,11 +1,9 @@
 //! primitive types that can be used in `Pod`s
-use bytemuck::{Pod, Zeroable};
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
-
 #[cfg(feature = "borsh")]
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use bytemuck::{Pod, Zeroable};
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 
 /// The standard `bool` is not a `Pod`, define a replacement that is
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]

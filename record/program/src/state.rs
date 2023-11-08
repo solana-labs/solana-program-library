@@ -46,8 +46,7 @@ impl IsInitialized for RecordData {
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
-    use solana_program::program_error::ProgramError;
+    use {super::*, solana_program::program_error::ProgramError};
 
     /// Version for tests
     pub const TEST_VERSION: u8 = 1;

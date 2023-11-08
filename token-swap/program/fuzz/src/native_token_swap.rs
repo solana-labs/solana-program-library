@@ -1,21 +1,21 @@
 //! Helpers for working with swaps in a fuzzing environment
 
-use crate::native_account_data::NativeAccountData;
-use crate::native_processor::do_process_instruction;
-use crate::native_token;
-
-use spl_token_swap::{
-    curve::{base::SwapCurve, calculator::TradeDirection, fees::Fees},
-    instruction::{
-        self, DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Swap,
-        WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
+use {
+    crate::{
+        native_account_data::NativeAccountData, native_processor::do_process_instruction,
+        native_token,
     },
-    state::SwapVersion,
+    solana_program::{bpf_loader, entrypoint::ProgramResult, pubkey::Pubkey, system_program},
+    spl_token::instruction::approve,
+    spl_token_swap::{
+        curve::{base::SwapCurve, calculator::TradeDirection, fees::Fees},
+        instruction::{
+            self, DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Swap,
+            WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
+        },
+        state::SwapVersion,
+    },
 };
-
-use spl_token::instruction::approve;
-
-use solana_program::{bpf_loader, entrypoint::ProgramResult, pubkey::Pubkey, system_program};
 
 pub struct NativeTokenSwap {
     pub user_account: NativeAccountData,

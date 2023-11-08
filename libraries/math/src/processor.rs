@@ -167,9 +167,7 @@ pub fn process_instruction(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::instruction::MathInstruction;
-    use borsh::BorshSerialize;
+    use {super::*, crate::instruction::MathInstruction, borsh::BorshSerialize};
 
     #[test]
     fn test_u64_multiply() {

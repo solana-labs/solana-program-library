@@ -1,3 +1,5 @@
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::{
         error::TokenError,
@@ -14,9 +16,6 @@ use {
         convert::{TryFrom, TryInto},
     },
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Transfer fee extension instructions
 pub mod instruction;

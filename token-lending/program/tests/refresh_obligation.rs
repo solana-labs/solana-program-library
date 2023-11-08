@@ -3,19 +3,19 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program_test::*;
-use solana_sdk::{
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-};
-use spl_token_lending::math::{Rate, TryAdd, TryMul};
-use spl_token_lending::state::SLOTS_PER_YEAR;
-use spl_token_lending::{
-    instruction::{refresh_obligation, refresh_reserve},
-    math::{Decimal, TryDiv},
-    processor::process_instruction,
-    state::INITIAL_COLLATERAL_RATIO,
+use {
+    helpers::*,
+    solana_program_test::*,
+    solana_sdk::{
+        signature::{Keypair, Signer},
+        transaction::Transaction,
+    },
+    spl_token_lending::{
+        instruction::{refresh_obligation, refresh_reserve},
+        math::{Decimal, Rate, TryAdd, TryDiv, TryMul},
+        processor::process_instruction,
+        state::{INITIAL_COLLATERAL_RATIO, SLOTS_PER_YEAR},
+    },
 };
 
 #[tokio::test]

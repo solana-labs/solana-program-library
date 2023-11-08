@@ -1,18 +1,20 @@
-use crate::{config::Config, sort::UnsupportedAccount};
-use console::{style, Emoji};
-use serde::{Deserialize, Serialize, Serializer};
-use solana_account_decoder::{
-    parse_token::{UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount},
-    parse_token_extension::{
-        UiConfidentialTransferAccount, UiConfidentialTransferFeeAmount,
-        UiConfidentialTransferFeeConfig, UiConfidentialTransferMint, UiCpiGuard,
-        UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
-        UiMetadataPointer, UiMintCloseAuthority, UiPermanentDelegate, UiTokenMetadata,
-        UiTransferFeeAmount, UiTransferFeeConfig, UiTransferHook, UiTransferHookAccount,
+use {
+    crate::{config::Config, sort::UnsupportedAccount},
+    console::{style, Emoji},
+    serde::{Deserialize, Serialize, Serializer},
+    solana_account_decoder::{
+        parse_token::{UiAccountState, UiMint, UiMultisig, UiTokenAccount, UiTokenAmount},
+        parse_token_extension::{
+            UiConfidentialTransferAccount, UiConfidentialTransferFeeAmount,
+            UiConfidentialTransferFeeConfig, UiConfidentialTransferMint, UiCpiGuard,
+            UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
+            UiMetadataPointer, UiMintCloseAuthority, UiPermanentDelegate, UiTokenMetadata,
+            UiTransferFeeAmount, UiTransferFeeConfig, UiTransferHook, UiTransferHookAccount,
+        },
     },
+    solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay},
+    std::fmt::{self, Display},
 };
-use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
-use std::fmt::{self, Display};
 
 pub(crate) trait Output: Serialize + fmt::Display + QuietDisplay + VerboseDisplay {}
 

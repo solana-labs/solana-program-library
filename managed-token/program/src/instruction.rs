@@ -1,14 +1,15 @@
-use borsh::{BorshDeserialize, BorshSerialize};
-use shank::ShankInstruction;
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    system_program,
+use {
+    crate::get_authority,
+    borsh::{BorshDeserialize, BorshSerialize},
+    shank::ShankInstruction,
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        pubkey::Pubkey,
+        system_program,
+    },
+    spl_associated_token_account::get_associated_token_address,
 };
-use spl_associated_token_account::get_associated_token_address;
-
-use crate::get_authority;
 
 #[derive(Debug, Clone, ShankInstruction, BorshSerialize, BorshDeserialize)]
 #[rustfmt::skip]

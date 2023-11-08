@@ -1,10 +1,12 @@
 //! Program instructions
 
-use crate::id;
-use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
+use {
+    crate::id,
+    borsh::{BorshDeserialize, BorshSerialize},
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+    },
 };
 
 /// Instructions supported by the program
@@ -106,9 +108,7 @@ pub fn close_account(record_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::state::tests::TEST_DATA;
-    use solana_program::program_error::ProgramError;
+    use {super::*, crate::state::tests::TEST_DATA, solana_program::program_error::ProgramError};
 
     #[test]
     fn serialize_initialize() {

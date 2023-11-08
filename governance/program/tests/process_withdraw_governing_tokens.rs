@@ -1,20 +1,24 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_program::{instruction::AccountMeta, pubkey::Pubkey};
-use solana_program_test::*;
+use {
+    solana_program::{instruction::AccountMeta, pubkey::Pubkey},
+    solana_program_test::*,
+};
 
 mod program_test;
 
-use program_test::*;
-use solana_sdk::signature::Signer;
-
-use spl_governance::{
-    error::GovernanceError,
-    instruction::withdraw_governing_tokens,
-    state::{realm_config::GoverningTokenType, token_owner_record::get_token_owner_record_address},
+use {
+    crate::program_test::args::RealmSetupArgs,
+    program_test::*,
+    solana_sdk::signature::Signer,
+    spl_governance::{
+        error::GovernanceError,
+        instruction::withdraw_governing_tokens,
+        state::{
+            realm_config::GoverningTokenType, token_owner_record::get_token_owner_record_address,
+        },
+    },
 };
-
-use crate::program_test::args::RealmSetupArgs;
 
 #[tokio::test]
 async fn test_withdraw_community_tokens() {

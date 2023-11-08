@@ -3,10 +3,10 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program_test::*;
-use solana_sdk::signature::Keypair;
-use spl_token_lending::processor::process_instruction;
+use {
+    helpers::*, solana_program_test::*, solana_sdk::signature::Keypair,
+    spl_token_lending::processor::process_instruction,
+};
 
 #[tokio::test]
 async fn test_success() {

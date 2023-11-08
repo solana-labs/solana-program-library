@@ -12,13 +12,15 @@
 #![allow(clippy::ptr_offset_with_cast)]
 #![allow(clippy::manual_range_contains)]
 
-use crate::{
-    error::LendingError,
-    math::{common::*, Rate},
+use {
+    crate::{
+        error::LendingError,
+        math::{common::*, Rate},
+    },
+    solana_program::program_error::ProgramError,
+    std::{convert::TryFrom, fmt},
+    uint::construct_uint,
 };
-use solana_program::program_error::ProgramError;
-use std::{convert::TryFrom, fmt};
-use uint::construct_uint;
 
 // U192 with 192 bits consisting of 3 x 64-bit words
 construct_uint! {

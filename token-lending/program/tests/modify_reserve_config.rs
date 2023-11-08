@@ -3,21 +3,23 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program::pubkey::Pubkey;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError,
-    signature::{read_keypair_file, Keypair, Signer},
-    transaction::{Transaction, TransactionError},
-};
-use spl_token_lending::{
-    error::LendingError,
-    instruction::modify_reserve_config,
-    processor::process_instruction,
-    state::{
-        InitLendingMarketParams, LendingMarket, ReserveConfig, ReserveFees,
-        INITIAL_COLLATERAL_RATIO,
+use {
+    helpers::*,
+    solana_program::pubkey::Pubkey,
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError,
+        signature::{read_keypair_file, Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+    },
+    spl_token_lending::{
+        error::LendingError,
+        instruction::modify_reserve_config,
+        processor::process_instruction,
+        state::{
+            InitLendingMarketParams, LendingMarket, ReserveConfig, ReserveFees,
+            INITIAL_COLLATERAL_RATIO,
+        },
     },
 };
 

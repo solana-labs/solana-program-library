@@ -1,18 +1,18 @@
 //! Signatory Record
 
-use borsh::maybestd::io::Write;
-
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-
-use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{enums::GovernanceAccountType, legacy::SignatoryRecordV1},
+        PROGRAM_AUTHORITY_SEED,
+    },
+    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize},
 };
-use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
-
-use crate::{error::GovernanceError, PROGRAM_AUTHORITY_SEED};
-
-use crate::state::{enums::GovernanceAccountType, legacy::SignatoryRecordV1};
 
 /// Account PDA seeds: ['governance', proposal, signatory]
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]

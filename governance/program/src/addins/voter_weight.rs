@@ -1,13 +1,14 @@
 //! VoterWeight Addin interface
 
-use solana_program::{
-    account_info::AccountInfo, clock::Clock, program_error::ProgramError, pubkey::Pubkey,
-    sysvar::Sysvar,
+use {
+    crate::{error::GovernanceError, state::token_owner_record::TokenOwnerRecordV2},
+    solana_program::{
+        account_info::AccountInfo, clock::Clock, program_error::ProgramError, pubkey::Pubkey,
+        sysvar::Sysvar,
+    },
+    spl_governance_addin_api::voter_weight::{VoterWeightAction, VoterWeightRecord},
+    spl_governance_tools::account::get_account_data,
 };
-use spl_governance_addin_api::voter_weight::{VoterWeightAction, VoterWeightRecord};
-use spl_governance_tools::account::get_account_data;
-
-use crate::{error::GovernanceError, state::token_owner_record::TokenOwnerRecordV2};
 
 /// Asserts the VoterWeightRecord hasn't expired and matches the given action and target if specified
 pub fn assert_is_valid_voter_weight(

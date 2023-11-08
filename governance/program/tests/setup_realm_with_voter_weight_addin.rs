@@ -1,12 +1,10 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_program::pubkey::Pubkey;
-use solana_program_test::*;
+use {solana_program::pubkey::Pubkey, solana_program_test::*};
 
 mod program_test;
 
-use crate::program_test::args::RealmSetupArgs;
-use program_test::*;
+use {crate::program_test::args::RealmSetupArgs, program_test::*};
 
 #[tokio::test]
 async fn test_create_realm_with_voter_weight_addin() {

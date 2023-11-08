@@ -1,43 +1,45 @@
 //! Program state processor
 
-use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS};
-use crate::{
-    curve::{
-        base::SwapCurve,
-        calculator::{RoundDirection, TradeDirection},
-        fees::Fees,
+use {
+    crate::{
+        constraints::{SwapConstraints, SWAP_CONSTRAINTS},
+        curve::{
+            base::SwapCurve,
+            calculator::{RoundDirection, TradeDirection},
+            fees::Fees,
+        },
+        error::SwapError,
+        instruction::{
+            DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
+            SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
+        },
+        state::{SwapState, SwapV1, SwapVersion},
     },
-    error::SwapError,
-    instruction::{
-        DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
-        SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
+    num_traits::FromPrimitive,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        decode_error::DecodeError,
+        entrypoint::ProgramResult,
+        instruction::Instruction,
+        msg,
+        program::invoke_signed,
+        program_error::{PrintProgramError, ProgramError},
+        program_option::COption,
+        pubkey::Pubkey,
+        sysvar::Sysvar,
     },
-    state::{SwapState, SwapV1, SwapVersion},
-};
-use num_traits::FromPrimitive;
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    decode_error::DecodeError,
-    entrypoint::ProgramResult,
-    instruction::Instruction,
-    msg,
-    program::invoke_signed,
-    program_error::{PrintProgramError, ProgramError},
-    program_option::COption,
-    pubkey::Pubkey,
-    sysvar::Sysvar,
-};
-use spl_token_2022::{
-    check_spl_token_program_account,
-    error::TokenError,
-    extension::{
-        mint_close_authority::MintCloseAuthority, transfer_fee::TransferFeeConfig,
-        BaseStateWithExtensions, StateWithExtensions,
+    spl_token_2022::{
+        check_spl_token_program_account,
+        error::TokenError,
+        extension::{
+            mint_close_authority::MintCloseAuthority, transfer_fee::TransferFeeConfig,
+            BaseStateWithExtensions, StateWithExtensions,
+        },
+        state::{Account, Mint},
     },
-    state::{Account, Mint},
+    std::{convert::TryInto, error::Error},
 };
-use std::{convert::TryInto, error::Error};
 
 /// Program state handler.
 pub struct Processor {}
@@ -1271,39 +1273,43 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{
-        curve::calculator::{CurveCalculator, INITIAL_SWAP_POOL_AMOUNT},
-        curve::{
-            base::CurveType, constant_price::ConstantPriceCurve,
-            constant_product::ConstantProductCurve, offset::OffsetCurve,
+    use {
+        super::*,
+        crate::{
+            curve::{
+                base::CurveType,
+                calculator::{CurveCalculator, INITIAL_SWAP_POOL_AMOUNT},
+                constant_price::ConstantPriceCurve,
+                constant_product::ConstantProductCurve,
+                offset::OffsetCurve,
+            },
+            instruction::{
+                deposit_all_token_types, deposit_single_token_type_exact_amount_in, initialize,
+                swap, withdraw_all_token_types, withdraw_single_token_type_exact_amount_out,
+            },
         },
-        instruction::{
-            deposit_all_token_types, deposit_single_token_type_exact_amount_in, initialize, swap,
-            withdraw_all_token_types, withdraw_single_token_type_exact_amount_out,
+        solana_program::{
+            clock::Clock, entrypoint::SUCCESS, instruction::Instruction, program_pack::Pack,
+            program_stubs, rent::Rent,
         },
-    };
-    use solana_program::{
-        clock::Clock, entrypoint::SUCCESS, instruction::Instruction, program_pack::Pack,
-        program_stubs, rent::Rent,
-    };
-    use solana_sdk::account::{
-        create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
-    };
-    use spl_token_2022::{
-        error::TokenError,
-        extension::{
-            transfer_fee::{instruction::initialize_transfer_fee_config, TransferFee},
-            ExtensionType,
+        solana_sdk::account::{
+            create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
         },
-        instruction::{
-            approve, close_account, freeze_account, initialize_account, initialize_immutable_owner,
-            initialize_mint, initialize_mint_close_authority, mint_to, revoke, set_authority,
-            AuthorityType,
+        spl_token_2022::{
+            error::TokenError,
+            extension::{
+                transfer_fee::{instruction::initialize_transfer_fee_config, TransferFee},
+                ExtensionType,
+            },
+            instruction::{
+                approve, close_account, freeze_account, initialize_account,
+                initialize_immutable_owner, initialize_mint, initialize_mint_close_authority,
+                mint_to, revoke, set_authority, AuthorityType,
+            },
         },
+        std::sync::Arc,
+        test_case::test_case,
     };
-    use std::sync::Arc;
-    use test_case::test_case;
 
     // Test program id for the swap program.
     const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);

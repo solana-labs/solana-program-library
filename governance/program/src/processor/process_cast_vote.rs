@@ -1,30 +1,31 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-use spl_governance_addin_api::voter_weight::VoterWeightAction;
-use spl_governance_tools::account::create_and_serialize_account_signed;
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::GovernanceAccountType,
-        governance::get_governance_data_for_realm,
-        proposal::get_proposal_data_for_governance_and_governing_mint,
-        realm::get_realm_data_for_governing_token_mint,
-        realm_config::get_realm_config_data_for_realm,
-        token_owner_record::{
-            get_token_owner_record_data_for_proposal_owner,
-            get_token_owner_record_data_for_realm_and_governing_mint,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::GovernanceAccountType,
+            governance::get_governance_data_for_realm,
+            proposal::get_proposal_data_for_governance_and_governing_mint,
+            realm::get_realm_data_for_governing_token_mint,
+            realm_config::get_realm_config_data_for_realm,
+            token_owner_record::{
+                get_token_owner_record_data_for_proposal_owner,
+                get_token_owner_record_data_for_realm_and_governing_mint,
+            },
+            vote_record::{get_vote_kind, get_vote_record_address_seeds, Vote, VoteRecordV2},
         },
-        vote_record::{get_vote_kind, get_vote_record_address_seeds, Vote, VoteRecordV2},
     },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
+    },
+    spl_governance_addin_api::voter_weight::VoterWeightAction,
+    spl_governance_tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes CastVote instruction

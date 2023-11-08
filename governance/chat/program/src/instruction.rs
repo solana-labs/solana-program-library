@@ -1,14 +1,15 @@
 //! Program instructions
 
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    system_program,
+use {
+    crate::state::MessageBody,
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+        system_program,
+    },
+    spl_governance::instruction::with_realm_config_accounts,
 };
-use spl_governance::instruction::with_realm_config_accounts;
-
-use crate::state::MessageBody;
 
 /// Instructions supported by the GovernanceChat program
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]

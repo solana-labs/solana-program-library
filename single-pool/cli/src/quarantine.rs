@@ -1,18 +1,19 @@
 // XXX this file will be deleted and replaced with a stake program client once i write one
 
-use solana_sdk::{
-    instruction::Instruction,
-    native_token::LAMPORTS_PER_SOL,
-    pubkey::Pubkey,
-    stake::{
-        self,
-        state::{Meta, Stake, StakeStateV2},
+use {
+    crate::config::*,
+    solana_sdk::{
+        instruction::Instruction,
+        native_token::LAMPORTS_PER_SOL,
+        pubkey::Pubkey,
+        stake::{
+            self,
+            state::{Meta, Stake, StakeStateV2},
+        },
+        system_instruction,
+        sysvar::{self, rent::Rent},
     },
-    system_instruction,
-    sysvar::{self, rent::Rent},
 };
-
-use crate::config::*;
 
 pub async fn get_rent(config: &Config) -> Result<Rent, Error> {
     let rent_data = config

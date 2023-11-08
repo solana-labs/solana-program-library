@@ -1,24 +1,23 @@
 //! Proposal Vote Record Account
 
-use borsh::maybestd::io::Write;
-
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::account_info::AccountInfo;
-
-use solana_program::program_error::ProgramError;
-use solana_program::{program_pack::IsInitialized, pubkey::Pubkey};
-use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
-
-use crate::error::GovernanceError;
-
-use crate::PROGRAM_AUTHORITY_SEED;
-
-use crate::state::{
-    enums::GovernanceAccountType,
-    legacy::{VoteRecordV1, VoteWeightV1},
-    proposal::ProposalV2,
-    realm::RealmV2,
-    token_owner_record::TokenOwnerRecordV2,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::GovernanceAccountType,
+            legacy::{VoteRecordV1, VoteWeightV1},
+            proposal::ProposalV2,
+            realm::RealmV2,
+            token_owner_record::TokenOwnerRecordV2,
+        },
+        PROGRAM_AUTHORITY_SEED,
+    },
+    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize},
 };
 
 /// Voter choice for a proposal option
@@ -264,9 +263,7 @@ pub fn get_vote_record_address<'a>(
 #[cfg(test)]
 mod test {
 
-    use solana_program::clock::Epoch;
-
-    use super::*;
+    use {super::*, solana_program::clock::Epoch};
 
     #[test]
     fn test_vote_record_v1_to_v2_serialisation_roundtrip() {

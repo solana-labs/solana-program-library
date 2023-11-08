@@ -1,7 +1,8 @@
-use std::convert::TryFrom;
-
-use solana_program::{instruction::InstructionError, program_error::ProgramError};
-use solana_sdk::{signature::Keypair, transaction::TransactionError, transport::TransportError};
+use {
+    solana_program::{instruction::InstructionError, program_error::ProgramError},
+    solana_sdk::{signature::Keypair, transaction::TransactionError, transport::TransportError},
+    std::convert::TryFrom,
+};
 
 /// TODO: Add to Solana SDK
 /// Instruction errors not mapped in the sdk

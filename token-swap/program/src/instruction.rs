@@ -2,19 +2,21 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use crate::curve::{base::SwapCurve, fees::Fees};
-use crate::error::SwapError;
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    program_pack::Pack,
-    pubkey::Pubkey,
-};
-use std::convert::TryInto;
-use std::mem::size_of;
-
 #[cfg(feature = "fuzz")]
 use arbitrary::Arbitrary;
+use {
+    crate::{
+        curve::{base::SwapCurve, fees::Fees},
+        error::SwapError,
+    },
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        program_pack::Pack,
+        pubkey::Pubkey,
+    },
+    std::{convert::TryInto, mem::size_of},
+};
 
 /// Initialize instruction data
 #[repr(C)]
@@ -613,9 +615,11 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::curve::{base::CurveType, offset::OffsetCurve};
-    use std::sync::Arc;
+    use {
+        super::*,
+        crate::curve::{base::CurveType, offset::OffsetCurve},
+        std::sync::Arc,
+    };
 
     #[test]
     fn pack_intialize() {

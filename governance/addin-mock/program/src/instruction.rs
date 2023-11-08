@@ -1,13 +1,15 @@
 //! Program instructions
 
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    clock::Slot,
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-    system_program,
+use {
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        clock::Slot,
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+        system_program,
+    },
+    spl_governance_addin_api::voter_weight::VoterWeightAction,
 };
-use spl_governance_addin_api::voter_weight::VoterWeightAction;
 
 /// Instructions supported by the VoterWeight addin program
 /// This program is a mock program used by spl-governance for testing and not real addin

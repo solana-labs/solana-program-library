@@ -2,17 +2,18 @@
 
 mod program_test;
 
-use solana_program::{instruction::AccountMeta, pubkey::Pubkey};
-use solana_program_test::tokio;
-
-use program_test::*;
-use solana_sdk::signer::Signer;
-use spl_governance::{
-    error::GovernanceError,
-    instruction::{cast_vote, relinquish_vote},
-    state::{
-        enums::{ProposalState, VoteTipping},
-        vote_record::{Vote, VoteChoice},
+use {
+    program_test::*,
+    solana_program::{instruction::AccountMeta, pubkey::Pubkey},
+    solana_program_test::tokio,
+    solana_sdk::signer::Signer,
+    spl_governance::{
+        error::GovernanceError,
+        instruction::{cast_vote, relinquish_vote},
+        state::{
+            enums::{ProposalState, VoteTipping},
+            vote_record::{Vote, VoteChoice},
+        },
     },
 };
 

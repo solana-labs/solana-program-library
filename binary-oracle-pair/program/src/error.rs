@@ -1,11 +1,15 @@
 //! Error types
 
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
-use solana_program::{
-    decode_error::DecodeError, msg, program_error::PrintProgramError, program_error::ProgramError,
+use {
+    num_derive::FromPrimitive,
+    num_traits::FromPrimitive,
+    solana_program::{
+        decode_error::DecodeError,
+        msg,
+        program_error::{PrintProgramError, ProgramError},
+    },
+    thiserror::Error,
 };
-use thiserror::Error;
 
 /// Errors that may be returned by the Binary Oracle Pair program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]

@@ -1,18 +1,17 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_program::pubkey::Pubkey;
-use solana_program_test::*;
+use {solana_program::pubkey::Pubkey, solana_program_test::*};
 
 mod program_test;
 
-use program_test::args::*;
-use program_test::*;
-
-use spl_governance::{
-    error::GovernanceError,
-    state::vote_record::{Vote, VoteChoice},
+use {
+    program_test::{args::*, *},
+    spl_governance::{
+        error::GovernanceError,
+        state::vote_record::{Vote, VoteChoice},
+    },
+    spl_governance_addin_api::voter_weight::VoterWeightAction,
 };
-use spl_governance_addin_api::voter_weight::VoterWeightAction;
 
 #[tokio::test]
 async fn test_create_governance_with_community_voter_weight_addin() {

@@ -1,42 +1,38 @@
 //! Proposal  Account
 
-use borsh::maybestd::io::Write;
-use solana_program::account_info::next_account_info;
-use std::cmp::Ordering;
-use std::slice::Iter;
-
-use solana_program::clock::{Slot, UnixTimestamp};
-
-use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey,
-};
-use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
-
-use crate::addins::max_voter_weight::{
-    assert_is_valid_max_voter_weight,
-    get_max_voter_weight_record_data_for_realm_and_governing_token_mint,
-};
-use crate::state::legacy::ProposalV1;
-use crate::tools::spl_token::get_spl_token_mint_supply;
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::{
-            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoterWeightSource,
-            ProposalState, TransactionExecutionStatus, VoteThreshold, VoteTipping,
+use {
+    crate::{
+        addins::max_voter_weight::{
+            assert_is_valid_max_voter_weight,
+            get_max_voter_weight_record_data_for_realm_and_governing_token_mint,
         },
-        governance::GovernanceConfig,
-        proposal_transaction::ProposalTransactionV2,
-        realm::RealmV2,
-        vote_record::Vote,
-        vote_record::VoteKind,
+        error::GovernanceError,
+        state::{
+            enums::{
+                GovernanceAccountType, InstructionExecutionFlags, MintMaxVoterWeightSource,
+                ProposalState, TransactionExecutionStatus, VoteThreshold, VoteTipping,
+            },
+            governance::GovernanceConfig,
+            legacy::ProposalV1,
+            proposal_transaction::ProposalTransactionV2,
+            realm::RealmV2,
+            realm_config::RealmConfigAccount,
+            vote_record::{Vote, VoteKind},
+        },
+        tools::spl_token::get_spl_token_mint_supply,
+        PROGRAM_AUTHORITY_SEED,
     },
-    PROGRAM_AUTHORITY_SEED,
+    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::{Slot, UnixTimestamp},
+        program_error::ProgramError,
+        program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize},
+    std::{cmp::Ordering, slice::Iter},
 };
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-
-use crate::state::realm_config::RealmConfigAccount;
 
 /// Proposal option vote result
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -1199,17 +1195,17 @@ pub fn assert_valid_proposal_options(
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use solana_program::clock::Epoch;
-
-    use crate::state::{
-        enums::{MintMaxVoterWeightSource, VoteThreshold},
-        legacy::ProposalV1,
-        realm::RealmConfig,
-        vote_record::VoteChoice,
+    use {
+        super::*,
+        crate::state::{
+            enums::{MintMaxVoterWeightSource, VoteThreshold},
+            legacy::ProposalV1,
+            realm::RealmConfig,
+            vote_record::VoteChoice,
+        },
+        proptest::prelude::*,
+        solana_program::clock::Epoch,
     };
-
-    use proptest::prelude::*;
 
     fn create_test_proposal() -> ProposalV2 {
         ProposalV2 {

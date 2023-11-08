@@ -4,12 +4,12 @@ use solana_program_test::*;
 
 mod program_test;
 
-use program_test::legacy::*;
-use program_test::*;
-
-use spl_governance::state::{
-    enums::{VoteThreshold, VoteTipping},
-    governance::DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+use {
+    program_test::{legacy::*, *},
+    spl_governance::state::{
+        enums::{VoteThreshold, VoteTipping},
+        governance::DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+    },
 };
 
 #[tokio::test]

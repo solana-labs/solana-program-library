@@ -2,15 +2,14 @@
 
 mod program_test;
 
-use solana_program_test::tokio;
-
-use program_test::*;
-use solana_program::pubkey::Pubkey;
-use spl_governance::instruction::remove_required_signatory;
-
-use solana_sdk::signature::Signer;
-use spl_governance::error::GovernanceError;
-use spl_governance_tools::error::GovernanceToolsError;
+use {
+    program_test::*,
+    solana_program::pubkey::Pubkey,
+    solana_program_test::tokio,
+    solana_sdk::signature::Signer,
+    spl_governance::{error::GovernanceError, instruction::remove_required_signatory},
+    spl_governance_tools::error::GovernanceToolsError,
+};
 
 #[tokio::test]
 async fn test_remove_required_signatory() {

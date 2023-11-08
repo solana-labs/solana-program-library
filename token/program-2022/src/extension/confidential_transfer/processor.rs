@@ -1,3 +1,9 @@
+// Remove feature once zk ops syscalls are enabled on all networks
+#[cfg(feature = "zk-ops")]
+use {
+    crate::extension::non_transferable::NonTransferable,
+    solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
+};
 use {
     crate::{
         check_program_account,
@@ -25,12 +31,6 @@ use {
         pubkey::Pubkey,
         sysvar::Sysvar,
     },
-};
-// Remove feature once zk ops syscalls are enabled on all networks
-#[cfg(feature = "zk-ops")]
-use {
-    crate::extension::non_transferable::NonTransferable,
-    solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
 };
 
 /// Processes an [InitializeMint] instruction.

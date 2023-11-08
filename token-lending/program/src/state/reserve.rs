@@ -1,20 +1,22 @@
-use super::*;
-use crate::{
-    error::LendingError,
-    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
-};
-use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
-use solana_program::{
-    clock::Slot,
-    entrypoint::ProgramResult,
-    msg,
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::{Pubkey, PUBKEY_BYTES},
-};
-use std::{
-    cmp::Ordering,
-    convert::{TryFrom, TryInto},
+use {
+    super::*,
+    crate::{
+        error::LendingError,
+        math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
+    },
+    arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
+    solana_program::{
+        clock::Slot,
+        entrypoint::ProgramResult,
+        msg,
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack, Sealed},
+        pubkey::{Pubkey, PUBKEY_BYTES},
+    },
+    std::{
+        cmp::Ordering,
+        convert::{TryFrom, TryInto},
+    },
 };
 
 /// Percentage of an obligation that can be repaid during each liquidation call
@@ -982,10 +984,12 @@ impl Pack for Reserve {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::math::{PERCENT_SCALER, WAD};
-    use proptest::prelude::*;
-    use std::cmp::Ordering;
+    use {
+        super::*,
+        crate::math::{PERCENT_SCALER, WAD},
+        proptest::prelude::*,
+        std::cmp::Ordering,
+    };
 
     const MAX_LIQUIDITY: u64 = u64::MAX / 5;
 

@@ -1,33 +1,30 @@
 //! Realm Account
 
-use borsh::maybestd::io::Write;
-use std::slice::Iter;
-
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    program_error::ProgramError,
-    program_pack::IsInitialized,
-    pubkey::Pubkey,
-};
-use spl_governance_addin_api::voter_weight::VoterWeightAction;
-use spl_governance_tools::account::{
-    assert_is_valid_account_of_types, get_account_data, get_account_type, AccountMaxSize,
-};
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::{GovernanceAccountType, MintMaxVoterWeightSource},
-        legacy::RealmV1,
-        realm_config::GoverningTokenType,
-        token_owner_record::get_token_owner_record_data_for_realm,
-        vote_record::VoteKind,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::{GovernanceAccountType, MintMaxVoterWeightSource},
+            legacy::RealmV1,
+            realm_config::{get_realm_config_data_for_realm, GoverningTokenType},
+            token_owner_record::get_token_owner_record_data_for_realm,
+            vote_record::VoteKind,
+        },
+        PROGRAM_AUTHORITY_SEED,
     },
-    PROGRAM_AUTHORITY_SEED,
+    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        program_error::ProgramError,
+        program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
+    spl_governance_addin_api::voter_weight::VoterWeightAction,
+    spl_governance_tools::account::{
+        assert_is_valid_account_of_types, get_account_data, get_account_type, AccountMaxSize,
+    },
+    std::slice::Iter,
 };
-
-use crate::state::realm_config::get_realm_config_data_for_realm;
 
 /// Realm Config instruction args
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -457,10 +454,10 @@ pub fn assert_valid_realm_config_args(
 #[cfg(test)]
 mod test {
 
-    use crate::instruction::GovernanceInstruction;
-    use solana_program::borsh0_10::try_from_slice_unchecked;
-
-    use super::*;
+    use {
+        super::*, crate::instruction::GovernanceInstruction,
+        solana_program::borsh0_10::try_from_slice_unchecked,
+    };
 
     #[test]
     fn test_max_size() {

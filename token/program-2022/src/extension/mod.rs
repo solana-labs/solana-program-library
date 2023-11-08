@@ -1,5 +1,7 @@
 //! Extensions available to token mints and accounts
 
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::{
         error::TokenError,
@@ -41,9 +43,6 @@ use {
         mem::size_of,
     },
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Confidential Transfer extension
 pub mod confidential_transfer;

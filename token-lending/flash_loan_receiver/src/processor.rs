@@ -1,12 +1,13 @@
-use std::convert::TryInto;
-
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    msg,
-    program::invoke,
-    program_error::ProgramError,
-    pubkey::Pubkey,
+use {
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        msg,
+        program::invoke,
+        program_error::ProgramError,
+        pubkey::Pubkey,
+    },
+    std::convert::TryInto,
 };
 
 pub fn process_instruction(

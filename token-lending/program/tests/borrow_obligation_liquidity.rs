@@ -3,21 +3,23 @@
 
 mod helpers;
 
-use helpers::*;
-use solana_program_test::*;
-use solana_sdk::{
-    instruction::InstructionError,
-    signature::{Keypair, Signer},
-    transaction::{Transaction, TransactionError},
+use {
+    helpers::*,
+    solana_program_test::*,
+    solana_sdk::{
+        instruction::InstructionError,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
+    },
+    spl_token_lending::{
+        error::LendingError,
+        instruction::{borrow_obligation_liquidity, refresh_obligation},
+        math::Decimal,
+        processor::process_instruction,
+        state::{FeeCalculation, INITIAL_COLLATERAL_RATIO},
+    },
+    std::u64,
 };
-use spl_token_lending::{
-    error::LendingError,
-    instruction::{borrow_obligation_liquidity, refresh_obligation},
-    math::Decimal,
-    processor::process_instruction,
-    state::{FeeCalculation, INITIAL_COLLATERAL_RATIO},
-};
-use std::u64;
 
 #[tokio::test]
 async fn test_borrow_usdc_fixed_amount() {

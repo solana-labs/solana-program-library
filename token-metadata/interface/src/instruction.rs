@@ -1,5 +1,7 @@
 //! Instruction types
 
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::state::Field,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -11,9 +13,6 @@ use {
     spl_discriminator::{discriminator::ArrayDiscriminator, SplDiscriminate},
     spl_pod::optional_keys::OptionalNonZeroPubkey,
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Initialization instruction data
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
@@ -320,10 +319,9 @@ pub fn emit(
 
 #[cfg(test)]
 mod test {
-    use {super::*, crate::NAMESPACE, solana_program::hash};
-
     #[cfg(feature = "serde-traits")]
     use std::str::FromStr;
+    use {super::*, crate::NAMESPACE, solana_program::hash};
 
     fn check_pack_unpack<T: BorshSerialize>(
         instruction: TokenMetadataInstruction,

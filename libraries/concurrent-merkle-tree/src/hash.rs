@@ -1,5 +1,7 @@
-use crate::node::{empty_node, Node};
-use solana_program::keccak::hashv;
+use {
+    crate::node::{empty_node, Node},
+    solana_program::keccak::hashv,
+};
 
 /// Recomputes root of the Merkle tree from Node & proof
 pub fn recompute(leaf: Node, proof: &[Node], index: u32) -> Node {

@@ -1,4 +1,5 @@
 use {
+    crate::cli::*,
     clap::ArgMatches,
     solana_clap_v3_utils::keypair::signer_from_path,
     solana_cli_output::OutputFormat,
@@ -8,8 +9,6 @@ use {
     spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction},
     std::{process::exit, rc::Rc, sync::Arc},
 };
-
-use crate::cli::*;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 

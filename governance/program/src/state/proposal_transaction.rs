@@ -1,27 +1,26 @@
 //! ProposalTransaction Account
 
-use core::panic;
-
-use borsh::maybestd::io::Write;
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::{GovernanceAccountType, TransactionExecutionStatus},
-        legacy::ProposalInstructionV1,
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::{GovernanceAccountType, TransactionExecutionStatus},
+            legacy::ProposalInstructionV1,
+        },
+        PROGRAM_AUTHORITY_SEED,
     },
-    PROGRAM_AUTHORITY_SEED,
+    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    core::panic,
+    solana_program::{
+        account_info::AccountInfo,
+        clock::UnixTimestamp,
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
+    spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize},
 };
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    account_info::AccountInfo,
-    clock::UnixTimestamp,
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    program_pack::IsInitialized,
-    pubkey::Pubkey,
-};
-use spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize};
 
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]

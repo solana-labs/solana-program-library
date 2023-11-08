@@ -1,24 +1,26 @@
 //! Program state processor
 
-use crate::{
-    amount_to_ui_amount_string_trimmed,
-    error::TokenError,
-    instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
-    state::{Account, AccountState, Mint, Multisig},
-    try_ui_amount_into_amount,
-};
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    msg,
-    program::set_return_data,
-    program_error::ProgramError,
-    program_memory::sol_memcmp,
-    program_option::COption,
-    program_pack::{IsInitialized, Pack},
-    pubkey::{Pubkey, PUBKEY_BYTES},
-    system_program,
-    sysvar::{rent::Rent, Sysvar},
+use {
+    crate::{
+        amount_to_ui_amount_string_trimmed,
+        error::TokenError,
+        instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
+        state::{Account, AccountState, Mint, Multisig},
+        try_ui_amount_into_amount,
+    },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        msg,
+        program::set_return_data,
+        program_error::ProgramError,
+        program_memory::sol_memcmp,
+        program_option::COption,
+        program_pack::{IsInitialized, Pack},
+        pubkey::{Pubkey, PUBKEY_BYTES},
+        system_program,
+        sysvar::{rent::Rent, Sysvar},
+    },
 };
 
 /// Program state handler.
@@ -1028,20 +1030,22 @@ fn delete_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::instruction::*;
-    use serial_test::serial;
-    use solana_program::{
-        account_info::IntoAccountInfo,
-        clock::Epoch,
-        instruction::Instruction,
-        program_error::{self, PrintProgramError},
-        sysvar::rent,
+    use {
+        super::*,
+        crate::instruction::*,
+        serial_test::serial,
+        solana_program::{
+            account_info::IntoAccountInfo,
+            clock::Epoch,
+            instruction::Instruction,
+            program_error::{self, PrintProgramError},
+            sysvar::rent,
+        },
+        solana_sdk::account::{
+            create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
+        },
+        std::sync::{Arc, RwLock},
     };
-    use solana_sdk::account::{
-        create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
-    };
-    use std::sync::{Arc, RwLock};
 
     lazy_static::lazy_static! {
         static ref EXPECTED_DATA: Arc<RwLock<Vec<u8>>> = Arc::new(RwLock::new(Vec::new()));

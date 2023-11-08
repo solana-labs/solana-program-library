@@ -1,33 +1,37 @@
 //! Program state processor
 
-use crate::{
-    error::LendingError,
-    instruction::LendingInstruction,
-    math::{Decimal, Rate, TryAdd, TryDiv, TryMul},
-    pyth,
-    state::{
-        CalculateBorrowResult, CalculateLiquidationResult, CalculateRepayResult,
-        InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
-        NewReserveCollateralParams, NewReserveLiquidityParams, Obligation, Reserve,
-        ReserveCollateral, ReserveConfig, ReserveLiquidity,
+use {
+    crate::{
+        error::LendingError,
+        instruction::LendingInstruction,
+        math::{Decimal, Rate, TryAdd, TryDiv, TryMul},
+        pyth,
+        state::{
+            CalculateBorrowResult, CalculateLiquidationResult, CalculateRepayResult,
+            InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
+            NewReserveCollateralParams, NewReserveLiquidityParams, Obligation, Reserve,
+            ReserveCollateral, ReserveConfig, ReserveLiquidity,
+        },
     },
+    num_traits::FromPrimitive,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        decode_error::DecodeError,
+        entrypoint::ProgramResult,
+        instruction::Instruction,
+        msg,
+        program::{invoke, invoke_signed},
+        program_error::{PrintProgramError, ProgramError},
+        program_pack::{IsInitialized, Pack},
+        pubkey::Pubkey,
+        sysvar::{clock::Clock, rent::Rent, Sysvar},
+    },
+    spl_token::{
+        solana_program::instruction::AccountMeta,
+        state::{Account, Mint},
+    },
+    std::convert::TryInto,
 };
-use num_traits::FromPrimitive;
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    decode_error::DecodeError,
-    entrypoint::ProgramResult,
-    instruction::Instruction,
-    msg,
-    program::{invoke, invoke_signed},
-    program_error::{PrintProgramError, ProgramError},
-    program_pack::{IsInitialized, Pack},
-    pubkey::Pubkey,
-    sysvar::{clock::Clock, rent::Rent, Sysvar},
-};
-use spl_token::solana_program::instruction::AccountMeta;
-use spl_token::state::{Account, Mint};
-use std::convert::TryInto;
 
 /// Processes an instruction
 pub fn process_instruction(

@@ -1,3 +1,8 @@
+#[cfg(feature = "serde-traits")]
+use {
+    crate::serialization::coption_fromstr,
+    serde::{Deserialize, Serialize},
+};
 use {
     crate::{check_program_account, error::TokenError, instruction::TokenInstruction},
     solana_program::{
@@ -7,12 +12,6 @@ use {
         pubkey::Pubkey,
     },
     std::convert::TryFrom,
-};
-
-#[cfg(feature = "serde-traits")]
-use {
-    crate::serialization::coption_fromstr,
-    serde::{Deserialize, Serialize},
 };
 
 /// Transfer Fee extension instructions

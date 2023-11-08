@@ -1,13 +1,14 @@
-use crate::{
-    changelog::ChangeLog,
-    error::ConcurrentMerkleTreeError,
-    hash::{fill_in_proof, hash_to_parent, recompute},
-    node::{empty_node, empty_node_cached, Node, EMPTY},
-    path::Path,
+use {
+    crate::{
+        changelog::ChangeLog,
+        error::ConcurrentMerkleTreeError,
+        hash::{fill_in_proof, hash_to_parent, recompute},
+        node::{empty_node, empty_node_cached, Node, EMPTY},
+        path::Path,
+    },
+    bytemuck::{Pod, Zeroable},
+    log_compute, solana_logging,
 };
-use bytemuck::{Pod, Zeroable};
-use log_compute;
-use solana_logging;
 
 /// Enforce constraints on max depth and buffer size
 #[inline(always)]

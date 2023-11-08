@@ -1,3 +1,5 @@
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::{
         extension::{
@@ -9,9 +11,6 @@ use {
     solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool},
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Instructions for the TransferHook extension
 pub mod instruction;

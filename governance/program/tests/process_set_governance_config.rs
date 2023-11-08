@@ -2,15 +2,16 @@
 
 mod program_test;
 
-use program_test::*;
-use solana_program_test::tokio;
-use solana_sdk::{signature::Keypair, signer::Signer};
-use spl_governance::{
-    error::GovernanceError, instruction::set_governance_config, state::enums::VoteThreshold,
+use {
+    program_test::*,
+    solana_program_test::tokio,
+    solana_sdk::{signature::Keypair, signer::Signer},
+    spl_governance::{
+        error::GovernanceError, instruction::set_governance_config, state::enums::VoteThreshold,
+    },
+    spl_governance_test_sdk::tools::ProgramInstructionError,
+    spl_governance_tools::error::GovernanceToolsError,
 };
-use spl_governance_test_sdk::tools::ProgramInstructionError;
-
-use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
 async fn test_set_governance_config() {

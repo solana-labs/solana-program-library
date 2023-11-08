@@ -1,102 +1,102 @@
 #![allow(clippy::arithmetic_side_effects)]
-use std::str::FromStr;
-
-use borsh::BorshSerialize;
-use solana_program::{
-    bpf_loader_upgradeable::{self, UpgradeableLoaderState},
-    clock::{Slot, UnixTimestamp},
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack},
-    pubkey::Pubkey,
-    system_instruction,
-};
-
-use solana_program_test::*;
-
-use solana_sdk::signature::{Keypair, Signer};
-
-use spl_governance::{
-    instruction::{
-        add_required_signatory, add_signatory, cancel_proposal, cast_vote, complete_proposal,
-        create_governance, create_mint_governance, create_native_treasury,
-        create_program_governance, create_proposal, create_realm, create_token_governance,
-        create_token_owner_record, deposit_governing_tokens, execute_transaction, finalize_vote,
-        flag_transaction_error, insert_transaction, refund_proposal_deposit, relinquish_vote,
-        remove_required_signatory, remove_transaction, revoke_governing_tokens,
-        set_governance_config, set_governance_delegate, set_realm_authority, set_realm_config,
-        sign_off_proposal, upgrade_program_metadata, withdraw_governing_tokens,
-        AddSignatoryAuthority,
+use {
+    borsh::BorshSerialize,
+    solana_program::{
+        bpf_loader_upgradeable::{self, UpgradeableLoaderState},
+        clock::{Slot, UnixTimestamp},
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack},
+        pubkey::Pubkey,
+        system_instruction,
     },
-    processor::process_instruction,
-    state::{
-        enums::{
-            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoterWeightSource,
-            ProposalState, TransactionExecutionStatus, VoteThreshold,
+    solana_program_test::*,
+    solana_sdk::signature::{Keypair, Signer},
+    spl_governance::{
+        instruction::{
+            add_required_signatory, add_signatory, cancel_proposal, cast_vote, complete_proposal,
+            create_governance, create_mint_governance, create_native_treasury,
+            create_program_governance, create_proposal, create_realm, create_token_governance,
+            create_token_owner_record, deposit_governing_tokens, execute_transaction,
+            finalize_vote, flag_transaction_error, insert_transaction, refund_proposal_deposit,
+            relinquish_vote, remove_required_signatory, remove_transaction,
+            revoke_governing_tokens, set_governance_config, set_governance_delegate,
+            set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
+            withdraw_governing_tokens, AddSignatoryAuthority,
         },
-        governance::{
-            get_governance_address, get_mint_governance_address, get_program_governance_address,
-            get_token_governance_address, GovernanceConfig, GovernanceV2,
-            DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+        processor::process_instruction,
+        state::{
+            enums::{
+                GovernanceAccountType, InstructionExecutionFlags, MintMaxVoterWeightSource,
+                ProposalState, TransactionExecutionStatus, VoteThreshold,
+            },
+            governance::{
+                get_governance_address, get_mint_governance_address,
+                get_program_governance_address, get_token_governance_address, GovernanceConfig,
+                GovernanceV2, DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+            },
+            native_treasury::{get_native_treasury_address, NativeTreasury},
+            program_metadata::{get_program_metadata_address, ProgramMetadata},
+            proposal::{
+                get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType,
+            },
+            proposal_deposit::{get_proposal_deposit_address, ProposalDeposit},
+            proposal_transaction::{
+                get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
+            },
+            realm::{
+                get_governing_token_holding_address, get_realm_address,
+                GoverningTokenConfigAccountArgs, RealmConfig, RealmV2, SetRealmAuthorityAction,
+            },
+            realm_config::{get_realm_config_address, GoverningTokenConfig, RealmConfigAccount},
+            required_signatory::RequiredSignatory,
+            signatory_record::{get_signatory_record_address, SignatoryRecordV2},
+            token_owner_record::{
+                get_token_owner_record_address, TokenOwnerRecordV2,
+                TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+            },
+            vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
         },
-        native_treasury::{get_native_treasury_address, NativeTreasury},
-        program_metadata::{get_program_metadata_address, ProgramMetadata},
-        proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
-        proposal_deposit::{get_proposal_deposit_address, ProposalDeposit},
-        proposal_transaction::{
-            get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
+        tools::{
+            bpf_loader_upgradeable::get_program_data_address,
+            structs::{Reserved110, Reserved119},
         },
-        realm::{
-            get_governing_token_holding_address, get_realm_address,
-            GoverningTokenConfigAccountArgs, RealmConfig, RealmV2, SetRealmAuthorityAction,
-        },
-        realm_config::{get_realm_config_address, GoverningTokenConfig, RealmConfigAccount},
-        required_signatory::RequiredSignatory,
-        signatory_record::{get_signatory_record_address, SignatoryRecordV2},
-        token_owner_record::{
-            get_token_owner_record_address, TokenOwnerRecordV2, TOKEN_OWNER_RECORD_LAYOUT_VERSION,
-        },
-        vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
-    tools::{
-        bpf_loader_upgradeable::get_program_data_address,
-        structs::{Reserved110, Reserved119},
+    spl_governance_addin_api::{
+        max_voter_weight::MaxVoterWeightRecord,
+        voter_weight::{VoterWeightAction, VoterWeightRecord},
     },
-};
-use spl_governance_addin_api::{
-    max_voter_weight::MaxVoterWeightRecord,
-    voter_weight::{VoterWeightAction, VoterWeightRecord},
-};
-use spl_governance_addin_mock::instruction::{
-    setup_max_voter_weight_record, setup_voter_weight_record,
+    spl_governance_addin_mock::instruction::{
+        setup_max_voter_weight_record, setup_voter_weight_record,
+    },
+    std::str::FromStr,
 };
 
 pub mod args;
 pub mod cookies;
 pub mod legacy;
 
-use crate::program_test::cookies::{
-    RealmConfigCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
-};
-
-use spl_governance_test_sdk::{
-    addins::ensure_addin_mock_is_built,
-    cookies::WalletCookie,
-    tools::{clone_keypair, NopOverride},
-    ProgramTestBench,
-};
-
-use crate::{
-    args::{PluginSetupArgs, RealmSetupArgs},
-    cookies::{
-        GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-        GovernedTokenCookie, MaxVoterWeightRecordCookie, NativeTreasuryCookie,
-        ProgramMetadataCookie, ProposalCookie, ProposalTransactionCookie, RealmCookie,
-        TokenOwnerRecordCookie, VoteRecordCookie,
+use {
+    self::cookies::ProposalDepositCookie,
+    crate::{
+        args::{PluginSetupArgs, RealmSetupArgs},
+        cookies::{
+            GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
+            GovernedTokenCookie, MaxVoterWeightRecordCookie, NativeTreasuryCookie,
+            ProgramMetadataCookie, ProposalCookie, ProposalTransactionCookie, RealmCookie,
+            TokenOwnerRecordCookie, VoteRecordCookie,
+        },
+        program_test::cookies::{
+            RealmConfigCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
+        },
+    },
+    spl_governance_test_sdk::{
+        addins::ensure_addin_mock_is_built,
+        cookies::WalletCookie,
+        tools::{clone_keypair, NopOverride},
+        ProgramTestBench,
     },
 };
-
-use self::cookies::ProposalDepositCookie;
 
 /// Yes/No Vote
 pub enum YesNoVote {

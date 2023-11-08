@@ -1,24 +1,25 @@
 //! General purpose SPL token utility functions
 
-use arrayref::array_ref;
-use solana_program::{
-    account_info::AccountInfo,
-    entrypoint::ProgramResult,
-    msg,
-    program::{invoke, invoke_signed},
-    program_error::ProgramError,
-    program_option::COption,
-    program_pack::Pack,
-    pubkey::Pubkey,
-    rent::Rent,
-    system_instruction,
+use {
+    crate::{error::GovernanceError, tools::pack::unpack_coption_pubkey},
+    arrayref::array_ref,
+    solana_program::{
+        account_info::AccountInfo,
+        entrypoint::ProgramResult,
+        msg,
+        program::{invoke, invoke_signed},
+        program_error::ProgramError,
+        program_option::COption,
+        program_pack::Pack,
+        pubkey::Pubkey,
+        rent::Rent,
+        system_instruction,
+    },
+    spl_token::{
+        instruction::{set_authority, AuthorityType},
+        state::{Account, Mint},
+    },
 };
-use spl_token::{
-    instruction::{set_authority, AuthorityType},
-    state::{Account, Mint},
-};
-
-use crate::{error::GovernanceError, tools::pack::unpack_coption_pubkey};
 
 /// Creates and initializes SPL token account with PDA using the provided PDA seeds
 #[allow(clippy::too_many_arguments)]

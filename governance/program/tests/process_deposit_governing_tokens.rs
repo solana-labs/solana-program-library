@@ -1,21 +1,21 @@
 #![cfg(feature = "test-sbf")]
 
-use solana_program::instruction::AccountMeta;
-use solana_program_test::*;
+use {solana_program::instruction::AccountMeta, solana_program_test::*};
 
 mod program_test;
 
-use program_test::*;
-use solana_sdk::signature::{Keypair, Signer};
-use spl_governance::{
-    error::GovernanceError,
-    instruction::deposit_governing_tokens,
-    state::{
-        realm_config::GoverningTokenType, token_owner_record::TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+use {
+    crate::program_test::args::*,
+    program_test::*,
+    solana_sdk::signature::{Keypair, Signer},
+    spl_governance::{
+        error::GovernanceError,
+        instruction::deposit_governing_tokens,
+        state::{
+            realm_config::GoverningTokenType, token_owner_record::TOKEN_OWNER_RECORD_LAYOUT_VERSION,
+        },
     },
 };
-
-use crate::program_test::args::*;
 
 #[tokio::test]
 async fn test_deposit_initial_community_tokens() {

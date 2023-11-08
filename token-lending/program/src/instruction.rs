@@ -1,17 +1,19 @@
 //! Instruction types
 
-use crate::{
-    error::LendingError,
-    state::{ReserveConfig, ReserveFees},
+use {
+    crate::{
+        error::LendingError,
+        state::{ReserveConfig, ReserveFees},
+    },
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        msg,
+        program_error::ProgramError,
+        pubkey::{Pubkey, PUBKEY_BYTES},
+        sysvar,
+    },
+    std::{convert::TryInto, mem::size_of},
 };
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    msg,
-    program_error::ProgramError,
-    pubkey::{Pubkey, PUBKEY_BYTES},
-    sysvar,
-};
-use std::{convert::TryInto, mem::size_of};
 
 /// Instructions supported by the lending program.
 #[derive(Clone, Debug, PartialEq)]

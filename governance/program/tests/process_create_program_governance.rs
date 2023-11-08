@@ -1,15 +1,16 @@
 #![cfg(feature = "test-sbf")]
 mod program_test;
 
-use solana_program_test::*;
-
-use program_test::*;
-use solana_sdk::signature::{Keypair, Signer};
-use spl_governance::{
-    error::GovernanceError, tools::bpf_loader_upgradeable::get_program_upgrade_authority,
+use {
+    program_test::*,
+    solana_program_test::*,
+    solana_sdk::signature::{Keypair, Signer},
+    spl_governance::{
+        error::GovernanceError, tools::bpf_loader_upgradeable::get_program_upgrade_authority,
+    },
+    spl_governance_test_sdk::tools::ProgramInstructionError,
+    spl_governance_tools::error::GovernanceToolsError,
 };
-use spl_governance_test_sdk::tools::ProgramInstructionError;
-use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
 async fn test_create_program_governance() {

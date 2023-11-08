@@ -2,10 +2,11 @@
 
 mod program_test;
 
-use solana_program_test::tokio;
-
-use program_test::*;
-use spl_governance::{error::GovernanceError, state::enums::ProposalState};
+use {
+    program_test::*,
+    solana_program_test::tokio,
+    spl_governance::{error::GovernanceError, state::enums::ProposalState},
+};
 
 #[tokio::test]
 async fn test_cancel_proposal() {

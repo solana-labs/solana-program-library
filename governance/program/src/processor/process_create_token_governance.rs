@@ -1,30 +1,31 @@
 //! Program state processor
 
-use crate::{
-    state::{
-        enums::GovernanceAccountType,
-        governance::{
-            assert_valid_create_governance_args, get_token_governance_address_seeds,
-            GovernanceConfig, GovernanceV2,
+use {
+    crate::{
+        state::{
+            enums::GovernanceAccountType,
+            governance::{
+                assert_valid_create_governance_args, get_token_governance_address_seeds,
+                GovernanceConfig, GovernanceV2,
+            },
+            realm::get_realm_data,
         },
-        realm::get_realm_data,
+        tools::{
+            spl_token::{assert_spl_token_owner_is_signer, set_spl_token_account_authority},
+            structs::Reserved119,
+        },
     },
-    tools::{
-        spl_token::{assert_spl_token_owner_is_signer, set_spl_token_account_authority},
-        structs::Reserved119,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        program_pack::Pack,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
     },
+    spl_governance_tools::account::create_and_serialize_account_signed,
+    spl_token::{instruction::AuthorityType, state::Account},
 };
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    program_pack::Pack,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-
-use spl_governance_tools::account::create_and_serialize_account_signed;
-use spl_token::{instruction::AuthorityType, state::Account};
 
 /// Processes CreateTokenGovernance instruction
 pub fn process_create_token_governance(

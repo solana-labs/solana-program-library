@@ -1,21 +1,21 @@
-use solana_program::program_option::COption;
-use solana_program_test::*;
-use solana_sdk::{
-    commitment_config::CommitmentLevel,
-    instruction::Instruction,
-    native_token::LAMPORTS_PER_SOL,
-    pubkey::Pubkey,
-    signature::Signature,
-    signature::{Keypair, Signer},
-    system_instruction,
-    transaction::Transaction,
+use {
+    solana_program::program_option::COption,
+    solana_program_test::*,
+    solana_sdk::{
+        commitment_config::CommitmentLevel,
+        instruction::Instruction,
+        native_token::LAMPORTS_PER_SOL,
+        pubkey::Pubkey,
+        signature::{Keypair, Signature, Signer},
+        system_instruction,
+        transaction::Transaction,
+    },
+    spl_associated_token_account::{
+        get_associated_token_address, instruction::create_associated_token_account,
+    },
+    spl_managed_token::instruction::*,
+    spl_token::state::Account as TokenAccount,
 };
-
-use spl_associated_token_account::{
-    get_associated_token_address, instruction::create_associated_token_account,
-};
-use spl_managed_token::instruction::*;
-use spl_token::state::Account as TokenAccount;
 
 pub fn sol(amount: f64) -> u64 {
     (amount * LAMPORTS_PER_SOL as f64) as u64

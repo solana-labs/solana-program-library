@@ -4,14 +4,15 @@ use solana_program_test::*;
 
 mod program_test;
 
-use program_test::*;
-use spl_governance::state::proposal::MultiChoiceType;
-use spl_governance::{
-    error::GovernanceError,
-    state::{
-        enums::{ProposalState, VoteThreshold},
-        proposal::{OptionVoteResult, VoteType},
-        vote_record::{Vote, VoteChoice},
+use {
+    program_test::*,
+    spl_governance::{
+        error::GovernanceError,
+        state::{
+            enums::{ProposalState, VoteThreshold},
+            proposal::{MultiChoiceType, OptionVoteResult, VoteType},
+            vote_record::{Vote, VoteChoice},
+        },
     },
 };
 

@@ -1,3 +1,5 @@
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {
     crate::{
         check_program_account,
@@ -10,9 +12,6 @@ use {
         pubkey::Pubkey,
     },
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 
 /// Required Memo Transfers extension instructions
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
