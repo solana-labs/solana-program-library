@@ -101,7 +101,8 @@ pub fn process_create_mint_governance(
         // If the mint has freeze_authority then transfer it as well
         let mint_data = Mint::unpack(&governed_mint_info.data.borrow())?;
         // Note: The code assumes mint_authority==freeze_authority
-        //       If this is not the case then the caller should set freeze_authority accordingly before making the transfer
+        // If this is not the case then the caller should set freeze_authority
+        // accordingly before making the transfer
         if mint_data.freeze_authority.is_some() {
             set_spl_token_account_authority(
                 governed_mint_info,

@@ -1010,7 +1010,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [WithdrawSingleTokenTypeExactAmountOut](enum.Instruction.html).
+    /// Processes a
+    /// [WithdrawSingleTokenTypeExactAmountOut](enum.Instruction.html).
     pub fn process_withdraw_single_token_type_exact_amount_out(
         program_id: &Pubkey,
         destination_token_amount: u64,

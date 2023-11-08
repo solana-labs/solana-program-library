@@ -46,7 +46,8 @@ pub(crate) mod inline_mpl_token_metadata {
         pub symbol: String,
         /// URI pointing to JSON representing the asset
         pub uri: String,
-        /// Royalty basis points that goes to creators in secondary sales (0-10000)
+        /// Royalty basis points that goes to creators in secondary sales
+        /// (0-10000)
         pub seller_fee_basis_points: u16,
         /// Array of creators, optional
         pub creators: Option<Vec<Creator>>,
@@ -203,10 +204,10 @@ fn process_accept_offer(
     }
     msg!("Delegate matches");
     assert_keys_equal(spl_token::id(), *token_program_info.key)?;
-    // Both of these transfers will fail if the `transfer_authority` is the delegate of these ATA's
-    // One consideration is that the taker can get tricked in the case that the maker size is greater than
-    // the token amount in the maker's ATA, but these stateless offers should just be invalidated in
-    // the client.
+    // Both of these transfers will fail if the `transfer_authority` is the delegate
+    // of these ATA's One consideration is that the taker can get tricked in the
+    // case that the maker size is greater than the token amount in the maker's
+    // ATA, but these stateless offers should just be invalidated in the client.
     assert_is_ata(maker_src_account, maker_wallet.key, maker_src_mint.key)?;
     assert_is_ata(taker_dst_account, taker_wallet.key, maker_src_mint.key)?;
     invoke_signed(

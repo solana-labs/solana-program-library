@@ -77,8 +77,8 @@ fn process_withdraw_withheld_tokens_from_mint(
     let mint_account_info = next_account_info(account_info_iter)?;
     let destination_account_info = next_account_info(account_info_iter)?;
 
-    // zero-knowledge proof certifies that the exact withheld amount is credited to the destination
-    // account.
+    // zero-knowledge proof certifies that the exact withheld amount is credited to
+    // the destination account.
     let proof_context = verify_ciphertext_ciphertext_equality_proof(
         next_account_info(account_info_iter)?,
         proof_instruction_offset,
@@ -105,15 +105,18 @@ fn process_withdraw_withheld_tokens_from_mint(
             authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
-    } // free `transfer_fee_config` to borrow `confidential_transfer_fee_config` as mutable
+    } // free `transfer_fee_config` to borrow `confidential_transfer_fee_config` as
+      // mutable
 
-    // mint must also be extended for confidential transfers, but forgo an explicit check since it
-    // is not possible to initialize a confidential transfer mint without it
+    // mint must also be extended for confidential transfers, but forgo an explicit
+    // check since it is not possible to initialize a confidential transfer mint
+    // without it
 
     let confidential_transfer_fee_config =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
 
-    // basic checks for the destination account - must be extended for confidential transfers
+    // basic checks for the destination account - must be extended for confidential
+    // transfers
     let mut destination_account_data = destination_account_info.data.borrow_mut();
     let mut destination_account =
         StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
@@ -128,30 +131,31 @@ fn process_withdraw_withheld_tokens_from_mint(
         destination_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     destination_confidential_transfer_account.valid_as_destination()?;
 
-    // The funds are moved from the mint to a destination account. Here, the `source` equates to
-    // the withdraw withheld authority associated in the mint.
+    // The funds are moved from the mint to a destination account. Here, the
+    // `source` equates to the withdraw withheld authority associated in the
+    // mint.
 
-    // Check that the withdraw authority ElGamal public key associated with the mint is
-    // consistent with what was actually used to generate the zkp.
+    // Check that the withdraw authority ElGamal public key associated with the mint
+    // is consistent with what was actually used to generate the zkp.
     if proof_context.source_pubkey
         != confidential_transfer_fee_config.withdraw_withheld_authority_elgamal_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-    // Check that the ElGamal public key associated with the destination account is consistent
-    // with what was actually used to generate the zkp.
+    // Check that the ElGamal public key associated with the destination account is
+    // consistent with what was actually used to generate the zkp.
     if proof_context.destination_pubkey != destination_confidential_transfer_account.elgamal_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-    // Check that the withheld amount ciphertext is consistent with the ciphertext data that was
-    // actually used to generate the zkp.
+    // Check that the withheld amount ciphertext is consistent with the ciphertext
+    // data that was actually used to generate the zkp.
     if proof_context.source_ciphertext != confidential_transfer_fee_config.withheld_amount {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
-    // The proof data contains the mint withheld amount encrypted under the destination ElGamal pubkey.
-    // Add this amount to the available balance.
+    // The proof data contains the mint withheld amount encrypted under the
+    // destination ElGamal pubkey. Add this amount to the available balance.
     destination_confidential_transfer_account.available_balance = syscall::add(
         &destination_confidential_transfer_account.available_balance,
         &proof_context.destination_ciphertext,
@@ -167,8 +171,9 @@ fn process_withdraw_withheld_tokens_from_mint(
     Ok(())
 }
 
-/// Verify zero-knowledge proof needed for a [WithdrawWithheldTokensFromMint] instruction or a
-/// `[WithdrawWithheldTokensFromAccounts]` and return the corresponding proof context.
+/// Verify zero-knowledge proof needed for a [WithdrawWithheldTokensFromMint]
+/// instruction or a `[WithdrawWithheldTokensFromAccounts]` and return the
+/// corresponding proof context.
 fn verify_ciphertext_ciphertext_equality_proof(
     account_info: &AccountInfo<'_>,
     proof_instruction_offset: i64,
@@ -212,8 +217,8 @@ fn process_withdraw_withheld_tokens_from_accounts(
     let mint_account_info = next_account_info(account_info_iter)?;
     let destination_account_info = next_account_info(account_info_iter)?;
 
-    // zero-knowledge proof certifies that the exact aggregate withheld amount is credited to the
-    // destination account.
+    // zero-knowledge proof certifies that the exact aggregate withheld amount is
+    // credited to the destination account.
     let proof_context = verify_ciphertext_ciphertext_equality_proof(
         next_account_info(account_info_iter)?,
         proof_instruction_offset,
@@ -289,11 +294,12 @@ fn process_withdraw_withheld_tokens_from_accounts(
         destination_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     destination_confidential_transfer_account.valid_as_destination()?;
 
-    // The funds are moved from the accounts to a destination account. Here, the `source` equates
-    // to the withdraw withheld authority associated in the mint.
+    // The funds are moved from the accounts to a destination account. Here, the
+    // `source` equates to the withdraw withheld authority associated in the
+    // mint.
 
-    // Checks that the withdraw authority ElGamal public key associated with the mint is
-    // consistent with what was actually used to generate the zkp.
+    // Checks that the withdraw authority ElGamal public key associated with the
+    // mint is consistent with what was actually used to generate the zkp.
     let confidential_transfer_fee_config =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
     if proof_context.source_pubkey
@@ -301,20 +307,21 @@ fn process_withdraw_withheld_tokens_from_accounts(
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-    // Checks that the ElGamal public key associated with the destination account is consistent
-    // with what was actually used to generate the zkp.
+    // Checks that the ElGamal public key associated with the destination account is
+    // consistent with what was actually used to generate the zkp.
     if proof_context.destination_pubkey != destination_confidential_transfer_account.elgamal_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-    // Checks that the withheld amount ciphertext is consistent with the ciphertext data that was
-    // actually used to generate the zkp.
+    // Checks that the withheld amount ciphertext is consistent with the ciphertext
+    // data that was actually used to generate the zkp.
     if proof_context.source_ciphertext != aggregate_withheld_amount {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
-    // The proof data contains the mint withheld amount encrypted under the destination ElGamal pubkey.
-    // This amount is added to the destination available balance.
+    // The proof data contains the mint withheld amount encrypted under the
+    // destination ElGamal pubkey. This amount is added to the destination
+    // available balance.
     destination_confidential_transfer_account.available_balance = syscall::add(
         &destination_confidential_transfer_account.available_balance,
         &proof_context.destination_ciphertext,

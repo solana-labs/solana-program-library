@@ -186,7 +186,8 @@ async fn command_reactivate_pool_stake(
             return Err(format!("Pool {} has not been initialized", pool_address).into());
         };
 
-    // the only reason this check is skippable is for testing, otherwise theres no reason
+    // the only reason this check is skippable is for testing, otherwise theres no
+    // reason
     if !command_config.skip_deactivation_check {
         let current_epoch = config.rpc_client.get_epoch_info().await?.epoch;
         let pool_stake_address = find_pool_stake_address(&spl_single_pool::id(), &pool_address);
@@ -235,9 +236,10 @@ async fn command_deposit(config: &Config, command_config: DepositCli) -> Command
     let current_epoch = config.rpc_client.get_epoch_info().await?.epoch;
 
     // the cli invocation for this is conceptually simple, but a bit tricky
-    // the user can provide pool or vote and let the cli infer the stake account address
-    // but they can also provide pool or vote with the stake account, as a safety check
-    // first we want to get the pool address if they provided a pool or vote address
+    // the user can provide pool or vote and let the cli infer the stake account
+    // address but they can also provide pool or vote with the stake account, as
+    // a safety check first we want to get the pool address if they provided a
+    // pool or vote address
     let provided_pool_address = command_config.pool_address.or_else(|| {
         command_config
             .vote_account_address
@@ -337,7 +339,8 @@ async fn command_deposit(config: &Config, command_config: DepositCli) -> Command
         payer.clone(),
     );
 
-    // use token account provided, or get/create the associated account for the client keypair
+    // use token account provided, or get/create the associated account for the
+    // client keypair
     let token_account_address = if let Some(account) = command_config.token_account_address {
         account
     } else {
@@ -407,8 +410,8 @@ async fn command_withdraw(config: &Config, command_config: WithdrawCli) -> Comma
     let stake_account = Keypair::new();
     let stake_account_address = stake_account.pubkey();
 
-    // since we cant infer pool from token account, the withdraw invocation is rather simpler
-    // first get the pool address
+    // since we cant infer pool from token account, the withdraw invocation is
+    // rather simpler first get the pool address
     let pool_address = pool_address_from_args(
         command_config.pool_address,
         command_config.vote_account_address,
@@ -465,7 +468,8 @@ async fn command_withdraw(config: &Config, command_config: WithdrawCli) -> Comma
         .into());
     }
 
-    // note a delegate authority is not allowed here because we must authorize the pool authority
+    // note a delegate authority is not allowed here because we must authorize the
+    // pool authority
     if token_account.base.owner != token_authority.pubkey() {
         return Err(format!(
             "Invalid token authority: got {}, actual {}",

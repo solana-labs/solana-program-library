@@ -37,7 +37,6 @@ pub enum GroupPointerInstruction {
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::group_pointer::instruction::InitializeInstructionData`
-    ///
     Initialize,
     /// Update the group pointer address. Only supported for mints that
     /// include the `GroupPointer` extension.
@@ -55,7 +54,6 @@ pub enum GroupPointerInstruction {
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::group_pointer::instruction::UpdateInstructionData`
-    ///
     Update,
 }
 

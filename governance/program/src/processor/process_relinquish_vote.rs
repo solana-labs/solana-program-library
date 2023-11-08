@@ -65,17 +65,21 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
 
     let clock = Clock::get()?;
 
-    // If the Proposal is still being voted on then the token owner vote will be withdrawn and it won't count towards the vote outcome
-    // Note: If there is no tipping point the proposal can be still in Voting state but already past the configured max voting time (base + cool off voting time)
-    //       It means it awaits manual finalization (FinalizeVote) and it should no longer be possible to withdraw the vote
+    // If the Proposal is still being voted on then the token owner vote will be
+    // withdrawn and it won't count towards the vote outcome Note: If there is
+    // no tipping point the proposal can be still in Voting state but already past
+    // the configured max voting time (base + cool off voting time)
+    //       It means it awaits manual finalization (FinalizeVote) and it should no
+    // longer be possible to withdraw the vote
     if proposal_data.state == ProposalState::Voting
         && !proposal_data.has_voting_max_time_ended(&governance_data.config, clock.unix_timestamp)
     {
         let governance_authority_info = next_account_info(account_info_iter)?; // 5
         let beneficiary_info = next_account_info(account_info_iter)?; // 6
 
-        // Note: It's only required to sign by governing_authority if relinquishing the vote results in vote change
-        // If the Proposal is already decided then anybody can prune active votes for token owner
+        // Note: It's only required to sign by governing_authority if relinquishing the
+        // vote results in vote change If the Proposal is already decided then
+        // anybody can prune active votes for token owner
         token_owner_record_data
             .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
@@ -112,9 +116,10 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
 
         dispose_account(vote_record_info, beneficiary_info)?;
     } else {
-        // After Proposal voting time ends and it's not tipped then it enters implicit (time based) Finalizing state
-        // and releasing tokens in this state should be disallowed
-        // In other words releasing tokens is only possible once Proposal is manually finalized using FinalizeVote
+        // After Proposal voting time ends and it's not tipped then it enters implicit
+        // (time based) Finalizing state and releasing tokens in this state
+        // should be disallowed In other words releasing tokens is only possible
+        // once Proposal is manually finalized using FinalizeVote
         if proposal_data.state == ProposalState::Voting {
             return Err(GovernanceError::CannotRelinquishInFinalizingState.into());
         }
@@ -123,7 +128,8 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         vote_record_data.serialize(&mut vote_record_info.data.borrow_mut()[..])?;
     }
 
-    // If the Proposal has been already voted on then we only have to decrease unrelinquished_votes_count
+    // If the Proposal has been already voted on then we only have to decrease
+    // unrelinquished_votes_count
     token_owner_record_data.unrelinquished_votes_count = token_owner_record_data
         .unrelinquished_votes_count
         .checked_sub(1)

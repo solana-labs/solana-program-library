@@ -22,7 +22,8 @@ use {
     spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize},
 };
 
-/// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
+/// InstructionData wrapper. It can be removed once Borsh serialization for
+/// Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct InstructionData {
     /// Pubkey of the instruction processor that executes this instruction
@@ -38,7 +39,8 @@ pub struct InstructionData {
 pub struct AccountMetaData {
     /// An account's public key
     pub pubkey: Pubkey,
-    /// True if an Instruction requires a Transaction signature matching `pubkey`.
+    /// True if an Instruction requires a Transaction signature matching
+    /// `pubkey`.
     pub is_signer: bool,
     /// True if the `pubkey` can be loaded as a read-write account.
     pub is_writable: bool,
@@ -95,13 +97,15 @@ pub struct ProposalTransactionV2 {
     /// Unique transaction index within it's parent Proposal
     pub transaction_index: u16,
 
-    /// Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on
+    /// Minimum waiting time in seconds for the  instruction to be executed once
+    /// proposal is voted on
     pub hold_up_time: u32,
 
     /// Instructions to execute
-    /// The instructions will be signed by Governance PDA the Proposal belongs to
-    // For example for ProgramGovernance the instruction to upgrade program will be signed by ProgramGovernance PDA
-    // All instructions will be executed within a single transaction
+    /// The instructions will be signed by Governance PDA the Proposal belongs
+    /// to
+    // For example for ProgramGovernance the instruction to upgrade program will be signed by
+    // ProgramGovernance PDA All instructions will be executed within a single transaction
     pub instructions: Vec<InstructionData>,
 
     /// Executed at flag
@@ -143,9 +147,11 @@ impl ProposalTransactionV2 {
                 panic!("Multiple instructions are not supported by ProposalInstructionV1")
             };
 
-            // V1 account can't be resized and we have to translate it back to the original format
+            // V1 account can't be resized and we have to translate it back to the original
+            // format
 
-            // If reserved_v2 is used it must be individually asses for v1 backward compatibility impact
+            // If reserved_v2 is used it must be individually asses for v1 backward
+            // compatibility impact
             if self.reserved_v2 != [0; 8] {
                 panic!("Extended data not supported by ProposalInstructionV1")
             }
@@ -228,7 +234,8 @@ pub fn get_proposal_transaction_data(
     get_account_data::<ProposalTransactionV2>(program_id, proposal_transaction_info)
 }
 
-///  Deserializes and returns ProposalTransaction account and checks it belongs to the given Proposal
+///  Deserializes and returns ProposalTransaction account and checks it belongs
+/// to the given Proposal
 pub fn get_proposal_transaction_data_for_proposal(
     program_id: &Pubkey,
     proposal_transaction_info: &AccountInfo,

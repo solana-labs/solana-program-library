@@ -1,3 +1,5 @@
+comment_width = 80
 edition = "2021"
 group_imports = "One"
 imports_granularity = "One"
+wrap_comments = true

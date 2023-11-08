@@ -38,7 +38,6 @@ pub enum InterestBearingMintInstruction {
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::interest_bearing::instruction::InitializeInstructionData`
-    ///
     Initialize,
     /// Update the interest rate. Only supported for mints that include the
     /// `InterestBearingConfig` extension.
@@ -56,7 +55,6 @@ pub enum InterestBearingMintInstruction {
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::interest_bearing::BasisPoints`
-    ///
     UpdateRate,
 }
 

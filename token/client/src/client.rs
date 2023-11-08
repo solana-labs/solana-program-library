@@ -23,8 +23,8 @@ pub trait SimulateTransaction {
     type SimulationOutput;
 }
 
-/// Extends basic `SendTransaction` trait with function `send` where client is `&mut BanksClient`.
-/// Required for `ProgramBanksClient`.
+/// Extends basic `SendTransaction` trait with function `send` where client is
+/// `&mut BanksClient`. Required for `ProgramBanksClient`.
 pub trait SendTransactionBanksClient: SendTransaction {
     fn send<'a>(
         &self,
@@ -33,8 +33,8 @@ pub trait SendTransactionBanksClient: SendTransaction {
     ) -> BoxFuture<'a, ProgramClientResult<Self::Output>>;
 }
 
-/// Extends basic `SimulateTransaction` trait with function `simulation` where client is `&mut BanksClient`.
-/// Required for `ProgramBanksClient`.
+/// Extends basic `SimulateTransaction` trait with function `simulation` where
+/// client is `&mut BanksClient`. Required for `ProgramBanksClient`.
 pub trait SimulateTransactionBanksClient: SimulateTransaction {
     fn simulate<'a>(
         &self,
@@ -85,8 +85,8 @@ impl SimulateTransactionBanksClient for ProgramBanksClientProcessTransaction {
     }
 }
 
-/// Extends basic `SendTransaction` trait with function `send` where client is `&RpcClient`.
-/// Required for `ProgramRpcClient`.
+/// Extends basic `SendTransaction` trait with function `send` where client is
+/// `&RpcClient`. Required for `ProgramRpcClient`.
 pub trait SendTransactionRpc: SendTransaction {
     fn send<'a>(
         &self,
@@ -95,8 +95,8 @@ pub trait SendTransactionRpc: SendTransaction {
     ) -> BoxFuture<'a, ProgramClientResult<Self::Output>>;
 }
 
-/// Extends basic `SimulateTransaction` trait with function `simulate` where client is `&RpcClient`.
-/// Required for `ProgramRpcClient`.
+/// Extends basic `SimulateTransaction` trait with function `simulate` where
+/// client is `&RpcClient`. Required for `ProgramRpcClient`.
 pub trait SimulateTransactionRpc: SimulateTransaction {
     fn simulate<'a>(
         &self,

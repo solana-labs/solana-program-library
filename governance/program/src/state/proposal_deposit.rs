@@ -64,7 +64,8 @@ pub fn get_proposal_deposit_address(
     .0
 }
 
-/// Deserializes ProposalDeposit account and checks owner program and account type
+/// Deserializes ProposalDeposit account and checks owner program and account
+/// type
 pub fn get_proposal_deposit_data(
     program_id: &Pubkey,
     proposal_deposit_info: &AccountInfo,

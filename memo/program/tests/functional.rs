@@ -42,7 +42,8 @@ async fn test_memo_signing() {
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 
-    // Demonstrate success on signature provided, regardless of specific memo AccountMeta
+    // Demonstrate success on signature provided, regardless of specific memo
+    // AccountMeta
     let mut transaction = Transaction::new_with_payer(
         &[Instruction {
             program_id: id(),

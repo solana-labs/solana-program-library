@@ -1,4 +1,5 @@
-// Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
+// Mark this test as BPF-only due to current `ProgramTest` limitations when
+// CPIing into the system program
 #![cfg(feature = "test-sbf")]
 
 use {
@@ -129,8 +130,8 @@ async fn test_basic() {
     transaction.sign(&[&payer, &feature_proposal], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 
-    // Fetch a new blockhash to avoid the second Tally transaction having the same signature as the
-    // first Tally transaction
+    // Fetch a new blockhash to avoid the second Tally transaction having the same
+    // signature as the first Tally transaction
     let recent_blockhash = banks_client
         .get_new_latest_blockhash(&recent_blockhash)
         .await

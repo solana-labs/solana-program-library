@@ -1,4 +1,5 @@
-//! serialization module - contains helpers for serde types from other crates, deserialization visitors
+//! serialization module - contains helpers for serde types from other crates,
+//! deserialization visitors
 
 use {
     base64::{prelude::BASE64_STANDARD, Engine},

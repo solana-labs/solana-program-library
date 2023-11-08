@@ -142,10 +142,13 @@ impl GovernanceProgramTest {
         use_voter_weight_addin: bool,
         use_max_voter_weight_addin: bool,
     ) -> Self {
-        // We only ensure the addin mock program is built but it doesn't detect changes
-        // If the addin is changed then it needs to be manually rebuilt
-        // Note: The crate of the mock is built when spl-governance is built but we also need spl_governance_addin_mock.so
-        //       And we can't use build.rs script because cargo build-sbf hangs when executed from the script
+        // We only ensure the addin mock program is built but it doesn't detect
+        // changes.
+        // If the addin is changed then it needs to be manually rebuilt.
+        // Note: The crate of the mock is built when spl-governance is built
+        // but we also need spl_governance_addin_mock.so.
+        // And we can't use build.rs script because cargo build-sbf hangs when
+        // executed from the script.
         ensure_addin_mock_is_built();
 
         Self::start_impl(use_voter_weight_addin, use_max_voter_weight_addin).await
@@ -499,7 +502,8 @@ impl GovernanceProgramTest {
         }
     }
 
-    // Creates TokenOwner which owns 100 community tokens and deposits them into the given Realm
+    // Creates TokenOwner which owns 100 community tokens and deposits them into the
+    // given Realm
     #[allow(dead_code)]
     pub async fn with_community_token_deposit(
         &mut self,
@@ -2698,7 +2702,8 @@ impl GovernanceProgramTest {
         index: Option<u16>,
     ) -> Result<ProposalTransactionCookie, ProgramError> {
         // Create NOP instruction as a placeholder
-        // Note: The actual instruction is irrelevant because we do not execute it in tests
+        // Note: The actual instruction is irrelevant because we do not execute it in
+        // tests
         let mut instruction = Instruction {
             program_id: Pubkey::new_unique(),
             accounts: vec![],
@@ -2779,7 +2784,9 @@ impl GovernanceProgramTest {
             .iter()
             .map(|a| AccountMeta {
                 pubkey: a.pubkey,
-                is_signer: false, // Remove signer since the Governance account PDA will be signing the instruction for us
+                // Remove signer since the Governance account PDA will be
+                // signing the instruction for us
+                is_signer: false,
                 is_writable: a.is_writable,
             })
             .collect();
@@ -3179,7 +3186,8 @@ impl GovernanceProgramTest {
         let mut n = 1;
 
         while clock.unix_timestamp <= unix_timestamp {
-            // Since the exact time is not deterministic keep wrapping by arbitrary 400 slots until we pass the requested timestamp
+            // Since the exact time is not deterministic keep wrapping by arbitrary 400
+            // slots until we pass the requested timestamp
             self.bench
                 .context
                 .warp_to_slot(clock.slot + n * 400)

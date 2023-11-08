@@ -35,7 +35,8 @@ pub fn process_update_program_metadata(
 
     const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-    // Put the metadata info into the logs to make it possible to extract it using Tx simulation
+    // Put the metadata info into the logs to make it possible to extract it using
+    // Tx simulation
     msg!("PROGRAM-VERSION:{:?}", VERSION);
 
     if program_metadata_info.data_is_empty() {

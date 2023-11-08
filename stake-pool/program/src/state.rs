@@ -46,17 +46,18 @@ pub struct StakePool {
     /// Account type, must be StakePool currently
     pub account_type: AccountType,
 
-    /// Manager authority, allows for updating the staker, manager, and fee account
+    /// Manager authority, allows for updating the staker, manager, and fee
+    /// account
     pub manager: Pubkey,
 
-    /// Staker authority, allows for adding and removing validators, and managing stake
-    /// distribution
+    /// Staker authority, allows for adding and removing validators, and
+    /// managing stake distribution
     pub staker: Pubkey,
 
     /// Stake deposit authority
     ///
-    /// If a depositor pubkey is specified on initialization, then deposits must be
-    /// signed by this authority. If no deposit authority is specified,
+    /// If a depositor pubkey is specified on initialization, then deposits must
+    /// be signed by this authority. If no deposit authority is specified,
     /// then the stake pool will default to the result of:
     /// `Pubkey::find_program_address(
     ///     &[&stake_pool_address.as_ref(), b"deposit"],
@@ -88,7 +89,8 @@ pub struct StakePool {
     /// this field may not be accurate
     pub total_lamports: u64,
 
-    /// Total supply of pool tokens (should always match the supply in the Pool Mint)
+    /// Total supply of pool tokens (should always match the supply in the Pool
+    /// Mint)
     pub pool_token_supply: u64,
 
     /// Last epoch the `total_lamports` field was updated
@@ -120,8 +122,9 @@ pub struct StakePool {
 
     /// Fees paid out to referrers on referred stake deposits.
     /// Expressed as a percentage (0 - 100) of deposit fees.
-    /// i.e. `stake_deposit_fee`% of stake deposited is collected as deposit fees for every deposit
-    /// and `stake_referral_fee`% of the collected stake deposit fees is paid out to the referrer
+    /// i.e. `stake_deposit_fee`% of stake deposited is collected as deposit
+    /// fees for every deposit and `stake_referral_fee`% of the collected
+    /// stake deposit fees is paid out to the referrer
     pub stake_referral_fee: u8,
 
     /// Toggles whether the `DepositSol` instruction requires a signature from
@@ -133,8 +136,9 @@ pub struct StakePool {
 
     /// Fees paid out to referrers on referred SOL deposits.
     /// Expressed as a percentage (0 - 100) of SOL deposit fees.
-    /// i.e. `sol_deposit_fee`% of SOL deposited is collected as deposit fees for every deposit
-    /// and `sol_referral_fee`% of the collected SOL deposit fees is paid out to the referrer
+    /// i.e. `sol_deposit_fee`% of SOL deposited is collected as deposit fees
+    /// for every deposit and `sol_referral_fee`% of the collected SOL
+    /// deposit fees is paid out to the referrer
     pub sol_referral_fee: u8,
 
     /// Toggles whether the `WithdrawSol` instruction requires a signature from
@@ -154,7 +158,8 @@ pub struct StakePool {
     pub last_epoch_total_lamports: u64,
 }
 impl StakePool {
-    /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
+    /// calculate the pool tokens that should be minted for a deposit of
+    /// `stake_lamports`
     #[inline]
     pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
         if self.total_lamports == 0 || self.pool_token_supply == 0 {
@@ -218,7 +223,8 @@ impl StakePool {
         u64::try_from(self.sol_deposit_fee.apply(pool_tokens_minted)?).ok()
     }
 
-    /// calculate pool tokens to be deducted from SOL deposit fees as referral fees
+    /// calculate pool tokens to be deducted from SOL deposit fees as referral
+    /// fees
     #[inline]
     pub fn calc_pool_tokens_sol_referral_fee(&self, sol_deposit_fee: u64) -> Option<u64> {
         u64::try_from(
@@ -537,7 +543,8 @@ pub fn is_extension_supported_for_fee_account(extension_type: &ExtensionType) ->
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorList {
-    /// Data outside of the validator list, separated out for cheaper deserializations
+    /// Data outside of the validator list, separated out for cheaper
+    /// deserializations
     pub header: ValidatorListHeader,
 
     /// List of stake info for each validator in the pool
@@ -606,7 +613,8 @@ impl Default for StakeStatus {
 )]
 pub struct PodStakeStatus(u8);
 impl PodStakeStatus {
-    /// Downgrade the status towards ready for removal by removing the validator stake
+    /// Downgrade the status towards ready for removal by removing the validator
+    /// stake
     pub fn remove_validator_stake(&mut self) -> Result<(), ProgramError> {
         let status = StakeStatus::try_from(*self)?;
         let new_self = match status {
@@ -619,7 +627,8 @@ impl PodStakeStatus {
         *self = new_self.into();
         Ok(())
     }
-    /// Downgrade the status towards ready for removal by removing the transient stake
+    /// Downgrade the status towards ready for removal by removing the transient
+    /// stake
     pub fn remove_transient_stake(&mut self) -> Result<(), ProgramError> {
         let status = StakeStatus::try_from(*self)?;
         let new_self = match status {
@@ -695,7 +704,8 @@ pub struct ValidatorStakeInfo {
     /// Last epoch the active and transient stake lamports fields were updated
     pub last_update_epoch: PodU64,
 
-    /// Transient account seed suffix, used to derive the transient stake account address
+    /// Transient account seed suffix, used to derive the transient stake
+    /// account address
     pub transient_seed_suffix: PodU64,
 
     /// Unused space, initially meant to specify the end of seed suffixes
@@ -766,7 +776,8 @@ impl Pack for ValidatorStakeInfo {
 }
 
 impl ValidatorList {
-    /// Create an empty instance containing space for `max_validators` and preferred validator keys
+    /// Create an empty instance containing space for `max_validators` and
+    /// preferred validator keys
     pub fn new(max_validators: u32) -> Self {
         Self {
             header: ValidatorListHeader {
@@ -777,7 +788,8 @@ impl ValidatorList {
         }
     }
 
-    /// Calculate the number of validator entries that fit in the provided length
+    /// Calculate the number of validator entries that fit in the provided
+    /// length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
         let header_size = ValidatorListHeader::LEN.saturating_add(4);
         buffer_length
@@ -816,7 +828,8 @@ impl ValidatorList {
 impl ValidatorListHeader {
     const LEN: usize = 1 + 4;
 
-    /// Check if validator stake list is actually initialized as a validator stake list
+    /// Check if validator stake list is actually initialized as a validator
+    /// stake list
     pub fn is_valid(&self) -> bool {
         self.account_type == AccountType::ValidatorList
     }
@@ -907,7 +920,8 @@ impl<T> From<FutureEpoch<T>> for Option<T> {
 
 /// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
 /// the rewards
-/// If either the numerator or the denominator is 0, the fee is considered to be 0
+/// If either the numerator or the denominator is 0, the fee is considered to be
+/// 0
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Fee {
@@ -949,7 +963,8 @@ impl Fee {
             };
 
         // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
-        // Program fails if provided numerator or denominator is too large, resulting in overflow
+        // Program fails if provided numerator or denominator is too large, resulting in
+        // overflow
         if (old_num as u128)
             .checked_mul(self.denominator as u128)
             .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
@@ -1018,7 +1033,8 @@ impl FeeType {
         Ok(())
     }
 
-    /// Returns if the contained fee can only be updated earliest on the next epoch
+    /// Returns if the contained fee can only be updated earliest on the next
+    /// epoch
     #[inline]
     pub fn can_only_change_next_epoch(&self) -> bool {
         matches!(
@@ -1250,7 +1266,8 @@ mod test {
         let fee_lamports = stake_pool
             .calc_lamports_withdraw_amount(pool_token_fee)
             .unwrap();
-        assert_eq!(fee_lamports, LAMPORTS_PER_SOL - 1); // off-by-one due to truncation
+        assert_eq!(fee_lamports, LAMPORTS_PER_SOL - 1); // off-by-one due to
+                                                        // truncation
     }
 
     #[test]

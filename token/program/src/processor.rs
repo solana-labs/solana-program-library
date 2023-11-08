@@ -141,7 +141,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeAccount](enum.TokenInstruction.html) instruction.
+    /// Processes an [InitializeAccount](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_account(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -149,7 +150,8 @@ impl Processor {
         Self::_process_initialize_account(program_id, accounts, None, true)
     }
 
-    /// Processes an [InitializeAccount2](enum.TokenInstruction.html) instruction.
+    /// Processes an [InitializeAccount2](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_account2(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -158,7 +160,8 @@ impl Processor {
         Self::_process_initialize_account(program_id, accounts, Some(&owner), true)
     }
 
-    /// Processes an [InitializeAccount3](enum.TokenInstruction.html) instruction.
+    /// Processes an [InitializeAccount3](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_account3(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -209,12 +212,14 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [InitializeMultisig](enum.TokenInstruction.html) instruction.
+    /// Processes a [InitializeMultisig](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
         Self::_process_initialize_multisig(accounts, m, true)
     }
 
-    /// Processes a [InitializeMultisig2](enum.TokenInstruction.html) instruction.
+    /// Processes a [InitializeMultisig2](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_multisig2(accounts: &[AccountInfo], m: u8) -> ProgramResult {
         Self::_process_initialize_multisig(accounts, m, false)
     }
@@ -789,7 +794,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeImmutableOwner](enum.TokenInstruction.html) instruction
+    /// Processes an [InitializeImmutableOwner](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_initialize_immutable_owner(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let token_account_info = next_account_info(account_info_iter)?;

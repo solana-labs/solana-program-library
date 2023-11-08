@@ -1,4 +1,5 @@
-// Program test does not support calling a raw program entrypoint, only `process_instruction`
+// Program test does not support calling a raw program entrypoint, only
+// `process_instruction`
 #![cfg(feature = "test-sbf")]
 
 use {

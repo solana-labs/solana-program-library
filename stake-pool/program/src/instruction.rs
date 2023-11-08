@@ -56,13 +56,15 @@ pub enum StakePoolInstruction {
     ///   3. `[]` Stake pool withdraw authority
     ///   4. `[w]` Uninitialized validator stake list storage account
     ///   5. `[]` Reserve stake account must be initialized, have zero balance,
-    ///       and staker / withdrawer authority set to pool withdraw authority.
-    ///   6. `[]` Pool token mint. Must have zero supply, owned by withdraw authority.
+    ///      and staker / withdrawer authority set to pool withdraw authority.
+    ///   6. `[]` Pool token mint. Must have zero supply, owned by withdraw
+    ///      authority.
     ///   7. `[]` Pool account to deposit the generated fee for manager.
     ///   8. `[]` Token program id
     ///   9. `[]` (Optional) Deposit authority that must sign all deposits.
     ///      Defaults to the program address generated using
-    ///      `find_deposit_authority_program_address`, making deposits permissionless.
+    ///      `find_deposit_authority_program_address`, making deposits
+    ///      permissionless.
     Initialize {
         /// Fee assessed as percentage of perceived rewards
         fee: Fee,
@@ -80,7 +82,10 @@ pub enum StakePoolInstruction {
     ///   list of managed validators.
     ///
     ///   The stake account will have the rent-exempt amount plus
-    ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///   `max(
+    ///     crate::MINIMUM_ACTIVE_STAKE,
+    ///     solana_program::stake::tools::get_minimum_delegation()
+    ///   )`.
     ///   It is funded from the stake pool reserve.
     ///
     ///   0. `[w]` Stake pool
@@ -104,8 +109,9 @@ pub enum StakePoolInstruction {
     ///   (Staker only) Removes validator from the pool, deactivating its stake
     ///
     ///   Only succeeds if the validator stake account has the minimum of
-    ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
-    ///   plus the rent-exempt amount.
+    ///   `max(crate::MINIMUM_ACTIVE_STAKE,
+    /// solana_program::stake::tools::get_minimum_delegation())`.   plus the
+    /// rent-exempt amount.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
@@ -120,19 +126,22 @@ pub enum StakePoolInstruction {
     /// NOTE: This instruction has been deprecated since version 0.7.0. Please
     /// use `DecreaseValidatorStakeWithReserve` instead.
     ///
-    /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
+    /// (Staker only) Decrease active stake on a validator, eventually moving it
+    /// to the reserve
     ///
     /// Internally, this instruction splits a validator stake account into its
     /// corresponding transient stake account and deactivates it.
     ///
     /// In order to rebalance the pool without taking custody, the staker needs
     /// a way of reducing the stake on a stake account. This instruction splits
-    /// some amount of stake, up to the total activated stake, from the canonical
-    /// validator stake account, into its "transient" stake account.
+    /// some amount of stake, up to the total activated stake, from the
+    /// canonical validator stake account, into its "transient" stake
+    /// account.
     ///
     /// The instruction only succeeds if the transient stake account does not
-    /// exist. The amount of lamports to move must be at least rent-exemption plus
-    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    /// exist. The amount of lamports to move must be at least rent-exemption
+    /// plus `max(crate::MINIMUM_ACTIVE_STAKE,
+    /// solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -154,12 +163,14 @@ pub enum StakePoolInstruction {
     /// (Staker only) Increase stake on a validator from the reserve account
     ///
     /// Internally, this instruction splits reserve stake into a transient stake
-    /// account and delegate to the appropriate validator. `UpdateValidatorListBalance`
-    /// will do the work of merging once it's ready.
+    /// account and delegate to the appropriate validator.
+    /// `UpdateValidatorListBalance` will do the work of merging once it's
+    /// ready.
     ///
-    /// This instruction only succeeds if the transient stake account does not exist.
-    /// The minimum amount to move is rent-exemption plus
-    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    /// This instruction only succeeds if the transient stake account does not
+    /// exist. The minimum amount to move is rent-exemption plus
+    /// `max(crate::MINIMUM_ACTIVE_STAKE,
+    /// solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -178,8 +189,8 @@ pub enum StakePoolInstruction {
     ///  userdata: amount of lamports to increase on the given validator.
     ///  The actual amount split into the transient stake account is:
     ///  `lamports + stake_rent_exemption`
-    ///  The rent-exemption of the stake account is withdrawn back to the reserve
-    ///  after it is merged.
+    ///  The rent-exemption of the stake account is withdrawn back to the
+    /// reserve  after it is merged.
     IncreaseValidatorStake {
         /// amount of lamports to increase on the given validator
         lamports: u64,
@@ -187,12 +198,13 @@ pub enum StakePoolInstruction {
         transient_stake_seed: u64,
     },
 
-    /// (Staker only) Set the preferred deposit or withdraw stake account for the
-    /// stake pool
+    /// (Staker only) Set the preferred deposit or withdraw stake account for
+    /// the stake pool
     ///
     /// In order to avoid users abusing the stake pool as a free conversion
     /// between SOL staked on different validators, the staker can force all
-    /// deposits and/or withdraws to go to one chosen account, or unset that account.
+    /// deposits and/or withdraws to go to one chosen account, or unset that
+    /// account.
     ///
     /// 0. `[w]` Stake pool
     /// 1. `[s]` Stake pool staker
@@ -209,12 +221,12 @@ pub enum StakePoolInstruction {
 
     ///  Updates balances of validator and transient stake accounts in the pool
     ///
-    ///  While going through the pairs of validator and transient stake accounts,
-    ///  if the transient stake is inactive, it is merged into the reserve stake
-    ///  account. If the transient stake is active and has matching credits
-    ///  observed, it is merged into the canonical validator stake account. In
-    ///  all other states, nothing is done, and the balance is simply added to
-    ///  the canonical stake account balance.
+    ///  While going through the pairs of validator and transient stake
+    ///  accounts, if the transient stake is inactive, it is merged into the
+    ///  reserve stake account. If the transient stake is active and has
+    ///  matching credits observed, it is merged into the canonical
+    ///  validator stake account. In all other states, nothing is done, and
+    ///  the balance is simply added to the canonical stake account balance.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[]` Stake pool withdraw authority
@@ -227,13 +239,15 @@ pub enum StakePoolInstruction {
     UpdateValidatorListBalance {
         /// Index to start updating on the validator list
         start_index: u32,
-        /// If true, don't try merging transient stake accounts into the reserve or
-        /// validator stake account.  Useful for testing or if a particular stake
-        /// account is in a bad state, but we still want to update
+        /// If true, don't try merging transient stake accounts into the reserve
+        /// or validator stake account.  Useful for testing or if a
+        /// particular stake account is in a bad state, but we still
+        /// want to update
         no_merge: bool,
     },
 
-    ///   Updates total pool balance based on balances in the reserve and validator list
+    ///   Updates total pool balance based on balances in the reserve and
+    ///   validator list
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[]` Stake pool withdraw authority
@@ -250,19 +264,24 @@ pub enum StakePoolInstruction {
     ///   1. `[w]` Validator stake list storage account
     CleanupRemovedValidatorEntries,
 
-    ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
-    ///   into the pool. Inputs are converted to the current ratio.
+    ///   Deposit some stake into the pool. The output is a "pool" token
+    ///   representing ownership into the pool. Inputs are converted to the
+    ///   current ratio.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
     ///   2. `[s]/[]` Stake pool deposit authority
     ///   3. `[]` Stake pool withdraw authority
-    ///   4. `[w]` Stake account to join the pool (withdraw authority for the stake account should be first set to the stake pool deposit authority)
-    ///   5. `[w]` Validator stake account for the stake account to be merged with
+    ///   4. `[w]` Stake account to join the pool (withdraw authority for the
+    ///      stake account should be first set to the stake pool deposit
+    ///      authority)
+    ///   5. `[w]` Validator stake account for the stake account to be merged
+    ///      with
     ///   6. `[w]` Reserve stake account, to withdraw rent exempt reserve
     ///   7. `[w]` User account to receive pool tokens
     ///   8. `[w]` Account to receive pool fee tokens
-    ///   9. `[w]` Account to receive a portion of pool fee tokens as referral fees
+    ///   9. `[w]` Account to receive a portion of pool fee tokens as referral
+    ///      fees
     ///   10. `[w]` Pool token mint account
     ///   11. '[]' Sysvar clock account
     ///   12. '[]' Sysvar stake history account
@@ -272,10 +291,12 @@ pub enum StakePoolInstruction {
 
     ///   Withdraw the token from the pool at the current ratio.
     ///
-    ///   Succeeds if the stake account has enough SOL to cover the desired amount
-    ///   of pool tokens, and if the withdrawal keeps the total staked amount
-    ///   above the minimum of rent-exempt amount +
-    ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///   Succeeds if the stake account has enough SOL to cover the desired
+    ///   amount of pool tokens, and if the withdrawal keeps the total
+    ///   staked amount above the minimum of rent-exempt amount + `max(
+    ///     crate::MINIMUM_ACTIVE_STAKE,
+    ///     solana_program::stake::tools::get_minimum_delegation()
+    ///   )`.
     ///
     ///   When allowing withdrawals, the order of priority goes:
     ///
@@ -329,8 +350,9 @@ pub enum StakePoolInstruction {
     ///  2. '[]` New staker pubkey
     SetStaker,
 
-    ///   Deposit SOL directly into the pool's reserve account. The output is a "pool" token
-    ///   representing ownership into the pool. Inputs are converted to the current ratio.
+    ///   Deposit SOL directly into the pool's reserve account. The output is a
+    ///   "pool" token representing ownership into the pool. Inputs are
+    ///   converted to the current ratio.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[]` Stake pool withdraw authority
@@ -345,7 +367,8 @@ pub enum StakePoolInstruction {
     ///  10. `[s]` (Optional) Stake pool sol deposit authority.
     DepositSol(u64),
 
-    ///  (Manager only) Update SOL deposit, stake deposit, or SOL withdrawal authority.
+    ///  (Manager only) Update SOL deposit, stake deposit, or SOL withdrawal
+    /// authority.
     ///
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
@@ -360,7 +383,8 @@ pub enum StakePoolInstruction {
     ///   2. `[s]` User transfer authority, for pool token account
     ///   3. `[w]` User account to burn pool tokens
     ///   4. `[w]` Reserve stake account, to withdraw SOL
-    ///   5. `[w]` Account receiving the lamports from the reserve, must be a system account
+    ///   5. `[w]` Account receiving the lamports from the reserve, must be a
+    ///      system account
     ///   6. `[w]` Account to receive pool fee tokens
     ///   7. `[w]` Pool token mint account
     ///   8. '[]' Clock sysvar
@@ -409,13 +433,15 @@ pub enum StakePoolInstruction {
     ///
     /// Works regardless if the transient stake account exists.
     ///
-    /// Internally, this instruction splits reserve stake into an ephemeral stake
-    /// account, activates it, then merges or splits it into the transient stake
-    /// account delegated to the appropriate validator. `UpdateValidatorListBalance`
-    /// will do the work of merging once it's ready.
+    /// Internally, this instruction splits reserve stake into an ephemeral
+    /// stake account, activates it, then merges or splits it into the
+    /// transient stake account delegated to the appropriate validator.
+    /// `UpdateValidatorListBalance` will do the work of merging once it's
+    /// ready.
     ///
     /// The minimum amount to move is rent-exemption plus
-    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    /// `max(crate::MINIMUM_ACTIVE_STAKE,
+    /// solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -434,8 +460,8 @@ pub enum StakePoolInstruction {
     ///  userdata: amount of lamports to increase on the given validator.
     ///  The actual amount split into the transient stake account is:
     ///  `lamports + stake_rent_exemption`
-    ///  The rent-exemption of the stake account is withdrawn back to the reserve
-    ///  after it is merged.
+    ///  The rent-exemption of the stake account is withdrawn back to the
+    /// reserve  after it is merged.
     IncreaseAdditionalValidatorStake {
         /// amount of lamports to increase on the given validator
         lamports: u64,
@@ -445,19 +471,22 @@ pub enum StakePoolInstruction {
         ephemeral_stake_seed: u64,
     },
 
-    /// (Staker only) Decrease active stake again from a validator, eventually moving it to the reserve
+    /// (Staker only) Decrease active stake again from a validator, eventually
+    /// moving it to the reserve
     ///
     /// Works regardless if the transient stake account already exists.
     ///
     /// Internally, this instruction:
-    ///  * withdraws rent-exempt reserve lamports from the reserve into the ephemeral stake
+    ///  * withdraws rent-exempt reserve lamports from the reserve into the
+    ///    ephemeral stake
     ///  * splits a validator stake account into an ephemeral stake account
     ///  * deactivates the ephemeral account
-    ///  * merges or splits the ephemeral account into the transient stake account
-    ///    delegated to the appropriate validator
+    ///  * merges or splits the ephemeral account into the transient stake
+    ///    account delegated to the appropriate validator
     ///
     ///  The amount of lamports to move must be at least
-    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    /// `max(crate::MINIMUM_ACTIVE_STAKE,
+    /// solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -480,7 +509,8 @@ pub enum StakePoolInstruction {
         ephemeral_stake_seed: u64,
     },
 
-    /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
+    /// (Staker only) Decrease active stake on a validator, eventually moving it
+    /// to the reserve
     ///
     /// Internally, this instruction:
     /// * withdraws enough lamports to make the transient account rent-exempt
@@ -489,12 +519,14 @@ pub enum StakePoolInstruction {
     ///
     /// In order to rebalance the pool without taking custody, the staker needs
     /// a way of reducing the stake on a stake account. This instruction splits
-    /// some amount of stake, up to the total activated stake, from the canonical
-    /// validator stake account, into its "transient" stake account.
+    /// some amount of stake, up to the total activated stake, from the
+    /// canonical validator stake account, into its "transient" stake
+    /// account.
     ///
     /// The instruction only succeeds if the transient stake account does not
-    /// exist. The amount of lamports to move must be at least rent-exemption plus
-    /// `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    /// exist. The amount of lamports to move must be at least rent-exemption
+    /// plus `max(crate::MINIMUM_ACTIVE_STAKE,
+    /// solana_program::stake::tools::get_minimum_delegation())`.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
@@ -514,16 +546,19 @@ pub enum StakePoolInstruction {
         transient_stake_seed: u64,
     },
 
-    /// (Staker only) Redelegate active stake on a validator, eventually moving it to another
+    /// (Staker only) Redelegate active stake on a validator, eventually moving
+    /// it to another
     ///
     /// Internally, this instruction splits a validator stake account into its
-    /// corresponding transient stake account, redelegates it to an ephemeral stake
-    /// account, then merges that stake into the destination transient stake account.
+    /// corresponding transient stake account, redelegates it to an ephemeral
+    /// stake account, then merges that stake into the destination transient
+    /// stake account.
     ///
     /// In order to rebalance the pool without taking custody, the staker needs
     /// a way of reducing the stake on a stake account. This instruction splits
-    /// some amount of stake, up to the total activated stake, from the canonical
-    /// validator stake account, into its "transient" stake account.
+    /// some amount of stake, up to the total activated stake, from the
+    /// canonical validator stake account, into its "transient" stake
+    /// account.
     ///
     /// The instruction only succeeds if the source transient stake account and
     /// ephemeral stake account do not exist.
@@ -548,10 +583,13 @@ pub enum StakePoolInstruction {
     ///  3. `[w]` Validator list
     ///  4. `[w]` Reserve stake account, to withdraw rent exempt reserve
     ///  5. `[w]` Source canonical stake account to split from
-    ///  6. `[w]` Source transient stake account to receive split and be redelegated
+    ///  6. `[w]` Source transient stake account to receive split and be
+    ///     redelegated
     ///  7. `[w]` Uninitialized ephemeral stake account to receive redelegation
-    ///  8. `[w]` Destination transient stake account to receive ephemeral stake by merge
-    ///  9. `[]` Destination stake account to receive transient stake after activation
+    ///  8. `[w]` Destination transient stake account to receive ephemeral stake
+    ///     by merge
+    ///  9. `[]` Destination stake account to receive transient stake after
+    ///     activation
     /// 10. `[]` Destination validator vote account
     /// 11. `[]` Clock sysvar
     /// 12. `[]` Stake History sysvar
@@ -575,20 +613,24 @@ pub enum StakePoolInstruction {
         destination_transient_stake_seed: u64,
     },
 
-    ///   Deposit some stake into the pool, with a specified slippage constraint.
-    ///   The output is a "pool" token representing ownership into the pool.
-    ///   Inputs are converted at the current ratio.
+    ///   Deposit some stake into the pool, with a specified slippage
+    ///   constraint. The output is a "pool" token representing ownership
+    ///   into the pool. Inputs are converted at the current ratio.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
     ///   2. `[s]/[]` Stake pool deposit authority
     ///   3. `[]` Stake pool withdraw authority
-    ///   4. `[w]` Stake account to join the pool (withdraw authority for the stake account should be first set to the stake pool deposit authority)
-    ///   5. `[w]` Validator stake account for the stake account to be merged with
+    ///   4. `[w]` Stake account to join the pool (withdraw authority for the
+    ///      stake account should be first set to the stake pool deposit
+    ///      authority)
+    ///   5. `[w]` Validator stake account for the stake account to be merged
+    ///      with
     ///   6. `[w]` Reserve stake account, to withdraw rent exempt reserve
     ///   7. `[w]` User account to receive pool tokens
     ///   8. `[w]` Account to receive pool fee tokens
-    ///   9. `[w]` Account to receive a portion of pool fee tokens as referral fees
+    ///   9. `[w]` Account to receive a portion of pool fee tokens as referral
+    ///      fees
     ///   10. `[w]` Pool token mint account
     ///   11. '[]' Sysvar clock account
     ///   12. '[]' Sysvar stake history account
@@ -602,10 +644,12 @@ pub enum StakePoolInstruction {
     ///   Withdraw the token from the pool at the current ratio, specifying a
     ///   minimum expected output lamport amount.
     ///
-    ///   Succeeds if the stake account has enough SOL to cover the desired amount
-    ///   of pool tokens, and if the withdrawal keeps the total staked amount
-    ///   above the minimum of rent-exempt amount +
-    ///   `max(crate::MINIMUM_ACTIVE_STAKE, solana_program::stake::tools::get_minimum_delegation())`.
+    ///   Succeeds if the stake account has enough SOL to cover the desired
+    ///   amount of pool tokens, and if the withdrawal keeps the total
+    ///   staked amount above the minimum of rent-exempt amount + `max(
+    ///     crate::MINIMUM_ACTIVE_STAKE,
+    ///     solana_program::stake::tools::get_minimum_delegation()
+    ///   )`.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
@@ -628,9 +672,10 @@ pub enum StakePoolInstruction {
         minimum_lamports_out: u64,
     },
 
-    ///   Deposit SOL directly into the pool's reserve account, with a specified
-    ///   slippage constraint. The output is a "pool" token representing ownership
-    ///   into the pool. Inputs are converted at the current ratio.
+    ///   Deposit SOL directly into the pool's reserve account, with a
+    ///   specified slippage constraint. The output is a "pool" token
+    ///   representing ownership into the pool. Inputs are converted at the
+    ///   current ratio.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[]` Stake pool withdraw authority
@@ -659,7 +704,8 @@ pub enum StakePoolInstruction {
     ///   2. `[s]` User transfer authority, for pool token account
     ///   3. `[w]` User account to burn pool tokens
     ///   4. `[w]` Reserve stake account, to withdraw SOL
-    ///   5. `[w]` Account receiving the lamports from the reserve, must be a system account
+    ///   5. `[w]` Account receiving the lamports from the reserve, must be a
+    ///      system account
     ///   6. `[w]` Account to receive pool fee tokens
     ///   7. `[w]` Pool token mint account
     ///   8. '[]' Clock sysvar
@@ -723,7 +769,8 @@ pub fn initialize(
     }
 }
 
-/// Creates `AddValidatorToPool` instruction (add new validator stake account to the pool)
+/// Creates `AddValidatorToPool` instruction (add new validator stake account to
+/// the pool)
 pub fn add_validator_to_pool(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -761,7 +808,8 @@ pub fn add_validator_to_pool(
     }
 }
 
-/// Creates `RemoveValidatorFromPool` instruction (remove validator stake account from the pool)
+/// Creates `RemoveValidatorFromPool` instruction (remove validator stake
+/// account from the pool)
 pub fn remove_validator_from_pool(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -790,8 +838,8 @@ pub fn remove_validator_from_pool(
     }
 }
 
-/// Creates `DecreaseValidatorStake` instruction (rebalance from validator account to
-/// transient account)
+/// Creates `DecreaseValidatorStake` instruction (rebalance from validator
+/// account to transient account)
 #[deprecated(
     since = "0.7.0",
     note = "please use `decrease_validator_stake_with_reserve`"
@@ -913,8 +961,8 @@ pub fn decrease_validator_stake_with_reserve(
     }
 }
 
-/// Creates `IncreaseValidatorStake` instruction (rebalance from reserve account to
-/// transient account)
+/// Creates `IncreaseValidatorStake` instruction (rebalance from reserve account
+/// to transient account)
 pub fn increase_validator_stake(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -957,8 +1005,8 @@ pub fn increase_validator_stake(
     }
 }
 
-/// Creates `IncreaseAdditionalValidatorStake` instruction (rebalance from reserve account to
-/// transient account)
+/// Creates `IncreaseAdditionalValidatorStake` instruction (rebalance from
+/// reserve account to transient account)
 pub fn increase_additional_validator_stake(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1004,7 +1052,8 @@ pub fn increase_additional_validator_stake(
     }
 }
 
-/// Creates `Redelegate` instruction (rebalance from one validator account to another)
+/// Creates `Redelegate` instruction (rebalance from one validator account to
+/// another)
 pub fn redelegate(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1107,8 +1156,8 @@ pub fn add_validator_to_pool_with_vote(
     )
 }
 
-/// Create an `RemoveValidatorFromPool` instruction given an existing stake pool and
-/// vote account
+/// Create an `RemoveValidatorFromPool` instruction given an existing stake pool
+/// and vote account
 pub fn remove_validator_from_pool_with_vote(
     program_id: &Pubkey,
     stake_pool: &StakePool,
@@ -1142,8 +1191,8 @@ pub fn remove_validator_from_pool_with_vote(
     )
 }
 
-/// Create an `IncreaseValidatorStake` instruction given an existing stake pool and
-/// vote account
+/// Create an `IncreaseValidatorStake` instruction given an existing stake pool
+/// and vote account
 pub fn increase_validator_stake_with_vote(
     program_id: &Pubkey,
     stake_pool: &StakePool,
@@ -1229,8 +1278,8 @@ pub fn increase_additional_validator_stake_with_vote(
     )
 }
 
-/// Create a `DecreaseValidatorStake` instruction given an existing stake pool and
-/// vote account
+/// Create a `DecreaseValidatorStake` instruction given an existing stake pool
+/// and vote account
 pub fn decrease_validator_stake_with_vote(
     program_id: &Pubkey,
     stake_pool: &StakePool,
@@ -1312,7 +1361,8 @@ pub fn decrease_additional_validator_stake_with_vote(
     )
 }
 
-/// Creates `UpdateValidatorListBalance` instruction (update validator stake account balances)
+/// Creates `UpdateValidatorListBalance` instruction (update validator stake
+/// account balances)
 pub fn update_validator_list_balance(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1373,7 +1423,8 @@ pub fn update_validator_list_balance(
     }
 }
 
-/// Creates `UpdateStakePoolBalance` instruction (pool balance from the stake account list balances)
+/// Creates `UpdateStakePoolBalance` instruction (pool balance from the stake
+/// account list balances)
 pub fn update_stake_pool_balance(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1402,7 +1453,8 @@ pub fn update_stake_pool_balance(
     }
 }
 
-/// Creates `CleanupRemovedValidatorEntries` instruction (removes entries from the validator list)
+/// Creates `CleanupRemovedValidatorEntries` instruction (removes entries from
+/// the validator list)
 pub fn cleanup_removed_validator_entries(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1690,9 +1742,10 @@ pub fn deposit_stake_with_authority(
     )
 }
 
-/// Creates instructions required to deposit into a stake pool with slippage, given
-/// a stake account owned by the user. The difference with `deposit()` is that a deposit
-/// authority must sign this instruction, which is required for private pools.
+/// Creates instructions required to deposit into a stake pool with slippage,
+/// given a stake account owned by the user. The difference with `deposit()` is
+/// that a deposit authority must sign this instruction, which is required for
+/// private pools.
 pub fn deposit_stake_with_authority_and_slippage(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1813,7 +1866,8 @@ pub fn deposit_sol(
     )
 }
 
-/// Creates instruction to deposit SOL directly into a stake pool with slippage constraint.
+/// Creates instruction to deposit SOL directly into a stake pool with slippage
+/// constraint.
 pub fn deposit_sol_with_slippage(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1879,7 +1933,8 @@ pub fn deposit_sol_with_authority(
     )
 }
 
-/// Creates instruction to deposit SOL directly into a stake pool with slippage constraint.
+/// Creates instruction to deposit SOL directly into a stake pool with slippage
+/// constraint.
 pub fn deposit_sol_with_authority_and_slippage(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -2304,8 +2359,8 @@ pub fn set_funding_authority(
     }
 }
 
-/// Creates an instruction to update metadata in the mpl token metadata program account for
-/// the pool token
+/// Creates an instruction to update metadata in the mpl token metadata program
+/// account for the pool token
 pub fn update_token_metadata(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -2336,8 +2391,8 @@ pub fn update_token_metadata(
     }
 }
 
-/// Creates an instruction to create metadata using the mpl token metadata program for
-/// the pool token
+/// Creates an instruction to create metadata using the mpl token metadata
+/// program for the pool token
 pub fn create_token_metadata(
     program_id: &Pubkey,
     stake_pool: &Pubkey,

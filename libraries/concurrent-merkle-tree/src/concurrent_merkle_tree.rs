@@ -30,22 +30,26 @@ fn check_leaf_index(leaf_index: u32, max_depth: usize) -> Result<(), ConcurrentM
 /// Conurrent Merkle Tree is a Merkle Tree that allows
 /// multiple tree operations targeted for the same tree root to succeed.
 ///
-/// In a normal merkle tree, only the first tree operation will succeed because the
-/// following operations will have proofs for the unmodified tree state. ConcurrentMerkleTree avoids
-/// this by storing a buffer of modified nodes (`change_logs`) which allows it to implement fast-forwarding
-/// of concurrent merkle tree operations.
+/// In a normal merkle tree, only the first tree operation will succeed because
+/// the following operations will have proofs for the unmodified tree state.
+/// ConcurrentMerkleTree avoids this by storing a buffer of modified nodes
+/// (`change_logs`) which allows it to implement fast-forwarding of concurrent
+/// merkle tree operations.
 ///
 /// As long as the concurrent merkle tree operations
-/// have proofs that are valid for a previous state of the tree that can be found in the stored
-/// buffer, that tree operation's proof can be fast-forwarded and the tree operation can be
-/// applied.
+/// have proofs that are valid for a previous state of the tree that can be
+/// found in the stored buffer, that tree operation's proof can be
+/// fast-forwarded and the tree operation can be applied.
 ///
 /// There are two primitive operations for Concurrent Merkle Trees:
-/// [set_leaf](ConcurrentMerkleTree:set_leaf) and [append](ConcurrentMerkleTree::append). Setting a leaf value requires
-/// passing a proof to perform that tree operation, but appending does not require a proof.
+/// [set_leaf](ConcurrentMerkleTree:set_leaf) and
+/// [append](ConcurrentMerkleTree::append). Setting a leaf value requires
+/// passing a proof to perform that tree operation, but appending does not
+/// require a proof.
 ///
-/// An additional key property of ConcurrentMerkleTree is support for [append](ConcurrentMerkleTree::append) operations,
-/// which do not require any proofs to be passed. This is accomplished by keeping track of the
+/// An additional key property of ConcurrentMerkleTree is support for
+/// [append](ConcurrentMerkleTree::append) operations, which do not require any
+/// proofs to be passed. This is accomplished by keeping track of the
 /// proof to the rightmost leaf in the tree (`rightmost_proof`).
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -94,7 +98,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         !(self.buffer_size == 0 && self.sequence_number == 0 && self.active_index == 0)
     }
 
-    /// This is the trustless initialization method that should be used in most cases.
+    /// This is the trustless initialization method that should be used in most
+    /// cases.
     pub fn initialize(&mut self) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
         if self.is_initialized() {
@@ -118,12 +123,13 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         Ok(self.change_logs[0].root)
     }
 
-    /// This is a trustful initialization method that assumes the root contains the expected
-    /// leaves.
+    /// This is a trustful initialization method that assumes the root contains
+    /// the expected leaves.
     ///
-    /// At the time of this crate's publishing, there is no supported way to efficiently verify
-    /// a pre-initialized root on-chain. Using this method before having a method for on-chain verification
-    /// will prevent other applications from indexing the leaf data stored in this tree.
+    /// At the time of this crate's publishing, there is no supported way to
+    /// efficiently verify a pre-initialized root on-chain. Using this
+    /// method before having a method for on-chain verification will prevent
+    /// other applications from indexing the leaf data stored in this tree.
     pub fn initialize_with_root(
         &mut self,
         root: Node,
@@ -366,8 +372,9 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         }
     }
 
-    /// Returns the Current Seq of the tree, the seq is the monotonic counter of the tree operations
-    /// that is incremented every time a mutable operation is performed on the tree.
+    /// Returns the Current Seq of the tree, the seq is the monotonic counter of
+    /// the tree operations that is incremented every time a mutable
+    /// operation is performed on the tree.
     pub fn get_seq(&self) -> u64 {
         self.sequence_number
     }
@@ -395,7 +402,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         log_compute!();
         // Modifies proof by iterating through the change log
         loop {
-            // If use_full_buffer is false, this loop will terminate if the initial value of changelog_buffer_index is the active index
+            // If use_full_buffer is false, this loop will terminate if the initial value of
+            // changelog_buffer_index is the active index
             if !use_full_buffer && changelog_buffer_index == self.active_index {
                 break;
             }
@@ -485,7 +493,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     }
 
     /// Note: Enabling `allow_inferred_proof` will fast forward the given proof
-    /// from the beginning of the buffer in the case that the supplied root is not in the buffer.
+    /// from the beginning of the buffer in the case that the supplied root is
+    /// not in the buffer.
     #[inline(always)]
     fn try_apply_proof(
         &mut self,
@@ -520,7 +529,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         self.sequence_number = self.sequence_number.saturating_add(1);
     }
 
-    /// Creates a new root from a proof that is valid for the root at `self.active_index`
+    /// Creates a new root from a proof that is valid for the root at
+    /// `self.active_index`
     fn update_buffers_from_proof(&mut self, start: Node, proof: &[Node], index: u32) -> Node {
         let change_log = &mut self.change_logs[self.active_index as usize];
         // Also updates change_log's current root

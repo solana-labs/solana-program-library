@@ -146,7 +146,7 @@ impl TestContext {
         let token_unchecked = Token::new_native(Arc::clone(&client), &id(), Arc::new(payer));
         self.token_context = Some(TokenContext {
             decimals: native_mint::DECIMALS,
-            mint_authority: Keypair::new(), /*bogus*/
+            mint_authority: Keypair::new(), /* bogus */
             token,
             token_unchecked,
             alice: Keypair::new(),

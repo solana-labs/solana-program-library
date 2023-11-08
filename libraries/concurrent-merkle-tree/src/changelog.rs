@@ -58,8 +58,8 @@ impl<const MAX_DEPTH: usize> ChangeLog<MAX_DEPTH> {
         node
     }
 
-    /// Fast forwards the given proof and corresponding leaf by applying an update from
-    /// the current change log
+    /// Fast forwards the given proof and corresponding leaf by applying an
+    /// update from the current change log
     pub fn update_proof_or_leaf(
         &self,
         leaf_index: u32,

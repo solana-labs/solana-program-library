@@ -24,9 +24,10 @@ use {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum SinglePoolInstruction {
-    ///   Initialize the mint and stake account for a new single-validator stake pool.
-    ///   The pool stake account must contain the rent-exempt minimum plus the minimum delegation.
-    ///   No tokens will be minted: to deposit more, use `Deposit` after `InitializeStake`.
+    ///   Initialize the mint and stake account for a new single-validator
+    ///   stake pool. The pool stake account must contain the rent-exempt
+    ///   minimum plus the minimum delegation. No tokens will be minted: to
+    ///   deposit more, use `Deposit` after `InitializeStake`.
     ///
     ///   0. `[]` Validator vote account
     ///   1. `[w]` Pool account
@@ -43,8 +44,9 @@ pub enum SinglePoolInstruction {
     ///  12. `[]` Stake program
     InitializePool,
 
-    ///   Restake the pool stake account if it was deactivated. This can happen through the
-    ///   stake program's `DeactivateDelinquent` instruction, or during a cluster restart.
+    ///   Restake the pool stake account if it was deactivated. This can
+    ///   happen through the stake program's `DeactivateDelinquent`
+    ///   instruction, or during a cluster restart.
     ///
     ///   0. `[]` Validator vote account
     ///   1. `[]` Pool account
@@ -56,8 +58,9 @@ pub enum SinglePoolInstruction {
     ///   7. `[]` Stake program
     ReactivatePoolStake,
 
-    ///   Deposit stake into the pool.  The output is a "pool" token representing fractional
-    ///   ownership of the pool stake. Inputs are converted to the current ratio.
+    ///   Deposit stake into the pool. The output is a "pool" token
+    ///   representing fractional ownership of the pool stake. Inputs are
+    ///   converted to the current ratio.
     ///
     ///   0. `[]` Pool account
     ///   1. `[w]` Pool stake account
@@ -92,10 +95,11 @@ pub enum SinglePoolInstruction {
         token_amount: u64,
     },
 
-    ///   Create token metadata for the stake-pool token in the metaplex-token program.
-    ///   Step three of the permissionless three-stage initialization flow.
-    ///   Note this instruction is not necessary for the pool to operate, to ensure we cannot
-    ///   be broken by upstream.
+    ///   Create token metadata for the stake-pool token in the metaplex-token
+    ///   program. Step three of the permissionless three-stage initialization
+    ///   flow.
+    ///   Note this instruction is not necessary for the pool to operate, to
+    ///   ensure we cannot be broken by upstream.
     ///
     ///   0. `[]` Pool account
     ///   1. `[]` Pool token mint
@@ -107,7 +111,8 @@ pub enum SinglePoolInstruction {
     ///   7. `[]` System program id
     CreateTokenMetadata,
 
-    ///   Update token metadata for the stake-pool token in the metaplex-token program.
+    ///   Update token metadata for the stake-pool token in the metaplex-token
+    ///   program.
     ///
     ///   0. `[]` Validator vote account
     ///   1. `[]` Pool account
@@ -293,9 +298,11 @@ pub fn deposit_stake(
     }
 }
 
-/// Creates all necessary instructions to withdraw stake into a given stake account.
-/// If a new stake account is required, the user should first include `system_instruction::create_account`
-/// with account size `std::mem::size_of::<stake::state::StakeStateV2>()` and owner `stake::program::id()`.
+/// Creates all necessary instructions to withdraw stake into a given stake
+/// account. If a new stake account is required, the user should first include
+/// `system_instruction::create_account` with account size
+/// `std::mem::size_of::<stake::state::StakeStateV2>()` and owner
+/// `stake::program::id()`.
 pub fn withdraw(
     program_id: &Pubkey,
     pool_address: &Pubkey,
@@ -368,9 +375,11 @@ pub fn withdraw_stake(
     }
 }
 
-/// Creates necessary instructions to create and delegate a new stake account to a given validator.
-/// Uses a fixed address for each wallet and vote account combination to make it easier to find for deposits.
-/// This is an optional helper function; deposits can come from any owned stake account without lockup.
+/// Creates necessary instructions to create and delegate a new stake account to
+/// a given validator. Uses a fixed address for each wallet and vote account
+/// combination to make it easier to find for deposits. This is an optional
+/// helper function; deposits can come from any owned stake account without
+/// lockup.
 pub fn create_and_delegate_user_stake(
     program_id: &Pubkey,
     vote_account_address: &Pubkey,

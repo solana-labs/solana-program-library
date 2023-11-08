@@ -13,19 +13,23 @@ use {
 #[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum TokenUpgradeInstruction {
-    /// Burns all of the original tokens in the user's account, and transfers the same
-    /// amount of tokens from an account owned by a PDA into another account.
+    /// Burns all of the original tokens in the user's account, and transfers
+    /// the same amount of tokens from an account owned by a PDA into
+    /// another account.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writeable]` Original token account to burn from
     ///   1. `[writeable]` Original token mint
-    ///   2. `[writeable]` Escrow of new tokens held by or delegated to PDA at address:
-    ///       `get_token_upgrade_authority_address(original_mint, new_mint, program_id)`
+    ///   2. `[writeable]` Escrow of new tokens held by or delegated to PDA at
+    ///      address: `get_token_upgrade_authority_address(original_mint,
+    ///      new_mint, program_id)`
     ///   3. `[writeable]` New token account to transfer into
     ///   4. `[]` New token mint
-    ///   5. `[]` Transfer authority (owner or delegate) of new token escrow held by PDA, must be:
-    ///       `get_token_upgrade_authority_address(original_mint, new_mint, program_id)`
+    ///   5. `[]` Transfer authority (owner or delegate) of new token escrow
+    ///      held by PDA, must be:
+    ///      `get_token_upgrade_authority_address(original_mint, new_mint,
+    ///      program_id)`
     ///   6. `[]` SPL Token program for original mint
     ///   7. `[]` SPL Token program for new mint
     ///   8. `[]` Original token account transfer authority (owner or delegate)
@@ -33,7 +37,6 @@ pub enum TokenUpgradeInstruction {
     ///
     /// Data expected by this instruction:
     ///   None
-    ///
     Exchange,
 }
 

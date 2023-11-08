@@ -1,4 +1,5 @@
-// XXX this file will be deleted and replaced with a stake program client once i write one
+// XXX this file will be deleted and replaced with a stake program client once i
+// write one
 
 use {
     crate::config::*,

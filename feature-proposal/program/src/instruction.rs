@@ -18,38 +18,44 @@ use {
 pub enum FeatureProposalInstruction {
     /// Propose a new feature.
     ///
-    /// This instruction will create a variety of accounts to support the feature proposal, all
-    /// funded by account 0:
-    /// * A new token mint with a supply of `tokens_to_mint`, owned by the program and never
-    ///   modified again
-    /// * A new "distributor" token account that holds the total supply, owned by account 0.
-    /// * A new "acceptance" token account that holds 0 tokens, owned by the program.  Tokens
-    ///   transfers to this address are irrevocable and permanent.
-    /// * A new feature id account that has been funded and allocated (as described in
-    ///  `solana_program::feature`)
+    /// This instruction will create a variety of accounts to support the
+    /// feature proposal, all funded by account 0:
+    /// * A new token mint with a supply of `tokens_to_mint`, owned by the
+    ///   program and never modified again
+    /// * A new "distributor" token account that holds the total supply, owned
+    ///   by account 0.
+    /// * A new "acceptance" token account that holds 0 tokens, owned by the
+    ///   program.  Tokens transfers to this address are irrevocable and
+    ///   permanent.
+    /// * A new feature id account that has been funded and allocated (as
+    ///   described in `solana_program::feature`)
     ///
-    /// On successful execution of the instruction, the feature proposer is expected to distribute
-    /// the tokens in the distributor token account out to all participating parties.
+    /// On successful execution of the instruction, the feature proposer is
+    /// expected to distribute the tokens in the distributor token account
+    /// out to all participating parties.
     ///
-    /// Based on the provided acceptance criteria, if `AcceptanceCriteria::tokens_required`
-    /// tokens are transferred into the acceptance token account before
-    /// `AcceptanceCriteria::deadline` then the proposal is eligible to be accepted.
+    /// Based on the provided acceptance criteria, if
+    /// `AcceptanceCriteria::tokens_required` tokens are transferred into
+    /// the acceptance token account before `AcceptanceCriteria::deadline`
+    /// then the proposal is eligible to be accepted.
     ///
-    /// The `FeatureProposalInstruction::Tally` instruction must be executed, by any party, to
-    /// complete the feature acceptance process.
+    /// The `FeatureProposalInstruction::Tally` instruction must be executed, by
+    /// any party, to complete the feature acceptance process.
     ///
     /// Accounts expected by this instruction:
     ///
     /// 0. `[writeable,signer]` Funding account (must be a system account)
     /// 1. `[writeable,signer]` Unallocated feature proposal account to create
     /// 2. `[writeable]` Token mint address from `get_mint_address`
-    /// 3. `[writeable]` Distributor token account address from `get_distributor_token_address`
-    /// 4. `[writeable]` Acceptance token account address from `get_acceptance_token_address`
-    /// 5. `[writeable]` Feature id account address from `get_feature_id_address`
+    /// 3. `[writeable]` Distributor token account address from
+    ///    `get_distributor_token_address`
+    /// 4. `[writeable]` Acceptance token account address from
+    ///    `get_acceptance_token_address`
+    /// 5. `[writeable]` Feature id account address from
+    ///    `get_feature_id_address`
     /// 6. `[]` System program
     /// 7. `[]` SPL Token program
     /// 8. `[]` Rent sysvar
-    ///
     Propose {
         /// Total number of tokens to mint for this proposal
         #[allow(dead_code)] // not dead code..
@@ -60,8 +66,8 @@ pub enum FeatureProposalInstruction {
         acceptance_criteria: AcceptanceCriteria,
     },
 
-    /// `Tally` is a permission-less instruction to check the acceptance criteria for the feature
-    /// proposal, which may result in:
+    /// `Tally` is a permission-less instruction to check the acceptance
+    /// criteria for the feature proposal, which may result in:
     /// * No action
     /// * Feature proposal acceptance
     /// * Feature proposal expiration
@@ -69,8 +75,10 @@ pub enum FeatureProposalInstruction {
     /// Accounts expected by this instruction:
     ///
     /// 0. `[writeable]` Feature proposal account
-    /// 1. `[]` Acceptance token account address from `get_acceptance_token_address`
-    /// 2. `[writeable]` Derived feature id account address from `get_feature_id_address`
+    /// 1. `[]` Acceptance token account address from
+    ///    `get_acceptance_token_address`
+    /// 2. `[writeable]` Derived feature id account address from
+    ///    `get_feature_id_address`
     /// 3. `[]` System program
     /// 4. `[]` Clock sysvar
     Tally,

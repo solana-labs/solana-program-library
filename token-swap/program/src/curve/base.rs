@@ -27,7 +27,8 @@ use {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CurveType {
-    /// Uniswap-style constant product curve, invariant = token_a_amount * token_b_amount
+    /// Uniswap-style constant product curve, invariant = token_a_amount *
+    /// token_b_amount
     ConstantProduct,
     /// Flat line, always providing 1:1 from one token to another
     ConstantPrice,
@@ -206,8 +207,8 @@ impl PartialEq for SwapCurve {
 
 impl Sealed for SwapCurve {}
 impl Pack for SwapCurve {
-    /// Size of encoding of all curve parameters, which include fees and any other
-    /// constants used to calculate swaps, deposits, and withdrawals.
+    /// Size of encoding of all curve parameters, which include fees and any
+    /// other constants used to calculate swaps, deposits, and withdrawals.
     /// This includes 1 byte for the type, and 72 for the calculator to use as
     /// it needs.  Some calculators may be smaller than 72 bytes.
     const LEN: usize = 33;

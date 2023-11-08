@@ -11,11 +11,13 @@ use {
 };
 
 /// Errors that may be returned by the Governance program
+// Start Governance custom errors from 500 to avoid conflicts with programs
+// invoked via CPI
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum GovernanceError {
     /// Invalid instruction passed to program
     #[error("Invalid instruction passed to program")]
-    InvalidInstruction = 500, // Start Governance custom errors from 500 to avoid conflicts with programs invoked via CPI
+    InvalidInstruction = 500,
 
     /// Realm with the given name and governing mints already exists
     #[error("Realm with the given name and governing mints already exists")]
@@ -85,7 +87,8 @@ pub enum GovernanceError {
     #[error("Invalid Governance config: Vote threshold percentage out of range")]
     InvalidVoteThresholdPercentage, // 517
 
-    /// Proposal for the given Governance, Governing Token Mint and index already exists
+    /// Proposal for the given Governance, Governing Token Mint and index
+    /// already exists
     #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
     ProposalAlreadyExists, // 518
 
@@ -229,7 +232,8 @@ pub enum GovernanceError {
     #[error("Invalid ProgramData account Data")]
     InvalidProgramDataAccountData, // 552
 
-    /// Provided upgrade authority doesn't match current program upgrade authority
+    /// Provided upgrade authority doesn't match current program upgrade
+    /// authority
     #[error("Provided upgrade authority doesn't match current program upgrade authority")]
     InvalidUpgradeAuthority, // 553
 

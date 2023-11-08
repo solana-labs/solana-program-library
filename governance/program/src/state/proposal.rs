@@ -74,8 +74,10 @@ pub struct ProposalOption {
 pub enum VoteType {
     /// Single choice vote with mutually exclusive choices
     /// In the SingeChoice mode there can ever be a single winner
-    /// If multiple options score the same highest vote then the Proposal is not resolved and considered as Failed
-    /// Note: Yes/No vote is a single choice (Yes) vote with the deny option (No)
+    /// If multiple options score the same highest vote then the Proposal is
+    /// not resolved and considered as Failed.
+    /// Note: Yes/No vote is a single choice (Yes) vote with the deny
+    /// option (No)
     SingleChoice,
 
     /// Multiple options can be selected with up to max_voter_options per voter
@@ -89,23 +91,26 @@ pub enum VoteType {
 
         /// The min number of options a voter must choose
         ///
-        /// Note: In the current version the limit is not supported and not enforced
-        /// and must always be set to 1
+        /// Note: In the current version the limit is not supported and not
+        /// enforced and must always be set to 1
         #[allow(dead_code)]
         min_voter_options: u8,
 
         /// The max number of options a voter can choose
         ///
-        /// Note: In the current version the limit is not supported and not enforced
-        /// and must always be set to the number of available options
+        /// Note: In the current version the limit is not supported and not
+        /// enforced and must always be set to the number of available
+        /// options
         #[allow(dead_code)]
         max_voter_options: u8,
 
         /// The max number of wining options
-        /// For executable proposals it limits how many options can be executed for a Proposal
+        /// For executable proposals it limits how many options can be executed
+        /// for a Proposal
         ///
-        /// Note: In the current version the limit is not supported and not enforced
-        /// and must always be set to the number of available options
+        /// Note: In the current version the limit is not supported and not
+        /// enforced and must always be set to the number of available
+        /// options
         #[allow(dead_code)]
         max_winning_options: u8,
     },
@@ -114,11 +119,14 @@ pub enum VoteType {
 /// Type of MultiChoice.
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum MultiChoiceType {
-    /// Multiple options can be approved with full weight allocated to each approved option
+    /// Multiple options can be approved with full weight allocated to each
+    /// approved option
     FullWeight,
 
-    /// Multiple options can be approved with weight allocated proportionally to the percentage of the total weight
-    /// The full weight has to be voted among the approved options, i.e., 100% of the weight has to be allocated
+    /// Multiple options can be approved with weight allocated proportionally
+    /// to the percentage of the total weight.
+    /// The full weight has to be voted among the approved options, i.e.,
+    /// 100% of the weight has to be allocated
     Weighted,
 }
 
@@ -132,14 +140,16 @@ pub struct ProposalV2 {
     pub governance: Pubkey,
 
     /// Indicates which Governing Token is used to vote on the Proposal
-    /// Whether the general Community token owners or the Council tokens owners vote on this Proposal
+    /// Whether the general Community token owners or the Council tokens owners
+    /// vote on this Proposal
     pub governing_token_mint: Pubkey,
 
     /// Current proposal state
     pub state: ProposalState,
 
     // TODO: add state_at timestamp to have single field to filter recent proposals in the UI
-    /// The TokenOwnerRecord representing the user who created and owns this Proposal
+    /// The TokenOwnerRecord representing the user who created and owns this
+    /// Proposal
     pub token_owner_record: Pubkey,
 
     /// The number of signatories assigned to the Proposal
@@ -157,11 +167,12 @@ pub struct ProposalV2 {
     /// The total weight of the Proposal rejection votes
     /// If the proposal has no deny option then the weight is None
     ///
-    /// Only proposals with the deny option can have executable instructions attached to them
-    /// Without the deny option a proposal is only non executable survey
+    /// Only proposals with the deny option can have executable instructions
+    /// attached to them Without the deny option a proposal is only non
+    /// executable survey
     ///
-    /// The deny options is also used for off-chain and/or manually executable proposal to make them binding
-    /// as opposed to survey only proposals
+    /// The deny options is also used for off-chain and/or manually executable
+    /// proposal to make them binding as opposed to survey only proposals
     pub deny_vote_weight: Option<u64>,
 
     /// Reserved space for future versions
@@ -172,8 +183,9 @@ pub struct ProposalV2 {
     /// Note: Abstain is not supported in the current version
     pub abstain_vote_weight: Option<u64>,
 
-    /// Optional start time if the Proposal should not enter voting state immediately after being signed off
-    /// Note: start_at is not supported in the current version
+    /// Optional start time if the Proposal should not enter voting state
+    /// immediately after being signed off Note: start_at is not supported
+    /// in the current version
     pub start_voting_at: Option<UnixTimestamp>,
 
     /// When the Proposal was created and entered Draft state
@@ -186,7 +198,8 @@ pub struct ProposalV2 {
     pub voting_at: Option<UnixTimestamp>,
 
     /// When the Proposal began voting as Slot
-    /// Note: The slot is not currently used but the exact slot is going to be required to support snapshot based vote weights
+    /// Note: The slot is not currently used but the exact slot is going to be
+    /// required to support snapshot based vote weights
     pub voting_at_slot: Option<Slot>,
 
     /// When the Proposal ended voting and entered either Succeeded or Defeated
@@ -195,26 +208,32 @@ pub struct ProposalV2 {
     /// When the Proposal entered Executing state
     pub executing_at: Option<UnixTimestamp>,
 
-    /// When the Proposal entered final state Completed or Cancelled and was closed
+    /// When the Proposal entered final state Completed or Cancelled and was
+    /// closed
     pub closed_at: Option<UnixTimestamp>,
 
     /// Instruction execution flag for ordered and transactional instructions
     /// Note: This field is not used in the current version
     pub execution_flags: InstructionExecutionFlags,
 
-    /// The max vote weight for the Governing Token mint at the time Proposal was decided
-    /// It's used to show correct vote results for historical proposals in cases when the mint supply or max weight source changed
-    /// after vote was completed.
+    /// The max vote weight for the Governing Token mint at the time Proposal
+    /// was decided.
+    /// It's used to show correct vote results for historical proposals in
+    /// cases when the mint supply or max weight source changed after vote was
+    /// completed.
     pub max_vote_weight: Option<u64>,
 
-    /// Max voting time for the proposal if different from parent Governance  (only higher value possible)
+    /// Max voting time for the proposal if different from parent Governance
+    /// (only higher value possible).
     /// Note: This field is not used in the current version
     pub max_voting_time: Option<u32>,
 
     /// The vote threshold at the time Proposal was decided
-    /// It's used to show correct vote results for historical proposals in cases when the threshold
-    /// was changed for governance config after vote was completed.
-    /// TODO: Use this field to override the threshold from parent Governance (only higher value possible)
+    /// It's used to show correct vote results for historical proposals in cases
+    /// when the threshold was changed for governance config after vote was
+    /// completed.
+    /// TODO: Use this field to override the threshold from parent Governance
+    /// (only higher value possible)
     pub vote_threshold: Option<VoteThreshold>,
 
     /// Reserved space for future versions
@@ -244,7 +263,8 @@ impl IsInitialized for ProposalV2 {
 }
 
 impl ProposalV2 {
-    /// Checks if Signatories can be edited (added or removed) for the Proposal in the given state
+    /// Checks if Signatories can be edited (added or removed) for the Proposal
+    /// in the given state
     pub fn assert_can_edit_signatories(&self) -> Result<(), ProgramError> {
         self.assert_is_draft_state()
             .map_err(|_| GovernanceError::InvalidStateCannotEditSignatories.into())
@@ -316,8 +336,9 @@ impl ProposalV2 {
 
         match vote {
             Vote::Approve(_) | Vote::Abstain => {
-                // Once the base voting time passes and we are in the voting cool off time approving votes are no longer accepted
-                // Abstain is considered as positive vote because when attendance quorum is used it can tip the scales
+                // Once the base voting time passes and we are in the voting cool off time
+                // approving votes are no longer accepted Abstain is considered
+                // as positive vote because when attendance quorum is used it can tip the scales
                 if self.has_voting_base_time_ended(config, current_unix_timestamp) {
                     Err(GovernanceError::VoteNotAllowedInCoolOffTime.into())
                 } else {
@@ -329,7 +350,8 @@ impl ProposalV2 {
         }
     }
 
-    /// Checks if proposal has concluded so that security deposit is no longer needed
+    /// Checks if proposal has concluded so that security deposit is no longer
+    /// needed
     pub fn assert_can_refund_proposal_deposit(&self) -> Result<(), ProgramError> {
         match self.state {
             ProposalState::Succeeded
@@ -345,7 +367,8 @@ impl ProposalV2 {
         }
     }
 
-    /// Expected base vote end time determined by the configured base_voting_time and actual voting start time
+    /// Expected base vote end time determined by the configured
+    /// base_voting_time and actual voting start time
     pub fn voting_base_time_end(&self, config: &GovernanceConfig) -> UnixTimestamp {
         self.voting_at
             .unwrap()
@@ -363,7 +386,9 @@ impl ProposalV2 {
         self.voting_base_time_end(config) < current_unix_timestamp
     }
 
-    /// Expected max vote end time determined by the configured base_voting_time, optional voting_cool_off_time and actual voting start time
+    /// Expected max vote end time determined by the configured
+    /// base_voting_time, optional voting_cool_off_time and actual voting start
+    /// time
     pub fn voting_max_time_end(&self, config: &GovernanceConfig) -> UnixTimestamp {
         self.voting_base_time_end(config)
             .checked_add(config.voting_cool_off_time as i64)
@@ -389,7 +414,8 @@ impl ProposalV2 {
         self.assert_is_voting_state()
             .map_err(|_| GovernanceError::InvalidStateCannotFinalize)?;
 
-        // We can only finalize the vote after the configured max_voting_time has expired and vote time ended
+        // We can only finalize the vote after the configured max_voting_time has
+        // expired and vote time ended
         if !self.has_voting_max_time_ended(config, current_unix_timestamp) {
             return Err(GovernanceError::CannotFinalizeVotingInProgress.into());
         }
@@ -397,8 +423,9 @@ impl ProposalV2 {
         Ok(())
     }
 
-    /// Finalizes vote by moving it to final state Succeeded or Defeated if max_voting_time has passed
-    /// If Proposal is still within max_voting_time period then error is returned
+    /// Finalizes vote by moving it to final state Succeeded or Defeated if
+    /// max_voting_time has passed If Proposal is still within
+    /// max_voting_time period then error is returned
     pub fn finalize_vote(
         &mut self,
         max_voter_weight: u64,
@@ -429,16 +456,19 @@ impl ProposalV2 {
         let min_vote_threshold_weight =
             get_min_vote_threshold_weight(vote_threshold, max_vote_weight).unwrap();
 
-        // If the proposal has a reject option then any other option must beat it regardless of the configured min_vote_threshold_weight
+        // If the proposal has a reject option then any other option must beat it
+        // regardless of the configured min_vote_threshold_weight
         let deny_vote_weight = self.deny_vote_weight.unwrap_or(0);
 
         let mut best_succeeded_option_weight = 0;
         let mut best_succeeded_option_count = 0u16;
 
         for option in self.options.iter_mut() {
-            // Any positive vote (Yes) must be equal or above the required min_vote_threshold_weight and higher than the reject option vote (No)
-            // The same number of positive (Yes) and rejecting (No) votes is a tie and resolved as Defeated
-            // In other words  +1 vote as a tie breaker is required to succeed for the positive option vote
+            // Any positive vote (Yes) must be equal or above the required
+            // min_vote_threshold_weight and higher than the reject option vote (No)
+            // The same number of positive (Yes) and rejecting (No) votes is a tie and
+            // resolved as Defeated In other words  +1 vote as a tie breaker is
+            // required to succeed for the positive option vote
             if option.vote_weight >= min_vote_threshold_weight
                 && option.vote_weight > deny_vote_weight
             {
@@ -461,20 +491,23 @@ impl ProposalV2 {
         }
 
         let mut final_state = if best_succeeded_option_count == 0 {
-            // If none of the individual options succeeded then the proposal as a whole is defeated
+            // If none of the individual options succeeded then the proposal as a whole is
+            // defeated
             ProposalState::Defeated
         } else {
             match &self.vote_type {
                 VoteType::SingleChoice => {
                     let proposal_state = if best_succeeded_option_count > 1 {
-                        // If there is more than one winning option then the single choice proposal is considered as defeated
+                        // If there is more than one winning option then the single choice proposal
+                        // is considered as defeated
                         best_succeeded_option_weight = u64::MAX; // no winning option
                         ProposalState::Defeated
                     } else {
                         ProposalState::Succeeded
                     };
 
-                    // Coerce options vote results based on the winning score (best_succeeded_vote_weight)
+                    // Coerce options vote results based on the winning score
+                    // (best_succeeded_vote_weight)
                     for option in self.options.iter_mut() {
                         option.vote_result = if option.vote_weight == best_succeeded_option_weight {
                             OptionVoteResult::Succeeded
@@ -491,18 +524,23 @@ impl ProposalV2 {
                     max_winning_options: _,
                     min_voter_options: _,
                 } => {
-                    // If any option succeeded for multi choice then the proposal as a whole succeeded as well
+                    // If any option succeeded for multi choice then the proposal as a whole
+                    // succeeded as well
                     ProposalState::Succeeded
                 }
             }
         };
 
-        // None executable proposal is just a survey and is considered Completed once the vote ends and no more actions are available
-        // There is no overall Success or Failure status for the Proposal however individual options still have their own status
+        // None executable proposal is just a survey and is considered Completed once
+        // the vote ends and no more actions are available There is no overall
+        // Success or Failure status for the Proposal however individual options still
+        // have their own status
         //
-        // Note: An off-chain/manually executable Proposal has no instructions but it still must have the deny vote enabled to be binding
-        // In such a case, if successful, the Proposal vote ends in Succeeded state and it must be manually transitioned to Completed state
-        // by the Proposal owner once the external actions are executed
+        // Note: An off-chain/manually executable Proposal has no instructions but it
+        // still must have the deny vote enabled to be binding In such a case,
+        // if successful, the Proposal vote ends in Succeeded state and it must be
+        // manually transitioned to Completed state by the Proposal owner once
+        // the external actions are executed
         if self.deny_vote_weight.is_none() {
             final_state = ProposalState::Completed;
         }
@@ -538,8 +576,9 @@ impl ProposalV2 {
             MintMaxVoterWeightSource::Absolute(value) => value,
         };
 
-        // When the fraction or absolute value is used it's possible we can go over the calculated max_vote_weight
-        // and we have to adjust it in case more votes have been cast
+        // When the fraction or absolute value is used it's possible we can go over the
+        // calculated max_vote_weight and we have to adjust it in case more
+        // votes have been cast
         Ok(self.coerce_max_voter_weight(max_voter_weight, vote_kind))
     }
 
@@ -562,7 +601,8 @@ impl ProposalV2 {
         max_voter_weight.max(total_vote_weight)
     }
 
-    /// Resolves max voter weight using either 1) voting governing_token_mint supply or 2) max voter weight if configured for the token mint
+    /// Resolves max voter weight using either 1) voting governing_token_mint
+    /// supply or 2) max voter weight if configured for the token mint
     #[allow(clippy::too_many_arguments)]
     pub fn resolve_max_voter_weight(
         &mut self,
@@ -573,7 +613,8 @@ impl ProposalV2 {
         vote_governing_token_mint_info: &AccountInfo,
         vote_kind: &VoteKind,
     ) -> Result<u64, ProgramError> {
-        // if the Realm is configured to use max voter weight for the given voting governing_token_mint then use the externally provided max_voter_weight
+        // if the Realm is configured to use max voter weight for the given voting
+        // governing_token_mint then use the externally provided max_voter_weight
         // instead of the supply based max
         if let Some(max_voter_weight_addin) = realm_config_data
             .get_token_config(realm_data, vote_governing_token_mint_info.key)?
@@ -591,8 +632,9 @@ impl ProposalV2 {
 
             assert_is_valid_max_voter_weight(&max_voter_weight_record_data)?;
 
-            // When the max voter weight addin is used it's possible it can be inaccurate and we can have more votes then the max provided by the addin
-            // and we have to adjust it to whatever result is higher
+            // When the max voter weight addin is used it's possible it can be inaccurate
+            // and we can have more votes then the max provided by the addin and
+            // we have to adjust it to whatever result is higher
             return Ok(self.coerce_max_voter_weight(
                 max_voter_weight_record_data.max_voter_weight,
                 vote_kind,
@@ -612,8 +654,9 @@ impl ProposalV2 {
         Ok(max_voter_weight)
     }
 
-    /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
-    /// If the conditions are met the state is updated accordingly
+    /// Checks if vote can be tipped and automatically transitioned to Succeeded
+    /// or Defeated state If the conditions are met the state is updated
+    /// accordingly
     pub fn try_tip_vote(
         &mut self,
         max_voter_weight: u64,
@@ -642,7 +685,8 @@ impl ProposalV2 {
         }
     }
 
-    /// Checks if vote can be tipped and automatically transitioned to Succeeded, Defeated or Vetoed state
+    /// Checks if vote can be tipped and automatically transitioned to
+    /// Succeeded, Defeated or Vetoed state.
     /// If yes then Some(ProposalState) is returned and None otherwise
     pub fn try_get_tipped_vote_state(
         &mut self,
@@ -664,7 +708,8 @@ impl ProposalV2 {
         }
     }
 
-    /// Checks if Electorate vote can be tipped and automatically transitioned to Succeeded or Defeated state
+    /// Checks if Electorate vote can be tipped and automatically transitioned
+    /// to Succeeded or Defeated state.
     /// If yes then Some(ProposalState) is returned and None otherwise
     fn try_get_tipped_electorate_vote_state(
         &mut self,
@@ -672,11 +717,14 @@ impl ProposalV2 {
         vote_tipping: &VoteTipping,
         min_vote_threshold_weight: u64,
     ) -> Option<ProposalState> {
-        // Vote tipping is currently supported for SingleChoice votes with single Yes and No (rejection) options only
-        // Note: Tipping for multiple options (single choice and multiple choices) should be possible but it requires a great deal of considerations
-        //       and I decided to fight it another day
+        // Vote tipping is currently supported for SingleChoice votes with
+        // single Yes and No (rejection) options only.
+        // Note: Tipping for multiple options (single choice and multiple
+        // choices) should be possible but it requires a great deal of
+        // considerations and I decided to fight it another day
         if self.vote_type != VoteType::SingleChoice
-            // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
+            // Tipping should not be allowed for opinion only proposals (surveys
+            // without rejection) to allow everybody's voice to be heard
             || self.deny_vote_weight.is_none()
             || self.options.len() != 1
         {
@@ -730,9 +778,11 @@ impl ProposalV2 {
         min_vote_threshold_weight: u64,
     ) -> Option<ProposalState> {
         // Veto vote tips as soon as the required threshold is reached
-        // It's irrespectively of vote_tipping config because the outcome of the Proposal can't change any longer after being vetoed
+        // It's irrespectively of vote_tipping config because the outcome of the
+        // Proposal can't change any longer after being vetoed
         if self.veto_vote_weight >= min_vote_threshold_weight {
-            // Note: Since we don't tip multi option votes all options vote_result would remain as None
+            // Note: Since we don't tip multi option votes all options vote_result would
+            // remain as None
             Some(ProposalState::Vetoed)
         } else {
             None
@@ -748,8 +798,9 @@ impl ProposalV2 {
         match self.state {
             ProposalState::Draft | ProposalState::SigningOff => Ok(()),
             ProposalState::Voting => {
-                // Note: If there is no tipping point the proposal can be still in Voting state but already past the configured max_voting_time
-                // In that case we treat the proposal as finalized and it's no longer allowed to be canceled
+                // Note: If there is no tipping point the proposal can be still in Voting state
+                // but already past the configured max_voting_time In that case
+                // we treat the proposal as finalized and it's no longer allowed to be canceled
                 if self.has_voting_max_time_ended(config, current_unix_timestamp) {
                     return Err(GovernanceError::ProposalVotingTimeExpired.into());
                 }
@@ -767,14 +818,16 @@ impl ProposalV2 {
         }
     }
 
-    /// Checks if Instructions can be edited (inserted or removed) for the Proposal in the given state
-    /// It also asserts whether the Proposal is executable (has the reject option)
+    /// Checks if Instructions can be edited (inserted or removed) for the
+    /// Proposal in the given state It also asserts whether the Proposal is
+    /// executable (has the reject option)
     pub fn assert_can_edit_instructions(&self) -> Result<(), ProgramError> {
         if self.assert_is_draft_state().is_err() {
             return Err(GovernanceError::InvalidStateCannotEditTransactions.into());
         }
 
-        // For security purposes only proposals with the reject option can have executable instructions
+        // For security purposes only proposals with the reject option can have
+        // executable instructions
         if self.deny_vote_weight.is_none() {
             return Err(GovernanceError::ProposalIsNotExecutable.into());
         }
@@ -782,7 +835,8 @@ impl ProposalV2 {
         Ok(())
     }
 
-    /// Checks if Instructions can be executed for the Proposal in the given state
+    /// Checks if Instructions can be executed for the Proposal in the given
+    /// state
     pub fn assert_can_execute_transaction(
         &self,
         proposal_transaction_data: &ProposalTransactionV2,
@@ -826,7 +880,8 @@ impl ProposalV2 {
         Ok(())
     }
 
-    /// Checks if the instruction can be flagged with error for the Proposal in the given state
+    /// Checks if the instruction can be flagged with error for the Proposal in
+    /// the given state
     pub fn assert_can_flag_transaction_error(
         &self,
         proposal_transaction_data: &ProposalTransactionV2,
@@ -842,7 +897,8 @@ impl ProposalV2 {
         Ok(())
     }
 
-    /// Checks if Proposal with off-chain/manual actions can be transitioned to Completed
+    /// Checks if Proposal with off-chain/manual actions can be transitioned to
+    /// Completed
     pub fn assert_can_complete(&self) -> Result<(), ProgramError> {
         // Proposal vote must be successful
         if self.state != ProposalState::Succeeded {
@@ -883,8 +939,9 @@ impl ProposalV2 {
                                 max_voter_options: _,
                                 max_winning_options: _,
                             } => {
-                                // Calculate the total percentage for all choices for weighted choice vote
-                                // The total must add up to exactly 100%
+                                // Calculate the total percentage for all choices for weighted
+                                // choice vote. The total must add up
+                                // to exactly 100%
                                 total_choice_weight_percentage = total_choice_weight_percentage
                                     .checked_add(choice.weight_percentage)
                                     .ok_or(GovernanceError::TotalVoteWeightMustBe100Percent)?;
@@ -950,7 +1007,8 @@ impl ProposalV2 {
         if self.account_type == GovernanceAccountType::ProposalV2 {
             borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::ProposalV1 {
-            // V1 account can't be resized and we have to translate it back to the original format
+            // V1 account can't be resized and we have to translate it back to the original
+            // format
 
             if self.abstain_vote_weight.is_some() {
                 panic!("ProposalV1 doesn't support Abstain vote")
@@ -1099,7 +1157,8 @@ pub fn get_proposal_data(
     get_account_data::<ProposalV2>(program_id, proposal_info)
 }
 
-/// Deserializes Proposal and validates it belongs to the given Governance and governing_token_mint
+/// Deserializes Proposal and validates it belongs to the given Governance and
+/// governing_token_mint
 pub fn get_proposal_data_for_governance_and_governing_mint(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
@@ -2137,7 +2196,8 @@ mod test {
 
         // Assert
         assert_eq!(proposal.state, ProposalState::Succeeded);
-        assert_eq!(proposal.max_vote_weight, Some(130)); // Deny Vote 10 + Approve Vote 120
+        assert_eq!(proposal.max_vote_weight, Some(130)); // Deny Vote 10 +
+                                                         // Approve Vote 120
     }
 
     #[test]

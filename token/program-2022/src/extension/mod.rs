@@ -170,7 +170,8 @@ fn get_extension_indices<V: Extension>(
     Err(ProgramError::InvalidAccountData)
 }
 
-/// Basic information about the TLV buffer, collected from iterating through all entries
+/// Basic information about the TLV buffer, collected from iterating through all
+/// entries
 #[derive(Debug, PartialEq)]
 struct TlvDataInfo {
     /// The extension types written in the TLV buffer
@@ -272,8 +273,9 @@ fn check_account_type<S: BaseState>(account_type: AccountType) -> Result<(), Pro
 ///                          ^     ^       ^     ^
 ///                     acct type  extension length data...
 ///
-/// Mint: 82 bytes... + 83 bytes of other extension data + [2, 0, 3, 0, 100, ....]
-///                                                         ^ data in extension just happens to look like this
+/// Mint: 82 bytes... + 83 bytes of other extension data
+///     + [2, 0, 3, 0, 100, ....]
+///      (data in extension just happens to look like this)
 ///
 /// With this approach, we only start writing the TLV data after Account::LEN,
 /// which means we always know that the account type is going to be right after
@@ -304,7 +306,8 @@ fn type_and_tlv_indices<S: BaseState>(
     }
 }
 
-/// Checks a base buffer to verify if it is an Account without having to completely deserialize it
+/// Checks a base buffer to verify if it is an Account without having to
+/// completely deserialize it
 fn is_initialized_account(input: &[u8]) -> Result<bool, ProgramError> {
     const ACCOUNT_INITIALIZED_INDEX: usize = 108; // See state.rs#L99
 
@@ -323,7 +326,8 @@ fn get_extension_bytes<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&[
         length_start,
         value_start,
     } = get_extension_indices::<V>(tlv_data, false)?;
-    // get_extension_indices has checked that tlv_data is long enough to include these indices
+    // get_extension_indices has checked that tlv_data is long enough to include
+    // these indices
     let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::from(*length));
     if tlv_data.len() < value_end {
@@ -343,7 +347,8 @@ fn get_extension_bytes_mut<S: BaseState, V: Extension>(
         length_start,
         value_start,
     } = get_extension_indices::<V>(tlv_data, false)?;
-    // get_extension_indices has checked that tlv_data is long enough to include these indices
+    // get_extension_indices has checked that tlv_data is long enough to include
+    // these indices
     let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::from(*length));
     if tlv_data.len() < value_end {
@@ -448,7 +453,8 @@ pub trait BaseStateWithExtensions<S: BaseState> {
     }
 }
 
-/// Encapsulates owned immutable base state data (mint or account) with possible extensions
+/// Encapsulates owned immutable base state data (mint or account) with possible
+/// extensions
 #[derive(Clone, Debug, PartialEq)]
 pub struct StateWithExtensionsOwned<S: BaseState> {
     /// Unpacked base data
@@ -486,7 +492,8 @@ impl<S: BaseState> BaseStateWithExtensions<S> for StateWithExtensionsOwned<S> {
     }
 }
 
-/// Encapsulates immutable base state data (mint or account) with possible extensions
+/// Encapsulates immutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct StateWithExtensions<'data, S: BaseState> {
     /// Unpacked base data
@@ -525,7 +532,8 @@ impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensions<'a, S>
     }
 }
 
-/// Encapsulates mutable base state data (mint or account) with possible extensions
+/// Encapsulates mutable base state data (mint or account) with possible
+/// extensions
 #[derive(Debug, PartialEq)]
 pub struct StateWithExtensionsMut<'data, S: BaseState> {
     /// Unpacked base data
@@ -567,7 +575,8 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
     }
 
-    /// Unpack an uninitialized base state, leaving the extension data as a mutable slice
+    /// Unpack an uninitialized base state, leaving the extension data as a
+    /// mutable slice
     ///
     /// Fails if the base state has already been initialized.
     pub fn unpack_uninitialized(input: &'data mut [u8]) -> Result<Self, ProgramError> {
@@ -613,13 +622,14 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         get_extension_bytes_mut::<S, V>(self.tlv_data)
     }
 
-    /// Unpack a portion of the TLV data as the desired type that allows modifying the type
+    /// Unpack a portion of the TLV data as the desired type that allows
+    /// modifying the type
     pub fn get_extension_mut<V: Extension + Pod>(&mut self) -> Result<&mut V, ProgramError> {
         pod_from_bytes_mut::<V>(self.get_extension_bytes_mut::<V>()?)
     }
 
-    /// Packs a variable-length extension into its appropriate data segment. Fails
-    /// if space hasn't already been allocated for the given extension
+    /// Packs a variable-length extension into its appropriate data segment.
+    /// Fails if space hasn't already been allocated for the given extension
     pub fn pack_variable_len_extension<V: Extension + VariableLenPack>(
         &mut self,
         extension: &V,
@@ -635,10 +645,11 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         S::pack_into_slice(&self.base, self.base_data);
     }
 
-    /// Packs the default extension data into an open slot if not already found in the
-    /// data buffer. If extension is already found in the buffer, it overwrites the existing
-    /// extension with the default state if `overwrite` is set. If extension found, but
-    /// `overwrite` is not set, it returns error.
+    /// Packs the default extension data into an open slot if not already found
+    /// in the data buffer. If extension is already found in the buffer, it
+    /// overwrites the existing extension with the default state if
+    /// `overwrite` is set. If extension found, but `overwrite` is not set,
+    /// it returns error.
     pub fn init_extension<V: Extension + Pod + Default>(
         &mut self,
         overwrite: bool,
@@ -653,8 +664,8 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// Reallocate and overwite the TLV entry for the given variable-length
     /// extension.
     ///
-    /// Returns an error if the extension is not present, or if there is not enough
-    /// space in the buffer.
+    /// Returns an error if the extension is not present, or if there is not
+    /// enough space in the buffer.
     pub fn realloc_variable_len_extension<V: Extension + VariableLenPack>(
         &mut self,
         new_extension: &V,
@@ -663,14 +674,15 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         new_extension.pack_into_slice(data)
     }
 
-    /// Reallocate the TLV entry for the given extension to the given number of bytes.
+    /// Reallocate the TLV entry for the given extension to the given number of
+    /// bytes.
     ///
-    /// If the new length is smaller, it will compact the rest of the buffer and zero out
-    /// the difference at the end. If it's larger, it will move the rest of
-    /// the buffer data and zero out the new data.
+    /// If the new length is smaller, it will compact the rest of the buffer and
+    /// zero out the difference at the end. If it's larger, it will move the
+    /// rest of the buffer data and zero out the new data.
     ///
-    /// Returns an error if the extension is not present, or if this is not enough
-    /// space in the buffer.
+    /// Returns an error if the extension is not present, or if this is not
+    /// enough space in the buffer.
     fn realloc<V: Extension + VariableLenPack>(
         &mut self,
         length: usize,
@@ -719,11 +731,11 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         Ok(&mut self.tlv_data[value_start..new_value_end])
     }
 
-    /// Allocate the given number of bytes for the given variable-length extension
-    /// and write its contents into the TLV buffer.
+    /// Allocate the given number of bytes for the given variable-length
+    /// extension and write its contents into the TLV buffer.
     ///
-    /// This can only be used for variable-sized types, such as `String` or `Vec`.
-    /// `Pod` types must use `init_extension`
+    /// This can only be used for variable-sized types, such as `String` or
+    /// `Vec`. `Pod` types must use `init_extension`
     pub fn init_variable_len_extension<V: Extension + VariableLenPack>(
         &mut self,
         extension: &V,
@@ -777,10 +789,12 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
     }
 
-    /// If `extension_type` is an Account-associated ExtensionType that requires initialization on
-    /// InitializeAccount, this method packs the default relevant Extension of an ExtensionType
-    /// into an open slot if not already found in the data buffer, otherwise overwrites the
-    /// existing extension with the default state. For all other ExtensionTypes, this is a no-op.
+    /// If `extension_type` is an Account-associated ExtensionType that requires
+    /// initialization on InitializeAccount, this method packs the default
+    /// relevant Extension of an ExtensionType into an open slot if not
+    /// already found in the data buffer, otherwise overwrites the
+    /// existing extension with the default state. For all other ExtensionTypes,
+    /// this is a no-op.
     pub fn init_account_extension_from_type(
         &mut self,
         extension_type: ExtensionType,
@@ -834,7 +848,8 @@ impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensionsMut<'a,
 
 /// If AccountType is uninitialized, set it to the BaseState's ACCOUNT_TYPE;
 /// if AccountType is already set, check is set correctly for BaseState
-/// This method assumes that the `base_data` has already been packed with data of the desired type.
+/// This method assumes that the `base_data` has already been packed with data
+/// of the desired type.
 pub fn set_account_type<S: BaseState>(input: &mut [u8]) -> Result<(), ProgramError> {
     check_min_len_and_not_multisig(input, S::LEN)?;
     let (base_data, rest) = input.split_at_mut(S::LEN);
@@ -855,10 +870,10 @@ pub fn set_account_type<S: BaseState>(input: &mut [u8]) -> Result<(), ProgramErr
     }
 }
 
-/// Different kinds of accounts. Note that `Mint`, `Account`, and `Multisig` types
-/// are determined exclusively by the size of the account, and are not included in
-/// the account data. `AccountType` is only included if extensions have been
-/// initialized.
+/// Different kinds of accounts. Note that `Mint`, `Account`, and `Multisig`
+/// types are determined exclusively by the size of the account, and are not
+/// included in the account data. `AccountType` is only included if extensions
+/// have been initialized.
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, TryFromPrimitive, IntoPrimitive)]
 pub enum AccountType {
@@ -875,17 +890,19 @@ impl Default for AccountType {
     }
 }
 
-/// Extensions that can be applied to mints or accounts.  Mint extensions must only be
-/// applied to mint accounts, and account extensions must only be applied to token holding
-/// accounts.
+/// Extensions that can be applied to mints or accounts.  Mint extensions must
+/// only be applied to mint accounts, and account extensions must only be
+/// applied to token holding accounts.
 #[repr(u16)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, TryFromPrimitive, IntoPrimitive)]
 pub enum ExtensionType {
-    /// Used as padding if the account size would otherwise be 355, same as a multisig
+    /// Used as padding if the account size would otherwise be 355, same as a
+    /// multisig
     Uninitialized,
-    /// Includes transfer fee rate info and accompanying authorities to withdraw and set the fee
+    /// Includes transfer fee rate info and accompanying authorities to withdraw
+    /// and set the fee
     TransferFeeConfig,
     /// Includes withheld transfer fees
     TransferFeeAmount,
@@ -909,30 +926,37 @@ pub enum ExtensionType {
     CpiGuard,
     /// Includes an optional permanent delegate
     PermanentDelegate,
-    /// Indicates that the tokens in this account belong to a non-transferable mint
+    /// Indicates that the tokens in this account belong to a non-transferable
+    /// mint
     NonTransferableAccount,
-    /// Mint requires a CPI to a program implementing the "transfer hook" interface
+    /// Mint requires a CPI to a program implementing the "transfer hook"
+    /// interface
     TransferHook,
-    /// Indicates that the tokens in this account belong to a mint with a transfer hook
+    /// Indicates that the tokens in this account belong to a mint with a
+    /// transfer hook
     TransferHookAccount,
-    /// Includes encrypted withheld fees and the encryption public that they are encrypted under
+    /// Includes encrypted withheld fees and the encryption public that they are
+    /// encrypted under
     ConfidentialTransferFeeConfig,
     /// Includes confidential withheld transfer fees
     ConfidentialTransferFeeAmount,
-    /// Mint contains a pointer to another account (or the same account) that holds metadata
+    /// Mint contains a pointer to another account (or the same account) that
+    /// holds metadata
     MetadataPointer,
     /// Mint contains token-metadata
     TokenMetadata,
-    /// Mint contains a pointer to another account (or the same account) that holds group
-    /// configurations
+    /// Mint contains a pointer to another account (or the same account) that
+    /// holds group configurations
     GroupPointer,
     /// Test variable-length mint extension
     #[cfg(test)]
     VariableLenMintTest = u16::MAX - 2,
-    /// Padding extension used to make an account exactly Multisig::LEN, used for testing
+    /// Padding extension used to make an account exactly Multisig::LEN, used
+    /// for testing
     #[cfg(test)]
     AccountPaddingTest,
-    /// Padding extension used to make a mint exactly Multisig::LEN, used for testing
+    /// Padding extension used to make a mint exactly Multisig::LEN, used for
+    /// testing
     #[cfg(test)]
     MintPaddingTest,
 }
@@ -1079,8 +1103,8 @@ impl ExtensionType {
         }
     }
 
-    /// Based on a set of AccountType::Mint ExtensionTypes, get the list of AccountType::Account
-    /// ExtensionTypes required on InitializeAccount
+    /// Based on a set of AccountType::Mint ExtensionTypes, get the list of
+    /// AccountType::Account ExtensionTypes required on InitializeAccount
     pub fn get_required_init_account_extensions(mint_extension_types: &[Self]) -> Vec<Self> {
         let mut account_extension_types = vec![];
         for extension_type in mint_extension_types {
@@ -1265,7 +1289,8 @@ pub fn alloc_and_serialize_variable_len_extension<S: BaseState, V: Extension + V
     }
 
     if previous_account_len < new_account_len {
-        // account size increased, so realloc the account, then the TLV entry, then write data
+        // account size increased, so realloc the account, then the TLV entry, then
+        // write data
         account_info.realloc(new_account_len, false)?;
         let mut buffer = account_info.try_borrow_mut_data()?;
         if extension_already_exists {

@@ -34,9 +34,11 @@ pub struct Initialize {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Swap {
-    /// SOURCE amount to transfer, output to DESTINATION is based on the exchange rate
+    /// SOURCE amount to transfer, output to DESTINATION is based on the
+    /// exchange rate
     pub amount_in: u64,
-    /// Minimum amount of DESTINATION token to output, prevents excessive slippage
+    /// Minimum amount of DESTINATION token to output, prevents excessive
+    /// slippage
     pub minimum_amount_out: u64,
 }
 
@@ -87,8 +89,8 @@ pub struct DepositSingleTokenTypeExactAmountIn {
 pub struct WithdrawSingleTokenTypeExactAmountOut {
     /// Amount of token A or B to receive
     pub destination_token_amount: u64,
-    /// Maximum amount of pool tokens to burn. User receives an output of token A
-    /// or B based on the percentage of the pool tokens that are returned.
+    /// Maximum amount of pool tokens to burn. User receives an output of token
+    /// A or B based on the percentage of the pool tokens that are returned.
     pub maximum_pool_token_amount: u64,
 }
 
@@ -99,10 +101,12 @@ pub enum SwapInstruction {
     ///   Initializes a new swap
     ///
     ///   0. `[writable, signer]` New Token-swap to create.
-    ///   1. `[]` swap authority derived from `create_program_address(&[Token-swap account])`
+    ///   1. `[]` swap authority derived from
+    ///      `create_program_address(&[Token-swap account])`
     ///   2. `[]` token_a Account. Must be non zero, owned by swap authority.
     ///   3. `[]` token_b Account. Must be non zero, owned by swap authority.
-    ///   4. `[writable]` Pool Token Mint. Must be empty, owned by swap authority.
+    ///   4. `[writable]` Pool Token Mint. Must be empty, owned by swap
+    ///      authority.
     ///   5. `[]` Pool Token Account to deposit trading and withdraw fees.
     ///   Must be empty, not owned by swap authority
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
@@ -115,10 +119,14 @@ pub enum SwapInstruction {
     ///   0. `[]` Token-swap
     ///   1. `[]` swap authority
     ///   2. `[]` user transfer authority
-    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
-    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
-    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
-    ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by
+    ///      user transfer authority,
+    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the
+    ///      SOURCE token.
+    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the
+    ///      DESTINATION token.
+    ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as
+    ///      the owner.
     ///   7. `[writable]` Pool token mint, to generate trading fees
     ///   8. `[writable]` Fee account, to receive trading fees
     ///   9. `[]` Token (A|B) SOURCE mint
@@ -126,7 +134,8 @@ pub enum SwapInstruction {
     ///   11. `[]` Token (A|B) SOURCE program id
     ///   12. `[]` Token (A|B) DESTINATION program id
     ///   13. `[]` Pool Token program id
-    ///   14. `[optional, writable]` Host fee account to receive additional trading fees
+    ///   14. `[optional, writable]` Host fee account to receive additional
+    ///       trading fees
     Swap(Swap),
 
     ///   Deposit both types of tokens into the pool.  The output is a "pool"
@@ -141,7 +150,8 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_a Base Account to deposit into.
     ///   6. `[writable]` token_b Base Account to deposit into.
     ///   7. `[writable]` Pool MINT account, swap authority is the owner.
-    ///   8. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   8. `[writable]` Pool Account to deposit the generated tokens, user is
+    ///      the owner.
     ///   9. `[]` Token A mint
     ///   10. `[]` Token B mint
     ///   11. `[]` Token A program id
@@ -149,15 +159,16 @@ pub enum SwapInstruction {
     ///   13. `[]` Pool Token program id
     DepositAllTokenTypes(DepositAllTokenTypes),
 
-    ///   Withdraw both types of tokens from the pool at the current ratio, given
-    ///   pool tokens.  The pool tokens are burned in exchange for an equivalent
-    ///   amount of token A and B.
+    ///   Withdraw both types of tokens from the pool at the current ratio,
+    ///   given pool tokens. The pool tokens are burned in exchange for an
+    ///   equivalent amount of token A and B.
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` swap authority
     ///   2. `[]` user transfer authority
     ///   3. `[writable]` Pool mint account, swap authority is the owner
-    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user transfer authority.
+    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user
+    ///      transfer authority.
     ///   5. `[writable]` token_a Swap Account to withdraw FROM.
     ///   6. `[writable]` token_b Swap Account to withdraw FROM.
     ///   7. `[writable]` token_a user Account to credit.
@@ -170,18 +181,20 @@ pub enum SwapInstruction {
     ///   14. `[]` Token B program id
     WithdrawAllTokenTypes(WithdrawAllTokenTypes),
 
-    ///   Deposit one type of tokens into the pool.  The output is a "pool" token
-    ///   representing ownership into the pool. Input token is converted as if
-    ///   a swap and deposit all token types were performed.
+    ///   Deposit one type of tokens into the pool. The output is a "pool"
+    ///   token representing ownership into the pool. Input token is
+    ///   converted as if a swap and deposit all token types were performed.
     ///
     ///   0. `[]` Token-swap
     ///   1. `[]` swap authority
     ///   2. `[]` user transfer authority
-    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by
+    ///      user transfer authority,
     ///   4. `[writable]` token_a Swap Account, may deposit INTO.
     ///   5. `[writable]` token_b Swap Account, may deposit INTO.
     ///   6. `[writable]` Pool MINT account, swap authority is the owner.
-    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
+    ///   7. `[writable]` Pool Account to deposit the generated tokens, user is
+    ///      the owner.
     ///   8. `[]` Token (A|B) SOURCE mint
     ///   9. `[]` Token (A|B) SOURCE program id
     ///   10. `[]` Pool Token program id
@@ -194,7 +207,8 @@ pub enum SwapInstruction {
     ///   1. `[]` swap authority
     ///   2. `[]` user transfer authority
     ///   3. `[writable]` Pool mint account, swap authority is the owner
-    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user transfer authority.
+    ///   4. `[writable]` SOURCE Pool account, amount is transferable by user
+    ///      transfer authority.
     ///   5. `[writable]` token_a Swap Account to potentially withdraw from.
     ///   6. `[writable]` token_b Swap Account to potentially withdraw from.
     ///   7. `[writable]` token_(A|B) User Account to credit
@@ -206,7 +220,8 @@ pub enum SwapInstruction {
 }
 
 impl SwapInstruction {
-    /// Unpacks a byte buffer into a [SwapInstruction](enum.SwapInstruction.html).
+    /// Unpacks a byte buffer into a
+    /// [SwapInstruction](enum.SwapInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         let (&tag, rest) = input.split_first().ok_or(SwapError::InvalidInstruction)?;
         Ok(match tag {

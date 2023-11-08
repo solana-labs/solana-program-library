@@ -198,17 +198,20 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeAccount](enum.TokenInstruction.html) instruction.
+    /// Processes an [InitializeAccount](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
         Self::_process_initialize_account(accounts, None, true)
     }
 
-    /// Processes an [InitializeAccount2](enum.TokenInstruction.html) instruction.
+    /// Processes an [InitializeAccount2](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_account2(accounts: &[AccountInfo], owner: Pubkey) -> ProgramResult {
         Self::_process_initialize_account(accounts, Some(&owner), true)
     }
 
-    /// Processes an [InitializeAccount3](enum.TokenInstruction.html) instruction.
+    /// Processes an [InitializeAccount3](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_account3(accounts: &[AccountInfo], owner: Pubkey) -> ProgramResult {
         Self::_process_initialize_account(accounts, Some(&owner), false)
     }
@@ -255,12 +258,14 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [InitializeMultisig](enum.TokenInstruction.html) instruction.
+    /// Processes a [InitializeMultisig](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
         Self::_process_initialize_multisig(accounts, m, true)
     }
 
-    /// Processes a [InitializeMultisig2](enum.TokenInstruction.html) instruction.
+    /// Processes a [InitializeMultisig2](enum.TokenInstruction.html)
+    /// instruction.
     pub fn process_initialize_multisig2(accounts: &[AccountInfo], m: u8) -> ProgramResult {
         Self::_process_initialize_multisig(accounts, m, false)
     }
@@ -1239,7 +1244,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeMintCloseAuthority](enum.TokenInstruction.html) instruction
+    /// Processes an [InitializeMintCloseAuthority](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_initialize_mint_close_authority(
         accounts: &[AccountInfo],
         close_authority: COption<Pubkey>,
@@ -1271,8 +1277,8 @@ impl Processor {
         let mint_account_info = next_account_info(account_info_iter)?;
 
         let mut account_extensions = Self::get_required_account_extensions(mint_account_info)?;
-        // ExtensionType::try_calculate_account_len() dedupes types, so just a dumb concatenation is fine
-        // here
+        // ExtensionType::try_calculate_account_len() dedupes types, so just a dumb
+        // concatenation is fine here
         account_extensions.extend_from_slice(&new_extension_types);
 
         let account_len = ExtensionType::try_calculate_account_len::<Account>(&account_extensions)?;
@@ -1281,7 +1287,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializeImmutableOwner](enum.TokenInstruction.html) instruction
+    /// Processes an [InitializeImmutableOwner](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_initialize_immutable_owner(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let token_account_info = next_account_info(account_info_iter)?;
@@ -1380,7 +1387,8 @@ impl Processor {
         )
     }
 
-    /// Processes an [InitializeNonTransferableMint](enum.TokenInstruction.html) instruction
+    /// Processes an [InitializeNonTransferableMint](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_initialize_non_transferable_mint(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_account_info = next_account_info(account_info_iter)?;
@@ -1392,7 +1400,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [InitializePermanentDelegate](enum.TokenInstruction.html) instruction
+    /// Processes an [InitializePermanentDelegate](enum.TokenInstruction.html)
+    /// instruction
     pub fn process_initialize_permanent_delegate(
         accounts: &[AccountInfo],
         delegate: Pubkey,
@@ -1408,8 +1417,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Withdraw Excess Lamports is used to recover Lamports transfered to any TokenProgram owned account
-    /// by moving them to another account
+    /// Withdraw Excess Lamports is used to recover Lamports transfered to any
+    /// TokenProgram owned account by moving them to another account
     /// of the source account.
     pub fn process_withdraw_excess_lamports(
         program_id: &Pubkey,
@@ -5891,7 +5900,8 @@ mod tests {
             Epoch::default(),
         );
 
-        // no multisig, but the account is its own authority, and data is mutably borrowed
+        // no multisig, but the account is its own authority, and data is mutably
+        // borrowed
         {
             let mut lamports = 0;
             let mut data = vec![0; Account::get_packed_len()];
@@ -7517,7 +7527,8 @@ mod tests {
             get_account_data_size(
                 &program_id,
                 &mint_key,
-                &[ExtensionType::TransferFeeAmount], // User extension that's also added by the mint ignored...
+                // User extension that's also added by the mint ignored...
+                &[ExtensionType::TransferFeeAmount],
             )
             .unwrap(),
             vec![&mut extended_mint_account],

@@ -12,7 +12,8 @@ pub mod state;
 #[cfg(not(feature = "no-entrypoint"))]
 pub mod entrypoint;
 
-// Export current sdk types for downstream users building with a different sdk version
+// Export current sdk types for downstream users building with a different sdk
+// version
 pub use solana_program;
 use {
     crate::state::Fee,
@@ -32,8 +33,8 @@ const TRANSIENT_STAKE_SEED_PREFIX: &[u8] = b"transient";
 /// Seed for ephemeral stake account
 const EPHEMERAL_STAKE_SEED_PREFIX: &[u8] = b"ephemeral";
 
-/// Minimum amount of staked lamports required in a validator stake account to allow
-/// for merges without a mismatch on credits observed
+/// Minimum amount of staked lamports required in a validator stake account to
+/// allow for merges without a mismatch on credits observed
 pub const MINIMUM_ACTIVE_STAKE: u64 = 1_000_000;
 
 /// Minimum amount of lamports in the reserve

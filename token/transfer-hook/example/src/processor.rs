@@ -73,7 +73,9 @@ pub fn process_execute(
     Ok(())
 }
 
-/// Processes a [InitializeExtraAccountMetaList](enum.TransferHookInstruction.html) instruction.
+/// Processes a
+/// [InitializeExtraAccountMetaList](enum.TransferHookInstruction.html)
+/// instruction.
 pub fn process_initialize_extra_account_meta_list(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

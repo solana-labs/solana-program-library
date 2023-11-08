@@ -7,7 +7,8 @@ use {
 pub type Node = [u8; 32];
 pub const EMPTY: Node = [0; 32];
 
-/// Max number of concurrent changes to tree supported before having to regenerate proofs
+/// Max number of concurrent changes to tree supported before having to
+/// regenerate proofs
 pub const MAX_SIZE: usize = 64;
 
 /// Max depth of the Merkle tree

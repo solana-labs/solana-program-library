@@ -354,7 +354,8 @@ async fn test_insert_transaction_with_invalid_governance_for_proposal_error() {
         .await
         .unwrap();
 
-    // Try to maliciously use a different governance account to use with the proposal
+    // Try to maliciously use a different governance account to use with the
+    // proposal
     let governed_account_cookie2 = governance_test.with_governed_account().await;
 
     let governance_cookie2 = governance_test

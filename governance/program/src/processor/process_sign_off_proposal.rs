@@ -47,7 +47,8 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
         return Err(GovernanceError::MissingRequiredSignatories.into());
     }
 
-    // If the owner of the proposal hasn't appointed any signatories then can sign off the proposal themself
+    // If the owner of the proposal hasn't appointed any signatories then can sign
+    // off the proposal themself
     if proposal_data.signatories_count == 0 {
         let proposal_owner_record_info = next_account_info(account_info_iter)?; // 4
 
@@ -57,7 +58,8 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
             &proposal_data.token_owner_record,
         )?;
 
-        // Proposal owner (TokenOwner) or its governance_delegate must be the signatory and sign this transaction
+        // Proposal owner (TokenOwner) or its governance_delegate must be the signatory
+        // and sign this transaction
         proposal_owner_record_data.assert_token_owner_or_delegate_is_signer(signatory_info)?;
 
         proposal_data.signing_off_at = Some(clock.unix_timestamp);

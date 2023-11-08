@@ -315,7 +315,7 @@ impl TokenMemo {
 
 pub struct Token<T> {
     client: Arc<dyn ProgramClient<T>>,
-    pubkey: Pubkey, /*token mint*/
+    pubkey: Pubkey, /* token mint */
     decimals: Option<u8>,
     payer: Arc<dyn Signer>,
     program_id: Pubkey,
@@ -939,7 +939,8 @@ where
         self.process_ixs(&[instruction], signing_keypairs).await
     }
 
-    /// Transfer tokens to an associated account, creating it if it does not exist
+    /// Transfer tokens to an associated account, creating it if it does not
+    /// exist
     #[allow(clippy::too_many_arguments)]
     pub async fn create_recipient_associated_account_and_transfer<S: Signers>(
         &self,
@@ -1297,7 +1298,8 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    /// Wrap lamports into a native account that can always have its ownership changed
+    /// Wrap lamports into a native account that can always have its ownership
+    /// changed
     pub async fn wrap_with_mutable_ownership<S: Signers>(
         &self,
         account: &Pubkey,
@@ -1491,7 +1493,8 @@ where
         .await
     }
 
-    /// Reallocate a token account to be large enough for a set of ExtensionTypes
+    /// Reallocate a token account to be large enough for a set of
+    /// ExtensionTypes
     pub async fn reallocate<S: Signers>(
         &self,
         account: &Pubkey,
@@ -1721,9 +1724,9 @@ where
         .await
     }
 
-    /// Configures confidential transfers for a token account. If the maximum pending balance
-    /// credit counter for the extension is not provided, then it is set to be a default value of
-    /// `2^16`.
+    /// Configures confidential transfers for a token account. If the maximum
+    /// pending balance credit counter for the extension is not provided,
+    /// then it is set to be a default value of `2^16`.
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_configure_token_account<S: Signers>(
         &self,
@@ -1800,7 +1803,8 @@ where
         .await
     }
 
-    /// Prepare a token account with the confidential transfer extension for closing
+    /// Prepare a token account with the confidential transfer extension for
+    /// closing
     pub async fn confidential_transfer_empty_account<S: Signers>(
         &self,
         account: &Pubkey,
@@ -1852,7 +1856,8 @@ where
         .await
     }
 
-    /// Deposit SPL Tokens into the pending balance of a confidential token account
+    /// Deposit SPL Tokens into the pending balance of a confidential token
+    /// account
     pub async fn confidential_transfer_deposit<S: Signers>(
         &self,
         account: &Pubkey,
@@ -1879,7 +1884,8 @@ where
         .await
     }
 
-    /// Withdraw SPL Tokens from the available balance of a confidential token account
+    /// Withdraw SPL Tokens from the available balance of a confidential token
+    /// account
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_withdraw<S: Signers>(
         &self,
@@ -1943,8 +1949,8 @@ where
         .await
     }
 
-    /// Create withdraw proof context state account for a confidential transfer withdraw
-    /// instruction.
+    /// Create withdraw proof context state account for a confidential transfer
+    /// withdraw instruction.
     pub async fn create_withdraw_proof_context_state<S: Signer>(
         &self,
         context_state_account: &Pubkey,
@@ -2059,7 +2065,8 @@ where
 
     /// Transfer tokens confidentially using split proofs.
     ///
-    /// This function assumes that proof context states have already been created.
+    /// This function assumes that proof context states have already been
+    /// created.
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_transfer_with_split_proofs<S: Signers>(
         &self,
@@ -2106,8 +2113,8 @@ where
 
     /// Transfer tokens confidentially using split proofs in parallel
     ///
-    /// This function internally generates the ZK Token proof instructions to create the necessary
-    /// proof context states.
+    /// This function internally generates the ZK Token proof instructions to
+    /// create the necessary proof context states.
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_transfer_with_split_proofs_in_parallel<S: Signers>(
         &self,
@@ -2227,7 +2234,8 @@ where
         .await
     }
 
-    /// Create ciphertext validity proof context state account for a confidential transfer.
+    /// Create ciphertext validity proof context state account for a
+    /// confidential transfer.
     pub async fn create_ciphertext_validity_proof_context_state_for_transfer<S: Signer>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
@@ -2268,7 +2276,8 @@ where
         .await
     }
 
-    /// Create equality and ciphertext validity proof context state accounts for a confidential transfer.
+    /// Create equality and ciphertext validity proof context state accounts for
+    /// a confidential transfer.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer<
         S: Signers,
@@ -2289,8 +2298,8 @@ where
         .await
     }
 
-    /// Create equality and ciphertext validity proof context state accounts with a confidential
-    /// transfer instruction.
+    /// Create equality and ciphertext validity proof context state accounts
+    /// with a confidential transfer instruction.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer_parallel<
         S: Signers,
@@ -2312,10 +2321,11 @@ where
         .await
     }
 
-    /// Create equality and ciphertext validity proof context states for a confidential transfer.
+    /// Create equality and ciphertext validity proof context states for a
+    /// confidential transfer.
     ///
-    /// If an optional transfer instruction is provided, then the transfer instruction is attached
-    /// to the same transaction.
+    /// If an optional transfer instruction is provided, then the transfer
+    /// instruction is attached to the same transaction.
     #[allow(clippy::too_many_arguments)]
     async fn create_equality_and_ciphertext_validity_proof_context_state_with_optional_transfer<
         S: Signers,
@@ -2428,7 +2438,8 @@ where
         .await
     }
 
-    /// Create a range proof context state account with a confidential transfer instruction.
+    /// Create a range proof context state account with a confidential transfer
+    /// instruction.
     pub async fn create_range_proof_context_state_for_transfer_parallel<S: Signers>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
@@ -2445,7 +2456,8 @@ where
         .await
     }
 
-    /// Create a range proof context state account and an optional confidential transfer instruction.
+    /// Create a range proof context state account and an optional confidential
+    /// transfer instruction.
     async fn create_range_proof_context_state_with_optional_transfer<S: Signers>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
@@ -2586,7 +2598,8 @@ where
 
     /// Transfer tokens confidentially with fee using split proofs.
     ///
-    /// This function assumes that proof context states have already been created.
+    /// This function assumes that proof context states have already been
+    /// created.
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_transfer_with_fee_and_split_proofs<S: Signers>(
         &self,
@@ -2633,8 +2646,8 @@ where
 
     /// Transfer tokens confidentially using split proofs in parallel
     ///
-    /// This function internally generates the ZK Token proof instructions to create the necessary
-    /// proof context states.
+    /// This function internally generates the ZK Token proof instructions to
+    /// create the necessary proof context states.
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_transfer_with_fee_and_split_proofs_in_parallel<
         S: Signers,
@@ -2749,8 +2762,8 @@ where
         )
     }
 
-    /// Create equality and transfer amount ciphertext validity proof context state accounts for a
-    /// confidential transfer with fee.
+    /// Create equality and transfer amount ciphertext validity proof context
+    /// state accounts for a confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer_with_fee<
         S: Signers,
@@ -2771,8 +2784,8 @@ where
         .await
     }
 
-    /// Create equality and transfer amount ciphertext validity proof context state accounts with a confidential
-    /// transfer instruction.
+    /// Create equality and transfer amount ciphertext validity proof context
+    /// state accounts with a confidential transfer instruction.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer_with_fee_parallel<
         S: Signers,
@@ -2794,11 +2807,11 @@ where
         .await
     }
 
-    /// Create equality and ciphertext validity proof context states for a confidential transfer
-    /// with fee.
+    /// Create equality and ciphertext validity proof context states for a
+    /// confidential transfer with fee.
     ///
-    /// If an optional transfer instruction is provided, then the transfer instruction is attached
-    /// to the same transaction.
+    /// If an optional transfer instruction is provided, then the transfer
+    /// instruction is attached to the same transaction.
     #[allow(clippy::too_many_arguments)]
     async fn create_equality_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee<
         S: Signers,
@@ -2871,8 +2884,8 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    /// Create fee sigma and fee ciphertext validity proof context state accounts for a
-    /// confidential transfer with fee.
+    /// Create fee sigma and fee ciphertext validity proof context state
+    /// accounts for a confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_fee_sigma_and_ciphertext_validity_proof_context_states_for_transfer_with_fee<
         S: Signers,
@@ -2893,8 +2906,8 @@ where
         .await
     }
 
-    /// Create fee sigma and fee ciphertext validity proof context state accounts with a confidential
-    /// transfer with fee.
+    /// Create fee sigma and fee ciphertext validity proof context state
+    /// accounts with a confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_fee_sigma_and_ciphertext_validity_proof_context_states_for_transfer_with_fee_parallel<
         S: Signers,
@@ -2916,11 +2929,11 @@ where
         .await
     }
 
-    /// Create fee sigma and fee ciphertext validity proof context states for a confidential
-    /// transfer with fee.
+    /// Create fee sigma and fee ciphertext validity proof context states for a
+    /// confidential transfer with fee.
     ///
-    /// If an optional transfer instruction is provided, then the transfer instruction is attached
-    /// to the same transaction.
+    /// If an optional transfer instruction is provided, then the transfer
+    /// instruction is attached to the same transaction.
     #[allow(clippy::too_many_arguments)]
     async fn create_fee_sigma_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee<
         S: Signers,
@@ -2993,7 +3006,8 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    /// Create range proof context state account for a confidential transfer with fee.
+    /// Create range proof context state account for a confidential transfer
+    /// with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_range_proof_context_state_for_transfer_with_fee<S: Signers>(
         &self,
@@ -3010,7 +3024,8 @@ where
         .await
     }
 
-    /// Create range proof context state account for a confidential transfer with fee.
+    /// Create range proof context state account for a confidential transfer
+    /// with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_range_proof_context_state_for_transfer_with_fee_parallel<S: Signers>(
         &self,
@@ -3028,7 +3043,8 @@ where
         .await
     }
 
-    /// Create a range proof context state account and an optional confidential transfer instruction.
+    /// Create a range proof context state account and an optional confidential
+    /// transfer instruction.
     async fn create_range_proof_context_state_with_optional_transfer_with_fee<S: Signers>(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
@@ -3067,7 +3083,8 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    /// Applies the confidential transfer pending balance to the available balance
+    /// Applies the confidential transfer pending balance to the available
+    /// balance
     pub async fn confidential_transfer_apply_pending_balance<S: Signers>(
         &self,
         account: &Pubkey,
@@ -3108,7 +3125,8 @@ where
         .await
     }
 
-    /// Enable confidential transfer `Deposit` and `Transfer` instructions for a token account
+    /// Enable confidential transfer `Deposit` and `Transfer` instructions for a
+    /// token account
     pub async fn confidential_transfer_enable_confidential_credits<S: Signers>(
         &self,
         account: &Pubkey,
@@ -3132,7 +3150,8 @@ where
         .await
     }
 
-    /// Disable confidential transfer `Deposit` and `Transfer` instructions for a token account
+    /// Disable confidential transfer `Deposit` and `Transfer` instructions for
+    /// a token account
     pub async fn confidential_transfer_disable_confidential_credits<S: Signers>(
         &self,
         account: &Pubkey,
@@ -3156,7 +3175,8 @@ where
         .await
     }
 
-    /// Enable a confidential extension token account to receive non-confidential payments
+    /// Enable a confidential extension token account to receive
+    /// non-confidential payments
     pub async fn confidential_transfer_enable_non_confidential_credits<S: Signers>(
         &self,
         account: &Pubkey,
@@ -3180,7 +3200,8 @@ where
         .await
     }
 
-    /// Disable non-confidential payments for a confidential extension token account
+    /// Disable non-confidential payments for a confidential extension token
+    /// account
     pub async fn confidential_transfer_disable_non_confidential_credits<S: Signers>(
         &self,
         account: &Pubkey,

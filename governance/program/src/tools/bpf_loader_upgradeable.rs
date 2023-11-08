@@ -57,7 +57,8 @@ pub fn set_program_upgrade_authority<'a>(
     )
 }
 
-/// Asserts the program  is upgradable and its upgrade authority is a signer of the transaction
+/// Asserts the program  is upgradable and its upgrade authority is a signer of
+/// the transaction
 pub fn assert_program_upgrade_authority_is_signer(
     program_address: &Pubkey,
     program_data_info: &AccountInfo,

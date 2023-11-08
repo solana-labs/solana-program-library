@@ -99,7 +99,8 @@ pub fn process_create_token_governance(
         // If the token account has close_authority then transfer it as well
         let token_account_data = Account::unpack(&governed_token_info.data.borrow())?;
         // Note: The code assumes owner==close_authority
-        //       If this is not the case then the caller should set close_authority accordingly before making the transfer
+        // If this is not the case then the caller should set close_authority
+        // accordingly before making the transfer
         if token_account_data.close_authority.is_some() {
             set_spl_token_account_authority(
                 governed_token_info,

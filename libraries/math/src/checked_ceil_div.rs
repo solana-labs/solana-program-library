@@ -11,10 +11,10 @@ use crate::uint::U256;
 /// calculation.
 ///
 /// For example, 400 / 32 = 12, with a remainder cutting off 0.5 of amount.
-/// If we simply ceiling the quotient to 13, then we're saying 400 / 32 = 13, which
-/// also cuts off value.  To improve this result, we calculate the other way
-/// around and again check for a remainder: 400 / 13 = 30, with a remainder of
-/// 0.77, and we ceiling that value again.  This gives us a final calculation
+/// If we simply ceiling the quotient to 13, then we're saying 400 / 32 = 13,
+/// which also cuts off value.  To improve this result, we calculate the other
+/// way around and again check for a remainder: 400 / 13 = 30, with a remainder
+/// of 0.77, and we ceiling that value again.  This gives us a final calculation
 /// of 400 / 31 = 13, which provides a ceiling calculation without cutting off
 /// more value than needed.
 ///

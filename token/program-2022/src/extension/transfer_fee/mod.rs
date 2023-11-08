@@ -44,8 +44,10 @@ pub struct TransferFee {
 impl TransferFee {
     /// Calculate ceiling-division
     ///
-    /// Ceiling-division `ceil[ numerator / denominator ]` can be represented as a floor-division
-    /// `floor[ (numerator + denominator - 1) / denominator ]`
+    /// Ceiling-division
+    ///     `ceil[ numerator / denominator ]`
+    /// can be represented as a floor-division
+    ///     `floor[ (numerator + denominator - 1) / denominator]`
     fn ceil_div(numerator: u128, denominator: u128) -> Option<u128> {
         numerator
             .checked_add(denominator)?
@@ -73,16 +75,17 @@ impl TransferFee {
         pre_fee_amount.checked_sub(self.calculate_fee(pre_fee_amount)?)
     }
 
-    /// Calculate the transfer amount that will result in a specified net transfer amount.
+    /// Calculate the transfer amount that will result in a specified net
+    /// transfer amount.
     ///
-    /// The original transfer amount may not always be unique due to rounding. In this case, the
-    /// smaller amount will be chosen.
-    /// e.g. Both transfer amount 10, 11 with 10% fee rate results in net transfer amount of 9. In
-    /// this case, 10 will be chosen.
+    /// The original transfer amount may not always be unique due to rounding.
+    /// In this case, the smaller amount will be chosen.
+    /// e.g. Both transfer amount 10, 11 with 10% fee rate results in net
+    /// transfer amount of 9. In this case, 10 will be chosen.
     /// e.g. Fee rate is 100%. In this case, 0 will be chosen.
     ///
-    /// The original transfer amount may not always exist on large net transfer amounts due to
-    /// overflow. In this case, `None` is returned.
+    /// The original transfer amount may not always exist on large net transfer
+    /// amounts due to overflow. In this case, `None` is returned.
     /// e.g. The net fee amount is `u64::MAX` with a positive fee rate.
     pub fn calculate_pre_fee_amount(&self, post_fee_amount: u64) -> Option<u64> {
         let maximum_fee = u64::from(self.maximum_fee);
@@ -122,7 +125,8 @@ pub struct TransferFeeConfig {
     pub transfer_fee_config_authority: OptionalNonZeroPubkey,
     /// Withdraw from mint instructions must be signed by this key
     pub withdraw_withheld_authority: OptionalNonZeroPubkey,
-    /// Withheld transfer fee tokens that have been moved to the mint for withdrawal
+    /// Withheld transfer fee tokens that have been moved to the mint for
+    /// withdrawal
     pub withheld_amount: PodU64,
     /// Older transfer fee, used if the current epoch < new_transfer_fee.epoch
     pub older_transfer_fee: TransferFee,

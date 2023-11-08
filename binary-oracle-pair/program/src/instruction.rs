@@ -44,7 +44,8 @@ pub enum PoolInstruction {
     ///   0. `[]` Pool
     ///   1. `[]` Authority
     ///   2. `[s]` User transfer authority
-    ///   3. `[w]` Token SOURCE Account, amount is transferable by pool authority with allowances.
+    ///   3. `[w]` Token SOURCE Account, amount is transferable by pool
+    ///      authority with allowances.
     ///   4. `[w]` Deposit token account
     ///   5. `[w]` token_P PASS mint
     ///   6. `[w]` token_F FAIL mint
@@ -55,12 +56,14 @@ pub enum PoolInstruction {
     Deposit(u64),
 
     ///   Withdraw from the pool.
-    ///   If current slot is < mint_end slot, 1 Pass AND 1 Fail token convert to 1 deposit
-    ///   If current slot is > decide_end_slot slot && decide == Some(true), 1 Pass convert to 1 deposit
-    ///   otherwise 1 Fail converts to 1 deposit
+    ///   If current slot is < mint_end slot, 1 Pass AND 1 Fail token convert
+    ///     to 1 deposit   
+    ///   If current slot is > decide_end_slot slot && decide ==
+    ///     Some(true), 1 Pass convert to 1 deposit   otherwise 1 Fail converts
+    ///     to 1 deposit
     ///
-    ///   Pass tokens convert 1:1 to the deposit token iff decision is set to Some(true)
-    ///   AND current slot is > decide_end_slot.
+    ///   Pass tokens convert 1:1 to the deposit token iff decision is set to
+    ///     Some(true) AND current slot is > decide_end_slot.
     ///
     ///   0. `[]` Pool
     ///   1. `[]` Authority
@@ -76,7 +79,8 @@ pub enum PoolInstruction {
     Withdraw(u64),
 
     ///  Trigger the decision.
-    ///  Call only succeeds once and if current slot > mint_end slot AND < decide_end slot
+    ///  Call only succeeds once and if current slot > mint_end slot AND <
+    /// decide_end slot
     ///   0. `[]` Pool
     ///   1. `[s]` Decider pubkey
     ///   2. `[]` Sysvar Clock

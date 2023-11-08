@@ -42,7 +42,8 @@ pub enum RecordInstruction {
     /// 2. `[]` New record authority
     SetAuthority,
 
-    /// Close the provided record account, draining lamports to recipient account
+    /// Close the provided record account, draining lamports to recipient
+    /// account
     ///
     /// Accounts expected by this instruction:
     ///

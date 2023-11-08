@@ -114,8 +114,8 @@ pub trait CurveCalculator: Debug + DynPack {
     /// Get the amount of pool tokens for the deposited amount of token A or B.
     ///
     /// This is used for single-sided deposits.  It essentially performs a swap
-    /// followed by a deposit.  Because a swap is implicitly performed, this will
-    /// change the spot price of the pool.
+    /// followed by a deposit.  Because a swap is implicitly performed, this
+    /// will change the spot price of the pool.
     ///
     /// See more background for the calculation at:
     ///
@@ -292,13 +292,13 @@ pub mod test {
         );
     }
 
-    /// Test function to check that withdrawing token A is the same as withdrawing
-    /// both and swapping one side.
+    /// Test function to check that withdrawing token A is the same as
+    /// withdrawing both and swapping one side.
     /// Since calculations use unsigned integers, there will be truncation at
     /// some point, meaning we can't have perfect equality.
     /// We guarantee that the relative error between withdrawing one side and
-    /// performing a withdraw plus a swap will be at most some epsilon provided by
-    /// the curve. Most curves guarantee accuracy within 0.5%.
+    /// performing a withdraw plus a swap will be at most some epsilon provided
+    /// by the curve. Most curves guarantee accuracy within 0.5%.
     pub fn check_withdraw_token_conversion(
         curve: &dyn CurveCalculator,
         pool_token_amount: u128,
@@ -515,9 +515,9 @@ pub mod test {
         let value = curve
             .normalized_value(swap_token_a_amount, swap_token_b_amount)
             .unwrap();
-        // since we can get rounding issues on the pool value which make it seem that the
-        // value per token has gone down, we bump it up by an epsilon of 1 to
-        // cover all cases
+        // since we can get rounding issues on the pool value which make it seem that
+        // the value per token has gone down, we bump it up by an epsilon of 1
+        // to cover all cases
         let new_value = curve
             .normalized_value(new_swap_token_a_amount, new_swap_token_b_amount)
             .unwrap();

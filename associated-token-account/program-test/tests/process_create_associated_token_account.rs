@@ -1,4 +1,5 @@
-// Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
+// Mark this test as BPF-only due to current `ProgramTest` limitations when
+// CPIing into the system program
 #![cfg(feature = "test-sbf")]
 
 mod program_test;
@@ -86,8 +87,8 @@ async fn test_create_with_fewer_lamports() {
             .unwrap();
     let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
-    // Transfer lamports into `associated_token_address` before creating it - enough to be
-    // rent-exempt for 0 data, but not for an initialized token account
+    // Transfer lamports into `associated_token_address` before creating it - enough
+    // to be rent-exempt for 0 data, but not for an initialized token account
     let mut transaction = Transaction::new_with_payer(
         &[system_instruction::transfer(
             &payer.pubkey(),

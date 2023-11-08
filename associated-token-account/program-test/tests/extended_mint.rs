@@ -1,4 +1,5 @@
-// Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
+// Mark this test as BPF-only due to current `ProgramTest` limitations when
+// CPIing into the system program
 #![cfg(feature = "test-sbf")]
 
 mod program_test;
@@ -34,7 +35,8 @@ async fn test_associated_token_account_with_transfer_fees() {
     let rent = banks_client.get_rent().await.unwrap();
 
     // create extended mint
-    // ... in the future, a mint can be pre-loaded in program_test.rs like the regular mint
+    // ... in the future, a mint can be pre-loaded in program_test.rs like the
+    // regular mint
     let mint_account = Keypair::new();
     let token_mint_address = mint_account.pubkey();
     let mint_authority = Keypair::new();

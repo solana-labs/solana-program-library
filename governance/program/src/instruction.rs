@@ -39,27 +39,29 @@ use {
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceInstruction {
-    /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
+    /// Creates Governance Realm account which aggregates governances for given
+    /// Community Mint and optional Council Mint
     ///
-    /// 0. `[writable]` Governance Realm account. PDA seeds:['governance',name]
+    /// 0. `[writable]` Governance Realm account.
+    ///     * PDA seeds:['governance',name]
     /// 1. `[]` Realm authority
     /// 2. `[]` Community Token Mint
-    /// 3. `[writable]` Community Token Holding account. PDA seeds: ['governance',realm,community_mint]
+    /// 3. `[writable]` Community Token Holding account.
+    ///     * PDA seeds: ['governance',realm,community_mint]
     ///     The account will be created with the Realm PDA as its owner
     /// 4. `[signer]` Payer
     /// 5. `[]` System
     /// 6. `[]` SPL Token
     /// 7. `[]` Sysvar Rent
-
     /// 8. `[]` Council Token Mint - optional
-    /// 9. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
+    /// 9. `[writable]` Council Token Holding account - optional unless council
+    ///    is used.
+    ///     * PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
-
-    /// 10. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
-
+    /// 10. `[writable]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     /// 11. `[]` Optional Community Voter Weight Addin Program Id
     /// 12. `[]` Optional Max Community Voter Weight Addin Program Id
-    ///
     /// 13. `[]` Optional Council Voter Weight Addin Program Id
     /// 14. `[]` Optional Max Council Voter Weight Addin Program Id
     CreateRealm {
@@ -72,45 +74,64 @@ pub enum GovernanceInstruction {
         config_args: RealmConfigArgs,
     },
 
-    /// Deposits governing tokens (Community or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm
-    /// Note: If subsequent (top up) deposit is made and there are active votes for the Voter then the vote weights won't be updated automatically
-    /// It can be done by relinquishing votes on active Proposals and voting again with the new weight
+    /// Deposits governing tokens (Community or Council) to Governance Realm and
+    /// establishes your voter weight to be used for voting within the Realm
+    /// Note: If subsequent (top up) deposit is made and there are active votes
+    /// for the Voter then the vote weights won't be updated automatically
+    /// It can be done by relinquishing votes on active Proposals and voting
+    /// again with the new weight
     ///
     ///  0. `[]` Realm account
-    ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
-    ///  2. `[writable]` Governing Token Source account. It can be either spl-token TokenAccount or MintAccount
-    ///      Tokens will be transferred or minted to the Holding account
+    ///  1. `[writable]` Governing Token Holding account.
+    ///     * PDA seeds: ['governance',realm, governing_token_mint]
+    ///  2. `[writable]` Governing Token Source account. It can be either
+    ///     spl-token TokenAccount or MintAccount Tokens will be transferred or
+    ///     minted to the Holding account
     ///  3. `[signer]` Governing Token Owner account
-    ///  4. `[signer]` Governing Token Source account authority
-    ///      It should be owner for TokenAccount and mint_authority for MintAccount
-    ///  5. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  4. `[signer]` Governing Token Source account authority It should be
+    ///     owner for TokenAccount and mint_authority for MintAccount
+    ///  5. `[writable]` TokenOwnerRecord account.
+    ///     * PDA seeds: ['governance',realm, governing_token_mint,
+    ///       governing_token_owner]
     ///  6. `[signer]` Payer
     ///  7. `[]` System
     ///  8. `[]` SPL Token program
-    ///  9. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///  9. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     DepositGoverningTokens {
         /// The amount to deposit into the realm
         #[allow(dead_code)]
         amount: u64,
     },
 
-    /// Withdraws governing tokens (Community or Council) from Governance Realm and downgrades your voter weight within the Realm
-    /// Note: It's only possible to withdraw tokens if the Voter doesn't have any outstanding active votes
-    /// If there are any outstanding votes then they must be relinquished before tokens could be withdrawn
+    /// Withdraws governing tokens (Community or Council) from Governance Realm
+    /// and downgrades your voter weight within the Realm.
+    /// Note: It's only possible to withdraw tokens if the Voter doesn't have
+    /// any outstanding active votes.
+    /// If there are any outstanding votes then they must be relinquished
+    /// before tokens could be withdrawn
     ///
     ///  0. `[]` Realm account
-    ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
-    ///  2. `[writable]` Governing Token Destination account. All tokens will be transferred to this account
+    ///  1. `[writable]` Governing Token Holding account.
+    ///     * PDA seeds: ['governance',realm, governing_token_mint]
+    ///  2. `[writable]` Governing Token Destination account. All tokens will be
+    ///     transferred to this account
     ///  3. `[signer]` Governing Token Owner account
-    ///  4. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  4. `[writable]` TokenOwnerRecord account.
+    ///     * PDA seeds: ['governance',realm, governing_token_mint,
+    ///       governing_token_owner]
     ///  5. `[]` SPL Token program
-    ///  6. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///  6. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     WithdrawGoverningTokens {},
 
-    /// Sets Governance Delegate for the given Realm and Governing Token Mint (Community or Council)
-    /// The Delegate would have voting rights and could vote on behalf of the Governing Token Owner
-    /// The Delegate would also be able to create Proposals on behalf of the Governing Token Owner
-    /// Note: This doesn't take voting rights from the Token Owner who still can vote and change governance_delegate
+    /// Sets Governance Delegate for the given Realm and Governing Token Mint
+    /// (Community or Council). The Delegate would have voting rights and
+    /// could vote on behalf of the Governing Token Owner. The Delegate would
+    /// also be able to create Proposals on behalf of the Governing Token
+    /// Owner.
+    /// Note: This doesn't take voting rights from the Token Owner who still can
+    /// vote and change governance_delegate
     ///
     /// 0. `[signer]` Current Governance Delegate or Governing Token owner
     /// 1. `[writable]` Token Owner  Record
@@ -120,18 +141,23 @@ pub enum GovernanceInstruction {
         new_governance_delegate: Option<Pubkey>,
     },
 
-    /// Creates Governance account which can be used to govern any arbitrary Solana account or asset
+    /// Creates Governance account which can be used to govern any arbitrary
+    /// Solana account or asset
     ///
     ///   0. `[]` Realm account the created Governance belongs to
-    ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
-    ///   2. `[]` Account governed by this Governance
-    ///       Note: The account doesn't have to exist and can be only used as a unique identifier for the Governance account
-    ///   3. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
+    ///   1. `[writable]` Account Governance account.
+    ///     * PDA seeds: ['account-governance', realm, governed_account]
+    ///   2. `[]` Account governed by this Governance Note: The account doesn't
+    ///      have to exist and can be only used as a unique identifier for the
+    ///      Governance account
+    ///   3. `[]` Governing TokenOwnerRecord account (Used only if not signed by
+    ///      RealmAuthority)
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
     ///   6. `[]` Sysvar Rent
     ///   7. `[signer]` Governance authority
-    ///   8. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   8. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     ///   9. `[]` Optional Voter Weight Record
     CreateGovernance {
         /// Governance config
@@ -142,17 +168,22 @@ pub enum GovernanceInstruction {
     /// Creates Program Governance account which governs an upgradable program
     ///
     ///   0. `[]` Realm account the created Governance belongs to
-    ///   1. `[writable]` Program Governance account. PDA seeds: ['program-governance', realm, governed_program]
+    ///   1. `[writable]` Program Governance account.
+    ///     * PDA seeds: ['program-governance', realm, governed_program]
     ///   2. `[]` Program governed by this Governance account
-    ///   3. `[writable]` Program Data account of the Program governed by this Governance account
-    ///   4. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///   5. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
+    ///   3. `[writable]` Program Data account of the Program governed by this
+    ///      Governance account
+    ///   4. `[signer]` Current Upgrade Authority account of the Program
+    ///      governed by this Governance account
+    ///   5. `[]` Governing TokenOwnerRecord account (Used only if not signed by
+    ///      RealmAuthority)
     ///   6. `[signer]` Payer
     ///   7. `[]` bpf_upgradeable_loader program
     ///   8. `[]` System program
     ///   9. `[]` Sysvar Rent
     ///   10. `[signer]` Governance authority
-    ///   11. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   11. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     ///   12. `[]` Optional Voter Weight Record
     CreateProgramGovernance {
         /// Governance config
@@ -160,27 +191,37 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
 
         #[allow(dead_code)]
-        /// Indicates whether Program's upgrade_authority should be transferred to the Governance PDA
-        /// If it's set to false then it can be done at a later time
-        /// However the instruction would validate the current upgrade_authority signed the transaction nonetheless
+        /// Indicates whether Program's upgrade_authority should be transferred
+        /// to the Governance PDA If it's set to false then it can be
+        /// done at a later time However the instruction would validate
+        /// the current upgrade_authority signed the transaction nonetheless
         transfer_upgrade_authority: bool,
     },
 
-    /// Creates Proposal account for Transactions which will be executed at some point in the future
+    /// Creates Proposal account for Transactions which will be executed at some
+    /// point in the future
     ///
     ///   0. `[]` Realm account the created Proposal belongs to
-    ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_seed]
+    ///   1. `[writable]` Proposal account.
+    ///     * PDA seeds ['governance',governance, governing_token_mint,
+    ///       proposal_seed]
     ///   2. `[writable]` Governance account
     ///   3. `[writable]` TokenOwnerRecord account of the Proposal owner
     ///   4. `[]` Governing Token Mint the Proposal is created for
-    ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   5. `[signer]` Governance Authority (Token Owner or Governance
+    ///      Delegate)
     ///   6. `[signer]` Payer
     ///   7. `[]` System program
-    ///   8. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   8. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     ///   9. `[]` Optional Voter Weight Record
-    ///   10.`[writable]` Optional ProposalDeposit account. PDA seeds: ['proposal-deposit', proposal, deposit payer]
-    ///       Proposal deposit is required when there are more active proposals than the configured deposit exempt amount
-    ///       The deposit is paid by the Payer of the transaction and can be reclaimed using RefundProposalDeposit once the Proposal is no longer active
+    ///   10.`[writable]` Optional ProposalDeposit account.
+    ///     * PDA seeds: ['proposal-deposit', proposal, deposit payer]
+    ///     Proposal deposit is required when there are more active proposals
+    ///     than the configured deposit exempt amount.
+    ///     The deposit is paid by the Payer of the transaction and can be
+    ///     reclaimed using RefundProposalDeposit once the Proposal is no
+    ///     longer active.
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
@@ -201,7 +242,8 @@ pub enum GovernanceInstruction {
         #[allow(dead_code)]
         /// Indicates whether the proposal has the deny option
         /// A proposal without the rejecting option is a non binding survey
-        /// Only proposals with the rejecting option can have executable transactions
+        /// Only proposals with the rejecting option can have executable
+        /// transactions
         use_deny_option: bool,
 
         #[allow(dead_code)]
@@ -209,7 +251,8 @@ pub enum GovernanceInstruction {
         proposal_seed: Pubkey,
     },
 
-    /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
+    /// Adds a signatory to the Proposal which means this Proposal can't leave
+    /// Draft state until yet another Signatory signs
     ///
     ///   0. `[]` Governance account
     ///   1. `[writable]` Proposal account associated with the governance
@@ -218,7 +261,8 @@ pub enum GovernanceInstruction {
     ///   4. `[]` System program
     ///   Either:
     ///      - 5. `[]` TokenOwnerRecord account of the Proposal owner
-    ///        6. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///        6. `[signer]` Governance Authority (Token Owner or Governance
+    ///           Delegate)
     ///
     ///      - 5. `[]` RequiredSignatory account associated with the governance.
     AddSignatory {
@@ -230,15 +274,19 @@ pub enum GovernanceInstruction {
     /// Formerly RemoveSignatory. Exists for backwards-compatibility.
     Legacy1,
 
-    /// Inserts Transaction with a set of instructions for the Proposal at the given index position
-    /// New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index
-    /// If a Transaction replaces an existing Transaction at a given index then the old one must be removed using RemoveTransaction first
+    /// Inserts Transaction with a set of instructions for the Proposal at the
+    /// given index position New Transaction must be inserted at the end of
+    /// the range indicated by Proposal transactions_next_index
+    /// If a Transaction replaces an existing Transaction at a given index then
+    /// the old one must be removed using RemoveTransaction first
 
     ///   0. `[]` Governance account
     ///   1. `[writable]` Proposal account
     ///   2. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   4. `[writable]` ProposalTransaction, account. PDA seeds: ['governance', proposal, option_index, index]
+    ///   3. `[signer]` Governance Authority (Token Owner or Governance
+    ///      Delegate)
+    ///   4. `[writable]` ProposalTransaction, account.
+    ///     * PDA seeds: ['governance', proposal, option_index, index]
     ///   5. `[signer]` Payer
     ///   6. `[]` System program
     ///   7. `[]` Rent sysvar
@@ -250,7 +298,8 @@ pub enum GovernanceInstruction {
         /// Transaction index to be inserted at.
         index: u16,
         #[allow(dead_code)]
-        /// Waiting time (in seconds) between vote period ending and this being eligible for execution
+        /// Waiting time (in seconds) between vote period ending and this being
+        /// eligible for execution
         hold_up_time: u32,
 
         #[allow(dead_code)]
@@ -262,9 +311,11 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance
+    ///      Delegate)
     ///   3. `[writable]` ProposalTransaction, account
-    ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed ProposalTransaction account
+    ///   4. `[writable]` Beneficiary Account which would receive lamports from
+    ///      the disposed ProposalTransaction account
     RemoveTransaction,
 
     /// Cancels Proposal by changing its state to Canceled
@@ -273,43 +324,56 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]`  TokenOwnerRecord account of the  Proposal owner
-    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   4. `[signer]` Governance Authority (Token Owner or Governance
+    ///      Delegate)
     CancelProposal,
 
     /// Signs off Proposal indicating the Signatory approves the Proposal
     /// When the last Signatory signs off the Proposal it enters Voting state
-    /// Note: Adding signatories to a Proposal is a quality and not a security gate and
-    /// it's entirely at the discretion of the Proposal owner
-    /// If Proposal owner doesn't designate any signatories then can sign off the Proposal themself
+    /// Note: Adding signatories to a Proposal is a quality and not a security
+    /// gate and it's entirely at the discretion of the Proposal owner
+    /// If Proposal owner doesn't designate any signatories then can sign off
+    /// the Proposal themself
     ///
     ///   0. `[]` Realm account
     ///   1. `[]` Governance account
     ///   2. `[writable]` Proposal account
-    ///   3. `[signer]` Signatory account signing off the Proposal
-    ///       Or Proposal owner if the owner hasn't appointed any signatories
-    ///   4. `[]` TokenOwnerRecord for the Proposal owner, required when the owner signs off the Proposal
-    ///       Or `[writable]` SignatoryRecord account, required when non owner sings off the Proposal
+    ///   3. `[signer]` Signatory account signing off the Proposal Or Proposal
+    ///      owner if the owner hasn't appointed any signatories
+    ///   4. `[]` TokenOwnerRecord for the Proposal owner, required when the
+    ///      owner signs off the Proposal Or `[writable]` SignatoryRecord
+    ///      account, required when non owner sings off the Proposal
     SignOffProposal,
 
-    ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
-    ///  By doing so you indicate you approve or disapprove of running the Proposal set of transactions
-    ///  If you tip the consensus then the transactions can begin to be run after their hold up time
+    ///  Uses your voter weight (deposited Community or Council tokens) to cast
+    /// a vote on a Proposal  By doing so you indicate you approve or
+    /// disapprove of running the Proposal set of transactions  If you tip
+    /// the consensus then the transactions can begin to be run after their hold
+    /// up time
     ///
     ///   0. `[]` Realm account
     ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
-    ///   4. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
-    ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   6. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,token_owner_record]
-    ///   7. `[]` The Governing Token Mint which is used to cast the vote (vote_governing_token_mint)
-    ///           The voting token mint is the governing_token_mint of the Proposal for Approve, Deny and Abstain votes
-    ///           For Veto vote the voting token mint is the mint of the opposite voting population
-    ///           Council mint to veto Community proposals and Community mint to veto Council proposals
-    ///           Note: In the current version only Council veto is supported
+    ///   4. `[writable]` TokenOwnerRecord of the voter.
+    ///     * PDA seeds: ['governance',realm, vote_governing_token_mint,
+    ///       governing_token_owner]
+    ///   5. `[signer]` Governance Authority (Token Owner or Governance
+    ///      Delegate)
+    ///   6. `[writable]` Proposal VoteRecord account.
+    ///     * PDA seeds: ['governance',proposal,token_owner_record]
+    ///   7. `[]` The Governing Token Mint which is used to cast the vote
+    ///      (vote_governing_token_mint).
+    ///     The voting token mint is the governing_token_mint of the Proposal
+    ///     for Approve, Deny and Abstain votes.
+    ///     For Veto vote the voting token mint is the mint of the opposite
+    ///     voting population Council mint to veto Community proposals and
+    ///     Community mint to veto Council proposals.
+    ///     Note: In the current version only Council veto is supported
     ///   8. `[signer]` Payer
     ///   9. `[]` System program
-    ///   10. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   10. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     ///   11. `[]` Optional Voter Weight Record
     ///   12. `[]` Optional Max Voter Weight Record
     CastVote {
@@ -318,38 +382,49 @@ pub enum GovernanceInstruction {
         vote: Vote,
     },
 
-    /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
+    /// Finalizes vote in case the Vote was not automatically tipped within
+    /// max_voting_time period
     ///
     ///   0. `[]` Realm account
     ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner
     ///   4. `[]` Governing Token Mint
-    ///   5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   5. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     ///   6. `[]` Optional Max Voter Weight Record
     FinalizeVote {},
 
-    ///  Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes
-    ///  If the Proposal is still being voted on then the voter's weight won't count towards the vote outcome
-    ///  If the Proposal is already in decided state then the instruction has no impact on the Proposal
-    ///  and only allows voters to prune their outstanding votes in case they wanted to withdraw Governing tokens from the Realm
+    ///  Relinquish Vote removes voter weight from a Proposal and removes it
+    /// from voter's active votes. If the Proposal is still being voted on
+    /// then the voter's weight won't count towards the vote outcome. If the
+    /// Proposal is already in decided state then the instruction has no impact
+    /// on the Proposal and only allows voters to prune their outstanding
+    /// votes in case they wanted to withdraw Governing tokens from the Realm
     ///
     ///   0. `[]` Realm account
     ///   1. `[]` Governance account
     ///   2. `[writable]` Proposal account
-    ///   3. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, vote_governing_token_mint, governing_token_owner]
-    ///   4. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal, token_owner_record]
-    ///   5. `[]` The Governing Token Mint which was used to cast the vote (vote_governing_token_mint)
-    ///   6. `[signer]` Optional Governance Authority (Token Owner or Governance Delegate)
-    ///       It's required only when Proposal is still being voted on
-    ///   7. `[writable]` Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed
-    ///       It's required only when Proposal is still being voted on
+    ///   3. `[writable]` TokenOwnerRecord account.
+    ///     * PDA seeds: ['governance',realm, vote_governing_token_mint,
+    ///       governing_token_owner]
+    ///   4. `[writable]` Proposal VoteRecord account.
+    ///     * PDA seeds: ['governance',proposal, token_owner_record]
+    ///   5. `[]` The Governing Token Mint which was used to cast the vote
+    ///      (vote_governing_token_mint)
+    ///   6. `[signer]` Optional Governance Authority (Token Owner or Governance
+    ///      Delegate) It's required only when Proposal is still being voted on
+    ///   7. `[writable]` Optional Beneficiary account which would receive
+    ///      lamports when VoteRecord Account is disposed It's required only
+    ///      when Proposal is still being voted on
     RelinquishVote,
 
     /// Executes a Transaction in the Proposal
-    /// Anybody can execute transaction once Proposal has been voted Yes and transaction_hold_up time has passed
-    /// The actual transaction being executed will be signed by Governance PDA the Proposal belongs to
-    /// For example to execute Program upgrade the ProgramGovernance PDA would be used as the singer
+    /// Anybody can execute transaction once Proposal has been voted Yes and
+    /// transaction_hold_up time has passed The actual transaction being
+    /// executed will be signed by Governance PDA the Proposal belongs to
+    /// For example to execute Program upgrade the ProgramGovernance PDA would
+    /// be used as the singer
     ///
     ///   0. `[]` Governance account
     ///   1. `[writable]` Proposal account
@@ -360,16 +435,20 @@ pub enum GovernanceInstruction {
     /// Creates Mint Governance account which governs a mint
     ///
     ///   0. `[]` Realm account the created Governance belongs to
-    ///   1. `[writable]` Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]
+    ///   1. `[writable]` Mint Governance account.
+    ///     * PDA seeds: ['mint-governance', realm, governed_mint]
     ///   2. `[writable]` Mint governed by this Governance account
-    ///   3. `[signer]` Current Mint authority (MintTokens and optionally FreezeAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
+    ///   3. `[signer]` Current Mint authority (MintTokens and optionally
+    ///      FreezeAccount)
+    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by
+    ///      RealmAuthority)
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
     ///   8. `[signer]` Governance authority
-    ///   9. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   9. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     ///   10. `[]` Optional Voter Weight Record
     CreateMintGovernance {
         #[allow(dead_code)]
@@ -377,25 +456,31 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
 
         #[allow(dead_code)]
-        /// Indicates whether Mint's authorities (MintTokens, FreezeAccount) should be transferred to the Governance PDA
-        /// If it's set to false then it can be done at a later time
-        /// However the instruction would validate the current mint authority signed the transaction nonetheless
+        /// Indicates whether Mint's authorities (MintTokens, FreezeAccount)
+        /// should be transferred to the Governance PDA. If it's set to
+        /// false then it can be done at a later time. However the
+        /// instruction would validate the current mint authority signed the
+        /// transaction nonetheless
         transfer_mint_authorities: bool,
     },
 
     /// Creates Token Governance account which governs a token account
     ///
     ///   0. `[]` Realm account the created Governance belongs to
-    ///   1. `[writable]` Token Governance account. PDA seeds: ['token-governance', realm, governed_token]
+    ///   1. `[writable]` Token Governance account.
+    ///     * PDA seeds: ['token-governance', realm, governed_token]
     ///   2. `[writable]` Token account governed by this Governance account
-    ///   3. `[signer]` Current token account authority (AccountOwner and optionally CloseAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
+    ///   3. `[signer]` Current token account authority (AccountOwner and
+    ///      optionally CloseAccount)
+    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by
+    ///      RealmAuthority)
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
     ///   9. `[signer]` Governance authority
-    ///   10. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   10. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     ///   11. `[]` Optional Voter Weight Record
     CreateTokenGovernance {
         #[allow(dead_code)]
@@ -403,9 +488,11 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
 
         #[allow(dead_code)]
-        /// Indicates whether the token account authorities (AccountOwner and optionally CloseAccount) should be transferred to the Governance PDA
+        /// Indicates whether the token account authorities (AccountOwner and
+        /// optionally CloseAccount) should be transferred to the Governance PDA
         /// If it's set to false then it can be done at a later time
-        /// However the instruction would validate the current token owner signed the transaction nonetheless
+        /// However the instruction would validate the current token owner
+        /// signed the transaction nonetheless
         transfer_account_authorities: bool,
     },
 
@@ -420,13 +507,16 @@ pub enum GovernanceInstruction {
     },
 
     /// Flags a transaction and its parent Proposal with error status
-    /// It can be used by Proposal owner in case the transaction is permanently broken and can't be executed
-    /// Note: This instruction is a workaround because currently it's not possible to catch errors from CPI calls
-    ///       and the Governance program has no way to know when instruction failed and flag it automatically
+    /// It can be used by Proposal owner in case the transaction is permanently
+    /// broken and can't be executed.
+    /// Note: This instruction is a workaround because currently it's not
+    /// possible to catch errors from CPI calls and the Governance program has
+    /// no way to know when instruction failed and flag it automatically.
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance
+    ///      Delegate)
     ///   3. `[writable]` ProposalTransaction account to flag
     FlagTransactionError,
 
@@ -434,7 +524,8 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Realm account
     ///   1. `[signer]` Current Realm authority
-    ///   2. `[]` New realm authority. Must be one of the realm governances when set
+    ///   2. `[]` New realm authority. Must be one of the realm governances when
+    ///      set
     SetRealmAuthority {
         #[allow(dead_code)]
         /// Set action ( SetUnchecked, SetChecked, Remove)
@@ -445,21 +536,25 @@ pub enum GovernanceInstruction {
     ///   0. `[writable]` Realm account
     ///   1. `[signer]`  Realm authority
     ///   2. `[]` Council Token Mint - optional
-    ///       Note: In the current version it's only possible to remove council mint (set it to None)
-    ///       After setting council to None it won't be possible to withdraw the tokens from the Realm any longer
-    ///       If that's required then it must be done before executing this instruction
-    ///   3. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
-    ///       The account will be created with the Realm PDA as its owner
+    ///     Note: In the current version it's only possible to remove council
+    ///     mint (set it to None).
+    ///     After setting council to None it won't be possible to withdraw the
+    ///     tokens from the Realm any longer.
+    ///     If that's required then it must be done before executing this
+    ///     instruction.
+    ///   3. `[writable]` Council Token Holding account - optional unless
+    ///     council is used.
+    ///     * PDA seeds: ['governance',realm,council_mint] The account will be
+    ///     created with the Realm PDA as its owner
     ///   4. `[]` System
-    ///   5. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
-    ///
+    ///   5. `[writable]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     ///   6. `[]` Optional Community Voter Weight Addin Program Id
     ///   7. `[]` Optional Max Community Voter Weight Addin Program Id
-    ///
     ///   8. `[]` Optional Council Voter Weight Addin Program Id
     ///   9. `[]` Optional Max Council Voter Weight Addin Program Id
-    ///
-    ///   10. `[signer]` Optional Payer. Required if RealmConfig doesn't exist and needs to be created
+    ///   10. `[signer]` Optional Payer. Required if RealmConfig doesn't exist
+    ///       and needs to be created
     SetRealmConfig {
         #[allow(dead_code)]
         /// Realm config args
@@ -467,44 +562,59 @@ pub enum GovernanceInstruction {
     },
 
     /// Creates TokenOwnerRecord with 0 deposit amount
-    /// It's used to register TokenOwner when voter weight addin is used and the Governance program doesn't take deposits
+    /// It's used to register TokenOwner when voter weight addin is used and the
+    /// Governance program doesn't take deposits
     ///
     ///   0. `[]` Realm account
     ///   1. `[]` Governing Token Owner account
-    ///   2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   2. `[writable]` TokenOwnerRecord account.
+    ///     * PDA seeds: ['governance',realm, governing_token_mint,
+    ///       governing_token_owner]
     ///   3. `[]` Governing Token Mint
     ///   4. `[signer]` Payer
     ///   5. `[]` System
     CreateTokenOwnerRecord {},
 
     /// Updates ProgramMetadata account
-    /// The instruction dumps information implied by the program's code into a persistent account
+    /// The instruction dumps information implied by the program's code into a
+    /// persistent account
     ///
-    ///  0. `[writable]` ProgramMetadata account. PDA seeds: ['metadata']
+    ///  0. `[writable]` ProgramMetadata account.
+    ///     * PDA seeds: ['metadata']
     ///  1. `[signer]` Payer
     ///  2. `[]` System
     UpdateProgramMetadata {},
 
     /// Creates native SOL treasury account for a Governance account
-    /// The account has no data and can be used as a payer for instructions signed by Governance PDAs or as a native SOL treasury
+    /// The account has no data and can be used as a payer for instructions
+    /// signed by Governance PDAs or as a native SOL treasury
     ///
     ///  0. `[]` Governance account the treasury account is for
-    ///  1. `[writable]` NativeTreasury account. PDA seeds: ['native-treasury', governance]
+    ///  1. `[writable]` NativeTreasury account.
+    ///     * PDA seeds: ['native-treasury', governance]
     ///  2. `[signer]` Payer
     ///  3. `[]` System
     CreateNativeTreasury,
 
-    /// Revokes (burns) membership governing tokens for the given TokenOwnerRecord and hence takes away governance power from the TokenOwner
-    /// Note: If there are active votes for the TokenOwner then the vote weights won't be updated automatically
+    /// Revokes (burns) membership governing tokens for the given
+    /// TokenOwnerRecord and hence takes away governance power from the
+    /// TokenOwner. Note: If there are active votes for the TokenOwner then
+    /// the vote weights won't be updated automatically
     ///
     ///  0. `[]` Realm account
-    ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
-    ///  2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  1. `[writable]` Governing Token Holding account.
+    ///     * PDA seeds: ['governance',realm, governing_token_mint]
+    ///  2. `[writable]` TokenOwnerRecord account.
+    ///     * PDA seeds: ['governance',realm, governing_token_mint,
+    ///       governing_token_owner]
     ///  3. `[writable]` GoverningTokenMint
     ///  4. `[signer]` Revoke authority which can be either of:
-    ///                1) GoverningTokenMint mint_authority to forcefully revoke the membership tokens
-    ///                2) GoverningTokenOwner who voluntarily revokes their own membership
-    ///  5. `[]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///                1) GoverningTokenMint mint_authority to forcefully revoke
+    ///                   the membership tokens
+    ///                2) GoverningTokenOwner who voluntarily revokes their own
+    ///                   membership
+    ///  5. `[]` RealmConfig account.
+    ///     * PDA seeds: ['realm-config', realm]
     ///  6. `[]` SPL Token program
     RevokeGoverningTokens {
         /// The amount to revoke
@@ -512,18 +622,24 @@ pub enum GovernanceInstruction {
         amount: u64,
     },
 
-    /// Refunds ProposalDeposit once the given proposal is no longer active (Draft, SigningOff, Voting)
-    /// Once the condition is met the instruction is permissionless and returns the deposit amount to the deposit payer
+    /// Refunds ProposalDeposit once the given proposal is no longer active
+    /// (Draft, SigningOff, Voting) Once the condition is met the
+    /// instruction is permissionless and returns the deposit amount to the
+    /// deposit payer
     ///
     ///   0. `[]` Proposal account
-    ///   1. `[writable]` ProposalDeposit account. PDA seeds: ['proposal-deposit', proposal, deposit payer]
+    ///   1. `[writable]` ProposalDeposit account.
+    ///     * PDA seeds: ['proposal-deposit', proposal, deposit payer]
     ///   2. `[writable]` Proposal deposit payer (beneficiary) account
     RefundProposalDeposit {},
 
-    /// Transitions an off-chain or manually executable Proposal from Succeeded into Completed state
+    /// Transitions an off-chain or manually executable Proposal from Succeeded
+    /// into Completed state
     ///
-    /// Upon a successful vote on an off-chain or manually executable proposal it remains in Succeeded state
-    /// Once the external actions are executed the Proposal owner can use the instruction to manually transition it to Completed state
+    /// Upon a successful vote on an off-chain or manually executable proposal
+    /// it remains in Succeeded state Once the external actions are executed
+    /// the Proposal owner can use the instruction to manually transition it to
+    /// Completed state
     ///
     ///
     ///   0. `[writable]` Proposal account
@@ -531,7 +647,8 @@ pub enum GovernanceInstruction {
     ///   2. `[signer]` CompleteProposal authority (Token Owner or Delegate)
     CompleteProposal {},
 
-    /// Adds a required signatory to the Governance, which will be applied to all proposals created with it
+    /// Adds a required signatory to the Governance, which will be applied to
+    /// all proposals created with it
     ///
     ///   0. `[writable, signer]` The Governance account the config is for
     ///   1. `[writable]` RequiredSignatory Account
@@ -547,7 +664,8 @@ pub enum GovernanceInstruction {
     ///
     ///  0. `[writable, signer]` The Governance account the config is for
     ///  1. `[writable]` RequiredSignatory Account
-    ///  2. `[writable]` Beneficiary Account which would receive lamports from the disposed RequiredSignatory Account
+    ///  2. `[writable]` Beneficiary Account which would receive lamports from
+    ///     the disposed RequiredSignatory Account
     RemoveRequiredSignatory,
 }
 
@@ -761,7 +879,8 @@ pub fn create_governance(
     let governed_account_address = if let Some(governed_account) = governed_account {
         *governed_account
     } else {
-        // If the governed account is not provided then generate a unique identifier for the Governance account
+        // If the governed account is not provided then generate a unique identifier for
+        // the Governance account
         Pubkey::new_unique()
     };
 
@@ -959,8 +1078,9 @@ pub fn create_proposal(
 
     with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
 
-    // Deposit is only required when there are more active proposal then the configured exempt amount
-    // Note: We always pass the account because the actual value is not known here without passing Governance account data
+    // Deposit is only required when there are more active proposal then the
+    // configured exempt amount Note: We always pass the account because the
+    // actual value is not known here without passing Governance account data
     let proposal_deposit_address =
         get_proposal_deposit_address(program_id, &proposal_address, payer);
     accounts.push(AccountMeta::new(proposal_deposit_address, false));
@@ -1030,7 +1150,8 @@ pub fn add_signatory(
 }
 
 #[derive(Debug, Copy, Clone)]
-/// Enum to specify the authority by which the instruction should add a signatory
+/// Enum to specify the authority by which the instruction should add a
+/// signatory
 pub enum AddSignatoryAuthority {
     /// Proposal owners can add optional signatories to a proposal
     ProposalOwner {
@@ -1039,7 +1160,8 @@ pub enum AddSignatoryAuthority {
         /// Token owner record of the Proposal owner
         token_owner_record: Pubkey,
     },
-    /// Anyone can add signatories that are required by the governance to a proposal
+    /// Anyone can add signatories that are required by the governance to a
+    /// proposal
     None,
 }
 
@@ -1444,8 +1566,9 @@ pub fn set_realm_config(
 
     accounts.push(AccountMeta::new_readonly(system_program::id(), false));
 
-    // Always pass realm_config_address because it's needed when use_community_voter_weight_addin is set to true
-    // but also when it's set to false and the addin is being  removed from the realm
+    // Always pass realm_config_address because it's needed when
+    // use_community_voter_weight_addin is set to true but also when it's set to
+    // false and the addin is being  removed from the realm
     let realm_config_address = get_realm_config_address(program_id, realm);
     accounts.push(AccountMeta::new(realm_config_address, false));
 
@@ -1741,7 +1864,8 @@ pub fn refund_proposal_deposit(
     }
 }
 
-/// Creates CompleteProposal instruction to move proposal from Succeeded to Completed
+/// Creates CompleteProposal instruction to move proposal from Succeeded to
+/// Completed
 pub fn complete_proposal(
     program_id: &Pubkey,
     // Accounts

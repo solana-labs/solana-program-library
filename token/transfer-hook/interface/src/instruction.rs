@@ -26,8 +26,8 @@ pub enum TransferHookInstruction {
     ///   2. `[]` Destination account
     ///   3. `[]` Source account's owner/delegate
     ///   4. `[]` Validation account
-    ///   5..5+M `[]` `M` additional accounts, written in validation account data
-    ///
+    ///   5..5+M `[]` `M` additional accounts, written in validation account
+    ///     data
     Execute {
         /// Amount of tokens to transfer
         amount: u64,
@@ -41,15 +41,14 @@ pub enum TransferHookInstruction {
     ///   1. `[]` Mint
     ///   2. `[s]` Mint authority
     ///   3. `[]` System program
-    ///
     InitializeExtraAccountMetaList {
         /// List of `ExtraAccountMeta`s to write into the account
         extra_account_metas: Vec<ExtraAccountMeta>,
     },
 }
 /// TLV instruction type only used to define the discriminator. The actual data
-/// is entirely managed by `ExtraAccountMetaList`, and it is the only data contained
-/// by this type.
+/// is entirely managed by `ExtraAccountMetaList`, and it is the only data
+/// contained by this type.
 #[derive(SplDiscriminate)]
 #[discriminator_hash_input("spl-transfer-hook-interface:execute")]
 pub struct ExecuteInstruction;
@@ -61,7 +60,8 @@ pub struct ExecuteInstruction;
 pub struct InitializeExtraAccountMetaListInstruction;
 
 impl TransferHookInstruction {
-    /// Unpacks a byte buffer into a [TransferHookInstruction](enum.TransferHookInstruction.html).
+    /// Unpacks a byte buffer into a
+    /// [TransferHookInstruction](enum.TransferHookInstruction.html).
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         if input.len() < ArrayDiscriminator::LENGTH {
             return Err(ProgramError::InvalidInstructionData);
@@ -87,7 +87,8 @@ impl TransferHookInstruction {
         })
     }
 
-    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
+    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte
+    /// buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = vec![];
         match self {

@@ -9,9 +9,11 @@ use {
     },
 };
 
-/// The data for a Name Registry account is always prefixed a `NameRecordHeader` structure.
+/// The data for a Name Registry account is always prefixed a `NameRecordHeader`
+/// structure.
 ///
-/// The layout of the remaining bytes in the account data are determined by the record `class`
+/// The layout of the remaining bytes in the account data are determined by the
+/// record `class`
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq)]
 pub struct NameRecordHeader {
     // Names are hierarchical.  `parent_name` contains the account address of the parent
@@ -21,7 +23,8 @@ pub struct NameRecordHeader {
     // The owner of this name
     pub owner: Pubkey,
 
-    // The class of data this account represents (DNS record, twitter handle, SPL Token name/symbol, etc)
+    // The class of data this account represents (DNS record, twitter handle, SPL Token
+    // name/symbol, etc)
     //
     // If `Pubkey::default()` the data is unspecified.
     pub class: Pubkey,
@@ -69,7 +72,9 @@ pub fn get_seeds_and_key(
     name_class_opt: Option<&Pubkey>,
     parent_name_address_opt: Option<&Pubkey>,
 ) -> (Pubkey, Vec<u8>) {
-    // let hashed_name: Vec<u8> = hashv(&[(HASH_PREFIX.to_owned() + name).as_bytes()]).0.to_vec();
+    // let hashed_name: Vec<u8> = hashv(&[
+    //     (HASH_PREFIX.to_owned() + name).as_bytes()
+    // ]).0.to_vec();
     let mut seeds_vec: Vec<u8> = hashed_name;
 
     let name_class = name_class_opt.cloned().unwrap_or_default();

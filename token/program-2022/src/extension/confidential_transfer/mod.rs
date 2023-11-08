@@ -27,14 +27,15 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
-/// Helper functions to verify zero-knowledge proofs in the Confidential Transfer Extension
+/// Helper functions to verify zero-knowledge proofs in the Confidential
+/// Transfer Extension
 pub mod verify_proof;
 
-/// Helper functions to generate split zero-knowledge proofs for confidential transfers in the
-/// Confidential Transfer Extension.
+/// Helper functions to generate split zero-knowledge proofs for confidential
+/// transfers in the Confidential Transfer Extension.
 ///
-/// The logic in this submodule should belong to the `solana-zk-token-sdk` and will be removed with
-/// the next upgrade to the Solana program.
+/// The logic in this submodule should belong to the `solana-zk-token-sdk` and
+/// will be removed with the next upgrade to the Solana program.
 #[cfg(not(target_os = "solana"))]
 pub mod split_proof_generation;
 
@@ -56,18 +57,19 @@ pub type DecryptableBalance = AeCiphertext;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferMint {
-    /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
-    /// accounts (if `auto_approve_new_accounts` is true)
+    /// Authority to modify the `ConfidentialTransferMint` configuration and to
+    /// approve new accounts (if `auto_approve_new_accounts` is true)
     ///
     /// The legacy Token Multisig account is not supported as the authority
     pub authority: OptionalNonZeroPubkey,
 
-    /// Indicate if newly configured accounts must be approved by the `authority` before they may be
-    /// used by the user.
+    /// Indicate if newly configured accounts must be approved by the
+    /// `authority` before they may be used by the user.
     ///
-    /// * If `true`, no approval is required and new accounts may be used immediately
+    /// * If `true`, no approval is required and new accounts may be used
+    ///   immediately
     /// * If `false`, the authority must approve newly configured accounts (see
-    ///              `ConfidentialTransferInstruction::ConfigureAccount`)
+    ///   `ConfidentialTransferInstruction::ConfigureAccount`)
     pub auto_approve_new_accounts: PodBool,
 
     /// Authority to decode any transfer amount in a confidential transafer.
@@ -82,8 +84,9 @@ impl Extension for ConfidentialTransferMint {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferAccount {
-    /// `true` if this account has been approved for use. All confidential transfer operations for
-    /// the account will fail until approval is granted.
+    /// `true` if this account has been approved for use. All confidential
+    /// transfer operations for the account will fail until approval is
+    /// granted.
     pub approved: PodBool,
 
     /// The public key associated with ElGamal encryption
@@ -101,26 +104,28 @@ pub struct ConfidentialTransferAccount {
     /// The decryptable available balance
     pub decryptable_available_balance: DecryptableBalance,
 
-    /// If `false`, the extended account rejects any incoming confidential transfers
+    /// If `false`, the extended account rejects any incoming confidential
+    /// transfers
     pub allow_confidential_credits: PodBool,
 
     /// If `false`, the base account rejects any incoming transfers
     pub allow_non_confidential_credits: PodBool,
 
-    /// The total number of `Deposit` and `Transfer` instructions that have credited
-    /// `pending_balance`
+    /// The total number of `Deposit` and `Transfer` instructions that have
+    /// credited `pending_balance`
     pub pending_balance_credit_counter: PodU64,
 
-    /// The maximum number of `Deposit` and `Transfer` instructions that can credit
-    /// `pending_balance` before the `ApplyPendingBalance` instruction is executed
+    /// The maximum number of `Deposit` and `Transfer` instructions that can
+    /// credit `pending_balance` before the `ApplyPendingBalance`
+    /// instruction is executed
     pub maximum_pending_balance_credit_counter: PodU64,
 
-    /// The `expected_pending_balance_credit_counter` value that was included in the last
-    /// `ApplyPendingBalance` instruction
+    /// The `expected_pending_balance_credit_counter` value that was included in
+    /// the last `ApplyPendingBalance` instruction
     pub expected_pending_balance_credit_counter: PodU64,
 
-    /// The actual `pending_balance_credit_counter` when the last `ApplyPendingBalance` instruction
-    /// was executed
+    /// The actual `pending_balance_credit_counter` when the last
+    /// `ApplyPendingBalance` instruction was executed
     pub actual_pending_balance_credit_counter: PodU64,
 }
 
@@ -150,8 +155,8 @@ impl ConfidentialTransferAccount {
         }
     }
 
-    /// Check if a base account of a `ConfidentialTransferAccount` accepts non-confidential
-    /// transfers.
+    /// Check if a base account of a `ConfidentialTransferAccount` accepts
+    /// non-confidential transfers.
     pub fn non_confidential_transfer_allowed(&self) -> ProgramResult {
         if bool::from(&self.allow_non_confidential_credits) {
             Ok(())
@@ -167,10 +172,12 @@ impl ConfidentialTransferAccount {
 
     /// Checks if a confidential extension is configured to receive funds.
     ///
-    /// A destination account can receive funds if the following conditions are satisfied:
+    /// A destination account can receive funds if the following conditions are
+    /// satisfied:
     ///   1. The account is approved by the confidential transfer mint authority
     ///   2. The account is not disabled by the account owner
-    ///   3. The number of credits into the account has not reached the maximum credit counter
+    ///   3. The number of credits into the account has not reached the maximum
+    ///      credit counter
     pub fn valid_as_destination(&self) -> ProgramResult {
         self.approved()?;
 

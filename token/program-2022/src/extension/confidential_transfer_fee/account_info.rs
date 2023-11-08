@@ -11,7 +11,8 @@ use {
 };
 
 /// Confidential transfer fee extension information needed to construct a
-/// `WithdrawWithheldTokensFromMint` or `WithdrawWithheldTokensFromAccounts` instruction.
+/// `WithdrawWithheldTokensFromMint` or `WithdrawWithheldTokensFromAccounts`
+/// instruction.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct WithheldTokensInfo {

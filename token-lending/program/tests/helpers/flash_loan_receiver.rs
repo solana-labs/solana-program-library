@@ -13,14 +13,18 @@ use {
 };
 
 pub enum FlashLoanReceiverInstruction {
-    /// Receive a flash loan and perform user-defined operation and finally return the fund back.
+    /// Receive a flash loan and perform user-defined operation and finally
+    /// return the fund back.
     ///
     /// Accounts expected:
     ///
-    ///   0. `[writable]` Source liquidity (matching the destination from above).
-    ///   1. `[writable]` Destination liquidity (matching the source from above).
+    ///   0. `[writable]` Source liquidity (matching the destination from
+    ///      above).
+    ///   1. `[writable]` Destination liquidity (matching the source from
+    ///      above).
     ///   2. `[]` Token program id
-    ///   .. `[any]` Additional accounts provided to the lending program's `FlashLoan` instruction above.
+    ///   .. `[any]` Additional accounts provided to the lending program's
+    /// `FlashLoan` instruction above.
     ReceiveFlashLoan {
         /// The amount that is loaned
         amount: u64,

@@ -19,8 +19,8 @@ pub fn pod_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&T, ProgramError> {
 
 /// Maybe convert a slice of bytes into a `Pod` (zero copy)
 ///
-/// Returns `None` if the slice is empty, or else `Err` if input length is not equal to
-/// `pod_get_packed_len::<T>()`.
+/// Returns `None` if the slice is empty, or else `Err` if input length is not
+/// equal to `pod_get_packed_len::<T>()`.
 /// This function exists primarily because `Option<T>` is not a `Pod`.
 pub fn pod_maybe_from_bytes<T: Pod>(bytes: &[u8]) -> Result<Option<&T>, ProgramError> {
     if bytes.is_empty() {

@@ -344,7 +344,8 @@ async fn test_finalize_council_vote() {
         .await
         .unwrap();
 
-    // Cast vote with 47% weight, above 40% quorum but below 50%+1 to tip automatically
+    // Cast vote with 47% weight, above 40% quorum but below 50%+1 to tip
+    // automatically
     governance_test
         .with_cast_yes_no_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await

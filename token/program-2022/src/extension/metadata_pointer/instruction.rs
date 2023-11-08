@@ -37,7 +37,6 @@ pub enum MetadataPointerInstruction {
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::metadata_pointer::instruction::InitializeInstructionData`
-    ///
     Initialize,
     /// Update the metadata pointer address. Only supported for mints that
     /// include the `MetadataPointer` extension.
@@ -55,7 +54,6 @@ pub enum MetadataPointerInstruction {
     ///
     /// Data expected by this instruction:
     ///   `crate::extension::metadata_pointer::instruction::UpdateInstructionData`
-    ///
     Update,
 }
 

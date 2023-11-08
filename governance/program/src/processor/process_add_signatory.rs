@@ -47,7 +47,8 @@ pub fn process_add_signatory(
         return Err(GovernanceError::SignatoryRecordAlreadyExists.into());
     }
 
-    // All required signatories must be added before additional signatories can be added
+    // All required signatories must be added before additional signatories can be
+    // added
     if proposal_data.signatories_count < governance_data.required_signatories_count {
         let required_signatory_info = next_account_info(account_info_iter)?; // 5
         let required_signatory_data = get_required_signatory_data_for_governance(

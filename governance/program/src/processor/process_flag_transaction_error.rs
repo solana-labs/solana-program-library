@@ -50,8 +50,9 @@ pub fn process_flag_transaction_error(
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    // If this is the first instruction to be executed then set executing_at timestamp
-    // It indicates when we started executing instructions for the Proposal and the fact we only flag it as error is irrelevant here
+    // If this is the first instruction to be executed then set executing_at
+    // timestamp It indicates when we started executing instructions for the
+    // Proposal and the fact we only flag it as error is irrelevant here
     if proposal_data.state == ProposalState::Succeeded {
         proposal_data.executing_at = Some(clock.unix_timestamp);
     }

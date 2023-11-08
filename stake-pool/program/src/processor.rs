@@ -279,9 +279,9 @@ fn check_stake_state(
     Ok(())
 }
 
-/// Checks if a validator stake account is valid, which means that it's usable by
-/// the pool and delegated to the expected validator. These conditions can be violated
-/// if a validator was force destaked during a cluster restart.
+/// Checks if a validator stake account is valid, which means that it's usable
+/// by the pool and delegated to the expected validator. These conditions can be
+/// violated if a validator was force destaked during a cluster restart.
 fn check_validator_stake_account(
     stake_account_info: &AccountInfo,
     program_id: &Pubkey,
@@ -308,9 +308,9 @@ fn check_validator_stake_account(
     Ok(())
 }
 
-/// Checks if a transient stake account is valid, which means that it's usable by
-/// the pool and delegated to the expected validator. These conditions can be violated
-/// if a validator was force destaked during a cluster restart.
+/// Checks if a transient stake account is valid, which means that it's usable
+/// by the pool and delegated to the expected validator. These conditions can be
+/// violated if a validator was force destaked during a cluster restart.
 fn check_transient_stake_account(
     stake_account_info: &AccountInfo,
     program_id: &Pubkey,
@@ -467,7 +467,8 @@ impl Processor {
         )
     }
 
-    /// Issue stake::instruction::authorize instructions to update both authorities
+    /// Issue stake::instruction::authorize instructions to update both
+    /// authorities
     fn stake_authorize<'a>(
         stake_account: AccountInfo<'a>,
         stake_authority: AccountInfo<'a>,
@@ -505,7 +506,8 @@ impl Processor {
         )
     }
 
-    /// Issue stake::instruction::authorize instructions to update both authorities
+    /// Issue stake::instruction::authorize instructions to update both
+    /// authorities
     #[allow(clippy::too_many_arguments)]
     fn stake_authorize_signed<'a>(
         stake_pool: &Pubkey,
@@ -551,7 +553,8 @@ impl Processor {
         )
     }
 
-    /// Issue stake::instruction::withdraw instruction to move additional lamports
+    /// Issue stake::instruction::withdraw instruction to move additional
+    /// lamports
     #[allow(clippy::too_many_arguments)]
     fn stake_withdraw<'a>(
         stake_pool: &Pubkey,
@@ -1908,8 +1911,9 @@ impl Processor {
 
         // check that we're redelegating enough
         {
-            // redelegation requires that the source account maintains rent exemption and that
-            // the destination account has rent-exemption and minimum delegation
+            // redelegation requires that the source account maintains rent exemption and
+            // that the destination account has rent-exemption and minimum
+            // delegation
             let minimum_redelegation_lamports =
                 current_minimum_delegation.saturating_add(stake_rent);
             if lamports < minimum_redelegation_lamports {
@@ -2430,7 +2434,8 @@ impl Processor {
 
             // Status for validator stake
             //  * active -> do everything
-            //  * any other state / not a stake -> error state, but account for transient stake
+            //  * any other state / not a stake -> error state, but account for transient
+            //    stake
             let validator_stake_state = try_from_slice_unchecked::<stake::state::StakeStateV2>(
                 &validator_stake_info.data.borrow(),
             )
@@ -3159,7 +3164,8 @@ impl Processor {
         }
 
         // To prevent a faulty manager fee account from preventing withdrawals
-        // if the token program does not own the account, or if the account is not initialized
+        // if the token program does not own the account, or if the account is not
+        // initialized
         let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key
             || stake_pool.check_manager_fee_info(manager_fee_info).is_err()
         {
@@ -3468,7 +3474,8 @@ impl Processor {
         }
 
         // To prevent a faulty manager fee account from preventing withdrawals
-        // if the token program does not own the account, or if the account is not initialized
+        // if the token program does not own the account, or if the account is not
+        // initialized
         let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key
             || stake_pool.check_manager_fee_info(manager_fee_info).is_err()
         {

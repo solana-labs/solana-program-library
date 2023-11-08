@@ -905,7 +905,8 @@ fn display_ui_extension(
             }
             Ok(())
         }
-        // ExtensionType::Uninitialized is a hack to ensure a mint/account is never the same length as a multisig
+        // ExtensionType::Uninitialized is a hack to ensure a mint/account is never the same length
+        // as a multisig
         UiExtension::Uninitialized => Ok(()),
         UiExtension::UnparseableExtension => writeln_name_value(
             f,

@@ -19,8 +19,8 @@ use {
 #[derive(Clone, Copy, Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum RequiredMemoTransfersInstruction {
-    /// Require memos for transfers into this Account. Adds the MemoTransfer extension to the
-    /// Account, if it doesn't already exist.
+    /// Require memos for transfers into this Account. Adds the MemoTransfer
+    /// extension to the Account, if it doesn't already exist.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -31,11 +31,11 @@ pub enum RequiredMemoTransfersInstruction {
     ///   0. `[writable]` The account to update.
     ///   1. `[]` The account's multisignature owner.
     ///   2. ..2+M `[signer]` M signer accounts.
-    ///
     Enable,
     /// Stop requiring memos for transfers into this Account.
     ///
-    /// Implicitly initializes the extension in the case where it is not present.
+    /// Implicitly initializes the extension in the case where it is not
+    /// present.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -46,7 +46,6 @@ pub enum RequiredMemoTransfersInstruction {
     ///   0. `[writable]` The account to update.
     ///   1. `[]`  The account's multisignature owner.
     ///   2. ..2+M `[signer]` M signer accounts.
-    ///
     Disable,
 }
 

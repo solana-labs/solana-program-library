@@ -29,7 +29,8 @@ pub fn process_refund_proposal_deposit(
 
     proposal_data.assert_can_refund_proposal_deposit()?;
 
-    // Assert we are disposing a deposit which belongs to the Proposal and the deposit payer
+    // Assert we are disposing a deposit which belongs to the Proposal and the
+    // deposit payer
     let _proposal_deposit_data = get_proposal_deposit_data_for_proposal_and_deposit_payer(
         program_id,
         proposal_deposit_info,

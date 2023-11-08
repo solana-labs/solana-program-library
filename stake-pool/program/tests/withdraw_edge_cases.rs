@@ -104,7 +104,8 @@ async fn success_remove_validator(multiple: u64) {
         _,
     ) = setup_for_withdraw(spl_token::id(), STAKE_ACCOUNT_RENT_EXEMPTION).await;
 
-    // make pool tokens very valuable, so it isn't possible to exactly get down to the minimum
+    // make pool tokens very valuable, so it isn't possible to exactly get down to
+    // the minimum
     transfer(
         &mut context.banks_client,
         &context.payer,
@@ -130,7 +131,8 @@ async fn success_remove_validator(multiple: u64) {
         .await;
     let lamports_per_pool_token = stake_pool.get_lamports_per_pool_token().unwrap();
 
-    // decrease all of stake except for lamports_per_pool_token lamports, must be withdrawable
+    // decrease all of stake except for lamports_per_pool_token lamports, must be
+    // withdrawable
     let error = stake_pool_accounts
         .decrease_validator_stake_either(
             &mut context.banks_client,
@@ -625,7 +627,8 @@ async fn fail_withdraw_from_transient() {
         .await;
     assert!(error.is_none(), "{:?}", error);
 
-    // fail withdrawing from transient, still a lamport in the validator stake account
+    // fail withdrawing from transient, still a lamport in the validator stake
+    // account
     let new_user_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
         .withdraw_stake(
@@ -750,7 +753,8 @@ async fn success_with_small_preferred_withdraw() {
         .await
         .unwrap();
 
-    // make pool tokens very valuable, so it isn't possible to exactly get down to the minimum
+    // make pool tokens very valuable, so it isn't possible to exactly get down to
+    // the minimum
     transfer(
         &mut context.banks_client,
         &context.payer,
@@ -794,7 +798,8 @@ async fn success_with_small_preferred_withdraw() {
         .await
         .unwrap();
 
-    // add a tiny bit of stake, less than lamports per pool token to preferred validator
+    // add a tiny bit of stake, less than lamports per pool token to preferred
+    // validator
     let rent = context.banks_client.get_rent().await.unwrap();
     let rent_exempt = rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>());
     let stake_minimum_delegation =

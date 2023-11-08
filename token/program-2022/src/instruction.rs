@@ -1,6 +1,8 @@
 //! Instruction types
 
-#![allow(deprecated)] // needed to avoid deprecation warning when generating serde implementation for TokenInstruction
+// Needed to avoid deprecation warning when generating serde implementation for
+// TokenInstruction
+#![allow(deprecated)]
 
 #[cfg(feature = "serde-traits")]
 use {
@@ -62,7 +64,6 @@ pub enum TokenInstruction<'a> {
     ///
     ///   0. `[writable]` The mint to initialize.
     ///   1. `[]` Rent sysvar
-    ///
     InitializeMint {
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
@@ -124,8 +125,9 @@ pub enum TokenInstruction<'a> {
     /// amounts of SOL and Tokens will be transferred to the destination
     /// account.
     ///
-    /// If either account contains an `TransferFeeAmount` extension, this will fail.
-    /// Mints with the `TransferFeeConfig` extension are required in order to assess the fee.
+    /// If either account contains an `TransferFeeAmount` extension, this will
+    /// fail. Mints with the `TransferFeeConfig` extension are required in
+    /// order to assess the fee.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -239,20 +241,22 @@ pub enum TokenInstruction<'a> {
     /// Close an account by transferring all its SOL to the destination account.
     /// Non-native accounts may only be closed if its token amount is zero.
     ///
-    /// Accounts with the `TransferFeeAmount` extension may only be closed if the withheld
-    /// amount is zero.
+    /// Accounts with the `TransferFeeAmount` extension may only be closed if
+    /// the withheld amount is zero.
     ///
-    /// Accounts with the `ConfidentialTransfer` extension may only be closed if the pending and
-    /// available balance ciphertexts are empty. Use
+    /// Accounts with the `ConfidentialTransfer` extension may only be closed if
+    /// the pending and available balance ciphertexts are empty. Use
     /// `ConfidentialTransferInstruction::ApplyPendingBalance` and
-    /// `ConfidentialTransferInstruction::EmptyAccount` to empty these ciphertexts.
+    /// `ConfidentialTransferInstruction::EmptyAccount` to empty these
+    /// ciphertexts.
     ///
-    /// Accounts with the `ConfidentialTransferFee` extension may only be closed if the withheld
-    /// amount ciphertext is empty. Use
-    /// `ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint` to empty this ciphertext.
+    /// Accounts with the `ConfidentialTransferFee` extension may only be closed
+    /// if the withheld amount ciphertext is empty. Use
+    /// `ConfidentialTransferFeeInstruction::HarvestWithheldTokensToMint` to
+    /// empty this ciphertext.
     ///
-    /// Mints may be closed if they have the `MintCloseAuthority` extension and their token
-    /// supply is zero
+    /// Mints may be closed if they have the `MintCloseAuthority` extension and
+    /// their token supply is zero
     ///
     /// Accounts
     ///
@@ -411,10 +415,10 @@ pub enum TokenInstruction<'a> {
         /// Expected number of base 10 digits to the right of the decimal place.
         decimals: u8,
     },
-    /// Like InitializeAccount, but the owner pubkey is passed via instruction data
-    /// rather than the accounts list. This variant may be preferable when using
-    /// Cross Program Invocation from an instruction that does not need the owner's
-    /// `AccountInfo` otherwise.
+    /// Like InitializeAccount, but the owner pubkey is passed via instruction
+    /// data rather than the accounts list. This variant may be preferable
+    /// when using Cross Program Invocation from an instruction that does
+    /// not need the owner's `AccountInfo` otherwise.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -428,15 +432,17 @@ pub enum TokenInstruction<'a> {
     },
     /// Given a wrapped / native token account (a token account containing SOL)
     /// updates its amount field based on the account's underlying `lamports`.
-    /// This is useful if a non-wrapped SOL account uses `system_instruction::transfer`
-    /// to move lamports to a wrapped token account, and needs to have its token
-    /// `amount` field updated.
+    /// This is useful if a non-wrapped SOL account uses
+    /// `system_instruction::transfer` to move lamports to a wrapped token
+    /// account, and needs to have its token `amount` field updated.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[writable]`  The native token account to sync with its underlying lamports.
+    ///   0. `[writable]`  The native token account to sync with its underlying
+    ///      lamports.
     SyncNative,
-    /// Like InitializeAccount2, but does not require the Rent sysvar to be provided
+    /// Like InitializeAccount2, but does not require the Rent sysvar to be
+    /// provided
     ///
     /// Accounts expected by this instruction:
     ///
@@ -447,7 +453,8 @@ pub enum TokenInstruction<'a> {
         #[cfg_attr(feature = "serde-traits", serde(with = "As::<DisplayFromStr>"))]
         owner: Pubkey,
     },
-    /// Like InitializeMultisig, but does not require the Rent sysvar to be provided
+    /// Like InitializeMultisig, but does not require the Rent sysvar to be
+    /// provided
     ///
     /// Accounts expected by this instruction:
     ///
@@ -464,7 +471,6 @@ pub enum TokenInstruction<'a> {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    ///
     InitializeMint2 {
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
@@ -475,8 +481,8 @@ pub enum TokenInstruction<'a> {
         #[cfg_attr(feature = "serde-traits", serde(with = "coption_fromstr"))]
         freeze_authority: COption<Pubkey>,
     },
-    /// Gets the required size of an account for the given mint as a little-endian
-    /// `u64`.
+    /// Gets the required size of an account for the given mint as a
+    /// little-endian `u64`.
     ///
     /// Return data can be fetched using `sol_get_return_data` and deserializing
     /// the return data as a little-endian `u64`.
@@ -490,8 +496,8 @@ pub enum TokenInstruction<'a> {
     },
     /// Initialize the Immutable Owner extension for the given token account
     ///
-    /// Fails if the account has already been initialized, so must be called before
-    /// `InitializeAccount`.
+    /// Fails if the account has already been initialized, so must be called
+    /// before `InitializeAccount`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -499,14 +505,14 @@ pub enum TokenInstruction<'a> {
     ///
     /// Data expected by this instruction:
     ///   None
-    ///
     InitializeImmutableOwner,
-    /// Convert an Amount of tokens to a UiAmount `string`, using the given mint.
+    /// Convert an Amount of tokens to a UiAmount `string`, using the given
+    /// mint.
     ///
     /// Fails on an invalid mint.
     ///
-    /// Return data can be fetched using `sol_get_return_data` and deserialized with
-    /// `String::from_utf8`.
+    /// Return data can be fetched using `sol_get_return_data` and deserialized
+    /// with `String::from_utf8`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -515,7 +521,8 @@ pub enum TokenInstruction<'a> {
         /// The amount of tokens to convert.
         amount: u64,
     },
-    /// Convert a UiAmount of tokens to a little-endian `u64` raw Amount, using the given mint.
+    /// Convert a UiAmount of tokens to a little-endian `u64` raw Amount, using
+    /// the given mint.
     ///
     /// Return data can be fetched using `sol_get_return_data` and deserializing
     /// the return data as a little-endian `u64`.
@@ -547,20 +554,26 @@ pub enum TokenInstruction<'a> {
     /// The common instruction prefix for Transfer Fee extension instructions.
     ///
     /// See `extension::transfer_fee::instruction::TransferFeeInstruction` for
-    /// further details about the extended instructions that share this instruction prefix
+    /// further details about the extended instructions that share this
+    /// instruction prefix
     TransferFeeExtension(TransferFeeInstruction),
-    /// The common instruction prefix for Confidential Transfer extension instructions.
+    /// The common instruction prefix for Confidential Transfer extension
+    /// instructions.
     ///
     /// See `extension::confidential_transfer::instruction::ConfidentialTransferInstruction` for
-    /// further details about the extended instructions that share this instruction prefix
+    /// further details about the extended instructions that share this
+    /// instruction prefix
     ConfidentialTransferExtension,
-    /// The common instruction prefix for Default Account State extension instructions.
+    /// The common instruction prefix for Default Account State extension
+    /// instructions.
     ///
     /// See `extension::default_account_state::instruction::DefaultAccountStateInstruction` for
-    /// further details about the extended instructions that share this instruction prefix
+    /// further details about the extended instructions that share this
+    /// instruction prefix
     DefaultAccountStateExtension,
-    /// Check to see if a token account is large enough for a list of ExtensionTypes, and if not,
-    /// use reallocation to increase the data size.
+    /// Check to see if a token account is large enough for a list of
+    /// ExtensionTypes, and if not, use reallocation to increase the data
+    /// size.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -576,33 +589,33 @@ pub enum TokenInstruction<'a> {
     ///   2. `[]` System program for reallocation funding
     ///   3. `[]` The account's multisignature owner/delegate.
     ///   4. ..4+M `[signer]` M signer accounts.
-    ///
     Reallocate {
         /// New extension types to include in the reallocated account
         extension_types: Vec<ExtensionType>,
     },
-    /// The common instruction prefix for Memo Transfer account extension instructions.
+    /// The common instruction prefix for Memo Transfer account extension
+    /// instructions.
     ///
     /// See `extension::memo_transfer::instruction::RequiredMemoTransfersInstruction` for
-    /// further details about the extended instructions that share this instruction prefix
+    /// further details about the extended instructions that share this
+    /// instruction prefix
     MemoTransferExtension,
     /// Creates the native mint.
     ///
-    /// This instruction only needs to be invoked once after deployment and is permissionless,
-    /// Wrapped SOL (`native_mint::id()`) will not be available until this instruction is
-    /// successfully executed.
+    /// This instruction only needs to be invoked once after deployment and is
+    /// permissionless, Wrapped SOL (`native_mint::id()`) will not be
+    /// available until this instruction is successfully executed.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writeable,signer]` Funding account (must be a system account)
     ///   1. `[writable]` The native mint address
     ///   2. `[]` System program for mint account funding
-    ///
     CreateNativeMint,
     /// Initialize the non transferable extension for the given mint account
     ///
-    /// Fails if the account has already been initialized, so must be called before
-    /// `InitializeMint`.
+    /// Fails if the account has already been initialized, so must be called
+    /// before `InitializeMint`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -610,17 +623,20 @@ pub enum TokenInstruction<'a> {
     ///
     /// Data expected by this instruction:
     ///   None
-    ///
     InitializeNonTransferableMint,
-    /// The common instruction prefix for Interest Bearing extension instructions.
+    /// The common instruction prefix for Interest Bearing extension
+    /// instructions.
     ///
     /// See `extension::interest_bearing_mint::instruction::InterestBearingMintInstruction` for
-    /// further details about the extended instructions that share this instruction prefix
+    /// further details about the extended instructions that share this
+    /// instruction prefix
     InterestBearingMintExtension,
-    /// The common instruction prefix for CPI Guard account extension instructions.
+    /// The common instruction prefix for CPI Guard account extension
+    /// instructions.
     ///
     /// See `extension::cpi_guard::instruction::CpiGuardInstruction` for
-    /// further details about the extended instructions that share this instruction prefix
+    /// further details about the extended instructions that share this
+    /// instruction prefix
     CpiGuardExtension,
     /// Initialize the permanent delegate on a new mint.
     ///
@@ -637,7 +653,6 @@ pub enum TokenInstruction<'a> {
     ///
     /// Data expected by this instruction:
     ///   Pubkey for the permanent delegate
-    ///
     InitializePermanentDelegate {
         /// Authority that may sign for `Transfer`s and `Burn`s on any account
         #[cfg_attr(feature = "serde-traits", serde(with = "As::<DisplayFromStr>"))]
@@ -646,13 +661,15 @@ pub enum TokenInstruction<'a> {
     /// The common instruction prefix for transfer hook extension instructions.
     ///
     /// See `extension::transfer_hook::instruction::TransferHookInstruction`
-    /// for further details about the extended instructions that share this instruction
-    /// prefix
+    /// for further details about the extended instructions that share this
+    /// instruction prefix
     TransferHookExtension,
-    /// The common instruction prefix for the confidential transfer fee extension instructions.
+    /// The common instruction prefix for the confidential transfer fee
+    /// extension instructions.
     ///
     /// See `extension::confidential_transfer_fee::instruction::ConfidentialTransferFeeInstruction`
-    /// for further details about the extended instructions that share this instruction prefix
+    /// for further details about the extended instructions that share this
+    /// instruction prefix
     ConfidentialTransferFeeExtension,
     /// This instruction is to be used to rescue SOLs sent to any TokenProgram
     /// owned account by sending them to any other account, leaving behind only
@@ -663,21 +680,23 @@ pub enum TokenInstruction<'a> {
     /// 2. `[signer]` Authority
     /// 3. ..2+M `[signer]` M signer accounts.
     WithdrawExcessLamports,
-    /// The common instruction prefix for metadata pointer extension instructions.
+    /// The common instruction prefix for metadata pointer extension
+    /// instructions.
     ///
     /// See `extension::metadata_pointer::instruction::MetadataPointerInstruction`
-    /// for further details about the extended instructions that share this instruction
-    /// prefix
+    /// for further details about the extended instructions that share this
+    /// instruction prefix
     MetadataPointerExtension,
     /// The common instruction prefix for group pointer extension instructions.
     ///
     /// See `extension::group_pointer::instruction::GroupPointerInstruction`
-    /// for further details about the extended instructions that share this instruction
-    /// prefix
+    /// for further details about the extended instructions that share this
+    /// instruction prefix
     GroupPointerExtension,
 }
 impl<'a> TokenInstruction<'a> {
-    /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
+    /// Unpacks a byte buffer into a
+    /// [TokenInstruction](enum.TokenInstruction.html).
     pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
         use TokenError::InvalidInstruction;
 
@@ -819,7 +838,8 @@ impl<'a> TokenInstruction<'a> {
         })
     }
 
-    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte buffer.
+    /// Packs a [TokenInstruction](enum.TokenInstruction.html) into a byte
+    /// buffer.
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match self {
@@ -1067,8 +1087,8 @@ pub enum AuthorityType {
     InterestRate,
     /// Authority to transfer or burn any tokens for a mint
     PermanentDelegate,
-    /// Authority to update confidential transfer mint and aprove accounts for confidential
-    /// transfers
+    /// Authority to update confidential transfer mint and aprove accounts for
+    /// confidential transfers
     ConfidentialTransferMint,
     /// Authority to set the transfer hook program id
     TransferHookProgramId,

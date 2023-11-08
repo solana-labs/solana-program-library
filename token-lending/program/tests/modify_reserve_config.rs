@@ -304,9 +304,10 @@ async fn owner_of_different_lending_market_cannot_change_reserve_config() {
 #[tokio::test]
 // Right owner, wrong lending market
 async fn correct_owner_providing_wrong_lending_market_fails() {
-    // When the correct owner of the lending market and reserve provides, perhaps inadvertently,
-    // a lending market that is different from the given reserve's corresponding lending market,
-    // then the transaction to modify the current reserve config should fail.
+    // When the correct owner of the lending market and reserve provides, perhaps
+    // inadvertently, a lending market that is different from the given
+    // reserve's corresponding lending market, then the transaction to modify
+    // the current reserve config should fail.
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -366,7 +367,9 @@ async fn correct_owner_providing_wrong_lending_market_fails() {
             new_config,
             sol_test_reserve.pubkey,
             other_lending_market.pubkey,
-            lending_market.owner.pubkey(), //lending_market.owner == other_lending_market.owner, defined by `add_lending_market`
+            // lending_market.owner == other_lending_market.owner, defined by
+            // `add_lending_market`
+            lending_market.owner.pubkey(),
         )],
         Some(&payer.pubkey()),
     );

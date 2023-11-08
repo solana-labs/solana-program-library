@@ -26,7 +26,8 @@ pub enum MessageBody {
     Text(String),
 
     /// Emoticon encoded using utf-8 characters
-    /// In the UI reactions are displayed together under the parent message (as opposed to hierarchical replies)
+    /// In the UI reactions are displayed together under the parent message (as
+    /// opposed to hierarchical replies)
     Reaction(String),
 }
 
@@ -63,7 +64,8 @@ impl AccountMaxSize for ChatMessage {
     }
 }
 
-/// Checks whether Chat account exists, is initialized and  owned by governance-chat program
+/// Checks whether Chat account exists, is initialized and  owned by
+/// governance-chat program
 pub fn assert_is_valid_chat_message(
     program_id: &Pubkey,
     chat_message_info: &AccountInfo,

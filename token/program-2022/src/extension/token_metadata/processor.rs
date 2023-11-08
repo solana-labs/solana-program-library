@@ -158,7 +158,8 @@ pub fn process_remove_key(
     Ok(())
 }
 
-/// Processes a [UpdateAuthority](enum.TokenMetadataInstruction.html) instruction.
+/// Processes a [UpdateAuthority](enum.TokenMetadataInstruction.html)
+/// instruction.
 pub fn process_update_authority(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],

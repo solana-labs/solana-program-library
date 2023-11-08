@@ -265,8 +265,8 @@ pub fn process_instruction(
                 &[mint_signer_seeds],
             )?;
 
-            // Fully fund the feature id account so the `Tally` instruction will not require any
-            // lamports from the caller
+            // Fully fund the feature id account so the `Tally` instruction will not require
+            // any lamports from the caller
             msg!("Funding feature id account");
             invoke(
                 &system_instruction::transfer(

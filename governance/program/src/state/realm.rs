@@ -49,12 +49,14 @@ pub struct RealmConfigArgs {
 /// Realm Config instruction args
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
 pub struct GoverningTokenConfigArgs {
-    /// Indicates whether an external addin program should be used to provide voters weights
-    /// If yes then the voters weight program account must be passed to the instruction
+    /// Indicates whether an external addin program should be used to provide
+    /// voters weights If yes then the voters weight program account must be
+    /// passed to the instruction
     pub use_voter_weight_addin: bool,
 
-    /// Indicates whether an external addin program should be used to provide max voters weight for the token
-    /// If yes then the max voter weight program account must be passed to the instruction
+    /// Indicates whether an external addin program should be used to provide
+    /// max voters weight for the token If yes then the max voter weight
+    /// program account must be passed to the instruction
     pub use_max_voter_weight_addin: bool,
 
     /// Governing token type defines how the token is used for governance
@@ -64,12 +66,12 @@ pub struct GoverningTokenConfigArgs {
 /// Realm Config instruction args with account parameters
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema, Default)]
 pub struct GoverningTokenConfigAccountArgs {
-    /// Specifies an external plugin program which should be used to provide voters weights
-    /// for the given governing token
+    /// Specifies an external plugin program which should be used to provide
+    /// voters weights for the given governing token
     pub voter_weight_addin: Option<Pubkey>,
 
-    /// Specifies an external an external plugin program should be used to provide max voters weight
-    /// for the given governing token
+    /// Specifies an external an external plugin program should be used to
+    /// provide max voters weight for the given governing token
     pub max_voter_weight_addin: Option<Pubkey>,
 
     /// Governing token type defines how the token is used for governance power
@@ -80,12 +82,16 @@ pub struct GoverningTokenConfigAccountArgs {
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum SetRealmAuthorityAction {
     /// Sets realm authority without any checks
-    /// Uncheck option allows to set the realm authority to non governance accounts
+    /// Uncheck option allows to set the realm authority to non governance
+    /// accounts
     SetUnchecked,
 
-    /// Sets realm authority and checks the new new authority is one of the realm's governances
-    // Note: This is not a security feature because governance creation is only gated with min_community_weight_to_create_governance
-    //       The check is done to prevent scenarios where the authority could be accidentally set to a wrong or none existing account
+    /// Sets realm authority and checks the new new authority is one of the
+    /// realm's governances
+    // Note: This is not a security feature because governance creation is only
+    // gated with min_community_weight_to_create_governance.
+    // The check is done to prevent scenarios where the authority could be
+    // accidentally set to a wrong or none existing account.
     SetChecked,
 
     /// Removes realm authority
@@ -95,13 +101,15 @@ pub enum SetRealmAuthorityAction {
 /// Realm Config defining Realm parameters.
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
-    /// Legacy field introduced and used in V2 as use_community_voter_weight_addin: bool
-    /// If the field is going to be reused in future version it must be taken under consideration
+    /// Legacy field introduced and used in V2 as
+    /// use_community_voter_weight_addin: bool If the field is going to be
+    /// reused in future version it must be taken under consideration
     /// that for some Realms it might be already set to 1
     pub legacy1: u8,
 
-    /// Legacy field introduced and used in V2 as use_max_community_voter_weight_addin: bool
-    /// If the field is going to be reused in future version it must be taken under consideration
+    /// Legacy field introduced and used in V2 as
+    /// use_max_community_voter_weight_addin: bool If the field is going to
+    /// be reused in future version it must be taken under consideration
     /// that for some Realms it might be already set to 1
     pub legacy2: u8,
 
@@ -135,12 +143,14 @@ pub struct RealmV2 {
     pub reserved: [u8; 6],
 
     /// Legacy field not used since program V3 any longer
-    /// Note: If the field is going to be reused in future version it must be taken under consideration
-    /// that for some Realms it might be already set to none zero because it was used as voting_proposal_count before
+    /// Note: If the field is going to be reused in future version it must be
+    /// taken under consideration that for some Realms it might be already
+    /// set to none zero because it was used as voting_proposal_count before
     pub legacy1: u16,
 
-    /// Realm authority. The authority must sign transactions which update the realm config
-    /// The authority should be transferred to Realm Governance to make the Realm self governed through proposals
+    /// Realm authority. The authority must sign transactions which update the
+    /// realm config The authority should be transferred to Realm Governance
+    /// to make the Realm self governed through proposals
     pub authority: Option<Pubkey>,
 
     /// Governance Realm name
@@ -163,7 +173,8 @@ impl IsInitialized for RealmV2 {
     }
 }
 
-/// Checks if the given account type is on of the Realm account types of any version
+/// Checks if the given account type is on of the Realm account types of any
+/// version
 pub fn is_realm_account_type(account_type: &GovernanceAccountType) -> bool {
     match account_type {
         GovernanceAccountType::RealmV1 | GovernanceAccountType::RealmV2 => true,
@@ -210,12 +221,16 @@ impl RealmV2 {
         Err(GovernanceError::InvalidGoverningTokenMint.into())
     }
 
-    /// Returns the governing token mint which is used to vote on a proposal given the provided Vote kind and vote_governing_token_mint
+    /// Returns the governing token mint which is used to vote on a proposal
+    /// given the provided Vote kind and vote_governing_token_mint
     ///
-    /// Veto vote is cast on a proposal configured for the opposite voting population defined using governing_token_mint
-    /// Council can veto Community vote and Community can veto Council assuming the veto for the voting population is enabled
+    /// Veto vote is cast on a proposal configured for the opposite voting
+    /// population defined using governing_token_mint Council can veto
+    /// Community vote and Community can veto Council assuming the veto for the
+    /// voting population is enabled
     ///
-    /// For all votes other than Veto (Electorate votes) the vote_governing_token_mint is the same as Proposal governing_token_mint
+    /// For all votes other than Veto (Electorate votes) the
+    /// vote_governing_token_mint is the same as Proposal governing_token_mint
     pub fn get_proposal_governing_token_mint_for_vote(
         &self,
         vote_governing_token_mint: &Pubkey,
@@ -224,12 +239,14 @@ impl RealmV2 {
         match vote_kind {
             VoteKind::Electorate => Ok(*vote_governing_token_mint),
             VoteKind::Veto => {
-                // When Community veto Council proposal then return council_token_mint as the Proposal governing_token_mint
+                // When Community veto Council proposal then return council_token_mint as the
+                // Proposal governing_token_mint
                 if self.community_mint == *vote_governing_token_mint {
                     return Ok(self.config.council_mint.unwrap());
                 }
 
-                // When Council veto Community proposal then return community_token_mint as the Proposal governing_token_mint
+                // When Council veto Community proposal then return community_token_mint as the
+                // Proposal governing_token_mint
                 if self.config.council_mint == Some(*vote_governing_token_mint) {
                     return Ok(self.community_mint);
                 }
@@ -239,7 +256,8 @@ impl RealmV2 {
         }
     }
 
-    /// Asserts the given governing token mint and holding accounts are valid for the realm
+    /// Asserts the given governing token mint and holding accounts are valid
+    /// for the realm
     pub fn assert_is_valid_governing_token_mint_and_holding(
         &self,
         program_id: &Pubkey,
@@ -268,7 +286,8 @@ impl RealmV2 {
         create_authority_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
     ) -> Result<(), ProgramError> {
-        // Check if create_authority_info is realm_authority and if yes then it must signed the transaction
+        // Check if create_authority_info is realm_authority and if yes then it must
+        // signed the transaction
         if self.authority == Some(*create_authority_info.key) {
             return if !create_authority_info.is_signer {
                 Err(GovernanceError::RealmAuthorityMustSign.into())
@@ -277,7 +296,8 @@ impl RealmV2 {
             };
         }
 
-        // If realm_authority hasn't signed then check if TokenOwner or Delegate signed and can crate governance
+        // If realm_authority hasn't signed then check if TokenOwner or Delegate signed
+        // and can crate governance
         let token_owner_record_data =
             get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm)?;
 
@@ -305,9 +325,11 @@ impl RealmV2 {
         if self.account_type == GovernanceAccountType::RealmV2 {
             borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::RealmV1 {
-            // V1 account can't be resized and we have to translate it back to the original format
+            // V1 account can't be resized and we have to translate it back to the original
+            // format
 
-            // If reserved_v2 is used it must be individually asses for v1 backward compatibility impact
+            // If reserved_v2 is used it must be individually asses for v1 backward
+            // compatibility impact
             if self.reserved_v2 != [0; 128] {
                 panic!("Extended data not supported by RealmV1")
             }
@@ -329,7 +351,8 @@ impl RealmV2 {
     }
 }
 
-/// Checks whether the Realm account exists, is initialized and  owned by Governance program
+/// Checks whether the Realm account exists, is initialized and  owned by
+/// Governance program
 pub fn assert_is_valid_realm(
     program_id: &Pubkey,
     realm_info: &AccountInfo,
@@ -383,7 +406,8 @@ pub fn get_realm_data_for_authority(
     Ok(realm_data)
 }
 
-/// Deserializes Ream account and asserts the given governing_token_mint is either Community or Council mint of the Realm
+/// Deserializes Ream account and asserts the given governing_token_mint is
+/// either Community or Council mint of the Realm
 pub fn get_realm_data_for_governing_token_mint(
     program_id: &Pubkey,
     realm_info: &AccountInfo,
@@ -490,7 +514,8 @@ mod test {
     #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
     pub struct RealmConfigArgsV1 {
         /// Indicates whether council_mint should be used
-        /// If yes then council_mint account must also be passed to the instruction
+        /// If yes then council_mint account must also be passed to the
+        /// instruction
         pub use_council_mint: bool,
 
         /// Min number of community tokens required to create a governance
@@ -503,7 +528,8 @@ mod test {
     /// Instructions supported by the Governance program
     #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
     pub enum GovernanceInstructionV1 {
-        /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
+        /// Creates Governance Realm account which aggregates governances for
+        /// given Community Mint and optional Council Mint
         CreateRealm {
             #[allow(dead_code)]
             /// UTF-8 encoded Governance Realm name
@@ -514,7 +540,9 @@ mod test {
             config_args: RealmConfigArgsV1,
         },
 
-        /// Deposits governing tokens (Community or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm
+        /// Deposits governing tokens (Community or Council) to Governance Realm
+        /// and establishes your voter weight to be used for voting within the
+        /// Realm
         DepositGoverningTokens {
             /// The amount to deposit into the realm
             #[allow(dead_code)]

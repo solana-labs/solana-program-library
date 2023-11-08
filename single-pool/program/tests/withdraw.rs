@@ -86,7 +86,8 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
         get_stake_account(&mut context.banks_client, &accounts.stake_account).await;
     let pool_stake_after = pool_stake_after.unwrap().delegation.stake;
 
-    // when active, the depositor gets their rent back, but when activating, its just added to stake
+    // when active, the depositor gets their rent back, but when activating, its
+    // just added to stake
     let expected_deposit = if activate {
         TEST_STAKE_AMOUNT
     } else {

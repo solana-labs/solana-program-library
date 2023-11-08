@@ -20,9 +20,10 @@ use {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Mint {
-    /// Optional authority used to mint new tokens. The mint authority may only be provided during
-    /// mint creation. If no mint authority is present then the mint has a fixed supply and no
-    /// further tokens may be minted.
+    /// Optional authority used to mint new tokens. The mint authority may only
+    /// be provided during mint creation. If no mint authority is present
+    /// then the mint has a fixed supply and no further tokens may be
+    /// minted.
     pub mint_authority: COption<Pubkey>,
     /// Total supply of tokens.
     pub supply: u64,
@@ -101,9 +102,10 @@ pub struct Account {
     pub delegate: COption<Pubkey>,
     /// The account's state
     pub state: AccountState,
-    /// If is_some, this is a native token, and the value logs the rent-exempt reserve. An Account
-    /// is required to be rent-exempt, so the value is used by the Processor to ensure that wrapped
-    /// SOL accounts do not drop below this threshold.
+    /// If is_some, this is a native token, and the value logs the rent-exempt
+    /// reserve. An Account is required to be rent-exempt, so the value is
+    /// used by the Processor to ensure that wrapped SOL accounts do not
+    /// drop below this threshold.
     pub is_native: COption<u64>,
     /// The amount delegated
     pub delegated_amount: u64,
@@ -119,7 +121,8 @@ impl Account {
     pub fn is_native(&self) -> bool {
         self.is_native.is_some()
     }
-    /// Checks if a token Account's owner is the system_program or the incinerator
+    /// Checks if a token Account's owner is the system_program or the
+    /// incinerator
     pub fn is_owned_by_system_program_or_incinerator(&self) -> bool {
         solana_program::system_program::check_id(&self.owner)
             || solana_program::incinerator::check_id(&self.owner)
@@ -189,11 +192,12 @@ pub enum AccountState {
     /// Account is not yet initialized
     #[default]
     Uninitialized,
-    /// Account is initialized; the account owner and/or delegate may perform permitted operations
-    /// on this account
+    /// Account is initialized; the account owner and/or delegate may perform
+    /// permitted operations on this account
     Initialized,
-    /// Account has been frozen by the mint freeze authority. Neither the account owner nor
-    /// the delegate are able to perform operations on this account.
+    /// Account has been frozen by the mint freeze authority. Neither the
+    /// account owner nor the delegate are able to perform operations on
+    /// this account.
     Frozen,
 }
 
@@ -448,22 +452,22 @@ pub(crate) mod test {
         let result = Account::unpack_account_owner(&src);
         assert_eq!(result, Option::None);
 
-        // Account data length > account data size with a valid extension and initialized,
-        // expect some key returned
+        // Account data length > account data size with a valid extension and
+        // initialized, expect some key returned
         let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
         src[Account::LEN] = AccountType::Account as u8;
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
         let result = Account::unpack_account_owner(&src);
         assert!(result.is_some());
 
-        // Account data length > account data size with a valid extension but uninitialized,
-        // expect None
+        // Account data length > account data size with a valid extension but
+        // uninitialized, expect None
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Uninitialized as u8;
         let result = Account::unpack_account_owner(&src);
         assert!(result.is_none());
 
-        // Account data length is multi-sig data size with a valid extension and initialized,
-        // expect none
+        // Account data length is multi-sig data size with a valid extension and
+        // initialized, expect none
         let mut src: [u8; Multisig::LEN] = [0; Multisig::LEN];
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
         src[Account::LEN] = AccountType::Account as u8;
@@ -496,22 +500,22 @@ pub(crate) mod test {
         let result = Account::unpack_account_mint(&src);
         assert_eq!(result, Option::None);
 
-        // Account data length > account data size with a valid extension and initialized,
-        // expect some key returned
+        // Account data length > account data size with a valid extension and
+        // initialized, expect some key returned
         let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
         src[Account::LEN] = AccountType::Account as u8;
         let result = Account::unpack_account_mint(&src);
         assert!(result.is_some());
 
-        // Account data length > account data size with a valid extension but uninitialized,
-        // expect none
+        // Account data length > account data size with a valid extension but
+        // uninitialized, expect none
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Uninitialized as u8;
         let result = Account::unpack_account_mint(&src);
         assert!(result.is_none());
 
-        // Account data length is multi-sig data size with a valid extension and initialized,
-        // expect none
+        // Account data length is multi-sig data size with a valid extension and
+        // initialized, expect none
         let mut src: [u8; Multisig::LEN] = [0; Multisig::LEN];
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Initialized as u8;
         src[Account::LEN] = AccountType::Account as u8;

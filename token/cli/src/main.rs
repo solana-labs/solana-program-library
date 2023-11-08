@@ -1355,8 +1355,9 @@ async fn command_transfer(
 ) -> CommandResult {
     let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
 
-    // if the user got the decimals wrong, they may well have calculated the transfer amount wrong
-    // we only check in online mode, because in offline, mint_info.decimals is always 9
+    // if the user got the decimals wrong, they may well have calculated the
+    // transfer amount wrong we only check in online mode, because in offline,
+    // mint_info.decimals is always 9
     if !config.sign_only && mint_decimals.is_some() && mint_decimals != Some(mint_info.decimals) {
         return Err(format!(
             "Decimals {} was provided, but actual value is {}",
@@ -1367,10 +1368,10 @@ async fn command_transfer(
     }
 
     // decimals determines whether transfer_checked is used or not
-    // in online mode, mint_decimals may be None but mint_info.decimals is always correct
-    // in offline mode, mint_info.decimals may be wrong, but mint_decimals is always provided
-    // and in online mode, when mint_decimals is provided, it is verified correct
-    // hence the fallthrough logic here
+    // in online mode, mint_decimals may be None but mint_info.decimals is always
+    // correct in offline mode, mint_info.decimals may be wrong, but
+    // mint_decimals is always provided and in online mode, when mint_decimals
+    // is provided, it is verified correct hence the fallthrough logic here
     let decimals = if use_unchecked_instruction {
         None
     } else if mint_decimals.is_some() {
@@ -1446,7 +1447,8 @@ async fn command_transfer(
         // * its a system account, we are happy
         // * its a non-account for this program, we error helpfully
         // * its a token account for a different program, we error helpfully
-        // * otherwise its probabaly a program account owner of an ata, in which case we gate transfer with a flag
+        // * otherwise its probabaly a program account owner of an ata, in which case we
+        //   gate transfer with a flag
         if let Some(recipient_account_data) = maybe_recipient_account_data {
             let recipient_account_owner = recipient_account_data.owner;
             let maybe_account_state =
@@ -1556,7 +1558,8 @@ async fn command_transfer(
             fund_recipient
         };
 
-        // and now we determine if we will actually fund it, based on its need and our willingness
+        // and now we determine if we will actually fund it, based on its need and our
+        // willingness
         let fundable_owner = if needs_funding {
             if confidential_transfer_args.is_some() {
                 return Err(
@@ -1596,8 +1599,9 @@ async fn command_transfer(
     {
         if !config.sign_only {
             // we can use the mint data from the start of the function, but will require
-            // non-trivial amount of refactoring the code due to ownership; for now, we fetch the mint
-            // a second time. This can potentially be optimized in the future.
+            // non-trivial amount of refactoring the code due to ownership; for now, we
+            // fetch the mint a second time. This can potentially be optimized
+            // in the future.
             let confidential_transfer_mint = config.get_account_checked(&token_pubkey).await?;
             let mint_state =
                 StateWithExtensionsOwned::<Mint>::unpack(confidential_transfer_mint.data)
@@ -1610,9 +1614,10 @@ async fn command_transfer(
                     confidential_transfer_mint.auditor_elgamal_pubkey,
                 );
 
-                // if auditor ElGamal pubkey is provided, check consistency with the one in the mint
-                // if auditor ElGamal pubkey is not provided, then use the expected one from the
-                //   mint, which could also be `None` if auditing is disabled
+                // if auditor ElGamal pubkey is provided, check consistency with the one in the
+                // mint if auditor ElGamal pubkey is not provided, then use the
+                // expected one from the   mint, which could also be `None` if
+                // auditing is disabled
                 if args.auditor_elgamal_pubkey.is_some()
                     && expected_auditor_elgamal_pubkey != args.auditor_elgamal_pubkey
                 {
@@ -1934,7 +1939,8 @@ async fn command_freeze(
         ),
     );
 
-    // we dont use the decimals from mint_info because its not need and in sign-only its wrong
+    // we dont use the decimals from mint_info because its not need and in sign-only
+    // its wrong
     let token = token_client_from_config(config, &mint_info.address, None)?;
     let res = token
         .freeze(&account, &freeze_authority, &bulk_signers)
@@ -1969,7 +1975,8 @@ async fn command_thaw(
         ),
     );
 
-    // we dont use the decimals from mint_info because its not need and in sign-only its wrong
+    // we dont use the decimals from mint_info because its not need and in sign-only
+    // its wrong
     let token = token_client_from_config(config, &mint_info.address, None)?;
     let res = token
         .thaw(&account, &freeze_authority, &bulk_signers)
@@ -2025,7 +2032,8 @@ async fn command_wrap(
             .wrap(&account, &wallet_address, lamports, &bulk_signers)
             .await?
     } else {
-        // this case is hit for a token22 ata, which is always immutable. but it does the right thing anyway
+        // this case is hit for a token22 ata, which is always immutable. but it does
+        // the right thing anyway
         token
             .wrap_with_mutable_ownership(&account, &wallet_address, lamports, &bulk_signers)
             .await?
@@ -2533,7 +2541,8 @@ async fn command_gc(
         for (address, (amount, frozen, close_authority)) in accounts {
             let is_associated = address == associated_token_account;
 
-            // only close the associated account if --close-empty-associated-accounts is provided
+            // only close the associated account if --close-empty-associated-accounts is
+            // provided
             if is_associated && !close_empty_associated_accounts {
                 continue;
             }
@@ -3378,7 +3387,10 @@ async fn command_deposit_withdraw_confidential_tokens(
         // // TODO: expose account balance decryption in token
         // let aes_key = aes_key.expect("AES key must be provided");
         // let current_balance = token
-        //     .confidential_transfer_get_available_balance_with_key(&token_account_address, aes_key)
+        //     .confidential_transfer_get_available_balance_with_key(
+        //         &token_account_address,
+        //         aes_key,
+        //     )
         //     .await?;
         let withdraw_amount =
             maybe_amount.expect("ALL keyword is not currently supported for withdraw");
@@ -5685,8 +5697,8 @@ async fn process_command<'a>(
                 // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
                 // supported in the future once upgrading to clap-v3.
                 //
-                // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be updated
-                // once custom ElGamal and AES keys are supported.
+                // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be
+                // updated once custom ElGamal and AES keys are supported.
                 let sender_elgamal_keypair =
                     ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
                 let sender_aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
@@ -6274,8 +6286,8 @@ async fn process_command<'a>(
             // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
             // supported in the future once upgrading to clap-v3.
             //
-            // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be updated
-            // once custom ElGamal and AES keys are supported.
+            // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be
+            // updated once custom ElGamal and AES keys are supported.
             let elgamal_keypair = ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
             let aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
 
@@ -6364,8 +6376,8 @@ async fn process_command<'a>(
                     // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
                     // supported in the future once upgrading to clap-v3.
                     //
-                    // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be updated
-                    // once custom ElGamal and AES keys are supported.
+                    // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be
+                    // updated once custom ElGamal and AES keys are supported.
                     let elgamal_keypair =
                         ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
                     let aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
@@ -6408,8 +6420,8 @@ async fn process_command<'a>(
             // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
             // supported in the future once upgrading to clap-v3.
             //
-            // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be updated
-            // once custom ElGamal and AES keys are supported.
+            // NOTE:: Seed bytes are hardcoded to be empty bytes for now. They will be
+            // updated once custom ElGamal and AES keys are supported.
             let elgamal_keypair = ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
             let aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
 

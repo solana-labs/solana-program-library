@@ -1306,8 +1306,8 @@ async fn max_withdraw_withheld_tokens_from_accounts() {
         ..
     } = create_mint_with_accounts(alice_amount).await;
 
-    // withdraw from max accounts, which is around 35: 1 mint, 1 destination, 1 authority,
-    // 32 accounts
+    // withdraw from max accounts, which is around 35: 1 mint, 1 destination, 1
+    // authority, 32 accounts
     // see https://docs.solana.com/proposals/transactions-v2#problem
     let destination = Keypair::new();
     token

@@ -76,7 +76,8 @@ pub fn process_instruction(
     input: &[u8],
 ) -> ProgramResult {
     msg!("VERSION:{:?}", env!("CARGO_PKG_VERSION"));
-    // Use try_from_slice_unchecked to support forward compatibility of newer UI with older program
+    // Use try_from_slice_unchecked to support forward compatibility of newer UI
+    // with older program
     let instruction: GovernanceInstruction =
         try_from_slice_unchecked(input).map_err(|_| ProgramError::InvalidInstructionData)?;
 

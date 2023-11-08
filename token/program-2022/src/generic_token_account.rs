@@ -8,24 +8,27 @@ use {
 const SPL_TOKEN_ACCOUNT_MINT_OFFSET: usize = 0;
 const SPL_TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
 
-/// A trait for token Account structs to enable efficiently unpacking various fields
-/// without unpacking the complete state.
+/// A trait for token Account structs to enable efficiently unpacking various
+/// fields without unpacking the complete state.
 pub trait GenericTokenAccount {
     /// Check if the account data is a valid token account
     fn valid_account_data(account_data: &[u8]) -> bool;
 
-    /// Call after account length has already been verified to unpack the account owner
+    /// Call after account length has already been verified to unpack the
+    /// account owner
     fn unpack_account_owner_unchecked(account_data: &[u8]) -> &Pubkey {
         Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_OWNER_OFFSET)
     }
 
-    /// Call after account length has already been verified to unpack the account mint
+    /// Call after account length has already been verified to unpack the
+    /// account mint
     fn unpack_account_mint_unchecked(account_data: &[u8]) -> &Pubkey {
         Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_MINT_OFFSET)
     }
 
-    /// Call after account length has already been verified to unpack a Pubkey at
-    /// the specified offset. Panics if `account_data.len()` is less than `PUBKEY_BYTES`
+    /// Call after account length has already been verified to unpack a Pubkey
+    /// at the specified offset. Panics if `account_data.len()` is less than
+    /// `PUBKEY_BYTES`
     fn unpack_pubkey_unchecked(account_data: &[u8], offset: usize) -> &Pubkey {
         bytemuck::from_bytes(&account_data[offset..offset + PUBKEY_BYTES])
     }

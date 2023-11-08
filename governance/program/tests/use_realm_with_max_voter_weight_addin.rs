@@ -212,7 +212,8 @@ async fn test_tip_vote_with_max_voter_weight_addin_and_max_below_total_cast_vote
         .await;
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);
-    assert_eq!(proposal_account.max_vote_weight, Some(100)); // Adjusted max based on cast votes
+    // Adjusted max based on cast votes
+    assert_eq!(proposal_account.max_vote_weight, Some(100));
 }
 
 #[tokio::test]
@@ -358,7 +359,8 @@ async fn test_finalize_vote_with_max_voter_weight_addin_and_max_below_total_cast
         .await;
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);
-    assert_eq!(proposal_account.max_vote_weight, Some(100)); // Adjusted max based on cast votes
+    // Adjusted max based on cast votes
+    assert_eq!(proposal_account.max_vote_weight, Some(100));
 }
 
 #[tokio::test]

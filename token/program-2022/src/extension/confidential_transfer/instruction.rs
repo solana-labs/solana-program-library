@@ -33,12 +33,13 @@ use {
 pub enum ConfidentialTransferInstruction {
     /// Initializes confidential transfers for a mint.
     ///
-    /// The `ConfidentialTransferInstruction::InitializeMint` instruction requires no signers
-    /// and MUST be included within the same Transaction as `TokenInstruction::InitializeMint`.
-    /// Otherwise another party can initialize the configuration.
+    /// The `ConfidentialTransferInstruction::InitializeMint` instruction
+    /// requires no signers and MUST be included within the same Transaction
+    /// as `TokenInstruction::InitializeMint`. Otherwise another party can
+    /// initialize the configuration.
     ///
-    /// The instruction fails if the `TokenInstruction::InitializeMint` instruction has already
-    /// executed for the mint.
+    /// The instruction fails if the `TokenInstruction::InitializeMint`
+    /// instruction has already executed for the mint.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -46,12 +47,12 @@ pub enum ConfidentialTransferInstruction {
     ///
     /// Data expected by this instruction:
     ///   `InitializeMintData`
-    ///
     InitializeMint,
 
     /// Updates the confidential transfer mint configuration for a mint.
     ///
-    /// Use `TokenInstruction::SetAuthority` to update the confidential transfer mint authority.
+    /// Use `TokenInstruction::SetAuthority` to update the confidential transfer
+    /// mint authority.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -60,52 +61,57 @@ pub enum ConfidentialTransferInstruction {
     ///
     /// Data expected by this instruction:
     ///   `UpdateMintData`
-    ///
     UpdateMint,
 
     /// Configures confidential transfers for a token account.
     ///
-    /// The instruction fails if the confidential transfers are already configured, or if the mint
-    /// was not initialized with confidential transfer support.
+    /// The instruction fails if the confidential transfers are already
+    /// configured, or if the mint was not initialized with confidential
+    /// transfer support.
     ///
-    /// The instruction fails if the `TokenInstruction::InitializeAccount` instruction has not yet
-    /// successfully executed for the token account.
+    /// The instruction fails if the `TokenInstruction::InitializeAccount`
+    /// instruction has not yet successfully executed for the token account.
     ///
-    /// Upon success, confidential and non-confidential deposits and transfers are enabled. Use the
-    /// `DisableConfidentialCredits` and `DisableNonConfidentialCredits` instructions to disable.
+    /// Upon success, confidential and non-confidential deposits and transfers
+    /// are enabled. Use the `DisableConfidentialCredits` and
+    /// `DisableNonConfidentialCredits` instructions to disable.
     ///
-    /// In order for this instruction to be successfully processed, it must be accompanied by the
-    /// `VerifyPubkeyValidityProof` instruction of the `zk_token_proof` program in the same
-    /// transaction or the address of a context state account for the proof must be provided.
+    /// In order for this instruction to be successfully processed, it must be
+    /// accompanied by the `VerifyPubkeyValidityProof` instruction of the
+    /// `zk_token_proof` program in the same transaction or the address of a
+    /// context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidityProof` is included in the same
-    ///      transaction or context state account if `VerifyPubkeyValidityProof` is pre-verified
-    ///      into a context state account.
+    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidityProof` is included
+    ///      in the same transaction or context state account if
+    ///      `VerifyPubkeyValidityProof` is pre-verified into a context state
+    ///      account.
     ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidityProof` is included in the same
-    ///      transaction or context state account if `VerifyPubkeyValidityProof` is pre-verified
-    ///      into a context state account.
+    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidityProof` is included
+    ///      in the same transaction or context state account if
+    ///      `VerifyPubkeyValidityProof` is pre-verified into a context state
+    ///      account.
     ///   3. `[]` The multisig source account owner.
-    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
     ///
     /// Data expected by this instruction:
     ///   `ConfigureAccountInstructionData`
-    ///
     ConfigureAccount,
 
     /// Approves a token account for confidential transfers.
     ///
-    /// Approval is only required when the `ConfidentialTransferMint::approve_new_accounts`
-    /// field is set in the SPL Token mint.  This instruction must be executed after the account
+    /// Approval is only required when the
+    /// `ConfidentialTransferMint::approve_new_accounts` field is set in the
+    /// SPL Token mint.  This instruction must be executed after the account
     /// owner configures their account for confidential transfers with
     /// `ConfidentialTransferInstruction::ConfigureAccount`.
     ///
@@ -117,49 +123,56 @@ pub enum ConfidentialTransferInstruction {
     ///
     /// Data expected by this instruction:
     ///   None
-    ///
     ApproveAccount,
 
     /// Empty the available balance in a confidential token account.
     ///
-    /// A token account that is extended for confidential transfers can only be closed if the
-    /// pending and available balance ciphertexts are emptied. The pending balance can be emptied
-    /// via the `ConfidentialTransferInstruction::ApplyPendingBalance` instruction. Use the
-    /// `ConfidentialTransferInstruction::EmptyAccount` instruction to empty the available balance
-    /// ciphertext.
+    /// A token account that is extended for confidential transfers can only be
+    /// closed if the pending and available balance ciphertexts are emptied.
+    /// The pending balance can be emptied
+    /// via the `ConfidentialTransferInstruction::ApplyPendingBalance`
+    /// instruction. Use the `ConfidentialTransferInstruction::EmptyAccount`
+    /// instruction to empty the available balance ciphertext.
     ///
-    /// Note that a newly configured account is always empty, so this instruction is not required
-    /// prior to account closing if no instructions beyond
-    /// `ConfidentialTransferInstruction::ConfigureAccount` have affected the token account.
+    /// Note that a newly configured account is always empty, so this
+    /// instruction is not required prior to account closing if no
+    /// instructions beyond
+    /// `ConfidentialTransferInstruction::ConfigureAccount` have affected the
+    /// token account.
     ///
-    /// In order for this instruction to be successfully processed, it must be accompanied by the
-    /// `VerifyZeroBalanceProof` instruction of the `zk_token_proof` program in the same
-    /// transaction or the address of a context state account for the proof must be provided.
+    /// In order for this instruction to be successfully processed, it must be
+    /// accompanied by the `VerifyZeroBalanceProof` instruction of the
+    /// `zk_token_proof` program in the same transaction or the address of a
+    /// context state account for the proof must be provided.
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar if `VerifyZeroBalanceProof` is included in the same
-    ///      transaction or context state account if `VerifyZeroBalanceProof` is pre-verified into
-    ///      a context state account.
+    ///   1. `[]` Instructions sysvar if `VerifyZeroBalanceProof` is included in
+    ///      the same transaction or context state account if
+    ///      `VerifyZeroBalanceProof` is pre-verified into a context state
+    ///      account.
     ///   2. `[signer]` The single account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar if `VerifyZeroBalanceProof` is included in the same
-    ///      transaction or context state account if `VerifyZeroBalanceProof` is pre-verified into
-    ///      a context state account.
+    ///   1. `[]` Instructions sysvar if `VerifyZeroBalanceProof` is included in
+    ///      the same transaction or context state account if
+    ///      `VerifyZeroBalanceProof` is pre-verified into a context state
+    ///      account.
     ///   2. `[]` The multisig account owner.
-    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
     ///
     /// Data expected by this instruction:
     ///   `EmptyAccountInstructionData`
-    ///
     EmptyAccount,
 
-    /// Deposit SPL Tokens into the pending balance of a confidential token account.
+    /// Deposit SPL Tokens into the pending balance of a confidential token
+    /// account.
     ///
-    /// The account owner can then invoke the `ApplyPendingBalance` instruction to roll the deposit
-    /// into their available balance at a time of their choosing.
+    /// The account owner can then invoke the `ApplyPendingBalance` instruction
+    /// to roll the deposit into their available balance at a time of their
+    /// choosing.
     ///
     /// Fails if the source or destination accounts are frozen.
     /// Fails if the associated mint is extended as `NonTransferable`.
@@ -175,52 +188,55 @@ pub enum ConfidentialTransferInstruction {
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
     ///   2. `[]` The multisig account owner or delegate.
-    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
     ///
     /// Data expected by this instruction:
     ///   `DepositInstructionData`
-    ///
     Deposit,
 
-    /// Withdraw SPL Tokens from the available balance of a confidential token account.
+    /// Withdraw SPL Tokens from the available balance of a confidential token
+    /// account.
     ///
     /// Fails if the source or destination accounts are frozen.
     /// Fails if the associated mint is extended as `NonTransferable`.
     ///
-    /// In order for this instruction to be successfully processed, it must be accompanied by the
-    /// `VerifyWithdraw` instruction of the `zk_token_proof` program in the same transaction or the
-    /// address of a context state account for the proof must be provided.
+    /// In order for this instruction to be successfully processed, it must be
+    /// accompanied by the `VerifyWithdraw` instruction of the
+    /// `zk_token_proof` program in the same transaction or the address of a
+    /// context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the same transaction or
-    ///      context state account if `VerifyWithdraw` is pre-verified into a context state
-    ///      account.
+    ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the
+    ///      same transaction or context state account if `VerifyWithdraw` is
+    ///      pre-verified into a context state account.
     ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the same transaction or
-    ///      context state account if `VerifyWithdraw` is pre-verified into a context state
-    ///      account.
+    ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the
+    ///      same transaction or context state account if `VerifyWithdraw` is
+    ///      pre-verified into a context state account.
     ///   3. `[]` The multisig  source account owner.
-    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
     ///
     /// Data expected by this instruction:
     ///   `WithdrawInstructionData`
-    ///
     Withdraw,
 
     /// Transfer tokens confidentially.
     ///
-    /// In order for this instruction to be successfully processed, it must be accompanied by
-    /// either the `VerifyTransfer` or `VerifyTransferWithFee` instruction of the `zk_token_proof`
-    /// program in the same transaction or the address of a context state account for the proof
-    /// must be provided.
+    /// In order for this instruction to be successfully processed, it must be
+    /// accompanied by either the `VerifyTransfer` or
+    /// `VerifyTransferWithFee` instruction of the `zk_token_proof`
+    /// program in the same transaction or the address of a context state
+    /// account for the proof must be provided.
     ///
     /// Fails if the associated mint is extended as `NonTransferable`.
     ///
@@ -228,8 +244,9 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
-    ///   4. `[]` Instructions sysvar if `VerifyTransfer` or `VerifyTransferWithFee` is included in
-    ///      the same transaction or context state account if these proofs are pre-verified into a
+    ///   4. `[]` Instructions sysvar if `VerifyTransfer` or
+    ///      `VerifyTransferWithFee` is included in the same transaction or
+    ///      context state account if these proofs are pre-verified into a
     ///      context state account.
     ///   5. `[signer]` The single source account owner.
     ///
@@ -237,26 +254,29 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
-    ///   4. `[]` Instructions sysvar if `VerifyTransfer` or `VerifyTransferWithFee` is included in
-    ///      the same transaction or context state account if these proofs are pre-verified into a
+    ///   4. `[]` Instructions sysvar if `VerifyTransfer` or
+    ///      `VerifyTransferWithFee` is included in the same transaction or
+    ///      context state account if these proofs are pre-verified into a
     ///      context state account.
     ///   5. `[]` The multisig  source account owner.
-    ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
     ///
     /// Data expected by this instruction:
     ///   `TransferInstructionData`
-    ///
     Transfer,
 
-    /// Applies the pending balance to the available balance, based on the history of `Deposit`
-    /// and/or `Transfer` instructions.
+    /// Applies the pending balance to the available balance, based on the
+    /// history of `Deposit` and/or `Transfer` instructions.
     ///
     /// After submitting `ApplyPendingBalance`, the client should compare
-    /// `ConfidentialTransferAccount::expected_pending_balance_credit_counter` with
+    /// `ConfidentialTransferAccount::expected_pending_balance_credit_counter`
+    /// with
     /// `ConfidentialTransferAccount::actual_applied_pending_balance_instructions`.  If they are
-    /// equal then the `ConfidentialTransferAccount::decryptable_available_balance` is consistent
-    /// with `ConfidentialTransferAccount::available_balance`. If they differ then there is more
-    /// pending balance to be applied.
+    /// equal then the
+    /// `ConfidentialTransferAccount::decryptable_available_balance` is
+    /// consistent with `ConfidentialTransferAccount::available_balance`. If
+    /// they differ then there is more pending balance to be applied.
     ///
     /// Account expected by this instruction:
     ///
@@ -267,14 +287,15 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The multisig account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
     ///
     /// Data expected by this instruction:
     ///   `ApplyPendingBalanceData`
-    ///
     ApplyPendingBalance,
 
-    /// Configure a confidential extension account to accept incoming confidential transfers.
+    /// Configure a confidential extension account to accept incoming
+    /// confidential transfers.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -285,20 +306,21 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` Multisig authority.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
     ///
     /// Data expected by this instruction:
     ///   None
-    ///
     EnableConfidentialCredits,
 
-    /// Configure a confidential extension account to reject any incoming confidential transfers.
+    /// Configure a confidential extension account to reject any incoming
+    /// confidential transfers.
     ///
-    /// If the `allow_non_confidential_credits` field is `true`, then the base account can still
-    /// receive non-confidential transfers.
+    /// If the `allow_non_confidential_credits` field is `true`, then the base
+    /// account can still receive non-confidential transfers.
     ///
-    /// This instruction can be used to disable confidential payments after a token account has
-    /// already been extended for confidential transfers.
+    /// This instruction can be used to disable confidential payments after a
+    /// token account has already been extended for confidential transfers.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -309,37 +331,37 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The multisig account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
     ///
     /// Data expected by this instruction:
     ///   None
-    ///
     DisableConfidentialCredits,
 
-    /// Configure an account with the confidential extension to accept incoming non-confidential
-    /// transfers.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   * Single owner/delegate
-    ///   0. `[writable]` The SPL Token account.
-    ///   1. `[signer]` The single account owner.
-    ///
-    ///   * Multisignature owner/delegate
-    ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` The multisig account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
-    ///
-    /// Data expected by this instruction:
-    ///   None
-    ///
-    EnableNonConfidentialCredits,
-
-    /// Configure an account with the confidential extension to reject any incoming
+    /// Configure an account with the confidential extension to accept incoming
     /// non-confidential transfers.
     ///
-    /// This instruction can be used to configure a confidential extension account to exclusively
-    /// receive confidential payments.
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[signer]` The single account owner.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[writable]` The SPL Token account.
+    ///   1. `[]` The multisig account owner.
+    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    EnableNonConfidentialCredits,
+
+    /// Configure an account with the confidential extension to reject any
+    /// incoming non-confidential transfers.
+    ///
+    /// This instruction can be used to configure a confidential extension
+    /// account to exclusively receive confidential payments.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -350,33 +372,39 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The multisig account owner.
-    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig account.
+    ///   2.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    /// account.
     ///
     /// Data expected by this instruction:
     ///   None
-    ///
     DisableNonConfidentialCredits,
 
-    /// Transfer tokens confidentially with zero-knowledge proofs that are split into smaller
-    /// components.
+    /// Transfer tokens confidentially with zero-knowledge proofs that are split
+    /// into smaller components.
     ///
-    /// In order for this instruction to be successfully processed, it must be accompanied by
-    /// suitable zero-knowledge proof context accounts listed below.
+    /// In order for this instruction to be successfully processed, it must be
+    /// accompanied by suitable zero-knowledge proof context accounts listed
+    /// below.
     ///
-    /// The same restrictions for the `Transfer` applies to `TransferWithSplitProofs`. Namely, the
-    /// instruction fails if the associated mint is extended as `NonTransferable`.
+    /// The same restrictions for the `Transfer` applies to
+    /// `TransferWithSplitProofs`. Namely, the instruction fails if the
+    /// associated mint is extended as `NonTransferable`.
     ///
     ///   * Transfer without fee
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
-    ///   4. `[]` Context state account for `VerifyCiphertextCommitmentEqualityProof`.
-    ///   5. `[]` Context state account for `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
+    ///   4. `[]` Context state account for
+    ///      `VerifyCiphertextCommitmentEqualityProof`.
+    ///   5. `[]` Context state account for
+    ///      `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
     ///   6. `[]` Context state account for `VerifyBatchedRangeProofU128`.
     ///   7. `[signer]` The source account owner.
-    ///   If `close_split_context_state_on_execution` is set, all context state accounts must be
-    ///   `writable` and the following additional sequence of accounts are needed:
-    ///   8. `[]` The destination account for lamports from the context state accounts.
+    ///   If `close_split_context_state_on_execution` is set, all context state
+    ///     accounts must be `writable` and the following additional sequence
+    ///     of accounts are needed:
+    ///   8. `[]` The destination account for lamports from the context state
+    ///      accounts.
     ///   9. `[signer]` The context state account owner.
     ///   10. `[]` The zk token proof program.
     ///
@@ -384,21 +412,25 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
-    ///   4. `[]` Context state account for `VerifyCiphertextCommitmentEqualityProof`.
-    ///   5. `[]` Context state account for `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
+    ///   4. `[]` Context state account for
+    ///      `VerifyCiphertextCommitmentEqualityProof`.
+    ///   5. `[]` Context state account for
+    ///      `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
     ///   6. `[]` Context state account for `VerifyFeeSigmaProof`.
-    ///   7. `[]` Context state account for `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
+    ///   7. `[]` Context state account for
+    ///      `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
     ///   8. `[]` Context state account for `VerifyBatchedRangeProofU256`.
     ///   9. `[signer]` The source account owner.
-    ///   If `close_split_context_state_on_execution` is set, all context state accounts must be
-    ///   `writable` and the following additional sequence of accounts are needed:
-    ///   10. `[]` The destination account for lamports from the context state accounts.
+    ///   If `close_split_context_state_on_execution` is set, all context state
+    ///     accounts must be   `writable` and the following additional sequence
+    ///     of accounts are needed:
+    ///   10. `[]` The destination account for lamports from the context state
+    ///       accounts.
     ///   11. `[signer]` The context state account owner.
     ///   12. `[]` The zk token proof program.
     ///
     /// Data expected by this instruction:
     ///   `TransferWithSplitProofsInstructionData`
-    ///
     TransferWithSplitProofs,
 }
 
@@ -408,11 +440,11 @@ pub enum ConfidentialTransferInstruction {
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeMintData {
-    /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
-    /// accounts.
+    /// Authority to modify the `ConfidentialTransferMint` configuration and to
+    /// approve new accounts.
     pub authority: OptionalNonZeroPubkey,
-    /// Determines if newly configured accounts must be approved by the `authority` before they may
-    /// be used by the user.
+    /// Determines if newly configured accounts must be approved by the
+    /// `authority` before they may be used by the user.
     pub auto_approve_new_accounts: PodBool,
     /// New authority to decode any transfer amount in a confidential transfer.
     pub auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
@@ -424,8 +456,8 @@ pub struct InitializeMintData {
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct UpdateMintData {
-    /// Determines if newly configured accounts must be approved by the `authority` before they may
-    /// be used by the user.
+    /// Determines if newly configured accounts must be approved by the
+    /// `authority` before they may be used by the user.
     pub auto_approve_new_accounts: PodBool,
     /// New authority to decode any transfer amount in a confidential transfer.
     pub auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
@@ -440,12 +472,13 @@ pub struct ConfigureAccountInstructionData {
     /// The decryptable balance (always 0) once the configure account succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub decryptable_zero_balance: DecryptableBalance,
-    /// The maximum number of despots and transfers that an account can receiver before the
-    /// `ApplyPendingBalance` is executed
+    /// The maximum number of despots and transfers that an account can receiver
+    /// before the `ApplyPendingBalance` is executed
     pub maximum_pending_balance_credit_counter: PodU64,
-    /// Relative location of the `ProofInstruction::ZeroBalanceProof` instruction to the
-    /// `ConfigureAccount` instruction in the transaction. If the offset is `0`, then use a context
-    /// state account for the proof.
+    /// Relative location of the `ProofInstruction::ZeroBalanceProof`
+    /// instruction to the `ConfigureAccount` instruction in the
+    /// transaction. If the offset is `0`, then use a context state account
+    /// for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -455,9 +488,9 @@ pub struct ConfigureAccountInstructionData {
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct EmptyAccountInstructionData {
-    /// Relative location of the `ProofInstruction::VerifyCloseAccount` instruction to the
-    /// `EmptyAccount` instruction in the transaction. If the offset is `0`, then use a context
-    /// state account for the proof.
+    /// Relative location of the `ProofInstruction::VerifyCloseAccount`
+    /// instruction to the `EmptyAccount` instruction in the transaction. If
+    /// the offset is `0`, then use a context state account for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -486,9 +519,9 @@ pub struct WithdrawInstructionData {
     /// The new decryptable balance if the withdrawal succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
-    /// Relative location of the `ProofInstruction::VerifyWithdraw` instruction to the `Withdraw`
-    /// instruction in the transaction. If the offset is `0`, then use a context state account for
-    /// the proof.
+    /// Relative location of the `ProofInstruction::VerifyWithdraw` instruction
+    /// to the `Withdraw` instruction in the transaction. If the offset is
+    /// `0`, then use a context state account for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -501,9 +534,9 @@ pub struct TransferInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_source_decryptable_available_balance: DecryptableBalance,
-    /// Relative location of the `ProofInstruction::VerifyTransfer` instruction to the
-    /// `Transfer` instruction in the transaction. If the offset is `0`, then use a context state
-    /// account for the proof.
+    /// Relative location of the `ProofInstruction::VerifyTransfer` instruction
+    /// to the `Transfer` instruction in the transaction. If the offset is
+    /// `0`, then use a context state account for the proof.
     pub proof_instruction_offset: i8,
 }
 
@@ -516,7 +549,8 @@ pub struct ApplyPendingBalanceData {
     /// The expected number of pending balance credits since the last successful
     /// `ApplyPendingBalance` instruction
     pub expected_pending_balance_credit_counter: PodU64,
-    /// The new decryptable balance if the pending balance is applied successfully
+    /// The new decryptable balance if the pending balance is applied
+    /// successfully
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
 }
@@ -529,61 +563,75 @@ pub struct TransferWithSplitProofsInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_source_decryptable_available_balance: DecryptableBalance,
-    /// If true, execute no op when an associated context state account is not initialized.
-    /// Otherwise, fail on an uninitialized context state account.
+    /// If true, execute no op when an associated context state account is not
+    /// initialized. Otherwise, fail on an uninitialized context state
+    /// account.
     pub no_op_on_uninitialized_split_context_state: PodBool,
-    /// Close associated context states after a complete execution of the transfer instruction.
+    /// Close associated context states after a complete execution of the
+    /// transfer instruction.
     pub close_split_context_state_on_execution: PodBool,
-    /// The ElGamal decryption handle pertaining to the low and high bits of the transfer amount.
-    /// This field is used when the transfer proofs are split and verified as smaller components.
+    /// The ElGamal decryption handle pertaining to the low and high bits of the
+    /// transfer amount. This field is used when the transfer proofs are
+    /// split and verified as smaller components.
     ///
     /// NOTE: This field is to be removed in the next Solana upgrade.
     pub source_decrypt_handles: SourceDecryptHandles,
 }
 
-/// Type for split transfer (without fee) instruction proof context state account addresses
-/// intended to be used as parameters to functions.
+/// Type for split transfer (without fee) instruction proof context state
+/// account addresses intended to be used as parameters to functions.
 #[derive(Clone, Copy)]
 pub struct TransferSplitContextStateAccounts<'a> {
-    /// The context state account address for an equality proof needed for a transfer.
+    /// The context state account address for an equality proof needed for a
+    /// transfer.
     pub equality_proof: &'a Pubkey,
-    /// The context state account address for a ciphertext validity proof needed for a transfer.
+    /// The context state account address for a ciphertext validity proof needed
+    /// for a transfer.
     pub ciphertext_validity_proof: &'a Pubkey,
-    /// The context state account address for a range proof needed for a transfer.
+    /// The context state account address for a range proof needed for a
+    /// transfer.
     pub range_proof: &'a Pubkey,
     /// The context state accounts authority
     pub authority: &'a Pubkey,
-    /// No op if an associated split proof context state account is not initialized.
+    /// No op if an associated split proof context state account is not
+    /// initialized.
     pub no_op_on_uninitialized_split_context_state: bool,
-    /// Accounts needed if `close_split_context_state_on_execution` flag is enabled.
+    /// Accounts needed if `close_split_context_state_on_execution` flag is
+    /// enabled.
     pub close_split_context_state_accounts: Option<CloseSplitContextStateAccounts<'a>>,
 }
 
-/// Type for split transfer (with fee) instruction proof context state account addresses intended
-/// to be used as parameters to functions.
+/// Type for split transfer (with fee) instruction proof context state account
+/// addresses intended to be used as parameters to functions.
 #[derive(Clone, Copy)]
 pub struct TransferWithFeeSplitContextStateAccounts<'a> {
-    /// The context state account address for an equality proof needed for a transfer with fee.
+    /// The context state account address for an equality proof needed for a
+    /// transfer with fee.
     pub equality_proof: &'a Pubkey,
-    /// The context state account address for a transfer amount ciphertext validity proof needed
-    /// for a transfer with fee.
+    /// The context state account address for a transfer amount ciphertext
+    /// validity proof needed for a transfer with fee.
     pub transfer_amount_ciphertext_validity_proof: &'a Pubkey,
-    /// The context state account address for a fee sigma proof needed for a transfer with fee.
+    /// The context state account address for a fee sigma proof needed for a
+    /// transfer with fee.
     pub fee_sigma_proof: &'a Pubkey,
-    /// The context state account address for a fee ciphertext validity proof needed for a transfer
-    /// with fee.
+    /// The context state account address for a fee ciphertext validity proof
+    /// needed for a transfer with fee.
     pub fee_ciphertext_validity_proof: &'a Pubkey,
-    /// The context state account address for a range proof needed for a transfer with fee.
+    /// The context state account address for a range proof needed for a
+    /// transfer with fee.
     pub range_proof: &'a Pubkey,
     /// The context state accounts authority
     pub authority: &'a Pubkey,
-    /// No op if an associated split proof context state account is not initialized.
+    /// No op if an associated split proof context state account is not
+    /// initialized.
     pub no_op_on_uninitialized_split_context_state: bool,
-    /// Accounts needed if `close_split_context_state_on_execution` flag is enabled.
+    /// Accounts needed if `close_split_context_state_on_execution` flag is
+    /// enabled.
     pub close_split_context_state_accounts: Option<CloseSplitContextStateAccounts<'a>>,
 }
 
-/// Accounts needed if `close_split_context_state_on_execution` flag is enabled on a transfer.
+/// Accounts needed if `close_split_context_state_on_execution` flag is enabled
+/// on a transfer.
 #[derive(Clone, Copy)]
 pub struct CloseSplitContextStateAccounts<'a> {
     /// The lamport destination account.
@@ -729,10 +777,10 @@ pub fn configure_account(
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         proof_data_location
     {
-        // This constructor appends the proof instruction right after the `ConfigureAccount`
-        // instruction. This means that the proof instruction offset must be always be 1. To
-        // use an arbitrary proof instruction offset, use the `inner_configure_account`
-        // constructor.
+        // This constructor appends the proof instruction right after the
+        // `ConfigureAccount` instruction. This means that the proof instruction
+        // offset must be always be 1. To use an arbitrary proof instruction
+        // offset, use the `inner_configure_account` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
@@ -833,8 +881,9 @@ pub fn empty_account(
         proof_data_location
     {
         // This constructor appends the proof instruction right after the `EmptyAccount`
-        // instruction. This means that the proof instruction offset must be always be 1. To use an
-        // arbitrary proof instruction offset, use the `inner_empty_account` constructor.
+        // instruction. This means that the proof instruction offset must be always be
+        // 1. To use an arbitrary proof instruction offset, use the
+        // `inner_empty_account` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
@@ -963,9 +1012,10 @@ pub fn withdraw(
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         proof_data_location
     {
-        // This constructor appends the proof instruction right after the `Withdraw` instruction.
-        // This means that the proof instruction offset must be always be 1. To use an arbitrary
-        // proof instruction offset, use the `inner_withdraw` constructor.
+        // This constructor appends the proof instruction right after the `Withdraw`
+        // instruction. This means that the proof instruction offset must be
+        // always be 1. To use an arbitrary proof instruction offset, use the
+        // `inner_withdraw` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
@@ -1056,9 +1106,10 @@ pub fn transfer(
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         proof_data_location
     {
-        // This constructor appends the proof instruction right after the `Transfer` instruction.
-        // This means that the proof instruction offset must be always be 1. To use an arbitrary
-        // proof instruction offset, use the `inner_transfer` constructor.
+        // This constructor appends the proof instruction right after the `Transfer`
+        // instruction. This means that the proof instruction offset must be
+        // always be 1. To use an arbitrary proof instruction offset, use the
+        // `inner_transfer` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
@@ -1149,10 +1200,10 @@ pub fn transfer_with_fee(
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         proof_data_location
     {
-        // This constructor appends the proof instruction right after the `TransferWithFee`
-        // instruction. This means that the proof instruction offset must be always be 1. To
-        // use an arbitrary proof instruction offset, use the `inner_transfer_with_fee`
-        // constructor.
+        // This constructor appends the proof instruction right after the
+        // `TransferWithFee` instruction. This means that the proof instruction
+        // offset must be always be 1. To use an arbitrary proof instruction
+        // offset, use the `inner_transfer_with_fee` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
@@ -1330,8 +1381,8 @@ pub fn transfer_with_split_proofs(
         if let Some(close_split_context_state_on_execution_accounts) =
             context_accounts.close_split_context_state_accounts
         {
-            // If `close_split_context_state_accounts` is set, then all context state accounts must
-            // be `writable`.
+            // If `close_split_context_state_accounts` is set, then all context state
+            // accounts must be `writable`.
             accounts.push(AccountMeta::new(*context_accounts.equality_proof, false));
             accounts.push(AccountMeta::new(
                 *context_accounts.ciphertext_validity_proof,
@@ -1350,8 +1401,8 @@ pub fn transfer_with_split_proofs(
             ));
             true
         } else {
-            // If `close_split_context_state_accounts` is not set, then context state accounts can
-            // be read-only.
+            // If `close_split_context_state_accounts` is not set, then context state
+            // accounts can be read-only.
             accounts.push(AccountMeta::new_readonly(
                 *context_accounts.equality_proof,
                 false,
@@ -1409,8 +1460,8 @@ pub fn transfer_with_fee_and_split_proofs(
         if let Some(close_split_context_state_on_execution_accounts) =
             context_accounts.close_split_context_state_accounts
         {
-            // If `close_split_context_state_accounts` is set, then all context state accounts must
-            // be `writable`.
+            // If `close_split_context_state_accounts` is set, then all context state
+            // accounts must be `writable`.
             accounts.push(AccountMeta::new(*context_accounts.equality_proof, false));
             accounts.push(AccountMeta::new(
                 *context_accounts.transfer_amount_ciphertext_validity_proof,
@@ -1434,8 +1485,8 @@ pub fn transfer_with_fee_and_split_proofs(
             ));
             true
         } else {
-            // If `close_split_context_state_accounts` is not set, then context state accounts can
-            // be read-only.
+            // If `close_split_context_state_accounts` is not set, then context state
+            // accounts can be read-only.
             accounts.push(AccountMeta::new_readonly(
                 *context_accounts.equality_proof,
                 false,

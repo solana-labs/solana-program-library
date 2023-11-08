@@ -1,4 +1,5 @@
-// Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
+// Mark this test as BPF-only due to current `ProgramTest` limitations when
+// CPIing into the system program
 #![cfg(feature = "test-sbf")]
 
 use {
@@ -45,7 +46,8 @@ async fn test_precise_sqrt_u32_max() {
 async fn test_sqrt_u64() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    // Dial down the BPF compute budget to detect if the operation gets bloated in the future
+    // Dial down the BPF compute budget to detect if the operation gets bloated in
+    // the future
     pc.set_compute_max_units(2_500);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
@@ -60,7 +62,8 @@ async fn test_sqrt_u64() {
 async fn test_sqrt_u128() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    // Dial down the BPF compute budget to detect if the operation gets bloated in the future
+    // Dial down the BPF compute budget to detect if the operation gets bloated in
+    // the future
     pc.set_compute_max_units(4_100);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
@@ -183,7 +186,8 @@ async fn test_f32_natural_log() {
 async fn test_f32_normal_cdf() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    // Dial down the BPF compute budget to detect if the operation gets bloated in the future
+    // Dial down the BPF compute budget to detect if the operation gets bloated in
+    // the future
     pc.set_compute_max_units(3_100);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;

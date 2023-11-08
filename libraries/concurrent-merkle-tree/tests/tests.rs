@@ -444,7 +444,8 @@ async fn test_append_bug_repro_2() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-/// Test that empty trees are checked properly by adding & removing leaves one by one
+/// Test that empty trees are checked properly by adding & removing leaves one
+/// by one
 async fn test_prove_tree_empty_incremental() {
     let (mut cmt, mut tree) = setup();
     let mut rng = thread_rng();
@@ -452,7 +453,8 @@ async fn test_prove_tree_empty_incremental() {
 
     cmt.prove_tree_is_empty().unwrap();
 
-    // Append a random leaf & remove it, and make sure that the tree is empty at the end
+    // Append a random leaf & remove it, and make sure that the tree is empty at the
+    // end
     let tree_size = 64;
     for i in 0..tree_size {
         let leaf = rng.gen::<[u8; 32]>();
@@ -486,7 +488,8 @@ async fn test_prove_tree_empty_incremental() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-/// Test that empty trees are checked properly by adding & removing leaves in a batch
+/// Test that empty trees are checked properly by adding & removing leaves in a
+/// batch
 async fn test_prove_tree_empty_batched() {
     let (mut cmt, mut tree) = setup();
     let mut rng = thread_rng();

@@ -70,7 +70,10 @@ impl<'data> BigVec<'data> {
             let gap = removals_found * mem::size_of::<T>();
             // In case the compute budget is ever bumped up, allowing us
             // to use this safe code instead:
-            //self.data.copy_within(dst_start_index + gap..data_end_index, dst_start_index);
+            //    self.data.copy_within(
+            //        dst_start_index + gap..data_end_index,
+            //        dst_start_index,
+            //    );
             unsafe {
                 sol_memmove(
                     self.data[dst_start_index..data_end_index - gap].as_mut_ptr(),

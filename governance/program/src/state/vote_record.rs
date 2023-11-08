@@ -21,8 +21,10 @@ use {
 };
 
 /// Voter choice for a proposal option
-/// In the current version only 1) Single choice, 2) Multiple choices proposals and 3) Weighted voting are supported
-/// In the future versions we can add support for 1) Quadratic voting and 2) Ranked choice voting
+/// In the current version only 1) Single choice, 2) Multiple choices proposals
+/// and 3) Weighted voting are supported.
+/// In the future versions we can add support for 1) Quadratic voting and
+/// 2) Ranked choice voting
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteChoice {
     /// The rank given to the choice by voter
@@ -39,7 +41,8 @@ impl VoteChoice {
         Ok(match self.weight_percentage {
             // Avoid any rounding errors for full weight
             100 => voter_weight,
-            // Note: The total weight for all choices might not equal voter_weight due to rounding errors
+            // Note: The total weight for all choices might not equal voter_weight due to rounding
+            // errors
             0..=99 => (voter_weight as u128)
                 .checked_mul(self.weight_percentage as u128)
                 .unwrap()
@@ -70,11 +73,13 @@ pub enum Vote {
 /// VoteKind defines the type of the vote being cast
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteKind {
-    /// Electorate vote is cast by the voting population identified by governing_token_mint
-    /// Approve, Deny and Abstain votes are Electorate votes
+    /// Electorate vote is cast by the voting population identified by
+    /// governing_token_mint Approve, Deny and Abstain votes are Electorate
+    /// votes
     Electorate,
 
-    /// Vote cast by the opposite voting population to the Electorate identified by governing_token_mint
+    /// Vote cast by the opposite voting population to the Electorate identified
+    /// by governing_token_mint
     Veto,
 }
 
@@ -96,7 +101,8 @@ pub struct VoteRecordV2 {
     pub proposal: Pubkey,
 
     /// The user who casted this vote
-    /// This is the Governing Token Owner who deposited governing tokens into the Realm
+    /// This is the Governing Token Owner who deposited governing tokens into
+    /// the Realm
     pub governing_token_owner: Pubkey,
 
     /// Indicates whether the vote was relinquished by voter
@@ -135,9 +141,11 @@ impl VoteRecordV2 {
         if self.account_type == GovernanceAccountType::VoteRecordV2 {
             borsh::to_writer(writer, &self)?
         } else if self.account_type == GovernanceAccountType::VoteRecordV1 {
-            // V1 account can't be resized and we have to translate it back to the original format
+            // V1 account can't be resized and we have to translate it back to the original
+            // format
 
-            // If reserved_v2 is used it must be individually asses for v1 backward compatibility impact
+            // If reserved_v2 is used it must be individually asses for v1 backward
+            // compatibility impact
             if self.reserved_v2 != [0; 8] {
                 panic!("Extended data not supported by VoteRecordV1")
             }
@@ -201,7 +209,8 @@ pub fn get_vote_record_data(
     get_account_data::<VoteRecordV2>(program_id, vote_record_info)
 }
 
-/// Deserializes VoteRecord and checks it belongs to the provided Proposal and TokenOwnerRecord
+/// Deserializes VoteRecord and checks it belongs to the provided Proposal and
+/// TokenOwnerRecord
 pub fn get_vote_record_data_for_proposal_and_token_owner_record(
     program_id: &Pubkey,
     vote_record_info: &AccountInfo,
@@ -220,9 +229,11 @@ pub fn get_vote_record_data_for_proposal_and_token_owner_record(
         return Err(GovernanceError::InvalidGoverningTokenOwnerForVoteRecord.into());
     }
 
-    // Assert governing_token_mint between Proposal and TokenOwnerRecord match for the deserialized VoteRecord
-    // For Approve, Deny and Abstain votes Proposal.governing_token_mint must equal TokenOwnerRecord.governing_token_mint
-    // For Veto vote it must be the governing_token_mint of the opposite voting population
+    // Assert governing_token_mint between Proposal and TokenOwnerRecord match for
+    // the deserialized VoteRecord For Approve, Deny and Abstain votes
+    // Proposal.governing_token_mint must equal
+    // TokenOwnerRecord.governing_token_mint For Veto vote it must be the
+    // governing_token_mint of the opposite voting population
     let proposal_governing_token_mint = realm_data.get_proposal_governing_token_mint_for_vote(
         &token_owner_record_data.governing_token_mint,
         &get_vote_kind(&vote_record_data.vote),

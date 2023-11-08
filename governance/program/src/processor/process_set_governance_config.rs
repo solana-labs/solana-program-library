@@ -33,9 +33,10 @@ pub fn process_set_governance_config(
 
     let mut governance_data = get_governance_data(program_id, governance_info)?;
 
-    // Note: Config change leaves voting proposals in unpredictable state and it's DAOs responsibility
-    // to ensure the changes are made when there are no proposals in voting state
-    // For example changing approval quorum could accidentally make proposals to succeed which would otherwise be defeated
+    // Note: Config change leaves voting proposals in unpredictable state and it's
+    // DAOs responsibility to ensure the changes are made when there are no
+    // proposals in voting state For example changing approval quorum could
+    // accidentally make proposals to succeed which would otherwise be defeated
 
     governance_data.config = config;
 

@@ -127,7 +127,8 @@ async fn success(start: Option<u64>, end: Option<u64>) {
             }
 
             assert_eq!(*check_buffer, return_data[..check_buffer.len()]);
-            // we're sure that we're getting the full data, so also compare the deserialized type
+            // we're sure that we're getting the full data, so also compare the deserialized
+            // type
             if start.is_none() && end.is_none() {
                 let emitted_token_metadata =
                     try_from_slice_unchecked::<TokenMetadata>(&return_data).unwrap();

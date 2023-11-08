@@ -7,7 +7,8 @@ use {
 };
 
 /// Treasury account
-/// The account has no data and can be used as a payer for instruction signed by Governance PDAs or as a native SOL treasury
+/// The account has no data and can be used as a payer for instruction signed by
+/// Governance PDAs or as a native SOL treasury
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct NativeTreasury {}
 
