@@ -8,10 +8,10 @@ cd single-pool/js
 pnpm install
 
 cd packages/modern
-pnpm run lint
+pnpm lint
 pnpm build
 
 cd ../classic
-pnpm run lint
+pnpm lint
 pnpm build
 pnpm test
