@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from '@solana/web3.js';
-import { getVoteAccountAddressForPool as getVoteModern } from '@solana/single-pool';
+import { getVoteAccountAddressForPool as getVoteModern } from '@solana/spl-single-pool';
 
 import { rpc } from './internal.js';
 

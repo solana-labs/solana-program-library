@@ -1,5 +1,5 @@
 import { PublicKey, TransactionInstruction } from '@solana/web3.js';
-import { SinglePoolInstruction as PoolInstructionModern } from '@solana/single-pool';
+import { SinglePoolInstruction as PoolInstructionModern } from '@solana/spl-single-pool';
 
 import { modernInstructionToLegacy } from './internal.js';
 

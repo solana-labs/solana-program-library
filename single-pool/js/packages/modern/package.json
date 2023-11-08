@@ -1,5 +1,5 @@
 {
-  "name": "@solana/single-pool",
+  "name": "@solana/spl-single-pool",
   "version": "1.0.0",
   "main": "dist/cjs/index.js",
   "module": "dist/mjs/index.js",
