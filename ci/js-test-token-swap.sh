@@ -4,8 +4,12 @@ set -ex
 cd "$(dirname "$0")/.."
 source ./ci/solana-version.sh install
 
-cd token-swap/js
 pnpm install
+
+(cd memo/js && pnpm build)
+(cd token/js && pnpm build)
+
+cd token-swap/js
 pnpm lint
 pnpm build
 pnpm start-with-test-validator

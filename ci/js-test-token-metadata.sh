@@ -2,12 +2,13 @@
 
 set -e
 cd "$(dirname "$0")/.."
-source ./ci/solana-version.sh install
 
 set -x
-cd token-metadata/js
-
 pnpm install
+
+(cd libraries/type-length-value/js && pnpm build)
+
+cd token-metadata/js
 pnpm lint
 pnpm build
 pnpm test
