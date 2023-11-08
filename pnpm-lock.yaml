@@ -482,6 +482,9 @@ importers:
       '@solana/buffer-layout':
         specifier: ^4.0.0
         version: 4.0.1
+      '@solana/buffer-layout-utils':
+        specifier: ^0.2.0
+        version: 0.2.0
       '@solana/web3.js':
         specifier: ^1.42.0
         version: 1.87.5
