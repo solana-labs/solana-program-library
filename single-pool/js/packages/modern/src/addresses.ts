@@ -6,8 +6,8 @@ import {
   createAddressWithSeed,
 } from '@solana/web3.js';
 
-import { MPL_METADATA_PROGRAM_ID } from './internal';
-import { STAKE_PROGRAM_ID } from './quarantine';
+import { MPL_METADATA_PROGRAM_ID } from './internal.js';
+import { STAKE_PROGRAM_ID } from './quarantine.js';
 
 export const SINGLE_POOL_PROGRAM_ID = address('SVSPxpvHdN29nkVg9rPapPNDddN5DipNLRUFhyjFThE');
 

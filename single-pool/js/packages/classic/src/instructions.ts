@@ -1,7 +1,7 @@
 import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { SinglePoolInstruction as PoolInstructionModern } from '@solana/single-pool';
 
-import { modernInstructionToLegacy } from './internal';
+import { modernInstructionToLegacy } from './internal.js';
 
 export class SinglePoolInstruction {
   static async initializePool(voteAccount: PublicKey): Promise<TransactionInstruction> {

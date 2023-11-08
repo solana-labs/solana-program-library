@@ -27,8 +27,8 @@ import {
   findPoolMintAuthorityAddress,
   findPoolStakeAuthorityAddress,
   SINGLE_POOL_PROGRAM_ID,
-} from './addresses';
-import { MPL_METADATA_PROGRAM_ID } from './internal';
+} from './addresses.js';
+import { MPL_METADATA_PROGRAM_ID } from './internal.js';
 import {
   SYSTEM_PROGRAM_ID,
   SYSVAR_RENT_ID,
@@ -39,7 +39,7 @@ import {
   TOKEN_PROGRAM_ID,
   u32,
   u64,
-} from './quarantine';
+} from './quarantine.js';
 
 type InitializePoolInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
   IInstructionWithAccounts<

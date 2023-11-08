@@ -1,20 +1,22 @@
 {
   "name": "@solana/single-pool-classic",
   "version": "1.0.0",
+  "main": "dist/cjs/index.js",
+  "module": "dist/mjs/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/mjs/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
   "scripts": {
-    "build": "pnpm tsc",
+    "build": "rm -fr dist/* && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./ts-fixup.sh",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint . --fix",
-    "test": "NODE_OPTIONS='--import=tsx' ava"
-  },
-  "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "exports": {
-    "require": "./dist/index.js",
-    "import": "./dist/index.js"
+    "test": "sed -i '1s/.*/{ \"type\": \"module\",/' package.json && NODE_OPTIONS='--loader=tsx' ava ; sed -i '1s/.*/{/' package.json"
   },
   "devDependencies": {
+    "@types/node": "^20.9.0",
     "@ava/typescript": "^4.1.0",
     "@typescript-eslint/eslint-plugin": "^6.4.1",
     "ava": "^5.3.1",
@@ -32,7 +34,7 @@
   },
   "ava": {
     "extensions": {
-      "ts": "commonjs"
+      "ts": "module"
     },
     "nodeArguments": [
       "--import=tsx"
