@@ -16,7 +16,7 @@ import {
   findPoolMintAuthorityAddress,
   findPoolStakeAuthorityAddress,
   SINGLE_POOL_PROGRAM_ID,
-} from './addresses';
+} from './addresses.js';
 import {
   initializePoolInstruction,
   reactivatePoolStakeInstruction,
@@ -24,7 +24,7 @@ import {
   withdrawStakeInstruction,
   createTokenMetadataInstruction,
   updateTokenMetadataInstruction,
-} from './instructions';
+} from './instructions.js';
 import {
   STAKE_PROGRAM_ID,
   STAKE_ACCOUNT_SIZE,
@@ -34,7 +34,7 @@ import {
   TokenInstruction,
   StakeAuthorizationType,
   getAssociatedTokenAddress,
-} from './quarantine';
+} from './quarantine.js';
 
 interface DepositParams {
   rpc: any; // XXX Rpc<???>

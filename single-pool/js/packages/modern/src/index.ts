@@ -1,10 +1,10 @@
 import { getAddressCodec } from '@solana/web3.js';
 
-import { PoolAddress, VoteAccountAddress } from './addresses';
+import { PoolAddress, VoteAccountAddress } from './addresses.js';
 
-export * from './addresses';
-export * from './instructions';
-export * from './transactions';
+export * from './addresses.js';
+export * from './instructions.js';
+export * from './transactions.js';
 
 export async function getVoteAccountAddressForPool(
   rpc: any, // XXX not exported: Rpc<GetAccountInfoApi>,
