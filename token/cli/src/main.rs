@@ -3387,8 +3387,11 @@ async fn command_deposit_withdraw_confidential_tokens(
         // // TODO: expose account balance decryption in token
         // let aes_key = aes_key.expect("AES key must be provided");
         // let current_balance = token
-        //     .confidential_transfer_get_available_balance_with_key(&
-        // token_account_address, aes_key)     .await?;
+        //     .confidential_transfer_get_available_balance_with_key(
+        //         &token_account_address,
+        //         aes_key,
+        //     )
+        //     .await?;
         let withdraw_amount =
             maybe_amount.expect("ALL keyword is not currently supported for withdraw");
 
