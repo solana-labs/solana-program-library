@@ -72,8 +72,9 @@ pub fn get_seeds_and_key(
     name_class_opt: Option<&Pubkey>,
     parent_name_address_opt: Option<&Pubkey>,
 ) -> (Pubkey, Vec<u8>) {
-    // let hashed_name: Vec<u8> = hashv(&[(HASH_PREFIX.to_owned() +
-    // name).as_bytes()]).0.to_vec();
+    // let hashed_name: Vec<u8> = hashv(&[
+    //     (HASH_PREFIX.to_owned() + name).as_bytes()
+    // ]).0.to_vec();
     let mut seeds_vec: Vec<u8> = hashed_name;
 
     let name_class = name_class_opt.cloned().unwrap_or_default();

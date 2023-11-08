@@ -28,8 +28,7 @@ pub enum FeatureProposalInstruction {
     ///   program.  Tokens transfers to this address are irrevocable and
     ///   permanent.
     /// * A new feature id account that has been funded and allocated (as
-    ///   described in
-    ///  `solana_program::feature`)
+    ///   described in `solana_program::feature`)
     ///
     /// On successful execution of the instruction, the feature proposer is
     /// expected to distribute the tokens in the distributor token account

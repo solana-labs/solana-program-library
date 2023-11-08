@@ -56,13 +56,14 @@ pub enum PoolInstruction {
     Deposit(u64),
 
     ///   Withdraw from the pool.
-    ///   If current slot is < mint_end slot, 1 Pass AND 1 Fail token convert to
-    /// 1 deposit   If current slot is > decide_end_slot slot && decide ==
-    /// Some(true), 1 Pass convert to 1 deposit   otherwise 1 Fail converts
-    /// to 1 deposit
+    ///   If current slot is < mint_end slot, 1 Pass AND 1 Fail token convert
+    ///     to 1 deposit   
+    ///   If current slot is > decide_end_slot slot && decide ==
+    ///     Some(true), 1 Pass convert to 1 deposit   otherwise 1 Fail converts
+    ///     to 1 deposit
     ///
     ///   Pass tokens convert 1:1 to the deposit token iff decision is set to
-    /// Some(true)   AND current slot is > decide_end_slot.
+    ///     Some(true) AND current slot is > decide_end_slot.
     ///
     ///   0. `[]` Pool
     ///   1. `[]` Authority
