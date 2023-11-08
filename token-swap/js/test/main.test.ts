@@ -395,7 +395,7 @@ export async function withdrawAllTokenTypes(): Promise<void> {
   const tokenB = (swapTokenB.amount * BigInt(poolTokenAmount)) / supply;
 
   console.log('Creating withdraw token A account');
-  let userAccountA = await createAccount(
+  const userAccountA = await createAccount(
     connection,
     payer,
     mintA,
@@ -403,7 +403,7 @@ export async function withdrawAllTokenTypes(): Promise<void> {
     Keypair.generate(),
   );
   console.log('Creating withdraw token B account');
-  let userAccountB = await createAccount(
+  const userAccountB = await createAccount(
     connection,
     payer,
     mintB,
@@ -461,7 +461,7 @@ export async function withdrawAllTokenTypes(): Promise<void> {
 
 export async function createAccountAndSwapAtomic(): Promise<void> {
   console.log('Creating swap token a account');
-  let userAccountA = await createAccount(
+  const userAccountA = await createAccount(
     connection,
     payer,
     mintA,
@@ -550,7 +550,7 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
 
 export async function swap(): Promise<void> {
   console.log('Creating swap token a account');
-  let userAccountA = await createAccount(
+  const userAccountA = await createAccount(
     connection,
     payer,
     mintA,
@@ -568,14 +568,14 @@ export async function swap(): Promise<void> {
     SWAP_AMOUNT_IN,
   );
   console.log('Creating swap token b account');
-  let userAccountB = await createAccount(
+  const userAccountB = await createAccount(
     connection,
     payer,
     mintB,
     owner.publicKey,
     Keypair.generate(),
   );
-  let poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS
+  const poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS
     ? await createAccount(
         connection,
         payer,
@@ -779,7 +779,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   //  adjustedPoolTokenA *=
   //    1n + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR;
   //}
-  let adjustedPoolTokenA = 1_000_000_000_000n; // maybe do this better
+  const adjustedPoolTokenA = 1_000_000_000_000n; // maybe do this better
 
   const swapTokenB = await getAccount(connection, tokenAccountB);
   const swapTokenBPost = swapTokenB.amount - withdrawAmount;
@@ -792,7 +792,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   //  adjustedPoolTokenB *=
   //    1n + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR;
   //}
-  let adjustedPoolTokenB = 1_000_000_000_000n; // maybe do this better
+  const adjustedPoolTokenB = 1_000_000_000_000n; // maybe do this better
 
   const userTransferAuthority = Keypair.generate();
   console.log('Creating withdraw token a account');

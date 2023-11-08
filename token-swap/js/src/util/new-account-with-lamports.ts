@@ -1,6 +1,7 @@
-import {Keypair, Connection} from '@solana/web3.js';
+import type {Connection} from '@solana/web3.js';
+import {Keypair} from '@solana/web3.js';
 
-import {sleep} from './sleep';
+import {sleep} from './sleep.js';
 
 export async function newAccountWithLamports(
   connection: Connection,
