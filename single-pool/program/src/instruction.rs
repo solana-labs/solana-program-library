@@ -24,10 +24,10 @@ use {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum SinglePoolInstruction {
-    ///   Initialize the mint and stake account for a new single-validator stake
-    /// pool.   The pool stake account must contain the rent-exempt minimum
-    /// plus the minimum delegation.   No tokens will be minted: to deposit
-    /// more, use `Deposit` after `InitializeStake`.
+    ///   Initialize the mint and stake account for a new single-validator
+    ///   stake pool. The pool stake account must contain the rent-exempt
+    ///   minimum plus the minimum delegation. No tokens will be minted: to
+    ///   deposit more, use `Deposit` after `InitializeStake`.
     ///
     ///   0. `[]` Validator vote account
     ///   1. `[w]` Pool account
@@ -44,9 +44,9 @@ pub enum SinglePoolInstruction {
     ///  12. `[]` Stake program
     InitializePool,
 
-    ///   Restake the pool stake account if it was deactivated. This can happen
-    /// through the   stake program's `DeactivateDelinquent` instruction, or
-    /// during a cluster restart.
+    ///   Restake the pool stake account if it was deactivated. This can
+    ///   happen through the stake program's `DeactivateDelinquent`
+    ///   instruction, or during a cluster restart.
     ///
     ///   0. `[]` Validator vote account
     ///   1. `[]` Pool account
@@ -58,9 +58,9 @@ pub enum SinglePoolInstruction {
     ///   7. `[]` Stake program
     ReactivatePoolStake,
 
-    ///   Deposit stake into the pool.  The output is a "pool" token
-    /// representing fractional   ownership of the pool stake. Inputs are
-    /// converted to the current ratio.
+    ///   Deposit stake into the pool. The output is a "pool" token
+    ///   representing fractional ownership of the pool stake. Inputs are
+    ///   converted to the current ratio.
     ///
     ///   0. `[]` Pool account
     ///   1. `[w]` Pool stake account
@@ -96,9 +96,10 @@ pub enum SinglePoolInstruction {
     },
 
     ///   Create token metadata for the stake-pool token in the metaplex-token
-    /// program.   Step three of the permissionless three-stage
-    /// initialization flow.   Note this instruction is not necessary for
-    /// the pool to operate, to ensure we cannot   be broken by upstream.
+    ///   program. Step three of the permissionless three-stage initialization
+    ///   flow.
+    ///   Note this instruction is not necessary for the pool to operate, to
+    ///   ensure we cannot be broken by upstream.
     ///
     ///   0. `[]` Pool account
     ///   1. `[]` Pool token mint
@@ -111,7 +112,7 @@ pub enum SinglePoolInstruction {
     CreateTokenMetadata,
 
     ///   Update token metadata for the stake-pool token in the metaplex-token
-    /// program.
+    ///   program.
     ///
     ///   0. `[]` Validator vote account
     ///   1. `[]` Pool account

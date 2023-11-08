@@ -82,8 +82,10 @@ pub enum StakePoolInstruction {
     ///   list of managed validators.
     ///
     ///   The stake account will have the rent-exempt amount plus
-    ///   `max(crate::MINIMUM_ACTIVE_STAKE,
-    /// solana_program::stake::tools::get_minimum_delegation())`.
+    ///   `max(
+    ///     crate::MINIMUM_ACTIVE_STAKE,
+    ///     solana_program::stake::tools::get_minimum_delegation()
+    ///   )`.
     ///   It is funded from the stake pool reserve.
     ///
     ///   0. `[w]` Stake pool
@@ -220,11 +222,11 @@ pub enum StakePoolInstruction {
     ///  Updates balances of validator and transient stake accounts in the pool
     ///
     ///  While going through the pairs of validator and transient stake
-    /// accounts,  if the transient stake is inactive, it is merged into the
-    /// reserve stake  account. If the transient stake is active and has
-    /// matching credits  observed, it is merged into the canonical
-    /// validator stake account. In  all other states, nothing is done, and
-    /// the balance is simply added to  the canonical stake account balance.
+    ///  accounts, if the transient stake is inactive, it is merged into the
+    ///  reserve stake account. If the transient stake is active and has
+    ///  matching credits observed, it is merged into the canonical
+    ///  validator stake account. In all other states, nothing is done, and
+    ///  the balance is simply added to the canonical stake account balance.
     ///
     ///  0. `[]` Stake pool
     ///  1. `[]` Stake pool withdraw authority
@@ -245,7 +247,7 @@ pub enum StakePoolInstruction {
     },
 
     ///   Updates total pool balance based on balances in the reserve and
-    /// validator list
+    ///   validator list
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[]` Stake pool withdraw authority
@@ -262,9 +264,9 @@ pub enum StakePoolInstruction {
     ///   1. `[w]` Validator stake list storage account
     CleanupRemovedValidatorEntries,
 
-    ///   Deposit some stake into the pool.  The output is a "pool" token
-    /// representing ownership   into the pool. Inputs are converted to the
-    /// current ratio.
+    ///   Deposit some stake into the pool. The output is a "pool" token
+    ///   representing ownership into the pool. Inputs are converted to the
+    ///   current ratio.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
@@ -290,10 +292,11 @@ pub enum StakePoolInstruction {
     ///   Withdraw the token from the pool at the current ratio.
     ///
     ///   Succeeds if the stake account has enough SOL to cover the desired
-    /// amount   of pool tokens, and if the withdrawal keeps the total
-    /// staked amount   above the minimum of rent-exempt amount +
-    ///   `max(crate::MINIMUM_ACTIVE_STAKE,
-    /// solana_program::stake::tools::get_minimum_delegation())`.
+    ///   amount of pool tokens, and if the withdrawal keeps the total
+    ///   staked amount above the minimum of rent-exempt amount + `max(
+    ///     crate::MINIMUM_ACTIVE_STAKE,
+    ///     solana_program::stake::tools::get_minimum_delegation()
+    ///   )`.
     ///
     ///   When allowing withdrawals, the order of priority goes:
     ///
@@ -348,8 +351,8 @@ pub enum StakePoolInstruction {
     SetStaker,
 
     ///   Deposit SOL directly into the pool's reserve account. The output is a
-    /// "pool" token   representing ownership into the pool. Inputs are
-    /// converted to the current ratio.
+    ///   "pool" token representing ownership into the pool. Inputs are
+    ///   converted to the current ratio.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[]` Stake pool withdraw authority
@@ -611,8 +614,8 @@ pub enum StakePoolInstruction {
     },
 
     ///   Deposit some stake into the pool, with a specified slippage
-    /// constraint.   The output is a "pool" token representing ownership
-    /// into the pool.   Inputs are converted at the current ratio.
+    ///   constraint. The output is a "pool" token representing ownership
+    ///   into the pool. Inputs are converted at the current ratio.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
@@ -642,10 +645,11 @@ pub enum StakePoolInstruction {
     ///   minimum expected output lamport amount.
     ///
     ///   Succeeds if the stake account has enough SOL to cover the desired
-    /// amount   of pool tokens, and if the withdrawal keeps the total
-    /// staked amount   above the minimum of rent-exempt amount +
-    ///   `max(crate::MINIMUM_ACTIVE_STAKE,
-    /// solana_program::stake::tools::get_minimum_delegation())`.
+    ///   amount of pool tokens, and if the withdrawal keeps the total
+    ///   staked amount above the minimum of rent-exempt amount + `max(
+    ///     crate::MINIMUM_ACTIVE_STAKE,
+    ///     solana_program::stake::tools::get_minimum_delegation()
+    ///   )`.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
@@ -668,10 +672,10 @@ pub enum StakePoolInstruction {
         minimum_lamports_out: u64,
     },
 
-    ///   Deposit SOL directly into the pool's reserve account, with a specified
-    ///   slippage constraint. The output is a "pool" token representing
-    /// ownership   into the pool. Inputs are converted at the current
-    /// ratio.
+    ///   Deposit SOL directly into the pool's reserve account, with a
+    ///   specified slippage constraint. The output is a "pool" token
+    ///   representing ownership into the pool. Inputs are converted at the
+    ///   current ratio.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[]` Stake pool withdraw authority
