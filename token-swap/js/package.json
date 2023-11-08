@@ -32,7 +32,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc-esm -p tsconfig.json && tsc -p tsconfig.cjs.json",
     "postbuild": "echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json && echo '{\"type\":\"module\"}' > dist/esm/package.json",
-    "test": "ts-node test/main.ts",
+    "test": "mocha test",
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw ../../target/deploy/spl_token_swap.so --reset --quiet' http://127.0.0.1:8899/health test",
     "lint": "npm run pretty && eslint --max-warnings 0 .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
@@ -49,10 +49,14 @@
   "devDependencies": {
     "@solana/spl-token": "workspace:*",
     "@types/bn.js": "^5.1.0",
+    "@types/chai-as-promised": "^7.1.4",
+    "@types/chai": "^4.3.3",
+    "@types/mocha": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.31.0",
     "eslint-plugin-import": "^2.22.0",
+    "mocha": "^10.1.0",
     "prettier": "^3.0.0",
     "start-server-and-test": "^2.0.0",
     "ts-node": "^10.0.0",
