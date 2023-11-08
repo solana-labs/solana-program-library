@@ -401,8 +401,8 @@ pub enum ConfidentialTransferInstruction {
     ///   6. `[]` Context state account for `VerifyBatchedRangeProofU128`.
     ///   7. `[signer]` The source account owner.
     ///   If `close_split_context_state_on_execution` is set, all context state
-    /// accounts must be   `writable` and the following additional sequence
-    /// of accounts are needed:
+    ///     accounts must be `writable` and the following additional sequence
+    ///     of accounts are needed:
     ///   8. `[]` The destination account for lamports from the context state
     ///      accounts.
     ///   9. `[signer]` The context state account owner.
@@ -422,8 +422,8 @@ pub enum ConfidentialTransferInstruction {
     ///   8. `[]` Context state account for `VerifyBatchedRangeProofU256`.
     ///   9. `[signer]` The source account owner.
     ///   If `close_split_context_state_on_execution` is set, all context state
-    /// accounts must be   `writable` and the following additional sequence
-    /// of accounts are needed:
+    ///     accounts must be   `writable` and the following additional sequence
+    ///     of accounts are needed:
     ///   10. `[]` The destination account for lamports from the context state
     ///       accounts.
     ///   11. `[signer]` The context state account owner.

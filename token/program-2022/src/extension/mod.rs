@@ -273,9 +273,9 @@ fn check_account_type<S: BaseState>(account_type: AccountType) -> Result<(), Pro
 ///                          ^     ^       ^     ^
 ///                     acct type  extension length data...
 ///
-/// Mint: 82 bytes... + 83 bytes of other extension data + [2, 0, 3, 0, 100,
-/// ....]                                                         ^ data in
-/// extension just happens to look like this
+/// Mint: 82 bytes... + 83 bytes of other extension data
+///     + [2, 0, 3, 0, 100, ....]
+///      (data in extension just happens to look like this)
 ///
 /// With this approach, we only start writing the TLV data after Account::LEN,
 /// which means we always know that the account type is going to be right after
@@ -945,8 +945,8 @@ pub enum ExtensionType {
     MetadataPointer,
     /// Mint contains token-metadata
     TokenMetadata,
-    /// Mint contains a pointer to another account (or the same account) that holds group
-    /// configurations
+    /// Mint contains a pointer to another account (or the same account) that
+    /// holds group configurations
     GroupPointer,
     /// Test variable-length mint extension
     #[cfg(test)]

@@ -7527,8 +7527,8 @@ mod tests {
             get_account_data_size(
                 &program_id,
                 &mint_key,
-                &[ExtensionType::TransferFeeAmount], /* User extension that's also added by the
-                                                      * mint ignored... */
+                // User extension that's also added by the mint ignored...
+                &[ExtensionType::TransferFeeAmount],
             )
             .unwrap(),
             vec![&mut extended_mint_account],

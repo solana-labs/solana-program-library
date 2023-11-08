@@ -1,7 +1,8 @@
 //! Instruction types
 
-#![allow(deprecated)] // needed to avoid deprecation warning when generating serde implementation for
-                      // TokenInstruction
+// Needed to avoid deprecation warning when generating serde implementation for
+// TokenInstruction
+#![allow(deprecated)]
 
 #[cfg(feature = "serde-traits")]
 use {

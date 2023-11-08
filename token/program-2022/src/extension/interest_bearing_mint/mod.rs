@@ -111,8 +111,9 @@ impl InterestBearingConfig {
         if amount > (u64::MAX as f64) || amount < (u64::MIN as f64) || amount.is_nan() {
             Err(ProgramError::InvalidArgument)
         } else {
-            Ok(amount.round() as u64) // this is important, if you round
-                                      // earlier, you'll get wrong "inf" answers
+            // this is important, if you round earlier, you'll get wrong "inf"
+            // answers
+            Ok(amount.round() as u64)
         }
     }
 
