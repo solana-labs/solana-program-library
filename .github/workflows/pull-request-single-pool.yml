@@ -8,6 +8,7 @@ on:
     - 'associated-token-account/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-single-pool.yml'
+    - 'pnpm-lock.yaml'
   push:
     branches: [master]
     paths:
@@ -16,6 +17,7 @@ on:
     - 'associated-token-account/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-single-pool.yml'
+    - 'pnpm-lock.yaml'
 
 jobs:
   cargo-test-sbf:

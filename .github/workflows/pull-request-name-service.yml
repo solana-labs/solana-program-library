@@ -5,11 +5,13 @@ on:
     paths:
     - 'name-service/**'
     - 'ci/*-version.sh'
+    - 'pnpm-lock.yaml'
   push:
     branches: [master]
     paths:
     - 'name-service/**'
     - 'ci/*-version.sh'
+    - 'pnpm-lock.yaml'
 
 jobs:
   cargo-test-sbf:
