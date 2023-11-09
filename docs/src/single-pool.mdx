@@ -1,0 +1,477 @@
+---
+title: Single-Validator Stake Pool
+---
+
+Trustless liquid staking for all Solana validators.
+
+| Information | Account Address |
+| --- | --- |
+| Single Pool Program | `SVSPxpvHdN29nkVg9rPapPNDddN5DipNLRUFhyjFThE` |
+
+## Overview
+
+The single-validator stake pool program is an SPL program that enables liquid staking with zero fees, no counterparty, and 100% capital efficiency.
+
+The program defines a canonical pool for every vote account, which can be initialized permissionlessly, and mints tokens in exchange for stake delegated to its designated validator.
+
+The program is a stripped-down adaptation of the existing multi-validator stake pool program, with approximately 80% less code, to minimize execution risk.
+
+## Source
+
+The Single Pool Program's source is available on
+[GitHub](https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program).
+
+## Security Audits
+
+The Single Pool Program has received two audits to ensure total safety of funds:
+
+* Neodyme (2023-08-08)
+    - Review commit hash [`735d729`](https://github.com/solana-labs/solana-program-library/commit/735d7292e35d35101750a4452d2647bdbf848e8b)
+    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/NeodymeSinglePoolAudit-2023-08-08.pdf
+* Zellic (2023-06-21)
+    - Review commit hash [`9dbdc3b`](https://github.com/solana-labs/solana-program-library/commit/9dbdc3bdae31dda1dcb35346aab2d879deecf194)
+    - Final report https://github.com/solana-labs/security-audits/blob/master/spl/ZellicSinglePoolAudit-2023-06-21.pdf
+
+## Interface
+
+The single-validator stake pool program is written in Rust and available on [crates.io](https://crates.io/crates/spl-single-pool) and [docs.rs](https://docs.rs/spl-single-pool).
+
+Javascript bindings are available for [Web3.js Classic](https://www.npmjs.com/package/@solana/spl-single-pool-classic) and [Web3.js Next](https://www.npmjs.com/package/@solana/spl-single-pool).
+
+## Reference Guide
+
+### Environment Setup
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+The easiest way to interact with the single pool program is using the `spl-single-pool` command-line program.
+With [Rust installed](https://rustup.rs/), run:
+```console
+$ cargo install spl-single-pool-cli
+```
+
+Run `spl-single-pool --help` for a full description of available commands.
+
+### Configuration
+
+The `spl-single-pool` configuration is shared with the `solana` command-line tool.
+
+#### Current Configuration
+
+```console
+$ solana config get
+Config File: ${HOME}/.config/solana/cli/config.yml
+RPC URL: https://api.mainnet-beta.solana.com
+WebSocket URL: wss://api.mainnet-beta.solana.com/ (computed)
+Keypair Path: ${HOME}/.config/solana/id.json
+Commitment: confirmed
+```
+
+#### Cluster RPC URL
+
+See [Solana clusters](https://docs.solana.com/clusters) for cluster-specific RPC URLs
+```console
+$ solana config set --url https://api.devnet.solana.com
+```
+
+#### Default Keypair
+
+See [Keypair conventions](https://docs.solana.com/cli/conventions#keypair-conventions)
+for information on how to setup a keypair if you don't already have one.
+
+Keypair File
+```console
+$ solana config set --keypair ${HOME}/new-keypair.json
+```
+
+Hardware Wallet URL (See [URL spec](https://docs.solana.com/wallet-guide/hardware-wallets#specify-a-keypair-url))
+```console
+$ solana config set --keypair usb://ledger/
+```
+
+`spl-single-pool` generally uses the default keypair as the fee-payer,
+the wallet to draw funds from (for instance, to fund new stake accounts),
+and the signing authority on accounts that require one.
+When token accounts are required, it defaults to the default keypair's associated account.
+All of these roles can be overrided by command-line flags.
+
+  </TabItem>
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
+#### pnpm
+```console
+$ pnpm install @solana/spl-single-pool-classic
+```
+#### Yarn
+```console
+$ yarn add @solana/spl-single-pool-classic
+```
+#### npm
+```console
+$ npm install @solana/spl-single-pool-classic
+```
+
+### Configuration
+You can connect to different clusters using `Connection` in `@solana/web3.js`
+
+```typescript
+import { Connection, clusterApiUrl } from '@solana/web3.js';
+const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+```
+
+### Keypair
+You can either get your keypair using [`Keypair`](https://solana-labs.github.io/solana-web3.js/classes/Keypair.html) from `@solana/web3.js`, or let the user's wallet handle the keypair and use `sendTransaction` from [`wallet-adapter`](https://github.com/solana-labs/wallet-adapter)
+
+  </TabItem>
+  <TabItem value="jsn" label="WEB3.JS NEXT">
+
+#### pnpm
+```console
+$ pnpm install @solana/spl-single-pool
+```
+#### Yarn
+```console
+$ yarn add @solana/spl-single-pool
+```
+#### npm
+```console
+$ npm install @solana/spl-single-pool
+```
+
+### Configuration
+You can connect to different clusters using `createDefaultRpcTransport` and `createSolanaRpc` in `@solana/web3.js`
+
+```typescript
+import { createDefaultRpcTransport, createSolanaRpc } from '@solana/web3.js';
+const transport = createDefaultRpcTransport({ url: 'https://api.devnet.solana.com' });
+const rpc = createSolanaRpc({ transport });
+```
+
+### Keypair
+Web3.js Next uses [`crypto.subtle`](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/subtle) for key management. For local development, one can create an object `{ privateKey, publicKey }` using `crypto.subtle.importKey` to produce signing (private) and verifying (public) keys. Generally, however, one should allow the user wallet to manage keys, as the system when used properly is designed to not allow key material to leave secure storage.
+
+  </TabItem>
+</Tabs>
+
+### Setting up a single-validator pool
+
+#### Creating the pool
+
+A single-validator stake pool can be created permissionlessly, by anyone, for a
+given vote account. This allows you to receive the full staking yield you would by
+staking directly while holding the value in a tokenized form.
+It also allows you to buy or sell stakes smaller than the minimum delegation on the market.
+
+Assuming a vote account `Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC` exists, we create a pool at address `DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb`:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-single-pool manage initialize Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC
+```
+
+  </TabItem>
+
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
+```typescript
+const voteAccountAddress = new PublicKey('Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC');
+const transaction = await SinglePoolProgram.initialize(
+  connection,
+  voteAccountAddress,
+  feePayerAddress,
+);
+
+// sign with the fee payer
+```
+
+  </TabItem>
+
+  <TabItem value="jsn" label="WEB3.JS NEXT">
+
+```typescript
+const voteAccountAddress = 'Ammgaa2iZfA745BmZMhkcS27uh87fEVDC6Gm2RXz5hrC' as VoteAccountAddress;
+const transaction = await SinglePoolProgram.initialize(
+  rpc,
+  voteAccountAddress,
+  feePayerAddress,
+);
+
+// sign with the fee payer
+```
+
+  </TabItem>
+</Tabs>
+
+#### Managing token metadata
+
+By default, when a pool is created, it also creates Metaplex token metadata for the mint associated with the pool.
+If, for whatever reason, this was opted out of by the pool creator, anyone may create the default metadata permissionlessly:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-single-pool manage create-token-metadata --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb
+```
+
+  </TabItem>
+
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
+```typescript
+const transaction = await SinglePoolProgram.createTokenMetadata(poolAddress, feePayerAddress);
+
+// sign with the fee payer
+```
+
+  </TabItem>
+
+  <TabItem value="jsn" label="WEB3.JS NEXT">
+
+```typescript
+const transaction = await SinglePoolProgram.createTokenMetadata(poolAddress, feePayerAddress);
+
+// sign with the fee payer
+```
+
+  </TabItem>
+</Tabs>
+
+The default token metadata is only minimally helpful, spotlighting the address of the validator vote account.
+The owner of the vote account, however, can change the metadata to anything they wish.
+They prove their identity by signing with the vote account's authorized withdrawer;
+this is the only permissioned instruction on the pool.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-single-pool manage update-token-metadata DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb "My Cool Pool" cPool "https://www.cool.pool/token.jpg"
+```
+
+  </TabItem>
+
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
+```typescript
+const transaction = await SinglePoolProgram.updateTokenMetadata(
+  voteAccountAddress,
+  authorizedWithdrawerAddress,
+  'My Cool Pool',
+  'cPool',
+  'https://www.cool.pool/token.jpg',
+);
+
+// sign with the fee payer and authorized withdrawer
+```
+
+  </TabItem>
+
+  <TabItem value="jsn" label="WEB3.JS NEXT">
+
+```typescript
+const transaction = await SinglePoolProgram.updateTokenMetadata(
+  voteAccountAddress,
+  authorizedWithdrawerAddress,
+  'My Cool Pool',
+  'cPool',
+  'https://www.cool.pool/token.jpg',
+);
+
+// sign with the fee payer and authorized withdrawer
+```
+
+  </TabItem>
+</Tabs>
+
+The URL parameter is optional.
+
+### Using a single-validator pool
+
+#### Depositing
+
+When a pool is created, its stake account is delegated to the appropriate vote account, and for that epoch, stake in an "activating" state can be deposited into it.
+After this epoch, stake must be in an "active" state to deposit into the pool.
+That is, it must be delegated to the vote account, and a deposit can only be performed after the next epoch boundary.
+
+Assuming the stake account `9cc4cmLcZA89fYmcVPPTLmHPQ5gab3R6jMqj124abkSi` is in an active state:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-single-pool deposit 9cc4cmLcZA89fYmcVPPTLmHPQ5gab3R6jMqj124abkSi
+```
+
+When an explicit stake account address is provided, the CLI can determine the pool address automatically.
+
+  </TabItem>
+
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
+```typescript
+const transaction = await SinglePoolProgram.deposit({
+  connection,
+  pool: poolAddress,
+  userWallet,
+  userStakeAccount,
+});
+
+// sign with the fee payer and stake account withdraw authority, if these signers differ
+// userWallet is a convenience parameter to use one account as a payer, authority, and lamport recipient
+```
+
+  </TabItem>
+
+  <TabItem value="jsn" label="WEB3.JS NEXT">
+
+```typescript
+const transaction = await SinglePoolProgram.deposit({
+  rpc,
+  pool: poolAddress,
+  userWallet,
+  userStakeAccount,
+});
+
+// sign with the fee payer and stake account withdraw authority, if these signers differ
+// userWallet is a convenience parameter to use one account as a payer, authority, and lamport recipient
+```
+
+  </TabItem>
+</Tabs>
+
+All versions of the `deposit` command/transaction automatically create the associated token account for the pool token if it doesn't exist and no auxiliary token account address is provided.
+
+The program also makes available a convenience address for each pool, called the default deposit address.
+This allows a flow where you create and delegate a stake at a program-derived address, and then can deposit this stake after the epoch boundary, without having to generate or keep track of any new keypairs.
+The user retains full authority on the stake account until they decide to deposit.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-single-pool create-default-stake --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb 1000000000
+```
+
+Once the stake becomes active, typically in the next epoch:
+
+```console
+$ spl-single-pool deposit --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb --default-stake-account
+```
+
+  </TabItem>
+
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
+```typescript
+const transaction = await SinglePoolProgram.createAndDelegateUserStake(
+  connection,
+  voteAccountAddress,
+  userWallet,
+  1000000000,
+);
+
+// sign with user wallet
+```
+
+Once the stake becomes active, typically in the next epoch:
+
+```typescript
+const transaction = await SinglePoolProgram.deposit({
+  connection,
+  pool: poolAddress,
+  userWallet,
+  depositFromDefaultAccount: true,
+});
+
+// sign with user wallet
+```
+
+  </TabItem>
+
+  <TabItem value="jsn" label="WEB3.JS NEXT">
+
+```typescript
+const transaction = await SinglePoolProgram.createAndDelegateUserStake(
+  rpc,
+  voteAccountAddress,
+  userWallet,
+  1000000000n,
+);
+
+// sign with user wallet, which is used as the fee payer and as the base address for a seeded account
+```
+
+Once the stake becomes active, typically in the next epoch:
+
+```typescript
+const transaction = await SinglePoolProgram.deposit({
+  rpc,
+  pool: poolAddress,
+  userWallet,
+  depositFromDefaultAccount: true,
+});
+
+// sign with user wallet, which is used as the fee payer and as the base address for a seeded account
+```
+
+  </TabItem>
+</Tabs>
+
+#### Withdrawing
+
+Withdrawing is simple, burning tokens to receive the amount of stake they're backed by.
+Stake can be withdrawn into an active stake account delegated to the appropriate vote account, or to a new stake account, with all authority assigned to the user wallet.
+Internally, all versions of the `withdraw` command/transaction use a token delegate to accomplish the burn.
+This means the user does not have to provide a wallet signature to the single pool program.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-single-pool withdraw --pool DkE6XFGbqSyYzRugLVSmmB42F9BQZ7mZU837e2Cti7kb 1000000000
+```
+
+The `--deactivate` flag may also be passed, as a convenience to start the undelegation process.
+
+  </TabItem>
+
+  <TabItem value="jsc" label="WEB3.JS CLASSIC">
+
+```typescript
+const withdrawAccount = new Keypair();
+const transaction = await SinglePoolProgram.withdraw({
+  connection,
+  pool: poolAddress,
+  userWallet,
+  userStakeAccount: withdrawAccount.publicKey,
+  tokenAmount: 1000000000,
+  createStakeAccount: true,
+});
+
+// sign with fee payer, and the stake account keypair if a new account is being created
+```
+
+  </TabItem>
+
+  <TabItem value="jsn" label="WEB3.JS NEXT">
+
+```typescript
+const { publicKey, privateKey } = await generateKeyPair();
+const transaction = await SinglePoolProgram.withdraw({
+  rpc,
+  pool: poolAddress,
+  userWallet,
+  userStakeAccount: publicKey,
+  tokenAmount: 1000000000n,
+  createStakeAccount: true,
+});
+
+// sign with fee payer, and the stake account keypair if a new account is being created
+```
+
+  </TabItem>
+</Tabs>
