@@ -3693,7 +3693,6 @@ where
     }
 
     /// Initialize token-group on a mint
-    #[allow(clippy::too_many_arguments)]
     pub async fn token_group_initialize_with_rent_transfer<S: Signers>(
         &self,
         payer: &Pubkey,
