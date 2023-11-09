@@ -118,7 +118,7 @@ jobs:
   js-test:
     runs-on: ubuntu-latest
     env:
-      NODE_VERSION: 20
+      NODE_VERSION: 20.5
     needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
