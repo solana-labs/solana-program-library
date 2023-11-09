@@ -19,7 +19,7 @@ use {
             mint_close_authority::MintCloseAuthority,
             non_transferable::{NonTransferable, NonTransferableAccount},
             permanent_delegate::{get_permanent_delegate, PermanentDelegate},
-            reallocate, token_metadata,
+            reallocate, token_group, token_metadata,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
             AccountType, BaseStateWithExtensions, ExtensionType, StateWithExtensions,
@@ -42,6 +42,7 @@ use {
         system_instruction, system_program,
         sysvar::{rent::Rent, Sysvar},
     },
+    spl_token_group_interface::instruction::TokenGroupInstruction,
     spl_token_metadata_interface::instruction::TokenMetadataInstruction,
     std::convert::{TryFrom, TryInto},
 };
@@ -1690,6 +1691,8 @@ impl Processor {
             }
         } else if let Ok(instruction) = TokenMetadataInstruction::unpack(input) {
             token_metadata::processor::process_instruction(program_id, accounts, instruction)
+        } else if let Ok(instruction) = TokenGroupInstruction::unpack(input) {
+            token_group::processor::process_instruction(program_id, accounts, instruction)
         } else {
             Err(TokenError::InvalidInstruction.into())
         }

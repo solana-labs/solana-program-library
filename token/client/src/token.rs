@@ -43,8 +43,8 @@ use {
                 ConfidentialTransferFeeConfig,
             },
             cpi_guard, default_account_state, group_pointer, interest_bearing_mint, memo_transfer,
-            metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, ExtensionType,
-            StateWithExtensionsOwned,
+            metadata_pointer, transfer_fee, transfer_hook, BaseStateWithExtensions, Extension,
+            ExtensionType, StateWithExtensionsOwned,
         },
         instruction, offchain,
         proof::ProofLocation,
@@ -61,6 +61,7 @@ use {
         },
         state::{Account, AccountState, Mint, Multisig},
     },
+    spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::{Field, TokenMetadata},
     std::{
         fmt, io,
@@ -3648,5 +3649,77 @@ where
             signing_keypairs,
         )
         .await
+    }
+
+    /// Initialize token-group on a mint
+    pub async fn token_group_initialize<S: Signers>(
+        &self,
+        mint_authority: &Pubkey,
+        update_authority: &Pubkey,
+        max_size: u32,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[spl_token_group_interface::instruction::initialize_group(
+                &self.program_id,
+                &self.pubkey,
+                &self.pubkey,
+                mint_authority,
+                Some(*update_authority),
+                max_size,
+            )],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    async fn get_additional_rent_for_fixed_len_extension<V: Extension + Pod>(
+        &self,
+    ) -> TokenResult<u64> {
+        let account = self.get_account(self.pubkey).await?;
+        let account_lamports = account.lamports;
+        let mint_state = self.unpack_mint_info(account)?;
+        if mint_state.get_extension::<V>().is_ok() {
+            Ok(0)
+        } else {
+            let new_account_len = mint_state.try_get_new_account_len::<V>()?;
+            let new_rent_exempt_minimum = self
+                .client
+                .get_minimum_balance_for_rent_exemption(new_account_len)
+                .await
+                .map_err(TokenError::Client)?;
+            Ok(new_rent_exempt_minimum.saturating_sub(account_lamports))
+        }
+    }
+
+    /// Initialize token-group on a mint
+    pub async fn token_group_initialize_with_rent_transfer<S: Signers>(
+        &self,
+        payer: &Pubkey,
+        mint_authority: &Pubkey,
+        update_authority: &Pubkey,
+        max_size: u32,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let additional_lamports = self
+            .get_additional_rent_for_fixed_len_extension::<TokenGroup>()
+            .await?;
+        let mut instructions = vec![];
+        if additional_lamports > 0 {
+            instructions.push(system_instruction::transfer(
+                payer,
+                &self.pubkey,
+                additional_lamports,
+            ));
+        }
+        instructions.push(spl_token_group_interface::instruction::initialize_group(
+            &self.program_id,
+            &self.pubkey,
+            &self.pubkey,
+            mint_authority,
+            Some(*update_authority),
+            max_size,
+        ));
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 }
