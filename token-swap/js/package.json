@@ -3,6 +3,7 @@
   "version": "0.4.0",
   "description": "SPL Token Swap JavaScript API",
   "license": "MIT",
+  "type": "module",
   "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
   "homepage": "https://solana.com/",
   "repository": {
@@ -15,24 +16,24 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "dist/cjs/index.js",
-  "types": "dist/types/index.d.ts",
-  "module": "dist/esm/index.js",
+  "main": "lib/cjs/index.js",
+  "types": "lib/types/index.d.ts",
+  "module": "lib/esm/index.js",
   "sideEffects": false,
   "exports": {
-    "types": "./dist/types/index.d.ts",
-    "import": "./dist/esm/index.js",
-    "require": "./dist/cjs/index.js"
+    "types": "./lib/types/index.d.ts",
+    "import": "./lib/esm/index.js",
+    "require": "./lib/cjs/index.js"
   },
   "files": [
-    "dist",
+    "lib",
     "src",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc-esm -p tsconfig.json && tsc -p tsconfig.cjs.json",
-    "postbuild": "echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json && echo '{\"type\":\"module\"}' > dist/esm/package.json",
-    "test": "ts-node test/main.ts",
+    "build": "tsc --build --verbose tsconfig.all.json",
+    "postbuild": "echo '{\"type\":\"commonjs\"}' > lib/cjs/package.json && echo '{\"type\":\"module\"}' > lib/esm/package.json",
+    "test": "mocha test",
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw ../../target/deploy/spl_token_swap.so --reset --quiet' http://127.0.0.1:8899/health test",
     "lint": "npm run pretty && eslint --max-warnings 0 .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
@@ -43,19 +44,29 @@
   "keywords": [],
   "dependencies": {
     "@solana/buffer-layout": "^4.0.0",
+    "@solana/buffer-layout-utils": "^0.2.0"
+  },
+  "peerDependencies": {
     "@solana/web3.js": "^1.42.0"
   },
   "devDependencies": {
-    "@solana/spl-token": "0.3.8",
+    "@solana/spl-token": "workspace:*",
+    "@solana/web3.js": "^1.42.0",
     "@types/bn.js": "^5.1.0",
+    "@types/chai-as-promised": "^7.1.4",
+    "@types/chai": "^4.3.3",
+    "@types/mocha": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.31.0",
     "eslint-plugin-import": "^2.22.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-require-extensions": "^0.1.1",
+    "mocha": "^10.1.0",
     "prettier": "^3.0.0",
     "start-server-and-test": "^2.0.0",
     "ts-node": "^10.0.0",
-    "typescript": "^5.0.4",
-    "typescript-esm": "^2.0.0"
+    "typescript": "^5.0.4"
   }
 }

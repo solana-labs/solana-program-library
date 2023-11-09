@@ -1,10 +1,10 @@
 {
-    "extends": "./tsconfig.json",
+    "extends": "./tsconfig.base.json",
+    "include": ["src"],
     "compilerOptions": {
-        "target": "es6",
-        "module": "commonjs",
-        "outDir": "dist/cjs",
-        "declarationDir": null,
-        "declaration": false
+        "outDir": "lib/cjs",
+        "target": "ES2016",
+        "module": "CommonJS",
+        "sourceMap": true
     }
 }

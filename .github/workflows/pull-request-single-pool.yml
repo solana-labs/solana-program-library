@@ -8,6 +8,7 @@ on:
     - 'associated-token-account/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-single-pool.yml'
+    - 'pnpm-lock.yaml'
   push:
     branches: [master]
     paths:
@@ -16,6 +17,7 @@ on:
     - 'associated-token-account/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-single-pool.yml'
+    - 'pnpm-lock.yaml'
 
 jobs:
   cargo-test-sbf:
@@ -129,6 +131,12 @@ jobs:
       - uses: pnpm/action-setup@v2
         with:
           version: 8
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: node-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            node-
       - name: Download programs
         uses: actions/download-artifact@v2
         with:

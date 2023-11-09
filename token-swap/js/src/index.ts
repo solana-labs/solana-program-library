@@ -3,10 +3,10 @@ import {struct, u8, blob} from '@solana/buffer-layout';
 import type {
   ConfirmOptions,
   Connection,
+  Keypair,
   TransactionSignature,
 } from '@solana/web3.js';
 import {
-  Keypair,
   PublicKey,
   SystemProgram,
   Transaction,
@@ -14,7 +14,7 @@ import {
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
 import {u64, publicKey} from '@solana/buffer-layout-utils';
-import {loadAccount} from './util/account';
+import {loadAccount} from './util/account.js';
 
 export const TOKEN_SWAP_PROGRAM_ID: PublicKey = new PublicKey(
   'SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw',
@@ -258,7 +258,7 @@ export class TokenSwap {
     // package curve parameters
     // NOTE: currently assume all curves take a single parameter, u64 int
     //       the remaining 24 of the 32 bytes available are filled with 0s
-    let curveParamsBuffer = Buffer.alloc(32);
+    const curveParamsBuffer = Buffer.alloc(32);
     Buffer.from(curveParameters).copy(curveParamsBuffer);
 
     {
@@ -381,7 +381,6 @@ export class TokenSwap {
     curveParameters?: Uint8Array,
     confirmOptions?: ConfirmOptions,
   ): Promise<TokenSwap> {
-    let transaction;
     const tokenSwap = new TokenSwap(
       connection,
       tokenSwapAccount.publicKey,
@@ -409,7 +408,7 @@ export class TokenSwap {
     // Allocate memory for the account
     const balanceNeeded =
       await TokenSwap.getMinBalanceRentForExemptTokenSwap(connection);
-    transaction = new Transaction();
+    const transaction = new Transaction();
     transaction.add(
       SystemProgram.createAccount({
         fromPubkey: payer.publicKey,

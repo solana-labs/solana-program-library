@@ -5,11 +5,13 @@ on:
     paths:
     - 'libraries/**'
     - 'ci/*-version.sh'
+    - 'pnpm-lock.yaml'
   push:
     branches: [master]
     paths:
     - 'libraries/**'
     - 'ci/*-version.sh'
+    - 'pnpm-lock.yaml'
 
 jobs:
   cargo-test-sbf:
@@ -64,13 +66,16 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
       - uses: actions/cache@v2
         with:
           path: ~/.npm
-          key: node-${{ hashFiles('libraries/type-length-value/js/package-lock.json') }}
+          key: node-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             node-
       - run: ./ci/js-test-tlv.sh

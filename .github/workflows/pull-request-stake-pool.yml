@@ -8,6 +8,7 @@ on:
     - 'ci/*-version.sh'
     - 'ci/warning/purge-ubuntu-runner.sh'
     - '.github/workflows/pull-request-stake-pool.yml'
+    - 'pnpm-lock.yaml'
   push:
     branches: [master]
     paths:
@@ -16,6 +17,7 @@ on:
     - 'ci/*-version.sh'
     - 'ci/warning/purge-ubuntu-runner.sh'
     - '.github/workflows/pull-request-stake-pool.yml'
+    - 'pnpm-lock.yaml'
 
 jobs:
   cargo-test-sbf:
@@ -83,24 +85,21 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 16.x
-    needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
       - uses: actions/cache@v2
         with:
           path: ~/.npm
-          key: node-${{ hashFiles('stake-pool/js/package-lock.json') }}
+          key: node-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             node-
-      - name: Download programs
-        uses: actions/download-artifact@v2
-        with:
-          name: stake-pool-programs
-          path: target/deploy
       - run: ./ci/js-test-stake-pool.sh
 
   py-test:

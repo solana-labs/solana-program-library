@@ -4,13 +4,52 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
-  sendAndConfirmTransaction
+  sendAndConfirmTransaction,
 } from '@solana/web3.js';
-import {approve, createMint, createAccount, createApproveInstruction, createInitializeAccountInstruction, getAccount, getMint, getMinimumBalanceForRentExemptAccount, mintTo, AccountLayout, TOKEN_PROGRAM_ID} from '@solana/spl-token';
+import {
+  approve,
+  createMint,
+  createAccount,
+  createApproveInstruction,
+  createInitializeAccountInstruction,
+  getAccount,
+  getMint,
+  getMinimumBalanceForRentExemptAccount,
+  mintTo,
+  AccountLayout,
+  TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 
 import {TokenSwap, CurveType, TOKEN_SWAP_PROGRAM_ID} from '../src';
 import {newAccountWithLamports} from '../src/util/new-account-with-lamports';
 import {sleep} from '../src/util/sleep';
+
+describe('spl-token-swap instructions', () => {
+  it('executes properly', async () => {
+    // These test cases are designed to run sequentially and in the following order
+    console.log('Run test: createTokenSwap (constant price)');
+    const constantPrice = new Uint8Array(8);
+    constantPrice[0] = 1;
+    await createTokenSwap(CurveType.ConstantPrice, constantPrice);
+    console.log(
+      'Run test: createTokenSwap (constant product, used further in tests)',
+    );
+    await createTokenSwap(CurveType.ConstantProduct);
+    console.log('Run test: deposit all token types');
+    await depositAllTokenTypes();
+    console.log('Run test: withdraw all token types');
+    await withdrawAllTokenTypes();
+    console.log('Run test: swap');
+    await swap();
+    console.log('Run test: create account, approve, swap all at once');
+    await createAccountAndSwapAtomic();
+    console.log('Run test: deposit one exact amount in');
+    await depositSingleTokenTypeExactAmountIn();
+    console.log('Run test: withrdaw one exact amount out');
+    await withdrawSingleTokenTypeExactAmountOut();
+    console.log('Success\n');
+  });
+});
 
 // The following globals are created by `createTokenSwap` and used by subsequent tests
 // Token swap
@@ -61,7 +100,7 @@ const SWAP_AMOUNT_IN = 100000n;
 const SWAP_AMOUNT_OUT = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 90661n : 90674n;
 const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22727n : 22730n;
 const HOST_SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS
-  ? SWAP_FEE * HOST_FEE_NUMERATOR / HOST_FEE_DENOMINATOR
+  ? (SWAP_FEE * HOST_FEE_NUMERATOR) / HOST_FEE_DENOMINATOR
   : 0n;
 const OWNER_SWAP_FEE = SWAP_FEE - HOST_SWAP_FEE;
 
@@ -116,9 +155,21 @@ export async function createTokenSwap(
   );
 
   console.log('creating pool account');
-  tokenAccountPool = await createAccount(connection, payer, tokenPool, owner.publicKey, Keypair.generate());
+  tokenAccountPool = await createAccount(
+    connection,
+    payer,
+    tokenPool,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   const ownerKey = SWAP_PROGRAM_OWNER_FEE_ADDRESS || owner.publicKey.toString();
-  feeAccount = await createAccount(connection, payer, tokenPool, new PublicKey(ownerKey), Keypair.generate());
+  feeAccount = await createAccount(
+    connection,
+    payer,
+    tokenPool,
+    new PublicKey(ownerKey),
+    Keypair.generate(),
+  );
 
   console.log('creating token A');
   mintA = await createMint(
@@ -133,9 +184,22 @@ export async function createTokenSwap(
   );
 
   console.log('creating token A account');
-  tokenAccountA = await createAccount(connection, payer, mintA, authority, Keypair.generate());
+  tokenAccountA = await createAccount(
+    connection,
+    payer,
+    mintA,
+    authority,
+    Keypair.generate(),
+  );
   console.log('minting token A to swap');
-  await mintTo(connection, payer, mintA, tokenAccountA, owner, currentSwapTokenA);
+  await mintTo(
+    connection,
+    payer,
+    mintA,
+    tokenAccountA,
+    owner,
+    currentSwapTokenA,
+  );
 
   console.log('creating token B');
   mintB = await createMint(
@@ -150,9 +214,22 @@ export async function createTokenSwap(
   );
 
   console.log('creating token B account');
-  tokenAccountB = await createAccount(connection, payer, mintB, authority, Keypair.generate());
+  tokenAccountB = await createAccount(
+    connection,
+    payer,
+    mintB,
+    authority,
+    Keypair.generate(),
+  );
   console.log('minting token B to swap');
-  await mintTo(connection, payer, mintB, tokenAccountB, owner, currentSwapTokenB);
+  await mintTo(
+    connection,
+    payer,
+    mintB,
+    tokenAccountB,
+    owner,
+    currentSwapTokenB,
+  );
 
   console.log('creating token swap');
   const swapPayer = await newAccountWithLamports(connection, 10000000000);
@@ -197,32 +274,23 @@ export async function createTokenSwap(
   assert(fetchedTokenSwap.mintB.equals(mintB));
   assert(fetchedTokenSwap.poolToken.equals(tokenPool));
   assert(fetchedTokenSwap.feeAccount.equals(feeAccount));
+  assert(TRADING_FEE_NUMERATOR == fetchedTokenSwap.tradeFeeNumerator);
+  assert(TRADING_FEE_DENOMINATOR == fetchedTokenSwap.tradeFeeDenominator);
   assert(
-    TRADING_FEE_NUMERATOR == fetchedTokenSwap.tradeFeeNumerator
+    OWNER_TRADING_FEE_NUMERATOR == fetchedTokenSwap.ownerTradeFeeNumerator,
   );
   assert(
-    TRADING_FEE_DENOMINATOR == fetchedTokenSwap.tradeFeeDenominator
+    OWNER_TRADING_FEE_DENOMINATOR == fetchedTokenSwap.ownerTradeFeeDenominator,
   );
   assert(
-    OWNER_TRADING_FEE_NUMERATOR ==
-      fetchedTokenSwap.ownerTradeFeeNumerator
-  );
-  assert(
-    OWNER_TRADING_FEE_DENOMINATOR ==
-      fetchedTokenSwap.ownerTradeFeeDenominator
-  );
-  assert(
-    OWNER_WITHDRAW_FEE_NUMERATOR ==
-      fetchedTokenSwap.ownerWithdrawFeeNumerator
+    OWNER_WITHDRAW_FEE_NUMERATOR == fetchedTokenSwap.ownerWithdrawFeeNumerator,
   );
   assert(
     OWNER_WITHDRAW_FEE_DENOMINATOR ==
-      fetchedTokenSwap.ownerWithdrawFeeDenominator
+      fetchedTokenSwap.ownerWithdrawFeeDenominator,
   );
   assert(HOST_FEE_NUMERATOR == fetchedTokenSwap.hostFeeNumerator);
-  assert(
-    HOST_FEE_DENOMINATOR == fetchedTokenSwap.hostFeeDenominator
-  );
+  assert(HOST_FEE_DENOMINATOR == fetchedTokenSwap.hostFeeDenominator);
   assert(curveType == fetchedTokenSwap.curveType);
 }
 
@@ -230,13 +298,19 @@ export async function depositAllTokenTypes(): Promise<void> {
   const poolMintInfo = await getMint(connection, tokenPool);
   const supply = poolMintInfo.supply;
   const swapTokenA = await getAccount(connection, tokenAccountA);
-  const tokenA = swapTokenA.amount * BigInt(POOL_TOKEN_AMOUNT) / supply;
+  const tokenA = (swapTokenA.amount * BigInt(POOL_TOKEN_AMOUNT)) / supply;
   const swapTokenB = await getAccount(connection, tokenAccountB);
-  const tokenB = swapTokenB.amount * BigInt(POOL_TOKEN_AMOUNT) / supply;
+  const tokenB = (swapTokenB.amount * BigInt(POOL_TOKEN_AMOUNT)) / supply;
 
   const userTransferAuthority = Keypair.generate();
   console.log('Creating depositor token a account');
-  const userAccountA = await createAccount(connection, payer, mintA, owner.publicKey, Keypair.generate());
+  const userAccountA = await createAccount(
+    connection,
+    payer,
+    mintA,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   await mintTo(connection, payer, mintA, userAccountA, owner, tokenA);
   await approve(
     connection,
@@ -247,7 +321,13 @@ export async function depositAllTokenTypes(): Promise<void> {
     tokenA,
   );
   console.log('Creating depositor token b account');
-  const userAccountB = await createAccount(connection, payer, mintB, owner.publicKey, Keypair.generate());
+  const userAccountB = await createAccount(
+    connection,
+    payer,
+    mintB,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   await mintTo(connection, payer, mintB, userAccountB, owner, tokenB);
   await approve(
     connection,
@@ -258,11 +338,17 @@ export async function depositAllTokenTypes(): Promise<void> {
     tokenB,
   );
   console.log('Creating depositor pool token account');
-  const newAccountPool = await createAccount(connection, payer, tokenPool, owner.publicKey, Keypair.generate());
+  const newAccountPool = await createAccount(
+    connection,
+    payer,
+    tokenPool,
+    owner.publicKey,
+    Keypair.generate(),
+  );
 
   const confirmOptions = {
-    skipPreflight: true
-  }
+    skipPreflight: true,
+  };
 
   console.log('Depositing into swap');
   await tokenSwap.depositAllTokenTypes(
@@ -275,7 +361,7 @@ export async function depositAllTokenTypes(): Promise<void> {
     POOL_TOKEN_AMOUNT,
     tokenA,
     tokenB,
-    confirmOptions
+    confirmOptions,
   );
 
   let info;
@@ -302,16 +388,28 @@ export async function withdrawAllTokenTypes(): Promise<void> {
   if (OWNER_WITHDRAW_FEE_NUMERATOR !== 0n) {
     feeAmount =
       (POOL_TOKEN_AMOUNT * OWNER_WITHDRAW_FEE_NUMERATOR) /
-        OWNER_WITHDRAW_FEE_DENOMINATOR;
+      OWNER_WITHDRAW_FEE_DENOMINATOR;
   }
   const poolTokenAmount = POOL_TOKEN_AMOUNT - feeAmount;
-  const tokenA = swapTokenA.amount * BigInt(poolTokenAmount) / supply;
-  const tokenB = swapTokenB.amount * BigInt(poolTokenAmount) / supply;
+  const tokenA = (swapTokenA.amount * BigInt(poolTokenAmount)) / supply;
+  const tokenB = (swapTokenB.amount * BigInt(poolTokenAmount)) / supply;
 
   console.log('Creating withdraw token A account');
-  let userAccountA = await createAccount(connection, payer, mintA, owner.publicKey, Keypair.generate());
+  const userAccountA = await createAccount(
+    connection,
+    payer,
+    mintA,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   console.log('Creating withdraw token B account');
-  let userAccountB = await createAccount(connection, payer, mintB, owner.publicKey, Keypair.generate());
+  const userAccountB = await createAccount(
+    connection,
+    payer,
+    mintB,
+    owner.publicKey,
+    Keypair.generate(),
+  );
 
   const userTransferAuthority = Keypair.generate();
   console.log('Approving withdrawal from pool account');
@@ -325,8 +423,8 @@ export async function withdrawAllTokenTypes(): Promise<void> {
   );
 
   const confirmOptions = {
-    skipPreflight: true
-  }
+    skipPreflight: true,
+  };
 
   console.log('Withdrawing pool tokens for A and B tokens');
   await tokenSwap.withdrawAllTokenTypes(
@@ -339,7 +437,7 @@ export async function withdrawAllTokenTypes(): Promise<void> {
     POOL_TOKEN_AMOUNT,
     tokenA,
     tokenB,
-    confirmOptions
+    confirmOptions,
   );
 
   //const poolMintInfo = await tokenPool.getMintInfo();
@@ -347,9 +445,7 @@ export async function withdrawAllTokenTypes(): Promise<void> {
   swapTokenB = await getAccount(connection, tokenAccountB);
 
   let info = await getAccount(connection, tokenAccountPool);
-  assert(
-    info.amount == DEFAULT_POOL_TOKEN_AMOUNT - POOL_TOKEN_AMOUNT,
-  );
+  assert(info.amount == DEFAULT_POOL_TOKEN_AMOUNT - POOL_TOKEN_AMOUNT);
   assert(swapTokenA.amount == currentSwapTokenA - tokenA);
   currentSwapTokenA -= tokenA;
   assert(swapTokenB.amount == currentSwapTokenB - tokenB);
@@ -365,13 +461,17 @@ export async function withdrawAllTokenTypes(): Promise<void> {
 
 export async function createAccountAndSwapAtomic(): Promise<void> {
   console.log('Creating swap token a account');
-  let userAccountA = await createAccount(connection, payer, mintA, owner.publicKey, Keypair.generate());
+  const userAccountA = await createAccount(
+    connection,
+    payer,
+    mintA,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   await mintTo(connection, payer, mintA, userAccountA, owner, SWAP_AMOUNT_IN);
 
   // @ts-ignore
-  const balanceNeeded = await getMinimumBalanceForRentExemptAccount(
-    connection,
-  );
+  const balanceNeeded = await getMinimumBalanceForRentExemptAccount(connection);
   const newAccount = Keypair.generate();
   const transaction = new Transaction();
   transaction.add(
@@ -429,8 +529,8 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
   );
 
   const confirmOptions = {
-    skipPreflight: true
-  }
+    skipPreflight: true,
+  };
 
   // Send the instructions
   console.log('sending big instruction');
@@ -438,7 +538,7 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
     connection,
     transaction,
     [payer, owner, newAccount, userTransferAuthority],
-    confirmOptions
+    confirmOptions,
   );
 
   let info;
@@ -450,7 +550,13 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
 
 export async function swap(): Promise<void> {
   console.log('Creating swap token a account');
-  let userAccountA = await createAccount(connection, payer, mintA, owner.publicKey, Keypair.generate());
+  const userAccountA = await createAccount(
+    connection,
+    payer,
+    mintA,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   await mintTo(connection, payer, mintA, userAccountA, owner, SWAP_AMOUNT_IN);
   const userTransferAuthority = Keypair.generate();
   await approve(
@@ -462,14 +568,26 @@ export async function swap(): Promise<void> {
     SWAP_AMOUNT_IN,
   );
   console.log('Creating swap token b account');
-  let userAccountB = await createAccount(connection, payer, mintB, owner.publicKey, Keypair.generate());
-  let poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS
-    ? await createAccount(connection, payer, tokenPool, owner.publicKey, Keypair.generate())
+  const userAccountB = await createAccount(
+    connection,
+    payer,
+    mintB,
+    owner.publicKey,
+    Keypair.generate(),
+  );
+  const poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS
+    ? await createAccount(
+        connection,
+        payer,
+        tokenPool,
+        owner.publicKey,
+        Keypair.generate(),
+      )
     : null;
 
   const confirmOptions = {
-    skipPreflight: true
-  }
+    skipPreflight: true,
+  };
 
   console.log('Swapping');
   await tokenSwap.swap(
@@ -485,7 +603,7 @@ export async function swap(): Promise<void> {
     userTransferAuthority,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
-    confirmOptions
+    confirmOptions,
   );
 
   await sleep(500);
@@ -506,9 +624,7 @@ export async function swap(): Promise<void> {
   currentSwapTokenB -= SWAP_AMOUNT_OUT;
 
   info = await getAccount(connection, tokenAccountPool);
-  assert(
-    info.amount == DEFAULT_POOL_TOKEN_AMOUNT - POOL_TOKEN_AMOUNT,
-  );
+  assert(info.amount == DEFAULT_POOL_TOKEN_AMOUNT - POOL_TOKEN_AMOUNT);
 
   info = await getAccount(connection, feeAccount);
   assert(info.amount == currentFeeAmount + OWNER_SWAP_FEE);
@@ -527,9 +643,12 @@ function tradingTokensToPoolTokens(
   const tradingFee =
     (sourceAmount / 2n) * (TRADING_FEE_NUMERATOR / TRADING_FEE_DENOMINATOR);
   const ownerTradingFee =
-    (sourceAmount / 2n) * (OWNER_TRADING_FEE_NUMERATOR / OWNER_TRADING_FEE_DENOMINATOR);
+    (sourceAmount / 2n) *
+    (OWNER_TRADING_FEE_NUMERATOR / OWNER_TRADING_FEE_DENOMINATOR);
   const sourceAmountPostFee = sourceAmount - tradingFee - ownerTradingFee;
-  const root = Math.sqrt(Number(sourceAmountPostFee) / Number(swapSourceAmount) + 1);
+  const root = Math.sqrt(
+    Number(sourceAmountPostFee) / Number(swapSourceAmount) + 1,
+  );
   return BigInt(Math.floor(Number(poolAmount) * (root - 1)));
 }
 
@@ -556,7 +675,13 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
 
   const userTransferAuthority = Keypair.generate();
   console.log('Creating depositor token a account');
-  const userAccountA = await createAccount(connection, payer, mintA, owner.publicKey, Keypair.generate());
+  const userAccountA = await createAccount(
+    connection,
+    payer,
+    mintA,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   await mintTo(connection, payer, mintA, userAccountA, owner, depositAmount);
   await approve(
     connection,
@@ -567,7 +692,13 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
     depositAmount,
   );
   console.log('Creating depositor token b account');
-  const userAccountB = await createAccount(connection, payer, mintB, owner.publicKey, Keypair.generate());
+  const userAccountB = await createAccount(
+    connection,
+    payer,
+    mintB,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   await mintTo(connection, payer, mintB, userAccountB, owner, depositAmount);
   await approve(
     connection,
@@ -578,11 +709,17 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
     depositAmount,
   );
   console.log('Creating depositor pool token account');
-  const newAccountPool = await createAccount(connection, payer, tokenPool, owner.publicKey, Keypair.generate());
+  const newAccountPool = await createAccount(
+    connection,
+    payer,
+    tokenPool,
+    owner.publicKey,
+    Keypair.generate(),
+  );
 
   const confirmOptions = {
-    skipPreflight: true
-  }
+    skipPreflight: true,
+  };
 
   console.log('Depositing token A into swap');
   await tokenSwap.depositSingleTokenTypeExactAmountIn(
@@ -593,7 +730,7 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
     userTransferAuthority,
     depositAmount,
     poolTokenA,
-    confirmOptions
+    confirmOptions,
   );
 
   let info;
@@ -612,7 +749,7 @@ export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
     userTransferAuthority,
     depositAmount,
     poolTokenB,
-    confirmOptions
+    confirmOptions,
   );
 
   info = await getAccount(connection, userAccountB);
@@ -642,7 +779,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   //  adjustedPoolTokenA *=
   //    1n + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR;
   //}
-  let adjustedPoolTokenA = 1_000_000_000_000n; // maybe do this better
+  const adjustedPoolTokenA = 1_000_000_000_000n; // maybe do this better
 
   const swapTokenB = await getAccount(connection, tokenAccountB);
   const swapTokenBPost = swapTokenB.amount - withdrawAmount;
@@ -655,13 +792,25 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   //  adjustedPoolTokenB *=
   //    1n + OWNER_WITHDRAW_FEE_NUMERATOR / OWNER_WITHDRAW_FEE_DENOMINATOR;
   //}
-  let adjustedPoolTokenB = 1_000_000_000_000n; // maybe do this better
+  const adjustedPoolTokenB = 1_000_000_000_000n; // maybe do this better
 
   const userTransferAuthority = Keypair.generate();
   console.log('Creating withdraw token a account');
-  const userAccountA = await createAccount(connection, payer, mintA, owner.publicKey, Keypair.generate());
+  const userAccountA = await createAccount(
+    connection,
+    payer,
+    mintA,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   console.log('Creating withdraw token b account');
-  const userAccountB = await createAccount(connection, payer, mintB, owner.publicKey, Keypair.generate());
+  const userAccountB = await createAccount(
+    connection,
+    payer,
+    mintB,
+    owner.publicKey,
+    Keypair.generate(),
+  );
   console.log('Creating withdraw pool token account');
   const poolAccount = await getAccount(connection, tokenAccountPool);
   const poolTokenAmount = poolAccount.amount;
@@ -675,8 +824,8 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   );
 
   const confirmOptions = {
-    skipPreflight: true
-  }
+    skipPreflight: true,
+  };
 
   console.log('Withdrawing token A only');
   await tokenSwap.withdrawSingleTokenTypeExactAmountOut(
@@ -687,7 +836,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
     userTransferAuthority,
     withdrawAmount,
     adjustedPoolTokenA,
-    confirmOptions
+    confirmOptions,
   );
 
   let info;
@@ -708,7 +857,7 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
     userTransferAuthority,
     withdrawAmount,
     adjustedPoolTokenB,
-    confirmOptions
+    confirmOptions,
   );
 
   info = await getAccount(connection, userAccountB);
@@ -718,7 +867,6 @@ export async function withdrawSingleTokenTypeExactAmountOut(): Promise<void> {
   currentSwapTokenB += withdrawAmount;
   info = await getAccount(connection, tokenAccountPool);
   assert(
-    info.amount >=
-      poolTokenAmount - adjustedPoolTokenA - adjustedPoolTokenB,
+    info.amount >= poolTokenAmount - adjustedPoolTokenA - adjustedPoolTokenB,
   );
 }

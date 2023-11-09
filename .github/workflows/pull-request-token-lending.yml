@@ -6,12 +6,14 @@ on:
     - 'token-lending/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - 'pnpm-lock.yaml'
   push:
     branches: [master]
     paths:
     - 'token-lending/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - 'pnpm-lock.yaml'
 
 jobs:
   cargo-test-sbf:
@@ -70,22 +72,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 18.x
-    needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
       - uses: actions/cache@v2
         with:
           path: ~/.npm
-          key: node-${{ hashFiles('token-lending/js/package-lock.json') }}
+          key: node-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             node-
-      - name: Download programs
-        uses: actions/download-artifact@v2
-        with:
-          name: token-lending-programs
-          path: target/deploy
       - run: ./ci/js-test-token-lending.sh

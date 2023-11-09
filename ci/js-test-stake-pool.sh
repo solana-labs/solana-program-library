@@ -2,10 +2,13 @@
 
 set -ex
 cd "$(dirname "$0")/.."
-source ./ci/solana-version.sh install
+
+pnpm install
+
+(cd memo/js && pnpm build)
+(cd token/js && pnpm build)
 
 cd stake-pool/js
-npm install
-npm run lint
-npm run build
-npm run test
+pnpm lint
+pnpm build
+pnpm test

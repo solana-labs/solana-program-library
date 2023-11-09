@@ -1,9 +1,10 @@
 import commonjs from '@rollup/plugin-commonjs';
 import nodeResolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
+import { RollupOptions } from 'rollup';
 import pkg from './package.json' assert { type: 'json' };
 
-export default {
+const config: RollupOptions = {
     input: 'src/index.ts',
     output: [
         { file: pkg.main, format: 'cjs', sourcemap: true },
@@ -15,3 +16,4 @@ export default {
     },
     plugins: [typescript(), commonjs(), nodeResolve()],
 };
+export default config;
