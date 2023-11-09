@@ -184,7 +184,7 @@ pub enum CommandName {
     WithdrawWithheldTokens,
     SetTransferFee,
     WithdrawExcessLamports,
-    SetTransferHookProgram,
+    SetTransferHook,
     InitializeMetadata,
     UpdateMetadata,
     UpdateConfidentialTransferSettings,
@@ -3852,7 +3852,7 @@ fn app<'a, 'b>(
                 )
         )
         .subcommand(
-            SubCommand::with_name(CommandName::SetTransferHookProgram.into())
+            SubCommand::with_name(CommandName::SetTransferHook.into())
                 .about("Set the transfer hook program id for a token")
                 .arg(
                     Arg::with_name("token")
@@ -5535,7 +5535,7 @@ async fn process_command<'a>(
             )
             .await
         }
-        (CommandName::SetTransferHookProgram, arg_matches) => {
+        (CommandName::SetTransferHook, arg_matches) => {
             let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -9819,7 +9819,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                CommandName::SetTransferHookProgram.into(),
+                CommandName::SetTransferHook.into(),
                 &mint.to_string(),
                 &new_transfer_hook_program_id.to_string(),
             ],
@@ -9883,7 +9883,7 @@ mod tests {
             &payer,
             &[
                 "spl-token",
-                CommandName::SetTransferHookProgram.into(),
+                CommandName::SetTransferHook.into(),
                 &mint.to_string(),
                 "--disable",
             ],
