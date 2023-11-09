@@ -7,7 +7,7 @@ confidential transfer extension.
 
 This guide explains how to use the confidential transfer extension.
 
-Please see the [Token-2022 Introduction](../token-2022) more general information
+Please see the [Token-2022 Introduction](../token-2022) for more general information
 about Token-2022 and the concept of extensions.
 
 ## Setup
