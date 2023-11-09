@@ -10,26 +10,27 @@ development purposes ONLY**.
 
 Here is the general program timeline and rough ETAs:
 
-| Issue                       | ETA                          |
-| --------------------------- | ---------------------------- |
-| Code-complete & final audit | Summer 2023                  |
-| Mainnet recommendation      | Fall 2023 (depends on v1.16) |
-| Freeze program              | 2024                         |
+| Issue                       | ETA                            |
+| --------------------------- | ------------------------------ |
+| Code-complete & final audit | Fall 2023                      |
+| Mainnet recommendation      | Winter 2024 (depends on v1.17) |
+| More ZK features            | Spring 2024 (depends on v1.18) |
+| Freeze program              | 2024                           |
 
 More information: https://github.com/orgs/solana-labs/projects/34
 
 ## Remaining items
 
-### v1.16 with curve syscalls
+### v1.17 with curve syscalls
 
-In order to use confidential tokens, the cluster must run at least version 1.16
+In order to use confidential tokens, the cluster must run at least version 1.17
 with the elliptic curve operations syscalls enabled.
 
 More information: https://github.com/solana-labs/solana/issues/29612
 
 ### Zero-knowledge proof split
 
-In order to use confidential tokens, the cluster must run at least version 1.16
+In order to use confidential tokens, the cluster must run at least version 1.17
 with the ZK Token proof program enabled.
 
 More information: https://github.com/solana-labs/solana/pull/32613
@@ -42,6 +43,11 @@ the new proof format.
 More information: https://github.com/solana-labs/solana-program-library/issues/4817
 
 ## Future work
+
+### Confidential transfers with fee
+
+Due to the transaction size limit, it is not possible to do confidential transfers
+with a fee. We plan to include that capability with Solana 1.18.
 
 ### Wallets
 

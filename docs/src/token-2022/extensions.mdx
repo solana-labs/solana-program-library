@@ -1370,13 +1370,13 @@ The example program and the interface are powered by the
 library, which is explained in detail in the repository's 
 [README](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution/README.md)
 
-#### Example: Create a permissioned-transfer mint
+#### Example: Create a mint with a transfer hook
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
 ```console
-$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --transfer-hook-program-id 7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --transfer-hook 7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj
 Creating token HFg1FFaj4PqFHmkYrqbZsarNJEZT436aXAXgQFMJihwc under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
 
 Address:  HFg1FFaj4PqFHmkYrqbZsarNJEZT436aXAXgQFMJihwc
@@ -1446,13 +1446,13 @@ import {
   </TabItem>
 </Tabs>
 
-#### Example: Update permissioned-transfer program in mint
+#### Example: Update transfer-hook program in mint
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
 ```console
-$ spl-token set-transfer-hook-program-id HFg1FFaj4PqFHmkYrqbZsarNJEZT436aXAXgQFMJihwc EbPBt3XkCb9trcV4c8fidhrvoeURbDbW87Acustzyi8N
+$ spl-token set-transfer-hook HFg1FFaj4PqFHmkYrqbZsarNJEZT436aXAXgQFMJihwc EbPBt3XkCb9trcV4c8fidhrvoeURbDbW87Acustzyi8N
 
 Signature: 3Ffw6yjseDsL3Az5n2LjdwXXwVPYxDF3JUU1JC1KGAEb1LE68S9VN4ebtAyvKeYMHvhjdz1LJVyugGNdWHyotzay
 ```
@@ -1474,6 +1474,28 @@ await updateTransferHook(
 
   </TabItem>
 </Tabs>
+
+#### Example: Manage a transfer-hook programa
+
+A sample CLI for managing a transfer-hook program exists at
+[spl-transfer-hook-cli](https://github.com/solana-labs/solana-program-library/tree/master/token/transfer-hook/cli).
+A mint manager can fork the tool for their own program.
+
+It only contains a command to create the required transfer-hook account for the
+mint.
+
+First, you must build the transfer-hook program and deploy it:
+
+```console
+$ cargo build-sbf
+$ solana program deploy target/deploy/spl-transfer-hook-example.so
+```
+
+After that, you can initialize the transfer-hook account:
+
+```console
+$ spl-transfer-hook create-extra-metas <PROGRAM_ID> <MINT_ID> [<ACCOUNT_PUBKEY>:<ROLE> ...]
+```
 
 ### Metadata Pointer
 
