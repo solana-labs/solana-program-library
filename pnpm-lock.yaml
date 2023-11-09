@@ -215,7 +215,7 @@ importers:
 
   single-pool/js/packages/classic:
     dependencies:
-      '@solana/single-pool':
+      '@solana/spl-single-pool':
         specifier: workspace:*
         version: link:../modern
       '@solana/web3.js':
