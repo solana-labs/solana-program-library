@@ -54,9 +54,9 @@ The base is mostly there.
 
 - RPC indexes Token-2022
 - Anchor
-- Wallets: Backpack, others coming
-- DeFi Protocols: limited to spl-token-swap
-- Metadata: Metaplex can't, so we're making our own
+- Wallets
+- DeFi Protocols
+- Token Metadata
 
 ---
 
@@ -65,7 +65,8 @@ The base is mostly there.
 - 4 audits
 - 1 more after WIP features
 - Currently upgradeable
-- Officially recommended after 1.16 on mainnet
+- Officially recommended after 1.17 on mainnet (~January 2024)
+- More ZK features in 1.18 (~May 2024)
 - May be frozen ~6 months after that
 
 ---
@@ -89,7 +90,8 @@ The base is mostly there.
 - Default account state
 - Permanent delegate
 - Transfer-hook
-- Metadata pointer + metadata (WIP)
+- Metadata pointer + metadata
+- Group pointer + group
 
 ---
 
@@ -320,11 +322,59 @@ Docs and examples at https://spl.solana.com/token-2022/wallet
 
 ---
 
+### Question 14
+
+Why did you add metadata?
+
+---
+
+### Answer 14
+
+- On-chain programming should become more open
+- People kept bothering us about it
+
+---
+
+### Question 15
+
+What if I don't want to use your metadata?
+
+---
+
+### Answer 15
+
+- No problem, bring your own!
+- The "metadata pointer" extension lets you point to *any* account
+- You can also implement the "SPL Token Metadata Interface" in your program
+
+Security bonus: check that the mint and metadata point to each other!
+
+---
+
+### Question 16
+
+Can I just use my own token program?
+
+---
+
+#### Answer 16
+
+- That's the future! In the meantime, we have Transfer Hooks
+- With a Transfer Hook, Token-2022 calls a program of your choice during all
+transfers for your mint
+- The program must implement `spl-transfer-hook-interface`
+- Feel free to fork `spl-transfer-hook-example`
+
+---
+
 ### I'm a bit overwhelmed
 
 No problem, we're done, here are your links:
 
 - Token-2022: https://spl.solana.com/token-2022
 - Token-upgrade: https://spl.solana.com/token-upgrade
+- Metadata interface: https://docs.rs/crate/spl-token-metadata-interface/latest
+- Transfer hook interface: https://docs.rs/crate/spl-transfer-hook-interface/latest
+- Confidential transfers: https://github.com/solana-labs/solana-program-library/blob/master/token/zk-token-protocol-paper/part1.pdf
 
 Thanks for listening!
