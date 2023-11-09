@@ -23,7 +23,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "ts-node": "^10.9.1",
-    "tsx": "^3.12.7",
+    "tsx": "^4.0.0",
     "typescript": "^5.2.2"
   },
   "dependencies": {
