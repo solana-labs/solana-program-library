@@ -50,7 +50,7 @@
     "@solana/web3.js": "^1.76.0",
     "bn.js": "^5.2.0",
     "buffer": "^6.0.3",
-    "superstruct": "^0.14.2"
+    "superstruct": "^1.0.3"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^5.0.0",
