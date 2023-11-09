@@ -32,7 +32,7 @@ spl-transfer-hook-interface = { version = "0.3.0", path = "../transfer-hook/inte
 spl-type-length-value = { version = "0.3.0", path = "../../libraries/type-length-value" }
 spl-pod = { version = "0.1.0", path = "../../libraries/pod" }
 thiserror = "1.0"
-serde = { version = "1.0.190", optional = true }
+serde = { version = "1.0.192", optional = true }
 serde_with = { version = "3.4.0", optional = true }
 base64 = { version = "0.21.5", optional = true }
 
