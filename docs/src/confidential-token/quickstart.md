@@ -72,7 +72,7 @@ Whenever an account receives confidential tokens from transfers or deposits, the
 balance will appear in the "pending" balance, which means that the user cannot
 immediately access the funds.
 
-To move a balance from "pending" to "available" simply run:
+To move a balance from "pending" to "available", simply run:
 
 ```console
 $ spl-token apply-pending-balance --address <ACCOUNT_PUBKEY>
