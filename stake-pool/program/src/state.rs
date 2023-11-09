@@ -500,10 +500,11 @@ impl StakePool {
 
 /// Checks if the given extension is supported for the stake pool mint
 pub fn is_extension_supported_for_mint(extension_type: &ExtensionType) -> bool {
-    const SUPPORTED_EXTENSIONS: [ExtensionType; 7] = [
+    const SUPPORTED_EXTENSIONS: [ExtensionType; 8] = [
         ExtensionType::Uninitialized,
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
+        ExtensionType::ConfidentialTransferFeeConfig,
         ExtensionType::DefaultAccountState, // ok, but a freeze authority is not
         ExtensionType::InterestBearingConfig,
         ExtensionType::MetadataPointer,
