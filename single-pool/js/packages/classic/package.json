@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-single-pool-classic",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "dist/cjs/index.js",
   "module": "dist/mjs/index.js",
   "exports": {
