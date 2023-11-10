@@ -20,7 +20,7 @@ thiserror = "1.0.50"
 rand_distr = "0.4.3"
 rand = "0.8"
 spl-merkle-tree-reference = { version = "0.1.0", path = "../merkle-tree-reference" }
-tokio = { version = "1.12", features = ["full"] }
+tokio = { version = "1.34", features = ["full"] }
 
 [lib]
 crate-type = ["cdylib", "lib"]

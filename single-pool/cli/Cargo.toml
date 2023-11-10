@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-tokio = "1.14"
+tokio = "1.34"
 clap = { version = "3.2.23", features = ["derive"] }
 console = "0.15.7"
 borsh = "0.10"
