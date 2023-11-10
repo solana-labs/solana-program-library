@@ -64,7 +64,7 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     help: "Member signer of a multisig account",
 };
 
-pub(crate) static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
+pub static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "kebab-case")]
@@ -2045,6 +2045,7 @@ pub fn app<'a, 'b>(
                 .group(
                     ArgGroup::with_name("update_fields").args(&["approve_policy", "auditor_pubkey"])
                         .required(true)
+                        .multiple(true)
                 )
                 .arg(
                     Arg::with_name("confidential_transfer_authority")
