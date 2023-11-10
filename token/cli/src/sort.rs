@@ -1,7 +1,7 @@
 use {
     crate::{
+        clap_app::Error,
         output::{CliTokenAccount, CliTokenAccounts},
-        Error,
     },
     serde::{Deserialize, Serialize},
     solana_account_decoder::{parse_token::TokenAccountType, UiAccountData},
