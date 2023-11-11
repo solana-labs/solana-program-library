@@ -8,6 +8,7 @@ import { DEFAULT_ACCOUNT_STATE_SIZE } from './defaultAccountState/index.js';
 import { IMMUTABLE_OWNER_SIZE } from './immutableOwner.js';
 import { INTEREST_BEARING_MINT_CONFIG_STATE_SIZE } from './interestBearingMint/state.js';
 import { MEMO_TRANSFER_SIZE } from './memoTransfer/index.js';
+import { METADATA_POINTER_SIZE } from './metadataPointer/state.js';
 import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority.js';
 import { NON_TRANSFERABLE_SIZE, NON_TRANSFERABLE_ACCOUNT_SIZE } from './nonTransferable.js';
 import { PERMANENT_DELEGATE_SIZE } from './permanentDelegate.js';
@@ -15,22 +16,26 @@ import { TRANSFER_FEE_AMOUNT_SIZE, TRANSFER_FEE_CONFIG_SIZE } from './transferFe
 import { TRANSFER_HOOK_ACCOUNT_SIZE, TRANSFER_HOOK_SIZE } from './transferHook/index.js';
 
 export enum ExtensionType {
-    Uninitialized,
-    TransferFeeConfig,
-    TransferFeeAmount,
-    MintCloseAuthority,
-    ConfidentialTransferMint,
-    ConfidentialTransferAccount,
-    DefaultAccountState,
-    ImmutableOwner,
-    MemoTransfer,
-    NonTransferable,
-    InterestBearingConfig,
-    CpiGuard,
-    PermanentDelegate,
-    NonTransferableAccount,
-    TransferHook,
-    TransferHookAccount,
+    Uninitialized = 0,
+    TransferFeeConfig = 1,
+    TransferFeeAmount = 2,
+    MintCloseAuthority = 3,
+    ConfidentialTransferMint = 4,
+    ConfidentialTransferAccount = 5,
+    DefaultAccountState = 6,
+    ImmutableOwner = 7,
+    MemoTransfer = 8,
+    NonTransferable = 9,
+    InterestBearingConfig = 10,
+    CpiGuard = 11,
+    PermanentDelegate = 12,
+    NonTransferableAccount = 13,
+    TransferHook = 14,
+    TransferHookAccount = 15,
+    // ConfidentialTransferFee = 16, // Not implemented yet
+    // WithdrawExcessLamports = 17, // Not implemented yet
+    MetadataPointer = 18,
+    // GroupPointer = 19, // Not implemented yet
 }
 
 export const TYPE_SIZE = 2;
@@ -60,6 +65,8 @@ export function getTypeLen(e: ExtensionType): number {
             return IMMUTABLE_OWNER_SIZE;
         case ExtensionType.MemoTransfer:
             return MEMO_TRANSFER_SIZE;
+        case ExtensionType.MetadataPointer:
+            return METADATA_POINTER_SIZE;
         case ExtensionType.NonTransferable:
             return NON_TRANSFERABLE_SIZE;
         case ExtensionType.InterestBearingConfig:
@@ -87,6 +94,7 @@ export function isMintExtension(e: ExtensionType): boolean {
         case ExtensionType.InterestBearingConfig:
         case ExtensionType.PermanentDelegate:
         case ExtensionType.TransferHook:
+        case ExtensionType.MetadataPointer:
             return true;
         case ExtensionType.Uninitialized:
         case ExtensionType.TransferFeeAmount:
@@ -121,6 +129,7 @@ export function isAccountExtension(e: ExtensionType): boolean {
         case ExtensionType.InterestBearingConfig:
         case ExtensionType.PermanentDelegate:
         case ExtensionType.TransferHook:
+        case ExtensionType.MetadataPointer:
             return false;
         default:
             throw Error(`Unknown extension type: ${e}`);
@@ -144,6 +153,7 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
         case ExtensionType.ImmutableOwner:
         case ExtensionType.MemoTransfer:
         case ExtensionType.MintCloseAuthority:
+        case ExtensionType.MetadataPointer:
         case ExtensionType.Uninitialized:
         case ExtensionType.InterestBearingConfig:
         case ExtensionType.PermanentDelegate:

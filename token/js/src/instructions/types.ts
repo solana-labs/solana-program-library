@@ -37,4 +37,8 @@ export enum TokenInstruction {
     CpiGuardExtension = 34,
     InitializePermanentDelegate = 35,
     TransferHookExtension = 36,
+    ConfidentialTransferFeeExtension = 37,
+    WithdrawalExcessLamports = 38,
+    MetadataPointerExtension = 39,
+    GroupPointerExtension = 40,
 }
