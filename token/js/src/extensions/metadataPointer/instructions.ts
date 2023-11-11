@@ -50,8 +50,8 @@ export function createInitializeMetadataPointerInstruction(
         {
             instruction: TokenInstruction.MetadataPointerExtension,
             metadataPointerInstruction: MetadataPointerInstruction.Initialize,
-            authority: authority ?? new PublicKey(0),
-            metadataAddress: metadataAddress ?? new PublicKey(0),
+            authority: authority ?? PublicKey.default,
+            metadataAddress: metadataAddress ?? PublicKey.default,
         },
         data
     );
@@ -86,7 +86,7 @@ export function createUpdateMetadataPointerInstruction(
         {
             instruction: TokenInstruction.MetadataPointerExtension,
             metadataPointerInstruction: MetadataPointerInstruction.Update,
-            metadataAddress: metadataAddress ?? new PublicKey(0),
+            metadataAddress: metadataAddress ?? PublicKey.default,
         },
         data
     );
