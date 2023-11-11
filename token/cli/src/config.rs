@@ -35,7 +35,7 @@ fn signers_of(
     if let Some(values) = matches.values_of(name) {
         let mut results = Vec::new();
         for (i, value) in values.enumerate() {
-            let name = format!("{}-{}", name, i + 1);
+            let name = format!("{}-{}", name, i.saturating_add(1));
             let signer = signer_from_path(matches, value, &name, wallet_manager)?;
             let signer_pubkey = signer.pubkey();
             results.push((Arc::from(signer), signer_pubkey));

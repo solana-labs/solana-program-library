@@ -143,7 +143,7 @@ async fn command_create_accounts(
         .get_minimum_balance_for_rent_exemption(Account::get_packed_len())
         .await?;
 
-    let mut lamports_required = 0;
+    let mut lamports_required: u64 = 0;
 
     let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
@@ -154,7 +154,8 @@ async fn command_create_accounts(
 
         for (account, (address, seed)) in accounts_chunk.iter().zip(address_chunk) {
             if account.is_none() {
-                lamports_required += minimum_balance_for_rent_exemption;
+                lamports_required =
+                    lamports_required.saturating_add(minimum_balance_for_rent_exemption);
                 messages.push(Message::new(
                     &[
                         system_instruction::create_account_with_seed(
@@ -296,8 +297,13 @@ async fn send_messages(
     let blockhash = config.rpc_client.get_latest_blockhash().await?;
     let mut message = messages[0].clone();
     message.recent_blockhash = blockhash;
-    lamports_required +=
-        config.rpc_client.get_fee_for_message(&message).await? * messages.len() as u64;
+    lamports_required = lamports_required.saturating_add(
+        config
+            .rpc_client
+            .get_fee_for_message(&message)
+            .await?
+            .saturating_mul(messages.len() as u64),
+    );
 
     println!(
         "Sending {:?} messages for ~{}",
