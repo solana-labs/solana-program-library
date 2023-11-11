@@ -246,9 +246,6 @@ importers:
       solana-bankrun:
         specifier: ^0.2.0
         version: 0.2.0
-      ts-node:
-        specifier: ^10.9.1
-        version: 10.9.1(@types/node@20.9.0)(typescript@5.2.2)
       tsx:
         specifier: ^3.12.7
         version: 3.14.0
@@ -262,18 +259,12 @@ importers:
         specifier: '=2.0.0-experimental.21e994f'
         version: 2.0.0-experimental.21e994f(node-fetch@2.7.0)(ws@8.14.2)
     devDependencies:
-      '@ava/typescript':
-        specifier: ^4.1.0
-        version: 4.1.0
       '@types/node':
         specifier: ^20.9.0
         version: 20.9.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.4.1
         version: 6.10.0(@typescript-eslint/parser@6.10.0)(eslint@8.53.0)(typescript@5.2.2)
-      ava:
-        specifier: ^5.3.1
-        version: 5.3.1(@ava/typescript@4.1.0)
       eslint:
         specifier: ^8.49.0
         version: 8.53.0
@@ -283,12 +274,6 @@ importers:
       eslint-plugin-prettier:
         specifier: ^5.0.0
         version: 5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.53.0)(prettier@3.0.3)
-      ts-node:
-        specifier: ^10.9.1
-        version: 10.9.1(@types/node@20.9.0)(typescript@5.2.2)
-      tsx:
-        specifier: ^3.12.7
-        version: 3.14.0
       typescript:
         specifier: ^5.2.2
         version: 5.2.2
