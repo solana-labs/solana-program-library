@@ -1,5 +1,6 @@
 #![allow(clippy::arithmetic_side_effects)]
 use {
+    serial_test::serial,
     solana_cli_output::OutputFormat,
     solana_client::rpc_request::TokenAccountsFilter,
     solana_sdk::{
@@ -348,6 +349,7 @@ async fn exec_test_cmd(config: &Config<'_>, args: &[&str]) -> CommandResult {
 }
 
 #[tokio::test]
+#[serial]
 async fn create_token_default() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -366,6 +368,7 @@ async fn create_token_default() {
 }
 
 #[tokio::test]
+#[serial]
 async fn create_token_interest_bearing() {
     let (test_validator, payer) = new_validator_for_test().await;
     let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
@@ -397,6 +400,7 @@ async fn create_token_interest_bearing() {
 }
 
 #[tokio::test]
+#[serial]
 async fn set_interest_rate() {
     let (test_validator, payer) = new_validator_for_test().await;
     let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
@@ -432,6 +436,7 @@ async fn set_interest_rate() {
 }
 
 #[tokio::test]
+#[serial]
 async fn supply() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -450,6 +455,7 @@ async fn supply() {
 }
 
 #[tokio::test]
+#[serial]
 async fn create_account_default() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -470,6 +476,7 @@ async fn create_account_default() {
 }
 
 #[tokio::test]
+#[serial]
 async fn account_info() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -502,6 +509,7 @@ async fn account_info() {
 }
 
 #[tokio::test]
+#[serial]
 async fn balance() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -521,6 +529,7 @@ async fn balance() {
 }
 
 #[tokio::test]
+#[serial]
 async fn mint() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -598,6 +607,7 @@ async fn mint() {
 }
 
 #[tokio::test]
+#[serial]
 async fn balance_after_mint() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -621,6 +631,7 @@ async fn balance_after_mint() {
     }
 }
 #[tokio::test]
+#[serial]
 async fn balance_after_mint_with_owner() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -652,6 +663,7 @@ async fn balance_after_mint_with_owner() {
 }
 
 #[tokio::test]
+#[serial]
 async fn accounts() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -675,6 +687,7 @@ async fn accounts() {
 }
 
 #[tokio::test]
+#[serial]
 async fn accounts_with_owner() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -704,6 +717,7 @@ async fn accounts_with_owner() {
 }
 
 #[tokio::test]
+#[serial]
 async fn wrap() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -736,6 +750,7 @@ async fn wrap() {
 }
 
 #[tokio::test]
+#[serial]
 async fn unwrap() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -775,6 +790,7 @@ async fn unwrap() {
 }
 
 #[tokio::test]
+#[serial]
 async fn transfer() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -812,6 +828,7 @@ async fn transfer() {
 }
 
 #[tokio::test]
+#[serial]
 async fn transfer_fund_recipient() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -849,6 +866,7 @@ async fn transfer_fund_recipient() {
 }
 
 #[tokio::test]
+#[serial]
 async fn transfer_non_standard_recipient() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -1009,6 +1027,7 @@ async fn transfer_non_standard_recipient() {
 }
 
 #[tokio::test]
+#[serial]
 async fn allow_non_system_account_recipient() {
     let (test_validator, payer) = new_validator_for_test().await;
     let config = test_config_with_default_signer(&test_validator, &payer, &spl_token::id());
@@ -1048,6 +1067,7 @@ async fn allow_non_system_account_recipient() {
 }
 
 #[tokio::test]
+#[serial]
 async fn close_account() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -1114,6 +1134,7 @@ async fn close_account() {
 }
 
 #[tokio::test]
+#[serial]
 async fn close_wrapped_sol_account() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -1164,6 +1185,7 @@ async fn close_wrapped_sol_account() {
 }
 
 #[tokio::test]
+#[serial]
 async fn disable_mint_authority() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -1190,6 +1212,7 @@ async fn disable_mint_authority() {
 }
 
 #[tokio::test]
+#[serial]
 async fn gc() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -1344,6 +1367,7 @@ async fn gc() {
 }
 
 #[tokio::test]
+#[serial]
 async fn set_owner() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -1372,6 +1396,7 @@ async fn set_owner() {
 }
 
 #[tokio::test]
+#[serial]
 async fn transfer_with_account_delegate() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -1485,6 +1510,7 @@ async fn transfer_with_account_delegate() {
 }
 
 #[tokio::test]
+#[serial]
 async fn burn_with_account_delegate() {
     let (test_validator, payer) = new_validator_for_test().await;
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
@@ -1579,6 +1605,7 @@ async fn burn_with_account_delegate() {
 }
 
 #[tokio::test]
+#[serial]
 async fn close_mint() {
     let (test_validator, payer) = new_validator_for_test().await;
     let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
@@ -1621,6 +1648,7 @@ async fn close_mint() {
 }
 
 #[tokio::test]
+#[serial]
 async fn burn_with_permanent_delegate() {
     let (test_validator, payer) = new_validator_for_test().await;
     let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
@@ -1690,6 +1718,7 @@ async fn burn_with_permanent_delegate() {
 }
 
 #[tokio::test]
+#[serial]
 async fn transfer_with_permanent_delegate() {
     let (test_validator, payer) = new_validator_for_test().await;
     let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
@@ -1782,6 +1811,7 @@ async fn transfer_with_permanent_delegate() {
 }
 
 #[tokio::test]
+#[serial]
 async fn required_transfer_memos() {
     let (test_validator, payer) = new_validator_for_test().await;
     let program_id = spl_token_2022::id();
@@ -1886,6 +1916,7 @@ async fn required_transfer_memos() {
 }
 
 #[tokio::test]
+#[serial]
 async fn cpi_guard() {
     let (test_validator, payer) = new_validator_for_test().await;
     let program_id = spl_token_2022::id();
@@ -1945,6 +1976,7 @@ async fn cpi_guard() {
 }
 
 #[tokio::test]
+#[serial]
 async fn immutable_accounts() {
     let (test_validator, payer) = new_validator_for_test().await;
     let program_id = spl_token_2022::id();
@@ -2046,6 +2078,7 @@ async fn immutable_accounts() {
 }
 
 #[tokio::test]
+#[serial]
 async fn non_transferable() {
     let (test_validator, payer) = new_validator_for_test().await;
     let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
@@ -2097,6 +2130,7 @@ async fn non_transferable() {
 }
 
 #[tokio::test]
+#[serial]
 async fn default_account_state() {
     let (test_validator, payer) = new_validator_for_test().await;
     let program_id = spl_token_2022::id();
@@ -2159,6 +2193,7 @@ async fn default_account_state() {
 }
 
 #[tokio::test]
+#[serial]
 async fn transfer_fee() {
     let (test_validator, payer) = new_validator_for_test().await;
     let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
@@ -2422,6 +2457,7 @@ async fn transfer_fee() {
 }
 
 #[tokio::test]
+#[serial]
 async fn confidential_transfer() {
     use spl_token_2022::solana_zk_token_sdk::encryption::elgamal::ElGamalKeypair;
 
@@ -2719,6 +2755,7 @@ async fn confidential_transfer() {
 }
 
 #[tokio::test]
+#[serial]
 async fn multisig_transfer() {
     let (test_validator, payer) = new_validator_for_test().await;
     let m = 3;
@@ -2828,6 +2865,7 @@ async fn multisig_transfer() {
 }
 
 #[tokio::test]
+#[serial]
 async fn offline_multisig_transfer_with_nonce() {
     let (test_validator, payer) = new_validator_for_test().await;
     let m = 2;
@@ -2940,6 +2978,7 @@ async fn offline_multisig_transfer_with_nonce() {
 }
 
 #[tokio::test]
+#[serial]
 async fn withdraw_excess_lamports_from_multisig() {
     let (test_validator, payer) = new_validator_for_test().await;
     let m = 3;
@@ -3061,6 +3100,7 @@ async fn withdraw_excess_lamports_from_multisig() {
 }
 
 #[tokio::test]
+#[serial]
 async fn withdraw_excess_lamports_from_mint() {
     let (test_validator, payer) = new_validator_for_test().await;
     let program_id = &spl_token_2022::id();
@@ -3132,6 +3172,7 @@ async fn withdraw_excess_lamports_from_mint() {
 }
 
 #[tokio::test]
+#[serial]
 async fn withdraw_excess_lamports_from_account() {
     let (test_validator, payer) = new_validator_for_test().await;
     let program_id = &spl_token_2022::id();
@@ -3206,6 +3247,7 @@ async fn withdraw_excess_lamports_from_account() {
 }
 
 #[tokio::test]
+#[serial]
 async fn metadata_pointer() {
     let (test_validator, payer) = new_validator_for_test().await;
     let program_id = spl_token_2022::id();
@@ -3289,6 +3331,7 @@ async fn metadata_pointer() {
 }
 
 #[tokio::test]
+#[serial]
 async fn transfer_hook() {
     let (test_validator, payer) = new_validator_for_test().await;
     let program_id = spl_token_2022::id();
@@ -3407,6 +3450,7 @@ async fn transfer_hook() {
 }
 
 #[tokio::test]
+#[serial]
 async fn metadata() {
     let (test_validator, payer) = new_validator_for_test().await;
     let program_id = spl_token_2022::id();
