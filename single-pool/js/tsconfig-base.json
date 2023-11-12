@@ -17,7 +17,7 @@
         "skipLibCheck": true,
         "strict": true,
         "traceResolution": false,
-        "types": ["node", "ava"]
+        "types": ["node"]
     },
     "compileOnSave": false,
     "exclude": ["node_modules", "dist"],
