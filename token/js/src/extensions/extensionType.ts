@@ -17,28 +17,28 @@ import { TRANSFER_HOOK_ACCOUNT_SIZE, TRANSFER_HOOK_SIZE } from './transferHook/i
 
 // Sequence from https://github.com/solana-labs/solana-program-library/blob/master/token/program-2022/src/extension/mod.rs#L903
 export enum ExtensionType {
-    Uninitialized = 0,
-    TransferFeeConfig = 1,
-    TransferFeeAmount = 2,
-    MintCloseAuthority = 3,
-    ConfidentialTransferMint = 4,
-    ConfidentialTransferAccount = 5,
-    DefaultAccountState = 6,
-    ImmutableOwner = 7,
-    MemoTransfer = 8,
-    NonTransferable = 9,
-    InterestBearingConfig = 10,
-    CpiGuard = 11,
-    PermanentDelegate = 12,
-    NonTransferableAccount = 13,
-    TransferHook = 14,
-    TransferHookAccount = 15,
-    // ConfidentialTransferFee = 16, // Not implemented yet
-    // ConfidentialTransferFeeAmount = 17, // Not implemented yet
-    MetadataPointer = 18,
-    // TokenMetadata = 19, // Not implemented yet
-    // GroupPointer = 20, // Not implemented yet
-    // TokenGroup = 21, // Not implemented yet
+    Uninitialized,
+    TransferFeeConfig,
+    TransferFeeAmount,
+    MintCloseAuthority,
+    ConfidentialTransferMint,
+    ConfidentialTransferAccount,
+    DefaultAccountState,
+    ImmutableOwner,
+    MemoTransfer,
+    NonTransferable,
+    InterestBearingConfig,
+    CpiGuard,
+    PermanentDelegate,
+    NonTransferableAccount,
+    TransferHook,
+    TransferHookAccount,
+    // ConfidentialTransferFee, // Not implemented yet
+    // ConfidentialTransferFeeAmount, // Not implemented yet
+    MetadataPointer = 18, // Remove number once above extensions implemented
+    // TokenMetadata, // Not implemented yet
+    // GroupPointer, // Not implemented yet
+    // TokenGroup, //Not implemented yet
 }
 
 export const TYPE_SIZE = 2;
