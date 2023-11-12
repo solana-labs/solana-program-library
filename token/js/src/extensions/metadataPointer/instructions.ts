@@ -12,13 +12,14 @@ export enum MetadataPointerInstruction {
     Update = 1,
 }
 
-export const initializeMetadataPointer = struct<{
+export const initializeMetadataPointerData = struct<{
     instruction: TokenInstruction.MetadataPointerExtension;
     metadataPointerInstruction: number;
     authority: PublicKey;
     metadataAddress: PublicKey;
 }>([
-    u8('instruction'), // prettier let me wrap please
+    // prettier-ignore
+    u8('instruction'),
     u8('metadataPointerInstruction'),
     publicKey('authority'),
     publicKey('metadataAddress'),
@@ -45,8 +46,8 @@ export function createInitializeMetadataPointerInstruction(
     }
     const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
 
-    const data = Buffer.alloc(initializeMetadataPointer.span);
-    initializeMetadataPointer.encode(
+    const data = Buffer.alloc(initializeMetadataPointerData.span);
+    initializeMetadataPointerData.encode(
         {
             instruction: TokenInstruction.MetadataPointerExtension,
             metadataPointerInstruction: MetadataPointerInstruction.Initialize,
@@ -59,15 +60,17 @@ export function createInitializeMetadataPointerInstruction(
     return new TransactionInstruction({ keys, programId, data: data });
 }
 
-export const updateMetadataPointer = struct<{
+export const updateMetadataPointerData = struct<{
     instruction: TokenInstruction.MetadataPointerExtension;
     metadataPointerInstruction: number;
     metadataAddress: PublicKey;
 }>([
-    u8('instruction'), // prettier let me wrap please
+    // prettier-ignore
+    u8('instruction'),
     u8('metadataPointerInstruction'),
     publicKey('metadataAddress'),
 ]);
+
 export function createUpdateMetadataPointerInstruction(
     mint: PublicKey,
     authority: PublicKey,
@@ -81,8 +84,8 @@ export function createUpdateMetadataPointerInstruction(
 
     const keys = addSigners([{ pubkey: mint, isSigner: false, isWritable: true }], authority, multiSigners);
 
-    const data = Buffer.alloc(updateMetadataPointer.span);
-    updateMetadataPointer.encode(
+    const data = Buffer.alloc(updateMetadataPointerData.span);
+    updateMetadataPointerData.encode(
         {
             instruction: TokenInstruction.MetadataPointerExtension,
             metadataPointerInstruction: MetadataPointerInstruction.Update,

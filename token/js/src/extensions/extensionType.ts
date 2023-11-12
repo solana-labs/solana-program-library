@@ -15,6 +15,7 @@ import { PERMANENT_DELEGATE_SIZE } from './permanentDelegate.js';
 import { TRANSFER_FEE_AMOUNT_SIZE, TRANSFER_FEE_CONFIG_SIZE } from './transferFee/index.js';
 import { TRANSFER_HOOK_ACCOUNT_SIZE, TRANSFER_HOOK_SIZE } from './transferHook/index.js';
 
+// Sequence from https://github.com/solana-labs/solana-program-library/blob/master/token/program-2022/src/extension/mod.rs#L903
 export enum ExtensionType {
     Uninitialized = 0,
     TransferFeeConfig = 1,
@@ -33,9 +34,11 @@ export enum ExtensionType {
     TransferHook = 14,
     TransferHookAccount = 15,
     // ConfidentialTransferFee = 16, // Not implemented yet
-    // WithdrawExcessLamports = 17, // Not implemented yet
+    // ConfidentialTransferFeeAmount = 17, // Not implemented yet
     MetadataPointer = 18,
-    // GroupPointer = 19, // Not implemented yet
+    // TokenMetadata = 19, // Not implemented yet
+    // GroupPointer = 20, // Not implemented yet
+    // TokenGroup = 21, // Not implemented yet
 }
 
 export const TYPE_SIZE = 2;

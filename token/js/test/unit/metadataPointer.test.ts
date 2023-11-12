@@ -112,6 +112,7 @@ describe('SPL Token 2022 Metadata Extension', () => {
         const metadataPointer = getMetadataPointerState(mintInfo);
 
         expect(metadataPointer).to.deep.equal({
+            authority: null,
             metadataAddress: new PublicKey([
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
             ]),
@@ -134,6 +135,7 @@ describe('SPL Token 2022 Metadata Extension', () => {
                 16, 218, 238, 42, 17, 19, 152, 173, 216, 24, 229, 204, 215, 108, 49, 98, 233, 115, 53, 252, 9, 156, 216,
                 23, 14, 157, 139, 132, 28, 182, 4, 191,
             ]),
+            metadataAddress: null,
         });
     });
 });
