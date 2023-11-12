@@ -16,25 +16,13 @@
   },
   "devDependencies": {
     "@types/node": "^20.9.0",
-    "@ava/typescript": "^4.1.0",
     "@typescript-eslint/eslint-plugin": "^6.4.1",
-    "ava": "^5.3.1",
     "eslint": "^8.49.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
-    "ts-node": "^10.9.1",
-    "tsx": "^3.12.7",
     "typescript": "^5.2.2"
   },
   "dependencies": {
     "@solana/web3.js": "=2.0.0-experimental.21e994f"
-  },
-  "ava": {
-    "extensions": {
-      "ts": "module"
-    },
-    "nodeArguments": [
-      "--import=tsx"
-    ]
   }
 }
