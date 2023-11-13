@@ -5125,6 +5125,7 @@ fn app<'a, 'b>(
                 .group(
                     ArgGroup::with_name("update_fields").args(&["approve_policy", "auditor_pubkey"])
                         .required(true)
+                        .multiple(true)
                 )
                 .arg(
                     Arg::with_name("confidential_transfer_authority")
