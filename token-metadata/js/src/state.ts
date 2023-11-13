@@ -1,9 +1,15 @@
-import { getArrayDecoder, getBytesDecoder, getStructDecoder, getTupleDecoder } from '@solana/codecs-data-structures';
-import { getStringDecoder } from '@solana/codecs-strings';
-import { TlvState } from '@solana/spl-type-length-value';
 import { PublicKey } from '@solana/web3.js';
-
-import { TokenMetadataError } from './errors.js';
+import {
+    getArrayDecoder,
+    getArrayEncoder,
+    getBytesDecoder,
+    getBytesEncoder,
+    getStructDecoder,
+    getStructEncoder,
+    getTupleDecoder,
+    getTupleEncoder,
+} from '@solana/codecs-data-structures';
+import { getStringDecoder, getStringEncoder } from '@solana/codecs-strings';
 
 export const TOKEN_METADATA_DISCRIMINATOR = Buffer.from([112, 132, 90, 90, 11, 88, 157, 87]);
 
@@ -32,12 +38,28 @@ function isNonePubkey(buffer: Uint8Array): boolean {
     return true;
 }
 
-export function unpack(buffer: Buffer): TokenMetadata {
-    const tlv = new TlvState(buffer, 8, 4);
-    const bytes = tlv.firstBytes(TOKEN_METADATA_DISCRIMINATOR);
-    if (bytes === null) {
-        throw new TokenMetadataError('Invalid Data');
-    }
+// Pack TokenMetadata into byte slab
+export const pack = (meta: TokenMetadata): Uint8Array => {
+    const encoder = getStructEncoder([
+        ['updateAuthority', getBytesEncoder({ size: 32 })],
+        ['mint', getBytesEncoder({ size: 32 })],
+        ['name', getStringEncoder()],
+        ['symbol', getStringEncoder()],
+        ['uri', getStringEncoder()],
+        ['additionalMetadata', getArrayEncoder(getTupleEncoder([getStringEncoder(), getStringEncoder()]))],
+    ]);
+
+    // If no updateAuthority given, set it to the None/Zero PublicKey for encoding
+    const updateAuthority = meta.updateAuthority ?? PublicKey.default;
+    return encoder.encode({
+        ...meta,
+        updateAuthority: updateAuthority.toBuffer(),
+        mint: meta.mint.toBuffer(),
+    });
+};
+
+// unpack byte slab into TokenMetadata
+export function unpack(buffer: Buffer | Uint8Array): TokenMetadata {
     const decoder = getStructDecoder([
         ['updateAuthority', getBytesDecoder({ size: 32 })],
         ['mint', getBytesDecoder({ size: 32 })],
@@ -47,7 +69,7 @@ export function unpack(buffer: Buffer): TokenMetadata {
         ['additionalMetadata', getArrayDecoder(getTupleDecoder([getStringDecoder(), getStringDecoder()]))],
     ]);
 
-    const data = decoder.decode(bytes);
+    const data = decoder.decode(buffer);
 
     return isNonePubkey(data[0].updateAuthority)
         ? {
