@@ -79,3 +79,8 @@ export class TokenTransferHookAccountNotFound extends TokenError {
 export class TokenTransferHookInvalidSeed extends TokenError {
     name = 'TokenTransferHookInvalidSeed';
 }
+
+/** Thrown if account data required by an extra account meta seed config could not be fetched */
+export class TokenTransferHookAccountDataNotFound extends TokenError {
+    name = 'TokenTransferHookAccountDataNotFound';
+}

@@ -1,5 +1,5 @@
-import type { AccountMeta } from '@solana/web3.js';
-import { TokenTransferHookInvalidSeed } from '../../errors.js';
+import type { AccountMeta, Connection } from '@solana/web3.js';
+import { TokenTransferHookAccountDataNotFound, TokenTransferHookInvalidSeed } from '../../errors.js';
 
 interface Seed {
     data: Buffer;
@@ -11,6 +11,9 @@ const LITERAL_LENGTH_SPAN = 1;
 const INSTRUCTION_ARG_OFFSET_SPAN = 1;
 const INSTRUCTION_ARG_LENGTH_SPAN = 1;
 const ACCOUNT_KEY_INDEX_SPAN = 1;
+const ACCOUNT_DATA_ACCOUNT_INDEX_SPAN = 1;
+const ACCOUNT_DATA_OFFSET_SPAN = 1;
+const ACCOUNT_DATA_LENGTH_SPAN = 1;
 
 function unpackSeedLiteral(seeds: Uint8Array): Seed {
     if (seeds.length < 1) {
@@ -54,7 +57,38 @@ function unpackSeedAccountKey(seeds: Uint8Array, previousMetas: AccountMeta[]): 
     };
 }
 
-function unpackFirstSeed(seeds: Uint8Array, previousMetas: AccountMeta[], instructionData: Buffer): Seed | null {
+async function unpackSeedAccountData(
+    seeds: Uint8Array,
+    previousMetas: AccountMeta[],
+    connection: Connection
+): Promise<Seed> {
+    if (seeds.length < 3) {
+        throw new TokenTransferHookInvalidSeed();
+    }
+    const [accountIndex, dataIndex, length] = seeds;
+    if (previousMetas.length <= accountIndex) {
+        throw new TokenTransferHookInvalidSeed();
+    }
+    const accountInfo = await connection.getAccountInfo(previousMetas[accountIndex].pubkey);
+    if (accountInfo == null) {
+        throw new TokenTransferHookAccountDataNotFound();
+    }
+    if (accountInfo.data.length < dataIndex + length) {
+        throw new TokenTransferHookInvalidSeed();
+    }
+    return {
+        data: accountInfo.data.subarray(dataIndex, dataIndex + length),
+        packedLength:
+            DISCRIMINATOR_SPAN + ACCOUNT_DATA_ACCOUNT_INDEX_SPAN + ACCOUNT_DATA_OFFSET_SPAN + ACCOUNT_DATA_LENGTH_SPAN,
+    };
+}
+
+async function unpackFirstSeed(
+    seeds: Uint8Array,
+    previousMetas: AccountMeta[],
+    instructionData: Buffer,
+    connection: Connection
+): Promise<Seed | null> {
     const [discriminator, ...rest] = seeds;
     const remaining = new Uint8Array(rest);
     switch (discriminator) {
@@ -66,16 +100,23 @@ function unpackFirstSeed(seeds: Uint8Array, previousMetas: AccountMeta[], instru
             return unpackSeedInstructionArg(remaining, instructionData);
         case 3:
             return unpackSeedAccountKey(remaining, previousMetas);
+        case 4:
+            return unpackSeedAccountData(remaining, previousMetas, connection);
         default:
             throw new TokenTransferHookInvalidSeed();
     }
 }
 
-export function unpackSeeds(seeds: Uint8Array, previousMetas: AccountMeta[], instructionData: Buffer): Buffer[] {
+export async function unpackSeeds(
+    seeds: Uint8Array,
+    previousMetas: AccountMeta[],
+    instructionData: Buffer,
+    connection: Connection
+): Promise<Buffer[]> {
     const unpackedSeeds: Buffer[] = [];
     let i = 0;
     while (i < 32) {
-        const seed = unpackFirstSeed(seeds.slice(i), previousMetas, instructionData);
+        const seed = await unpackFirstSeed(seeds.slice(i), previousMetas, instructionData, connection);
         if (seed == null) {
             break;
         }

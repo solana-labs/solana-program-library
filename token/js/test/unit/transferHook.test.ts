@@ -1,12 +1,15 @@
 import { getExtraAccountMetas, resolveExtraAccountMeta } from '../../src';
 import { expect } from 'chai';
+import type { Connection } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
+import { getConnection } from '../common';
 
 describe('transferHookExtraAccounts', () => {
+    let connection: Connection;
     const testProgramId = new PublicKey('7N4HggYEJAtCLJdnHGCtFqfxcB5rhQCsQTze3ftYstVj');
     const instructionData = Buffer.from(Array.from(Array(32).keys()));
     const plainAccount = new PublicKey('6c5q79ccBTWvZTEx3JkdHThtMa2eALba5bfvHGf8kA2c');
-    const seeds = [Buffer.from('seed'), Buffer.from([4, 5, 6, 7]), plainAccount.toBuffer()];
+    const seeds = [Buffer.from('seed'), Buffer.from([4, 5, 6, 7]), plainAccount.toBuffer(), Buffer.from([2, 2, 2, 2])];
     const pdaPublicKey = PublicKey.findProgramAddressSync(seeds, testProgramId)[0];
     const pdaPublicKeyWithProgramId = PublicKey.findProgramAddressSync(seeds, plainAccount)[0];
 
@@ -27,7 +30,14 @@ describe('transferHookExtraAccounts', () => {
         Buffer.from([0]), // u8 index
     ]);
 
-    const addressConfig = Buffer.concat([plainSeed, instructionDataSeed, accountKeySeed], 32);
+    const accountDataSeed = Buffer.concat([
+        Buffer.from([4]), // u8 discriminator
+        Buffer.from([0]), // u8 account index
+        Buffer.from([2]), // u8 account data offset
+        Buffer.from([4]), // u8 account data length
+    ]);
+
+    const addressConfig = Buffer.concat([plainSeed, instructionDataSeed, accountKeySeed, accountDataSeed], 32);
 
     const plainExtraAccountMeta = {
         discriminator: 0,
@@ -77,6 +87,19 @@ describe('transferHookExtraAccounts', () => {
         pdaExtraAccountWithProgramId,
     ]);
 
+    before(async () => {
+        connection = await getConnection();
+        connection.getAccountInfo = async (
+            _publicKey: PublicKey,
+            _commitmentOrConfig?: Parameters<(typeof connection)['getAccountInfo']>[1]
+        ): ReturnType<(typeof connection)['getAccountInfo']> => ({
+            data: Buffer.from([0, 0, 2, 2, 2, 2]),
+            owner: PublicKey.default,
+            executable: false,
+            lamports: 0,
+        });
+    });
+
     it('getExtraAccountMetas', () => {
         const accountInfo = {
             data: extraAccountList,
@@ -110,14 +133,21 @@ describe('transferHookExtraAccounts', () => {
         expect(parsedExtraAccounts[2].isSigner).to.be.false;
         expect(parsedExtraAccounts[2].isWritable).to.be.true;
     });
-    it('resolveExtraAccountMeta', () => {
-        const resolvedPlainAccount = resolveExtraAccountMeta(plainExtraAccountMeta, [], instructionData, testProgramId);
+    it('resolveExtraAccountMeta', async () => {
+        const resolvedPlainAccount = await resolveExtraAccountMeta(
+            connection,
+            plainExtraAccountMeta,
+            [],
+            instructionData,
+            testProgramId
+        );
 
         expect(resolvedPlainAccount.pubkey).to.eql(plainAccount);
         expect(resolvedPlainAccount.isSigner).to.be.false;
         expect(resolvedPlainAccount.isWritable).to.be.false;
 
-        const resolvedPdaAccount = resolveExtraAccountMeta(
+        const resolvedPdaAccount = await resolveExtraAccountMeta(
+            connection,
             pdaExtraAccountMeta,
             [resolvedPlainAccount],
             instructionData,
@@ -128,7 +158,8 @@ describe('transferHookExtraAccounts', () => {
         expect(resolvedPdaAccount.isSigner).to.be.true;
         expect(resolvedPdaAccount.isWritable).to.be.false;
 
-        const resolvedPdaAccountWithProgramId = resolveExtraAccountMeta(
+        const resolvedPdaAccountWithProgramId = await resolveExtraAccountMeta(
+            connection,
             pdaExtraAccountMetaWithProgramId,
             [resolvedPlainAccount],
             instructionData,

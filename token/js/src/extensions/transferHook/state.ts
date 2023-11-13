@@ -1,7 +1,7 @@
 import { blob, greedy, seq, struct, u32, u8 } from '@solana/buffer-layout';
 import type { Mint } from '../../state/mint.js';
 import { ExtensionType, getExtensionData } from '../extensionType.js';
-import type { AccountInfo, AccountMeta } from '@solana/web3.js';
+import type { AccountInfo, AccountMeta, Connection } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 import { bool, publicKey, u64 } from '@solana/buffer-layout-utils';
 import type { Account } from '../../state/account.js';
@@ -106,12 +106,13 @@ export function getExtraAccountMetas(account: AccountInfo<Buffer>): ExtraAccount
 }
 
 /** Take an ExtraAccountMeta and construct that into an acutal AccountMeta */
-export function resolveExtraAccountMeta(
+export async function resolveExtraAccountMeta(
+    connection: Connection,
     extraMeta: ExtraAccountMeta,
     previousMetas: AccountMeta[],
     instructionData: Buffer,
     transferHookProgramId: PublicKey
-): AccountMeta {
+): Promise<AccountMeta> {
     if (extraMeta.discriminator === 0) {
         return {
             pubkey: new PublicKey(extraMeta.addressConfig),
@@ -132,7 +133,7 @@ export function resolveExtraAccountMeta(
         programId = previousMetas[accountIndex].pubkey;
     }
 
-    const seeds = unpackSeeds(extraMeta.addressConfig, previousMetas, instructionData);
+    const seeds = await unpackSeeds(extraMeta.addressConfig, previousMetas, instructionData, connection);
     const pubkey = PublicKey.findProgramAddressSync(seeds, programId)[0];
 
     return { pubkey, isSigner: extraMeta.isSigner, isWritable: extraMeta.isWritable };
