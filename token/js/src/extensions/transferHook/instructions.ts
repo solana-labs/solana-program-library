@@ -172,7 +172,6 @@ export async function addExtraAccountsToInstruction(
     const extraAccountMetas = getExtraAccountMetas(extraAccountsInfo);
 
     const accountMetas = instruction.keys;
-    accountMetas.push({ pubkey: extraAccountsAccount, isSigner: false, isWritable: false });
 
     for (const extraAccountMeta of extraAccountMetas) {
         const accountMetaUnchecked = await resolveExtraAccountMeta(
@@ -186,6 +185,7 @@ export async function addExtraAccountsToInstruction(
         accountMetas.push(accountMeta);
     }
     accountMetas.push({ pubkey: transferHook.programId, isSigner: false, isWritable: false });
+    accountMetas.push({ pubkey: extraAccountsAccount, isSigner: false, isWritable: false });
 
     return new TransactionInstruction({ keys: accountMetas, programId, data: instruction.data });
 }
