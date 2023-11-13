@@ -36,9 +36,6 @@ export enum ExtensionType {
     // ConfidentialTransferFee, // Not implemented yet
     // ConfidentialTransferFeeAmount, // Not implemented yet
     MetadataPointer = 18, // Remove number once above extensions implemented
-    // TokenMetadata, // Not implemented yet
-    // GroupPointer, // Not implemented yet
-    // TokenGroup, //Not implemented yet
 }
 
 export const TYPE_SIZE = 2;
