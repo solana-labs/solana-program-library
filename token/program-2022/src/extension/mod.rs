@@ -1487,6 +1487,41 @@ pub fn alloc_and_serialize<S: BaseState, V: Default + Extension + Pod>(
     Ok(())
 }
 
+/// Packs a fixed-length extension into a TLV space
+///
+/// Similar to its counterpart `alloc_and_serialize`, this function reallocates
+/// the account as needed to accommodate for the change in space.
+///
+/// However, this particular function allows for repeating entries, and will
+/// not overwrite
+pub fn alloc_and_serialize_allow_repeating<S: BaseState, V: Default + Extension + Pod>(
+    account_info: &AccountInfo,
+    new_extension: &V,
+) -> Result<(), ProgramError> {
+    let previous_account_len = account_info.try_data_len()?;
+    let new_account_len = {
+        let data = account_info.try_borrow_data()?;
+        let state = StateWithExtensions::<S>::unpack(&data)?;
+        state.try_get_new_account_len::<V>()?
+    };
+
+    // Realloc the account first, if needed
+    if new_account_len > previous_account_len {
+        account_info.realloc(new_account_len, false)?;
+    }
+    let mut buffer = account_info.try_borrow_mut_data()?;
+    if previous_account_len <= BASE_ACCOUNT_LENGTH {
+        set_account_type::<S>(*buffer)?;
+    }
+    let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
+
+    // Write the extension
+    let extension = state.init_extension_allow_repeating::<V>()?;
+    *extension = *new_extension;
+
+    Ok(())
+}
+
 /// Packs a variable-length extension into a TLV space
 ///
 /// This function reallocates the account as needed to accommodate for the
