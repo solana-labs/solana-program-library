@@ -10,7 +10,8 @@
     }
   },
   "scripts": {
-    "build": "rm -fr dist/* && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./ts-fixup.sh",
+    "clean": "rm -fr dist/*",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./ts-fixup.sh",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint . --fix"
   },

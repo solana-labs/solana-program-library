@@ -6,10 +6,8 @@ source ./ci/solana-version.sh install
 
 set -x
 pnpm install
-
-(cd memo/js && pnpm build)
+pnpm build
 
 cd token/js
 pnpm lint
-pnpm build
 pnpm test

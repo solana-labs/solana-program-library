@@ -1,0 +1,25 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "pipeline": {
+        "build": {
+            "dependsOn": ["^build"],
+            "outputs": ["dist/**", "lib/**"]
+        },
+        "clean": {},
+        "lint:fix": {
+            "inputs": ["src/**", "test/**"],
+            "outputs": []
+        },
+        "lint": {
+            "inputs": ["src/**", "test/**"],
+            "outputs": []
+        },
+        "test": {
+            "inputs": ["src/**", "test/**"],
+            "outputs": []
+        }
+    },
+    "remoteCache": {
+        "signature": true
+    }
+}

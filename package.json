@@ -1,0 +1,31 @@
+{
+    "private": true,
+    "workspaces": [
+        "libraries/type-length-value/js",
+        "memo/js",
+        "single-pool/js",
+        "stake-pool/js",
+        "token/js",
+        "token-lending/js",
+        "token-metadata/js",
+        "token-swap/js"
+    ],
+    "scripts": {
+        "build": "turbo run build",
+        "clean": "turbo run clean",
+        "lint": "turbo run lint",
+        "lint:fix": "turbo run lint:fix",
+        "test": "turbo run test"
+    },
+    "devDependencies": {
+        "@solana/eslint-config-solana": "^1.0.2",
+        "@solana/prettier-config-solana": "^0.0.3",
+        "eslint-config-turbo": "^1.10.13",
+        "turbo": "^1.10.16"
+    },
+    "engines": {
+        "node": ">=14.0.0"
+    },
+    "packageManager": "pnpm@8.5.1",
+    "prettier": "@solana/prettier-config-solana"
+}

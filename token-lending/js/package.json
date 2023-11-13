@@ -22,9 +22,11 @@
         "lib"
     ],
     "scripts": {
-        "build": "rm -rf lib/* && tsc && rollup --configPlugin @rollup/plugin-typescript -c && rm lib/rollup.config.d.ts",
-        "deploy": "yarn docs && gh-pages -d docs -e token-lending",
-        "docs": "rm -rf docs/* && typedoc",
+        "clean": "rm -rf lib/*",
+        "clean:docs": "rm -rf docs/*",
+        "build": "tsc && rollup --configPlugin @rollup/plugin-typescript -c && rm lib/rollup.config.d.ts",
+        "deploy": "npm docs && gh-pages -d docs -e token-lending",
+        "docs": "typedoc",
         "lint": "eslint . --ext .ts --max-warnings 0 && prettier --check '**/*.{ts,js,json}'",
         "lint:fix": "eslint . --ext .ts --fix && prettier --write '**/*.{ts,js,json}'"
     },
