@@ -3,12 +3,10 @@
   "version": "0.7.0",
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
-    "build": "npm run clean && tsc && cross-env NODE_ENV=production rollup -c",
+    "build": "tsc && cross-env NODE_ENV=production rollup -c",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint . --fix",
     "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
     "clean": "rimraf ./dist"
   },
   "keywords": [],

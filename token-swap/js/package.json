@@ -31,6 +31,7 @@
     "README.md"
   ],
   "scripts": {
+    "clean": "rm -rf lib/*",
     "build": "tsc --build --verbose tsconfig.all.json",
     "postbuild": "echo '{\"type\":\"commonjs\"}' > lib/cjs/package.json && echo '{\"type\":\"module\"}' > lib/esm/package.json",
     "test": "mocha test",
