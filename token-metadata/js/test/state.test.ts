@@ -25,7 +25,7 @@ describe('Token Metadata State', () => {
         expect(unpack(bytes)).to.deep.equal(meta);
     });
 
-    it('Can unpack with additionalMetadata', () => {
+    it('Can pack and unpack as rust implementation with additionalMetadata', () => {
         const meta: TokenMetadata = {
             mint: PublicKey.default,
             name: 'new_name',
