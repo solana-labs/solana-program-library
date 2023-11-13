@@ -1,19 +1,16 @@
 /// The `bench` subcommand
 use {
-    crate::{config::Config, owner_address_arg, CommandResult, Error},
-    clap::{value_t_or_exit, App, AppSettings, Arg, ArgMatches, SubCommand},
-    solana_clap_utils::{
-        input_parsers::pubkey_of_signer,
-        input_validators::{is_amount, is_parsable, is_valid_pubkey},
-    },
+    crate::{clap_app::Error, command::CommandResult, config::Config},
+    clap::{value_t_or_exit, ArgMatches},
+    solana_clap_utils::input_parsers::pubkey_of_signer,
     solana_client::{
         nonblocking::rpc_client::RpcClient, rpc_client::RpcClient as BlockingRpcClient,
         tpu_client::TpuClient, tpu_client::TpuClientConfig,
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
-        message::Message, native_token::Sol, program_pack::Pack, pubkey::Pubkey, signature::Signer,
-        system_instruction,
+        message::Message, native_token::lamports_to_sol, native_token::Sol, program_pack::Pack,
+        pubkey::Pubkey, signature::Signer, system_instruction,
     },
     spl_associated_token_account::*,
     spl_token_2022::{
@@ -23,147 +20,6 @@ use {
     },
     std::{rc::Rc, sync::Arc, time::Instant},
 };
-
-pub(crate) trait BenchSubCommand {
-    fn bench_subcommand(self) -> Self;
-}
-
-impl BenchSubCommand for App<'_, '_> {
-    fn bench_subcommand(self) -> Self {
-        self.subcommand(
-            SubCommand::with_name("bench")
-                .about("Token benchmarking facilities")
-                .setting(AppSettings::InferSubcommands)
-                .setting(AppSettings::SubcommandRequiredElseHelp)
-                .subcommand(
-                    SubCommand::with_name("create-accounts")
-                        .about("Create multiple token accounts for benchmarking")
-                        .arg(
-                            Arg::with_name("token")
-                                .validator(is_valid_pubkey)
-                                .value_name("TOKEN_ADDRESS")
-                                .takes_value(true)
-                                .index(1)
-                                .required(true)
-                                .help("The token that the accounts will hold"),
-                        )
-                        .arg(
-                            Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
-                                .value_name("N")
-                                .takes_value(true)
-                                .index(2)
-                                .required(true)
-                                .help("The number of accounts to create"),
-                        )
-                        .arg(owner_address_arg()),
-                )
-                .subcommand(
-                    SubCommand::with_name("close-accounts")
-                        .about("Close multiple token accounts used for benchmarking")
-                        .arg(
-                            Arg::with_name("token")
-                                .validator(is_valid_pubkey)
-                                .value_name("TOKEN_ADDRESS")
-                                .takes_value(true)
-                                .index(1)
-                                .required(true)
-                                .help("The token that the accounts held"),
-                        )
-                        .arg(
-                            Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
-                                .value_name("N")
-                                .takes_value(true)
-                                .index(2)
-                                .required(true)
-                                .help("The number of accounts to close"),
-                        )
-                        .arg(owner_address_arg()),
-                )
-                .subcommand(
-                    SubCommand::with_name("deposit-into")
-                        .about("Deposit tokens into multiple accounts")
-                        .arg(
-                            Arg::with_name("token")
-                                .validator(is_valid_pubkey)
-                                .value_name("TOKEN_ADDRESS")
-                                .takes_value(true)
-                                .index(1)
-                                .required(true)
-                                .help("The token that the accounts will hold"),
-                        )
-                        .arg(
-                            Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
-                                .value_name("N")
-                                .takes_value(true)
-                                .index(2)
-                                .required(true)
-                                .help("The number of accounts to deposit into"),
-                        )
-                        .arg(
-                            Arg::with_name("amount")
-                                .validator(is_amount)
-                                .value_name("TOKEN_AMOUNT")
-                                .takes_value(true)
-                                .index(3)
-                                .required(true)
-                                .help("Amount to deposit into each account, in tokens"),
-                        )
-                        .arg(
-                            Arg::with_name("from")
-                                .long("from")
-                                .validator(is_valid_pubkey)
-                                .value_name("SOURCE_TOKEN_ACCOUNT_ADDRESS")
-                                .takes_value(true)
-                                .help("The source token account address [default: associated token account for --owner]")
-                        )
-                        .arg(owner_address_arg()),
-                )
-                .subcommand(
-                    SubCommand::with_name("withdraw-from")
-                        .about("Withdraw tokens from multiple accounts")
-                        .arg(
-                            Arg::with_name("token")
-                                .validator(is_valid_pubkey)
-                                .value_name("TOKEN_ADDRESS")
-                                .takes_value(true)
-                                .index(1)
-                                .required(true)
-                                .help("The token that the accounts hold"),
-                        )
-                        .arg(
-                            Arg::with_name("n")
-                                .validator(is_parsable::<usize>)
-                                .value_name("N")
-                                .takes_value(true)
-                                .index(2)
-                                .required(true)
-                                .help("The number of accounts to withdraw from"),
-                        )
-                        .arg(
-                            Arg::with_name("amount")
-                                .validator(is_amount)
-                                .value_name("TOKEN_AMOUNT")
-                                .takes_value(true)
-                                .index(3)
-                                .required(true)
-                                .help("Amount to withdraw from each account, in tokens"),
-                        )
-                        .arg(
-                            Arg::with_name("to")
-                                .long("to")
-                                .validator(is_valid_pubkey)
-                                .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
-                                .takes_value(true)
-                                .help("The recipient token account address [default: associated token account for --owner]")
-                        )
-                        .arg(owner_address_arg()),
-                ),
-        )
-    }
-}
 
 pub(crate) async fn bench_process_command(
     matches: &ArgMatches<'_>,
@@ -287,7 +143,7 @@ async fn command_create_accounts(
         .get_minimum_balance_for_rent_exemption(Account::get_packed_len())
         .await?;
 
-    let mut lamports_required = 0;
+    let mut lamports_required: u64 = 0;
 
     let token_addresses_with_seed = get_token_addresses_with_seed(&program_id, token, owner, n);
     let mut messages = vec![];
@@ -298,7 +154,8 @@ async fn command_create_accounts(
 
         for (account, (address, seed)) in accounts_chunk.iter().zip(address_chunk) {
             if account.is_none() {
-                lamports_required += minimum_balance_for_rent_exemption;
+                lamports_required =
+                    lamports_required.saturating_add(minimum_balance_for_rent_exemption);
                 messages.push(Message::new(
                     &[
                         system_instruction::create_account_with_seed(
@@ -440,8 +297,13 @@ async fn send_messages(
     let blockhash = config.rpc_client.get_latest_blockhash().await?;
     let mut message = messages[0].clone();
     message.recent_blockhash = blockhash;
-    lamports_required +=
-        config.rpc_client.get_fee_for_message(&message).await? * messages.len() as u64;
+    lamports_required = lamports_required.saturating_add(
+        config
+            .rpc_client
+            .get_fee_for_message(&message)
+            .await?
+            .saturating_mul(messages.len() as u64),
+    );
 
     println!(
         "Sending {:?} messages for ~{}",
@@ -449,7 +311,7 @@ async fn send_messages(
         Sol(lamports_required)
     );
 
-    crate::check_fee_payer_balance(config, lamports_required).await?;
+    check_fee_payer_balance(config, lamports_required).await?;
 
     // TODO use async tpu client once it's available in 1.11
     let start = Instant::now();
@@ -488,4 +350,22 @@ async fn send_messages(
     }
 
     Ok(())
+}
+
+async fn check_fee_payer_balance(config: &Config<'_>, required_balance: u64) -> Result<(), Error> {
+    let balance = config
+        .rpc_client
+        .get_balance(&config.fee_payer()?.pubkey())
+        .await?;
+    if balance < required_balance {
+        Err(format!(
+            "Fee payer, {}, has insufficient balance: {} required, {} available",
+            config.fee_payer()?.pubkey(),
+            lamports_to_sol(required_balance),
+            lamports_to_sol(balance)
+        )
+        .into())
+    } else {
+        Ok(())
+    }
 }

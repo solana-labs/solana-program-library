@@ -1,3 +1,4 @@
+#![allow(clippy::arithmetic_side_effects)]
 use {
     crate::{config::Config, sort::UnsupportedAccount},
     console::{style, Emoji},

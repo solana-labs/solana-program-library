@@ -1,5 +1,5 @@
 use {
-    crate::{signers_of, Error, MULTISIG_SIGNER_ARG},
+    crate::clap_app::{Error, MULTISIG_SIGNER_ARG},
     clap::ArgMatches,
     solana_clap_utils::{
         input_parsers::{pubkey_of_signer, value_of},
@@ -26,31 +26,51 @@ use {
     std::{process::exit, rc::Rc, sync::Arc},
 };
 
+type SignersOf = Vec<(Arc<dyn Signer>, Pubkey)>;
+fn signers_of(
+    matches: &ArgMatches<'_>,
+    name: &str,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
+) -> Result<Option<SignersOf>, Box<dyn std::error::Error>> {
+    if let Some(values) = matches.values_of(name) {
+        let mut results = Vec::new();
+        for (i, value) in values.enumerate() {
+            let name = format!("{}-{}", name, i.saturating_add(1));
+            let signer = signer_from_path(matches, value, &name, wallet_manager)?;
+            let signer_pubkey = signer.pubkey();
+            results.push((Arc::from(signer), signer_pubkey));
+        }
+        Ok(Some(results))
+    } else {
+        Ok(None)
+    }
+}
+
 pub(crate) struct MintInfo {
     pub program_id: Pubkey,
     pub address: Pubkey,
     pub decimals: u8,
 }
 
-pub(crate) struct Config<'a> {
-    pub(crate) default_signer: Option<Arc<dyn Signer>>,
-    pub(crate) rpc_client: Arc<RpcClient>,
-    pub(crate) program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>,
-    pub(crate) websocket_url: String,
-    pub(crate) output_format: OutputFormat,
-    pub(crate) fee_payer: Option<Arc<dyn Signer>>,
-    pub(crate) nonce_account: Option<Pubkey>,
-    pub(crate) nonce_authority: Option<Arc<dyn Signer>>,
-    pub(crate) nonce_blockhash: Option<Hash>,
-    pub(crate) sign_only: bool,
-    pub(crate) dump_transaction_message: bool,
-    pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
-    pub(crate) program_id: Pubkey,
-    pub(crate) restrict_to_program_id: bool,
+pub struct Config<'a> {
+    pub default_signer: Option<Arc<dyn Signer>>,
+    pub rpc_client: Arc<RpcClient>,
+    pub program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>>,
+    pub websocket_url: String,
+    pub output_format: OutputFormat,
+    pub fee_payer: Option<Arc<dyn Signer>>,
+    pub nonce_account: Option<Pubkey>,
+    pub nonce_authority: Option<Arc<dyn Signer>>,
+    pub nonce_blockhash: Option<Hash>,
+    pub sign_only: bool,
+    pub dump_transaction_message: bool,
+    pub multisigner_pubkeys: Vec<&'a Pubkey>,
+    pub program_id: Pubkey,
+    pub restrict_to_program_id: bool,
 }
 
 impl<'a> Config<'a> {
-    pub(crate) async fn new(
+    pub async fn new(
         matches: &ArgMatches<'_>,
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
@@ -121,7 +141,7 @@ impl<'a> Config<'a> {
         multisigner_ids.iter().collect::<Vec<_>>()
     }
 
-    pub(crate) async fn new_with_clients_and_ws_url(
+    pub async fn new_with_clients_and_ws_url(
         matches: &ArgMatches<'_>,
         wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
         bulk_signers: &mut Vec<Arc<dyn Signer>>,
@@ -290,7 +310,7 @@ impl<'a> Config<'a> {
     }
 
     // Returns Ok(fee payer), or Err if there is no fee payer configured
-    pub(crate) fn fee_payer(&self) -> Result<Arc<dyn Signer>, Error> {
+    pub fn fee_payer(&self) -> Result<Arc<dyn Signer>, Error> {
         if let Some(fee_payer) = &self.fee_payer {
             Ok(fee_payer.clone())
         } else {
