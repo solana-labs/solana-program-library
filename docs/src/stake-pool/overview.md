@@ -66,7 +66,7 @@ using the `add-validator` instruction. In this command, the stake pool uses
 reserve funds to create a new stake account and delegate it to the desired validator.
 
 At this point, users can also deposit a stake account into the pool.  To do this,
-they must delegate a stake account to the one of the validators in the stake pool.
+they must delegate a stake account to one of the validators in the stake pool.
 If the stake pool has a preferred deposit validator, the user must delegate their
 stake to that validator's vote account.
 
@@ -172,7 +172,7 @@ In this way, a user's funds are never at risk, and always redeemable.
 ### Active stakes
 
 As mentioned earlier, the stake pool works with active stakes to
-maintains fungibility of stake pool tokens. Fully activated stakes
+maintain fungibility of stake pool tokens. Fully activated stakes
 are not equivalent to inactive, activating, or deactivating stakes due to the
 time cost of staking.
 

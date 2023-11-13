@@ -207,7 +207,7 @@ through an automated system to collect information about the stake pool and the
 network, and decide how much stake to allocate to each validator.
 
 The Solana Foundation maintains an open-source bot for its delegation program,
-which can be adapated for your stake pool. The source code is part of the
+which can be adapted for your stake pool. The source code is part of the
 [stake-o-matic GitHub repo](https://github.com/solana-labs/stake-o-matic/tree/master/bot).
 
 Additionally, there is a work-in-progress Python stake pool bot, found at the
