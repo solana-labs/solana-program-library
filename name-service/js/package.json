@@ -50,7 +50,7 @@
     "eslint-plugin-functional": "^6.0.0",
     "eslint-plugin-import": "^2.22.0",
     "mocha": "^10.2.0",
-    "prettier": "^3.0.0",
+    "prettier": "^3.1.0",
     "start-server-and-test": "^2.0.0",
     "ts-node": "^10.9.1",
     "typedoc": "^0.25.0",
