@@ -1,8 +1,8 @@
 #![allow(clippy::arithmetic_side_effects)]
 use {
-    serial_test::serial,
+    libtest_mimic::{Arguments, Trial},
     solana_cli_output::OutputFormat,
-    solana_client::rpc_request::TokenAccountsFilter,
+    solana_client::{nonblocking::rpc_client::RpcClient, rpc_request::TokenAccountsFilter},
     solana_sdk::{
         bpf_loader_upgradeable, feature_set,
         hash::Hash,
@@ -47,6 +47,87 @@ use {
     std::{ffi::OsString, path::PathBuf, str::FromStr, sync::Arc},
     tempfile::NamedTempFile,
 };
+
+macro_rules! async_test {
+    ($test_func:ident, $test_validator:ident, $payer:ident) => {{
+        let local_test_validator = $test_validator.clone();
+        let local_payer = $payer.clone();
+        Trial::test(stringify!($test_func), move || {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(async {
+                    $test_func(local_test_validator.as_ref(), local_payer.as_ref()).await
+                });
+            Ok(())
+        })
+    }};
+}
+
+#[tokio::main]
+async fn main() {
+    let args = Arguments::from_args();
+    let (test_validator, payer) = new_validator_for_test().await;
+    let test_validator = Arc::new(test_validator);
+    let payer = Arc::new(payer);
+
+    // setup the native mint to be used by other tests
+    do_create_native_mint(&test_validator.get_async_rpc_client(), payer.as_ref()).await;
+
+    // maybe come up with a way to do this through a some macro tag on the function?
+    let tests = vec![
+        async_test!(create_token_default, test_validator, payer),
+        async_test!(create_token_interest_bearing, test_validator, payer),
+        async_test!(set_interest_rate, test_validator, payer),
+        async_test!(supply, test_validator, payer),
+        async_test!(create_account_default, test_validator, payer),
+        async_test!(account_info, test_validator, payer),
+        async_test!(balance, test_validator, payer),
+        async_test!(mint, test_validator, payer),
+        async_test!(balance_after_mint, test_validator, payer),
+        async_test!(balance_after_mint_with_owner, test_validator, payer),
+        async_test!(accounts, test_validator, payer),
+        async_test!(accounts_with_owner, test_validator, payer),
+        async_test!(wrap, test_validator, payer),
+        async_test!(unwrap, test_validator, payer),
+        async_test!(transfer, test_validator, payer),
+        async_test!(transfer_fund_recipient, test_validator, payer),
+        async_test!(transfer_non_standard_recipient, test_validator, payer),
+        async_test!(allow_non_system_account_recipient, test_validator, payer),
+        async_test!(close_account, test_validator, payer),
+        async_test!(close_wrapped_sol_account, test_validator, payer),
+        async_test!(disable_mint_authority, test_validator, payer),
+        async_test!(gc, test_validator, payer),
+        async_test!(set_owner, test_validator, payer),
+        async_test!(transfer_with_account_delegate, test_validator, payer),
+        async_test!(burn_with_account_delegate, test_validator, payer),
+        async_test!(close_mint, test_validator, payer),
+        async_test!(burn_with_permanent_delegate, test_validator, payer),
+        async_test!(transfer_with_permanent_delegate, test_validator, payer),
+        async_test!(required_transfer_memos, test_validator, payer),
+        async_test!(cpi_guard, test_validator, payer),
+        async_test!(immutable_accounts, test_validator, payer),
+        async_test!(non_transferable, test_validator, payer),
+        async_test!(default_account_state, test_validator, payer),
+        async_test!(transfer_fee, test_validator, payer),
+        async_test!(confidential_transfer, test_validator, payer),
+        async_test!(multisig_transfer, test_validator, payer),
+        async_test!(offline_multisig_transfer_with_nonce, test_validator, payer),
+        async_test!(
+            withdraw_excess_lamports_from_multisig,
+            test_validator,
+            payer
+        ),
+        async_test!(withdraw_excess_lamports_from_mint, test_validator, payer),
+        async_test!(withdraw_excess_lamports_from_account, test_validator, payer),
+        async_test!(metadata_pointer, test_validator, payer),
+        async_test!(transfer_hook, test_validator, payer),
+        async_test!(metadata, test_validator, payer),
+    ];
+
+    libtest_mimic::run(&args, tests).exit();
+}
 
 fn clone_keypair(keypair: &Keypair) -> Keypair {
     Keypair::from_bytes(&keypair.to_bytes()).unwrap()
@@ -168,22 +249,19 @@ async fn create_nonce(config: &Config<'_>, authority: &Keypair) -> Pubkey {
     nonce.pubkey()
 }
 
-async fn do_create_native_mint(config: &Config<'_>, program_id: &Pubkey, payer: &Keypair) {
-    if program_id == &spl_token_2022::id() {
-        let native_mint = spl_token_2022::native_mint::id();
-        if config.rpc_client.get_account(&native_mint).await.is_err() {
-            let transaction = Transaction::new_signed_with_payer(
-                &[create_native_mint(program_id, &payer.pubkey()).unwrap()],
-                Some(&payer.pubkey()),
-                &[payer],
-                config.rpc_client.get_latest_blockhash().await.unwrap(),
-            );
-            config
-                .rpc_client
-                .send_and_confirm_transaction(&transaction)
-                .await
-                .unwrap();
-        }
+async fn do_create_native_mint(rpc_client: &RpcClient, payer: &Keypair) {
+    let native_mint = spl_token_2022::native_mint::id();
+    if rpc_client.get_account(&native_mint).await.is_err() {
+        let transaction = Transaction::new_signed_with_payer(
+            &[create_native_mint(&spl_token_2022::id(), &payer.pubkey()).unwrap()],
+            Some(&payer.pubkey()),
+            &[payer],
+            rpc_client.get_latest_blockhash().await.unwrap(),
+        );
+        rpc_client
+            .send_and_confirm_transaction(&transaction)
+            .await
+            .unwrap();
     }
 }
 
@@ -348,15 +426,12 @@ async fn exec_test_cmd(config: &Config<'_>, args: &[&str]) -> CommandResult {
     process_command(&sub_command, matches, &config, wallet_manager, bulk_signers).await
 }
 
-#[tokio::test]
-#[serial]
-async fn create_token_default() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn create_token_default(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &["spl-token", CommandName::CreateToken.into()],
         )
         .await;
@@ -367,15 +442,12 @@ async fn create_token_default() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn create_token_interest_bearing() {
-    let (test_validator, payer) = new_validator_for_test().await;
-    let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+async fn create_token_interest_bearing(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
     let rate_bps: i16 = 100;
     let result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -399,14 +471,11 @@ async fn create_token_interest_bearing() {
     );
 }
 
-#[tokio::test]
-#[serial]
-async fn set_interest_rate() {
-    let (test_validator, payer) = new_validator_for_test().await;
-    let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+async fn set_interest_rate(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
     let initial_rate: i16 = 100;
     let new_rate: i16 = 300;
-    let token = create_interest_bearing_token(&config, &payer, initial_rate).await;
+    let token = create_interest_bearing_token(&config, payer, initial_rate).await;
     let account = config.rpc_client.get_account(&token).await.unwrap();
     let mint_account = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
     let extension = mint_account
@@ -417,7 +486,7 @@ async fn set_interest_rate() {
 
     let result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::SetInterestRate.into(),
@@ -435,16 +504,13 @@ async fn set_interest_rate() {
     assert_eq!(i16::from(extension.current_rate), new_rate);
 }
 
-#[tokio::test]
-#[serial]
-async fn supply() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn supply(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &["spl-token", CommandName::Supply.into(), &token.to_string()],
         )
         .await;
@@ -454,16 +520,13 @@ async fn supply() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn create_account_default() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn create_account_default(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::CreateAccount.into(),
@@ -475,17 +538,14 @@ async fn create_account_default() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn account_info() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn account_info(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let _account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let _account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::AccountInfo.into(),
@@ -508,17 +568,14 @@ async fn account_info() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn balance() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn balance(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let _account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let _account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &["spl-token", CommandName::Balance.into(), &token.to_string()],
         )
         .await;
@@ -528,20 +585,17 @@ async fn balance() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn mint() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn mint(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
         let mut amount = 0;
 
         // mint via implicit owner
         process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Mint.into(),
@@ -562,7 +616,7 @@ async fn mint() {
         // mint via explicit recipient
         process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Mint.into(),
@@ -584,7 +638,7 @@ async fn mint() {
         // mint via explicit owner
         process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Mint.into(),
@@ -606,21 +660,18 @@ async fn mint() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn balance_after_mint() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn balance_after_mint(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
         let ui_amount = 100.0;
-        mint_tokens(&config, &payer, token, ui_amount, account)
+        mint_tokens(&config, payer, token, ui_amount, account)
             .await
             .unwrap();
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &["spl-token", CommandName::Balance.into(), &token.to_string()],
         )
         .await;
@@ -630,22 +681,20 @@ async fn balance_after_mint() {
         assert_eq!(value["uiAmountString"], format!("{}", ui_amount));
     }
 }
-#[tokio::test]
-#[serial]
-async fn balance_after_mint_with_owner() {
-    let (test_validator, payer) = new_validator_for_test().await;
+
+async fn balance_after_mint_with_owner(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
         let ui_amount = 100.0;
-        mint_tokens(&config, &payer, token, ui_amount, account)
+        mint_tokens(&config, payer, token, ui_amount, account)
             .await
             .unwrap();
-        let config = test_config_without_default_signer(&test_validator, program_id);
+        let config = test_config_without_default_signer(test_validator, program_id);
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Balance.into(),
@@ -662,20 +711,17 @@ async fn balance_after_mint_with_owner() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn accounts() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn accounts(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token1 = create_token(&config, &payer).await;
-        let _account1 = create_associated_account(&config, &payer, &token1, &payer.pubkey()).await;
-        let token2 = create_token(&config, &payer).await;
-        let _account2 = create_associated_account(&config, &payer, &token2, &payer.pubkey()).await;
-        let token3 = create_token(&config, &payer).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token1 = create_token(&config, payer).await;
+        let _account1 = create_associated_account(&config, payer, &token1, &payer.pubkey()).await;
+        let token2 = create_token(&config, payer).await;
+        let _account2 = create_associated_account(&config, payer, &token2, &payer.pubkey()).await;
+        let token3 = create_token(&config, payer).await;
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &["spl-token", CommandName::Accounts.into()],
         )
         .await
@@ -686,21 +732,18 @@ async fn accounts() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn accounts_with_owner() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn accounts_with_owner(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token1 = create_token(&config, &payer).await;
-        let _account1 = create_associated_account(&config, &payer, &token1, &payer.pubkey()).await;
-        let token2 = create_token(&config, &payer).await;
-        let _account2 = create_associated_account(&config, &payer, &token2, &payer.pubkey()).await;
-        let token3 = create_token(&config, &payer).await;
-        let config = test_config_without_default_signer(&test_validator, program_id);
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token1 = create_token(&config, payer).await;
+        let _account1 = create_associated_account(&config, payer, &token1, &payer.pubkey()).await;
+        let token2 = create_token(&config, payer).await;
+        let _account2 = create_associated_account(&config, payer, &token2, &payer.pubkey()).await;
+        let token3 = create_token(&config, payer).await;
+        let config = test_config_without_default_signer(test_validator, program_id);
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Accounts.into(),
@@ -716,22 +759,18 @@ async fn accounts_with_owner() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn wrap() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn wrap(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
         let native_mint = *Token::new_native(
             config.program_client.clone(),
             program_id,
             config.fee_payer().unwrap().clone(),
         )
         .get_address();
-        do_create_native_mint(&config, program_id, &payer).await;
         let _result = process_test_command(
             &config,
-            &payer,
+            payer,
             &["spl-token", CommandName::Wrap.into(), "0.5"],
         )
         .await
@@ -749,19 +788,15 @@ async fn wrap() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn unwrap() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn unwrap(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
         let native_mint = *Token::new_native(
             config.program_client.clone(),
             program_id,
             config.fee_payer().unwrap().clone(),
         )
         .get_address();
-        do_create_native_mint(&config, program_id, &payer).await;
         let account = get_associated_token_address_with_program_id(
             &payer.pubkey(),
             &native_mint,
@@ -769,14 +804,14 @@ async fn unwrap() {
         );
         let _result = process_test_command(
             &config,
-            &payer,
+            payer,
             &["spl-token", CommandName::Wrap.into(), "0.5"],
         )
         .await
         .unwrap();
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Unwrap.into(),
@@ -789,22 +824,19 @@ async fn unwrap() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn transfer() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn transfer(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
-        let destination = create_auxiliary_account(&config, &payer, token).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
+        let destination = create_auxiliary_account(&config, payer, token).await;
         let ui_amount = 100.0;
-        mint_tokens(&config, &payer, token, ui_amount, source)
+        mint_tokens(&config, payer, token, ui_amount, source)
             .await
             .unwrap();
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Transfer.into(),
@@ -827,22 +859,19 @@ async fn transfer() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn transfer_fund_recipient() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn transfer_fund_recipient(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
         let recipient = Keypair::new().pubkey().to_string();
         let ui_amount = 100.0;
-        mint_tokens(&config, &payer, token, ui_amount, source)
+        mint_tokens(&config, payer, token, ui_amount, source)
             .await
             .unwrap();
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Transfer.into(),
@@ -865,26 +894,23 @@ async fn transfer_fund_recipient() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn transfer_non_standard_recipient() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn transfer_non_standard_recipient(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
         for other_program_id in VALID_TOKEN_PROGRAM_IDS
             .iter()
             .filter(|id| *id != program_id)
         {
             let mut config =
-                test_config_with_default_signer(&test_validator, &payer, other_program_id);
-            let wrong_program_token = create_token(&config, &payer).await;
+                test_config_with_default_signer(test_validator, payer, other_program_id);
+            let wrong_program_token = create_token(&config, payer).await;
             let wrong_program_account =
-                create_associated_account(&config, &payer, &wrong_program_token, &payer.pubkey())
+                create_associated_account(&config, payer, &wrong_program_token, &payer.pubkey())
                     .await;
             config.program_id = *program_id;
             let config = config;
 
-            let token = create_token(&config, &payer).await;
-            let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+            let token = create_token(&config, payer).await;
+            let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
             let recipient = Keypair::new().pubkey();
             let recipient_token_account = get_associated_token_address_with_program_id(
                 &recipient,
@@ -897,14 +923,14 @@ async fn transfer_non_standard_recipient() {
                 &config.program_id,
             );
             let amount = 100;
-            mint_tokens(&config, &payer, token, amount as f64, source)
+            mint_tokens(&config, payer, token, amount as f64, source)
                 .await
                 .unwrap();
 
             // transfer fails to unfunded recipient without flag
             process_test_command(
                 &config,
-                &payer,
+                payer,
                 &[
                     "spl-token",
                     CommandName::Transfer.into(),
@@ -920,7 +946,7 @@ async fn transfer_non_standard_recipient() {
             // with unfunded flag, transfer goes through
             process_test_command(
                 &config,
-                &payer,
+                payer,
                 &[
                     "spl-token",
                     CommandName::Transfer.into(),
@@ -947,7 +973,7 @@ async fn transfer_non_standard_recipient() {
             // transfer fails to non-system recipient without flag
             process_test_command(
                 &config,
-                &payer,
+                payer,
                 &[
                     "spl-token",
                     CommandName::Transfer.into(),
@@ -963,7 +989,7 @@ async fn transfer_non_standard_recipient() {
             // with non-system flag, transfer goes through
             process_test_command(
                 &config,
-                &payer,
+                payer,
                 &[
                     "spl-token",
                     CommandName::Transfer.into(),
@@ -990,7 +1016,7 @@ async fn transfer_non_standard_recipient() {
             // transfer to same-program non-account fails
             process_test_command(
                 &config,
-                &payer,
+                payer,
                 &[
                     "spl-token",
                     CommandName::Transfer.into(),
@@ -1008,7 +1034,7 @@ async fn transfer_non_standard_recipient() {
             // transfer to other-program account fails
             process_test_command(
                 &config,
-                &payer,
+                payer,
                 &[
                     "spl-token",
                     CommandName::Transfer.into(),
@@ -1026,22 +1052,19 @@ async fn transfer_non_standard_recipient() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn allow_non_system_account_recipient() {
-    let (test_validator, payer) = new_validator_for_test().await;
-    let config = test_config_with_default_signer(&test_validator, &payer, &spl_token::id());
+async fn allow_non_system_account_recipient(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token::id());
 
-    let token = create_token(&config, &payer).await;
-    let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+    let token = create_token(&config, payer).await;
+    let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
     let recipient = Keypair::new().pubkey().to_string();
     let ui_amount = 100.0;
-    mint_tokens(&config, &payer, token, ui_amount, source)
+    mint_tokens(&config, payer, token, ui_amount, source)
         .await
         .unwrap();
     let result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Transfer.into(),
@@ -1066,32 +1089,28 @@ async fn allow_non_system_account_recipient() {
     assert_eq!(ui_account.token_amount.amount, format!("{amount}"));
 }
 
-#[tokio::test]
-#[serial]
-async fn close_account() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn close_account(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
 
         let native_mint = Token::new_native(
             config.program_client.clone(),
             program_id,
             config.fee_payer().unwrap().clone(),
         );
-        do_create_native_mint(&config, program_id, &payer).await;
         native_mint
             .get_or_create_associated_account_info(&payer.pubkey())
             .await
             .unwrap();
 
-        let token = create_token(&config, &payer).await;
+        let token = create_token(&config, payer).await;
 
         let system_recipient = Keypair::new().pubkey();
         let wsol_recipient = native_mint.get_associated_token_address(&payer.pubkey());
 
         let token_rent_amount = config
             .rpc_client
-            .get_account(&create_auxiliary_account(&config, &payer, token).await)
+            .get_account(&create_auxiliary_account(&config, payer, token).await)
             .await
             .unwrap()
             .lamports;
@@ -1104,11 +1123,11 @@ async fn close_account() {
                 .map(|account| account.lamports)
                 .unwrap_or(0);
 
-            let source = create_auxiliary_account(&config, &payer, token).await;
+            let source = create_auxiliary_account(&config, payer, token).await;
 
             process_test_command(
                 &config,
-                &payer,
+                payer,
                 &[
                     "spl-token",
                     CommandName::Close.into(),
@@ -1133,12 +1152,9 @@ async fn close_account() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn close_wrapped_sol_account() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn close_wrapped_sol_account(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
 
         let native_mint = *Token::new_native(
             config.program_client.clone(),
@@ -1146,12 +1162,11 @@ async fn close_wrapped_sol_account() {
             config.fee_payer().unwrap().clone(),
         )
         .get_address();
-        let token = create_token(&config, &payer).await;
-        let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
-        do_create_native_mint(&config, program_id, &payer).await;
+        let token = create_token(&config, payer).await;
+        let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
         let _result = process_test_command(
             &config,
-            &payer,
+            payer,
             &["spl-token", CommandName::Wrap.into(), "10.0"],
         )
         .await
@@ -1161,7 +1176,7 @@ async fn close_wrapped_sol_account() {
             get_associated_token_address_with_program_id(&payer.pubkey(), &native_mint, program_id);
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Close.into(),
@@ -1184,16 +1199,13 @@ async fn close_wrapped_sol_account() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn disable_mint_authority() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn disable_mint_authority(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Authorize.into(),
@@ -1211,20 +1223,17 @@ async fn disable_mint_authority() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn gc() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn gc(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let mut config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let _account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
-        let _aux1 = create_auxiliary_account(&config, &payer, token).await;
-        let _aux2 = create_auxiliary_account(&config, &payer, token).await;
-        let _aux3 = create_auxiliary_account(&config, &payer, token).await;
+        let mut config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let _account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
+        let _aux1 = create_auxiliary_account(&config, payer, token).await;
+        let _aux2 = create_auxiliary_account(&config, payer, token).await;
+        let _aux3 = create_auxiliary_account(&config, payer, token).await;
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Accounts.into(),
@@ -1236,13 +1245,13 @@ async fn gc() {
         let value: serde_json::Value = serde_json::from_str(&result).unwrap();
         assert_eq!(value["accounts"].as_array().unwrap().len(), 4);
         config.output_format = OutputFormat::Display; // fixup eventually?
-        let _result = process_test_command(&config, &payer, &["spl-token", CommandName::Gc.into()])
+        let _result = process_test_command(&config, payer, &["spl-token", CommandName::Gc.into()])
             .await
             .unwrap();
         config.output_format = OutputFormat::JsonCompact;
         let result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Accounts.into(),
@@ -1257,13 +1266,13 @@ async fn gc() {
         config.output_format = OutputFormat::Display;
 
         // test implicit transfer
-        let token = create_token(&config, &payer).await;
-        let ata = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
-        let aux = create_auxiliary_account(&config, &payer, token).await;
-        mint_tokens(&config, &payer, token, 1.0, ata).await.unwrap();
-        mint_tokens(&config, &payer, token, 1.0, aux).await.unwrap();
+        let token = create_token(&config, payer).await;
+        let ata = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
+        let aux = create_auxiliary_account(&config, payer, token).await;
+        mint_tokens(&config, payer, token, 1.0, ata).await.unwrap();
+        mint_tokens(&config, payer, token, 1.0, aux).await.unwrap();
 
-        process_test_command(&config, &payer, &["spl-token", CommandName::Gc.into()])
+        process_test_command(&config, payer, &["spl-token", CommandName::Gc.into()])
             .await
             .unwrap();
 
@@ -1280,12 +1289,12 @@ async fn gc() {
         config.rpc_client.get_account(&aux).await.unwrap_err();
 
         // test ata closure
-        let token = create_token(&config, &payer).await;
-        let ata = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+        let token = create_token(&config, payer).await;
+        let ata = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
 
         process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Gc.into(),
@@ -1299,14 +1308,14 @@ async fn gc() {
         config.rpc_client.get_account(&ata).await.unwrap_err();
 
         // test a tricky corner case of both
-        let token = create_token(&config, &payer).await;
-        let ata = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
-        let aux = create_auxiliary_account(&config, &payer, token).await;
-        mint_tokens(&config, &payer, token, 1.0, aux).await.unwrap();
+        let token = create_token(&config, payer).await;
+        let ata = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
+        let aux = create_auxiliary_account(&config, payer, token).await;
+        mint_tokens(&config, payer, token, 1.0, aux).await.unwrap();
 
         process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Gc.into(),
@@ -1329,15 +1338,15 @@ async fn gc() {
         config.rpc_client.get_account(&aux).await.unwrap_err();
 
         // test that balance moves off an uncloseable account
-        let token = create_token(&config, &payer).await;
-        let ata = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
-        let aux = create_auxiliary_account(&config, &payer, token).await;
+        let token = create_token(&config, payer).await;
+        let ata = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
+        let aux = create_auxiliary_account(&config, payer, token).await;
         let close_authority = Keypair::new().pubkey();
-        mint_tokens(&config, &payer, token, 1.0, aux).await.unwrap();
+        mint_tokens(&config, payer, token, 1.0, aux).await.unwrap();
 
         process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Authorize.into(),
@@ -1349,7 +1358,7 @@ async fn gc() {
         .await
         .unwrap();
 
-        process_test_command(&config, &payer, &["spl-token", CommandName::Gc.into()])
+        process_test_command(&config, payer, &["spl-token", CommandName::Gc.into()])
             .await
             .unwrap();
 
@@ -1366,18 +1375,15 @@ async fn gc() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn set_owner() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn set_owner(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let aux = create_auxiliary_account(&config, &payer, token).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let aux = create_auxiliary_account(&config, payer, token).await;
         let aux_string = aux.to_string();
         let _result = process_test_command(
             &config,
-            &payer,
+            payer,
             &[
                 "spl-token",
                 CommandName::Authorize.into(),
@@ -1395,25 +1401,22 @@ async fn set_owner() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn transfer_with_account_delegate() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn transfer_with_account_delegate(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
 
-        let token = create_token(&config, &payer).await;
-        let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
-        let destination = create_auxiliary_account(&config, &payer, token).await;
+        let token = create_token(&config, payer).await;
+        let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
+        let destination = create_auxiliary_account(&config, payer, token).await;
         let delegate = Keypair::new();
 
         let delegate_keypair_file = NamedTempFile::new().unwrap();
         write_keypair_file(&delegate, &delegate_keypair_file).unwrap();
         let fee_payer_keypair_file = NamedTempFile::new().unwrap();
-        write_keypair_file(&payer, &fee_payer_keypair_file).unwrap();
+        write_keypair_file(payer, &fee_payer_keypair_file).unwrap();
 
         let ui_amount = 100.0;
-        mint_tokens(&config, &payer, token, ui_amount, source)
+        mint_tokens(&config, payer, token, ui_amount, source)
             .await
             .unwrap();
 
@@ -1509,24 +1512,21 @@ async fn transfer_with_account_delegate() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn burn_with_account_delegate() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn burn_with_account_delegate(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
 
-        let token = create_token(&config, &payer).await;
-        let source = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+        let token = create_token(&config, payer).await;
+        let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
         let delegate = Keypair::new();
 
         let delegate_keypair_file = NamedTempFile::new().unwrap();
         write_keypair_file(&delegate, &delegate_keypair_file).unwrap();
         let fee_payer_keypair_file = NamedTempFile::new().unwrap();
-        write_keypair_file(&payer, &fee_payer_keypair_file).unwrap();
+        write_keypair_file(payer, &fee_payer_keypair_file).unwrap();
 
         let ui_amount = 100.0;
-        mint_tokens(&config, &payer, token, ui_amount, source)
+        mint_tokens(&config, payer, token, ui_amount, source)
             .await
             .unwrap();
 
@@ -1604,11 +1604,8 @@ async fn burn_with_account_delegate() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn close_mint() {
-    let (test_validator, payer) = new_validator_for_test().await;
-    let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+async fn close_mint(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
 
     let token = Keypair::new();
     let token_pubkey = token.pubkey();
@@ -1616,7 +1613,7 @@ async fn close_mint() {
     write_keypair_file(&token, &token_keypair_file).unwrap();
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -1633,7 +1630,7 @@ async fn close_mint() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CloseMint.into(),
@@ -1647,11 +1644,8 @@ async fn close_mint() {
     assert!(account.is_err());
 }
 
-#[tokio::test]
-#[serial]
-async fn burn_with_permanent_delegate() {
-    let (test_validator, payer) = new_validator_for_test().await;
-    let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+async fn burn_with_permanent_delegate(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
 
     let token = Keypair::new();
     let token_keypair_file = NamedTempFile::new().unwrap();
@@ -1659,7 +1653,7 @@ async fn burn_with_permanent_delegate() {
     let token = token.pubkey();
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -1671,14 +1665,14 @@ async fn burn_with_permanent_delegate() {
     .unwrap();
 
     let permanent_delegate_keypair_file = NamedTempFile::new().unwrap();
-    write_keypair_file(&payer, &permanent_delegate_keypair_file).unwrap();
+    write_keypair_file(payer, &permanent_delegate_keypair_file).unwrap();
 
     let unknown_owner = Keypair::new();
     let source =
         create_associated_account(&config, &unknown_owner, &token, &unknown_owner.pubkey()).await;
     let ui_amount = 100.0;
 
-    mint_tokens(&config, &payer, token, ui_amount, source)
+    mint_tokens(&config, payer, token, ui_amount, source)
         .await
         .unwrap();
 
@@ -1717,11 +1711,8 @@ async fn burn_with_permanent_delegate() {
     assert_eq!(ui_account.token_amount.amount, format!("{amount}"));
 }
 
-#[tokio::test]
-#[serial]
-async fn transfer_with_permanent_delegate() {
-    let (test_validator, payer) = new_validator_for_test().await;
-    let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+async fn transfer_with_permanent_delegate(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
 
     let token = Keypair::new();
     let token_keypair_file = NamedTempFile::new().unwrap();
@@ -1729,7 +1720,7 @@ async fn transfer_with_permanent_delegate() {
     let token = token.pubkey();
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -1743,13 +1734,13 @@ async fn transfer_with_permanent_delegate() {
     let unknown_owner = Keypair::new();
     let source =
         create_associated_account(&config, &unknown_owner, &token, &unknown_owner.pubkey()).await;
-    let destination = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+    let destination = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
 
     let permanent_delegate_keypair_file = NamedTempFile::new().unwrap();
-    write_keypair_file(&payer, &permanent_delegate_keypair_file).unwrap();
+    write_keypair_file(payer, &permanent_delegate_keypair_file).unwrap();
 
     let ui_amount = 100.0;
-    mint_tokens(&config, &payer, token, ui_amount, source)
+    mint_tokens(&config, payer, token, ui_amount, source)
         .await
         .unwrap();
 
@@ -1810,23 +1801,20 @@ async fn transfer_with_permanent_delegate() {
     assert_eq!(ui_account.token_amount.amount, format!("{amount}"));
 }
 
-#[tokio::test]
-#[serial]
-async fn required_transfer_memos() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn required_transfer_memos(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = spl_token_2022::id();
-    let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
-    let token = create_token(&config, &payer).await;
-    let token_account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
-    let source_account = create_auxiliary_account(&config, &payer, token).await;
-    mint_tokens(&config, &payer, token, 100.0, source_account)
+    let config = test_config_with_default_signer(test_validator, payer, &program_id);
+    let token = create_token(&config, payer).await;
+    let token_account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
+    let source_account = create_auxiliary_account(&config, payer, token).await;
+    mint_tokens(&config, payer, token, 100.0, source_account)
         .await
         .unwrap();
 
     // enable works
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::EnableRequiredTransferMemos.into(),
@@ -1851,7 +1839,7 @@ async fn required_transfer_memos() {
     // transfer requires a memo
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Transfer.into(),
@@ -1866,7 +1854,7 @@ async fn required_transfer_memos() {
     .unwrap_err();
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Transfer.into(),
@@ -1892,7 +1880,7 @@ async fn required_transfer_memos() {
     // disable works
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::DisableRequiredTransferMemos.into(),
@@ -1915,19 +1903,16 @@ async fn required_transfer_memos() {
     assert!(!enabled);
 }
 
-#[tokio::test]
-#[serial]
-async fn cpi_guard() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn cpi_guard(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = spl_token_2022::id();
-    let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
-    let token = create_token(&config, &payer).await;
-    let token_account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+    let config = test_config_with_default_signer(test_validator, payer, &program_id);
+    let token = create_token(&config, payer).await;
+    let token_account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
 
     // enable works
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::EnableCpiGuard.into(),
@@ -1952,7 +1937,7 @@ async fn cpi_guard() {
     // disable works
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::DisableCpiGuard.into(),
@@ -1975,13 +1960,10 @@ async fn cpi_guard() {
     assert!(!enabled);
 }
 
-#[tokio::test]
-#[serial]
-async fn immutable_accounts() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn immutable_accounts(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = spl_token_2022::id();
-    let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
-    let token = create_token(&config, &payer).await;
+    let config = test_config_with_default_signer(test_validator, payer, &program_id);
+    let token = create_token(&config, payer).await;
     let new_owner = Keypair::new().pubkey();
     let native_mint = *Token::new_native(
         config.program_client.clone(),
@@ -1989,13 +1971,12 @@ async fn immutable_accounts() {
         config.fee_payer().unwrap().clone(),
     )
     .get_address();
-    do_create_native_mint(&config, &program_id, &payer).await;
 
     // cannot reassign an ata
-    let account = create_associated_account(&config, &payer, &token, &payer.pubkey()).await;
+    let account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
     let result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Authorize.into(),
@@ -2015,7 +1996,7 @@ async fn immutable_accounts() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateAccount.into(),
@@ -2029,7 +2010,7 @@ async fn immutable_accounts() {
 
     let result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Authorize.into(),
@@ -2044,7 +2025,7 @@ async fn immutable_accounts() {
     // immutable works for wrap
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Wrap.into(),
@@ -2064,7 +2045,7 @@ async fn immutable_accounts() {
 
     let result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Authorize.into(),
@@ -2077,11 +2058,8 @@ async fn immutable_accounts() {
     result.unwrap_err();
 }
 
-#[tokio::test]
-#[serial]
-async fn non_transferable() {
-    let (test_validator, payer) = new_validator_for_test().await;
-    let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+async fn non_transferable(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
 
     let token = Keypair::new();
     let token_keypair_file = NamedTempFile::new().unwrap();
@@ -2089,7 +2067,7 @@ async fn non_transferable() {
     let token_pubkey = token.pubkey();
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -2105,16 +2083,16 @@ async fn non_transferable() {
     assert!(test_mint.get_extension::<NonTransferable>().is_ok());
 
     let associated_account =
-        create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
-    let aux_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
-    mint_tokens(&config, &payer, token_pubkey, 100.0, associated_account)
+        create_associated_account(&config, payer, &token_pubkey, &payer.pubkey()).await;
+    let aux_account = create_auxiliary_account(&config, payer, token_pubkey).await;
+    mint_tokens(&config, payer, token_pubkey, 100.0, associated_account)
         .await
         .unwrap();
 
     // transfer not allowed
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Transfer.into(),
@@ -2129,12 +2107,9 @@ async fn non_transferable() {
     .unwrap_err();
 }
 
-#[tokio::test]
-#[serial]
-async fn default_account_state() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn default_account_state(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = spl_token_2022::id();
-    let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+    let config = test_config_with_default_signer(test_validator, payer, &program_id);
 
     let token = Keypair::new();
     let token_keypair_file = NamedTempFile::new().unwrap();
@@ -2142,7 +2117,7 @@ async fn default_account_state() {
     let token_pubkey = token.pubkey();
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -2161,7 +2136,7 @@ async fn default_account_state() {
     assert_eq!(extension.state, u8::from(AccountState::Frozen));
 
     let frozen_account =
-        create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
+        create_associated_account(&config, payer, &token_pubkey, &payer.pubkey()).await;
     let token_account = config
         .rpc_client
         .get_account(&frozen_account)
@@ -2172,7 +2147,7 @@ async fn default_account_state() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::UpdateDefaultAccountState.into(),
@@ -2182,7 +2157,7 @@ async fn default_account_state() {
     )
     .await
     .unwrap();
-    let unfrozen_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
+    let unfrozen_account = create_auxiliary_account(&config, payer, token_pubkey).await;
     let token_account = config
         .rpc_client
         .get_account(&unfrozen_account)
@@ -2192,11 +2167,8 @@ async fn default_account_state() {
     assert_eq!(account.base.state, AccountState::Initialized);
 }
 
-#[tokio::test]
-#[serial]
-async fn transfer_fee() {
-    let (test_validator, payer) = new_validator_for_test().await;
-    let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+async fn transfer_fee(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
 
     let transfer_fee_basis_points = 100;
     let maximum_fee = 10_000_000_000;
@@ -2207,7 +2179,7 @@ async fn transfer_fee() {
     let token_pubkey = token.pubkey();
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -2243,16 +2215,16 @@ async fn transfer_fee() {
     let total_amount = 1000.0;
     let transfer_amount = 100.0;
     let token_account =
-        create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
-    let source_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
-    mint_tokens(&config, &payer, token_pubkey, total_amount, source_account)
+        create_associated_account(&config, payer, &token_pubkey, &payer.pubkey()).await;
+    let source_account = create_auxiliary_account(&config, payer, token_pubkey).await;
+    mint_tokens(&config, payer, token_pubkey, total_amount, source_account)
         .await
         .unwrap();
 
     // withdraw from account directly
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Transfer.into(),
@@ -2277,7 +2249,7 @@ async fn transfer_fee() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::WithdrawWithheldTokens.into(),
@@ -2297,7 +2269,7 @@ async fn transfer_fee() {
     // gather fees
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Transfer.into(),
@@ -2319,7 +2291,7 @@ async fn transfer_fee() {
     let burn_amount = spl_token::amount_to_ui_amount(account_state.base.amount, TEST_DECIMALS);
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Burn.into(),
@@ -2339,7 +2311,7 @@ async fn transfer_fee() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Close.into(),
@@ -2361,7 +2333,7 @@ async fn transfer_fee() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::WithdrawWithheldTokens.into(),
@@ -2382,7 +2354,7 @@ async fn transfer_fee() {
     let new_maximum_fee = 5_000_000.0;
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::SetTransferFee.into(),
@@ -2410,7 +2382,7 @@ async fn transfer_fee() {
     // disable transfer fee authority
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Authorize.into(),
@@ -2434,7 +2406,7 @@ async fn transfer_fee() {
     // disable withdraw withheld authority
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Authorize.into(),
@@ -2456,13 +2428,10 @@ async fn transfer_fee() {
     );
 }
 
-#[tokio::test]
-#[serial]
-async fn confidential_transfer() {
+async fn confidential_transfer(test_validator: &TestValidator, payer: &Keypair) {
     use spl_token_2022::solana_zk_token_sdk::encryption::elgamal::ElGamalKeypair;
 
-    let (test_validator, payer) = new_validator_for_test().await;
-    let config = test_config_with_default_signer(&test_validator, &payer, &spl_token_2022::id());
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
 
     // create token with confidential transfers enabled
     let auto_approve = false;
@@ -2474,7 +2443,7 @@ async fn confidential_transfer() {
     let token_pubkey = token.pubkey();
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -2512,7 +2481,7 @@ async fn confidential_transfer() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::UpdateConfidentialTransferSettings.into(),
@@ -2543,11 +2512,11 @@ async fn confidential_transfer() {
 
     // create a confidential transfer account
     let token_account =
-        create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
+        create_associated_account(&config, payer, &token_pubkey, &payer.pubkey()).await;
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::ConfigureConfidentialTransferAccount.into(),
@@ -2569,7 +2538,7 @@ async fn confidential_transfer() {
     // disable and enable confidential transfers for an account
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::DisableConfidentialCredits.into(),
@@ -2588,7 +2557,7 @@ async fn confidential_transfer() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::EnableConfidentialCredits.into(),
@@ -2608,7 +2577,7 @@ async fn confidential_transfer() {
     // disable and eanble non-confidential transfers for an account
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::DisableNonConfidentialCredits.into(),
@@ -2627,7 +2596,7 @@ async fn confidential_transfer() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::EnableNonConfidentialCredits.into(),
@@ -2646,13 +2615,13 @@ async fn confidential_transfer() {
 
     // deposit confidential tokens
     let deposit_amount = 100.0;
-    mint_tokens(&config, &payer, token_pubkey, deposit_amount, token_account)
+    mint_tokens(&config, payer, token_pubkey, deposit_amount, token_account)
         .await
         .unwrap();
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::DepositConfidentialTokens.into(),
@@ -2666,7 +2635,7 @@ async fn confidential_transfer() {
     // apply pending balance
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::ApplyPendingBalance.into(),
@@ -2677,10 +2646,10 @@ async fn confidential_transfer() {
     .unwrap();
 
     // confidential transfer
-    let destination_account = create_auxiliary_account(&config, &payer, token_pubkey).await;
+    let destination_account = create_auxiliary_account(&config, payer, token_pubkey).await;
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::ConfigureConfidentialTransferAccount.into(),
@@ -2694,7 +2663,7 @@ async fn confidential_transfer() {
     let transfer_amount = 100.0;
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Transfer.into(),
@@ -2710,7 +2679,7 @@ async fn confidential_transfer() {
     // withdraw confidential tokens
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::ApplyPendingBalance.into(),
@@ -2725,7 +2694,7 @@ async fn confidential_transfer() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::WithdrawConfidentialTokens.into(),
@@ -2741,7 +2710,7 @@ async fn confidential_transfer() {
     // disable confidential transfers for mint
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Authorize.into(),
@@ -2754,15 +2723,12 @@ async fn confidential_transfer() {
     .unwrap();
 }
 
-#[tokio::test]
-#[serial]
-async fn multisig_transfer() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn multisig_transfer(test_validator: &TestValidator, payer: &Keypair) {
     let m = 3;
     let n = 5u8;
     // need to add "payer" to make the config provide the right signer
     let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) =
-        std::iter::once(clone_keypair(&payer))
+        std::iter::once(clone_keypair(payer))
             .chain(std::iter::repeat_with(Keypair::new).take((n - 2) as usize))
             .map(|s| {
                 let keypair_file = NamedTempFile::new().unwrap();
@@ -2771,8 +2737,8 @@ async fn multisig_transfer() {
             })
             .unzip();
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
+        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
         let multisig = Arc::new(Keypair::new());
         let multisig_pubkey = multisig.pubkey();
 
@@ -2792,7 +2758,7 @@ async fn multisig_transfer() {
             .collect::<Vec<_>>();
         process_test_command(
             &config,
-            &payer,
+            payer,
             [
                 "spl-token",
                 CommandName::CreateMultisig.into(),
@@ -2817,10 +2783,10 @@ async fn multisig_transfer() {
         assert_eq!(multisig.m, m);
         assert_eq!(multisig.n, n);
 
-        let source = create_associated_account(&config, &payer, &token, &multisig_pubkey).await;
-        let destination = create_auxiliary_account(&config, &payer, token).await;
+        let source = create_associated_account(&config, payer, &token, &multisig_pubkey).await;
+        let destination = create_auxiliary_account(&config, payer, token).await;
         let ui_amount = 100.0;
-        mint_tokens(&config, &payer, token, ui_amount, source)
+        mint_tokens(&config, payer, token, ui_amount, source)
             .await
             .unwrap();
 
@@ -2864,10 +2830,7 @@ async fn multisig_transfer() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn offline_multisig_transfer_with_nonce() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, payer: &Keypair) {
     let m = 2;
     let n = 3u8;
 
@@ -2880,9 +2843,9 @@ async fn offline_multisig_transfer_with_nonce() {
         })
         .unzip();
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let mut config = test_config_with_default_signer(&test_validator, &payer, program_id);
-        let token = create_token(&config, &payer).await;
-        let nonce = create_nonce(&config, &payer).await;
+        let mut config = test_config_with_default_signer(test_validator, payer, program_id);
+        let token = create_token(&config, payer).await;
+        let nonce = create_nonce(&config, payer).await;
 
         let nonce_account = config.rpc_client.get_account(&nonce).await.unwrap();
         let start_hash_index = 4 + 4 + 32;
@@ -2899,7 +2862,7 @@ async fn offline_multisig_transfer_with_nonce() {
             .collect::<Vec<_>>();
         process_test_command(
             &config,
-            &payer,
+            payer,
             [
                 "spl-token",
                 CommandName::CreateMultisig.into(),
@@ -2915,10 +2878,10 @@ async fn offline_multisig_transfer_with_nonce() {
         .await
         .unwrap();
 
-        let source = create_associated_account(&config, &payer, &token, &multisig_pubkey).await;
-        let destination = create_auxiliary_account(&config, &payer, token).await;
+        let source = create_associated_account(&config, payer, &token, &multisig_pubkey).await;
+        let destination = create_auxiliary_account(&config, payer, token).await;
         let ui_amount = 100.0;
-        mint_tokens(&config, &payer, token, ui_amount, source)
+        mint_tokens(&config, payer, token, ui_amount, source)
             .await
             .unwrap();
 
@@ -2977,15 +2940,12 @@ async fn offline_multisig_transfer_with_nonce() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn withdraw_excess_lamports_from_multisig() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn withdraw_excess_lamports_from_multisig(test_validator: &TestValidator, payer: &Keypair) {
     let m = 3;
     let n = 5u8;
     // need to add "payer" to make the config provide the right signer
     let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) =
-        std::iter::once(clone_keypair(&payer))
+        std::iter::once(clone_keypair(payer))
             .chain(std::iter::repeat_with(Keypair::new).take((n - 2) as usize))
             .map(|s| {
                 let keypair_file = NamedTempFile::new().unwrap();
@@ -2995,13 +2955,13 @@ async fn withdraw_excess_lamports_from_multisig() {
             .unzip();
 
     let fee_payer_keypair_file = NamedTempFile::new().unwrap();
-    write_keypair_file(&payer, &fee_payer_keypair_file).unwrap();
+    write_keypair_file(payer, &fee_payer_keypair_file).unwrap();
 
     let owner_keypair_file = NamedTempFile::new().unwrap();
-    write_keypair_file(&payer, &owner_keypair_file).unwrap();
+    write_keypair_file(payer, &owner_keypair_file).unwrap();
 
     let program_id = &spl_token_2022::id();
-    let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+    let config = test_config_with_default_signer(test_validator, payer, program_id);
 
     let multisig = Arc::new(Keypair::new());
     let multisig_pubkey = multisig.pubkey();
@@ -3022,7 +2982,7 @@ async fn withdraw_excess_lamports_from_multisig() {
         .collect::<Vec<_>>();
     process_test_command(
         &config,
-        &payer,
+        payer,
         [
             "spl-token",
             CommandName::CreateMultisig.into(),
@@ -3099,14 +3059,11 @@ async fn withdraw_excess_lamports_from_multisig() {
     );
 }
 
-#[tokio::test]
-#[serial]
-async fn withdraw_excess_lamports_from_mint() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn withdraw_excess_lamports_from_mint(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = &spl_token_2022::id();
-    let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+    let config = test_config_with_default_signer(test_validator, payer, program_id);
     let owner_keypair_file = NamedTempFile::new().unwrap();
-    write_keypair_file(&payer, &owner_keypair_file).unwrap();
+    write_keypair_file(payer, &owner_keypair_file).unwrap();
 
     let receiver = Keypair::new();
 
@@ -3117,7 +3074,7 @@ async fn withdraw_excess_lamports_from_mint() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -3171,14 +3128,11 @@ async fn withdraw_excess_lamports_from_mint() {
     );
 }
 
-#[tokio::test]
-#[serial]
-async fn withdraw_excess_lamports_from_account() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn withdraw_excess_lamports_from_account(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = &spl_token_2022::id();
-    let config = test_config_with_default_signer(&test_validator, &payer, program_id);
+    let config = test_config_with_default_signer(test_validator, payer, program_id);
     let owner_keypair_file = NamedTempFile::new().unwrap();
-    write_keypair_file(&payer, &owner_keypair_file).unwrap();
+    write_keypair_file(payer, &owner_keypair_file).unwrap();
 
     let receiver = Keypair::new();
 
@@ -3189,7 +3143,7 @@ async fn withdraw_excess_lamports_from_account() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -3203,7 +3157,7 @@ async fn withdraw_excess_lamports_from_account() {
 
     let excess_lamports = 4000 * 1_000_000_000;
     let token_account =
-        create_associated_account(&config, &payer, &token_pubkey, &payer.pubkey()).await;
+        create_associated_account(&config, payer, &token_pubkey, &payer.pubkey()).await;
 
     config
         .rpc_client
@@ -3246,17 +3200,14 @@ async fn withdraw_excess_lamports_from_account() {
     );
 }
 
-#[tokio::test]
-#[serial]
-async fn metadata_pointer() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn metadata_pointer(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = spl_token_2022::id();
-    let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+    let config = test_config_with_default_signer(test_validator, payer, &program_id);
     let metadata_address = Pubkey::new_unique();
 
     let result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -3284,7 +3235,7 @@ async fn metadata_pointer() {
 
     let _new_result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::UpdateMetadataAddress.into(),
@@ -3306,7 +3257,7 @@ async fn metadata_pointer() {
 
     let _result_with_disable = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::UpdateMetadataAddress.into(),
@@ -3330,17 +3281,14 @@ async fn metadata_pointer() {
     );
 }
 
-#[tokio::test]
-#[serial]
-async fn transfer_hook() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn transfer_hook(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = spl_token_2022::id();
-    let mut config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+    let mut config = test_config_with_default_signer(test_validator, payer, &program_id);
     let transfer_hook_program_id = Pubkey::new_unique();
 
     let result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -3367,7 +3315,7 @@ async fn transfer_hook() {
 
     let _new_result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::SetTransferHook.into(),
@@ -3431,7 +3379,7 @@ async fn transfer_hook() {
     config.program_client = real_program_client;
     let _result_with_disable = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::SetTransferHook.into(),
@@ -3449,19 +3397,16 @@ async fn transfer_hook() {
     assert_eq!(extension.program_id, None.try_into().unwrap());
 }
 
-#[tokio::test]
-#[serial]
-async fn metadata() {
-    let (test_validator, payer) = new_validator_for_test().await;
+async fn metadata(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = spl_token_2022::id();
-    let config = test_config_with_default_signer(&test_validator, &payer, &program_id);
+    let config = test_config_with_default_signer(test_validator, payer, &program_id);
     let name = "this";
     let symbol = "is";
     let uri = "METADATA!";
 
     let result = process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::CreateToken.into(),
@@ -3482,7 +3427,7 @@ async fn metadata() {
 
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::InitializeMetadata.into(),
@@ -3514,7 +3459,7 @@ async fn metadata() {
     let new_value = "THIS!";
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::UpdateMetadata.into(),
@@ -3537,7 +3482,7 @@ async fn metadata() {
     let value = "Try and stop me";
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::UpdateMetadata.into(),
@@ -3561,7 +3506,7 @@ async fn metadata() {
     // remove it
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::UpdateMetadata.into(),
@@ -3582,7 +3527,7 @@ async fn metadata() {
     // fail to remove name
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::UpdateMetadata.into(),
@@ -3597,7 +3542,7 @@ async fn metadata() {
     // update authority
     process_test_command(
         &config,
-        &payer,
+        payer,
         &[
             "spl-token",
             CommandName::Authorize.into(),
