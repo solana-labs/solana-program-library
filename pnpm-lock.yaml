@@ -465,8 +465,8 @@ importers:
   token-metadata/js:
     dependencies:
       '@solana/codecs-core':
-        specifier: 2.0.0-experimental.398c396
-        version: 2.0.0-experimental.398c396
+        specifier: 2.0.0-experimental.7123512
+        version: 2.0.0-experimental.7123512
       '@solana/codecs-data-structures':
         specifier: 2.0.0-experimental.398c396
         version: 2.0.0-experimental.398c396
@@ -2002,6 +2002,10 @@ packages:
 
   /@solana/codecs-core@2.0.0-experimental.398c396:
     resolution: {integrity: sha512-E3kJzw7K6rkmmTX1tSOdE7Qg/OFqbKiIaaT9V2PTKTVZxwssPrqogUh6aLx0wdzlSJNymy8krKG/FbXsua0FIA==}
+    dev: false
+
+  /@solana/codecs-core@2.0.0-experimental.7123512:
+    resolution: {integrity: sha512-nplLMqXmFnmPM7oqjZ3TuBrZPPyw5F9bnb811feYWBBUStiImywQ8FyrtHxcC5+eKpspbwkFORExFKAMjRvmVA==}
     dev: false
 
   /@solana/codecs-data-structures@2.0.0-experimental.398c396:
