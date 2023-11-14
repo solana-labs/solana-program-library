@@ -1,5 +1,5 @@
 import { struct, u8 } from '@solana/buffer-layout';
-import type { Commitment, Connection, PublicKey, Signer } from '@solana/web3.js';
+import type { AccountMeta, Commitment, Connection, PublicKey, Signer } from '@solana/web3.js';
 import { TransactionInstruction } from '@solana/web3.js';
 import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../../constants.js';
 import { TokenUnsupportedInstructionError } from '../../errors.js';
@@ -117,6 +117,25 @@ export function createUpdateTransferHookInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
+function deEscalateAccountMeta(accountMeta: AccountMeta, accountMetas: AccountMeta[]): AccountMeta {
+    const maybeHighestPrivileges = accountMetas
+        .filter((x) => x.pubkey === accountMeta.pubkey)
+        .reduce<{ isSigner: boolean; isWritable: boolean } | undefined>((acc, x) => {
+            if (!acc) return { isSigner: x.isSigner, isWritable: x.isWritable };
+            return { isSigner: acc.isSigner || x.isSigner, isWritable: acc.isWritable || x.isWritable };
+        }, undefined);
+    if (maybeHighestPrivileges) {
+        const { isSigner, isWritable } = maybeHighestPrivileges;
+        if (!isSigner && isSigner !== accountMeta.isSigner) {
+            accountMeta.isSigner = false;
+        }
+        if (!isWritable && isWritable !== accountMeta.isWritable) {
+            accountMeta.isWritable = false;
+        }
+    }
+    return accountMeta;
+}
+
 /**
  * Add extra accounts needed for transfer hook to an instruction
  *
@@ -156,13 +175,14 @@ export async function addExtraAccountsToInstruction(
     accountMetas.push({ pubkey: extraAccountsAccount, isSigner: false, isWritable: false });
 
     for (const extraAccountMeta of extraAccountMetas) {
-        const accountMeta = await resolveExtraAccountMeta(
+        const accountMetaUnchecked = await resolveExtraAccountMeta(
             connection,
             extraAccountMeta,
             accountMetas,
             instruction.data,
             transferHook.programId
         );
+        const accountMeta = deEscalateAccountMeta(accountMetaUnchecked, accountMetas);
         accountMetas.push(accountMeta);
     }
     accountMetas.push({ pubkey: transferHook.programId, isSigner: false, isWritable: false });
