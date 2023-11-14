@@ -2,68 +2,31 @@ import { PublicKey } from '@solana/web3.js';
 import { expect } from 'chai';
 
 import type { TokenMetadata } from '../src/state';
-import { TOKEN_METADATA_DISCRIMINATOR, unpack } from '../src/state';
-import { getArrayEncoder, getBytesEncoder, getStructEncoder, getTupleEncoder } from '@solana/codecs-data-structures';
-import { getStringEncoder } from '@solana/codecs-strings';
+import { unpack, pack } from '../src';
 
 describe('Token Metadata State', () => {
-    const lengthBuffer = (buffer: Buffer | Uint8Array): Buffer => {
-        const length = Buffer.alloc(4);
-        length.writeUIntLE(buffer.length, 0, 4);
-        return length;
-    };
-
-    // Helper function to pack meta into tlv bytes slab
-    const pack = (meta: TokenMetadata) => {
-        const encoder = getStructEncoder([
-            ['updateAuthority', getBytesEncoder({ size: 32 })],
-            ['mint', getBytesEncoder({ size: 32 })],
-            ['name', getStringEncoder()],
-            ['symbol', getStringEncoder()],
-            ['uri', getStringEncoder()],
-            ['additionalMetadata', getArrayEncoder(getTupleEncoder([getStringEncoder(), getStringEncoder()]))],
-        ]);
-        const data = encoder.encode({
-            ...meta,
-            updateAuthority: meta.updateAuthority?.toBuffer(),
-            mint: meta.mint.toBuffer(),
-        });
-        return Buffer.concat([TOKEN_METADATA_DISCRIMINATOR, lengthBuffer(data), data]);
-    };
-
-    it('Can unpack', () => {
-        const data = Buffer.from([
-            // From rust implementation
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 110, 97,
-            109, 101, 6, 0, 0, 0, 115, 121, 109, 98, 111, 108, 3, 0, 0, 0, 117, 114, 105, 0, 0, 0, 0,
-        ]);
-
-        const input = Buffer.concat([TOKEN_METADATA_DISCRIMINATOR, lengthBuffer(data), data]);
-
-        const meta = unpack(input);
-        expect(meta).to.deep.equal({
+    it('Can pack and unpack as rust implementation', () => {
+        const meta = {
             mint: PublicKey.default,
             name: 'name',
             symbol: 'symbol',
             uri: 'uri',
             additionalMetadata: [],
-        });
-    });
+        };
 
-    it('Can unpack with additionalMetadata', () => {
-        const data = Buffer.from([
-            // From rust implementation
+        // From rust implementation
+        const bytes = Buffer.from([
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 110, 101,
-            119, 95, 110, 97, 109, 101, 10, 0, 0, 0, 110, 101, 119, 95, 115, 121, 109, 98, 111, 108, 7, 0, 0, 0, 110,
-            101, 119, 95, 117, 114, 105, 2, 0, 0, 0, 4, 0, 0, 0, 107, 101, 121, 49, 6, 0, 0, 0, 118, 97, 108, 117, 101,
-            49, 4, 0, 0, 0, 107, 101, 121, 50, 6, 0, 0, 0, 118, 97, 108, 117, 101, 50,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 110, 97,
+            109, 101, 6, 0, 0, 0, 115, 121, 109, 98, 111, 108, 3, 0, 0, 0, 117, 114, 105, 0, 0, 0, 0,
         ]);
 
-        const input = Buffer.concat([TOKEN_METADATA_DISCRIMINATOR, lengthBuffer(data), data]);
-        const meta = unpack(input);
-        expect(meta).to.deep.equal({
+        expect(pack(meta)).to.deep.equal(bytes);
+        expect(unpack(bytes)).to.deep.equal(meta);
+    });
+
+    it('Can pack and unpack as rust implementation with additionalMetadata', () => {
+        const meta: TokenMetadata = {
             mint: PublicKey.default,
             name: 'new_name',
             symbol: 'new_symbol',
@@ -72,27 +35,64 @@ describe('Token Metadata State', () => {
                 ['key1', 'value1'],
                 ['key2', 'value2'],
             ],
-        });
+        };
+        // From rust implementation
+        const bytes = Buffer.from([
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 110, 101,
+            119, 95, 110, 97, 109, 101, 10, 0, 0, 0, 110, 101, 119, 95, 115, 121, 109, 98, 111, 108, 7, 0, 0, 0, 110,
+            101, 119, 95, 117, 114, 105, 2, 0, 0, 0, 4, 0, 0, 0, 107, 101, 121, 49, 6, 0, 0, 0, 118, 97, 108, 117, 101,
+            49, 4, 0, 0, 0, 107, 101, 121, 50, 6, 0, 0, 0, 118, 97, 108, 117, 101, 50,
+        ]);
+
+        expect(pack(meta)).to.deep.equal(bytes);
+        expect(unpack(bytes)).to.deep.equal(meta);
     });
 
     it('Can pack and unpack with mint and updateAuthority', () => {
-        const input = pack({
+        const meta = {
             updateAuthority: new PublicKey('44444444444444444444444444444444444444444444'),
             mint: new PublicKey('55555555555555555555555555555555555555555555'),
             name: 'name',
             symbol: 'symbol',
             uri: 'uri',
             additionalMetadata: [],
-        });
+        };
 
-        const meta = unpack(input);
-        expect(meta).to.deep.equal({
+        const bytes = Buffer.from([
+            45, 91, 65, 60, 101, 64, 222, 21, 12, 147, 115, 20, 77, 81, 51, 202, 76, 184, 48, 186, 15, 117, 103, 22,
+            172, 234, 14, 80, 215, 148, 53, 229, 60, 121, 172, 80, 135, 1, 40, 28, 16, 196, 153, 112, 103, 22, 239, 184,
+            102, 74, 235, 162, 191, 71, 52, 30, 59, 226, 189, 193, 31, 112, 71, 220, 4, 0, 0, 0, 110, 97, 109, 101, 6,
+            0, 0, 0, 115, 121, 109, 98, 111, 108, 3, 0, 0, 0, 117, 114, 105, 0, 0, 0, 0,
+        ]);
+
+        expect(pack(meta)).to.deep.equal(bytes);
+        expect(unpack(bytes)).to.deep.equal(meta);
+    });
+
+    it('Can pack and unpack with mint, updateAuthority and additional metadata', () => {
+        const meta: TokenMetadata = {
             updateAuthority: new PublicKey('44444444444444444444444444444444444444444444'),
             mint: new PublicKey('55555555555555555555555555555555555555555555'),
             name: 'name',
             symbol: 'symbol',
             uri: 'uri',
-            additionalMetadata: [],
-        });
+            additionalMetadata: [
+                ['key1', 'value1'],
+                ['key2', 'value2'],
+            ],
+        };
+
+        const bytes = Buffer.from([
+            45, 91, 65, 60, 101, 64, 222, 21, 12, 147, 115, 20, 77, 81, 51, 202, 76, 184, 48, 186, 15, 117, 103, 22,
+            172, 234, 14, 80, 215, 148, 53, 229, 60, 121, 172, 80, 135, 1, 40, 28, 16, 196, 153, 112, 103, 22, 239, 184,
+            102, 74, 235, 162, 191, 71, 52, 30, 59, 226, 189, 193, 31, 112, 71, 220, 4, 0, 0, 0, 110, 97, 109, 101, 6,
+            0, 0, 0, 115, 121, 109, 98, 111, 108, 3, 0, 0, 0, 117, 114, 105, 2, 0, 0, 0, 4, 0, 0, 0, 107, 101, 121, 49,
+            6, 0, 0, 0, 118, 97, 108, 117, 101, 49, 4, 0, 0, 0, 107, 101, 121, 50, 6, 0, 0, 0, 118, 97, 108, 117, 101,
+            50,
+        ]);
+
+        expect(pack(meta)).to.deep.equal(bytes);
+        expect(unpack(bytes)).to.deep.equal(meta);
     });
 });
