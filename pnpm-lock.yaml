@@ -477,8 +477,8 @@ importers:
         specifier: 2.0.0-experimental.398c396
         version: 2.0.0-experimental.398c396(fastestsmallesttextencoderdecoder@1.0.22)
       '@solana/options':
-        specifier: 2.0.0-experimental.398c396
-        version: 2.0.0-experimental.398c396
+        specifier: 2.0.0-experimental.7123512
+        version: 2.0.0-experimental.7123512
       '@solana/spl-type-length-value':
         specifier: workspace:*
         version: link:../../libraries/type-length-value/js
@@ -2004,6 +2004,10 @@ packages:
     resolution: {integrity: sha512-E3kJzw7K6rkmmTX1tSOdE7Qg/OFqbKiIaaT9V2PTKTVZxwssPrqogUh6aLx0wdzlSJNymy8krKG/FbXsua0FIA==}
     dev: false
 
+  /@solana/codecs-core@2.0.0-experimental.7123512:
+    resolution: {integrity: sha512-nplLMqXmFnmPM7oqjZ3TuBrZPPyw5F9bnb811feYWBBUStiImywQ8FyrtHxcC5+eKpspbwkFORExFKAMjRvmVA==}
+    dev: false
+
   /@solana/codecs-data-structures@2.0.0-experimental.398c396:
     resolution: {integrity: sha512-gJxLunF1GuBXF8Mz1lfnqGjNMkIrpyTmHgk0g4PyacRCI0MvQr6d3q5oXVHfYLIaRrYPUUxvbt02sqOoOiW2dQ==}
     dependencies:
@@ -2015,6 +2019,12 @@ packages:
     resolution: {integrity: sha512-mmUSfO3TOL5kCb/5UCWCz0UTC0KgC864pRe9veCtJbgh5G2YDcBYNJiyKTT661yo/Y+dvrh2hZtYprhB/qxjmw==}
     dependencies:
       '@solana/codecs-core': 2.0.0-experimental.398c396
+    dev: false
+
+  /@solana/codecs-numbers@2.0.0-experimental.7123512:
+    resolution: {integrity: sha512-itvRq/8wpk+ajHSJEVUkBWW9xbYcCXhBoF1QZpjEddkxtuxVHqXd6otJtiluD8mGDUwWUvD5udHCYg2DO43pFQ==}
+    dependencies:
+      '@solana/codecs-core': 2.0.0-experimental.7123512
     dev: false
 
   /@solana/codecs-strings@2.0.0-experimental.398c396(fastestsmallesttextencoderdecoder@1.0.22):
@@ -2063,11 +2073,11 @@ packages:
       '@solana/assertions': 2.0.0-experimental.21e994f
     dev: false
 
-  /@solana/options@2.0.0-experimental.398c396:
-    resolution: {integrity: sha512-EyHhCADS1D20zf9fZHozkGcNXAi45bux/AUwBrU0kPBY9RH67IUGxyRwRoWVIYVzsUZNWr0zoqWY5ZS4IZxzJw==}
+  /@solana/options@2.0.0-experimental.7123512:
+    resolution: {integrity: sha512-t16FSkFbrlNbscpBIEPuUB/9wzWKoSDPEqQ398vJFxH9YzeEAMWxHECfT/6ES1UE+wnxW5HGLSyMAUENrq1sCw==}
     dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.398c396
-      '@solana/codecs-numbers': 2.0.0-experimental.398c396
+      '@solana/codecs-core': 2.0.0-experimental.7123512
+      '@solana/codecs-numbers': 2.0.0-experimental.7123512
     dev: false
 
   /@solana/prettier-config-solana@0.0.3(prettier@3.0.3):
