@@ -20,6 +20,7 @@
   "scripts": {
     "dev": "tsc && node --trace-warnings dist/transfer.js",
     "build": "tsc",
+    "build:program": "cargo build-sbf --manifest-path=../program/Cargo.toml",
     "prepublish": "tsc",
     "lint": "npm run pretty && eslint --max-warnings 0 'src/*.ts'",
     "lint:fix": "npm run pretty:fix && eslint 'src/*.ts' --fix",

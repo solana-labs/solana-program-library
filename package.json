@@ -12,6 +12,7 @@
     ],
     "scripts": {
         "build": "turbo run build",
+        "build:program": "turbo run build:program",
         "clean": "turbo run clean",
         "lint": "turbo run lint",
         "lint:fix": "turbo run lint:fix",

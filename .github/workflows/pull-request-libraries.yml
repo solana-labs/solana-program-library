@@ -5,13 +5,13 @@ on:
     paths:
     - 'libraries/**'
     - 'ci/*-version.sh'
-    - 'pnpm-lock.yaml'
+    - '!libraries/**/js/**'
   push:
     branches: [master]
     paths:
     - 'libraries/**'
     - 'ci/*-version.sh'
-    - 'pnpm-lock.yaml'
+    - '!libraries/**/js/**'
 
 jobs:
   cargo-test-sbf:

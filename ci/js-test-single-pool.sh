@@ -12,6 +12,7 @@ pnpm lint
 pnpm build
 
 cd ../classic
+pnpm build:program
 pnpm lint
 pnpm build
 pnpm test

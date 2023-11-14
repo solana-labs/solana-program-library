@@ -7,7 +7,7 @@ on:
     - 'token/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-token.yml'
-    - 'pnpm-lock.yaml'
+    - '!token/js/**'
   push:
     branches: [master]
     paths:
@@ -15,7 +15,7 @@ on:
     - 'token/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-token.yml'
-    - 'pnpm-lock.yaml'
+    - '!token/js/**'
 
 jobs:
   cargo-test-sbf:
@@ -255,7 +255,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 16.x
-    needs: [cargo-test-sbf, cargo-test-sbf-associated-token-account, cargo-test-sbf-transfer-hook]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -271,21 +270,6 @@ jobs:
           key: node-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             node-
-      - name: Download programs
-        uses: actions/download-artifact@v2
-        with:
-          name: token-programs
-          path: target/deploy
-      - name: Download associated-token-account program
-        uses: actions/download-artifact@v2
-        with:
-          name: associated-token-account-program
-          path: target/deploy
-      - name: Download spl-transfer-hook-example program
-        uses: actions/download-artifact@v2
-        with:
-          name: spl-transfer-hook-example
-          path: target/deploy
       - run: ./ci/js-test-token.sh
 
   cargo-build-test-cli:

@@ -6,14 +6,14 @@ on:
     - 'token-lending/**'
     - 'token/**'
     - 'ci/*-version.sh'
-    - 'pnpm-lock.yaml'
+    - '!token-lending/js/**'
   push:
     branches: [master]
     paths:
     - 'token-lending/**'
     - 'token/**'
     - 'ci/*-version.sh'
-    - 'pnpm-lock.yaml'
+    - '!token-lending/js/**'
 
 jobs:
   cargo-test-sbf:

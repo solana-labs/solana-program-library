@@ -9,5 +9,6 @@ cd name-service/js
 
 pnpm install
 pnpm lint
+pnpm build:program
 pnpm build
 pnpm test

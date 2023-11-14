@@ -33,6 +33,7 @@
         "clean": "shx rm -rf lib **/*.tsbuildinfo || true",
         "build": "tsc --build --verbose tsconfig.all.json",
         "postbuild": "shx echo '{ \"type\": \"commonjs\" }' > lib/cjs/package.json",
+        "build:program": "cargo build-sbf --manifest-path=../program/Cargo.toml && cargo build-sbf --manifest-path=../program-2022/Cargo.toml && cargo build-sbf --manifest-path=../../associated-token-account/program/Cargo.toml && cargo build-sbf --manifest-path=../transfer-hook/example/Cargo.toml",
         "watch": "tsc --build --verbose --watch tsconfig.all.json",
         "release": "npm run clean && npm run build",
         "fmt": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'",

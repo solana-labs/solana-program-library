@@ -4,6 +4,7 @@
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
     "build": "tsc && cross-env NODE_ENV=production rollup -c",
+    "build:program": "cargo build-sbf --manifest-path=../program/Cargo.toml",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint . --fix",
     "test": "jest",

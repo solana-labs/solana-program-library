@@ -12,6 +12,7 @@
   "scripts": {
     "clean": "rm -rf dist/*",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./ts-fixup.sh",
+    "build:program": "cargo build-sbf --manifest-path=../../../program/Cargo.toml",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint . --fix",
     "test": "sed -i '1s/.*/{ \"type\": \"module\",/' package.json && NODE_OPTIONS='--loader=tsx' ava ; ret=$?; sed -i '1s/.*/{/' package.json && exit $ret"

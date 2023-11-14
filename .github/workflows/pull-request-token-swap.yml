@@ -7,7 +7,7 @@ on:
     - 'token/**'
     - 'libraries/math/**'
     - 'ci/*-version.sh'
-    - 'pnpm-lock.yaml'
+    - '!token-swap/js/**'
   push:
     branches: [master]
     paths:
@@ -15,7 +15,7 @@ on:
     - 'token/**'
     - 'libraries/math/**'
     - 'ci/*-version.sh'
-    - 'pnpm-lock.yaml'
+    - '!token-swap/js/**'
 
 jobs:
   cargo-test-sbf:
@@ -87,7 +87,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 16.x
-    needs: cargo-test-sbf
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
@@ -103,11 +102,6 @@ jobs:
           key: node-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             node-
-      - name: Download programs
-        uses: actions/download-artifact@v2
-        with:
-          name: token-swap-programs
-          path: target/deploy
       - run: ./ci/js-test-token-swap.sh
 
   fuzz:

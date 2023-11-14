@@ -5,6 +5,9 @@
             "dependsOn": ["^build"],
             "outputs": ["dist/**", "lib/**"]
         },
+        "build:program": {
+            "dependsOn": ["^build:program"]
+        },
         "clean": {},
         "lint:fix": {
             "inputs": ["src/**", "test/**"],

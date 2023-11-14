@@ -1,0 +1,54 @@
+name: Pull Request JS
+
+on:
+  pull_request:
+    paths:
+      - 'libraries/type-length-value/js/**'
+      - 'memo/js/**'
+      - 'name-service/js/**'
+      - 'single-pool/js/**'
+      - 'stake-pool/js/**'
+      - 'token/js/**'
+      - 'token-lending/js/**'
+      - 'token-metadata/js/**'
+      - 'token-swap/js/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/pull-request-js.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'libraries/type-length-value/js/**'
+      - 'memo/js/**'
+      - 'single-pool/js/**'
+      - 'stake-pool/js/**'
+      - 'token/js/**'
+      - 'token-lending/js/**'
+      - 'token-metadata/js/**'
+      - 'token-swap/js/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/pull-request-js.yml'
+
+jobs:
+  js-test:
+    strategy:
+      matrix:
+        package: [libraries, memo, name-service, single-pool, stake-pool, token, token-lending, token-metadata, token-swap]
+    runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: 20.5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: node-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            node-
+      - run: ./ci/js-test-${{ matrix.package }}.sh

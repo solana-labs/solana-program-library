@@ -7,7 +7,7 @@ on:
     - 'token/program-2022/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-token-metadata.yml'
-    - 'pnpm-lock.yaml'
+    - '!token-metadata/js/**'
   push:
     branches: [master]
     paths:
@@ -15,7 +15,7 @@ on:
     - 'token/program-2022/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-token-metadata.yml'
-    - 'pnpm-lock.yaml'
+    - '!token-metadata/js/**'
 
 jobs:
   cargo-test-sbf:
