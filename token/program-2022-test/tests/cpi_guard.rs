@@ -59,7 +59,10 @@ async fn make_context() -> TestContext {
         token_context: None,
     };
 
-    test_context.init_token_with_mint(vec![]).await.unwrap();
+    test_context
+        .init_token_with_mint(vec![], &[])
+        .await
+        .unwrap();
     let token_context = test_context.token_context.as_ref().unwrap();
 
     token_context

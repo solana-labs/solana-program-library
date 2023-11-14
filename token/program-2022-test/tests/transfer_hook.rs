@@ -219,6 +219,7 @@ async fn setup(mint: Keypair, program_id: &Pubkey, authority: &Pubkey) -> TestCo
                 program_id: Some(*program_id),
             }],
             None,
+            &[],
         )
         .await
         .unwrap();
@@ -267,6 +268,7 @@ async fn fail_init_all_none() {
                 program_id: None,
             }],
             None,
+            &[],
         )
         .await
         .unwrap_err();
@@ -519,6 +521,7 @@ async fn fail_transfer_hook_program() {
                 program_id: Some(program_id),
             }],
             None,
+            &[],
         )
         .await
         .unwrap();
@@ -604,6 +607,7 @@ async fn success_downgrade_writable_and_signer_accounts() {
                 program_id: Some(program_id),
             }],
             None,
+            &[],
         )
         .await
         .unwrap();
@@ -661,6 +665,7 @@ async fn success_transfers_using_onchain_helper() {
                 program_id: Some(program_id),
             }],
             None,
+            &[],
         )
         .await
         .unwrap();
@@ -681,6 +686,7 @@ async fn success_transfers_using_onchain_helper() {
                 program_id: Some(program_id),
             }],
             None,
+            &[],
         )
         .await
         .unwrap();

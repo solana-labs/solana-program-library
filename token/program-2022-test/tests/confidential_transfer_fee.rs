@@ -222,19 +222,22 @@ async fn confidential_transfer_fee_config() {
 
     // Try invalid combinations of extensions
     let err = context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                    transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                    maximum_fee: TEST_MAXIMUM_FEE,
+                },
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(confidential_transfer_authority.pubkey()),
+                    auto_approve_new_accounts,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+            ],
+            &[],
+        )
         .await
         .unwrap_err();
 
@@ -249,17 +252,20 @@ async fn confidential_transfer_fee_config() {
     );
 
     let err = context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(confidential_transfer_authority.pubkey()),
+                    auto_approve_new_accounts,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                    authority: Some(confidential_transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority_elgamal_pubkey,
+                },
+            ],
+            &[],
+        )
         .await
         .unwrap_err();
 
@@ -274,12 +280,15 @@ async fn confidential_transfer_fee_config() {
     );
 
     let err = context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                    authority: Some(confidential_transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority_elgamal_pubkey,
+                },
+            ],
+            &[],
+        )
         .await
         .unwrap_err();
 
@@ -294,23 +303,26 @@ async fn confidential_transfer_fee_config() {
     );
 
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                    transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                    maximum_fee: TEST_MAXIMUM_FEE,
+                },
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(confidential_transfer_authority.pubkey()),
+                    auto_approve_new_accounts,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                    authority: Some(confidential_transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority_elgamal_pubkey,
+                },
+            ],
+            &[],
+        )
         .await
         .unwrap();
 }
@@ -324,13 +336,14 @@ async fn confidential_transfer_initialize_and_update_mint() {
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::ConfidentialTransferMint {
                 authority: Some(authority.pubkey()),
                 auto_approve_new_accounts,
                 auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-        ])
+            }],
+            &[],
+        )
         .await
         .unwrap();
 
@@ -472,23 +485,26 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                    transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                    maximum_fee: TEST_MAXIMUM_FEE,
+                },
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(confidential_transfer_authority.pubkey()),
+                    auto_approve_new_accounts,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                    authority: Some(confidential_transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority_elgamal_pubkey,
+                },
+            ],
+            &[],
+        )
         .await
         .unwrap();
 
@@ -630,23 +646,26 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts() {
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                    transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                    maximum_fee: TEST_MAXIMUM_FEE,
+                },
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(confidential_transfer_authority.pubkey()),
+                    auto_approve_new_accounts,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                    authority: Some(confidential_transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority_elgamal_pubkey,
+                },
+            ],
+            &[],
+        )
         .await
         .unwrap();
 
@@ -760,23 +779,26 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_proof_con
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                    transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                    maximum_fee: TEST_MAXIMUM_FEE,
+                },
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(confidential_transfer_authority.pubkey()),
+                    auto_approve_new_accounts,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                    authority: Some(confidential_transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority_elgamal_pubkey,
+                },
+            ],
+            &[],
+        )
         .await
         .unwrap();
 
@@ -928,23 +950,26 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_proof
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                    transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                    maximum_fee: TEST_MAXIMUM_FEE,
+                },
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(confidential_transfer_authority.pubkey()),
+                    auto_approve_new_accounts,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                    authority: Some(confidential_transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority_elgamal_pubkey,
+                },
+            ],
+            &[],
+        )
         .await
         .unwrap();
 
@@ -1112,23 +1137,26 @@ async fn confidential_transfer_harvest_withheld_tokens_to_mint() {
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                    transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                    maximum_fee: TEST_MAXIMUM_FEE,
+                },
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(confidential_transfer_authority.pubkey()),
+                    auto_approve_new_accounts,
+                    auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+                },
+                ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                    authority: Some(confidential_transfer_fee_authority.pubkey()),
+                    withdraw_withheld_authority_elgamal_pubkey,
+                },
+            ],
+            &[],
+        )
         .await
         .unwrap();
 

@@ -41,19 +41,26 @@ impl TestContext {
     pub async fn init_token_with_mint(
         &mut self,
         extension_init_params: Vec<ExtensionInitializationParams>,
+        additional_signers: &[&Keypair],
     ) -> TokenResult<()> {
-        self.init_token_with_mint_and_freeze_authority(extension_init_params, None)
-            .await
+        self.init_token_with_mint_and_freeze_authority(
+            extension_init_params,
+            None,
+            additional_signers,
+        )
+        .await
     }
 
     pub async fn init_token_with_freezing_mint(
         &mut self,
         extension_init_params: Vec<ExtensionInitializationParams>,
+        additional_signers: &[&Keypair],
     ) -> TokenResult<()> {
         let freeze_authority = Keypair::new();
         self.init_token_with_mint_and_freeze_authority(
             extension_init_params,
             Some(freeze_authority),
+            additional_signers,
         )
         .await
     }
@@ -62,12 +69,14 @@ impl TestContext {
         &mut self,
         extension_init_params: Vec<ExtensionInitializationParams>,
         freeze_authority: Option<Keypair>,
+        additional_signers: &[&Keypair],
     ) -> TokenResult<()> {
         let mint_account = Keypair::new();
         self.init_token_with_mint_keypair_and_freeze_authority(
             mint_account,
             extension_init_params,
             freeze_authority,
+            additional_signers,
         )
         .await
     }
@@ -77,6 +86,7 @@ impl TestContext {
         mint_account: Keypair,
         extension_init_params: Vec<ExtensionInitializationParams>,
         freeze_authority: Option<Keypair>,
+        additional_signers: &[&Keypair],
     ) -> TokenResult<()> {
         let payer = keypair_clone(&self.context.lock().await.payer);
         let client: Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>> =
@@ -109,12 +119,15 @@ impl TestContext {
             Arc::new(payer),
         );
 
+        let mut signing_keypairs = vec![&mint_account];
+        signing_keypairs.extend_from_slice(additional_signers);
+
         token
             .create_mint(
                 &mint_authority_pubkey,
                 freeze_authority_pubkey.as_ref(),
                 extension_init_params,
-                &[&mint_account],
+                &signing_keypairs,
             )
             .await?;
 

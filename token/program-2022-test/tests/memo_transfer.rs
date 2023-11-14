@@ -172,7 +172,7 @@ async fn test_memo_transfers(
 #[tokio::test]
 async fn require_memo_transfers_without_realloc() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     let token_context = context.token_context.unwrap();
 
     // create token accounts
@@ -199,7 +199,7 @@ async fn require_memo_transfers_without_realloc() {
 #[tokio::test]
 async fn require_memo_transfers_with_realloc() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     let token_context = context.token_context.unwrap();
 
     // create token accounts

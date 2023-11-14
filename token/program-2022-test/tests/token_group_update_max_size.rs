@@ -47,6 +47,7 @@ async fn setup(mint: Keypair, authority: &Pubkey) -> TestContext {
                 group_address,
             }],
             None,
+            &[],
         )
         .await
         .unwrap();

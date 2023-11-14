@@ -107,7 +107,7 @@ async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
 #[tokio::test]
 async fn basic() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_basic_transfers(context, TestMode::All).await;
 }
 
@@ -115,12 +115,15 @@ async fn basic() {
 async fn basic_with_extension() {
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(Pubkey::new_unique()),
-            transfer_fee_basis_points: 100u16,
-            maximum_fee: 1_000_000u64,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: 100u16,
+                maximum_fee: 1_000_000u64,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     run_basic_transfers(context, TestMode::CheckedOnly).await;
@@ -203,7 +206,7 @@ async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
 #[tokio::test]
 async fn self_transfer() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_self_transfers(context, TestMode::All).await;
 }
 
@@ -211,12 +214,15 @@ async fn self_transfer() {
 async fn self_transfer_with_extension() {
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(Pubkey::new_unique()),
-            transfer_fee_basis_points: 100u16,
-            maximum_fee: 1_000_000u64,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: 100u16,
+                maximum_fee: 1_000_000u64,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     run_self_transfers(context, TestMode::CheckedOnly).await;
@@ -286,7 +292,7 @@ async fn run_self_owned(context: TestContext, test_mode: TestMode) {
 #[tokio::test]
 async fn self_owned() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_self_owned(context, TestMode::All).await;
 }
 
@@ -294,12 +300,15 @@ async fn self_owned() {
 async fn self_owned_with_extension() {
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(Pubkey::new_unique()),
-            transfer_fee_basis_points: 100u16,
-            maximum_fee: 1_000_000u64,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: 100u16,
+                maximum_fee: 1_000_000u64,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     run_self_owned(context, TestMode::CheckedOnly).await;
@@ -308,7 +317,7 @@ async fn self_owned_with_extension() {
 #[tokio::test]
 async fn transfer_with_fee_on_mint_without_fee_configured() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     let TokenContext {
         mint_authority,
         token,

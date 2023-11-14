@@ -20,7 +20,7 @@ async fn transfer() {
     let test_transfer_amount = 100;
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::NonTransferable])
+        .init_token_with_mint(vec![ExtensionInitializationParams::NonTransferable], &[])
         .await
         .unwrap();
 
@@ -166,15 +166,18 @@ async fn transfer_checked_with_fee() {
 
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
-                withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
-                transfer_fee_basis_points,
-                maximum_fee,
-            },
-            ExtensionInitializationParams::NonTransferable,
-        ])
+        .init_token_with_mint(
+            vec![
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+                    withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+                    transfer_fee_basis_points,
+                    maximum_fee,
+                },
+                ExtensionInitializationParams::NonTransferable,
+            ],
+            &[],
+        )
         .await
         .unwrap();
 

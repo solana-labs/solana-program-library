@@ -36,10 +36,13 @@ async fn success_initialize() {
     for (rate, rate_authority) in [(i16::MIN, None), (i16::MAX, Some(Pubkey::new_unique()))] {
         let mut context = TestContext::new().await;
         context
-            .init_token_with_mint(vec![ExtensionInitializationParams::InterestBearingConfig {
-                rate_authority,
-                rate,
-            }])
+            .init_token_with_mint(
+                vec![ExtensionInitializationParams::InterestBearingConfig {
+                    rate_authority,
+                    rate,
+                }],
+                &[],
+            )
             .await
             .unwrap();
         let TokenContext { token, .. } = context.token_context.unwrap();
@@ -61,10 +64,13 @@ async fn update_rate() {
     let initial_rate = 500;
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::InterestBearingConfig {
-            rate_authority: Some(rate_authority.pubkey()),
-            rate: initial_rate,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::InterestBearingConfig {
+                rate_authority: Some(rate_authority.pubkey()),
+                rate: initial_rate,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext { token, .. } = context.token_context.take().unwrap();
@@ -153,10 +159,13 @@ async fn set_authority() {
     let initial_rate = 500;
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::InterestBearingConfig {
-            rate_authority: Some(rate_authority.pubkey()),
-            rate: initial_rate,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::InterestBearingConfig {
+                rate_authority: Some(rate_authority.pubkey()),
+                rate: initial_rate,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext { token, .. } = context.token_context.take().unwrap();
@@ -306,10 +315,13 @@ async fn amount_conversions() {
     };
     let initial_rate = i16::MAX;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::InterestBearingConfig {
-            rate_authority: Some(rate_authority.pubkey()),
-            rate: initial_rate,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::InterestBearingConfig {
+                rate_authority: Some(rate_authority.pubkey()),
+                rate: initial_rate,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext { token, .. } = context.token_context.take().unwrap();

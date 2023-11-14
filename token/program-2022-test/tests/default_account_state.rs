@@ -23,9 +23,12 @@ async fn success_init_default_acct_state_frozen() {
     let default_account_state = AccountState::Frozen;
     let mut context = TestContext::new().await;
     context
-        .init_token_with_freezing_mint(vec![ExtensionInitializationParams::DefaultAccountState {
-            state: default_account_state,
-        }])
+        .init_token_with_freezing_mint(
+            vec![ExtensionInitializationParams::DefaultAccountState {
+                state: default_account_state,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext {
@@ -60,9 +63,12 @@ async fn fail_init_no_authority_default_acct_state_frozen() {
     let default_account_state = AccountState::Frozen;
     let mut context = TestContext::new().await;
     let err = context
-        .init_token_with_mint(vec![ExtensionInitializationParams::DefaultAccountState {
-            state: default_account_state,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::DefaultAccountState {
+                state: default_account_state,
+            }],
+            &[],
+        )
         .await
         .unwrap_err();
 
@@ -82,9 +88,12 @@ async fn success_init_default_acct_state_initialized() {
     let default_account_state = AccountState::Initialized;
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::DefaultAccountState {
-            state: default_account_state,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::DefaultAccountState {
+                state: default_account_state,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext {
@@ -115,9 +124,12 @@ async fn success_no_authority_init_default_acct_state_initialized() {
     let default_account_state = AccountState::Initialized;
     let mut context = TestContext::new().await;
     context
-        .init_token_with_freezing_mint(vec![ExtensionInitializationParams::DefaultAccountState {
-            state: default_account_state,
-        }])
+        .init_token_with_freezing_mint(
+            vec![ExtensionInitializationParams::DefaultAccountState {
+                state: default_account_state,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext {
@@ -152,9 +164,12 @@ async fn fail_invalid_default_acct_state() {
     let default_account_state = AccountState::Uninitialized;
     let mut context = TestContext::new().await;
     let err = context
-        .init_token_with_freezing_mint(vec![ExtensionInitializationParams::DefaultAccountState {
-            state: default_account_state,
-        }])
+        .init_token_with_freezing_mint(
+            vec![ExtensionInitializationParams::DefaultAccountState {
+                state: default_account_state,
+            }],
+            &[],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -173,9 +188,12 @@ async fn end_to_end_default_account_state() {
     let default_account_state = AccountState::Frozen;
     let mut context = TestContext::new().await;
     context
-        .init_token_with_freezing_mint(vec![ExtensionInitializationParams::DefaultAccountState {
-            state: default_account_state,
-        }])
+        .init_token_with_freezing_mint(
+            vec![ExtensionInitializationParams::DefaultAccountState {
+                state: default_account_state,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext {

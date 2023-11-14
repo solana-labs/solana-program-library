@@ -43,6 +43,7 @@ async fn setup(mint: Keypair, authority: &Pubkey) -> TestContext {
                 metadata_address,
             }],
             None,
+            &[],
         )
         .await
         .unwrap();
@@ -172,7 +173,7 @@ async fn fail_without_metadata_pointer() {
             token_context: None,
         };
         context
-            .init_token_with_mint_keypair_and_freeze_authority(mint_keypair, vec![], None)
+            .init_token_with_mint_keypair_and_freeze_authority(mint_keypair, vec![], None, &[])
             .await
             .unwrap();
         context
@@ -221,6 +222,7 @@ async fn fail_init_in_another_mint() {
                 metadata_address: Some(second_mint),
             }],
             None,
+            &[],
         )
         .await
         .unwrap();

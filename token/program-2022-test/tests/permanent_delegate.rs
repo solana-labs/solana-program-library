@@ -52,9 +52,10 @@ async fn success_init() {
     let delegate = Pubkey::new_unique();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::PermanentDelegate {
-            delegate,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::PermanentDelegate { delegate }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext { token, .. } = context.token_context.unwrap();
@@ -70,9 +71,12 @@ async fn set_authority() {
     let delegate = Keypair::new();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::PermanentDelegate {
-            delegate: delegate.pubkey(),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::PermanentDelegate {
+                delegate: delegate.pubkey(),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let token_context = context.token_context.unwrap();
@@ -191,9 +195,12 @@ async fn success_transfer() {
     let delegate = Keypair::new();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::PermanentDelegate {
-            delegate: delegate.pubkey(),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::PermanentDelegate {
+                delegate: delegate.pubkey(),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let token_context = context.token_context.unwrap();
@@ -225,9 +232,12 @@ async fn success_burn() {
     let delegate = Keypair::new();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::PermanentDelegate {
-            delegate: delegate.pubkey(),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::PermanentDelegate {
+                delegate: delegate.pubkey(),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let token_context = context.token_context.unwrap();
@@ -252,7 +262,7 @@ async fn success_burn() {
 async fn fail_without_extension() {
     let delegate = Pubkey::new_unique();
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     let token_context = context.token_context.unwrap();
 
     // fail set

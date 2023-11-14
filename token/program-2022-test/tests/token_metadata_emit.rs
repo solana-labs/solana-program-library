@@ -45,6 +45,7 @@ async fn setup(mint: Keypair, authority: &Pubkey) -> TestContext {
                 metadata_address,
             }],
             None,
+            &[],
         )
         .await
         .unwrap();

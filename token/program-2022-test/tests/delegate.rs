@@ -197,7 +197,7 @@ async fn run_basic(
 #[tokio::test]
 async fn basic() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_basic(
         context,
         OwnerMode::External,
@@ -210,7 +210,7 @@ async fn basic() {
 #[tokio::test]
 async fn basic_checked() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_basic(
         context,
         OwnerMode::External,
@@ -223,7 +223,7 @@ async fn basic_checked() {
 #[tokio::test]
 async fn basic_self_owned() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_basic(
         context,
         OwnerMode::SelfOwned,
@@ -237,12 +237,15 @@ async fn basic_self_owned() {
 async fn basic_with_extension() {
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(Pubkey::new_unique()),
-            transfer_fee_basis_points: 100u16,
-            maximum_fee: 1_000u64,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: 100u16,
+                maximum_fee: 1_000u64,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     run_basic(
@@ -258,12 +261,15 @@ async fn basic_with_extension() {
 async fn basic_with_extension_checked() {
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(Pubkey::new_unique()),
-            transfer_fee_basis_points: 100u16,
-            maximum_fee: 1_000u64,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: 100u16,
+                maximum_fee: 1_000u64,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     run_basic(
@@ -279,12 +285,15 @@ async fn basic_with_extension_checked() {
 async fn basic_self_owned_with_extension() {
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(Pubkey::new_unique()),
-            transfer_fee_basis_points: 100u16,
-            maximum_fee: 1_000u64,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: 100u16,
+                maximum_fee: 1_000u64,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     run_basic(

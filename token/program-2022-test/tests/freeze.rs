@@ -11,7 +11,10 @@ use {
 #[tokio::test]
 async fn basic() {
     let mut context = TestContext::new().await;
-    context.init_token_with_freezing_mint(vec![]).await.unwrap();
+    context
+        .init_token_with_freezing_mint(vec![], &[])
+        .await
+        .unwrap();
     let TokenContext {
         freeze_authority,
         token,

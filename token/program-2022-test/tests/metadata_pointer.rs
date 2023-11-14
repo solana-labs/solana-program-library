@@ -46,6 +46,7 @@ async fn setup(mint: Keypair, metadata_address: &Pubkey, authority: &Pubkey) -> 
                 metadata_address: Some(*metadata_address),
             }],
             None,
+            &[],
         )
         .await
         .unwrap();
@@ -97,6 +98,7 @@ async fn fail_init_all_none() {
                 metadata_address: None,
             }],
             None,
+            &[],
         )
         .await
         .unwrap_err();

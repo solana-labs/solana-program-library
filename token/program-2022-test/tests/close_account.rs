@@ -17,7 +17,7 @@ use {
 async fn success_init_after_close_account() {
     let mut context = TestContext::new().await;
     let payer = Keypair::from_bytes(&context.context.lock().await.payer.to_bytes()).unwrap();
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     let token = context.token_context.take().unwrap().token;
     let token_program_id = spl_token_2022::id();
     let owner = Keypair::new();
@@ -67,7 +67,7 @@ async fn success_init_after_close_account() {
 async fn fail_init_after_close_account() {
     let mut context = TestContext::new().await;
     let payer = Keypair::from_bytes(&context.context.lock().await.payer.to_bytes()).unwrap();
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     let token = context.token_context.take().unwrap().token;
     let token_program_id = spl_token_2022::id();
     let owner = Keypair::new();
@@ -119,9 +119,12 @@ async fn fail_init_after_close_mint() {
     let mut context = TestContext::new().await;
     let payer = Keypair::from_bytes(&context.context.lock().await.payer.to_bytes()).unwrap();
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
-            close_authority: Some(close_authority.pubkey()),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::MintCloseAuthority {
+                close_authority: Some(close_authority.pubkey()),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let token = context.token_context.take().unwrap().token;

@@ -87,7 +87,7 @@ async fn run_basic(context: TestContext) {
 #[tokio::test]
 async fn basic() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_basic(context).await;
 }
 
@@ -95,12 +95,15 @@ async fn basic() {
 async fn basic_with_extension() {
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(Pubkey::new_unique()),
-            transfer_fee_basis_points: 100u16,
-            maximum_fee: 1_000u64,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: 100u16,
+                maximum_fee: 1_000u64,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     run_basic(context).await;
@@ -149,7 +152,7 @@ async fn run_self_owned(context: TestContext) {
 #[tokio::test]
 async fn self_owned() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_self_owned(context).await;
 }
 
@@ -157,12 +160,15 @@ async fn self_owned() {
 async fn self_owned_with_extension() {
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(Pubkey::new_unique()),
-            transfer_fee_basis_points: 100u16,
-            maximum_fee: 1_000u64,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: 100u16,
+                maximum_fee: 1_000u64,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     run_self_owned(context).await;
@@ -288,13 +294,13 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
 #[tokio::test]
 async fn burn_and_close_incinerator_tokens() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_burn_and_close_system_or_incinerator(context, &solana_program::incinerator::id()).await;
 }
 
 #[tokio::test]
 async fn burn_and_close_system_tokens() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     run_burn_and_close_system_or_incinerator(context, &solana_program::system_program::id()).await;
 }

@@ -32,7 +32,7 @@ use {
 #[tokio::test]
 async fn success_base() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     let TokenContext {
         decimals,
         mint_authority,
@@ -160,9 +160,10 @@ async fn success_extension_and_base() {
     let close_authority = Some(Pubkey::new_unique());
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
-            close_authority,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::MintCloseAuthority { close_authority }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext {

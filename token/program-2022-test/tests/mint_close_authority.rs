@@ -22,9 +22,10 @@ async fn success_init() {
     let close_authority = Some(Pubkey::new_unique());
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
-            close_authority,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::MintCloseAuthority { close_authority }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext {
@@ -55,9 +56,12 @@ async fn set_authority() {
     let close_authority = Keypair::new();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
-            close_authority: Some(close_authority.pubkey()),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::MintCloseAuthority {
+                close_authority: Some(close_authority.pubkey()),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let token = context.token_context.unwrap().token;
@@ -166,9 +170,12 @@ async fn success_close() {
     let close_authority = Keypair::new();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
-            close_authority: Some(close_authority.pubkey()),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::MintCloseAuthority {
+                close_authority: Some(close_authority.pubkey()),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let token = context.token_context.unwrap().token;
@@ -191,7 +198,7 @@ async fn success_close() {
 async fn fail_without_extension() {
     let close_authority = Pubkey::new_unique();
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     let TokenContext {
         mint_authority,
         token,
@@ -240,9 +247,12 @@ async fn fail_close_with_supply() {
     let close_authority = Keypair::new();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
-            close_authority: Some(close_authority.pubkey()),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::MintCloseAuthority {
+                close_authority: Some(close_authority.pubkey()),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext {

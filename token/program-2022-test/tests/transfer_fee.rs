@@ -102,12 +102,15 @@ async fn create_mint_with_accounts(alice_amount: u64) -> TokenWithAccounts {
     );
     let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
     context
-        .init_token_with_freezing_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
-            transfer_fee_basis_points,
-            maximum_fee,
-        }])
+        .init_token_with_freezing_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+                withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+                transfer_fee_basis_points,
+                maximum_fee,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext {
@@ -166,12 +169,15 @@ async fn success_init() {
     } = test_transfer_fee_config();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.into(),
-            transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
-            maximum_fee: newer_transfer_fee.maximum_fee.into(),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: transfer_fee_config_authority.into(),
+                withdraw_withheld_authority: withdraw_withheld_authority.into(),
+                transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
+                maximum_fee: newer_transfer_fee.maximum_fee.into(),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext {
@@ -212,12 +218,15 @@ async fn fail_init_default_pubkey_as_authority() {
     } = test_transfer_fee_config();
     let mut context = TestContext::new().await;
     let err = context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.into(),
-            withdraw_withheld_authority: Some(Pubkey::default()),
-            transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
-            maximum_fee: newer_transfer_fee.maximum_fee.into(),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: transfer_fee_config_authority.into(),
+                withdraw_withheld_authority: Some(Pubkey::default()),
+                transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
+                maximum_fee: newer_transfer_fee.maximum_fee.into(),
+            }],
+            &[],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -238,12 +247,15 @@ async fn fail_init_fee_too_high() {
     } = test_transfer_fee_config();
     let mut context = TestContext::new().await;
     let err = context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.into(),
-            transfer_fee_basis_points: MAX_FEE_BASIS_POINTS + 1,
-            maximum_fee: newer_transfer_fee.maximum_fee.into(),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: transfer_fee_config_authority.into(),
+                withdraw_withheld_authority: withdraw_withheld_authority.into(),
+                transfer_fee_basis_points: MAX_FEE_BASIS_POINTS + 1,
+                maximum_fee: newer_transfer_fee.maximum_fee.into(),
+            }],
+            &[],
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -269,12 +281,15 @@ async fn set_fee() {
     } = test_transfer_fee_config_with_keypairs();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
-            transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
-            maximum_fee: newer_transfer_fee.maximum_fee.into(),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+                withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+                transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
+                maximum_fee: newer_transfer_fee.maximum_fee.into(),
+            }],
+            &[],
+        )
         .await
         .unwrap();
 
@@ -451,7 +466,7 @@ async fn set_fee() {
 #[tokio::test]
 async fn fail_unsupported_mint() {
     let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+    context.init_token_with_mint(vec![], &[]).await.unwrap();
     let TokenContext {
         mint_authority,
         token,
@@ -515,12 +530,15 @@ async fn set_transfer_fee_config_authority() {
     } = test_transfer_fee_config_with_keypairs();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
-            transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
-            maximum_fee: newer_transfer_fee.maximum_fee.into(),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+                withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+                transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
+                maximum_fee: newer_transfer_fee.maximum_fee.into(),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let token = context.token_context.unwrap().token;
@@ -670,12 +688,15 @@ async fn set_withdraw_withheld_authority() {
     } = test_transfer_fee_config_with_keypairs();
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
-            transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
-            maximum_fee: newer_transfer_fee.maximum_fee.into(),
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+                withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+                transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
+                maximum_fee: newer_transfer_fee.maximum_fee.into(),
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let token = context.token_context.unwrap().token;
@@ -1236,12 +1257,15 @@ async fn harvest_withheld_tokens_to_mint() {
         create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
             .await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(Pubkey::new_unique()),
-            transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-            maximum_fee: TEST_MAXIMUM_FEE,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(Pubkey::new_unique()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext { token, .. } = context.token_context.take().unwrap();
@@ -1489,12 +1513,15 @@ async fn withdraw_withheld_tokens_from_mint() {
 
     // fail on new mint with mint mismatch
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-            transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-            maximum_fee: TEST_MAXIMUM_FEE,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext { token, .. } = context.token_context.take().unwrap();
@@ -1607,12 +1634,15 @@ async fn withdraw_withheld_tokens_from_accounts() {
         create_and_transfer_to_account(&token, &alice_account, &alice, &alice.pubkey(), amount)
             .await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: Some(Pubkey::new_unique()),
-            withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-            transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-            maximum_fee: TEST_MAXIMUM_FEE,
-        }])
+        .init_token_with_mint(
+            vec![ExtensionInitializationParams::TransferFeeConfig {
+                transfer_fee_config_authority: Some(Pubkey::new_unique()),
+                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+                maximum_fee: TEST_MAXIMUM_FEE,
+            }],
+            &[],
+        )
         .await
         .unwrap();
     let TokenContext { token, .. } = context.token_context.take().unwrap();
