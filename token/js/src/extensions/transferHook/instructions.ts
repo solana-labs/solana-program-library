@@ -156,7 +156,8 @@ export async function addExtraAccountsToInstruction(
     accountMetas.push({ pubkey: extraAccountsAccount, isSigner: false, isWritable: false });
 
     for (const extraAccountMeta of extraAccountMetas) {
-        const accountMeta = resolveExtraAccountMeta(
+        const accountMeta = await resolveExtraAccountMeta(
+            connection,
             extraAccountMeta,
             accountMetas,
             instruction.data,

@@ -12,7 +12,6 @@ export async function newAccountWithLamports(connection: Connection, lamports = 
 export async function getConnection(): Promise<Connection> {
     const url = 'http://127.0.0.1:8899';
     const connection = new Connection(url, 'confirmed');
-    await connection.getVersion();
     return connection;
 }
 
