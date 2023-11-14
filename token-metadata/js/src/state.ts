@@ -4,7 +4,6 @@ import { getStringCodec } from '@solana/codecs-strings';
 
 export const TOKEN_METADATA_DISCRIMINATOR = Buffer.from([112, 132, 90, 90, 11, 88, 157, 87]);
 
-// Don't export as you still need custom logic for all-zero update authorities
 const tokenMetadataCodec = getStructCodec([
     ['updateAuthority', getBytesCodec({ size: 32 })],
     ['mint', getBytesCodec({ size: 32 })],
