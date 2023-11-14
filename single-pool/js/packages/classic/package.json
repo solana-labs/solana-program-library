@@ -19,7 +19,7 @@
   "devDependencies": {
     "@types/node": "^20.9.0",
     "@ava/typescript": "^4.1.0",
-    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/eslint-plugin": "^6.11.0",
     "ava": "^5.3.1",
     "eslint": "^8.49.0",
     "eslint-config-prettier": "^9.0.0",
