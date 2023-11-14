@@ -468,8 +468,8 @@ importers:
         specifier: 2.0.0-experimental.7123512
         version: 2.0.0-experimental.7123512
       '@solana/codecs-data-structures':
-        specifier: 2.0.0-experimental.398c396
-        version: 2.0.0-experimental.398c396
+        specifier: 2.0.0-experimental.7123512
+        version: 2.0.0-experimental.7123512
       '@solana/codecs-numbers':
         specifier: 2.0.0-experimental.7123512
         version: 2.0.0-experimental.7123512
@@ -2008,11 +2008,11 @@ packages:
     resolution: {integrity: sha512-nplLMqXmFnmPM7oqjZ3TuBrZPPyw5F9bnb811feYWBBUStiImywQ8FyrtHxcC5+eKpspbwkFORExFKAMjRvmVA==}
     dev: false
 
-  /@solana/codecs-data-structures@2.0.0-experimental.398c396:
-    resolution: {integrity: sha512-gJxLunF1GuBXF8Mz1lfnqGjNMkIrpyTmHgk0g4PyacRCI0MvQr6d3q5oXVHfYLIaRrYPUUxvbt02sqOoOiW2dQ==}
+  /@solana/codecs-data-structures@2.0.0-experimental.7123512:
+    resolution: {integrity: sha512-husyPdERdXurHxoW3bL15Dk4zilz96zwI9tevmbhTx3jnBdH8YOlGw7nli89hnFJidss0q5/cPFGE5fo2zU4eA==}
     dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.398c396
-      '@solana/codecs-numbers': 2.0.0-experimental.398c396
+      '@solana/codecs-core': 2.0.0-experimental.7123512
+      '@solana/codecs-numbers': 2.0.0-experimental.7123512
     dev: false
 
   /@solana/codecs-numbers@2.0.0-experimental.398c396:
