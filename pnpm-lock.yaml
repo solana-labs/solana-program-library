@@ -471,8 +471,8 @@ importers:
         specifier: 2.0.0-experimental.398c396
         version: 2.0.0-experimental.398c396
       '@solana/codecs-numbers':
-        specifier: 2.0.0-experimental.398c396
-        version: 2.0.0-experimental.398c396
+        specifier: 2.0.0-experimental.7123512
+        version: 2.0.0-experimental.7123512
       '@solana/codecs-strings':
         specifier: 2.0.0-experimental.398c396
         version: 2.0.0-experimental.398c396(fastestsmallesttextencoderdecoder@1.0.22)
