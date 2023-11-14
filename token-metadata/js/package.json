@@ -48,7 +48,7 @@
     },
     "dependencies": {
         "@solana/codecs-core": "2.0.0-experimental.7123512",
-        "@solana/codecs-data-structures": "2.0.0-experimental.398c396",
+        "@solana/codecs-data-structures": "2.0.0-experimental.7123512",
         "@solana/codecs-numbers": "2.0.0-experimental.7123512",
         "@solana/codecs-strings": "2.0.0-experimental.398c396",
         "@solana/options": "2.0.0-experimental.7123512",
