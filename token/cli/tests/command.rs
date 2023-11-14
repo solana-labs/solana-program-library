@@ -75,6 +75,11 @@ async fn main() {
     // setup the native mint to be used by other tests
     do_create_native_mint(&test_validator.get_async_rpc_client(), payer.as_ref()).await;
 
+    // the GC test requires its own whole environment
+    let (gc_test_validator, gc_payer) = new_validator_for_test().await;
+    let gc_test_validator = Arc::new(gc_test_validator);
+    let gc_payer = Arc::new(gc_payer);
+
     // maybe come up with a way to do this through a some macro tag on the function?
     let tests = vec![
         async_test!(create_token_default, test_validator, payer),
@@ -89,16 +94,13 @@ async fn main() {
         async_test!(balance_after_mint_with_owner, test_validator, payer),
         async_test!(accounts, test_validator, payer),
         async_test!(accounts_with_owner, test_validator, payer),
-        async_test!(wrap, test_validator, payer),
-        async_test!(unwrap, test_validator, payer),
+        async_test!(wrapped_sol, test_validator, payer),
         async_test!(transfer, test_validator, payer),
         async_test!(transfer_fund_recipient, test_validator, payer),
         async_test!(transfer_non_standard_recipient, test_validator, payer),
         async_test!(allow_non_system_account_recipient, test_validator, payer),
         async_test!(close_account, test_validator, payer),
-        async_test!(close_wrapped_sol_account, test_validator, payer),
         async_test!(disable_mint_authority, test_validator, payer),
-        async_test!(gc, test_validator, payer),
         async_test!(set_owner, test_validator, payer),
         async_test!(transfer_with_account_delegate, test_validator, payer),
         async_test!(burn_with_account_delegate, test_validator, payer),
@@ -124,6 +126,8 @@ async fn main() {
         async_test!(metadata_pointer, test_validator, payer),
         async_test!(transfer_hook, test_validator, payer),
         async_test!(metadata, test_validator, payer),
+        // GC messes with every other test, so have it on its own test validator
+        async_test!(gc, gc_test_validator, gc_payer),
     ];
 
     libtest_mimic::run(&args, tests).exit();
@@ -719,13 +723,10 @@ async fn accounts(test_validator: &TestValidator, payer: &Keypair) {
         let token2 = create_token(&config, payer).await;
         let _account2 = create_associated_account(&config, payer, &token2, &payer.pubkey()).await;
         let token3 = create_token(&config, payer).await;
-        let result = process_test_command(
-            &config,
-            payer,
-            &["spl-token", CommandName::Accounts.into()],
-        )
-        .await
-        .unwrap();
+        let result =
+            process_test_command(&config, payer, &["spl-token", CommandName::Accounts.into()])
+                .await
+                .unwrap();
         assert!(result.contains(&token1.to_string()));
         assert!(result.contains(&token2.to_string()));
         assert!(!result.contains(&token3.to_string()));
@@ -759,7 +760,7 @@ async fn accounts_with_owner(test_validator: &TestValidator, payer: &Keypair) {
     }
 }
 
-async fn wrap(test_validator: &TestValidator, payer: &Keypair) {
+async fn wrapped_sol(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
         let config = test_config_with_default_signer(test_validator, payer, program_id);
         let native_mint = *Token::new_native(
@@ -775,52 +776,72 @@ async fn wrap(test_validator: &TestValidator, payer: &Keypair) {
         )
         .await
         .unwrap();
-        let account = get_associated_token_address_with_program_id(
+        let wrapped_address = get_associated_token_address_with_program_id(
             &payer.pubkey(),
             &native_mint,
             &config.program_id,
         );
-        let account = config.rpc_client.get_account(&account).await.unwrap();
+        let account = config
+            .rpc_client
+            .get_account(&wrapped_address)
+            .await
+            .unwrap();
         let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
         assert_eq!(token_account.base.mint, native_mint);
         assert_eq!(token_account.base.owner, payer.pubkey());
         assert!(token_account.base.is_native());
-    }
-}
-
-async fn unwrap(test_validator: &TestValidator, payer: &Keypair) {
-    for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(test_validator, payer, program_id);
-        let native_mint = *Token::new_native(
-            config.program_client.clone(),
-            program_id,
-            config.fee_payer().unwrap().clone(),
-        )
-        .get_address();
-        let account = get_associated_token_address_with_program_id(
-            &payer.pubkey(),
-            &native_mint,
-            &config.program_id,
-        );
-        let _result = process_test_command(
-            &config,
-            payer,
-            &["spl-token", CommandName::Wrap.into(), "0.5"],
-        )
-        .await
-        .unwrap();
         let result = process_test_command(
             &config,
             payer,
             &[
                 "spl-token",
                 CommandName::Unwrap.into(),
-                &account.to_string(),
+                &wrapped_address.to_string(),
             ],
         )
         .await;
         result.unwrap();
-        config.rpc_client.get_account(&account).await.unwrap_err();
+        config
+            .rpc_client
+            .get_account(&wrapped_address)
+            .await
+            .unwrap_err();
+
+        // now use `close` to close it
+        let token = create_token(&config, payer).await;
+        let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
+        let _result = process_test_command(
+            &config,
+            payer,
+            &["spl-token", CommandName::Wrap.into(), "10.0"],
+        )
+        .await
+        .unwrap();
+
+        let recipient =
+            get_associated_token_address_with_program_id(&payer.pubkey(), &native_mint, program_id);
+        let result = process_test_command(
+            &config,
+            payer,
+            &[
+                "spl-token",
+                CommandName::Close.into(),
+                "--address",
+                &source.to_string(),
+                "--recipient",
+                &recipient.to_string(),
+            ],
+        )
+        .await;
+        result.unwrap();
+
+        let ui_account = config
+            .rpc_client
+            .get_token_account(&recipient)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(ui_account.token_amount.amount, "10000000000");
     }
 }
 
@@ -1098,22 +1119,16 @@ async fn close_account(test_validator: &TestValidator, payer: &Keypair) {
             program_id,
             config.fee_payer().unwrap().clone(),
         );
+        let recipient_owner = Pubkey::new_unique();
         native_mint
-            .get_or_create_associated_account_info(&payer.pubkey())
+            .get_or_create_associated_account_info(&recipient_owner)
             .await
             .unwrap();
 
         let token = create_token(&config, payer).await;
 
         let system_recipient = Keypair::new().pubkey();
-        let wsol_recipient = native_mint.get_associated_token_address(&payer.pubkey());
-
-        let token_rent_amount = config
-            .rpc_client
-            .get_account(&create_auxiliary_account(&config, payer, token).await)
-            .await
-            .unwrap()
-            .lamports;
+        let wsol_recipient = native_mint.get_associated_token_address(&recipient_owner);
 
         for recipient in [system_recipient, wsol_recipient] {
             let base_balance = config
@@ -1124,6 +1139,12 @@ async fn close_account(test_validator: &TestValidator, payer: &Keypair) {
                 .unwrap_or(0);
 
             let source = create_auxiliary_account(&config, payer, token).await;
+            let token_rent_amount = config
+                .rpc_client
+                .get_account(&source)
+                .await
+                .unwrap()
+                .lamports;
 
             process_test_command(
                 &config,
@@ -1149,53 +1170,6 @@ async fn close_account(test_validator: &TestValidator, payer: &Keypair) {
                 assert_eq!(recipient_account.base.amount, token_rent_amount);
             }
         }
-    }
-}
-
-async fn close_wrapped_sol_account(test_validator: &TestValidator, payer: &Keypair) {
-    for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(test_validator, payer, program_id);
-
-        let native_mint = *Token::new_native(
-            config.program_client.clone(),
-            program_id,
-            config.fee_payer().unwrap().clone(),
-        )
-        .get_address();
-        let token = create_token(&config, payer).await;
-        let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
-        let _result = process_test_command(
-            &config,
-            payer,
-            &["spl-token", CommandName::Wrap.into(), "10.0"],
-        )
-        .await
-        .unwrap();
-
-        let recipient =
-            get_associated_token_address_with_program_id(&payer.pubkey(), &native_mint, program_id);
-        let result = process_test_command(
-            &config,
-            payer,
-            &[
-                "spl-token",
-                CommandName::Close.into(),
-                "--address",
-                &source.to_string(),
-                "--recipient",
-                &recipient.to_string(),
-            ],
-        )
-        .await;
-        result.unwrap();
-
-        let ui_account = config
-            .rpc_client
-            .get_token_account(&recipient)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(ui_account.token_amount.amount, "10000000000");
     }
 }
 
@@ -1243,7 +1217,15 @@ async fn gc(test_validator: &TestValidator, payer: &Keypair) {
         .await
         .unwrap();
         let value: serde_json::Value = serde_json::from_str(&result).unwrap();
-        assert_eq!(value["accounts"].as_array().unwrap().len(), 4);
+        assert_eq!(
+            value["accounts"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|x| x["mint"] == token.to_string())
+                .count(),
+            4
+        );
         config.output_format = OutputFormat::Display; // fixup eventually?
         let _result = process_test_command(&config, payer, &["spl-token", CommandName::Gc.into()])
             .await
@@ -1261,7 +1243,15 @@ async fn gc(test_validator: &TestValidator, payer: &Keypair) {
         .await
         .unwrap();
         let value: serde_json::Value = serde_json::from_str(&result).unwrap();
-        assert_eq!(value["accounts"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            value["accounts"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|x| x["mint"] == token.to_string())
+                .count(),
+            1
+        );
 
         config.output_format = OutputFormat::Display;
 
@@ -1805,9 +1795,10 @@ async fn required_transfer_memos(test_validator: &TestValidator, payer: &Keypair
     let program_id = spl_token_2022::id();
     let config = test_config_with_default_signer(test_validator, payer, &program_id);
     let token = create_token(&config, payer).await;
+    let destination_account = create_auxiliary_account(&config, payer, token).await;
     let token_account = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
-    let source_account = create_auxiliary_account(&config, payer, token).await;
-    mint_tokens(&config, payer, token, 100.0, source_account)
+
+    mint_tokens(&config, payer, token, 100.0, token_account)
         .await
         .unwrap();
 
@@ -1818,15 +1809,16 @@ async fn required_transfer_memos(test_validator: &TestValidator, payer: &Keypair
         &[
             "spl-token",
             CommandName::EnableRequiredTransferMemos.into(),
-            &token_account.to_string(),
+            &destination_account.to_string(),
         ],
     )
     .await
     .unwrap();
+
     let extensions = StateWithExtensionsOwned::<Account>::unpack(
         config
             .rpc_client
-            .get_account(&token_account)
+            .get_account(&destination_account)
             .await
             .unwrap()
             .data,
@@ -1844,10 +1836,10 @@ async fn required_transfer_memos(test_validator: &TestValidator, payer: &Keypair
             "spl-token",
             CommandName::Transfer.into(),
             "--from",
-            &source_account.to_string(),
+            &token_account.to_string(),
             &token.to_string(),
             "1",
-            &token_account.to_string(),
+            &destination_account.to_string(),
         ],
     )
     .await
@@ -1859,18 +1851,22 @@ async fn required_transfer_memos(test_validator: &TestValidator, payer: &Keypair
             "spl-token",
             CommandName::Transfer.into(),
             "--from",
-            &source_account.to_string(),
+            &token_account.to_string(),
             // malicious compliance
             "--with-memo",
             "memo",
             &token.to_string(),
             "1",
-            &token_account.to_string(),
+            &destination_account.to_string(),
         ],
     )
     .await
     .unwrap();
-    let account_data = config.rpc_client.get_account(&token_account).await.unwrap();
+    let account_data = config
+        .rpc_client
+        .get_account(&destination_account)
+        .await
+        .unwrap();
     let account_state = StateWithExtensionsOwned::<Account>::unpack(account_data.data).unwrap();
     assert_eq!(
         account_state.base.amount,
@@ -1884,7 +1880,7 @@ async fn required_transfer_memos(test_validator: &TestValidator, payer: &Keypair
         &[
             "spl-token",
             CommandName::DisableRequiredTransferMemos.into(),
-            &token_account.to_string(),
+            &destination_account.to_string(),
         ],
     )
     .await
@@ -1892,7 +1888,7 @@ async fn required_transfer_memos(test_validator: &TestValidator, payer: &Keypair
     let extensions = StateWithExtensionsOwned::<Account>::unpack(
         config
             .rpc_client
-            .get_account(&token_account)
+            .get_account(&destination_account)
             .await
             .unwrap()
             .data,
