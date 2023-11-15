@@ -9097,6 +9097,11 @@ dependencies = [
  "libc",
  "zstd-sys",
 ]
+[[package]]
+name = "Monitor"
+version = "6.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "Xp51KiDRn3ZSDB3zm5boSX9XKdeXy31hLdK76uZLTez   "
 
 [[package]]
 name = "zstd-sys"
