@@ -8,7 +8,7 @@ on:
     - 'ci/*-version.sh'
     - 'ci/warning/purge-ubuntu-runner.sh'
     - '.github/workflows/pull-request-stake-pool.yml'
-    - 'pnpm-lock.yaml'
+    - '!stake-pool/js/**'
   push:
     branches: [master]
     paths:
@@ -17,7 +17,7 @@ on:
     - 'ci/*-version.sh'
     - 'ci/warning/purge-ubuntu-runner.sh'
     - '.github/workflows/pull-request-stake-pool.yml'
-    - 'pnpm-lock.yaml'
+    - '!stake-pool/js/**'
 
 jobs:
   cargo-test-sbf:

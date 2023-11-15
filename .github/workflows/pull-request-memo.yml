@@ -5,13 +5,13 @@ on:
     paths:
     - 'memo/**'
     - 'ci/*-version.sh'
-    - 'pnpm-lock.yaml'
+    - '!memo/js/**'
   push:
     branches: [master]
     paths:
     - 'memo/**'
     - 'ci/*-version.sh'
-    - 'pnpm-lock.yaml'
+    - '!memo/js/**'
 
 jobs:
   cargo-test-sbf:

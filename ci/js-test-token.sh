@@ -9,5 +9,6 @@ pnpm install
 pnpm build
 
 cd token/js
+pnpm build:program
 pnpm lint
 pnpm test
