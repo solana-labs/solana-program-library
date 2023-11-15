@@ -475,6 +475,40 @@ describe('Account Compression', () => {
                 await execute(provider, [replaceIx, replaceBackIx], [payerKeypair], true, true);
             }
         });
+        it('Zero length verifications and transfers work', async () => {
+            [cmtKeypair, offChainTree] = await createTreeOnChain(
+                provider,
+                payerKeypair,
+                2 ** DEPTH,
+                { maxBufferSize: 8, maxDepth: DEPTH },
+                DEPTH // Store full tree on chain
+            );
+            cmt = cmtKeypair.publicKey;
+
+            for (let i = 0; i < 2 ** DEPTH; i += 1) {
+                const proof = offChainTree.getProof(i);
+                const verifyIx = createVerifyLeafIx(cmt, {
+                    ...proof,
+                    proof: [],
+                });
+                await execute(provider, [verifyIx], [payerKeypair], true, false);
+
+                const newLeaf = crypto.randomBytes(32);
+                // Create an instruction to replace the leaf
+                const replaceIx = createReplaceIx(cmt, payer, newLeaf, {
+                    ...proof,
+                    proof: [],
+                });
+                offChainTree.updateLeaf(i, newLeaf);
+
+                await execute(provider, [replaceIx], [payerKeypair], true, false);
+
+                const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt, {
+                    commitment: 'confirmed',
+                });
+                assert(splCMT.getCurrentRoot().equals(Buffer.from(offChainTree.root)), 'Roots do not match');
+            }
+        });
     });
     describe(`Having created a tree with 8 leaves`, () => {
         beforeEach(async () => {
