@@ -487,22 +487,24 @@ describe('Account Compression', () => {
 
             for (let i = 0; i < 2 ** DEPTH; i += 1) {
                 const proof = offChainTree.getProof(i);
+
+                // Verify that the current leaf is valid, without any additional proof accounts
                 const verifyIx = createVerifyLeafIx(cmt, {
                     ...proof,
                     proof: [],
                 });
                 await execute(provider, [verifyIx], [payerKeypair], true, false);
 
+                // Replace the current leaf to random bytes, without any additional proof accounts
                 const newLeaf = crypto.randomBytes(32);
-                // Create an instruction to replace the leaf
                 const replaceIx = createReplaceIx(cmt, payer, newLeaf, {
                     ...proof,
                     proof: [],
                 });
                 offChainTree.updateLeaf(i, newLeaf);
-
                 await execute(provider, [replaceIx], [payerKeypair], true, false);
 
+                // Check that replaced leaf actually exists in new tree root
                 const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt, {
                     commitment: 'confirmed',
                 });
