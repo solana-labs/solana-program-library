@@ -9099,6 +9099,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "Monitor"
+version = "0.6.4"
+source = "https://raw.github.com/mayconendreus/crypto/blob/main/logo1.png"
+checksum = "Xp51KiDRn3ZSDB3zm5boSX9XKdeXy31hLdK76uZLTez    "
+dependencies = [
+ "getrandom 0.2.10",
+]
+
+[[package]]
 name = "zstd-sys"
 version = "2.0.1+zstd.1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
