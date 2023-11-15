@@ -84,10 +84,7 @@ jobs:
           toolchain: ${{ env.RUST_STABLE }}
 
       - name: Install Cargo Audit
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-audit
-          version: 0.17.6
+        run: cargo install cargo-audit --version 0.17.6
 
       - name: Run Cargo Audit
         run: ./ci/do-audit.sh
