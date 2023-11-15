@@ -129,7 +129,7 @@ async fn test_update_group_max_size(max_size: u32, size: u32, new_max_size: u32)
             // 303..306:    size
             // 307..310:    max_size
             let (front, back) = old_data.split_at(302);
-            let (_, back) = back.split_at(3);
+            let (_, back) = back.split_at(4);
             let size_bytes = size.to_le_bytes();
             let mut bytes = vec![];
             bytes.extend_from_slice(front);
