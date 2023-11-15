@@ -45,7 +45,7 @@ jobs:
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.npm
           key: node-${{ hashFiles('pnpm-lock.yaml') }}
