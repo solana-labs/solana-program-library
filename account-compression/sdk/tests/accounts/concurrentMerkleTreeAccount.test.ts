@@ -116,7 +116,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
             const maxDepth = 30;
             const maxBufferSize = 2048;
 
-            for (let canopyDepth = 1; canopyDepth <= 14; canopyDepth++) {
+            for (let canopyDepth = 1; canopyDepth <= 17; canopyDepth++) {
                 // Airdrop enough SOL to cover tree creation
                 const size = getConcurrentMerkleTreeAccountSize(maxDepth, maxBufferSize, canopyDepth);
                 const rent = await connection.getMinimumBalanceForRentExemption(size, 'confirmed');
