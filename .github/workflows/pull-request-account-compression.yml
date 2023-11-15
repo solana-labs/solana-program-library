@@ -78,7 +78,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       - uses: actions/cache@v3
@@ -88,7 +88,7 @@ jobs:
           restore-keys: |
             node-
       - name: Download programs
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: account-compression-programs
           path: account-compression/target/deploy

@@ -248,7 +248,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       - uses: pnpm/action-setup@v2
@@ -337,7 +337,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Download spl-transfer-hook-example program
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: spl-transfer-hook-example
           path: target/deploy
