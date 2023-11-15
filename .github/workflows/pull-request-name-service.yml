@@ -17,7 +17,7 @@ jobs:
   cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -71,7 +71,7 @@ jobs:
     env:
       NODE_VERSION: 16.x
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v3
         with:

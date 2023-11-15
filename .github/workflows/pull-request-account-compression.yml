@@ -21,7 +21,7 @@ jobs:
   anchor-build-account-compression:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -78,7 +78,7 @@ jobs:
       NODE_VERSION: 16.x
     needs: anchor-build-account-compression
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v1
         with:

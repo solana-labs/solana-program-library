@@ -21,7 +21,7 @@ jobs:
   cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Remove unneeded packages for more space
         run: bash ./ci/warning/purge-ubuntu-runner.sh
@@ -76,7 +76,7 @@ jobs:
   cargo-test-token-2022-serde:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -108,7 +108,7 @@ jobs:
   cargo-test-sbf-transfer-hook:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -160,7 +160,7 @@ jobs:
   cargo-test-sbf-associated-token-account:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -212,7 +212,7 @@ jobs:
   cargo-test-sbf-twoxtx:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Remove unneeded packages for more space
         run: bash ./ci/warning/purge-ubuntu-runner.sh
@@ -256,7 +256,7 @@ jobs:
     env:
       NODE_VERSION: 16.x
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v3
         with:
@@ -275,7 +275,7 @@ jobs:
   cargo-build-test-cli:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -317,7 +317,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [cargo-test-sbf]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
