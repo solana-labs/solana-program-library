@@ -66,7 +66,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh account-compression
 
       - name: Upload programs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: account-compression-programs
           path: "account-compression/target/deploy/*.so"

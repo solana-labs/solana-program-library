@@ -60,7 +60,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh name-service
 
       - name: Upload programs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: name-service-programs
           path: "target/deploy/*.so"

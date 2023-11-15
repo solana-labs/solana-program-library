@@ -75,7 +75,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh stake-pool
 
       - name: Upload programs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: stake-pool-programs
           path: "target/deploy/*.so"

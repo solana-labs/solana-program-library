@@ -67,7 +67,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh token
 
       - name: Upload programs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: token-programs
           path: "target/deploy/*.so"
@@ -151,7 +151,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh token/transfer-hook/example
 
       - name: Upload program
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: spl-transfer-hook-example
           path: "target/deploy/*.so"
@@ -203,7 +203,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh associated-token-account
 
       - name: Upload program
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: associated-token-account-program
           path: "target/deploy/*.so"
