@@ -30,11 +30,9 @@ jobs:
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
 
       - uses: actions/cache@v3
         with:
@@ -116,11 +114,9 @@ jobs:
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
 
       - uses: actions/cache@v3
         with:

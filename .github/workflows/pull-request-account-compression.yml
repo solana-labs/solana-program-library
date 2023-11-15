@@ -32,11 +32,9 @@ jobs:
           source ci/install-anchor.sh
           echo "ANCHOR_CLI_VERSION=$anchor_cli_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
 
       - uses: actions/cache@v3
         with:
