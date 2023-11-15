@@ -11,8 +11,8 @@ importers:
         specifier: ^0.0.3
         version: 0.0.3(prettier@3.1.0)
       eslint-config-turbo:
-        specifier: ^1.10.13
-        version: 1.10.13(eslint@8.53.0)
+        specifier: ^1.10.16
+        version: 1.10.16(eslint@8.53.0)
       turbo:
         specifier: ^1.10.16
         version: 1.10.16
@@ -2000,10 +2000,6 @@ packages:
     dependencies:
       buffer: 6.0.3
 
-  /@solana/codecs-core@2.0.0-experimental.398c396:
-    resolution: {integrity: sha512-E3kJzw7K6rkmmTX1tSOdE7Qg/OFqbKiIaaT9V2PTKTVZxwssPrqogUh6aLx0wdzlSJNymy8krKG/FbXsua0FIA==}
-    dev: false
-
   /@solana/codecs-core@2.0.0-experimental.7123512:
     resolution: {integrity: sha512-nplLMqXmFnmPM7oqjZ3TuBrZPPyw5F9bnb811feYWBBUStiImywQ8FyrtHxcC5+eKpspbwkFORExFKAMjRvmVA==}
     dev: false
@@ -2013,12 +2009,6 @@ packages:
     dependencies:
       '@solana/codecs-core': 2.0.0-experimental.7123512
       '@solana/codecs-numbers': 2.0.0-experimental.7123512
-    dev: false
-
-  /@solana/codecs-numbers@2.0.0-experimental.398c396:
-    resolution: {integrity: sha512-mmUSfO3TOL5kCb/5UCWCz0UTC0KgC864pRe9veCtJbgh5G2YDcBYNJiyKTT661yo/Y+dvrh2hZtYprhB/qxjmw==}
-    dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.398c396
     dev: false
 
   /@solana/codecs-numbers@2.0.0-experimental.7123512:
@@ -3765,13 +3755,13 @@ packages:
       eslint: 8.53.0
     dev: true
 
-  /eslint-config-turbo@1.10.13(eslint@8.53.0):
-    resolution: {integrity: sha512-Ffa0SxkRCPMtfUX/HDanEqsWoLwZTQTAXO9W4IsOtycb2MzJDrVcLmoFW5sMwCrg7gjqbrC4ZJoD+1SPPzIVqg==}
+  /eslint-config-turbo@1.10.16(eslint@8.53.0):
+    resolution: {integrity: sha512-O3NQI72bQHV7FvSC6lWj66EGx8drJJjuT1kuInn6nbMLOHdMBhSUX/8uhTAlHRQdlxZk2j9HtgFCIzSc93w42g==}
     peerDependencies:
       eslint: '>6.6.0'
     dependencies:
       eslint: 8.53.0
-      eslint-plugin-turbo: 1.10.13(eslint@8.53.0)
+      eslint-plugin-turbo: 1.10.16(eslint@8.53.0)
     dev: true
 
   /eslint-import-resolver-node@0.3.9:
@@ -3960,8 +3950,8 @@ packages:
       requireindex: 1.2.0
     dev: true
 
-  /eslint-plugin-turbo@1.10.13(eslint@8.53.0):
-    resolution: {integrity: sha512-el4AAmn0zXmvHEyp1h0IQMfse10Vy8g5Vbg4IU3+vD9CSj5sDbX07iFVt8sCKg7og9Q5FAa9mXzlCf7t4vYgzg==}
+  /eslint-plugin-turbo@1.10.16(eslint@8.53.0):
+    resolution: {integrity: sha512-ZjrR88MTN64PNGufSEcM0tf+V1xFYVbeiMeuIqr0aiABGomxFLo4DBkQ7WI4WzkZtWQSIA2sP+yxqSboEfL9MQ==}
     peerDependencies:
       eslint: '>6.6.0'
     dependencies:
