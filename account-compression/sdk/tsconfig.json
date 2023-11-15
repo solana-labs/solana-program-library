@@ -8,6 +8,7 @@
     "declaration": true,
     "declarationMap": true,
     "target": "ES2016",
-    "module": "CommonJS"
+    "module": "CommonJS",
+    "types": ["jest", "node"]
   }
 }

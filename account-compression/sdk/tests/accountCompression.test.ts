@@ -17,7 +17,6 @@ import {
 import { hash, MerkleTree } from '../src/merkle-tree';
 import { createTreeOnChain, execute } from './utils';
 
-// eslint-disable-next-line no-empty
 describe('Account Compression', () => {
     // Configure the client to use the local cluster.
     let offChainTree: MerkleTree;
