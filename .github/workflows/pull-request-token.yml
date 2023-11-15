@@ -21,7 +21,7 @@ jobs:
   cargo-test-sbf:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Remove unneeded packages for more space
         run: bash ./ci/warning/purge-ubuntu-runner.sh
@@ -33,26 +33,24 @@ jobs:
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin/rustfilt
           key: cargo-sbf-bins-${{ runner.os }}
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
@@ -67,7 +65,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh token
 
       - name: Upload programs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: token-programs
           path: "target/deploy/*.so"
@@ -76,7 +74,7 @@ jobs:
   cargo-test-token-2022-serde:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -85,13 +83,11 @@ jobs:
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -108,7 +104,7 @@ jobs:
   cargo-test-sbf-transfer-hook:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -117,26 +113,24 @@ jobs:
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin/rustfilt
           key: cargo-sbf-bins-${{ runner.os }}
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
@@ -151,7 +145,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh token/transfer-hook/example
 
       - name: Upload program
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: spl-transfer-hook-example
           path: "target/deploy/*.so"
@@ -160,7 +154,7 @@ jobs:
   cargo-test-sbf-associated-token-account:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -169,26 +163,24 @@ jobs:
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin/rustfilt
           key: cargo-sbf-bins-${{ runner.os }}
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
@@ -203,7 +195,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh associated-token-account
 
       - name: Upload program
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: associated-token-account-program
           path: "target/deploy/*.so"
@@ -212,7 +204,7 @@ jobs:
   cargo-test-sbf-twoxtx:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Remove unneeded packages for more space
         run: bash ./ci/warning/purge-ubuntu-runner.sh
@@ -225,13 +217,11 @@ jobs:
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE_VERSION }}
-          override: true
-          profile: minimal
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
@@ -256,15 +246,15 @@ jobs:
     env:
       NODE_VERSION: 16.x
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.npm
           key: node-${{ hashFiles('pnpm-lock.yaml') }}
@@ -275,7 +265,7 @@ jobs:
   cargo-build-test-cli:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -284,20 +274,18 @@ jobs:
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
@@ -317,7 +305,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [cargo-test-sbf]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set env vars
         run: |
@@ -326,20 +314,18 @@ jobs:
           source ci/solana-version.sh
           echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
 
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
-          override: true
-          profile: minimal
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
@@ -351,7 +337,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Download spl-transfer-hook-example program
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: spl-transfer-hook-example
           path: target/deploy

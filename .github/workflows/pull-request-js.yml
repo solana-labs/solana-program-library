@@ -37,15 +37,15 @@ jobs:
     env:
       NODE_VERSION: 20.5
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.npm
           key: node-${{ hashFiles('pnpm-lock.yaml') }}
