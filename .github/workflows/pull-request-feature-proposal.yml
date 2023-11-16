@@ -6,12 +6,14 @@ on:
     - 'feature-proposal/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - '!token/js/**'
   push:
     branches: [master]
     paths:
     - 'feature-proposal/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - '!token/js/**'
 
 jobs:
   cargo-test-sbf:
