@@ -6,12 +6,14 @@ on:
     - 'binary-oracle-pair/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - '!token/js/**'
   push:
     branches: [master]
     paths:
     - 'binary-oracle-pair/**'
     - 'token/**'
     - 'ci/*-version.sh'
+    - '!token/js/**'
 
 jobs:
   cargo-test-sbf:

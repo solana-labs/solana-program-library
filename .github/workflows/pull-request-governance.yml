@@ -6,12 +6,14 @@ on:
       - "governance/**"
       - "token/**"
       - "ci/*-version.sh"
+      - '!token/js/**'
   push:
     branches: [master]
     paths:
       - "governance/**"
       - "token/**"
       - "ci/*-version.sh"
+      - '!token/js/**'
 
 jobs:
   cargo-test-sbf:

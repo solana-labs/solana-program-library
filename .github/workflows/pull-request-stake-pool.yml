@@ -9,6 +9,7 @@ on:
     - 'ci/warning/purge-ubuntu-runner.sh'
     - '.github/workflows/pull-request-stake-pool.yml'
     - '!stake-pool/js/**'
+    - '!token/js/**'
   push:
     branches: [master]
     paths:
@@ -18,6 +19,7 @@ on:
     - 'ci/warning/purge-ubuntu-runner.sh'
     - '.github/workflows/pull-request-stake-pool.yml'
     - '!stake-pool/js/**'
+    - '!token/js/**'
 
 jobs:
   cargo-test-sbf:

@@ -8,6 +8,7 @@ on:
     - 'libraries/math/**'
     - 'ci/*-version.sh'
     - '!token-swap/js/**'
+    - '!token/js/**'
   push:
     branches: [master]
     paths:
@@ -16,6 +17,7 @@ on:
     - 'libraries/math/**'
     - 'ci/*-version.sh'
     - '!token-swap/js/**'
+    - '!token/js/**'
 
 jobs:
   cargo-test-sbf:

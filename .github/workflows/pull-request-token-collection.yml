@@ -9,6 +9,8 @@ on:
     - 'token-metadata/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-token-collection.yml'
+    - '!token/js/**'
+    - '!token-metadata/js/**'
   push:
     branches: [master]
     paths:
@@ -18,6 +20,8 @@ on:
     - 'token-metadata/**'
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-token-collection.yml'
+    - '!token/js/**'
+    - '!token-metadata/js/**'
 
 jobs:
   cargo-test-sbf:

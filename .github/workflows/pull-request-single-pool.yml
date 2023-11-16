@@ -9,6 +9,7 @@ on:
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-single-pool.yml'
     - '!single-pool/js/**'
+    - '!token/js/**'
   push:
     branches: [master]
     paths:
@@ -18,6 +19,7 @@ on:
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-single-pool.yml'
     - '!single-pool/js/**'
+    - '!token/js/**'
 
 jobs:
   cargo-test-sbf:
