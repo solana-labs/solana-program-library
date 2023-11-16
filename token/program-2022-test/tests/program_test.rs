@@ -78,6 +78,22 @@ impl TestContext {
         extension_init_params: Vec<ExtensionInitializationParams>,
         freeze_authority: Option<Keypair>,
     ) -> TokenResult<()> {
+        self.init_token_with_mint_keypair_and_freeze_authority_and_additional_signers(
+            mint_account,
+            extension_init_params,
+            freeze_authority,
+            &[],
+        )
+        .await
+    }
+
+    pub async fn init_token_with_mint_keypair_and_freeze_authority_and_additional_signers(
+        &mut self,
+        mint_account: Keypair,
+        extension_init_params: Vec<ExtensionInitializationParams>,
+        freeze_authority: Option<Keypair>,
+        additional_signers: &[&Keypair],
+    ) -> TokenResult<()> {
         let payer = keypair_clone(&self.context.lock().await.payer);
         let client: Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>> =
             Arc::new(ProgramBanksClient::new_from_context(
@@ -109,12 +125,15 @@ impl TestContext {
             Arc::new(payer),
         );
 
+        let mut signing_keypairs = vec![&mint_account];
+        signing_keypairs.extend_from_slice(additional_signers);
+
         token
             .create_mint(
                 &mint_authority_pubkey,
                 freeze_authority_pubkey.as_ref(),
                 extension_init_params,
-                &[&mint_account],
+                &signing_keypairs,
             )
             .await?;
 
