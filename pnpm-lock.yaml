@@ -157,8 +157,8 @@ importers:
         specifier: ^5.1.3
         version: 5.2.1
       borsh:
-        specifier: ^0.7.0
-        version: 0.7.0
+        specifier: ^1.0.0
+        version: 1.0.0
     devDependencies:
       '@tsconfig/recommended':
         specifier: ^1.0.1
@@ -3014,6 +3014,10 @@ packages:
       bn.js: 5.2.1
       bs58: 4.0.1
       text-encoding-utf-8: 1.0.2
+
+  /borsh@1.0.0:
+    resolution: {integrity: sha512-fSVWzzemnyfF89EPwlUNsrS5swF5CrtiN4e+h0/lLf4dz2he4L3ndM20PS9wj7ICSkXJe/TQUHdaPTq15b1mNQ==}
+    dev: false
 
   /bplist-parser@0.2.0:
     resolution: {integrity: sha512-z0M+byMThzQmD9NILRniCUXYsYpjwnlO8N5uCFaCqIOpqRsJCrQL9NK3JsD67CN5a08nF5oIL2bD6loTdHOuKw==}
