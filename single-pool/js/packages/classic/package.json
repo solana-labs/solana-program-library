@@ -30,7 +30,7 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "@solana/web3.js": "^1.78.4",
+    "@solana/web3.js": "^1.87.6",
     "@solana/spl-single-pool": "workspace:*"
   },
   "ava": {
