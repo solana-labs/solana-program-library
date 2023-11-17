@@ -69,7 +69,7 @@
         "prettier": "^3.1.0",
         "process": "^0.11.10",
         "shx": "^0.3.4",
-        "start-server-and-test": "^2.0.0",
+        "start-server-and-test": "^2.0.3",
         "ts-jest": "^29.0.0",
         "ts-node": "^10.9.1",
         "typedoc": "^0.25.0",
