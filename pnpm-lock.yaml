@@ -722,6 +722,9 @@ importers:
       '@solana/buffer-layout-utils':
         specifier: ^0.2.0
         version: 0.2.0
+      '@solana/spl-token-metadata':
+        specifier: ^0.1.1
+        version: link:../../token-metadata/js
       buffer:
         specifier: ^6.0.3
         version: 6.0.3

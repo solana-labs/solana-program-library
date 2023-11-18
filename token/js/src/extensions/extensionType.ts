@@ -36,6 +36,7 @@ export enum ExtensionType {
     // ConfidentialTransferFee, // Not implemented yet
     // ConfidentialTransferFeeAmount, // Not implemented yet
     MetadataPointer = 18, // Remove number once above extensions implemented
+    TokenMetadata = 19, // Remove number once above extensions implemented
 }
 
 export const TYPE_SIZE = 2;
@@ -46,6 +47,7 @@ export const LENGTH_SIZE = 2;
 export function getTypeLen(e: ExtensionType): number {
     switch (e) {
         case ExtensionType.Uninitialized:
+        case ExtensionType.TokenMetadata:
             return 0;
         case ExtensionType.TransferFeeConfig:
             return TRANSFER_FEE_CONFIG_SIZE;
@@ -95,6 +97,7 @@ export function isMintExtension(e: ExtensionType): boolean {
         case ExtensionType.PermanentDelegate:
         case ExtensionType.TransferHook:
         case ExtensionType.MetadataPointer:
+        case ExtensionType.TokenMetadata:
             return true;
         case ExtensionType.Uninitialized:
         case ExtensionType.TransferFeeAmount:
@@ -130,6 +133,7 @@ export function isAccountExtension(e: ExtensionType): boolean {
         case ExtensionType.PermanentDelegate:
         case ExtensionType.TransferHook:
         case ExtensionType.MetadataPointer:
+        case ExtensionType.TokenMetadata:
             return false;
         default:
             throw Error(`Unknown extension type: ${e}`);
@@ -154,6 +158,7 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
         case ExtensionType.MemoTransfer:
         case ExtensionType.MintCloseAuthority:
         case ExtensionType.MetadataPointer:
+        case ExtensionType.TokenMetadata:
         case ExtensionType.Uninitialized:
         case ExtensionType.InterestBearingConfig:
         case ExtensionType.PermanentDelegate:
