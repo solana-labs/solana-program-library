@@ -47,7 +47,6 @@ export const LENGTH_SIZE = 2;
 export function getTypeLen(e: ExtensionType): number {
     switch (e) {
         case ExtensionType.Uninitialized:
-        case ExtensionType.TokenMetadata:
             return 0;
         case ExtensionType.TransferFeeConfig:
             return TRANSFER_FEE_CONFIG_SIZE;
@@ -81,6 +80,8 @@ export function getTypeLen(e: ExtensionType): number {
             return TRANSFER_HOOK_SIZE;
         case ExtensionType.TransferHookAccount:
             return TRANSFER_HOOK_ACCOUNT_SIZE;
+        case ExtensionType.TokenMetadata:
+            throw Error(`Variable length extension type: ${e}`);
         default:
             throw Error(`Unknown extension type: ${e}`);
     }

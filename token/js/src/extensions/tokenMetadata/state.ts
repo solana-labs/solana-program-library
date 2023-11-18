@@ -52,6 +52,10 @@ export async function getEmittedTokenMetadata(
         maxSupportedTransactionVersion: 2,
     });
 
+    if (tx === null) {
+        return null;
+    }
+
     const data = Buffer.from(tx?.meta?.returnData?.data?.[0], 'base64');
 
     if (data === null) {
