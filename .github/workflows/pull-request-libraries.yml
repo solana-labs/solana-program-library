@@ -57,7 +57,7 @@ jobs:
       - name: Build and test
         run: ./ci/cargo-test-sbf.sh libraries
 
-  js-test-tlv:
+  js-test:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 16.x
@@ -76,4 +76,4 @@ jobs:
           key: node-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             node-
-      - run: ./ci/js-test-tlv.sh
+      - run: ./ci/js-test-libraries.sh
