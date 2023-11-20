@@ -34,7 +34,7 @@ solana-program-test = "1.17.2"
 solana-sdk = "1.17.2"
 solana-vote-program = "1.17.2"
 spl-token = { version = "4.0", path = "../../token/program", features = [ "no-entrypoint" ] }
-test-case = "3.2"
+test-case = "3.3"
 
 [lib]
 crate-type = ["cdylib", "lib"]

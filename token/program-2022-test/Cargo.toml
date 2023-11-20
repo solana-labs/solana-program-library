@@ -33,4 +33,4 @@ spl-token-group-interface = { version = "0.1", path = "../../token-group/interfa
 spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
 spl-transfer-hook-example = { version = "0.3", path="../transfer-hook/example", features = ["no-entrypoint"] }
 spl-transfer-hook-interface = { version = "0.3", path="../transfer-hook/interface" }
-test-case = "3.2"
+test-case = "3.3"
