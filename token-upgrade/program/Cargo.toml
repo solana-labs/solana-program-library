@@ -24,7 +24,7 @@ solana-program-test = "1.17.2"
 solana-sdk = "1.17.2"
 spl-token = { version = "4.0", path = "../../token/program", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.8", path = "../../token/client" }
-test-case = "3.2"
+test-case = "3.3"
 
 [lib]
 crate-type = ["cdylib", "lib"]

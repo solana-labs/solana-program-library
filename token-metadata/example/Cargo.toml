@@ -22,7 +22,7 @@ spl-pod = { version = "0.1.0", path = "../../libraries/pod" }
 solana-program-test = "1.17.2"
 solana-sdk = "1.17.2"
 spl-token-client = { version = "0.8", path = "../../token/client" }
-test-case = "3.2"
+test-case = "3.3"
 
 [lib]
 crate-type = ["cdylib", "lib"]

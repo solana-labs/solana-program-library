@@ -35,7 +35,7 @@ spl-single-pool = { version = "1.0.0", path="../program", features = [ "no-entry
 [dev-dependencies]
 solana-test-validator = "=1.17.2"
 serial_test = "2.0.0"
-test-case = "3.2"
+test-case = "3.3"
 tempfile = "3.8.1"
 
 [[bin]]
