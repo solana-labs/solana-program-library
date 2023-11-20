@@ -57,8 +57,8 @@ importers:
         specifier: ^0.1.1
         version: 0.1.3(eslint@8.53.0)
       gh-pages:
-        specifier: ^6.0.0
-        version: 6.0.0
+        specifier: ^6.1.0
+        version: 6.1.0
       mocha:
         specifier: ^10.1.0
         version: 10.2.0
@@ -118,8 +118,8 @@ importers:
         specifier: ^0.1.1
         version: 0.1.3(eslint@8.53.0)
       gh-pages:
-        specifier: ^6.0.0
-        version: 6.0.0
+        specifier: ^6.1.0
+        version: 6.1.0
       jest:
         specifier: ^29.0.0
         version: 29.7.0(@types/node@20.9.2)(ts-node@10.9.1)
@@ -441,8 +441,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.1(@types/eslint@8.44.7)(eslint-config-prettier@9.0.0)(eslint@8.53.0)(prettier@3.1.0)
       gh-pages:
-        specifier: ^6.0.0
-        version: 6.0.0
+        specifier: ^6.1.0
+        version: 6.1.0
       prettier:
         specifier: ^3.1.0
         version: 3.1.0
@@ -517,8 +517,8 @@ importers:
         specifier: ^0.1.1
         version: 0.1.3(eslint@8.53.0)
       gh-pages:
-        specifier: ^6.0.0
-        version: 6.0.0
+        specifier: ^6.1.0
+        version: 6.1.0
       mocha:
         specifier: ^10.1.0
         version: 10.2.0
@@ -663,8 +663,8 @@ importers:
         specifier: ^0.1.1
         version: 0.1.3(eslint@8.53.0)
       gh-pages:
-        specifier: ^6.0.0
-        version: 6.0.0
+        specifier: ^6.1.0
+        version: 6.1.0
       mocha:
         specifier: ^10.1.0
         version: 10.2.0
@@ -4416,8 +4416,8 @@ packages:
       resolve-pkg-maps: 1.0.0
     dev: true
 
-  /gh-pages@6.0.0:
-    resolution: {integrity: sha512-FXZWJRsvP/fK2HJGY+Di6FRNHvqFF6gOIELaopDjXXgjeOYSNURcuYwEO/6bwuq6koP5Lnkvnr5GViXzuOB89g==}
+  /gh-pages@6.1.0:
+    resolution: {integrity: sha512-MdXigvqN3I66Y+tAZsQJMzpBWQOI1snD6BYuECmP+GEdryYMMOQvzn4AConk/+qNg/XIuQhB1xNGrl3Rmj1iow==}
     engines: {node: '>=10'}
     hasBin: true
     dependencies:
