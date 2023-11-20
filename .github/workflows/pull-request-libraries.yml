@@ -5,12 +5,14 @@ on:
     paths:
     - 'libraries/**'
     - 'ci/*-version.sh'
+    - '.github/workflows/pull-request-libraries.yml'
     - '!libraries/**/js/**'
   push:
     branches: [master]
     paths:
     - 'libraries/**'
     - 'ci/*-version.sh'
+    - '.github/workflows/pull-request-libraries.yml'
     - '!libraries/**/js/**'
 
 jobs:
