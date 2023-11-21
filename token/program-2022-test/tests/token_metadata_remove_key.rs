@@ -145,7 +145,7 @@ async fn success_remove() {
     let mut context = test_context.context.lock().await;
 
     // refresh blockhash before trying again
-    context.get_new_latest_blockhash().await.unwrap();
+    let blockhash = context.get_new_latest_blockhash().await.unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[remove_key(
             &spl_token_2022::id(),
@@ -156,7 +156,7 @@ async fn success_remove() {
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &update_authority],
-        context.last_blockhash,
+        blockhash,
     );
     let error = context
         .banks_client
