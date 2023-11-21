@@ -24,8 +24,8 @@ importers:
         version: 6.0.3
     devDependencies:
       '@types/chai':
-        specifier: ^4.3.9
-        version: 4.3.10
+        specifier: ^4.3.11
+        version: 4.3.11
       '@types/mocha':
         specifier: ^10.0.5
         version: 10.0.5
@@ -85,8 +85,8 @@ importers:
         specifier: ^1.87.6
         version: 1.87.6
       '@types/chai':
-        specifier: ^4.3.3
-        version: 4.3.10
+        specifier: ^4.3.11
+        version: 4.3.11
       '@types/jest':
         specifier: ^29.5.9
         version: 29.5.9
@@ -167,8 +167,8 @@ importers:
         specifier: ^5.1.1
         version: 5.1.5
       '@types/chai':
-        specifier: ^4.3.4
-        version: 4.3.10
+        specifier: ^4.3.11
+        version: 4.3.11
       '@types/chai-as-promised':
         specifier: ^7.1.5
         version: 7.1.8
@@ -487,8 +487,8 @@ importers:
         specifier: ^1.87.6
         version: 1.87.6
       '@types/chai':
-        specifier: ^4.3.3
-        version: 4.3.10
+        specifier: ^4.3.11
+        version: 4.3.11
       '@types/mocha':
         specifier: ^10.0.5
         version: 10.0.5
@@ -560,8 +560,8 @@ importers:
         specifier: ^5.1.0
         version: 5.1.5
       '@types/chai':
-        specifier: ^4.3.3
-        version: 4.3.10
+        specifier: ^4.3.11
+        version: 4.3.11
       '@types/chai-as-promised':
         specifier: ^7.1.4
         version: 7.1.8
@@ -624,8 +624,8 @@ importers:
         specifier: ^1.87.6
         version: 1.87.6
       '@types/chai':
-        specifier: ^4.3.3
-        version: 4.3.10
+        specifier: ^4.3.11
+        version: 4.3.11
       '@types/chai-as-promised':
         specifier: ^7.1.4
         version: 7.1.8
@@ -2200,11 +2200,11 @@ packages:
   /@types/chai-as-promised@7.1.8:
     resolution: {integrity: sha512-ThlRVIJhr69FLlh6IctTXFkmhtP3NpMZ2QGq69StYLyKZFp/HOp1VdKZj7RvfNWYYcJ1xlbLGLLWj1UvP5u/Gw==}
     dependencies:
-      '@types/chai': 4.3.10
+      '@types/chai': 4.3.11
     dev: true
 
-  /@types/chai@4.3.10:
-    resolution: {integrity: sha512-of+ICnbqjmFCiixUnqRulbylyXQrPqIGf/B3Jax1wIF3DvSheysQxAWvqHhZiW3IQrycvokcLcFQlveGp+vyNg==}
+  /@types/chai@4.3.11:
+    resolution: {integrity: sha512-qQR1dr2rGIHYlJulmr8Ioq3De0Le9E4MJ5AiaeAETJJpndT1uUNHsGFK3L/UIu+rbkQSdj8J/w2bCsBZc/Y5fQ==}
     dev: true
 
   /@types/connect@3.4.38:
