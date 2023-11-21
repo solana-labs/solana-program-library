@@ -35,7 +35,6 @@
     "singleQuote": true
   },
   "devDependencies": {
-    "@tsconfig/recommended": "^1.0.1",
     "@types/bn.js": "^5.1.1",
     "@types/chai": "^4.3.11",
     "@types/chai-as-promised": "^7.1.5",

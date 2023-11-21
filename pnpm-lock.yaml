@@ -160,9 +160,6 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0
     devDependencies:
-      '@tsconfig/recommended':
-        specifier: ^1.0.1
-        version: 1.0.3
       '@types/bn.js':
         specifier: ^5.1.1
         version: 5.1.5
@@ -2156,10 +2153,6 @@ packages:
 
   /@tsconfig/node16@1.0.4:
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
-    dev: true
-
-  /@tsconfig/recommended@1.0.3:
-    resolution: {integrity: sha512-+jby/Guq9H8O7NWgCv6X8VAiQE8Dr/nccsCtL74xyHKhu2Knu5EAKmOZj3nLCnLm1KooUzKY+5DsnGVqhM8/wQ==}
     dev: true
 
   /@types/babel__core@7.20.4:
