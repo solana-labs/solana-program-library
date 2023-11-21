@@ -35,7 +35,6 @@
     "singleQuote": true
   },
   "devDependencies": {
-    "@tsconfig/recommended": "^1.0.1",
     "@types/bn.js": "^5.1.1",
     "@types/chai": "^4.3.11",
     "@types/chai-as-promised": "^7.1.5",
@@ -55,7 +54,7 @@
     "start-server-and-test": "^2.0.3",
     "ts-node": "^10.9.1",
     "typedoc": "^0.25.0",
-    "typescript": "^5.0.4"
+    "typescript": "^5.3.2"
   },
   "dependencies": {
     "@solana/web3.js": "^1.87.6",

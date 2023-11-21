@@ -1,5 +1,4 @@
 {
-    "extends": "@tsconfig/recommended/tsconfig.json",
     "ts-node": {
       "compilerOptions": {
         "module": "commonjs",
@@ -10,7 +9,10 @@
       }
     },
     "compilerOptions": {
+      "strict": true,
       "module": "commonjs",
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true,
       "esModuleInterop": true,
       "allowSyntheticDefaultImports": true,
       "target": "es2019",
@@ -26,7 +28,7 @@
       },
       "resolveJsonModule": true
     },
+    "$schema": "https://json.schemastore.org/tsconfig",
     "include": ["src/*"],
     "exclude": ["src/**/*.test.ts", "**/node_modules", "dist"]
-  }
-  
+}
