@@ -88,8 +88,8 @@ importers:
         specifier: ^4.3.3
         version: 4.3.10
       '@types/jest':
-        specifier: ^29.0.0
-        version: 29.5.8
+        specifier: ^29.5.9
+        version: 29.5.9
       '@types/node':
         specifier: ^20.9.2
         version: 20.9.2
@@ -338,8 +338,8 @@ importers:
         specifier: ^5.1.0
         version: 5.1.5
       '@types/jest':
-        specifier: ^29.5.8
-        version: 29.5.8
+        specifier: ^29.5.9
+        version: 29.5.9
       '@types/node':
         specifier: ^20.9.2
         version: 20.9.2
@@ -2251,8 +2251,8 @@ packages:
       '@types/istanbul-lib-report': 3.0.3
     dev: true
 
-  /@types/jest@29.5.8:
-    resolution: {integrity: sha512-fXEFTxMV2Co8ZF5aYFJv+YeA08RTYJfhtN5c9JSv/mFEMe+xxjufCb+PHL+bJcMs/ebPUsBu+UNTEz+ydXrR6g==}
+  /@types/jest@29.5.9:
+    resolution: {integrity: sha512-zJeWhqBwVoPm83sP8h1/SVntwWTu5lZbKQGCvBjxQOyEWnKnsaomt2y7SlV4KfwlrHAHHAn00Sh4IAWaIsGOgQ==}
     dependencies:
       expect: 29.7.0
       pretty-format: 29.7.0
