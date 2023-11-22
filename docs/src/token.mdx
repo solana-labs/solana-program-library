@@ -949,7 +949,7 @@ Signatures are then provided by the multisig signer-set members specified by the
 
 Multisig accounts can be used for any authority on an SPL Token mint or token
 account.
-<ul>
+{<ul>
   <li>Mint account mint authority:
     <code>spl-token mint ...</code>,
     <code>spl-token authorize ... mint ...</code>
@@ -972,7 +972,7 @@ account.
     <code>spl-token close ...</code>,
     <code>spl-token authorize ... close ...</code>
   </li>
-</ul>
+</ul>}
 
   </TabItem>
   <TabItem value="jsx" label="JS">
@@ -984,7 +984,7 @@ the multisig case the owner would be the multisig key.
 
 Multisig accounts can be used for any authority on an SPL Token mint or token account.
 
-<ul>
+{<ul>
   <li>Mint account mint authority:
     <code>createMint(/* ... */, mintAuthority: multisigKey, /* ... */)</code>
   </li>
@@ -997,7 +997,7 @@ Multisig accounts can be used for any authority on an SPL Token mint or token ac
   <li>Token account close authority:
     <code>closeAccount(/* ... */, authority: multisigKey, /* ... */)</code>
   </li>
-</ul>
+</ul>}
   </TabItem>
 </Tabs>
 
@@ -1068,7 +1068,7 @@ will use a "2 of 3" multisig account.  That is, two of the three allowed keypair
 must sign all transactions.
 
 NOTE: SPL Token Multisig accounts are limited to a signer-set of eleven signers
-(1 <= `N` <= 11) and minimum signers must be no more than `N` (1 <= `M` <= `N`)
+(1 {'<='} `N` {'<='} 11) and minimum signers must be no more than `N` (1 {'<='} `M` {'<='} `N`)
 
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
