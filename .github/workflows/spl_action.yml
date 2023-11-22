@@ -5,6 +5,7 @@ on:
     branches:  [master]
     paths:
     - 'docs/**'
+    - '.github/workflows/spl_action.yml'
 
 jobs:
   build:
