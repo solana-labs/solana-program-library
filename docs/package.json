@@ -13,8 +13,8 @@
     "lint:fix": "npm run lint -- --fix"
   },
   "dependencies": {
-    "@docusaurus/core": "^2.4.1",
-    "@docusaurus/preset-classic": "^2.4.1",
+    "@docusaurus/core": "^3.0.0",
+    "@docusaurus/preset-classic": "^3.0.0",
     "autocomplete.js": "^0.38.1",
     "babel-eslint": "^10.1.0",
     "clsx": "^1.1.1",
