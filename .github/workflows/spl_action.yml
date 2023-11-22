@@ -14,8 +14,8 @@ jobs:
         name: "importing all the document"
       - uses: actions/setup-node@v4
         with:
-          node-version: '16'
-        name: "installing the node.js with version 16"
+          node-version: '18'
+        name: "installing the node.js with version 18"
       - name: "Build Docs"
         if: ${{ github.event_name == ('push' || 'pull_request')}} && ${{github.ref == 'master'}}
         run: |
