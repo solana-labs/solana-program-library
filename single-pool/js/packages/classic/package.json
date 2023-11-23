@@ -26,7 +26,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "solana-bankrun": "^0.2.0",
-    "tsx": "^4.2.0",
+    "tsx": "^4.3.0",
     "typescript": "^5.3.2"
   },
   "dependencies": {
