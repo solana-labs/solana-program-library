@@ -182,6 +182,22 @@ impl ExtraAccountMetaList {
         Ok(())
     }
 
+    /// Update pod slice data for the given instruction and its required
+    /// list of `ExtraAccountMeta`s
+    pub fn update<T: SplDiscriminate>(
+        data: &mut [u8],
+        extra_account_metas: &[ExtraAccountMeta],
+    ) -> Result<(), ProgramError> {
+        let mut state = TlvStateMut::unpack(data).unwrap();
+        let tlv_size = PodSlice::<ExtraAccountMeta>::size_of(extra_account_metas.len())?;
+        let bytes = state.realloc_first::<T>(tlv_size)?;
+        let mut validation_data = PodSliceMut::init(bytes)?;
+        for meta in extra_account_metas {
+            validation_data.push(*meta)?;
+        }
+        Ok(())
+    }
+
     /// Get the underlying `PodSlice<ExtraAccountMeta>` from an unpacked TLV
     ///
     /// Due to lifetime annoyances, this function can't just take in the bytes,
