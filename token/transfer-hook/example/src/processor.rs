@@ -134,6 +134,60 @@ pub fn process_initialize_extra_account_meta_list(
     Ok(())
 }
 
+/// Processes a
+/// [UpdateExtraAccountMetaList](enum.TransferHookInstruction.html)
+/// instruction.
+pub fn process_update_extra_account_meta_list(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    extra_account_metas: &[ExtraAccountMeta],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let extra_account_metas_info = next_account_info(account_info_iter)?;
+    let mint_info = next_account_info(account_info_iter)?;
+    let authority_info = next_account_info(account_info_iter)?;
+    let _system_program_info = next_account_info(account_info_iter)?;
+
+    // check that the mint authority is valid without fully deserializing
+    let mint_data = mint_info.try_borrow_data()?;
+    let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+    let mint_authority = mint
+        .base
+        .mint_authority
+        .ok_or(TransferHookError::MintHasNoMintAuthority)?;
+
+    // Check signers
+    if !authority_info.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    if *authority_info.key != mint_authority {
+        return Err(TransferHookError::IncorrectMintAuthority.into());
+    }
+
+    // Check validation account
+    let (expected_validation_address, bump_seed) =
+        get_extra_account_metas_address_and_bump_seed(mint_info.key, program_id);
+    if expected_validation_address != *extra_account_metas_info.key {
+        return Err(ProgramError::InvalidSeeds);
+    }
+
+    let length = extra_account_metas.len();
+    let account_size = ExtraAccountMetaList::size_of(length)?;
+    let original_account_size = extra_account_metas_info.data_len();
+
+    // If the new extra_account_metas is larger resize the account
+    if account_size > original_account_size {
+        extra_account_metas_info.realloc(account_size, true)?;
+    }
+
+    // Update the data
+    let mut data = extra_account_metas_info.try_borrow_mut_data()?;
+    ExtraAccountMetaList::update::<ExecuteInstruction>(&mut data, extra_account_metas)?;
+
+    Ok(())
+}
+
 /// Processes an [Instruction](enum.Instruction.html).
 pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
     let instruction = TransferHookInstruction::unpack(input)?;
@@ -148,6 +202,12 @@ pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> P
         } => {
             msg!("Instruction: InitializeExtraAccountMetaList");
             process_initialize_extra_account_meta_list(program_id, accounts, &extra_account_metas)
+        }
+        TransferHookInstruction::UpdateExtraAccountMetaList {
+            extra_account_metas,
+        } => {
+            msg!("Instruction: UpdateExtraAccountMetaList");
+            process_update_extra_account_meta_list(program_id, accounts, &extra_account_metas)
         }
     }
 }
