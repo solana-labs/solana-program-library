@@ -166,8 +166,7 @@ pub fn process_update_extra_account_meta_list(
     }
 
     // Check validation account
-    let (expected_validation_address, bump_seed) =
-        get_extra_account_metas_address_and_bump_seed(mint_info.key, program_id);
+    let expected_validation_address = get_extra_account_metas_address(mint_info.key, program_id);
     if expected_validation_address != *extra_account_metas_info.key {
         return Err(ProgramError::InvalidSeeds);
     }
