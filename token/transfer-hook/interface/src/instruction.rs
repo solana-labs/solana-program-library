@@ -45,8 +45,8 @@ pub enum TransferHookInstruction {
         /// List of `ExtraAccountMeta`s to write into the account
         extra_account_metas: Vec<ExtraAccountMeta>,
     },
-    /// Updates the extra account metas on an account, writing into
-    /// the first open TLV space.
+    /// Updates the extra account metas by overwriting the existing on an account.
+    /// Must provide the full list of desired extra account metas.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -55,7 +55,7 @@ pub enum TransferHookInstruction {
     ///   2. `[s]` Mint authority
     ///   3. `[]` System program
     UpdateExtraAccountMetaList {
-        /// List of `ExtraAccountMeta`s to write into the account
+        /// Full list of `ExtraAccountMeta`s to overwrite into the account
         extra_account_metas: Vec<ExtraAccountMeta>,
     },
 }
