@@ -52,7 +52,7 @@
     "superstruct": "^1.0.3"
   },
   "devDependencies": {
-    "@rollup/plugin-alias": "^5.0.0",
+    "@rollup/plugin-alias": "^5.1.0",
     "@rollup/plugin-commonjs": "^25.0.0",
     "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-multi-entry": "^6.0.0",
