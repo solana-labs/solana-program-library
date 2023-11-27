@@ -3,7 +3,7 @@
 mod program_test;
 use {
     program_test::{TestContext, TokenContext},
-    solana_program_test::tokio,
+    solana_program_test::{processor, tokio, ProgramTest},
     solana_sdk::{
         instruction::InstructionError,
         pubkey::Pubkey,
@@ -39,7 +39,7 @@ use {
         proof_generation::transfer_with_fee_split_proof_data,
         token::{ExtensionInitializationParams, Token, TokenError as TokenClientError},
     },
-    std::{convert::TryInto, mem::size_of},
+    std::{convert::TryInto, mem::size_of, sync::Arc},
 };
 
 #[cfg(feature = "zk-ops")]
@@ -301,6 +301,75 @@ async fn confidential_transfer_configure_token_account() {
             TransactionError::InstructionError(
                 0,
                 InstructionError::Custom(TokenError::ExtensionAlreadyInitialized as u32),
+            )
+        )))
+    );
+}
+
+#[tokio::test]
+async fn fail_approving_account_on_wrong_mint() {
+    let authority = Keypair::new();
+    let auto_approve_new_accounts = false;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
+    let mut program_test = ProgramTest::default();
+    program_test.add_program(
+        "spl_token_2022",
+        spl_token_2022::id(),
+        processor!(spl_token_2022::processor::Processor::process),
+    );
+    let context = program_test.start_with_context().await;
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+    let mut context_a = TestContext {
+        context: context.clone(),
+        token_context: None,
+    };
+    context_a
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+        ])
+        .await
+        .unwrap();
+
+    let token_a_context = context_a.token_context.unwrap();
+
+    let mut context_b = TestContext {
+        context,
+        token_context: None,
+    };
+    context_b
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+        ])
+        .await
+        .unwrap();
+    let TokenContext { token, alice, .. } = context_b.token_context.unwrap();
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
+
+    let err = token_a_context
+        .token
+        .confidential_transfer_approve_account(
+            &alice_meta.token_account,
+            &authority.pubkey(),
+            &[&authority],
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::MintMismatch as u32)
             )
         )))
     );
