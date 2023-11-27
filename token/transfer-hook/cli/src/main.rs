@@ -17,7 +17,8 @@ use {
     },
     spl_tlv_account_resolution::state::ExtraAccountMetaList,
     spl_transfer_hook_interface::{
-        get_extra_account_metas_address, instruction::{initialize_extra_account_meta_list, update_extra_account_meta_list},
+        get_extra_account_metas_address,
+        instruction::{initialize_extra_account_meta_list, update_extra_account_meta_list},
     },
     std::{fmt, process::exit, rc::Rc, str::FromStr},
     strum_macros::{EnumString, IntoStaticStr},
@@ -282,7 +283,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .global(true)
                         .help("Filepath or URL to mint-authority keypair [default: client keypair]"),
                 )
-        
         )
         .subcommand(
             Command::new("update-extra-metas")
