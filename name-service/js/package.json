@@ -53,7 +53,7 @@
     "prettier": "^3.1.0",
     "start-server-and-test": "^2.0.3",
     "ts-node": "^10.9.1",
-    "typedoc": "^0.25.0",
+    "typedoc": "^0.25.4",
     "typescript": "^5.3.2"
   },
   "dependencies": {
