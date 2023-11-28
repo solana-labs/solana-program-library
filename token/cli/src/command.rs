@@ -46,6 +46,7 @@ use {
             confidential_transfer_fee::ConfidentialTransferFeeConfig,
             cpi_guard::CpiGuard,
             default_account_state::DefaultAccountState,
+            group_pointer::GroupPointer,
             interest_bearing_mint::InterestBearingConfig,
             memo_transfer::MemoTransfer,
             metadata_pointer::MetadataPointer,
@@ -187,12 +188,14 @@ async fn command_create_token(
     enable_permanent_delegate: bool,
     memo: Option<String>,
     metadata_address: Option<Pubkey>,
+    group_address: Option<Pubkey>,
     rate_bps: Option<i16>,
     default_account_state: Option<AccountState>,
     transfer_fee: Option<(u16, u64)>,
     confidential_transfer_auto_approve: Option<bool>,
     transfer_hook_program_id: Option<Pubkey>,
     enable_metadata: bool,
+    enable_group: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     println_display(
@@ -281,6 +284,18 @@ async fn command_create_token(
         });
     }
 
+    if group_address.is_some() || enable_group {
+        let group_address = if enable_group {
+            Some(token_pubkey)
+        } else {
+            group_address
+        };
+        extensions.push(ExtensionInitializationParams::GroupPointer {
+            authority: Some(authority),
+            group_address,
+        });
+    }
+
     let res = token
         .create_mint(
             &authority,
@@ -299,6 +314,15 @@ async fn command_create_token(
                 "To initialize metadata inside the mint, please run \
                 `spl-token initialize-metadata {token_pubkey} <YOUR_TOKEN_NAME> <YOUR_TOKEN_SYMBOL> <YOUR_TOKEN_URI>`, \
                 and sign with the mint authority.",
+            ),
+        );
+    }
+
+    if enable_group {
+        println_display(
+            config,
+            format!(
+                "To initialize group configurations inside the mint, please run `spl-token initialize-group {token_pubkey} <MAX_SIZE>`, and sign with the mint authority.",
             ),
         );
     }
@@ -837,6 +861,16 @@ async fn command_authorize(
                         Err(format!("Mint `{account}` does not support metadata"))
                     }
                 }
+                CliAuthorityType::GroupPointer => {
+                    if let Ok(extension) = mint.get_extension::<GroupPointer>() {
+                        Ok(Option::<Pubkey>::from(extension.authority))
+                    } else {
+                        Err(format!(
+                            "Mint `{}` does not support a group pointer",
+                            account
+                        ))
+                    }
+                }
             }?;
 
             Ok((account, previous_authority))
@@ -875,7 +909,8 @@ async fn command_authorize(
                 | CliAuthorityType::TransferHookProgramId
                 | CliAuthorityType::ConfidentialTransferFee
                 | CliAuthorityType::MetadataPointer
-                | CliAuthorityType::Metadata => Err(format!(
+                | CliAuthorityType::Metadata
+                | CliAuthorityType::GroupPointer => Err(format!(
                     "Authority type `{auth_str}` not supported for SPL Token accounts",
                 )),
                 CliAuthorityType::Owner => {
@@ -2483,6 +2518,33 @@ async fn command_update_metadata_pointer_address(
     })
 }
 
+async fn command_update_group_pointer_address(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    authority: Pubkey,
+    new_group_address: Option<Pubkey>,
+    bulk_signers: BulkSigners,
+) -> CommandResult {
+    if config.sign_only {
+        panic!("Config can not be sign-only for updating group pointer address.");
+    }
+
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let res = token
+        .update_group_address(&authority, new_group_address, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 async fn command_update_default_account_state(
     config: &Config<'_>,
     token_pubkey: Pubkey,
@@ -3190,6 +3252,7 @@ pub async fn process_command<'a>(
             let memo = value_t!(arg_matches, "memo", String).ok();
             let rate_bps = value_t!(arg_matches, "interest_rate", i16).ok();
             let metadata_address = value_t!(arg_matches, "metadata_address", Pubkey).ok();
+            let group_address = value_t!(arg_matches, "group_address", Pubkey).ok();
 
             let transfer_fee = arg_matches.values_of("transfer_fee").map(|mut v| {
                 (
@@ -3234,12 +3297,14 @@ pub async fn process_command<'a>(
                 arg_matches.is_present("enable_permanent_delegate"),
                 memo,
                 metadata_address,
+                group_address,
                 rate_bps,
                 default_account_state,
                 transfer_fee,
                 confidential_transfer_auto_approve,
                 transfer_hook_program_id,
                 arg_matches.is_present("enable_metadata"),
+                arg_matches.is_present("enable_group"),
                 bulk_signers,
             )
             .await
@@ -3901,6 +3966,28 @@ pub async fn process_command<'a>(
                 token,
                 authority,
                 metadata_address,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::UpdateGroupAddress, arg_matches) => {
+            // Since account is required argument it will always be present
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+
+            let (authority_signer, authority) =
+                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+            if config.multisigner_pubkeys.is_empty() {
+                push_signer_with_dedup(authority_signer, &mut bulk_signers);
+            }
+            let group_address = value_t!(arg_matches, "group_address", Pubkey).ok();
+
+            command_update_group_pointer_address(
+                config,
+                token,
+                authority,
+                group_address,
                 bulk_signers,
             )
             .await
