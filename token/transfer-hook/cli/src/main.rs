@@ -80,18 +80,9 @@ async fn process_create_extra_account_metas(
 
     let length = extra_account_metas.len();
     let account_size = ExtraAccountMetaList::size_of(length)?;
-    let required_lamports = rpc_client
-        .get_minimum_balance_for_rent_exemption(account_size)
-        .await
-        .map_err(|err| format!("error: unable to fetch rent-exemption: {err}"))?;
-    let extra_account_metas_account = rpc_client.get_account(&extra_account_metas_address).await;
-    if let Ok(account) = &extra_account_metas_account {
-        if account.owner != system_program::id() {
-            return Err(format!("error: extra account metas for mint {token} and program {program_id} already exists").into());
-        }
-    }
-    let current_lamports = extra_account_metas_account.map(|a| a.lamports).unwrap_or(0);
-    let transfer_lamports = required_lamports.saturating_sub(current_lamports);
+
+    let transfer_lamports =
+        calculate_transfer_lamports(rpc_client, &extra_account_metas_address, account_size).await?;
 
     let mut ixs = vec![];
     if transfer_lamports > 0 {
@@ -144,19 +135,9 @@ async fn process_update_extra_account_metas(
 
     let length = extra_account_metas.len();
     let account_size = ExtraAccountMetaList::size_of(length)?;
-    let required_lamports = rpc_client
-        .get_minimum_balance_for_rent_exemption(account_size)
-        .await
-        .map_err(|err| format!("error: unable to fetch rent-exemption: {err}"))?;
-    let extra_account_metas_account = rpc_client.get_account(&extra_account_metas_address).await;
-    if extra_account_metas_account.is_err() {
-        return Err(format!(
-            "error: extra account metas for mint {token} and program {program_id} does not exist"
-        )
-        .into());
-    }
-    let current_lamports = extra_account_metas_account.map(|a| a.lamports).unwrap_or(0);
-    let transfer_lamports = required_lamports.saturating_sub(current_lamports);
+
+    let transfer_lamports =
+        calculate_transfer_lamports(rpc_client, &extra_account_metas_address, account_size).await?;
 
     let mut ixs = vec![];
     if transfer_lamports > 0 {
@@ -191,6 +172,21 @@ async fn process_update_extra_account_metas(
         .send_and_confirm_transaction_with_spinner(&transaction)
         .await
         .map_err(|err| format!("error: send transaction: {err}").into())
+}
+
+// Helper function to calculate the required lamports
+async fn calculate_transfer_lamports(
+    rpc_client: &RpcClient,
+    account_address: &Pubkey,
+    account_size: usize,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let required_lamports = rpc_client
+        .get_minimum_balance_for_rent_exemption(account_size)
+        .await
+        .map_err(|err| format!("error: unable to fetch rent-exemption: {err}"))?;
+    let account_info = rpc_client.get_account(account_address).await;
+    let current_lamports = account_info.map(|a| a.lamports).unwrap_or(0);
+    Ok(required_lamports.saturating_sub(current_lamports))
 }
 
 #[tokio::main]
