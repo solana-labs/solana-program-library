@@ -26,9 +26,9 @@ Testing contracts locally requires the SDK to be built.
 
 With a built local SDK, the test suite can be ran with:
 
-1. `yarn link @solana/spl-account-compression`
-2. `yarn`
-3. `yarn test`
+1. `pnpm link @solana/spl-account-compression`
+2. `pnpm i`
+3. `pnpm test`
 
 ## Audit
 
