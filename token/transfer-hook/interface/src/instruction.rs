@@ -45,7 +45,7 @@ pub enum TransferHookInstruction {
         /// List of `ExtraAccountMeta`s to write into the account
         extra_account_metas: Vec<ExtraAccountMeta>,
     },
-    /// Updates the extra account metas by overwriting the existing on an account.
+    /// Updates the extra account metas by overwriting the existing on the account.
     /// Must provide the full list of desired extra account metas.
     ///
     /// Accounts expected by this instruction:
@@ -53,7 +53,6 @@ pub enum TransferHookInstruction {
     ///   0. `[w]` Account with extra account metas
     ///   1. `[]` Mint
     ///   2. `[s]` Mint authority
-    ///   3. `[]` System program
     UpdateExtraAccountMetaList {
         /// Full list of `ExtraAccountMeta`s to overwrite into the account
         extra_account_metas: Vec<ExtraAccountMeta>,
@@ -241,7 +240,7 @@ pub fn update_extra_account_meta_list(
         AccountMeta::new(*extra_account_metas_pubkey, false),
         AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, true),
-        AccountMeta::new_readonly(system_program::id(), false),
+        // AccountMeta::new_readonly(system_program::id(), false),
     ];
 
     Instruction {
