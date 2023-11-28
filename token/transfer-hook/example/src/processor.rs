@@ -147,7 +147,6 @@ pub fn process_update_extra_account_meta_list(
     let extra_account_metas_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
-    // let _system_program_info = next_account_info(account_info_iter)?;
 
     // check that the mint authority is valid without fully deserializing
     let mint_data = mint_info.try_borrow_data()?;
