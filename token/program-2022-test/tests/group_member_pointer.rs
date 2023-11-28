@@ -90,14 +90,10 @@ async fn fail_init_all_none() {
         token_context: None,
     };
     let err = context
-        .init_token_with_mint_keypair_and_freeze_authority(
-            Keypair::new(),
-            vec![ExtensionInitializationParams::GroupMemberPointer {
-                authority: None,
-                member_address: None,
-            }],
-            None,
-        )
+        .init_token_with_mint(vec![ExtensionInitializationParams::GroupMemberPointer {
+            authority: None,
+            member_address: None,
+        }])
         .await
         .unwrap_err();
     assert_eq!(
