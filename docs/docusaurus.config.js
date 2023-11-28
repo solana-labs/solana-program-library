@@ -75,6 +75,9 @@ module.exports = {
           path: "src",
           routeBasePath: "/",
           sidebarPath: require.resolve("./sidebars.js"),
+          editUrl: ({ docPath }) => {
+            return `https://holocron.so/github/pr/solana-labs/solana-program-library/master/editor/docs/src/${docPath}`
+          },
         },
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
