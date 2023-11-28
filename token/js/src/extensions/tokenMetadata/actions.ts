@@ -7,6 +7,7 @@ import {
     createUpdateAuthorityInstruction,
     createUpdateFieldInstruction,
     pack,
+    unpack,
 } from '@solana/spl-token-metadata';
 import { sendAndConfirmTransaction, SystemProgram, Transaction } from '@solana/web3.js';
 import { TokenAccountNotFoundError } from '../../errors.js';
@@ -15,13 +16,14 @@ import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import { getSigners } from '../../actions/internal.js';
 import { unpackMint } from '../../state/mint.js';
 import { getExtensionData, ExtensionType } from '../extensionType.js';
+import { updateTokenMetadata } from './state.js';
 
 /**
- * Calculates additional lamports need to variable length extension
+ * Calculates additional lamports need for variable length extension
  *
  * @param connection       Connection to use
  * @param address          Mint Account
- * @param tokenMetadata    Token Metadata
+ * @param getNewMetadata   Function to get new metadata, given current
  * @param programId        SPL Token program account
  *
  * @return lamports to send
@@ -29,7 +31,7 @@ import { getExtensionData, ExtensionType } from '../extensionType.js';
 async function getAdditionalRentForNewMetadata(
     connection: Connection,
     address: PublicKey,
-    tokenMetadata: TokenMetadata,
+    getNewMetadata: (x: TokenMetadata) => TokenMetadata,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<number> {
     const info = await connection.getAccountInfo(address);
@@ -37,14 +39,16 @@ async function getAdditionalRentForNewMetadata(
 
     if (!info) {
         // unpack mint does error checking on info internally
-        // but just for typescript and just incase
+        // Check here for typescript and just in-case
         throw new TokenAccountNotFoundError();
     }
 
     const data = getExtensionData(ExtensionType.TokenMetadata, mint.tlvData);
 
     const currentDataLen = data ? data.length : 0;
-    const newDataLen = pack(tokenMetadata).length;
+
+    const newMeta = data === null ? getNewMetadata({} as TokenMetadata) : getNewMetadata(unpack(data));
+    const newDataLen = pack(newMeta).length;
 
     let newAccountLen = info.data.length + (newDataLen - currentDataLen);
 
@@ -142,14 +146,14 @@ export async function tokenMetadataInitializeWithRentTransfer(
 
     const transaction = new Transaction();
 
-    const lamports = await getAdditionalRentForNewMetadata(connection, mint, {
+    const lamports = await getAdditionalRentForNewMetadata(connection, mint, () => ({
         updateAuthority,
         mint,
         name,
         symbol,
         uri,
         additionalMetadata: [],
-    });
+    }));
 
     if (lamports > 0) {
         transaction.add(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: mint, lamports: lamports }));
@@ -251,16 +255,9 @@ export async function tokenMetadataUpdateFieldWithRentTransfer(
 
     const transaction = new Transaction();
 
-    // TODO:- Figure this out
-    // const lamports = await getAdditionalRentForNewMetadata(connection, mint, {
-    //     updateAuthority,
-    //     mint,
-    //     name,
-    //     symbol,
-    //     uri,
-    //     additionalMetadata: [],
-    // });
-    const lamports = 0; // TODO
+    const lamports = await getAdditionalRentForNewMetadata(connection, mint, (x) =>
+        updateTokenMetadata(x, field, value)
+    );
 
     if (lamports > 0) {
         transaction.add(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: mint, lamports: lamports }));

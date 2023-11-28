@@ -17,6 +17,7 @@ import {
     tokenMetadataRemoveKey,
     tokenMetadataUpdateAuthority,
     tokenMetadataUpdateField,
+    tokenMetadataUpdateFieldWithRentTransfer,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
@@ -165,7 +166,7 @@ describe('Token Metadata initialization', async () => {
     });
 });
 
-describe.only('Token Metadata operations', () => {
+describe('Token Metadata operations', () => {
     const EXTENSIONS = [ExtensionType.MetadataPointer];
     const mintLen = getMintLen(EXTENSIONS);
 
@@ -283,19 +284,8 @@ describe.only('Token Metadata operations', () => {
     });
 
     it('can successfully update with rent transfer', async () => {
-        // TODO Remove this and change to tokenMetadataUpdateFieldWithRentTransfer when working
-        const transaction = new Transaction().add(
-            SystemProgram.transfer({
-                fromPubkey: payer.publicKey,
-                toPubkey: mint.publicKey,
-                lamports: 1_000_000,
-            })
-        );
-
-        await sendAndConfirmTransaction(connection, transaction, [payer], undefined);
-
         await Promise.all([
-            tokenMetadataUpdateField(
+            tokenMetadataUpdateFieldWithRentTransfer(
                 connection,
                 payer,
                 authority,
@@ -306,7 +296,7 @@ describe.only('Token Metadata operations', () => {
                 undefined,
                 TEST_PROGRAM_ID
             ),
-            tokenMetadataUpdateField(
+            tokenMetadataUpdateFieldWithRentTransfer(
                 connection,
                 payer,
                 authority,
@@ -348,18 +338,7 @@ describe.only('Token Metadata operations', () => {
     });
 
     it('can handle removal of additional metadata ', async () => {
-        // TODO Remove this and change to tokenMetadataUpdateFieldWithRentTransfer when working
-        const transaction = new Transaction().add(
-            SystemProgram.transfer({
-                fromPubkey: payer.publicKey,
-                toPubkey: mint.publicKey,
-                lamports: 1_000_000,
-            })
-        );
-
-        await sendAndConfirmTransaction(connection, transaction, [payer], undefined);
-
-        await tokenMetadataUpdateField(
+        await tokenMetadataUpdateFieldWithRentTransfer(
             connection,
             payer,
             authority,
