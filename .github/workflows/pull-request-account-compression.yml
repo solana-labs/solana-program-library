@@ -8,6 +8,7 @@ on:
       - "ci/*-version.sh"
       - "ci/install-anchor.sh"
       - ".github/workflows/pull-request-account-compression.yml"
+      - "!account-compression/sdk/**"
   push:
     branches: [master]
     paths:
@@ -16,6 +17,7 @@ on:
       - "ci/*-version.sh"
       - "ci/install-anchor.sh"
       - ".github/workflows/pull-request-account-compression.yml"
+      - "!account-compression/sdk/**"
 
 jobs:
   anchor-build-account-compression:
@@ -74,22 +76,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 16.x
-    needs: anchor-build-account-compression
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
       - uses: actions/cache@v3
         with:
-          path: ~/.cache/yarn
-          key: node-${{ hashFiles('account-compression/sdk/yarn.lock') }}
+          path: ~/.npm
+          key: node-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             node-
-      - name: Download programs
-        uses: actions/download-artifact@v3
-        with:
-          name: account-compression-programs
-          path: account-compression/target/deploy
       - run: ./ci/js-test-account-compression.sh

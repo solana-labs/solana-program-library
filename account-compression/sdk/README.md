@@ -171,10 +171,10 @@ Here are some examples using account compression in the wild:
 
 ## Build from Source
 
-0. Install dependencies with `yarn`.
+0. Install dependencies with `pnpm i`.
 
-1. Generate the Solita SDK with `yarn solita`.
+1. Generate the Solita SDK with `pnpm solita`.
 
-2. Then build the SDK with `yarn build`.
+2. Then build the SDK with `pnpm build`.
 
-3. Run tests with `yarn test`. (Expect `jest` to detect an open handle that prevents it from exiting naturally)
+3. Run tests with `pnpm test`. (Expect `jest` to detect an open handle that prevents it from exiting naturally)
