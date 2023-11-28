@@ -175,14 +175,17 @@ pub fn process_update_extra_account_meta_list(
     let account_size = ExtraAccountMetaList::size_of(length)?;
     let original_account_size = extra_account_metas_info.data_len();
 
-    // If the new extra_account_metas is larger resize the account
-    if account_size > original_account_size {
+    // If the new extra_account_metas length is different, resize the account and update
+    if account_size >= original_account_size {
+        extra_account_metas_info.realloc(account_size, true)?;
+        let mut data = extra_account_metas_info.try_borrow_mut_data()?;
+        ExtraAccountMetaList::update::<ExecuteInstruction>(&mut data, extra_account_metas)?;
+    } else {
+        let mut data = extra_account_metas_info.try_borrow_mut_data()?;
+        ExtraAccountMetaList::update::<ExecuteInstruction>(&mut data, extra_account_metas)?;
+        drop(data);
         extra_account_metas_info.realloc(account_size, true)?;
     }
-
-    // Update the data
-    let mut data = extra_account_metas_info.try_borrow_mut_data()?;
-    ExtraAccountMetaList::update::<ExecuteInstruction>(&mut data, extra_account_metas)?;
 
     Ok(())
 }
