@@ -177,6 +177,51 @@ fn native_token_client_from_config(
     }
 }
 
+enum Pointer {
+    Metadata,
+    Group,
+    GroupMember,
+}
+impl Display for Pointer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Pointer::Metadata => "metadata pointer",
+            Pointer::Group => "group pointer",
+            Pointer::GroupMember => "member pointer",
+        })
+    }
+}
+impl Pointer {
+    pub async fn update_address(
+        &self,
+        config: &Config<'_>,
+        token_pubkey: &Pubkey,
+        authority: &Pubkey,
+        new_address: Option<Pubkey>,
+        signing_keypairs: &BulkSigners,
+    ) -> Result<RpcClientResponse, Error> {
+        let token = token_client_from_config(config, token_pubkey, None)?;
+        match self {
+            Pointer::Metadata => {
+                token
+                    .update_metadata_address(authority, new_address, signing_keypairs)
+                    .await
+            }
+            Pointer::Group => {
+                token
+                    .update_group_address(authority, new_address, signing_keypairs)
+                    .await
+            }
+            Pointer::GroupMember => {
+                token
+                    .update_group_member_address(authority, new_address, signing_keypairs)
+                    .await
+            }
+        }
+        .map_err(|err| format!("Failed to update {}: {}", self, err).into())
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn command_create_token(
     config: &Config<'_>,
@@ -2526,74 +2571,29 @@ async fn command_cpi_guard(
     })
 }
 
-async fn command_update_metadata_pointer_address(
+async fn command_update_pointer_address(
     config: &Config<'_>,
     token_pubkey: Pubkey,
     authority: Pubkey,
     new_metadata_address: Option<Pubkey>,
     bulk_signers: BulkSigners,
+    pointer: Pointer,
 ) -> CommandResult {
     if config.sign_only {
-        panic!("Config can not be sign-only for updating metadata pointer address.");
+        panic!(
+            "Config can not be sign-only for updating {} address.",
+            pointer
+        );
     }
 
-    let token = token_client_from_config(config, &token_pubkey, None)?;
-    let res = token
-        .update_metadata_address(&authority, new_metadata_address, &bulk_signers)
-        .await?;
-
-    let tx_return = finish_tx(config, &res, false).await?;
-    Ok(match tx_return {
-        TransactionReturnData::CliSignature(signature) => {
-            config.output_format.formatted_string(&signature)
-        }
-        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
-            config.output_format.formatted_string(&sign_only_data)
-        }
-    })
-}
-
-async fn command_update_group_pointer_address(
-    config: &Config<'_>,
-    token_pubkey: Pubkey,
-    authority: Pubkey,
-    new_group_address: Option<Pubkey>,
-    bulk_signers: BulkSigners,
-) -> CommandResult {
-    if config.sign_only {
-        panic!("Config can not be sign-only for updating group pointer address.");
-    }
-
-    let token = token_client_from_config(config, &token_pubkey, None)?;
-    let res = token
-        .update_group_address(&authority, new_group_address, &bulk_signers)
-        .await?;
-
-    let tx_return = finish_tx(config, &res, false).await?;
-    Ok(match tx_return {
-        TransactionReturnData::CliSignature(signature) => {
-            config.output_format.formatted_string(&signature)
-        }
-        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
-            config.output_format.formatted_string(&sign_only_data)
-        }
-    })
-}
-
-async fn command_update_group_member_pointer_address(
-    config: &Config<'_>,
-    token_pubkey: Pubkey,
-    authority: Pubkey,
-    new_member_address: Option<Pubkey>,
-    bulk_signers: BulkSigners,
-) -> CommandResult {
-    if config.sign_only {
-        panic!("Config can not be sign-only for updating group member pointer address.");
-    }
-
-    let token = token_client_from_config(config, &token_pubkey, None)?;
-    let res = token
-        .update_group_member_address(&authority, new_member_address, &bulk_signers)
+    let res = pointer
+        .update_address(
+            config,
+            &token_pubkey,
+            &authority,
+            new_metadata_address,
+            &bulk_signers,
+        )
         .await?;
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -4026,12 +4026,13 @@ pub async fn process_command<'a>(
             }
             let metadata_address = value_t!(arg_matches, "metadata_address", Pubkey).ok();
 
-            command_update_metadata_pointer_address(
+            command_update_pointer_address(
                 config,
                 token,
                 authority,
                 metadata_address,
                 bulk_signers,
+                Pointer::Metadata,
             )
             .await
         }
@@ -4048,12 +4049,13 @@ pub async fn process_command<'a>(
             }
             let group_address = value_t!(arg_matches, "group_address", Pubkey).ok();
 
-            command_update_group_pointer_address(
+            command_update_pointer_address(
                 config,
                 token,
                 authority,
                 group_address,
                 bulk_signers,
+                Pointer::Group,
             )
             .await
         }
@@ -4070,12 +4072,13 @@ pub async fn process_command<'a>(
             }
             let member_address = value_t!(arg_matches, "member_address", Pubkey).ok();
 
-            command_update_group_member_pointer_address(
+            command_update_pointer_address(
                 config,
                 token,
                 authority,
                 member_address,
                 bulk_signers,
+                Pointer::GroupMember,
             )
             .await
         }
