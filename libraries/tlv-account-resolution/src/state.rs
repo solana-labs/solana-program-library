@@ -1308,6 +1308,137 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn update_extra_account_meta_list() {
+        // Create new ExtraAccountMeta
+        let metas = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
+        ];
+
+        // Create a buffer and get its size
+        let account_size = ExtraAccountMetaList::size_of(metas.len()).unwrap();
+        let mut buffer = vec![0; account_size];
+
+        // Initialize
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &metas).unwrap();
+
+        // Create new metas to overwrite the initial
+        let updated_metas = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
+        ];
+
+        // Update
+        ExtraAccountMetaList::update::<TestInstruction>(&mut buffer, &updated_metas).unwrap();
+
+        // Get the tlv state then unpack
+        let state = TlvStateBorrowed::unpack(&buffer).unwrap();
+        let unpacked_metas =
+            ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
+
+        // Convert to Vec<ExtraAccountMeta>
+        let unpacked_metas_vec = unpacked_metas.data().to_vec();
+
+        // Assert that the unpacked metas match the updated metas
+        assert_eq!(unpacked_metas_vec, updated_metas.to_vec(), "The updated ExtraAccountMetas in the buffer should match the ones provided to the update function.");
+    }
+
+    #[tokio::test]
+    async fn update_extra_account_meta_list_to_larger() {
+        // Create new ExtraAccountMeta
+        let initial_metas = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
+        ];
+
+        // Create a buffer and get its size
+        let initial_account_size = ExtraAccountMetaList::size_of(initial_metas.len()).unwrap();
+        let mut buffer = vec![0; initial_account_size];
+
+        // Initialize
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &initial_metas).unwrap();
+
+        // Create new metas to overwrite the initial, adding one
+        let updated_metas = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
+        ];
+
+        // Calculate the new size
+        let updated_account_size = ExtraAccountMetaList::size_of(updated_metas.len()).unwrap();
+
+        // Must resize buffer first
+        buffer.resize(updated_account_size, 0);
+
+        // Update
+        ExtraAccountMetaList::update::<TestInstruction>(&mut buffer, &updated_metas).unwrap();
+
+        // Get the tlv state then unpack
+        let state = TlvStateBorrowed::unpack(&buffer).unwrap();
+        let unpacked_metas =
+            ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
+
+        // Convert to Vec<ExtraAccountMeta>
+        let unpacked_metas_vec = unpacked_metas.data().to_vec();
+
+        // Assert that the unpacked metas match the updated metas and their lengths
+        assert_eq!(
+            unpacked_metas_vec.len(),
+            updated_metas.len(),
+            "The length of the updated ExtraAccountMetas should match the updated array length."
+        );
+        assert_eq!(unpacked_metas_vec, updated_metas.to_vec(), "The updated ExtraAccountMetas in the buffer should match the ones provided to the update function.");
+    }
+
+    #[tokio::test]
+    async fn update_extra_account_meta_list_to_smaller() {
+        // Create new ExtraAccountMeta
+        let initial_metas = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
+        ];
+
+        // Create a buffer and get its size
+        let initial_account_size = ExtraAccountMetaList::size_of(initial_metas.len()).unwrap();
+        let mut buffer = vec![0; initial_account_size];
+
+        // Initialize
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &initial_metas).unwrap();
+
+        // Create new metas to overwrite the initial, with one fewer
+        let updated_metas = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
+        ];
+
+        // Resizing the buffer gives InvalidAccountData from
+        // `let mut state = TlvStateMut::unpack(data).unwrap();`.
+        // This is because the size is checked against byte 9 in the buffer
+        // Not sure if this is the ideal behavior
+
+        // Update
+        ExtraAccountMetaList::update::<TestInstruction>(&mut buffer, &updated_metas).unwrap();
+
+        // Get the tlv state then unpack
+        let state = TlvStateBorrowed::unpack(&buffer).unwrap();
+        let unpacked_metas =
+            ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
+
+        // Convert to Vec<ExtraAccountMeta>
+        let unpacked_metas_vec = unpacked_metas.data().to_vec();
+
+        // Assert that the unpacked metas match the updated metas and their lengths
+        assert_eq!(
+            unpacked_metas_vec.len(),
+            updated_metas.len(),
+            "The length of the updated ExtraAccountMetas should match the updated array length."
+        );
+        assert_eq!(unpacked_metas_vec, updated_metas.to_vec(), "The updated ExtraAccountMetas in the buffer should match the ones provided to the update function.");
+    }
+
     #[test]
     fn check_account_infos_test() {
         let program_id = Pubkey::new_unique();
