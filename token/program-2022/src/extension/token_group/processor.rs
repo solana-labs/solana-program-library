@@ -96,7 +96,7 @@ pub fn process_initialize_group(
 }
 
 /// Processes an
-/// [UpdateGroupMaxSize](enum.GroupInterfaceInstruction.html)
+/// [UpdateGroupMaxSize](enum.TokenGroupInstruction.html)
 /// instruction
 pub fn process_update_group_max_size(
     _program_id: &Pubkey,
@@ -120,7 +120,7 @@ pub fn process_update_group_max_size(
 }
 
 /// Processes an
-/// [UpdateGroupAuthority](enum.GroupInterfaceInstruction.html)
+/// [UpdateGroupAuthority](enum.TokenGroupInstruction.html)
 /// instruction
 pub fn process_update_group_authority(
     _program_id: &Pubkey,
@@ -143,9 +143,9 @@ pub fn process_update_group_authority(
     Ok(())
 }
 
-/// Processes an [InitializeMember](enum.GroupInterfaceInstruction.html)
+/// Processes an [InitializeMember](enum.TokenGroupInstruction.html)
 /// instruction
-pub fn process_initialize_group_member(
+pub fn process_initialize_member(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
@@ -230,7 +230,7 @@ pub fn process_instruction(
         }
         TokenGroupInstruction::InitializeMember(_) => {
             msg!("TokenGroupInstruction: InitializeMember");
-            process_initialize_group_member(program_id, accounts)
+            process_initialize_member(program_id, accounts)
         }
     }
 }

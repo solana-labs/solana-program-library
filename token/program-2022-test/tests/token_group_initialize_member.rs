@@ -1,4 +1,4 @@
-#![cfg(feature = "test-sbf")]
+// #![cfg(feature = "test-sbf")]
 
 mod program_test;
 use {
@@ -81,7 +81,7 @@ async fn setup(group: SetupConfig, members: Vec<SetupConfig>) -> (TestContext, V
             &payer_pubkey,
             &group_token_context.mint_authority.pubkey(),
             &group_authority,
-            5,
+            2,
             &[&group_token_context.mint_authority],
         )
         .await
@@ -136,10 +136,21 @@ async fn success_initialize() {
         )
         .await
         .unwrap_err();
+    let member_index = if group_mint_keypair
+        .pubkey()
+        .cmp(&member1_mint_keypair.pubkey())
+        .is_le()
+    {
+        4
+    } else {
+        3
+    };
     assert_eq!(
         error,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InsufficientFundsForRent { account_index: 4 }
+            TransactionError::InsufficientFundsForRent {
+                account_index: member_index
+            }
         )))
     );
 
@@ -241,6 +252,11 @@ async fn success_initialize() {
     );
 
     // fail double-init
+    {
+        let mut context = member_contexts[0].context.lock().await;
+        context.get_new_latest_blockhash().await.unwrap();
+        context.get_new_latest_blockhash().await.unwrap();
+    }
     let error = member1_token_context
         .token
         .token_group_initialize_member(
@@ -261,7 +277,7 @@ async fn success_initialize() {
         )))
     );
 
-    // Now the others
+    // Now the second
     let member2_token_context = member_contexts[1].token_context.take().unwrap();
     member2_token_context
         .token
@@ -286,8 +302,9 @@ async fn success_initialize() {
         }
     );
 
+    // Third should fail on max size
     let member3_token_context = member_contexts[2].token_context.take().unwrap();
-    member3_token_context
+    let error = member3_token_context
         .token
         .token_group_initialize_member_with_rent_transfer(
             &payer_pubkey,
@@ -297,17 +314,15 @@ async fn success_initialize() {
             &[&member3_token_context.mint_authority, &group_authority],
         )
         .await
-        .unwrap();
-    let mint_info = member3_token_context.token.get_mint_info().await.unwrap();
-    let member_bytes = mint_info.get_extension_bytes::<TokenGroupMember>().unwrap();
-    let fetched_member = pod_from_bytes::<TokenGroupMember>(member_bytes).unwrap();
+        .unwrap_err();
     assert_eq!(
-        fetched_member,
-        &TokenGroupMember {
-            mint: member3_mint_keypair.pubkey(),
-            group: group_mint_keypair.pubkey(),
-            member_number: 3.try_into().unwrap(),
-        }
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                1,
+                InstructionError::Custom(TokenGroupError::SizeExceedsMaxSize as u32)
+            )
+        )))
     );
 }
 
