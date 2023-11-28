@@ -145,10 +145,7 @@ pub fn process_update_group_authority(
 
 /// Processes an [InitializeMember](enum.TokenGroupInstruction.html)
 /// instruction
-pub fn process_initialize_member(
-    _program_id: &Pubkey,
-    accounts: &[AccountInfo],
-) -> ProgramResult {
+pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let member_info = next_account_info(account_info_iter)?;
