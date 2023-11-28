@@ -81,6 +81,13 @@ async fn process_create_extra_account_metas(
     let length = extra_account_metas.len();
     let account_size = ExtraAccountMetaList::size_of(length)?;
 
+    let extra_account_metas_account = rpc_client.get_account(&extra_account_metas_address).await;
+    if let Ok(account) = &extra_account_metas_account {
+        if account.owner != system_program::id() {
+            return Err(format!("error: extra account metas for mint {token} and program {program_id} already exists").into());
+        }
+    }
+
     let transfer_lamports =
         calculate_transfer_lamports(rpc_client, &extra_account_metas_address, account_size).await?;
 
@@ -135,6 +142,14 @@ async fn process_update_extra_account_metas(
 
     let length = extra_account_metas.len();
     let account_size = ExtraAccountMetaList::size_of(length)?;
+
+    let extra_account_metas_account = rpc_client.get_account(&extra_account_metas_address).await;
+    if extra_account_metas_account.is_err() {
+        return Err(format!(
+            "error: extra account metas for mint {token} and program {program_id} does not exist"
+        )
+        .into());
+    }
 
     let transfer_lamports =
         calculate_transfer_lamports(rpc_client, &extra_account_metas_address, account_size).await?;
