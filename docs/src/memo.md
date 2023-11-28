@@ -2,6 +2,8 @@
 title: Memo Program
 ---
 
+Holiday Cheermeister!
+
 The Memo program is a simple program that validates a string of UTF-8 encoded
 characters and verifies that any accounts provided are signers of the
 transaction. The program also logs the memo, as well as any verified signer
