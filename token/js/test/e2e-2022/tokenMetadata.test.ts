@@ -3,12 +3,12 @@ import chaiAsPromised from 'chai-as-promised';
 
 import type { Connection, Signer } from '@solana/web3.js';
 import { sendAndConfirmTransaction, PublicKey, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
+import { unpack } from '@solana/spl-token-metadata';
 
 import {
     ExtensionType,
     createInitializeMetadataPointerInstruction,
     createInitializeMintInstruction,
-    getEmittedTokenMetadata,
     getMintLen,
     getTokenMetadata,
     tokenMetadataEmit,
@@ -156,13 +156,6 @@ describe('Token Metadata initialization', async () => {
 
     it('can handle get on un-initialize token metadata', async () => {
         expect(await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID)).to.deep.equal(null);
-
-        expect(
-            await getEmittedTokenMetadata(
-                connection,
-                '4rPdnCjZkwt4CR2mih8HiepAxTmh4UFpks9vUjNLFJbrLrX3aJWss29NBzCwgxZrxVB1chYLC2YxqPfT44aRFVaG' // Random Transaction
-            )
-        ).to.deep.equal(null);
     });
 });
 
@@ -246,9 +239,14 @@ describe('Token Metadata operations', () => {
     it('can successfully emit', async () => {
         const signature = await tokenMetadataEmit(connection, payer, mint.publicKey);
 
-        const meta = await getEmittedTokenMetadata(connection, signature);
+        // Get metadata emitted in the transaction to verify
+        const tx: any = await connection.getTransaction(signature, {
+            maxSupportedTransactionVersion: 2,
+        });
 
-        expect(meta).to.deep.equal({
+        const data = Buffer.from(tx?.meta?.returnData?.data?.[0], 'base64');
+
+        expect(unpack(data)).to.deep.equal({
             updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
             mint: mint.publicKey,
             name: 'name',

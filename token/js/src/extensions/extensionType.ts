@@ -81,7 +81,7 @@ export function getTypeLen(e: ExtensionType): number {
         case ExtensionType.TransferHookAccount:
             return TRANSFER_HOOK_ACCOUNT_SIZE;
         case ExtensionType.TokenMetadata:
-            throw Error(`Variable length extension type: ${e}`);
+            throw Error(`Cannot get type length for variable extension type: ${e}`);
         default:
             throw Error(`Unknown extension type: ${e}`);
     }

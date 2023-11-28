@@ -1,4 +1,4 @@
-import type { Commitment, Connection, Finality } from '@solana/web3.js';
+import type { Commitment, Connection } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 import type { TokenMetadata } from '@solana/spl-token-metadata';
 import { Field, unpack } from '@solana/spl-token-metadata';
@@ -96,39 +96,6 @@ export async function getTokenMetadata(
 ): Promise<TokenMetadata | null> {
     const mintInfo = await getMint(connection, address, commitment, programId);
     const data = getExtensionData(ExtensionType.TokenMetadata, mintInfo.tlvData);
-
-    if (data === null) {
-        return null;
-    }
-
-    return unpack(data);
-}
-
-/**
- * Retrieve Token Metadata Information emitted in transaction
- *
- * @param connection Connection to use
- * @param signature  Transaction signature
- * @param commitment Desired level of commitment for querying the state
- *
- * @return Token Metadata information
- */
-export async function getEmittedTokenMetadata(
-    connection: Connection,
-    signature: string,
-    commitment?: Finality,
-    programId = TOKEN_2022_PROGRAM_ID
-): Promise<TokenMetadata | null> {
-    const tx: any = await connection.getTransaction(signature, {
-        commitment: commitment,
-        maxSupportedTransactionVersion: 2,
-    });
-
-    if (tx === null) {
-        return null;
-    }
-
-    const data = Buffer.from(tx?.meta?.returnData?.data?.[0], 'base64');
 
     if (data === null) {
         return null;
