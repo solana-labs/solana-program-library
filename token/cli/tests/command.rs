@@ -4,7 +4,7 @@ use {
     solana_cli_output::OutputFormat,
     solana_client::{nonblocking::rpc_client::RpcClient, rpc_request::TokenAccountsFilter},
     solana_sdk::{
-        bpf_loader_upgradeable, feature_set,
+        bpf_loader_upgradeable,
         hash::Hash,
         program_option::COption,
         program_pack::Pack,
@@ -162,8 +162,6 @@ async fn new_validator_for_test() -> (TestValidator, Keypair) {
             upgrade_authority: Pubkey::new_unique(),
         },
     ]);
-    // TODO Remove this once the Range Proof cost goes under 200k compute units
-    test_validator_genesis.deactivate_features(&[feature_set::native_programs_consume_cu::id()]);
     test_validator_genesis.start_async().await
 }
 
