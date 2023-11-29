@@ -786,6 +786,7 @@ async fn success_on_chain_invoke_with_updated_extra_account_metas() {
 
     let extra_account_metas_address =
         get_extra_account_metas_address(&mint_address, &hook_program_id);
+    let writable_pubkey = Pubkey::new_unique();
 
     // Create an initial account metas list
     let init_extra_account_metas = [
@@ -802,6 +803,19 @@ async fn success_on_chain_invoke_with_updated_extra_account_metas() {
             true,
         )
         .unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::InstructionData {
+                    index: 8,  // After instruction discriminator
+                    length: 8, // `u64` (amount)
+                },
+                Seed::AccountKey { index: 2 },
+            ],
+            false,
+            true,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_pubkey(&writable_pubkey, false, true).unwrap(),
     ];
 
     let mut context = program_test.start_with_context().await;
@@ -849,6 +863,19 @@ async fn success_on_chain_invoke_with_updated_extra_account_metas() {
             true,
         )
         .unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::InstructionData {
+                    index: 8,  // After instruction discriminator
+                    length: 8, // `u64` (amount)
+                },
+                Seed::AccountKey { index: 2 },
+            ],
+            false,
+            true,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_pubkey(&writable_pubkey, false, true).unwrap(),
     ];
 
     let rent = context.banks_client.get_rent().await.unwrap();
@@ -880,10 +907,18 @@ async fn success_on_chain_invoke_with_updated_extra_account_metas() {
         .await
         .unwrap();
 
-    let updated_extra_pda = Pubkey::find_program_address(
+    let updated_extra_pda_1 = Pubkey::find_program_address(
         &[
             b"updated-seed-prefix", // Literal prefix
             source.as_ref(),        // Account at index 0
+        ],
+        &hook_program_id,
+    )
+    .0;
+    let extra_pda_2 = Pubkey::find_program_address(
+        &[
+            &amount.to_le_bytes(), // Instruction data bytes 8 to 16
+            destination.as_ref(),  // Account at index 2
         ],
         &hook_program_id,
     )
@@ -892,7 +927,9 @@ async fn success_on_chain_invoke_with_updated_extra_account_metas() {
     let test_updated_extra_account_metas = [
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(mint_authority_pubkey, true),
-        AccountMeta::new(updated_extra_pda, false),
+        AccountMeta::new(updated_extra_pda_1, false),
+        AccountMeta::new(extra_pda_2, false),
+        AccountMeta::new(writable_pubkey, false),
     ];
 
     // Use updated account metas list
