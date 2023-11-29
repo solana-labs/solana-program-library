@@ -177,49 +177,12 @@ fn native_token_client_from_config(
     }
 }
 
+#[derive(strum_macros::Display, Debug)]
+#[strum(serialize_all = "kebab-case")]
 enum Pointer {
     Metadata,
     Group,
     GroupMember,
-}
-impl Display for Pointer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Pointer::Metadata => "metadata pointer",
-            Pointer::Group => "group pointer",
-            Pointer::GroupMember => "member pointer",
-        })
-    }
-}
-impl Pointer {
-    pub async fn update_address(
-        &self,
-        config: &Config<'_>,
-        token_pubkey: &Pubkey,
-        authority: &Pubkey,
-        new_address: Option<Pubkey>,
-        signing_keypairs: &BulkSigners,
-    ) -> Result<RpcClientResponse, Error> {
-        let token = token_client_from_config(config, token_pubkey, None)?;
-        match self {
-            Pointer::Metadata => {
-                token
-                    .update_metadata_address(authority, new_address, signing_keypairs)
-                    .await
-            }
-            Pointer::Group => {
-                token
-                    .update_group_address(authority, new_address, signing_keypairs)
-                    .await
-            }
-            Pointer::GroupMember => {
-                token
-                    .update_group_member_address(authority, new_address, signing_keypairs)
-                    .await
-            }
-        }
-        .map_err(|err| format!("Failed to update {}: {}", self, err).into())
-    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2575,26 +2538,35 @@ async fn command_update_pointer_address(
     config: &Config<'_>,
     token_pubkey: Pubkey,
     authority: Pubkey,
-    new_metadata_address: Option<Pubkey>,
+    new_address: Option<Pubkey>,
     bulk_signers: BulkSigners,
     pointer: Pointer,
 ) -> CommandResult {
     if config.sign_only {
         panic!(
-            "Config can not be sign-only for updating {} address.",
+            "Config can not be sign-only for updating {} pointer address.",
             pointer
         );
     }
 
-    let res = pointer
-        .update_address(
-            config,
-            &token_pubkey,
-            &authority,
-            new_metadata_address,
-            &bulk_signers,
-        )
-        .await?;
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let res = match pointer {
+        Pointer::Metadata => {
+            token
+                .update_metadata_address(&authority, new_address, &bulk_signers)
+                .await
+        }
+        Pointer::Group => {
+            token
+                .update_group_address(&authority, new_address, &bulk_signers)
+                .await
+        }
+        Pointer::GroupMember => {
+            token
+                .update_group_member_address(&authority, new_address, &bulk_signers)
+                .await
+        }
+    }?;
 
     let tx_return = finish_tx(config, &res, false).await?;
     Ok(match tx_return {

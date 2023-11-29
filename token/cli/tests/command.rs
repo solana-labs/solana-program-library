@@ -3379,9 +3379,10 @@ async fn group_member_pointer(test_validator: &TestValidator, payer: &Keypair) {
             &member_address.to_string(),
         ],
     )
-    .await;
+    .await
+    .unwrap();
 
-    let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+    let value: serde_json::Value = serde_json::from_str(&result).unwrap();
     let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
     let account = config.rpc_client.get_account(&mint).await.unwrap();
     let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
@@ -3405,7 +3406,8 @@ async fn group_member_pointer(test_validator: &TestValidator, payer: &Keypair) {
             &new_member_address.to_string(),
         ],
     )
-    .await;
+    .await
+    .unwrap();
 
     let new_account = config.rpc_client.get_account(&mint).await.unwrap();
     let new_mint_state = StateWithExtensionsOwned::<Mint>::unpack(new_account.data).unwrap();

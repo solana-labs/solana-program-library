@@ -691,6 +691,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("member_address")
                         .long("member-address")
                         .value_name("ADDRESS")
+                        .validator(is_valid_pubkey)
                         .takes_value(true)
                         .conflicts_with("enable_member")
                         .help(
