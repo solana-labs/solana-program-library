@@ -13,7 +13,7 @@ export function addSigners(
         for (const signer of multiSigners) {
             if (signer instanceof PublicKey || signer instanceof Keypair) {
                 keys.push({
-                    pubkey: signer instanceof PublicKey ? signer : signer.publicKey,
+                    pubkey: 'publicKey' in signer ? signer.publicKey : signer,
                     isSigner: true,
                     isWritable: false,
                 });
