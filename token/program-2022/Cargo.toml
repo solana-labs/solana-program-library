@@ -24,6 +24,7 @@ num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.1"
 solana-program = "1.17.6"
+solana-security-txt = "1.1.1"
 solana-zk-token-sdk = "1.17.6"
 spl-memo = { version = "4.0.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
 spl-token = { version = "4.0",  path = "../program", features = ["no-entrypoint"] }
