@@ -7214,6 +7214,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "solana-security-txt",
  "solana-vote-program",
  "spl-math",
  "spl-pod 0.1.0",
