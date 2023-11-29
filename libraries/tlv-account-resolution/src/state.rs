@@ -1334,14 +1334,14 @@ mod tests {
 
         // Get the tlv state then unpack
         let state = TlvStateBorrowed::unpack(&buffer).unwrap();
-        let unpacked_metas =
+        let unpacked_metas_pod =
             ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
 
         // Convert to Vec<ExtraAccountMeta>
-        let unpacked_metas_vec = unpacked_metas.data().to_vec();
+        let unpacked_metas = unpacked_metas_pod.data();
 
         // Assert that the unpacked metas match the updated metas
-        assert_eq!(unpacked_metas_vec, updated_metas.to_vec(), "The updated ExtraAccountMetas in the buffer should match the ones provided to the update function.");
+        assert_eq!(unpacked_metas, updated_metas, "The updated ExtraAccountMetas in the buffer should match the ones provided to the update function.");
     }
 
     #[tokio::test]
