@@ -20,6 +20,7 @@ use {
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             cpi_guard::CpiGuard,
             default_account_state::DefaultAccountState,
+            group_member_pointer::GroupMemberPointer,
             group_pointer::GroupPointer,
             interest_bearing_mint::InterestBearingConfig,
             memo_transfer::MemoTransfer,
@@ -126,6 +127,7 @@ async fn main() {
         async_trial!(withdraw_excess_lamports_from_account, test_validator, payer),
         async_trial!(metadata_pointer, test_validator, payer),
         async_trial!(group_pointer, test_validator, payer),
+        async_trial!(group_member_pointer, test_validator, payer),
         async_trial!(transfer_hook, test_validator, payer),
         async_trial!(metadata, test_validator, payer),
         // GC messes with every other test, so have it on its own test validator
@@ -3356,6 +3358,91 @@ async fn group_pointer(test_validator: &TestValidator, payer: &Keypair) {
 
     assert_eq!(
         new_extension_disable.group_address,
+        None.try_into().unwrap()
+    );
+}
+
+async fn group_member_pointer(test_validator: &TestValidator, payer: &Keypair) {
+    let program_id = spl_token_2022::id();
+    let config = test_config_with_default_signer(test_validator, payer, &program_id);
+    let member_address = Pubkey::new_unique();
+
+    let result = process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            "--program-id",
+            &program_id.to_string(),
+            "--member-address",
+            &member_address.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let value: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+    let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+
+    let extension = mint_state.get_extension::<GroupMemberPointer>().unwrap();
+
+    assert_eq!(
+        extension.member_address,
+        Some(member_address).try_into().unwrap()
+    );
+
+    let new_member_address = Pubkey::new_unique();
+
+    let _new_result = process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::UpdateMemberAddress.into(),
+            &mint.to_string(),
+            &new_member_address.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let new_account = config.rpc_client.get_account(&mint).await.unwrap();
+    let new_mint_state = StateWithExtensionsOwned::<Mint>::unpack(new_account.data).unwrap();
+
+    let new_extension = new_mint_state
+        .get_extension::<GroupMemberPointer>()
+        .unwrap();
+
+    assert_eq!(
+        new_extension.member_address,
+        Some(new_member_address).try_into().unwrap()
+    );
+
+    let _result_with_disable = process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::UpdateMemberAddress.into(),
+            &mint.to_string(),
+            "--disable",
+        ],
+    )
+    .await;
+
+    let new_account_disbale = config.rpc_client.get_account(&mint).await.unwrap();
+    let new_mint_state_disable =
+        StateWithExtensionsOwned::<Mint>::unpack(new_account_disbale.data).unwrap();
+
+    let new_extension_disable = new_mint_state_disable
+        .get_extension::<GroupMemberPointer>()
+        .unwrap();
+
+    assert_eq!(
+        new_extension_disable.member_address,
         None.try_into().unwrap()
     );
 }
