@@ -61,7 +61,7 @@ use {
         },
         state::{Account, AccountState, Mint, Multisig},
     },
-    spl_token_group_interface::state::TokenGroup,
+    spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_token_metadata_interface::state::{Field, TokenMetadata},
     std::{
         fmt, io,
@@ -3800,5 +3800,59 @@ where
             signing_keypairs,
         )
         .await
+    }
+
+    /// Initialize a token-group member on a mint
+    pub async fn token_group_initialize_member<S: Signers>(
+        &self,
+        mint_authority: &Pubkey,
+        group_mint: &Pubkey,
+        group_update_authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[spl_token_group_interface::instruction::initialize_member(
+                &self.program_id,
+                &self.pubkey,
+                &self.pubkey,
+                mint_authority,
+                group_mint,
+                group_update_authority,
+            )],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Initialize a token-group member on a mint
+    #[allow(clippy::too_many_arguments)]
+    pub async fn token_group_initialize_member_with_rent_transfer<S: Signers>(
+        &self,
+        payer: &Pubkey,
+        mint_authority: &Pubkey,
+        group_mint: &Pubkey,
+        group_update_authority: &Pubkey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let additional_lamports = self
+            .get_additional_rent_for_fixed_len_extension::<TokenGroupMember>()
+            .await?;
+        let mut instructions = vec![];
+        if additional_lamports > 0 {
+            instructions.push(system_instruction::transfer(
+                payer,
+                &self.pubkey,
+                additional_lamports,
+            ));
+        }
+        instructions.push(spl_token_group_interface::instruction::initialize_member(
+            &self.program_id,
+            &self.pubkey,
+            &self.pubkey,
+            mint_authority,
+            group_mint,
+            group_update_authority,
+        ));
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 }

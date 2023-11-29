@@ -37,7 +37,7 @@ use {
         bytemuck::{pod_from_bytes, pod_from_bytes_mut, pod_get_packed_len},
         primitives::PodU16,
     },
-    spl_token_group_interface::state::TokenGroup,
+    spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_type_length_value::variable_len_pack::VariableLenPack,
     std::{
         cmp::Ordering,
@@ -959,6 +959,8 @@ pub enum ExtensionType {
     /// Mint contains a pointer to another account (or the same account) that
     /// holds group member configurations
     GroupMemberPointer,
+    /// Mint contains token group member configurations
+    TokenGroupMember,
     /// Test variable-length mint extension
     #[cfg(test)]
     VariableLenMintTest = u16::MAX - 2,
@@ -1038,6 +1040,7 @@ impl ExtensionType {
             ExtensionType::GroupPointer => pod_get_packed_len::<GroupPointer>(),
             ExtensionType::TokenGroup => pod_get_packed_len::<TokenGroup>(),
             ExtensionType::GroupMemberPointer => pod_get_packed_len::<GroupMemberPointer>(),
+            ExtensionType::TokenGroupMember => pod_get_packed_len::<TokenGroupMember>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -1100,7 +1103,8 @@ impl ExtensionType {
             | ExtensionType::TokenMetadata
             | ExtensionType::GroupPointer
             | ExtensionType::TokenGroup
-            | ExtensionType::GroupMemberPointer => AccountType::Mint,
+            | ExtensionType::GroupMemberPointer
+            | ExtensionType::TokenGroupMember => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
