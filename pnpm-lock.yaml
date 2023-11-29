@@ -63,8 +63,8 @@ importers:
         specifier: ^4.3.0
         version: 4.3.11
       '@types/jest':
-        specifier: ^29.0.0
-        version: 29.0.0
+        specifier: ^29.5.10
+        version: 29.5.10
       '@types/node-fetch':
         specifier: ^2.6.2
         version: 2.6.9
@@ -2472,13 +2472,6 @@ packages:
     resolution: {integrity: sha512-pk2B1NWalF9toCRu6gjBzR69syFjP4Od8WRAX+0mmf9lAjCRicLOWc+ZrxZHx/0XRjotgkF9t6iaMJ+aXcOdZQ==}
     dependencies:
       '@types/istanbul-lib-report': 3.0.3
-    dev: true
-
-  /@types/jest@29.0.0:
-    resolution: {integrity: sha512-X6Zjz3WO4cT39Gkl0lZ2baFRaEMqJl5NC1OjElkwtNzAlbkr2K/WJXkBkH5VP0zx4Hgsd2TZYdOEfvp2Dxia+Q==}
-    dependencies:
-      expect: 29.7.0
-      pretty-format: 29.7.0
     dev: true
 
   /@types/jest@29.5.10:
