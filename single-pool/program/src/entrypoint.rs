@@ -8,6 +8,7 @@ use {
         account_info::AccountInfo, entrypoint::ProgramResult, program_error::PrintProgramError,
         pubkey::Pubkey,
     },
+    solana_security_txt::security_txt,
 };
 
 solana_program::entrypoint!(process_instruction);
@@ -23,4 +24,19 @@ fn process_instruction(
     } else {
         Ok(())
     }
+}
+
+security_txt! {
+    // Required fields
+    name: "SPL Single-Validator Stake Pool",
+    project_url: "https://spl.solana.com/single-pool",
+    contacts: "link:https://github.com/solana-labs/solana-program-library/security/advisories/new,mailto:security@solana.com,discord:https://discord.gg/solana",
+    policy: "https://github.com/solana-labs/solana-program-library/blob/master/SECURITY.md",
+
+    // Optional Fields
+    preferred_languages: "en",
+    source_code: "https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program",
+    source_revision: "",
+    source_release: "",
+    auditors: "https://github.com/solana-labs/security-audits#single-stake-pool"
 }
