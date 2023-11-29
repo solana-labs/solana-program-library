@@ -21,6 +21,7 @@ num_enum = "0.7.1"
 serde = "1.0.193"
 serde_derive = "1.0.103"
 solana-program = "1.17.6"
+solana-security-txt = "1.1.1"
 spl-math = { version = "0.2", path = "../../libraries/math", features = [ "no-entrypoint" ] }
 spl-pod = { version = "0.1", path = "../../libraries/pod", features = ["borsh"] }
 spl-token-2022 = { version = "0.9", path = "../../token/program-2022", features = [ "no-entrypoint" ] }
