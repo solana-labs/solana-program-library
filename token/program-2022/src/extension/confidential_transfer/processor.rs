@@ -171,6 +171,10 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
 
+    if *mint_info.key != token_account.base.mint {
+        return Err(TokenError::MintMismatch.into());
+    }
+
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;

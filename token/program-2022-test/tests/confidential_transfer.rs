@@ -307,6 +307,64 @@ async fn confidential_transfer_configure_token_account() {
 }
 
 #[tokio::test]
+async fn confidential_transfer_fail_approving_account_on_wrong_mint() {
+    let authority = Keypair::new();
+    let auto_approve_new_accounts = false;
+    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
+    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
+
+    let mut context_a = TestContext::new().await;
+    context_a
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+        ])
+        .await
+        .unwrap();
+
+    let token_a_context = context_a.token_context.unwrap();
+
+    let mut context_b = TestContext {
+        context: context_a.context.clone(),
+        token_context: None,
+    };
+    context_b
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint {
+                authority: Some(authority.pubkey()),
+                auto_approve_new_accounts,
+                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
+            },
+        ])
+        .await
+        .unwrap();
+    let TokenContext { token, alice, .. } = context_b.token_context.unwrap();
+    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
+
+    let err = token_a_context
+        .token
+        .confidential_transfer_approve_account(
+            &alice_meta.token_account,
+            &authority.pubkey(),
+            &[&authority],
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::MintMismatch as u32)
+            )
+        )))
+    );
+}
+
+#[tokio::test]
 async fn confidential_transfer_enable_disable_confidential_credits() {
     let authority = Keypair::new();
     let auto_approve_new_accounts = true;
