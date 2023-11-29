@@ -116,6 +116,7 @@ pub enum CommandName {
     DepositConfidentialTokens,
     WithdrawConfidentialTokens,
     ApplyPendingBalance,
+    UpdateGroupAddress,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -184,6 +185,7 @@ pub enum CliAuthorityType {
     ConfidentialTransferFee,
     MetadataPointer,
     Metadata,
+    GroupPointer,
 }
 impl TryFrom<CliAuthorityType> for AuthorityType {
     type Error = Error;
@@ -209,6 +211,7 @@ impl TryFrom<CliAuthorityType> for AuthorityType {
             CliAuthorityType::Metadata => {
                 Err("Metadata authority does not map to a token authority type".into())
             }
+            CliAuthorityType::GroupPointer => Ok(AuthorityType::GroupPointer),
         }
     }
 }
@@ -671,6 +674,17 @@ pub fn app<'a, 'b>(
                         ),
                 )
                 .arg(
+                    Arg::with_name("group_address")
+                        .long("group-address")
+                        .value_name("ADDRESS")
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .conflicts_with("enable_group")
+                        .help(
+                            "Specify address that stores token group configurations."
+                        ),
+                )
+                .arg(
                     Arg::with_name("enable_non_transferable")
                         .long("enable-non-transferable")
                         .alias("enable-nontransferable")
@@ -738,6 +752,13 @@ pub fn app<'a, 'b>(
                         .conflicts_with("metadata_address")
                         .takes_value(false)
                         .help("Enables metadata in the mint. The mint authority must initialize the metadata."),
+                )
+                .arg(
+                    Arg::with_name("enable_group")
+                        .long("enable-group")
+                        .conflicts_with("group_address")
+                        .takes_value(false)
+                        .help("Enables group configurations in the mint. The mint authority must initialize the group."),
                 )
                 .nonce_args(true)
                 .arg(memo_arg())
@@ -1890,6 +1911,49 @@ pub fn app<'a, 'b>(
                         .takes_value(true)
                         .help(
                             "Specify the token's metadata-pointer authority. \
+                            This may be a keypair file or the ASK keyword. \
+                            Defaults to the client keypair.",
+                        ),
+                )
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::UpdateGroupAddress.into())
+                .about("Updates group pointer address for the mint. Requires the group pointer extension.")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the token mint to update the group pointer address"),
+                )
+                .arg(
+                    Arg::with_name("group_address")
+                        .index(2)
+                        .validator(is_valid_pubkey)
+                        .value_name("GROUP_ADDRESS")
+                        .takes_value(true)
+                        .required_unless("disable")
+                        .help("Specify address that stores token's group-pointer"),
+                )
+                .arg(
+                    Arg::with_name("disable")
+                        .long("disable")
+                        .takes_value(false)
+                        .conflicts_with("group_address")
+                        .help("Unset group pointer address.")
+                )
+                .arg(
+                    Arg::with_name("authority")
+                        .long("authority")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the token's group-pointer authority. \
                             This may be a keypair file or the ASK keyword. \
                             Defaults to the client keypair.",
                         ),
