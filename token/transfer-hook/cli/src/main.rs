@@ -57,6 +57,21 @@ fn clap_is_valid_pubkey(arg: &str) -> Result<(), String> {
     is_valid_pubkey(arg)
 }
 
+// Helper function to calculate the required lamports
+async fn calculate_transfer_lamports(
+    rpc_client: &RpcClient,
+    account_address: &Pubkey,
+    account_size: usize,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let required_lamports = rpc_client
+        .get_minimum_balance_for_rent_exemption(account_size)
+        .await
+        .map_err(|err| format!("error: unable to fetch rent-exemption: {err}"))?;
+    let account_info = rpc_client.get_account(account_address).await;
+    let current_lamports = account_info.map(|a| a.lamports).unwrap_or(0);
+    Ok(required_lamports.saturating_sub(current_lamports))
+}
+
 struct Config {
     commitment_config: CommitmentConfig,
     default_signer: Box<dyn Signer>,
@@ -187,21 +202,6 @@ async fn process_update_extra_account_metas(
         .send_and_confirm_transaction_with_spinner(&transaction)
         .await
         .map_err(|err| format!("error: send transaction: {err}").into())
-}
-
-// Helper function to calculate the required lamports
-async fn calculate_transfer_lamports(
-    rpc_client: &RpcClient,
-    account_address: &Pubkey,
-    account_size: usize,
-) -> Result<u64, Box<dyn std::error::Error>> {
-    let required_lamports = rpc_client
-        .get_minimum_balance_for_rent_exemption(account_size)
-        .await
-        .map_err(|err| format!("error: unable to fetch rent-exemption: {err}"))?;
-    let account_info = rpc_client.get_account(account_address).await;
-    let current_lamports = account_info.map(|a| a.lamports).unwrap_or(0);
-    Ok(required_lamports.saturating_sub(current_lamports))
 }
 
 #[tokio::main]
