@@ -319,7 +319,7 @@ pub fn inner_withdraw_withheld_tokens_from_mint(
     ));
 
     for multisig_signer in multisig_signers.iter() {
-        accounts.push(AccountMeta::new(**multisig_signer, false));
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
     Ok(encode_instruction(
@@ -411,7 +411,7 @@ pub fn inner_withdraw_withheld_tokens_from_accounts(
     ));
 
     for multisig_signer in multisig_signers.iter() {
-        accounts.push(AccountMeta::new(**multisig_signer, false));
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
     for source in sources.iter() {
