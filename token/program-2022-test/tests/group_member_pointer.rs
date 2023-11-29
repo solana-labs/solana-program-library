@@ -10,7 +10,10 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{group_member_pointer::GroupMemberPointer, BaseStateWithExtensions},
+        extension::{
+            group_member_pointer::GroupMemberPointer, group_pointer::GroupPointer,
+            BaseStateWithExtensions,
+        },
         instruction,
         processor::Processor,
     },
@@ -29,7 +32,12 @@ fn setup_program_test() -> ProgramTest {
     program_test
 }
 
-async fn setup(mint: Keypair, member_address: &Pubkey, authority: &Pubkey) -> TestContext {
+async fn setup(
+    mint: Keypair,
+    member_address: &Pubkey,
+    authority: &Pubkey,
+    maybe_group_address: Option<Pubkey>,
+) -> TestContext {
     let program_test = setup_program_test();
 
     let context = program_test.start_with_context().await;
@@ -38,15 +46,18 @@ async fn setup(mint: Keypair, member_address: &Pubkey, authority: &Pubkey) -> Te
         context,
         token_context: None,
     };
+    let mut extension_init_params = vec![ExtensionInitializationParams::GroupMemberPointer {
+        authority: Some(*authority),
+        member_address: Some(*member_address),
+    }];
+    if let Some(group_address) = maybe_group_address {
+        extension_init_params.push(ExtensionInitializationParams::GroupPointer {
+            authority: Some(*authority),
+            group_address: Some(group_address),
+        });
+    }
     context
-        .init_token_with_mint_keypair_and_freeze_authority(
-            mint,
-            vec![ExtensionInitializationParams::GroupMemberPointer {
-                authority: Some(*authority),
-                member_address: Some(*member_address),
-            }],
-            None,
-        )
+        .init_token_with_mint_keypair_and_freeze_authority(mint, extension_init_params, None)
         .await
         .unwrap();
     context
@@ -57,7 +68,7 @@ async fn success_init() {
     let authority = Pubkey::new_unique();
     let member_address = Pubkey::new_unique();
     let mint_keypair = Keypair::new();
-    let token = setup(mint_keypair, &member_address, &authority)
+    let token = setup(mint_keypair, &member_address, &authority, None)
         .await
         .token_context
         .take()
@@ -71,6 +82,40 @@ async fn success_init() {
     assert_eq!(
         extension.member_address,
         Some(member_address).try_into().unwrap()
+    );
+}
+
+#[tokio::test]
+async fn success_init_with_group() {
+    let authority = Pubkey::new_unique();
+    let group_address = Pubkey::new_unique();
+    let member_address = Pubkey::new_unique();
+    let mint_keypair = Keypair::new();
+    let token = setup(
+        mint_keypair,
+        &member_address,
+        &authority,
+        Some(group_address),
+    )
+    .await
+    .token_context
+    .take()
+    .unwrap()
+    .token;
+
+    let state = token.get_mint_info().await.unwrap();
+    assert!(state.base.is_initialized);
+    let extension = state.get_extension::<GroupMemberPointer>().unwrap();
+    assert_eq!(extension.authority, Some(authority).try_into().unwrap());
+    assert_eq!(
+        extension.member_address,
+        Some(member_address).try_into().unwrap()
+    );
+    let extension = state.get_extension::<GroupPointer>().unwrap();
+    assert_eq!(extension.authority, Some(authority).try_into().unwrap());
+    assert_eq!(
+        extension.group_address,
+        Some(group_address).try_into().unwrap()
     );
 }
 
@@ -112,7 +157,7 @@ async fn set_authority() {
     let authority = Keypair::new();
     let member_address = Pubkey::new_unique();
     let mint_keypair = Keypair::new();
-    let token = setup(mint_keypair, &member_address, &authority.pubkey())
+    let token = setup(mint_keypair, &member_address, &authority.pubkey(), None)
         .await
         .token_context
         .take()
@@ -202,7 +247,7 @@ async fn update_member_address() {
     let authority = Keypair::new();
     let member_address = Pubkey::new_unique();
     let mint_keypair = Keypair::new();
-    let token = setup(mint_keypair, &member_address, &authority.pubkey())
+    let token = setup(mint_keypair, &member_address, &authority.pubkey(), None)
         .await
         .token_context
         .take()
