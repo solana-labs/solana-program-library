@@ -45,8 +45,8 @@ importers:
         specifier: ^0.3.5
         version: 0.3.5
       '@metaplex-foundation/solita':
-        specifier: 0.15.2
-        version: 0.15.2
+        specifier: 0.20.1
+        version: 0.20.1
       '@project-serum/anchor':
         specifier: ^0.26.0
         version: 0.26.0
@@ -1771,16 +1771,6 @@ packages:
       - utf-8-validate
     dev: false
 
-  /@metaplex-foundation/beet@0.6.1:
-    resolution: {integrity: sha512-OYgnijLFzw0cdUlRKH5POp0unQECPOW9muJ2X3QIVyak5G6I6l/rKo72sICgPLIFKdmsi2jmnkuLY7wp14iXdw==}
-    dependencies:
-      ansicolors: 0.3.2
-      bn.js: 5.2.1
-      debug: 4.3.4(supports-color@8.1.1)
-    transitivePeerDependencies:
-      - supports-color
-    dev: true
-
   /@metaplex-foundation/beet@0.7.1:
     resolution: {integrity: sha512-hNCEnS2WyCiYyko82rwuISsBY3KYpe828ubsd2ckeqZr7tl0WVLivGkoyA/qdiaaHEBGdGl71OpfWa2rqL3DiA==}
     dependencies:
@@ -1801,14 +1791,15 @@ packages:
       - supports-color
     dev: true
 
-  /@metaplex-foundation/solita@0.15.2:
-    resolution: {integrity: sha512-mpuFijA2st3yH4ZOKMyM3iE+S7FIIWobzPDVfGiubRSSDel1+qPP2C0tC23doGEmTpHEwF75rmdrCc+jyMLkAg==}
+  /@metaplex-foundation/solita@0.20.1:
+    resolution: {integrity: sha512-E2bHGzT6wA/sXWBLgJ50ZQNvukPnQlH6kRU6m6lmatJdEOjNWhR1lLI7ESIk/i4ZiSdHZkc/Q6ile8eIlXOzNQ==}
     hasBin: true
     dependencies:
-      '@metaplex-foundation/beet': 0.6.1
+      '@metaplex-foundation/beet': 0.7.1
       '@metaplex-foundation/beet-solana': 0.3.1
       '@metaplex-foundation/rustbin': 0.3.5
       '@solana/web3.js': 1.87.6
+      ansi-colors: 4.1.3
       camelcase: 6.3.0
       debug: 4.3.4(supports-color@8.1.1)
       js-sha256: 0.9.0
@@ -2858,6 +2849,11 @@ packages:
 
   /ansi-colors@4.1.1:
     resolution: {integrity: sha512-JoX0apGbHaUJBNl6yF+p6JAFYZ666/hhCGKN5t9QFjbJQKUU/g8MNbFDbvfrgKXvI1QpZplPOnwIo99lX/AAmA==}
+    engines: {node: '>=6'}
+    dev: true
+
+  /ansi-colors@4.1.3:
+    resolution: {integrity: sha512-/6w/C21Pm1A7aZitlI5Ni/2J6FFQN8i1Cvz3kHABAAbw93v/NlvKdVOqz7CCWz/3iv/JplRSEEZ83XION15ovw==}
     engines: {node: '>=6'}
     dev: true
 
