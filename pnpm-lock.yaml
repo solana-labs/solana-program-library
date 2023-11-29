@@ -93,8 +93,8 @@ importers:
         specifier: ^27.2.3
         version: 27.6.0(@typescript-eslint/eslint-plugin@6.13.1)(eslint@8.54.0)(jest@29.7.0)(typescript@5.3.2)
       eslint-plugin-mocha:
-        specifier: ^10.1.0
-        version: 10.1.0(eslint@8.54.0)
+        specifier: ^10.2.0
+        version: 10.2.0(eslint@8.54.0)
       eslint-plugin-prettier:
         specifier: ^4.2.1
         version: 4.2.1(eslint-config-prettier@9.0.0)(eslint@8.54.0)(prettier@3.1.0)
@@ -4175,8 +4175,8 @@ packages:
       - typescript
     dev: true
 
-  /eslint-plugin-mocha@10.1.0(eslint@8.54.0):
-    resolution: {integrity: sha512-xLqqWUF17llsogVOC+8C6/jvQ+4IoOREbN7ZCHuOHuD6cT5cDD4h7f2LgsZuzMAiwswWE21tO7ExaknHVDrSkw==}
+  /eslint-plugin-mocha@10.2.0(eslint@8.54.0):
+    resolution: {integrity: sha512-ZhdxzSZnd1P9LqDPF0DBcFLpRIGdh1zkF2JHnQklKQOvrQtT73kdP5K9V2mzvbLR+cCAO9OI48NXK/Ax9/ciCQ==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       eslint: '>=7.0.0'
