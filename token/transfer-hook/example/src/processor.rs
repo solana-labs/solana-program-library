@@ -180,9 +180,11 @@ pub fn process_update_extra_account_meta_list(
         let mut data = extra_account_metas_info.try_borrow_mut_data()?;
         ExtraAccountMetaList::update::<ExecuteInstruction>(&mut data, extra_account_metas)?;
     } else {
-        let mut data = extra_account_metas_info.try_borrow_mut_data()?;
-        ExtraAccountMetaList::update::<ExecuteInstruction>(&mut data, extra_account_metas)?;
-        drop(data);
+        {
+            let mut data = extra_account_metas_info.try_borrow_mut_data()?;
+            ExtraAccountMetaList::update::<ExecuteInstruction>(&mut data, extra_account_metas)?;
+        }
+
         extra_account_metas_info.realloc(account_size, false)?;
     }
 
