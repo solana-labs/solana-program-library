@@ -1310,133 +1310,60 @@ mod tests {
 
     #[tokio::test]
     async fn update_extra_account_meta_list() {
-        // Create new ExtraAccountMeta
-        let metas = [
+        // Create list of initial metas
+        let initial_metas = [
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
         ];
 
-        // Create a buffer and get its size
-        let account_size = ExtraAccountMetaList::size_of(metas.len()).unwrap();
-        let mut buffer = vec![0; account_size];
-
-        // Initialize
-        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &metas).unwrap();
-
-        // Create new metas to overwrite the initial
-        let updated_metas = [
+        // Create updated metas list of the same size
+        let updated_metas_1 = [
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
         ];
+        initialize_update_and_assert_metas(&initial_metas, &updated_metas_1).await;
 
-        // Update
-        ExtraAccountMetaList::update::<TestInstruction>(&mut buffer, &updated_metas).unwrap();
+        // Create updated and larger list of metas
+        let updated_metas_2 = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
+        ];
+        initialize_update_and_assert_metas(&initial_metas, &updated_metas_2).await;
 
-        // Get the tlv state then unpack
+        // Create updated and smaller list of metas
+        let updated_metas_3 =
+            [ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap()];
+        initialize_update_and_assert_metas(&initial_metas, &updated_metas_3).await;
+    }
+
+    async fn initialize_update_and_assert_metas(
+        initial_metas: &[ExtraAccountMeta],
+        updated_metas: &[ExtraAccountMeta],
+    ) {
+        // initialize
+        let initial_account_size = ExtraAccountMetaList::size_of(initial_metas.len()).unwrap();
+        let mut buffer = vec![0; initial_account_size];
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, initial_metas).unwrap();
+
+        // resize buffere if necessary
+        let account_size = ExtraAccountMetaList::size_of(updated_metas.len()).unwrap();
+        if account_size > initial_account_size {
+            buffer.resize(account_size, 0);
+        }
+
+        // update
+        ExtraAccountMetaList::update::<TestInstruction>(&mut buffer, updated_metas).unwrap();
+
+        // retreive metas and assert
         let state = TlvStateBorrowed::unpack(&buffer).unwrap();
         let unpacked_metas_pod =
             ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
-
-        // Convert to Vec<ExtraAccountMeta>
         let unpacked_metas = unpacked_metas_pod.data();
-
-        // Assert that the unpacked metas match the updated metas
-        assert_eq!(unpacked_metas, updated_metas, "The updated ExtraAccountMetas in the buffer should match the ones provided to the update function.");
-    }
-
-    #[tokio::test]
-    async fn update_extra_account_meta_list_to_larger() {
-        // Create new ExtraAccountMeta
-        let initial_metas = [
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
-        ];
-
-        // Create a buffer and get its size
-        let initial_account_size = ExtraAccountMetaList::size_of(initial_metas.len()).unwrap();
-        let mut buffer = vec![0; initial_account_size];
-
-        // Initialize
-        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &initial_metas).unwrap();
-
-        // Create new metas to overwrite the initial, adding one
-        let updated_metas = [
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
-        ];
-
-        // Calculate the new size
-        let updated_account_size = ExtraAccountMetaList::size_of(updated_metas.len()).unwrap();
-
-        // Must resize buffer first
-        buffer.resize(updated_account_size, 0);
-
-        // Update
-        ExtraAccountMetaList::update::<TestInstruction>(&mut buffer, &updated_metas).unwrap();
-
-        // Get the tlv state then unpack
-        let state = TlvStateBorrowed::unpack(&buffer).unwrap();
-        let unpacked_metas =
-            ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
-
-        // Convert to Vec<ExtraAccountMeta>
-        let unpacked_metas_vec = unpacked_metas.data().to_vec();
-
-        // Assert that the unpacked metas match the updated metas and their lengths
         assert_eq!(
-            unpacked_metas_vec.len(),
-            updated_metas.len(),
-            "The length of the updated ExtraAccountMetas should match the updated array length."
+            unpacked_metas, updated_metas,
+            "The ExtraAccountMetas in the buffer should match the expected ones."
         );
-        assert_eq!(unpacked_metas_vec, updated_metas.to_vec(), "The updated ExtraAccountMetas in the buffer should match the ones provided to the update function.");
-    }
-
-    #[tokio::test]
-    async fn update_extra_account_meta_list_to_smaller() {
-        // Create new ExtraAccountMeta
-        let initial_metas = [
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
-        ];
-
-        // Create a buffer and get its size
-        let initial_account_size = ExtraAccountMetaList::size_of(initial_metas.len()).unwrap();
-        let mut buffer = vec![0; initial_account_size];
-
-        // Initialize
-        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &initial_metas).unwrap();
-
-        // Create new metas to overwrite the initial, with one fewer
-        let updated_metas = [
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
-        ];
-
-        // Resizing the buffer gives InvalidAccountData from
-        // `let mut state = TlvStateMut::unpack(data).unwrap();`.
-        // This is because the size is checked against byte 9 in the buffer
-        // Not sure if this is the ideal behavior
-
-        // Update
-        ExtraAccountMetaList::update::<TestInstruction>(&mut buffer, &updated_metas).unwrap();
-
-        // Get the tlv state then unpack
-        let state = TlvStateBorrowed::unpack(&buffer).unwrap();
-        let unpacked_metas =
-            ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
-
-        // Convert to Vec<ExtraAccountMeta>
-        let unpacked_metas_vec = unpacked_metas.data().to_vec();
-
-        // Assert that the unpacked metas match the updated metas and their lengths
-        assert_eq!(
-            unpacked_metas_vec.len(),
-            updated_metas.len(),
-            "The length of the updated ExtraAccountMetas should match the updated array length."
-        );
-        assert_eq!(unpacked_metas_vec, updated_metas.to_vec(), "The updated ExtraAccountMetas in the buffer should match the ones provided to the update function.");
     }
 
     #[test]
