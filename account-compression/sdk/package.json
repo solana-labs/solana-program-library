@@ -69,7 +69,7 @@
     "@metaplex-foundation/solita": "0.20.1",
     "@project-serum/anchor": "^0.26.0",
     "@solana/eslint-config-solana": "^1.0.2",
-    "@solana/prettier-config-solana": "^0.0.3",
+    "@solana/prettier-config-solana": "^0.0.4",
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.0",
     "@types/jest": "^29.5.10",
