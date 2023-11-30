@@ -57,15 +57,8 @@ fn clap_is_valid_pubkey(arg: &str) -> Result<(), String> {
     is_valid_pubkey(arg)
 }
 
-fn prepare_extra_account_metas(transfer_hook_accounts: Vec<AccountMeta>) -> Vec<ExtraAccountMeta> {
-    transfer_hook_accounts
-        .into_iter()
-        .map(|v| v.into())
-        .collect::<Vec<_>>()
-}
-
-// Helper function to calculate the required lamports
-async fn calculate_transfer_lamports(
+// Helper function to calculate the required lamports for rent
+async fn calculate_rent_lamports(
     rpc_client: &RpcClient,
     account_address: &Pubkey,
     account_size: usize,
@@ -79,7 +72,7 @@ async fn calculate_transfer_lamports(
     Ok(required_lamports.saturating_sub(current_lamports))
 }
 
-async fn prepare_transaction_with_initial_lamports_transfer(
+async fn build_transaction_with_rent_transfer(
     rpc_client: &RpcClient,
     payer: &dyn Signer,
     recipient_address: &Pubkey,
@@ -88,7 +81,7 @@ async fn prepare_transaction_with_initial_lamports_transfer(
 ) -> Result<Transaction, Box<dyn std::error::Error>> {
     let account_size = ExtraAccountMetaList::size_of(extra_account_metas.len())?;
     let transfer_lamports =
-        calculate_transfer_lamports(rpc_client, recipient_address, account_size).await?;
+        calculate_rent_lamports(rpc_client, recipient_address, account_size).await?;
 
     let mut instructions = vec![];
     if transfer_lamports > 0 {
@@ -106,7 +99,7 @@ async fn prepare_transaction_with_initial_lamports_transfer(
     Ok(transaction)
 }
 
-async fn finalize_and_send_transaction(
+async fn sign_and_send_transaction(
     transaction: &mut Transaction,
     rpc_client: &RpcClient,
     payer: &dyn Signer,
@@ -157,7 +150,10 @@ async fn process_create_extra_account_metas(
         }
     }
 
-    let extra_account_metas = prepare_extra_account_metas(transfer_hook_accounts);
+    let extra_account_metas = transfer_hook_accounts
+        .into_iter()
+        .map(|v| v.into())
+        .collect::<Vec<_>>();
 
     let instruction = initialize_extra_account_meta_list(
         program_id,
@@ -167,7 +163,7 @@ async fn process_create_extra_account_metas(
         &extra_account_metas,
     );
 
-    let mut transaction = prepare_transaction_with_initial_lamports_transfer(
+    let mut transaction = build_transaction_with_rent_transfer(
         rpc_client,
         payer,
         &extra_account_metas_address,
@@ -176,7 +172,7 @@ async fn process_create_extra_account_metas(
     )
     .await?;
 
-    finalize_and_send_transaction(&mut transaction, rpc_client, payer, mint_authority).await
+    sign_and_send_transaction(&mut transaction, rpc_client, payer, mint_authority).await
 }
 
 async fn process_update_extra_account_metas(
@@ -198,7 +194,10 @@ async fn process_update_extra_account_metas(
         .into());
     }
 
-    let extra_account_metas = prepare_extra_account_metas(transfer_hook_accounts);
+    let extra_account_metas = transfer_hook_accounts
+        .into_iter()
+        .map(|v| v.into())
+        .collect::<Vec<_>>();
 
     let instruction = update_extra_account_meta_list(
         program_id,
@@ -208,7 +207,7 @@ async fn process_update_extra_account_metas(
         &extra_account_metas,
     );
 
-    let mut transaction = prepare_transaction_with_initial_lamports_transfer(
+    let mut transaction = build_transaction_with_rent_transfer(
         rpc_client,
         payer,
         &extra_account_metas_address,
@@ -217,7 +216,7 @@ async fn process_update_extra_account_metas(
     )
     .await?;
 
-    finalize_and_send_transaction(&mut transaction, rpc_client, payer, mint_authority).await
+    sign_and_send_transaction(&mut transaction, rpc_client, payer, mint_authority).await
 }
 
 #[tokio::main]
