@@ -46,7 +46,7 @@
         "@rollup/plugin-typescript": "^11.1.1",
         "@solana/spl-token": "workspace:*",
         "@solana/web3.js": "^1.87.6",
-        "@types/eslint": "^8.4.1",
+        "@types/eslint": "^8.44.8",
         "@types/eslint-plugin-prettier": "^3.1.0",
         "@types/node": "^20.10.0",
         "@typescript-eslint/eslint-plugin": "^6.13.1",
