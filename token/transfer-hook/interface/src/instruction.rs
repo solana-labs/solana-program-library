@@ -242,7 +242,6 @@ pub fn update_extra_account_meta_list(
         AccountMeta::new(*extra_account_metas_pubkey, false),
         AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, true),
-        // AccountMeta::new_readonly(system_program::id(), false),
     ];
 
     Instruction {
