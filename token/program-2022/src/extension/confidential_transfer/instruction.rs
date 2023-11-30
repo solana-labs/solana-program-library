@@ -399,14 +399,14 @@ pub enum ConfidentialTransferInstruction {
     ///   5. `[]` Context state account for
     ///      `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
     ///   6. `[]` Context state account for `VerifyBatchedRangeProofU128`.
-    ///   7. `[signer]` The source account owner.
     ///   If `close_split_context_state_on_execution` is set, all context state
-    ///     accounts must be `writable` and the following additional sequence
-    ///     of accounts are needed:
-    ///   8. `[]` The destination account for lamports from the context state
+    ///     accounts must be `writable` and the following sequence
+    ///     of accounts that are marked with asterisk are needed:
+    ///   7*. `[]` The destination account for lamports from the context state
     ///      accounts.
-    ///   9. `[signer]` The context state account owner.
-    ///   10. `[]` The zk token proof program.
+    ///   8*. `[signer]` The context state account owner.
+    ///   9*. `[]` The zk token proof program.
+    ///   10. `[signer]` The source account owner.
     ///
     ///   * Transfer with fee
     ///   1. `[writable]` The source SPL Token account.
@@ -420,14 +420,14 @@ pub enum ConfidentialTransferInstruction {
     ///   7. `[]` Context state account for
     ///      `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
     ///   8. `[]` Context state account for `VerifyBatchedRangeProofU256`.
-    ///   9. `[signer]` The source account owner.
     ///   If `close_split_context_state_on_execution` is set, all context state
-    ///     accounts must be   `writable` and the following additional sequence
-    ///     of accounts are needed:
-    ///   10. `[]` The destination account for lamports from the context state
+    ///     accounts must be  `writable` and the following sequence
+    ///     of accounts that are marked with asterisk are needed:
+    ///   9*. `[]` The destination account for lamports from the context state
     ///       accounts.
-    ///   11. `[signer]` The context state account owner.
-    ///   12. `[]` The zk token proof program.
+    ///   10*. `[signer]` The context state account owner.
+    ///   11*. `[]` The zk token proof program.
+    ///   12. `[signer]` The source account owner.
     ///
     /// Data expected by this instruction:
     ///   `TransferWithSplitProofsInstructionData`
@@ -1389,7 +1389,6 @@ pub fn transfer_with_split_proofs(
                 false,
             ));
             accounts.push(AccountMeta::new(*context_accounts.range_proof, false));
-            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
             accounts.push(AccountMeta::new(
                 *close_split_context_state_on_execution_accounts.lamport_destination,
                 false,
@@ -1399,6 +1398,7 @@ pub fn transfer_with_split_proofs(
                 *close_split_context_state_on_execution_accounts.zk_token_proof_program,
                 false,
             ));
+            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
             true
         } else {
             // If `close_split_context_state_accounts` is not set, then context state
@@ -1473,7 +1473,6 @@ pub fn transfer_with_fee_and_split_proofs(
                 false,
             ));
             accounts.push(AccountMeta::new(*context_accounts.range_proof, false));
-            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
             accounts.push(AccountMeta::new(
                 *close_split_context_state_on_execution_accounts.lamport_destination,
                 false,
@@ -1483,6 +1482,7 @@ pub fn transfer_with_fee_and_split_proofs(
                 *close_split_context_state_on_execution_accounts.zk_token_proof_program,
                 false,
             ));
+            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
             true
         } else {
             // If `close_split_context_state_accounts` is not set, then context state
@@ -1508,7 +1508,6 @@ pub fn transfer_with_fee_and_split_proofs(
                 false,
             ));
             accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
-
             false
         };
 
