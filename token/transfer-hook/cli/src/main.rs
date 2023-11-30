@@ -9,8 +9,7 @@ use {
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         commitment_config::CommitmentConfig,
-        instruction::AccountMeta,
-        instruction::Instruction,
+        instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
         signature::{Signature, Signer},
         system_instruction, system_program,
