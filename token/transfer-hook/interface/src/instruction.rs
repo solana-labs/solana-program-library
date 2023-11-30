@@ -32,8 +32,9 @@ pub enum TransferHookInstruction {
         /// Amount of tokens to transfer
         amount: u64,
     },
-    /// Initializes the extra account metas on an account, writing into
-    /// the first open TLV space.
+
+    /// Initializes the extra account metas on an account, writing into the
+    /// first open TLV space.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -45,7 +46,8 @@ pub enum TransferHookInstruction {
         /// List of `ExtraAccountMeta`s to write into the account
         extra_account_metas: Vec<ExtraAccountMeta>,
     },
-    /// Updates the extra account metas on an account by overwriting the existing list.
+    /// Updates the extra account metas on an account by overwriting the
+    /// existing list.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -53,7 +55,8 @@ pub enum TransferHookInstruction {
     ///   1. `[]` Mint
     ///   2. `[s]` Mint authority
     UpdateExtraAccountMetaList {
-        /// The new list of `ExtraAccountMetas` to overwrite the existing entry in the account.
+        /// The new list of `ExtraAccountMetas` to overwrite the existing entry
+        /// in the account.
         extra_account_metas: Vec<ExtraAccountMeta>,
     },
 }
