@@ -2735,6 +2735,24 @@ async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() 
             },
         )
         .await;
+
+    let error = token
+        .get_account(equality_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(ciphertext_validity_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(range_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
 }
 
 #[tokio::test]
@@ -3135,4 +3153,34 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context_in_para
             },
         )
         .await;
+
+    let error = token
+        .get_account(equality_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(transfer_amount_ciphertext_validity_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(fee_sigma_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(fee_ciphertext_validity_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(range_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
 }
