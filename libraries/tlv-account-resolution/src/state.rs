@@ -1327,6 +1327,24 @@ mod tests {
             unpacked_metas, updated_metas,
             "The ExtraAccountMetas in the buffer should match the expected ones."
         );
+
+        let mock_rpc = MockRpc::setup(&[]);
+
+        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
+        ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            &buffer,
+        )
+        .await
+        .unwrap();
+
+        let check_metas = updated_metas
+            .iter()
+            .map(|e| AccountMeta::try_from(e).unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(instruction.accounts, check_metas,);
     }
 
     #[tokio::test]
