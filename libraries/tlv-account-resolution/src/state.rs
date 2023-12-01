@@ -1309,34 +1309,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_extra_account_meta_list() {
-        // Create list of initial metas
-        let initial_metas = [
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
-        ];
-
-        // Create updated metas list of the same size
-        let updated_metas_1 = [
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
-        ];
-        initialize_update_and_assert_metas(&initial_metas, &updated_metas_1).await;
-
-        // Create updated and larger list of metas
-        let updated_metas_2 = [
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
-            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
-        ];
-        initialize_update_and_assert_metas(&initial_metas, &updated_metas_2).await;
-
-        // Create updated and smaller list of metas
-        let updated_metas_3 =
-            [ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap()];
-        initialize_update_and_assert_metas(&initial_metas, &updated_metas_3).await;
-    }
-
     async fn initialize_update_and_assert_metas(
         initial_metas: &[ExtraAccountMeta],
         updated_metas: &[ExtraAccountMeta],
@@ -1364,6 +1336,33 @@ mod tests {
             unpacked_metas, updated_metas,
             "The ExtraAccountMetas in the buffer should match the expected ones."
         );
+    }
+    async fn update_extra_account_meta_list() {
+        // Create list of initial metas
+        let initial_metas = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
+        ];
+
+        // Create updated metas list of the same size
+        let updated_metas_1 = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
+        ];
+        initialize_update_and_assert_metas(&initial_metas, &updated_metas_1).await;
+
+        // Create updated and larger list of metas
+        let updated_metas_2 = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
+        ];
+        initialize_update_and_assert_metas(&initial_metas, &updated_metas_2).await;
+
+        // Create updated and smaller list of metas
+        let updated_metas_3 =
+            [ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap()];
+        initialize_update_and_assert_metas(&initial_metas, &updated_metas_3).await;
     }
 
     #[test]
