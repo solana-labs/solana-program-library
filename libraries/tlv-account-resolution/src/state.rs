@@ -1308,23 +1308,15 @@ mod tests {
         }
     }
 
-    async fn initialize_update_and_assert_metas(
-        initial_metas: &[ExtraAccountMeta],
-        updated_metas: &[ExtraAccountMeta],
-    ) {
-        // initialize
-        let initial_account_size = ExtraAccountMetaList::size_of(initial_metas.len()).unwrap();
-        let mut buffer = vec![0; initial_account_size];
-        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, initial_metas).unwrap();
-
-        // resize buffere if necessary
+    async fn update_and_assert_metas(buffer: &mut Vec<u8>, updated_metas: &[ExtraAccountMeta]) {
+        // resize buffer if necessary
         let account_size = ExtraAccountMetaList::size_of(updated_metas.len()).unwrap();
-        if account_size > initial_account_size {
+        if account_size > buffer.len() {
             buffer.resize(account_size, 0);
         }
 
         // update
-        ExtraAccountMetaList::update::<TestInstruction>(&mut buffer, updated_metas).unwrap();
+        ExtraAccountMetaList::update::<TestInstruction>(buffer, updated_metas).unwrap();
 
         // retreive metas and assert
         let state = TlvStateBorrowed::unpack(&buffer).unwrap();
@@ -1345,12 +1337,17 @@ mod tests {
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
         ];
 
+        // initialize
+        let initial_account_size = ExtraAccountMetaList::size_of(initial_metas.len()).unwrap();
+        let mut buffer = vec![0; initial_account_size];
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &initial_metas).unwrap();
+
         // Create updated metas list of the same size
         let updated_metas_1 = [
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
         ];
-        initialize_update_and_assert_metas(&initial_metas, &updated_metas_1).await;
+        update_and_assert_metas(&mut buffer, &updated_metas_1).await;
 
         // Create updated and larger list of metas
         let updated_metas_2 = [
@@ -1358,12 +1355,12 @@ mod tests {
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
         ];
-        initialize_update_and_assert_metas(&initial_metas, &updated_metas_2).await;
+        update_and_assert_metas(&mut buffer, &updated_metas_2).await;
 
         // Create updated and smaller list of metas
         let updated_metas_3 =
             [ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap()];
-        initialize_update_and_assert_metas(&initial_metas, &updated_metas_3).await;
+        update_and_assert_metas(&mut buffer, &updated_metas_3).await;
     }
 
     #[test]
