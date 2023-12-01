@@ -23,7 +23,7 @@ import { updateTokenMetadata } from './state.js';
  *
  * @param connection       Connection to use
  * @param address          Mint Account
- * @param getNewMetadata   Function to get new metadata, given current
+ * @param tokenMetadata    Token Metadata
  * @param programId        SPL Token program account
  *
  * @return lamports to send
@@ -31,7 +31,7 @@ import { updateTokenMetadata } from './state.js';
 async function getAdditionalRentForNewMetadata(
     connection: Connection,
     address: PublicKey,
-    getNewMetadata: (x: TokenMetadata) => TokenMetadata,
+    tokenMetadata: TokenMetadata,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<number> {
     const info = await connection.getAccountInfo(address);
@@ -45,18 +45,62 @@ async function getAdditionalRentForNewMetadata(
 
     const data = getExtensionData(ExtensionType.TokenMetadata, mint.tlvData);
 
-    const currentDataLen = data ? data.length : 0;
-
-    const newMeta = data === null ? getNewMetadata({} as TokenMetadata) : getNewMetadata(unpack(data));
-    const newDataLen = pack(newMeta).length;
-
-    let newAccountLen = info.data.length + (newDataLen - currentDataLen);
-
-    if (currentDataLen === 0) {
-        // Extension not initialized
-        // Need 2 bytes extension discriminator, 2 bytes length
-        newAccountLen += 4;
+    if (data !== null) {
+        throw new Error('TokenMetadata Extension already Initialised');
     }
+
+    // Need 2 bytes extension discriminator, 2 bytes length
+    const extensionLen = pack(tokenMetadata).length + 4;
+
+    const newAccountLen = info.data.length + extensionLen;
+
+    const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
+
+    return newRentExemptMinimum - info.lamports;
+}
+
+/**
+ * Calculates additional lamports to update field
+ *
+ * @param connection       Connection to use
+ * @param address          Mint Account
+ * @param field            Field to update in the metadata
+ * @param value            Value to write for the field
+ * @param programId        SPL Token program account
+ *
+ * @return lamports to send
+ */
+async function getAdditionalRentForUpdatedMetadata(
+    connection: Connection,
+    address: PublicKey,
+    field: string | Field,
+    value: string,
+    programId = TOKEN_2022_PROGRAM_ID
+): Promise<number> {
+    const info = await connection.getAccountInfo(address);
+    const mint = unpackMint(address, info, programId);
+
+    if (!info) {
+        // unpack mint does error checking on info internally
+        // Check here for typescript and just in-case
+        throw new TokenAccountNotFoundError();
+    }
+
+    const data = getExtensionData(ExtensionType.TokenMetadata, mint.tlvData);
+
+    if (data === null) {
+        throw new Error('TokenMetadata extension not initialised');
+    }
+
+    const tokenMetadataNew = updateTokenMetadata(unpack(data), field, value);
+
+    const newData = pack(tokenMetadataNew);
+
+    if (newData.length <= data.length) {
+        return 0;
+    }
+
+    const newAccountLen = info.data.length + (newData.length - data.length);
 
     const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
 
@@ -146,14 +190,14 @@ export async function tokenMetadataInitializeWithRentTransfer(
 
     const transaction = new Transaction();
 
-    const lamports = await getAdditionalRentForNewMetadata(connection, mint, () => ({
+    const lamports = await getAdditionalRentForNewMetadata(connection, mint, {
         updateAuthority,
         mint,
         name,
         symbol,
         uri,
         additionalMetadata: [],
-    }));
+    });
 
     if (lamports > 0) {
         transaction.add(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: mint, lamports: lamports }));
@@ -186,8 +230,8 @@ export async function tokenMetadataInitializeWithRentTransfer(
  * @param payer            Payer of the transaction fees
  * @param updateAuthority  Update Authority
  * @param mint             Mint Account
- * @param field            Longer name of token
- * @param value            Shortened symbol of token
+ * @param field            Field to update in the metadata
+ * @param value            Value to write for the field
  * @param multiSigners     Signing accounts if `authority` is a multisig
  * @param confirmOptions   Options for confirming the transaction
  * @param programId        SPL Token program account
@@ -232,8 +276,8 @@ export async function tokenMetadataUpdateField(
  * @param payer            Payer of the transaction fees
  * @param updateAuthority  Update Authority
  * @param mint             Mint Account
- * @param field            Longer name of token
- * @param value            Shortened symbol of token
+ * @param field            Field to update in the metadata
+ * @param value            Value to write for the field
  * @param multiSigners     Signing accounts if `authority` is a multisig
  * @param confirmOptions   Options for confirming the transaction
  * @param programId        SPL Token program account
@@ -255,9 +299,7 @@ export async function tokenMetadataUpdateFieldWithRentTransfer(
 
     const transaction = new Transaction();
 
-    const lamports = await getAdditionalRentForNewMetadata(connection, mint, (x) =>
-        updateTokenMetadata(x, field, value)
-    );
+    const lamports = await getAdditionalRentForUpdatedMetadata(connection, mint, field, value);
 
     if (lamports > 0) {
         transaction.add(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: mint, lamports: lamports }));

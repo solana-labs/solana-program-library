@@ -1,5 +1,5 @@
 import type { Commitment, Connection } from '@solana/web3.js';
-import { PublicKey } from '@solana/web3.js';
+import type { PublicKey } from '@solana/web3.js';
 import type { TokenMetadata } from '@solana/spl-token-metadata';
 import { Field, unpack } from '@solana/spl-token-metadata';
 
@@ -23,33 +23,15 @@ export const getNormalizedTokenMetadataField = (field: Field | string): string =
     return field;
 };
 
-export const updateTokenMetadata = (
-    current: TokenMetadata,
-    key: Field | string,
-    value: string | PublicKey | null
-): TokenMetadata => {
+export const updateTokenMetadata = (current: TokenMetadata, key: Field | string, value: string): TokenMetadata => {
     const field = getNormalizedTokenMetadataField(key);
 
-    if (field === 'mint' && !(value instanceof PublicKey)) {
-        throw new Error('TokenMetadata field mint must be a PublicKey');
-    }
-
-    if (field === 'updateAuthority' && !(value === null || value instanceof PublicKey)) {
-        throw new Error('TokenMetadata field updateAuthority must be a PublicKey or null');
-    }
-
-    if (typeof value !== 'string' && field !== 'updateAuthority' && field !== 'mint') {
-        throw new Error('TokenMetadata value must be a string');
-    }
-
-    // Handle case where updateAuthority is being removed
-    if (field === 'updateAuthority' && value === null) {
-        const { updateAuthority, ...state } = current;
-        return state;
+    if (field === 'mint' || field === 'updateAuthority') {
+        throw new Error(`Cannot update ${field} via this instruction`);
     }
 
     // Handle updates to default keys
-    if (['mint', 'name', 'symbol', 'updateAuthority', 'uri'].includes(field)) {
+    if (['name', 'symbol', 'uri'].includes(field)) {
         return {
             ...current,
             [field]: value,
@@ -57,7 +39,6 @@ export const updateTokenMetadata = (
     }
 
     // If we are here, we are updating the additional metadata
-    value = value as string; // Should already be enforced by above checks
 
     // Avoid mutating input, make a shallow copy
     const additionalMetadata = [...current.additionalMetadata];

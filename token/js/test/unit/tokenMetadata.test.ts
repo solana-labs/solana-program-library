@@ -26,38 +26,25 @@ describe('SPL Token 2022 Metadata Extension', () => {
     });
 
     describe('Update token metadata', () => {
-        it('can guard against invalid values', () => {
+        it('guards against updates on mint or updateAuthority', async () => {
             const input = Object.freeze({
                 mint: PublicKey.default,
-                updateAuthority: PublicKey.unique(),
                 name: 'new_name',
                 symbol: 'new_symbol',
                 uri: 'new_uri',
-                additionalMetadata: [],
+                additionalMetadata: [
+                    ['key1', 'value1'],
+                    ['key2', 'value2'],
+                ],
             } as TokenMetadata);
 
-            expect(() => updateTokenMetadata(input, 'mint', null)).to.throw(
-                'TokenMetadata field mint must be a PublicKey'
+            expect(() => updateTokenMetadata(input, 'mint', 'string')).to.throw(
+                'Cannot update mint via this instruction'
             );
-            expect(() => updateTokenMetadata(input, 'mint', 'asd')).to.throw(
-                'TokenMetadata field mint must be a PublicKey'
-            );
-
             expect(() => updateTokenMetadata(input, 'updateAuthority', 'string')).to.throw(
-                'TokenMetadata field updateAuthority must be a PublicKey or null'
-            );
-
-            expect(() => updateTokenMetadata(input, 'name', null)).to.throw('TokenMetadata value must be a string');
-            expect(() => updateTokenMetadata(input, 'name', PublicKey.unique())).to.throw(
-                'TokenMetadata value must be a string'
-            );
-
-            expect(() => updateTokenMetadata(input, 'key1', null)).to.throw('TokenMetadata value must be a string');
-            expect(() => updateTokenMetadata(input, 'key1', PublicKey.unique())).to.throw(
-                'TokenMetadata value must be a string'
+                'Cannot update updateAuthority via this instruction'
             );
         });
-
         it('can update name', async () => {
             const input = Object.freeze({
                 mint: PublicKey.default,
@@ -140,61 +127,6 @@ describe('SPL Token 2022 Metadata Extension', () => {
             expect(updateTokenMetadata(input, 'uri', 'updated_uri')).to.deep.equal(expected);
             expect(updateTokenMetadata(input, 'Uri', 'updated_uri')).to.deep.equal(expected);
             expect(updateTokenMetadata(input, Field.Uri, 'updated_uri')).to.deep.equal(expected);
-        });
-
-        it('can update mint', async () => {
-            const input = Object.freeze({
-                mint: PublicKey.default,
-                name: 'new_name',
-                symbol: 'new_symbol',
-                uri: 'new_uri',
-                additionalMetadata: [
-                    ['key1', 'value1'],
-                    ['key2', 'value2'],
-                ],
-            } as TokenMetadata);
-
-            const newMint = PublicKey.unique();
-
-            const expected: TokenMetadata = {
-                mint: newMint,
-                name: 'new_name',
-                symbol: 'new_symbol',
-                uri: 'new_uri',
-                additionalMetadata: [
-                    ['key1', 'value1'],
-                    ['key2', 'value2'],
-                ],
-            };
-
-            expect(updateTokenMetadata(input, 'mint', newMint)).to.deep.equal(expected);
-        });
-
-        it('can remove updateAuthority', async () => {
-            const input = Object.freeze({
-                mint: PublicKey.default,
-                name: 'new_name',
-                symbol: 'new_symbol',
-                updateAuthority: PublicKey.unique(),
-                uri: 'new_uri',
-                additionalMetadata: [
-                    ['key1', 'value1'],
-                    ['key2', 'value2'],
-                ],
-            } as TokenMetadata);
-
-            const expected: TokenMetadata = {
-                mint: PublicKey.default,
-                name: 'new_name',
-                symbol: 'new_symbol',
-                uri: 'new_uri',
-                additionalMetadata: [
-                    ['key1', 'value1'],
-                    ['key2', 'value2'],
-                ],
-            };
-
-            expect(updateTokenMetadata(input, 'updateAuthority', null)).to.deep.equal(expected);
         });
 
         it('can update additional Metadata', async () => {
