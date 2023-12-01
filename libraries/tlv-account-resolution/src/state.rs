@@ -1308,7 +1308,6 @@ mod tests {
         }
     }
 
-    #[tokio::test]
     async fn initialize_update_and_assert_metas(
         initial_metas: &[ExtraAccountMeta],
         updated_metas: &[ExtraAccountMeta],
@@ -1337,6 +1336,8 @@ mod tests {
             "The ExtraAccountMetas in the buffer should match the expected ones."
         );
     }
+
+    #[tokio::test]
     async fn update_extra_account_meta_list() {
         // Create list of initial metas
         let initial_metas = [
