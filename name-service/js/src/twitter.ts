@@ -4,7 +4,7 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
-import { deserialize, deserializeUnchecked, Schema, serialize } from 'borsh';
+import { deserialize, Schema, serialize } from 'borsh';
 
 import { deleteNameRegistry, NAME_PROGRAM_ID } from './bindings';
 import {
@@ -291,11 +291,10 @@ export async function getTwitterHandleandRegistryKeyViaFilters(
   for (const f of filteredAccounts) {
     if (f.accountInfo.data.length > NameRegistryState.HEADER_LEN + 32) {
       const data = f.accountInfo.data.slice(NameRegistryState.HEADER_LEN);
-      const state: ReverseTwitterRegistryState = deserialize(
+      const state = deserialize(
         ReverseTwitterRegistryState.schema,
-        ReverseTwitterRegistryState,
         data,
-      );
+      ) as ReverseTwitterRegistryState;
       return [state.twitterHandle, new PublicKey(state.twitterRegistryKey)];
     }
   }
@@ -351,18 +350,12 @@ export class ReverseTwitterRegistryState {
   twitterRegistryKey: Uint8Array;
   twitterHandle: string;
 
-  static schema: Schema = new Map([
-    [
-      ReverseTwitterRegistryState,
-      {
-        kind: 'struct',
-        fields: [
-          ['twitterRegistryKey', [32]],
-          ['twitterHandle', 'string'],
-        ],
-      },
-    ],
-  ]);
+  static schema: Schema = {
+    struct: {
+      twitterRegistryKey: { array: { type: 'u8', len: 32 } },
+      twitterHandle: 'string',
+    },
+  };
   constructor(obj: { twitterRegistryKey: Uint8Array; twitterHandle: string }) {
     this.twitterRegistryKey = obj.twitterRegistryKey;
     this.twitterHandle = obj.twitterHandle;
@@ -380,11 +373,10 @@ export class ReverseTwitterRegistryState {
       throw new Error('Invalid reverse Twitter account provided');
     }
 
-    const res: ReverseTwitterRegistryState = deserializeUnchecked(
+    const res = deserialize(
       this.schema,
-      ReverseTwitterRegistryState,
       reverseTwitterAccount.data.slice(NameRegistryState.HEADER_LEN),
-    );
+    ) as ReverseTwitterRegistryState;
 
     return res;
   }
