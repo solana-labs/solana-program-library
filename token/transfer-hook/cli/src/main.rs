@@ -75,19 +75,19 @@ async fn calculate_rent_lamports(
 async fn build_transaction_with_rent_transfer(
     rpc_client: &RpcClient,
     payer: &dyn Signer,
-    recipient_address: &Pubkey,
+    extra_account_metas_address: &Pubkey,
     extra_account_metas: &Vec<ExtraAccountMeta>,
     instruction: Instruction,
 ) -> Result<Transaction, Box<dyn std::error::Error>> {
     let account_size = ExtraAccountMetaList::size_of(extra_account_metas.len())?;
     let transfer_lamports =
-        calculate_rent_lamports(rpc_client, recipient_address, account_size).await?;
+        calculate_rent_lamports(rpc_client, extra_account_metas_address, account_size).await?;
 
     let mut instructions = vec![];
     if transfer_lamports > 0 {
         instructions.push(system_instruction::transfer(
             &payer.pubkey(),
-            recipient_address,
+            extra_account_metas_address,
             transfer_lamports,
         ));
     }
