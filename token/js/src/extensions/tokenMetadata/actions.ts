@@ -1,4 +1,5 @@
 import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
+import { sendAndConfirmTransaction, SystemProgram, Transaction } from '@solana/web3.js';
 import type { Field, TokenMetadata } from '@solana/spl-token-metadata';
 import {
     createEmitInstruction,
@@ -9,13 +10,11 @@ import {
     pack,
     unpack,
 } from '@solana/spl-token-metadata';
-import { sendAndConfirmTransaction, SystemProgram, Transaction } from '@solana/web3.js';
-import { TokenAccountNotFoundError } from '../../errors.js';
 
 import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import { getSigners } from '../../actions/internal.js';
-import { unpackMint } from '../../state/mint.js';
-import { getExtensionData, ExtensionType } from '../extensionType.js';
+import type { GetUpdatedVariableExtensionLen } from '../extensionType.js';
+import { ExtensionType, getAdditionalRentForNewExtensionLen } from '../extensionType.js';
 import { updateTokenMetadata } from './state.js';
 
 /**
@@ -34,29 +33,13 @@ async function getAdditionalRentForNewMetadata(
     tokenMetadata: TokenMetadata,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<number> {
-    const info = await connection.getAccountInfo(address);
-    const mint = unpackMint(address, info, programId);
-
-    if (!info) {
-        // unpack mint does error checking on info internally
-        // Check here for typescript and just in-case
-        throw new TokenAccountNotFoundError();
-    }
-
-    const data = getExtensionData(ExtensionType.TokenMetadata, mint.tlvData);
-
-    if (data !== null) {
-        throw new Error('TokenMetadata Extension already Initialised');
-    }
-
-    // Need 2 bytes extension discriminator, 2 bytes length
-    const extensionLen = pack(tokenMetadata).length + 4;
-
-    const newAccountLen = info.data.length + extensionLen;
-
-    const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
-
-    return newRentExemptMinimum - info.lamports;
+    return await getAdditionalRentForNewExtensionLen(
+        connection,
+        address,
+        ExtensionType.TokenMetadata,
+        pack(tokenMetadata).length,
+        programId
+    );
 }
 
 /**
@@ -77,34 +60,23 @@ async function getAdditionalRentForUpdatedMetadata(
     value: string,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<number> {
-    const info = await connection.getAccountInfo(address);
-    const mint = unpackMint(address, info, programId);
+    const getUpdatedVariableExtensionLen: GetUpdatedVariableExtensionLen = (data) => {
+        if (data === null) {
+            throw new Error('TokenMetadata extension not initialised');
+        }
 
-    if (!info) {
-        // unpack mint does error checking on info internally
-        // Check here for typescript and just in-case
-        throw new TokenAccountNotFoundError();
-    }
+        const newTokenMetadata = updateTokenMetadata(unpack(data), field, value);
 
-    const data = getExtensionData(ExtensionType.TokenMetadata, mint.tlvData);
+        return pack(newTokenMetadata).length;
+    };
 
-    if (data === null) {
-        throw new Error('TokenMetadata extension not initialised');
-    }
-
-    const tokenMetadataNew = updateTokenMetadata(unpack(data), field, value);
-
-    const newData = pack(tokenMetadataNew);
-
-    if (newData.length <= data.length) {
-        return 0;
-    }
-
-    const newAccountLen = info.data.length + (newData.length - data.length);
-
-    const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
-
-    return newRentExemptMinimum - info.lamports;
+    return await getAdditionalRentForNewExtensionLen(
+        connection,
+        address,
+        ExtensionType.TokenMetadata,
+        getUpdatedVariableExtensionLen,
+        programId
+    );
 }
 
 /**
@@ -324,7 +296,6 @@ export async function tokenMetadataUpdateFieldWithRentTransfer(
  * @param connection       Connection to use
  * @param payer            Payer of the transaction fees
  * @param mint             Mint Account
- * @param multiSigners     Signing accounts if `authority` is a multisig
  * @param confirmOptions   Options for confirming the transaction
  * @param programId        SPL Token program account
  *

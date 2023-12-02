@@ -1,6 +1,8 @@
+import type { AccountInfo, Connection, PublicKey } from '@solana/web3.js';
+
 import { ACCOUNT_SIZE } from '../state/account.js';
 import type { Mint } from '../state/mint.js';
-import { MINT_SIZE } from '../state/mint.js';
+import { MINT_SIZE, unpackMint } from '../state/mint.js';
 import { MULTISIG_SIZE } from '../state/multisig.js';
 import { ACCOUNT_TYPE_SIZE } from './accountType.js';
 import { CPI_GUARD_SIZE } from './cpiGuard/index.js';
@@ -10,10 +12,12 @@ import { INTEREST_BEARING_MINT_CONFIG_STATE_SIZE } from './interestBearingMint/s
 import { MEMO_TRANSFER_SIZE } from './memoTransfer/index.js';
 import { METADATA_POINTER_SIZE } from './metadataPointer/state.js';
 import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority.js';
-import { NON_TRANSFERABLE_SIZE, NON_TRANSFERABLE_ACCOUNT_SIZE } from './nonTransferable.js';
+import { NON_TRANSFERABLE_ACCOUNT_SIZE, NON_TRANSFERABLE_SIZE } from './nonTransferable.js';
 import { PERMANENT_DELEGATE_SIZE } from './permanentDelegate.js';
 import { TRANSFER_FEE_AMOUNT_SIZE, TRANSFER_FEE_CONFIG_SIZE } from './transferFee/index.js';
 import { TRANSFER_HOOK_ACCOUNT_SIZE, TRANSFER_HOOK_SIZE } from './transferHook/index.js';
+import { TOKEN_2022_PROGRAM_ID } from '../constants.js';
+import { TokenAccountNotFoundError } from '../errors.js';
 
 // Sequence from https://github.com/solana-labs/solana-program-library/blob/master/token/program-2022/src/extension/mod.rs#L903
 export enum ExtensionType {
@@ -226,4 +230,58 @@ export function getAccountLenForMint(mint: Mint): number {
     const extensionTypes = getExtensionTypes(mint.tlvData);
     const accountExtensions = extensionTypes.map(getAccountTypeOfMintType);
     return getAccountLen(accountExtensions);
+}
+
+// Get new extension length, with current data as input
+export type GetUpdatedVariableExtensionLen = (current: Buffer | null) => number;
+
+export function getNewAccountLenForExtensionLen(
+    info: AccountInfo<Buffer>,
+    address: PublicKey,
+    e: ExtensionType,
+    extensionLen: number | GetUpdatedVariableExtensionLen,
+    programId = TOKEN_2022_PROGRAM_ID
+): number {
+    const mint = unpackMint(address, info, programId);
+
+    const data = getExtensionData(e, mint.tlvData);
+
+    // Need 2 bytes extension discriminator, 2 bytes length
+    let newExtensionLen = 2 + 2;
+
+    newExtensionLen += typeof extensionLen === 'function' ? extensionLen(data) : extensionLen;
+
+    return info.data.length + newExtensionLen - (data?.length || 0);
+}
+
+export async function getAdditionalRentForNewAccountLen(
+    connection: Connection,
+    info: AccountInfo<Buffer>,
+    newAccountLen: number
+) {
+    if (newAccountLen <= info.data.length) {
+        return 0;
+    }
+
+    const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
+
+    return newRentExemptMinimum - info.lamports;
+}
+
+export async function getAdditionalRentForNewExtensionLen(
+    connection: Connection,
+    address: PublicKey,
+    e: ExtensionType,
+    extensionLen: number | GetUpdatedVariableExtensionLen,
+    programId = TOKEN_2022_PROGRAM_ID
+): Promise<number> {
+    const info = await connection.getAccountInfo(address);
+
+    if (!info) {
+        throw new TokenAccountNotFoundError();
+    }
+
+    const newAccountLen = getNewAccountLenForExtensionLen(info, address, e, extensionLen, programId);
+
+    return await getAdditionalRentForNewAccountLen(connection, info, newAccountLen);
 }
