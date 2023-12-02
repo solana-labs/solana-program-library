@@ -13,8 +13,11 @@ import {
 
 import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import { getSigners } from '../../actions/internal.js';
-import type { GetUpdatedVariableExtensionLen } from '../extensionType.js';
-import { ExtensionType, getAdditionalRentForNewExtensionLen } from '../extensionType.js';
+import {
+    ExtensionType,
+    getAdditionalRentForNewExtensionLen,
+    getExtensionDataFromAccountInfo,
+} from '../extensionType.js';
 import { updateTokenMetadata } from './state.js';
 
 /**
@@ -60,22 +63,25 @@ async function getAdditionalRentForUpdatedMetadata(
     value: string,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<number> {
-    const getUpdatedVariableExtensionLen: GetUpdatedVariableExtensionLen = (data) => {
-        if (data === null) {
-            throw new Error('TokenMetadata extension not initialised');
-        }
+    const info = await connection.getAccountInfo(address);
 
-        const newTokenMetadata = updateTokenMetadata(unpack(data), field, value);
+    const data = getExtensionDataFromAccountInfo(address, info, ExtensionType.TokenMetadata, programId);
 
-        return pack(newTokenMetadata).length;
-    };
+    if (data === null) {
+        throw new Error('TokenMetadata extension not initialised');
+    }
+
+    const updatedTokenMetadata = updateTokenMetadata(unpack(data), field, value);
+
+    const extensionLen = pack(updatedTokenMetadata).length;
 
     return await getAdditionalRentForNewExtensionLen(
         connection,
         address,
         ExtensionType.TokenMetadata,
-        getUpdatedVariableExtensionLen,
-        programId
+        extensionLen,
+        programId,
+        info
     );
 }
 

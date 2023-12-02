@@ -214,6 +214,17 @@ export function getExtensionData(extension: ExtensionType, tlvData: Buffer): Buf
     return null;
 }
 
+export function getExtensionDataFromAccountInfo(
+    address: PublicKey,
+    accountInfo: AccountInfo<Buffer> | null,
+    e: ExtensionType,
+    programId = TOKEN_2022_PROGRAM_ID
+): Buffer | null {
+    const mint = unpackMint(address, accountInfo, programId);
+
+    return getExtensionData(e, mint.tlvData);
+}
+
 export function getExtensionTypes(tlvData: Buffer): ExtensionType[] {
     const extensionTypes = [];
     let extensionTypeIndex = 0;
@@ -232,50 +243,31 @@ export function getAccountLenForMint(mint: Mint): number {
     return getAccountLen(accountExtensions);
 }
 
-// Get new extension length, with current data as input
-export type GetUpdatedVariableExtensionLen = (current: Buffer | null) => number;
-
 export function getNewAccountLenForExtensionLen(
     info: AccountInfo<Buffer>,
     address: PublicKey,
     e: ExtensionType,
-    extensionLen: number | GetUpdatedVariableExtensionLen,
+    extensionLen: number,
     programId = TOKEN_2022_PROGRAM_ID
 ): number {
-    const mint = unpackMint(address, info, programId);
+    const data = getExtensionDataFromAccountInfo(address, info, e, programId);
 
-    const data = getExtensionData(e, mint.tlvData);
-
-    // Need 2 bytes extension discriminator, 2 bytes length
-    let newExtensionLen = 2 + 2;
-
-    newExtensionLen += typeof extensionLen === 'function' ? extensionLen(data) : extensionLen;
+    // 2 bytes discriminator, 2 bytes length, extensionLen
+    const newExtensionLen = 2 + 2 + extensionLen;
 
     return info.data.length + newExtensionLen - (data?.length || 0);
-}
-
-export async function getAdditionalRentForNewAccountLen(
-    connection: Connection,
-    info: AccountInfo<Buffer>,
-    newAccountLen: number
-) {
-    if (newAccountLen <= info.data.length) {
-        return 0;
-    }
-
-    const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
-
-    return newRentExemptMinimum - info.lamports;
 }
 
 export async function getAdditionalRentForNewExtensionLen(
     connection: Connection,
     address: PublicKey,
     e: ExtensionType,
-    extensionLen: number | GetUpdatedVariableExtensionLen,
-    programId = TOKEN_2022_PROGRAM_ID
+    extensionLen: number,
+    programId = TOKEN_2022_PROGRAM_ID,
+    accountInfo?: AccountInfo<Buffer> | null
 ): Promise<number> {
-    const info = await connection.getAccountInfo(address);
+    // If account info was provided, don't fetch again
+    const info = accountInfo ?? (await connection.getAccountInfo(address));
 
     if (!info) {
         throw new TokenAccountNotFoundError();
@@ -283,5 +275,11 @@ export async function getAdditionalRentForNewExtensionLen(
 
     const newAccountLen = getNewAccountLenForExtensionLen(info, address, e, extensionLen, programId);
 
-    return await getAdditionalRentForNewAccountLen(connection, info, newAccountLen);
+    if (newAccountLen <= info.data.length) {
+        return 0;
+    }
+
+    const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
+
+    return newRentExemptMinimum - info.lamports;
 }
