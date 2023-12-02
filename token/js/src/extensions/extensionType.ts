@@ -12,7 +12,7 @@ import { INTEREST_BEARING_MINT_CONFIG_STATE_SIZE } from './interestBearingMint/s
 import { MEMO_TRANSFER_SIZE } from './memoTransfer/index.js';
 import { METADATA_POINTER_SIZE } from './metadataPointer/state.js';
 import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority.js';
-import { NON_TRANSFERABLE_ACCOUNT_SIZE, NON_TRANSFERABLE_SIZE } from './nonTransferable.js';
+import { NON_TRANSFERABLE_SIZE, NON_TRANSFERABLE_ACCOUNT_SIZE } from './nonTransferable.js';
 import { PERMANENT_DELEGATE_SIZE } from './permanentDelegate.js';
 import { TRANSFER_FEE_AMOUNT_SIZE, TRANSFER_FEE_CONFIG_SIZE } from './transferFee/index.js';
 import { TRANSFER_HOOK_ACCOUNT_SIZE, TRANSFER_HOOK_SIZE } from './transferHook/index.js';
