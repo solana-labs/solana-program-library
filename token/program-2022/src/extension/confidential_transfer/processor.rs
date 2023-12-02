@@ -1164,13 +1164,6 @@ pub(crate) fn process_instruction(
             {
                 let data =
                     decode_instruction_data::<TransferWithSplitProofsInstructionData>(input)?;
-
-                // Remove this error on the next Solana version upgrade.
-                if data.close_split_context_state_on_execution.into() {
-                    msg!("Auto-close of context state account is not yet supported");
-                    return Err(ProgramError::InvalidInstructionData);
-                }
-
                 process_transfer(
                     program_id,
                     accounts,

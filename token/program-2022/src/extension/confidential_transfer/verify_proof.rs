@@ -188,6 +188,7 @@ pub fn verify_transfer_proof(
         if close_split_context_state_on_execution {
             let lamport_destination_account_info = next_account_info(account_info_iter)?;
             let context_state_account_authority_info = next_account_info(account_info_iter)?;
+            let _zk_token_proof_program = next_account_info(account_info_iter)?;
 
             msg!("Closing equality proof context state account");
             invoke(
@@ -363,6 +364,7 @@ pub fn verify_transfer_with_fee_proof(
         if close_split_context_state_on_execution {
             let lamport_destination_account_info = next_account_info(account_info_iter)?;
             let context_state_account_authority_info = next_account_info(account_info_iter)?;
+            let _zk_token_proof_program = next_account_info(account_info_iter)?;
 
             msg!("Closing equality proof context state account");
             invoke(

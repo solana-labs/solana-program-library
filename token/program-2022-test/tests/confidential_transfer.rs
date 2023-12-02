@@ -20,7 +20,8 @@ use {
                 self,
                 account_info::TransferAccountInfo,
                 instruction::{
-                    TransferSplitContextStateAccounts, TransferWithFeeSplitContextStateAccounts,
+                    CloseSplitContextStateAccounts, TransferSplitContextStateAccounts,
+                    TransferWithFeeSplitContextStateAccounts,
                 },
                 ConfidentialTransferAccount, MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
             },
@@ -2668,21 +2669,33 @@ async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() 
     let ciphertext_validity_proof_context_state_account = Keypair::new();
     let range_proof_context_state_account = Keypair::new();
 
+    let lamport_destination = Pubkey::new_unique();
+
+    let close_split_context_state_accounts = CloseSplitContextStateAccounts {
+        lamport_destination: &lamport_destination,
+        zk_token_proof_program: &zk_token_proof_program::id(),
+    };
+
     let transfer_context_state_accounts = TransferSplitContextStateAccounts {
         equality_proof: &equality_proof_context_state_account.pubkey(),
         ciphertext_validity_proof: &ciphertext_validity_proof_context_state_account.pubkey(),
         range_proof: &range_proof_context_state_account.pubkey(),
         authority: &context_state_authority.pubkey(),
         no_op_on_uninitialized_split_context_state: true,
-        close_split_context_state_accounts: None,
+        close_split_context_state_accounts: Some(close_split_context_state_accounts),
     };
 
     let equality_and_ciphertext_proof_signers = vec![
         &alice,
         &equality_proof_context_state_account,
         &ciphertext_validity_proof_context_state_account,
+        &context_state_authority,
     ];
-    let range_proof_signers = vec![&alice, &range_proof_context_state_account];
+    let range_proof_signers = vec![
+        &alice,
+        &range_proof_context_state_account,
+        &context_state_authority,
+    ];
     token
         .confidential_transfer_transfer_with_split_proofs_in_parallel(
             &alice_meta.token_account,
@@ -2724,6 +2737,27 @@ async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() 
             },
         )
         .await;
+
+    let error = token
+        .get_account(equality_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(ciphertext_validity_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(range_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let lamport_destination = token.get_account(lamport_destination).await.unwrap();
+    assert!(lamport_destination.lamports > 0);
 }
 
 #[tokio::test]
@@ -3043,6 +3077,13 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context_in_para
     let fee_ciphertext_validity_proof_context_state_account = Keypair::new();
     let range_proof_context_state_account = Keypair::new();
 
+    let lamport_destination = Pubkey::new_unique();
+
+    let close_split_context_state_accounts = CloseSplitContextStateAccounts {
+        lamport_destination: &lamport_destination,
+        zk_token_proof_program: &zk_token_proof_program::id(),
+    };
+
     let transfer_context_state_accounts = TransferWithFeeSplitContextStateAccounts {
         equality_proof: &equality_proof_context_state_account.pubkey(),
         transfer_amount_ciphertext_validity_proof:
@@ -3053,20 +3094,26 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context_in_para
         range_proof: &range_proof_context_state_account.pubkey(),
         authority: &context_state_authority.pubkey(),
         no_op_on_uninitialized_split_context_state: true,
-        close_split_context_state_accounts: None,
+        close_split_context_state_accounts: Some(close_split_context_state_accounts),
     };
 
     let equality_and_ciphertext_proof_signers = vec![
         &alice,
         &equality_proof_context_state_account,
         &transfer_amount_ciphertext_validity_proof_context_state_account,
+        &context_state_authority,
     ];
     let fee_sigma_proof_signers = vec![
         &alice,
         &fee_sigma_proof_context_state_account,
         &fee_ciphertext_validity_proof_context_state_account,
+        &context_state_authority,
     ];
-    let range_proof_signers = vec![&alice, &range_proof_context_state_account];
+    let range_proof_signers = vec![
+        &alice,
+        &range_proof_context_state_account,
+        &context_state_authority,
+    ];
     token
         .confidential_transfer_transfer_with_fee_and_split_proofs_in_parallel(
             &alice_meta.token_account,
@@ -3113,4 +3160,37 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context_in_para
             },
         )
         .await;
+
+    let error = token
+        .get_account(equality_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(transfer_amount_ciphertext_validity_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(fee_sigma_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(fee_ciphertext_validity_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let error = token
+        .get_account(range_proof_context_state_account.pubkey())
+        .await
+        .unwrap_err();
+    assert_eq!(error, TokenClientError::AccountNotFound);
+
+    let lamport_destination = token.get_account(lamport_destination).await.unwrap();
+    assert!(lamport_destination.lamports > 0);
 }
