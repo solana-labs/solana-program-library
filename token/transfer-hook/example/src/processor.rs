@@ -170,12 +170,17 @@ pub fn process_update_extra_account_meta_list(
         return Err(ProgramError::InvalidSeeds);
     }
 
-    let length = extra_account_metas.len();
-    let account_size = ExtraAccountMetaList::size_of(length)?;
+    // Check if the extra metas have been initialized
+    let min_account_size = ExtraAccountMetaList::size_of(0)?;
     let original_account_size = extra_account_metas_info.data_len();
+    if program_id != extra_account_metas_info.owner || original_account_size <= min_account_size {
+        return Err(ProgramError::UninitializedAccount);
+    }
 
     // If the new extra_account_metas length is different, resize the account and
     // update
+    let length = extra_account_metas.len();
+    let account_size = ExtraAccountMetaList::size_of(length)?;
     if account_size >= original_account_size {
         extra_account_metas_info.realloc(account_size, false)?;
         let mut data = extra_account_metas_info.try_borrow_mut_data()?;
@@ -185,7 +190,6 @@ pub fn process_update_extra_account_meta_list(
             let mut data = extra_account_metas_info.try_borrow_mut_data()?;
             ExtraAccountMetaList::update::<ExecuteInstruction>(&mut data, extra_account_metas)?;
         }
-
         extra_account_metas_info.realloc(account_size, false)?;
     }
 
