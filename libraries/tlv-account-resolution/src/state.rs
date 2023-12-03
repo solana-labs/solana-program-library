@@ -1308,7 +1308,12 @@ mod tests {
         }
     }
 
-    async fn update_and_assert_metas(buffer: &mut Vec<u8>, updated_metas: &[ExtraAccountMeta]) {
+    async fn update_and_assert_metas(
+        program_id: Pubkey,
+        buffer: &mut Vec<u8>,
+        updated_metas: &[ExtraAccountMeta],
+        check_metas: &[AccountMeta],
+    ) {
         // resize buffer if necessary
         let account_size = ExtraAccountMetaList::size_of(updated_metas.len()).unwrap();
         if account_size > buffer.len() {
@@ -1330,7 +1335,7 @@ mod tests {
 
         let mock_rpc = MockRpc::setup(&[]);
 
-        let mut instruction = Instruction::new_with_bytes(Pubkey::new_unique(), &[], vec![]);
+        let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
         ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
@@ -1339,16 +1344,13 @@ mod tests {
         .await
         .unwrap();
 
-        let check_metas = updated_metas
-            .iter()
-            .map(|e| AccountMeta::try_from(e).unwrap())
-            .collect::<Vec<_>>();
-
         assert_eq!(instruction.accounts, check_metas,);
     }
 
     #[tokio::test]
     async fn update_extra_account_meta_list() {
+        let program_id = Pubkey::new_unique();
+
         // Create list of initial metas
         let initial_metas = [
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
@@ -1365,7 +1367,11 @@ mod tests {
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
         ];
-        update_and_assert_metas(&mut buffer, &updated_metas_1).await;
+        let check_metas_1 = updated_metas_1
+            .iter()
+            .map(|e| AccountMeta::try_from(e).unwrap())
+            .collect::<Vec<_>>();
+        update_and_assert_metas(program_id, &mut buffer, &updated_metas_1, &check_metas_1).await;
 
         // Create updated and larger list of metas
         let updated_metas_2 = [
@@ -1373,12 +1379,51 @@ mod tests {
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
             ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
         ];
-        update_and_assert_metas(&mut buffer, &updated_metas_2).await;
+        let check_metas_2 = updated_metas_2
+            .iter()
+            .map(|e| AccountMeta::try_from(e).unwrap())
+            .collect::<Vec<_>>();
+        update_and_assert_metas(program_id, &mut buffer, &updated_metas_2, &check_metas_2).await;
 
         // Create updated and smaller list of metas
         let updated_metas_3 =
             [ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap()];
-        update_and_assert_metas(&mut buffer, &updated_metas_3).await;
+        let check_metas_3 = updated_metas_3
+            .iter()
+            .map(|e| AccountMeta::try_from(e).unwrap())
+            .collect::<Vec<_>>();
+        update_and_assert_metas(program_id, &mut buffer, &updated_metas_3, &check_metas_3).await;
+
+        // Create updated list of metas with a simple PDA
+        let seed_pubkey = Pubkey::new_unique();
+        let updated_metas_4 = [
+            ExtraAccountMeta::new_with_pubkey(&seed_pubkey, true, true).unwrap(),
+            ExtraAccountMeta::new_with_seeds(
+                &[
+                    Seed::Literal {
+                        bytes: b"seed-prefix".to_vec(),
+                    },
+                    Seed::AccountKey { index: 0 },
+                ],
+                false,
+                true,
+            )
+            .unwrap(),
+        ];
+        let simple_pda = Pubkey::find_program_address(
+            &[
+                b"seed-prefix",       // Literal prefix
+                seed_pubkey.as_ref(), // Account at index 0
+            ],
+            &program_id,
+        )
+        .0;
+        let check_metas_4 = [
+            AccountMeta::new(seed_pubkey, true),
+            AccountMeta::new(simple_pda, false),
+        ];
+
+        update_and_assert_metas(program_id, &mut buffer, &updated_metas_4, &check_metas_4).await;
     }
 
     #[test]
