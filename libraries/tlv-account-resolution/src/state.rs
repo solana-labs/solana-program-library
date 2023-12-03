@@ -1319,7 +1319,7 @@ mod tests {
         ExtraAccountMetaList::update::<TestInstruction>(buffer, updated_metas).unwrap();
 
         // retreive metas and assert
-        let state = TlvStateBorrowed::unpack(&buffer).unwrap();
+        let state = TlvStateBorrowed::unpack(buffer).unwrap();
         let unpacked_metas_pod =
             ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
         let unpacked_metas = unpacked_metas_pod.data();
@@ -1334,7 +1334,7 @@ mod tests {
         ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
             &mut instruction,
             |pubkey| mock_rpc.get_account_data(pubkey),
-            &buffer,
+            buffer,
         )
         .await
         .unwrap();
