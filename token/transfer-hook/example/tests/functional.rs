@@ -1028,6 +1028,7 @@ async fn success_execute_with_updated_extra_account_metas() {
         &program_id,
     )
     .0;
+
     let extra_pda_2 = Pubkey::find_program_address(
         &[
             &amount.to_le_bytes(), // Instruction data bytes 8 to 16
@@ -1075,8 +1076,10 @@ async fn success_execute_with_updated_extra_account_metas() {
         .await
         .unwrap();
 
-    //////////////////////// UPDATE HERE
+    let updated_amount = 1u64;
+    let updated_writable_pubkey = Pubkey::new_unique();
 
+    // Create updated extra account metas
     let updated_extra_account_metas = [
         ExtraAccountMeta::new_with_pubkey(&sysvar::instructions::id(), false, false).unwrap(),
         ExtraAccountMeta::new_with_pubkey(&mint_authority_pubkey, true, false).unwrap(),
@@ -1103,7 +1106,18 @@ async fn success_execute_with_updated_extra_account_metas() {
             true,
         )
         .unwrap(),
-        ExtraAccountMeta::new_with_pubkey(&writable_pubkey, false, true).unwrap(),
+        ExtraAccountMeta::new_with_pubkey(&updated_writable_pubkey, false, true).unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::Literal {
+                    bytes: b"new-seed-prefix".to_vec(),
+                },
+                Seed::AccountKey { index: 0 },
+            ],
+            false,
+            true,
+        )
+        .unwrap(),
     ];
 
     let updated_extra_pda_1 = Pubkey::find_program_address(
@@ -1114,10 +1128,21 @@ async fn success_execute_with_updated_extra_account_metas() {
         &program_id,
     )
     .0;
+
     let updated_extra_pda_2 = Pubkey::find_program_address(
         &[
-            &amount.to_le_bytes(), // Instruction data bytes 8 to 16
-            destination.as_ref(),  // Account at index 2
+            &updated_amount.to_le_bytes(), // Instruction data bytes 8 to 16
+            destination.as_ref(),          // Account at index 2
+        ],
+        &program_id,
+    )
+    .0;
+
+    // add another PDA
+    let new_extra_pda = Pubkey::find_program_address(
+        &[
+            b"new-seed-prefix", // Literal prefix
+            source.as_ref(),    // Account at index 0
         ],
         &program_id,
     )
@@ -1128,7 +1153,8 @@ async fn success_execute_with_updated_extra_account_metas() {
         AccountMeta::new_readonly(mint_authority_pubkey, true),
         AccountMeta::new(updated_extra_pda_1, false),
         AccountMeta::new(updated_extra_pda_2, false),
-        AccountMeta::new(writable_pubkey, false),
+        AccountMeta::new(updated_writable_pubkey, false),
+        AccountMeta::new(new_extra_pda, false),
     ];
 
     let update_transaction = Transaction::new_signed_with_payer(
@@ -1157,8 +1183,6 @@ async fn success_execute_with_updated_extra_account_metas() {
         .await
         .unwrap();
 
-    ////////////////////
-
     // fail with initial account metas list
     {
         let transaction = Transaction::new_signed_with_payer(
@@ -1170,7 +1194,7 @@ async fn success_execute_with_updated_extra_account_metas() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &init_account_metas,
-                amount,
+                updated_amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer, &mint_authority],
@@ -1202,7 +1226,7 @@ async fn success_execute_with_updated_extra_account_metas() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &updated_account_metas[..2],
-                amount,
+                updated_amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer, &mint_authority],
@@ -1241,7 +1265,7 @@ async fn success_execute_with_updated_extra_account_metas() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &extra_account_metas,
-                amount,
+                updated_amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer, &mint_authority],
@@ -1288,7 +1312,7 @@ async fn success_execute_with_updated_extra_account_metas() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &extra_account_metas,
-                amount,
+                updated_amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer, &mint_authority],
@@ -1327,7 +1351,7 @@ async fn success_execute_with_updated_extra_account_metas() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &extra_account_metas,
-                amount,
+                updated_amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer],
@@ -1359,7 +1383,7 @@ async fn success_execute_with_updated_extra_account_metas() {
                 &wallet.pubkey(),
                 &extra_account_metas_address,
                 &updated_account_metas,
-                amount,
+                updated_amount,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer, &mint_authority],
