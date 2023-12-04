@@ -36,7 +36,7 @@ security_txt! {
     // Optional Fields
     preferred_languages: "en",
     source_code: "https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program",
-    source_revision: "", // fill in after v1.0.0 bump lands
+    source_revision: "b7dd8fee93815b486fce98d3d43d1d0934980226",
     source_release: "stake-pool-v1.0.0",
     auditors: "https://github.com/solana-labs/security-audits#stake-pool"
 }

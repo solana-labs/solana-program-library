@@ -26,7 +26,7 @@ The Stake Pool Program's source is available on
 [GitHub](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool).
 
 For information about the types and instructions, the Stake Pool Rust docs are
-available at [docs.rs](https://docs.rs/spl-stake-pool/0.6.3/spl_stake_pool/).
+available at [docs.rs](https://docs.rs/spl-stake-pool/latest/spl_stake_pool/index.html).
 
 ## Security Audits
 
@@ -56,3 +56,6 @@ chronological order, and the commit hash that each was reviewed at:
 * Halborn
     - Review commit hash [`eba709b`](https://github.com/solana-labs/solana-program-library/tree/eba709b9317f8c7b8b197045161cb744241f0bff)
     - Report https://github.com/solana-labs/security-audits/blob/master/spl/HalbornStakePoolAudit-2023-01-25.pdf
+* Neodyme Fourth Audit
+    - Review commit hash [`6ed7254`](https://github.com/solana-labs/solana-program-library/tree/6ed7254d1a578ffbc2b091d28cb92b25e7cc511d)
+    - Report https://github.com/solana-labs/security-audits/blob/master/spl/NeodymeStakePoolAudit-2023-11-14.pdf
