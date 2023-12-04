@@ -1,5 +1,7 @@
 //! State transition types
 
+use spl_token_2022::extension::Extension;
+
 use {
     crate::{
         big_vec::BigVec, error::StakePoolError, MAX_WITHDRAWAL_FEE_INCREASE,
@@ -500,7 +502,7 @@ impl StakePool {
 
 /// Checks if the given extension is supported for the stake pool mint
 pub fn is_extension_supported_for_mint(extension_type: &ExtensionType) -> bool {
-    const SUPPORTED_EXTENSIONS: [ExtensionType; 8] = [
+    const SUPPORTED_EXTENSIONS: [ExtensionType; 10] = [
         ExtensionType::Uninitialized,
         ExtensionType::TransferFeeConfig,
         ExtensionType::ConfidentialTransferMint,
@@ -509,6 +511,8 @@ pub fn is_extension_supported_for_mint(extension_type: &ExtensionType) -> bool {
         ExtensionType::InterestBearingConfig,
         ExtensionType::MetadataPointer,
         ExtensionType::TokenMetadata,
+        ExtensionType::TransferHook,
+        ExtensionType::TransferHookAccount,
     ];
     if !SUPPORTED_EXTENSIONS.contains(extension_type) {
         msg!(

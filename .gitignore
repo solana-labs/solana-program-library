@@ -14,3 +14,6 @@ docker-target
 .idea
 .coderrect
 .turbo
+
+# used by my fork only
+spl-stake-pool-program-fork.json
