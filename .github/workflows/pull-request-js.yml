@@ -3,6 +3,7 @@ name: Pull Request JS
 on:
   pull_request:
     paths:
+      - 'account-compression/sdk/**'
       - 'libraries/type-length-value/js/**'
       - 'memo/js/**'
       - 'name-service/js/**'
@@ -17,6 +18,7 @@ on:
   push:
     branches: [master]
     paths:
+      - 'account-compression/sdk/**'
       - 'libraries/type-length-value/js/**'
       - 'memo/js/**'
       - 'single-pool/js/**'
@@ -32,7 +34,7 @@ jobs:
   js-test:
     strategy:
       matrix:
-        package: [libraries, memo, name-service, single-pool, stake-pool, token, token-lending, token-metadata, token-swap]
+        package: [account-compression, libraries, memo, name-service, single-pool, stake-pool, token, token-lending, token-metadata, token-swap]
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 20.5

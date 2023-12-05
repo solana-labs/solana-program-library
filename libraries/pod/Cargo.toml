@@ -16,8 +16,8 @@ base64 = { version = "0.21.5", optional = true }
 borsh = { version = "0.10", optional = true }
 bytemuck = { version = "1.14.0" }
 serde = { version = "1.0.193", optional = true }
-solana-program = "1.17.2"
-solana-zk-token-sdk = "1.17.2"
+solana-program = "1.17.6"
+solana-zk-token-sdk = "1.17.6"
 spl-program-error = { version = "0.3", path = "../program-error" }
 
 [dev-dependencies]

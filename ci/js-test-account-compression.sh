@@ -6,7 +6,8 @@ source ./ci/solana-version.sh install
 
 set -x
 cd account-compression/sdk
-
-yarn install --pure-lockfile
-yarn build
-yarn test
+pnpm install
+pnpm build
+pnpm build:program
+# pnpm lint # re-enable when lints are fixed
+pnpm test

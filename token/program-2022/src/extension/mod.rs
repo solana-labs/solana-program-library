@@ -12,6 +12,7 @@ use {
             },
             cpi_guard::CpiGuard,
             default_account_state::DefaultAccountState,
+            group_member_pointer::GroupMemberPointer,
             group_pointer::GroupPointer,
             immutable_owner::ImmutableOwner,
             interest_bearing_mint::InterestBearingConfig,
@@ -36,7 +37,7 @@ use {
         bytemuck::{pod_from_bytes, pod_from_bytes_mut, pod_get_packed_len},
         primitives::PodU16,
     },
-    spl_token_group_interface::state::TokenGroup,
+    spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_type_length_value::variable_len_pack::VariableLenPack,
     std::{
         cmp::Ordering,
@@ -53,6 +54,8 @@ pub mod confidential_transfer_fee;
 pub mod cpi_guard;
 /// Default Account State extension
 pub mod default_account_state;
+/// Group Member Pointer extension
+pub mod group_member_pointer;
 /// Group Pointer extension
 pub mod group_pointer;
 /// Immutable Owner extension
@@ -953,6 +956,11 @@ pub enum ExtensionType {
     GroupPointer,
     /// Mint contains token group configurations
     TokenGroup,
+    /// Mint contains a pointer to another account (or the same account) that
+    /// holds group member configurations
+    GroupMemberPointer,
+    /// Mint contains token group member configurations
+    TokenGroupMember,
     /// Test variable-length mint extension
     #[cfg(test)]
     VariableLenMintTest = u16::MAX - 2,
@@ -1031,6 +1039,8 @@ impl ExtensionType {
             ExtensionType::TokenMetadata => unreachable!(),
             ExtensionType::GroupPointer => pod_get_packed_len::<GroupPointer>(),
             ExtensionType::TokenGroup => pod_get_packed_len::<TokenGroup>(),
+            ExtensionType::GroupMemberPointer => pod_get_packed_len::<GroupMemberPointer>(),
+            ExtensionType::TokenGroupMember => pod_get_packed_len::<TokenGroupMember>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -1092,7 +1102,9 @@ impl ExtensionType {
             | ExtensionType::MetadataPointer
             | ExtensionType::TokenMetadata
             | ExtensionType::GroupPointer
-            | ExtensionType::TokenGroup => AccountType::Mint,
+            | ExtensionType::TokenGroup
+            | ExtensionType::GroupMemberPointer
+            | ExtensionType::TokenGroupMember => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount

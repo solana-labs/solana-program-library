@@ -11,12 +11,12 @@ version = "0.1.0"
 [dependencies]
 clap = { version = "3", features = ["cargo"] }
 futures-util = "0.3.19"
-solana-clap-v3-utils = "=1.17.2"
-solana-cli-config = "=1.17.2"
-solana-client = "=1.17.2"
-solana-logger = "=1.17.2"
-solana-remote-wallet = "=1.17.2"
-solana-sdk = "=1.17.2"
+solana-clap-v3-utils = "=1.17.6"
+solana-cli-config = "=1.17.6"
+solana-client = "=1.17.6"
+solana-logger = "=1.17.6"
+solana-remote-wallet = "=1.17.6"
+solana-sdk = "=1.17.6"
 spl-transfer-hook-interface = { version = "0.3", path = "../interface" }
 spl-tlv-account-resolution = { version = "0.4" , path = "../../../libraries/tlv-account-resolution" }
 strum = "0.25"
@@ -24,7 +24,7 @@ strum_macros = "0.25"
 tokio = { version = "1", features = ["full"] }
 
 [dev-dependencies]
-solana-test-validator = "=1.17.2"
+solana-test-validator = "=1.17.6"
 spl-token-2022 = { version = "0.9", path = "../../program-2022", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.8", path = "../../client" }
 

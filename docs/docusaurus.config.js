@@ -75,6 +75,9 @@ module.exports = {
           path: "src",
           routeBasePath: "/",
           sidebarPath: require.resolve("./sidebars.js"),
+          editUrl: ({ docPath }) => {
+            return `https://github.com/solana-labs/solana-program-library/edit/master/docs/src/${docPath}`;
+          }
         },
         theme: {
           customCss: require.resolve("./src/css/custom.css"),

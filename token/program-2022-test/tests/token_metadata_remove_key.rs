@@ -60,7 +60,6 @@ async fn setup(mint: Keypair, authority: &Pubkey) -> TestContext {
 async fn success_remove() {
     let authority = Keypair::new();
     let mint_keypair = Keypair::new();
-    let mint_pubkey = mint_keypair.pubkey();
     let mut test_context = setup(mint_keypair, &authority.pubkey()).await;
     let payer_pubkey = test_context.context.lock().await.payer.pubkey();
     let token_context = test_context.token_context.take().unwrap();
@@ -142,35 +141,31 @@ async fn success_remove() {
         .unwrap();
 
     // fail doing it again without idempotent flag
-    let mut context = test_context.context.lock().await;
-
-    // refresh blockhash before trying again
-    let blockhash = context.get_new_latest_blockhash().await.unwrap();
-    let transaction = Transaction::new_signed_with_payer(
-        &[remove_key(
-            &spl_token_2022::id(),
-            &mint_pubkey,
+    {
+        // Be really sure to have a new latest blockhash since this keeps failing in CI
+        let mut context = test_context.context.lock().await;
+        context.get_new_latest_blockhash().await.unwrap();
+        context.get_new_latest_blockhash().await.unwrap();
+    }
+    let error = token_context
+        .token
+        .token_metadata_remove_key(
             &update_authority.pubkey(),
-            key,
+            key.clone(),
             false, // idempotent
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer, &update_authority],
-        blockhash,
-    );
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
+            &[&update_authority],
+        )
         .await
-        .unwrap_err()
-        .unwrap();
+        .unwrap_err();
 
     assert_eq!(
         error,
-        TransactionError::InstructionError(
-            0,
-            InstructionError::Custom(TokenMetadataError::KeyNotFound as u32)
-        )
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenMetadataError::KeyNotFound as u32)
+            )
+        )))
     );
 }
 

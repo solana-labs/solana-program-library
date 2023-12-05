@@ -3,11 +3,11 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
-            group_pointer::{
+            group_member_pointer::{
                 instruction::{
-                    GroupPointerInstruction, InitializeInstructionData, UpdateInstructionData,
+                    GroupMemberPointerInstruction, InitializeInstructionData, UpdateInstructionData,
                 },
-                GroupPointer,
+                GroupMemberPointer,
             },
             StateWithExtensionsMut,
         },
@@ -28,7 +28,7 @@ fn process_initialize(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
-    group_address: &OptionalNonZeroPubkey,
+    member_address: &OptionalNonZeroPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -36,25 +36,25 @@ fn process_initialize(
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
 
     if Option::<Pubkey>::from(*authority).is_none()
-        && Option::<Pubkey>::from(*group_address).is_none()
+        && Option::<Pubkey>::from(*member_address).is_none()
     {
         msg!(
-            "The group pointer extension requires at least an authority or an address for \
-             initialization, neither was provided"
+            "The group member pointer extension requires at least an authority or an address for \
+            initialization, neither was provided"
         );
         Err(TokenError::InvalidInstruction)?;
     }
 
-    let extension = mint.init_extension::<GroupPointer>(true)?;
+    let extension = mint.init_extension::<GroupMemberPointer>(true)?;
     extension.authority = *authority;
-    extension.group_address = *group_address;
+    extension.member_address = *member_address;
     Ok(())
 }
 
 fn process_update(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    new_group_address: &OptionalNonZeroPubkey,
+    new_member_address: &OptionalNonZeroPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -63,7 +63,7 @@ fn process_update(
 
     let mut mint_data = mint_account_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
-    let extension = mint.get_extension_mut::<GroupPointer>()?;
+    let extension = mint.get_extension_mut::<GroupMemberPointer>()?;
     let authority =
         Option::<Pubkey>::from(extension.authority).ok_or(TokenError::NoAuthorityExists)?;
 
@@ -75,7 +75,7 @@ fn process_update(
         account_info_iter.as_slice(),
     )?;
 
-    extension.group_address = *new_group_address;
+    extension.member_address = *new_member_address;
     Ok(())
 }
 
@@ -86,18 +86,18 @@ pub(crate) fn process_instruction(
 ) -> ProgramResult {
     check_program_account(program_id)?;
     match decode_instruction_type(input)? {
-        GroupPointerInstruction::Initialize => {
-            msg!("GroupPointerInstruction::Initialize");
+        GroupMemberPointerInstruction::Initialize => {
+            msg!("GroupMemberPointerInstruction::Initialize");
             let InitializeInstructionData {
                 authority,
-                group_address,
+                member_address,
             } = decode_instruction_data(input)?;
-            process_initialize(program_id, accounts, authority, group_address)
+            process_initialize(program_id, accounts, authority, member_address)
         }
-        GroupPointerInstruction::Update => {
-            msg!("GroupPointerInstruction::Update");
-            let UpdateInstructionData { group_address } = decode_instruction_data(input)?;
-            process_update(program_id, accounts, group_address)
+        GroupMemberPointerInstruction::Update => {
+            msg!("GroupMemberPointerInstruction::Update");
+            let UpdateInstructionData { member_address } = decode_instruction_data(input)?;
+            process_update(program_id, accounts, member_address)
         }
     }
 }
