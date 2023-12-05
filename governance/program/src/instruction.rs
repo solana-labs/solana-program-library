@@ -443,10 +443,10 @@ pub enum GovernanceInstruction {
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
-    ///   9. `[signer]` Governance authority
-    ///   10. `[]` RealmConfig account.
+    ///   8. `[signer]` Governance authority
+    ///   9. `[]` RealmConfig account.
     ///     * PDA seeds: ['realm-config', realm]
-    ///   11. `[]` Optional Voter Weight Record
+    ///   10. `[]` Optional Voter Weight Record
     CreateMintGovernance {
         #[allow(dead_code)]
         /// Governance config
