@@ -12,10 +12,11 @@ exclude = ["js/**"]
 no-entrypoint = []
 test-sbf = []
 serde-traits = ["dep:serde", "dep:serde_with", "dep:base64", "spl-pod/serde-traits"]
-# Remove these features once the underlying syscalls are released on all networks
-default = ["zk-ops"]
+default = ["token-group", "zk-ops"]
+# Remove this feature once the underlying syscalls are released on all networks
 zk-ops = []
-proof-program = []
+# Remove this feature once the token group implementation has been audited
+token-group = []
 
 [dependencies]
 arrayref = "0.3.7"
