@@ -269,6 +269,21 @@ async fn command_create_token(
             auto_approve_new_accounts: auto_approve,
             auditor_elgamal_pubkey: None,
         });
+        if transfer_fee.is_some() {
+            // Deriving ElGamal key from default signer. Custom ElGamal keys
+            // will be supported in the future once upgrading to clap-v3.
+            //
+            // NOTE: Seed bytes are hardcoded to be empty bytes for now. They
+            // will be updated once custom ElGamal keys are supported.
+            let elgamal_keypair =
+                ElGamalKeypair::new_from_signer(config.default_signer()?.as_ref(), b"").unwrap();
+            extensions.push(
+                ExtensionInitializationParams::ConfidentialTransferFeeConfig {
+                    authority: Some(authority),
+                    withdraw_withheld_authority_elgamal_pubkey: (*elgamal_keypair.pubkey()).into(),
+                },
+            );
+        }
     }
 
     if let Some(program_id) = transfer_hook_program_id {

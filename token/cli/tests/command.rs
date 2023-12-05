@@ -18,6 +18,7 @@ use {
     spl_token_2022::{
         extension::{
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            confidential_transfer_fee::ConfidentialTransferFeeConfig,
             cpi_guard::CpiGuard,
             default_account_state::DefaultAccountState,
             group_member_pointer::GroupMemberPointer,
@@ -130,6 +131,7 @@ async fn main() {
         async_trial!(group_member_pointer, test_validator, payer),
         async_trial!(transfer_hook, test_validator, payer),
         async_trial!(metadata, test_validator, payer),
+        async_trial!(confidential_transfer_with_fee, test_validator, payer),
         // GC messes with every other test, so have it on its own test validator
         async_trial!(gc, gc_test_validator, gc_payer),
     ];
@@ -2719,6 +2721,62 @@ async fn confidential_transfer(test_validator: &TestValidator, payer: &Keypair) 
     )
     .await
     .unwrap();
+}
+
+async fn confidential_transfer_with_fee(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
+
+    // create token with confidential transfers enabled
+    let auto_approve = true;
+    let confidential_transfer_mint_authority = payer.pubkey();
+
+    let token = Keypair::new();
+    let token_keypair_file = NamedTempFile::new().unwrap();
+    write_keypair_file(&token, &token_keypair_file).unwrap();
+    let token_pubkey = token.pubkey();
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            token_keypair_file.path().to_str().unwrap(),
+            "--enable-confidential-transfers",
+            "auto",
+            "--transfer-fee",
+            "100",
+            "1000000000",
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+    let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = test_mint
+        .get_extension::<ConfidentialTransferMint>()
+        .unwrap();
+
+    assert_eq!(
+        Option::<Pubkey>::from(extension.authority),
+        Some(confidential_transfer_mint_authority),
+    );
+    assert_eq!(
+        bool::from(extension.auto_approve_new_accounts),
+        auto_approve,
+    );
+    assert_eq!(
+        Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
+        None,
+    );
+
+    let extension = test_mint
+        .get_extension::<ConfidentialTransferFeeConfig>()
+        .unwrap();
+    assert_eq!(
+        Option::<Pubkey>::from(extension.authority),
+        Some(confidential_transfer_mint_authority),
+    );
 }
 
 async fn multisig_transfer(test_validator: &TestValidator, payer: &Keypair) {
