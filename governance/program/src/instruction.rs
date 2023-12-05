@@ -154,11 +154,10 @@ pub enum GovernanceInstruction {
     ///      RealmAuthority)
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
-    ///   6. `[]` Sysvar Rent
-    ///   7. `[signer]` Governance authority
-    ///   8. `[]` RealmConfig account.
+    ///   6. `[signer]` Governance authority
+    ///   7. `[]` RealmConfig account.
     ///     * PDA seeds: ['realm-config', realm]
-    ///   9. `[]` Optional Voter Weight Record
+    ///   8. `[]` Optional Voter Weight Record
     CreateGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -180,11 +179,10 @@ pub enum GovernanceInstruction {
     ///   6. `[signer]` Payer
     ///   7. `[]` bpf_upgradeable_loader program
     ///   8. `[]` System program
-    ///   9. `[]` Sysvar Rent
-    ///   10. `[signer]` Governance authority
-    ///   11. `[]` RealmConfig account.
+    ///   9. `[signer]` Governance authority
+    ///   10. `[]` RealmConfig account.
     ///     * PDA seeds: ['realm-config', realm]
-    ///   12. `[]` Optional Voter Weight Record
+    ///   11. `[]` Optional Voter Weight Record
     CreateProgramGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -445,7 +443,6 @@ pub enum GovernanceInstruction {
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
-    ///   8. `[]` Sysvar Rent
     ///   8. `[signer]` Governance authority
     ///   9. `[]` RealmConfig account.
     ///     * PDA seeds: ['realm-config', realm]
@@ -477,11 +474,10 @@ pub enum GovernanceInstruction {
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
-    ///   8. `[]` Sysvar Rent
-    ///   9. `[signer]` Governance authority
-    ///   10. `[]` RealmConfig account.
+    ///   8. `[signer]` Governance authority
+    ///   9. `[]` RealmConfig account.
     ///     * PDA seeds: ['realm-config', realm]
-    ///   11. `[]` Optional Voter Weight Record
+    ///   10. `[]` Optional Voter Weight Record
     CreateTokenGovernance {
         #[allow(dead_code)]
         /// Governance config
