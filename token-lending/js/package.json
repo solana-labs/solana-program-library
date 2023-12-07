@@ -60,6 +60,6 @@
         "ts-node": "^10.7.0",
         "tslib": "^2.3.0",
         "typedoc": "^0.25.4",
-        "typescript": "^5.3.2"
+        "typescript": "^5.3.3"
     }
 }
