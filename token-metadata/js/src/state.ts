@@ -53,20 +53,20 @@ export const pack = (meta: TokenMetadata): Uint8Array => {
 export function unpack(buffer: Buffer | Uint8Array): TokenMetadata {
     const data = tokenMetadataCodec.decode(buffer);
 
-    return isNonePubkey(data[0].updateAuthority)
+    return isNonePubkey(data.updateAuthority)
         ? {
-              mint: new PublicKey(data[0].mint),
-              name: data[0].name,
-              symbol: data[0].symbol,
-              uri: data[0].uri,
-              additionalMetadata: data[0].additionalMetadata,
+              mint: new PublicKey(data.mint),
+              name: data.name,
+              symbol: data.symbol,
+              uri: data.uri,
+              additionalMetadata: data.additionalMetadata,
           }
         : {
-              updateAuthority: new PublicKey(data[0].updateAuthority),
-              mint: new PublicKey(data[0].mint),
-              name: data[0].name,
-              symbol: data[0].symbol,
-              uri: data[0].uri,
-              additionalMetadata: data[0].additionalMetadata,
+              updateAuthority: new PublicKey(data.updateAuthority),
+              mint: new PublicKey(data.mint),
+              name: data.name,
+              symbol: data.symbol,
+              uri: data.uri,
+              additionalMetadata: data.additionalMetadata,
           };
 }
