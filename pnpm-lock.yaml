@@ -580,8 +580,8 @@ importers:
         specifier: 2.0.0-experimental.7123512
         version: 2.0.0-experimental.7123512
       '@solana/codecs-numbers':
-        specifier: 2.0.0-experimental.7123512
-        version: 2.0.0-experimental.7123512
+        specifier: 2.0.0-experimental.8618508
+        version: 2.0.0-experimental.8618508
       '@solana/codecs-strings':
         specifier: 2.0.0-experimental.7123512
         version: 2.0.0-experimental.7123512(fastestsmallesttextencoderdecoder@1.0.22)
@@ -2265,6 +2265,12 @@ packages:
     resolution: {integrity: sha512-itvRq/8wpk+ajHSJEVUkBWW9xbYcCXhBoF1QZpjEddkxtuxVHqXd6otJtiluD8mGDUwWUvD5udHCYg2DO43pFQ==}
     dependencies:
       '@solana/codecs-core': 2.0.0-experimental.7123512
+    dev: false
+
+  /@solana/codecs-numbers@2.0.0-experimental.8618508:
+    resolution: {integrity: sha512-EXQKfzFr3CkKKNzKSZPOOOzchXsFe90TVONWsSnVkonO9z+nGKALE0/L9uBmIFGgdzhhU9QQVFvxBMclIDJo2Q==}
+    dependencies:
+      '@solana/codecs-core': 2.0.0-experimental.8618508
     dev: false
 
   /@solana/codecs-strings@2.0.0-experimental.7123512(fastestsmallesttextencoderdecoder@1.0.22):
