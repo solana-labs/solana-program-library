@@ -1323,7 +1323,7 @@ mod tests {
         // update
         ExtraAccountMetaList::update::<TestInstruction>(buffer, updated_metas).unwrap();
 
-        // retreive metas and assert
+        // retrieve metas and assert
         let state = TlvStateBorrowed::unpack(buffer).unwrap();
         let unpacked_metas_pod =
             ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
