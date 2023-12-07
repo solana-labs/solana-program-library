@@ -182,6 +182,22 @@ impl ExtraAccountMetaList {
         Ok(())
     }
 
+    /// Update pod slice data for the given instruction and its required
+    /// list of `ExtraAccountMeta`s
+    pub fn update<T: SplDiscriminate>(
+        data: &mut [u8],
+        extra_account_metas: &[ExtraAccountMeta],
+    ) -> Result<(), ProgramError> {
+        let mut state = TlvStateMut::unpack(data).unwrap();
+        let tlv_size = PodSlice::<ExtraAccountMeta>::size_of(extra_account_metas.len())?;
+        let bytes = state.realloc_first::<T>(tlv_size)?;
+        let mut validation_data = PodSliceMut::init(bytes)?;
+        for meta in extra_account_metas {
+            validation_data.push(*meta)?;
+        }
+        Ok(())
+    }
+
     /// Get the underlying `PodSlice<ExtraAccountMeta>` from an unpacked TLV
     ///
     /// Due to lifetime annoyances, this function can't just take in the bytes,
@@ -1290,6 +1306,124 @@ mod tests {
             assert_eq!(a.is_signer, b.is_signer);
             assert_eq!(a.is_writable, b.is_writable);
         }
+    }
+
+    async fn update_and_assert_metas(
+        program_id: Pubkey,
+        buffer: &mut Vec<u8>,
+        updated_metas: &[ExtraAccountMeta],
+        check_metas: &[AccountMeta],
+    ) {
+        // resize buffer if necessary
+        let account_size = ExtraAccountMetaList::size_of(updated_metas.len()).unwrap();
+        if account_size > buffer.len() {
+            buffer.resize(account_size, 0);
+        }
+
+        // update
+        ExtraAccountMetaList::update::<TestInstruction>(buffer, updated_metas).unwrap();
+
+        // retrieve metas and assert
+        let state = TlvStateBorrowed::unpack(buffer).unwrap();
+        let unpacked_metas_pod =
+            ExtraAccountMetaList::unpack_with_tlv_state::<TestInstruction>(&state).unwrap();
+        let unpacked_metas = unpacked_metas_pod.data();
+        assert_eq!(
+            unpacked_metas, updated_metas,
+            "The ExtraAccountMetas in the buffer should match the expected ones."
+        );
+
+        let mock_rpc = MockRpc::setup(&[]);
+
+        let mut instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
+        ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
+            &mut instruction,
+            |pubkey| mock_rpc.get_account_data(pubkey),
+            buffer,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(instruction.accounts, check_metas,);
+    }
+
+    #[tokio::test]
+    async fn update_extra_account_meta_list() {
+        let program_id = Pubkey::new_unique();
+
+        // Create list of initial metas
+        let initial_metas = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, false).unwrap(),
+        ];
+
+        // initialize
+        let initial_account_size = ExtraAccountMetaList::size_of(initial_metas.len()).unwrap();
+        let mut buffer = vec![0; initial_account_size];
+        ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &initial_metas).unwrap();
+
+        // Create updated metas list of the same size
+        let updated_metas_1 = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
+        ];
+        let check_metas_1 = updated_metas_1
+            .iter()
+            .map(|e| AccountMeta::try_from(e).unwrap())
+            .collect::<Vec<_>>();
+        update_and_assert_metas(program_id, &mut buffer, &updated_metas_1, &check_metas_1).await;
+
+        // Create updated and larger list of metas
+        let updated_metas_2 = [
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, false).unwrap(),
+            ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), false, true).unwrap(),
+        ];
+        let check_metas_2 = updated_metas_2
+            .iter()
+            .map(|e| AccountMeta::try_from(e).unwrap())
+            .collect::<Vec<_>>();
+        update_and_assert_metas(program_id, &mut buffer, &updated_metas_2, &check_metas_2).await;
+
+        // Create updated and smaller list of metas
+        let updated_metas_3 =
+            [ExtraAccountMeta::new_with_pubkey(&Pubkey::new_unique(), true, true).unwrap()];
+        let check_metas_3 = updated_metas_3
+            .iter()
+            .map(|e| AccountMeta::try_from(e).unwrap())
+            .collect::<Vec<_>>();
+        update_and_assert_metas(program_id, &mut buffer, &updated_metas_3, &check_metas_3).await;
+
+        // Create updated list of metas with a simple PDA
+        let seed_pubkey = Pubkey::new_unique();
+        let updated_metas_4 = [
+            ExtraAccountMeta::new_with_pubkey(&seed_pubkey, true, true).unwrap(),
+            ExtraAccountMeta::new_with_seeds(
+                &[
+                    Seed::Literal {
+                        bytes: b"seed-prefix".to_vec(),
+                    },
+                    Seed::AccountKey { index: 0 },
+                ],
+                false,
+                true,
+            )
+            .unwrap(),
+        ];
+        let simple_pda = Pubkey::find_program_address(
+            &[
+                b"seed-prefix",       // Literal prefix
+                seed_pubkey.as_ref(), // Account at index 0
+            ],
+            &program_id,
+        )
+        .0;
+        let check_metas_4 = [
+            AccountMeta::new(seed_pubkey, true),
+            AccountMeta::new(simple_pda, false),
+        ];
+
+        update_and_assert_metas(program_id, &mut buffer, &updated_metas_4, &check_metas_4).await;
     }
 
     #[test]

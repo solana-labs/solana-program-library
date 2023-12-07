@@ -9,15 +9,16 @@ use {
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         commitment_config::CommitmentConfig,
-        instruction::AccountMeta,
+        instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
         signature::{Signature, Signer},
         system_instruction, system_program,
         transaction::Transaction,
     },
-    spl_tlv_account_resolution::state::ExtraAccountMetaList,
+    spl_tlv_account_resolution::{account::ExtraAccountMeta, state::ExtraAccountMetaList},
     spl_transfer_hook_interface::{
-        get_extra_account_metas_address, instruction::initialize_extra_account_meta_list,
+        get_extra_account_metas_address,
+        instruction::{initialize_extra_account_meta_list, update_extra_account_meta_list},
     },
     std::{fmt, process::exit, rc::Rc, str::FromStr},
     strum_macros::{EnumString, IntoStaticStr},
@@ -56,6 +57,74 @@ fn clap_is_valid_pubkey(arg: &str) -> Result<(), String> {
     is_valid_pubkey(arg)
 }
 
+// Helper function to calculate the required lamports for rent
+async fn calculate_rent_lamports(
+    rpc_client: &RpcClient,
+    account_address: &Pubkey,
+    account_size: usize,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let required_lamports = rpc_client
+        .get_minimum_balance_for_rent_exemption(account_size)
+        .await
+        .map_err(|err| format!("error: unable to fetch rent-exemption: {err}"))?;
+    let account_info = rpc_client.get_account(account_address).await;
+    let current_lamports = account_info.map(|a| a.lamports).unwrap_or(0);
+    Ok(required_lamports.saturating_sub(current_lamports))
+}
+
+async fn build_transaction_with_rent_transfer(
+    rpc_client: &RpcClient,
+    payer: &dyn Signer,
+    extra_account_metas_address: &Pubkey,
+    extra_account_metas: &Vec<ExtraAccountMeta>,
+    instruction: Instruction,
+) -> Result<Transaction, Box<dyn std::error::Error>> {
+    let account_size = ExtraAccountMetaList::size_of(extra_account_metas.len())?;
+    let transfer_lamports =
+        calculate_rent_lamports(rpc_client, extra_account_metas_address, account_size).await?;
+
+    let mut instructions = vec![];
+    if transfer_lamports > 0 {
+        instructions.push(system_instruction::transfer(
+            &payer.pubkey(),
+            extra_account_metas_address,
+            transfer_lamports,
+        ));
+    }
+
+    instructions.push(instruction);
+
+    let transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
+
+    Ok(transaction)
+}
+
+async fn sign_and_send_transaction(
+    transaction: &mut Transaction,
+    rpc_client: &RpcClient,
+    payer: &dyn Signer,
+    mint_authority: &dyn Signer,
+) -> Result<Signature, Box<dyn std::error::Error>> {
+    let mut signers = vec![payer];
+    if payer.pubkey() != mint_authority.pubkey() {
+        signers.push(mint_authority);
+    }
+
+    let blockhash = rpc_client
+        .get_latest_blockhash()
+        .await
+        .map_err(|err| format!("error: unable to get latest blockhash: {err}"))?;
+
+    transaction
+        .try_sign(&signers, blockhash)
+        .map_err(|err| format!("error: failed to sign transaction: {err}"))?;
+
+    rpc_client
+        .send_and_confirm_transaction_with_spinner(transaction)
+        .await
+        .map_err(|err| format!("error: send transaction: {err}").into())
+}
+
 struct Config {
     commitment_config: CommitmentConfig,
     default_signer: Box<dyn Signer>,
@@ -72,59 +141,82 @@ async fn process_create_extra_account_metas(
     payer: &dyn Signer,
 ) -> Result<Signature, Box<dyn std::error::Error>> {
     let extra_account_metas_address = get_extra_account_metas_address(token, program_id);
-    let extra_account_metas = transfer_hook_accounts
-        .into_iter()
-        .map(|v| v.into())
-        .collect::<Vec<_>>();
 
-    let length = extra_account_metas.len();
-    let account_size = ExtraAccountMetaList::size_of(length)?;
-    let required_lamports = rpc_client
-        .get_minimum_balance_for_rent_exemption(account_size)
-        .await
-        .map_err(|err| format!("error: unable to fetch rent-exemption: {err}"))?;
+    // Check if the extra meta account has already been initialized
     let extra_account_metas_account = rpc_client.get_account(&extra_account_metas_address).await;
     if let Ok(account) = &extra_account_metas_account {
         if account.owner != system_program::id() {
             return Err(format!("error: extra account metas for mint {token} and program {program_id} already exists").into());
         }
     }
-    let current_lamports = extra_account_metas_account.map(|a| a.lamports).unwrap_or(0);
-    let transfer_lamports = required_lamports.saturating_sub(current_lamports);
 
-    let mut ixs = vec![];
-    if transfer_lamports > 0 {
-        ixs.push(system_instruction::transfer(
-            &payer.pubkey(),
-            &extra_account_metas_address,
-            transfer_lamports,
-        ));
-    }
-    ixs.push(initialize_extra_account_meta_list(
+    let extra_account_metas = transfer_hook_accounts
+        .into_iter()
+        .map(|v| v.into())
+        .collect::<Vec<_>>();
+
+    let instruction = initialize_extra_account_meta_list(
         program_id,
         &extra_account_metas_address,
         token,
         &mint_authority.pubkey(),
         &extra_account_metas,
-    ));
+    );
 
-    let mut transaction = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
-    let blockhash = rpc_client
-        .get_latest_blockhash()
-        .await
-        .map_err(|err| format!("error: unable to get latest blockhash: {err}"))?;
-    let mut signers = vec![payer];
-    if payer.pubkey() != mint_authority.pubkey() {
-        signers.push(mint_authority);
+    let mut transaction = build_transaction_with_rent_transfer(
+        rpc_client,
+        payer,
+        &extra_account_metas_address,
+        &extra_account_metas,
+        instruction,
+    )
+    .await?;
+
+    sign_and_send_transaction(&mut transaction, rpc_client, payer, mint_authority).await
+}
+
+async fn process_update_extra_account_metas(
+    rpc_client: &RpcClient,
+    program_id: &Pubkey,
+    token: &Pubkey,
+    transfer_hook_accounts: Vec<AccountMeta>,
+    mint_authority: &dyn Signer,
+    payer: &dyn Signer,
+) -> Result<Signature, Box<dyn std::error::Error>> {
+    let extra_account_metas_address = get_extra_account_metas_address(token, program_id);
+
+    // Check if the extra meta account has been initialized first
+    let extra_account_metas_account = rpc_client.get_account(&extra_account_metas_address).await;
+    if extra_account_metas_account.is_err() {
+        return Err(format!(
+            "error: extra account metas for mint {token} and program {program_id} does not exist"
+        )
+        .into());
     }
-    transaction
-        .try_sign(&signers, blockhash)
-        .map_err(|err| format!("error: failed to sign transaction: {err}"))?;
 
-    rpc_client
-        .send_and_confirm_transaction_with_spinner(&transaction)
-        .await
-        .map_err(|err| format!("error: send transaction: {err}").into())
+    let extra_account_metas = transfer_hook_accounts
+        .into_iter()
+        .map(|v| v.into())
+        .collect::<Vec<_>>();
+
+    let instruction = update_extra_account_meta_list(
+        program_id,
+        &extra_account_metas_address,
+        token,
+        &mint_authority.pubkey(),
+        &extra_account_metas,
+    );
+
+    let mut transaction = build_transaction_with_rent_transfer(
+        rpc_client,
+        payer,
+        &extra_account_metas_address,
+        &extra_account_metas,
+        instruction,
+    )
+    .await?;
+
+    sign_and_send_transaction(&mut transaction, rpc_client, payer, mint_authority).await
 }
 
 #[tokio::main]
@@ -178,6 +270,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(
             Command::new("create-extra-metas")
                 .about("Create the extra account metas account for a transfer hook program")
+                .arg(
+                    Arg::with_name("program_id")
+                        .validator(clap_is_valid_pubkey)
+                        .value_name("TRANSFER_HOOK_PROGRAM")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The transfer hook program id"),
+                )
+                .arg(
+                    Arg::with_name("token")
+                        .validator(clap_is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("The token mint address for the transfer hook"),
+                )
+                .arg(
+                    Arg::with_name("transfer_hook_account")
+                        .value_parser(parse_transfer_hook_account)
+                        .value_name("PUBKEY:ROLE")
+                        .takes_value(true)
+                        .multiple(true)
+                        .min_values(0)
+                        .index(3)
+                        .help("Additional pubkey(s) required for a transfer hook and their \
+                            role, in the format \"<PUBKEY>:<ROLE>\". The role must be \
+                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\".")
+                )
+                .arg(
+                    Arg::new("mint_authority")
+                        .long("mint-authority")
+                        .value_name("KEYPAIR")
+                        .validator(|s| is_valid_signer(s))
+                        .takes_value(true)
+                        .global(true)
+                        .help("Filepath or URL to mint-authority keypair [default: client keypair]"),
+                )
+        )
+        .subcommand(
+            Command::new("update-extra-metas")
+                .about("Update the extra account metas account for a transfer hook program")
                 .arg(
                     Arg::with_name("program_id")
                         .validator(clap_is_valid_pubkey)
@@ -289,6 +424,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 exit(1);
             });
             let signature = process_create_extra_account_metas(
+                &rpc_client,
+                &program_id,
+                &token,
+                transfer_hook_accounts,
+                mint_authority.as_ref(),
+                config.default_signer.as_ref(),
+            )
+            .await
+            .unwrap_or_else(|err| {
+                eprintln!("error: send transaction: {err}");
+                exit(1);
+            });
+            println!("Signature: {signature}");
+        }
+        ("update-extra-metas", arg_matches) => {
+            let program_id = pubkey_of_signer(arg_matches, "program_id", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let transfer_hook_accounts = arg_matches
+                .get_many::<AccountMeta>("transfer_hook_account")
+                .unwrap_or_default()
+                .cloned()
+                .collect();
+            let mint_authority = DefaultSigner::new(
+                "mint_authority",
+                matches
+                    .value_of("mint_authority")
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| cli_config.keypair_path.clone()),
+            )
+            .signer_from_path(matches, &mut wallet_manager)
+            .unwrap_or_else(|err| {
+                eprintln!("error: {err}");
+                exit(1);
+            });
+            let signature = process_update_extra_account_metas(
                 &rpc_client,
                 &program_id,
                 &token,

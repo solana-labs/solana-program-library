@@ -32,8 +32,9 @@ pub enum TransferHookInstruction {
         /// Amount of tokens to transfer
         amount: u64,
     },
-    /// Initializes the extra account metas on an account, writing into
-    /// the first open TLV space.
+
+    /// Initializes the extra account metas on an account, writing into the
+    /// first open TLV space.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -43,6 +44,19 @@ pub enum TransferHookInstruction {
     ///   3. `[]` System program
     InitializeExtraAccountMetaList {
         /// List of `ExtraAccountMeta`s to write into the account
+        extra_account_metas: Vec<ExtraAccountMeta>,
+    },
+    /// Updates the extra account metas on an account by overwriting the
+    /// existing list.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[w]` Account with extra account metas
+    ///   1. `[]` Mint
+    ///   2. `[s]` Mint authority
+    UpdateExtraAccountMetaList {
+        /// The new list of `ExtraAccountMetas` to overwrite the existing entry
+        /// in the account.
         extra_account_metas: Vec<ExtraAccountMeta>,
     },
 }
@@ -58,6 +72,12 @@ pub struct ExecuteInstruction;
 #[derive(SplDiscriminate)]
 #[discriminator_hash_input("spl-transfer-hook-interface:initialize-extra-account-metas")]
 pub struct InitializeExtraAccountMetaListInstruction;
+
+/// TLV instruction type used to update extra account metas
+/// for the transfer hook
+#[derive(SplDiscriminate)]
+#[discriminator_hash_input("spl-transfer-hook-interface:update-extra-account-metas")]
+pub struct UpdateExtraAccountMetaListInstruction;
 
 impl TransferHookInstruction {
     /// Unpacks a byte buffer into a
@@ -83,6 +103,13 @@ impl TransferHookInstruction {
                     extra_account_metas,
                 }
             }
+            UpdateExtraAccountMetaListInstruction::SPL_DISCRIMINATOR_SLICE => {
+                let pod_slice = PodSlice::<ExtraAccountMeta>::unpack(rest)?;
+                let extra_account_metas = pod_slice.data().to_vec();
+                Self::UpdateExtraAccountMetaList {
+                    extra_account_metas,
+                }
+            }
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }
@@ -101,6 +128,15 @@ impl TransferHookInstruction {
             } => {
                 buf.extend_from_slice(
                     InitializeExtraAccountMetaListInstruction::SPL_DISCRIMINATOR_SLICE,
+                );
+                buf.extend_from_slice(&(extra_account_metas.len() as u32).to_le_bytes());
+                buf.extend_from_slice(pod_slice_to_bytes(extra_account_metas));
+            }
+            Self::UpdateExtraAccountMetaList {
+                extra_account_metas,
+            } => {
+                buf.extend_from_slice(
+                    UpdateExtraAccountMetaListInstruction::SPL_DISCRIMINATOR_SLICE,
                 );
                 buf.extend_from_slice(&(extra_account_metas.len() as u32).to_le_bytes());
                 buf.extend_from_slice(pod_slice_to_bytes(extra_account_metas));
@@ -180,6 +216,32 @@ pub fn initialize_extra_account_meta_list(
         AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, true),
         AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    }
+}
+
+/// Creates a `UpdateExtraAccountMetaList` instruction.
+pub fn update_extra_account_meta_list(
+    program_id: &Pubkey,
+    extra_account_metas_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    extra_account_metas: &[ExtraAccountMeta],
+) -> Instruction {
+    let data = TransferHookInstruction::UpdateExtraAccountMetaList {
+        extra_account_metas: extra_account_metas.to_vec(),
+    }
+    .pack();
+
+    let accounts = vec![
+        AccountMeta::new(*extra_account_metas_pubkey, false),
+        AccountMeta::new_readonly(*mint_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, true),
     ];
 
     Instruction {
