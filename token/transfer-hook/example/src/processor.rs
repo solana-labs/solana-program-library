@@ -173,7 +173,7 @@ pub fn process_update_extra_account_meta_list(
     // Check if the extra metas have been initialized
     let min_account_size = ExtraAccountMetaList::size_of(0)?;
     let original_account_size = extra_account_metas_info.data_len();
-    if program_id != extra_account_metas_info.owner || original_account_size <= min_account_size {
+    if program_id != extra_account_metas_info.owner || original_account_size < min_account_size {
         return Err(ProgramError::UninitializedAccount);
     }
 
