@@ -54,7 +54,7 @@
     "start-server-and-test": "^2.0.3",
     "ts-node": "^10.9.1",
     "typedoc": "^0.25.4",
-    "typescript": "^5.3.2"
+    "typescript": "^5.3.3"
   },
   "dependencies": {
     "@solana/web3.js": "^1.87.6",
