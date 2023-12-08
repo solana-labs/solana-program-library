@@ -16,11 +16,11 @@ A DAO wallet is 1) PDA with no data, 2) derived from its governance account and 
 
 If the intention is to manage a program, you should use the DAO wallet as the admin auth in your program
 
-*Note: as of 2022-90-17 the UI is not up-to-date and it is sill allowing users to create the deprecated asset specific governances.*
+*Note: as of 2022-09-17 the UI is not up-to-date and it is sill allowing users to create the deprecated asset specific governances.*
 
 ### Signing transactions: Use the DAO Wallet
 
-Right now both PDAs (DAO Wallet and governance account) can sign Txs. However some protocols assume the singer is also a payer or beneficiary and then only the DAO wallet can be used. For that reason it’s always better to use the DAO wallet as the authority because it behaves like any other wallet and works for all scenarios. The objective is to standardize on DAO Wallet as signer to eliminate confusion.
+Right now both PDAs (DAO Wallet and governance account) can sign Txs. However some protocols assume the signer is also a payer or beneficiary and then only the DAO wallet can be used. For that reason it’s always better to use the DAO wallet as the authority because it behaves like any other wallet and works for all scenarios. The objective is to standardize on DAO Wallet as signer to eliminate confusion.
 
 ### Wallet assets
 
