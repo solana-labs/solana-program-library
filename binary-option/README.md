@@ -1,8 +1,8 @@
 # Binary Option
 
-This protocol is a primitive version of a binary options. Participants can enter a long or short position depending on their conviction. (These sides are set completely arbitrarily). The eventual goal is to have a higher level program manage the pool and handle settlements with an oracle based voting approach. Every bet in the pool involves 2 parties (1 long and 1 short) each depositing some collateral. Because bets are made on binary event, the sum of collateral will be equal to a multiple of some power of 10 (`10 ** N` where `N` is configurable).
+This protocol is a primitive version of binary options. Participants can enter a long or short position depending on their conviction. (These sides are set completely arbitrarily). The eventual goal is to have a higher level program manage the pool and handle settlements with an oracle based voting approach. Every bet in the pool involves 2 parties (1 long and 1 short) each depositing some collateral. Because bets are made on a binary event, the sum of collateral will be equal to a multiple of some power of 10 (`10 ** N` where `N` is configurable).
 
-The module contains the Rust implementation of protocol as well as a Python client and test suite.
+The module contains the Rust implementation of the protocol as well as a Python client and test suite.
 
 Suppose we had a binary option on the winner of the 2021 NBA Finals (Phoenix Suns vs. Milwaulkee Bucks). At the time of writing this (July 9th, 2021), the moneyline spread is -190 Suns +170 Bucks. This backs out an implied probability of approximately 36% that the Bucks win the championship. Suppose our binary option was on the Bucks winning this series, and that it is denominated by some wrapped stablecoin WUSD (dollar pegged) where every contract settled to 10000 WUSD (`N = 4` corresponding to 1 cent granularity). You observe that someone is willing to go short Bucks for 10 contracts at 3000 WUSD (less than the estimated probability of 36%). You can take on the opposite trade by buying 10 long contracts on the Bucks for 3000.
 
@@ -20,7 +20,7 @@ contains information about program audits.
 ## Client Setup 
 First, clone down the repository (TODO publish to PyPI)
 
-Create a virtual environment and and install the dependencies in `client/requirements.txt`
+Create a virtual environment and install the dependencies in `client/requirements.txt`
 
 ```
 python3 -m virtualenv venv
