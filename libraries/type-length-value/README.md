@@ -74,7 +74,7 @@ other_value1.data = 2;
 let other_value2 = state.init_value::<MyOtherPodValue>(true).unwrap();
 assert_eq!(other_value2.data, 10);
 // Update it in-place
-other_value1.data = 4;
+other_value2.data = 4;
 
 // Later on, to work with it again, since we did _not_ allow repeating entries,
 // we can just get the first value we encounter.
