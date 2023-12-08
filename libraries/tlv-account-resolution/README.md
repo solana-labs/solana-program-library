@@ -96,7 +96,7 @@ provided to initialize directly from a set of given accounts.
 
 ## Motivation
 
-The Solana account model presents unique challeneges for program interfaces.
+The Solana account model presents unique challenges for program interfaces.
 Since it's impossible to load additional accounts on-chain, if a program requires
 additional accounts to properly implement an instruction, there's no clear way
 for clients to fetch these accounts.

@@ -422,7 +422,7 @@ pub enum GovernanceInstruction {
     /// transaction_hold_up time has passed The actual transaction being
     /// executed will be signed by Governance PDA the Proposal belongs to
     /// For example to execute Program upgrade the ProgramGovernance PDA would
-    /// be used as the singer
+    /// be used as the signer
     ///
     ///   0. `[]` Governance account
     ///   1. `[writable]` Proposal account

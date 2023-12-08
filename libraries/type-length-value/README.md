@@ -74,7 +74,7 @@ other_value1.data = 2;
 let other_value2 = state.init_value::<MyOtherPodValue>(true).unwrap();
 assert_eq!(other_value2.data, 10);
 // Update it in-place
-other_value1.data = 4;
+other_value2.data = 4;
 
 // Later on, to work with it again, since we did _not_ allow repeating entries,
 // we can just get the first value we encounter.
@@ -94,7 +94,7 @@ let value2 = state.get_value_with_repetition::<MyOtherPodValue>(2).unwrap();
 ## Motivation
 
 The Solana blockchain exposes slabs of bytes to on-chain programs, allowing program
-writers to intepret these bytes and change them however they wish. Currently,
+writers to interpret these bytes and change them however they wish. Currently,
 programs interpet account bytes as being only of one type. For example, an token
 mint account is only ever a token mint, an AMM pool account is only ever an AMM pool,
 a token metadata account can only hold token metadata, etc.

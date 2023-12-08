@@ -1,10 +1,10 @@
 # Binary Option
 
-This protocol is a primitive version of a binary options. Participants can enter a long or short position depending on their conviction. (These sides are set completely arbitrarily). The eventual goal is to have a higher level program manage the pool and handle settlements with an oracle based voting approach. Every bet in the pool involves 2 parties (1 long and 1 short) each depositing some collateral. Because bets are made on binary event, the sum of collateral will be equal to a multiple of some power of 10 (`10 ** N` where `N` is configurable).
+This protocol is a primitive version of binary options. Participants can enter a long or short position depending on their conviction. (These sides are set completely arbitrarily). The eventual goal is to have a higher level program manage the pool and handle settlements with an oracle based voting approach. Every bet in the pool involves 2 parties (1 long and 1 short) each depositing some collateral. Because bets are made on a binary event, the sum of collateral will be equal to a multiple of some power of 10 (`10 ** N` where `N` is configurable).
 
-The module contains the Rust implementation of protocol as well as a Python client and test suite.
+The module contains the Rust implementation of the protocol as well as a Python client and test suite.
 
-Suppose we had a binary option on the winner of the 2021 NBA Finals (Phoenix Suns vs. Milwaulkee Bucks). At the time of writing this (July 9th, 2021), the moneyline spread is -190 Suns +170 Bucks. This backs out an implied probability of approximately 36% that the Bucks win the championship. Suppose our binary option was on the Bucks winning this series, and that it is denominated by some wrapped stablecoin WUSD (dollar pegged) where every contract settled to 10000 WUSD (`N = 4` corresponding to 1 cent granularity). You observe that someone is willing to go short Bucks for 10 contracts at 3000 WUSD (less than the estimated probability of 36%). You can take on the opposite trade by buying 10 long contracts on the Bucks for 3000.
+Suppose we had a binary option on the winner of the 2021 NBA Finals (Phoenix Suns vs. Milwaukee Bucks). At the time of writing this (July 9th, 2021), the moneyline spread is -190 Suns +170 Bucks. This backs out an implied probability of approximately 36% that the Bucks win the championship. Suppose our binary option was on the Bucks winning this series, and that it is denominated by some wrapped stablecoin WUSD (dollar pegged) where every contract settled to 10000 WUSD (`N = 4` corresponding to 1 cent granularity). You observe that someone is willing to go short Bucks for 10 contracts at 3000 WUSD (less than the estimated probability of 36%). You can take on the opposite trade by buying 10 long contracts on the Bucks for 3000.
 
 This invokes a `Trade` instruction with size 10, buy_price 3000, and sell_price 7000. Note that these prices must sum to 10000. As part of the protocol, you transfer 30000 WUSD into the binary option and the counterparty deposits 70000 (assuming that both parties start with 0 position). In return, 10 long tokens (minted by the contract) are added to your account, and 10 short tokens are minted to your counterparty's account.
 
@@ -20,7 +20,7 @@ contains information about program audits.
 ## Client Setup 
 First, clone down the repository (TODO publish to PyPI)
 
-Create a virtual environment and and install the dependencies in `client/requirements.txt`
+Create a virtual environment and install the dependencies in `client/requirements.txt`
 
 ```
 python3 -m virtualenv venv
@@ -47,7 +47,7 @@ python -m client.test
 
 `n_s` the number of long contracts owned by the seller
 
-We know from our college combanatorics/discrete math class that there are 3! = 6 ways to order 3 items. Let's list out all configurations of how these numbers can bet ordered from largest to smallest (assuming all distinct):
+We know from our college combinatorics/discrete math class that there are 3! = 6 ways to order 3 items. Let's list out all configurations of how these numbers can bet ordered from largest to smallest (assuming all distinct):
 
 ```
 1) n_b > n_s > n

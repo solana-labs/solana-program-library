@@ -42,7 +42,7 @@ centralized, the creation of new classes is permissionless and as a class owner
 any kind of decentralized governance signing program could be used.
 
 - Twitter handles can be added as names of one specific name class. The class
-  authority of will therefore hold the right to add a Twitter handle name. This
+  authority will therefore hold the right to add a Twitter handle name. This
   enables the verification of Twitter accounts for example by asking the user to
   tweet their pubkey or a signed message. A bot that holds the private issuing
   authority key can then sign the Create instruction (with a metadata_authority

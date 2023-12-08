@@ -66,7 +66,7 @@ have been forked and deployed by prominent ecosystem projects, many of which
 have their own bug bounty programs.
 
 While we cannot guarantee a bounty from another entity, we can help determine who
-may be affected and put you in touch the corresponding teams.
+may be affected and put you in touch with the corresponding teams.
 
 <a name="process"></a>
 ## Incident Response Process

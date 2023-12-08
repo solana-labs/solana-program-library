@@ -129,7 +129,7 @@ It can be cumbersome to ensure your program's defined errors - typically represe
 in an enum - implement the required traits and will print to the program's logs when they're
 invoked.
 
-This procedureal macro will give you all of the required implementations out of the box:
+This procedural macro will give you all of the required implementations out of the box:
 
 - `Clone`
 - `Debug`
