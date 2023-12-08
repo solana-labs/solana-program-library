@@ -25,7 +25,7 @@ solana-sdk = "=1.17.6"
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program" }
 spl-memo = { version = "4.0.0", path = "../../memo/program", features = ["no-entrypoint"] }
 spl-pod = { version = "0.1.0", path = "../../libraries/pod" }
-spl-token-2022 = { version = "0.9", path="../program-2022", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "1.0", path="../program-2022", features = ["no-entrypoint"] }
 spl-instruction-padding = { version = "0.1.0", path="../../instruction-padding/program", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.8", path = "../client" }
 spl-token-group-interface = { version = "0.1", path = "../../token-group/interface" }
