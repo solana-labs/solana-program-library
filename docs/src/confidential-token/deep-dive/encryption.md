@@ -139,7 +139,7 @@ decryption key of a decryptable balance ciphertext is only known to the owner of
 an account, the sender of a `Transfer` instruction cannot update the decryptable
 balance of the receiver's account.
 
-Therefore, for the case of the pending balance, the Token program stores two
+Therefore, in the case of the pending balance, the Token program stores two
 independent ElGamal ciphertexts, one encrypting the low bits of the 64-bit
 pending balance and one encrypting the high bits.
 
@@ -256,7 +256,7 @@ struct ConfidentialTransferInstructionData {
 ```
 
 The fields `pending_balance_credit_counter` and
-`maximum_pending_balance_credit_counter` are used to limit amounts that are
+`maximum_pending_balance_credit_counter` is used to limit amounts that are
 encrypted in the pending balance ciphertexts `pending_balance_lo` and
 `pending_balance_hi`. The choice of the limit on the transfer amount is
 done to balance the efficiency of ElGamal decryption with the usability of a
