@@ -105,7 +105,7 @@ await sendAndConfirmTransaction(connection, tx, [payer]);
 
 ## Reference examples
 
-Here are some examples using account compression in the wild:
+Here are some examples of using account compression in the wild:
 
 * Solana Program Library [tests](https://github.com/solana-labs/solana-program-library/tree/master/account-compression/sdk/tests)
 
