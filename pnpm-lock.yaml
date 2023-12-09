@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -589,7 +593,7 @@ importers:
         specifier: 2.0.0-experimental.8618508
         version: 2.0.0-experimental.8618508
       '@solana/spl-type-length-value':
-        specifier: workspace:*
+        specifier: 0.1.0
         version: link:../../libraries/type-length-value/js
     devDependencies:
       '@solana/web3.js':
@@ -7996,7 +8000,3 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
