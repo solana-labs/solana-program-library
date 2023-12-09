@@ -294,25 +294,20 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
 }
 
 const SPL_TOKEN_ACCOUNT_MINT_OFFSET: usize = 0;
-const SPL_TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
+const SPL_TOKEN_ACCOUNT_OWNER_OFFSET: usize = SPL_TOKEN_ACCOUNT_MINT_OFFSET + 32;
+const SPL_TOKEN_ACCOUNT_AMOUNT_OFFSET: usize = SPL_TOKEN_ACCOUNT_OWNER_OFFSET + 32;
+const SPL_TOKEN_ACCOUNT_DELEGATE_OFFSET: usize = SPL_TOKEN_ACCOUNT_AMOUNT_OFFSET + 8;
+const SPL_TOKEN_ACCOUNT_STATE_OFFSET: usize = SPL_TOKEN_ACCOUNT_DELEGATE_OFFSET + 36;
+const SPL_TOKEN_ACCOUNT_IS_NATIVE_OFFSET: usize = SPL_TOKEN_ACCOUNT_STATE_OFFSET + 1;
+const SPL_TOKEN_ACCOUNT_DELEGATED_AMOUNT_OFFSET: usize = SPL_TOKEN_ACCOUNT_IS_NATIVE_OFFSET + 12;
+const SPL_TOKEN_ACCOUNT_CLOSE_AUTHORITY_OFFSET: usize =
+    SPL_TOKEN_ACCOUNT_DELEGATED_AMOUNT_OFFSET + 8;
 
 /// A trait for token Account structs to enable efficiently unpacking various
 /// fields without unpacking the complete state.
 pub trait GenericTokenAccount {
     /// Check if the account data is a valid token account
     fn valid_account_data(account_data: &[u8]) -> bool;
-
-    /// Call after account length has already been verified to unpack the
-    /// account owner
-    fn unpack_account_owner_unchecked(account_data: &[u8]) -> &Pubkey {
-        Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_OWNER_OFFSET)
-    }
-
-    /// Call after account length has already been verified to unpack the
-    /// account mint
-    fn unpack_account_mint_unchecked(account_data: &[u8]) -> &Pubkey {
-        Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_MINT_OFFSET)
-    }
 
     /// Call after account length has already been verified to unpack a Pubkey
     /// at the specified offset. Panics if `account_data.len()` is less than
@@ -321,22 +316,140 @@ pub trait GenericTokenAccount {
         bytemuck::from_bytes(&account_data[offset..offset + PUBKEY_BYTES])
     }
 
-    /// Unpacks an account's owner from opaque account data.
-    fn unpack_account_owner(account_data: &[u8]) -> Option<&Pubkey> {
+    /// Call after account length has already been verified to unpack a COption<&Pubkey>
+    /// at the specified offset. Panics if `account_data.len()` is less than
+    /// 36 or COption tag is invalid
+    fn unpack_coption_pubkey_unchecked(account_data: &[u8], offset: usize) -> COption<&Pubkey> {
+        let subslice = &account_data[offset..offset + 36];
+        match subslice[..4] {
+            [0, 0, 0, 0] => COption::None,
+            [1, 0, 0, 0] => COption::Some(bytemuck::from_bytes(&subslice[4..])),
+            _ => panic!(),
+        }
+    }
+
+    /// Call after account length has already been verified to unpack a u64
+    /// at the specified offset. Panics if offset..offset + 8 out of bounds
+    /// for `account_data`
+    fn unpack_le_u64_unchecked(account_data: &[u8], offset: usize) -> u64 {
+        let subslice: &[u8; 8] = &account_data[offset..offset + 8].try_into().unwrap();
+        u64::from_le_bytes(*subslice)
+    }
+
+    /// Generate checked version of the unchecked unpack functions
+    fn unpack_generic_field_checked<'a, T>(
+        account_data: &'a [u8],
+        unpack_unchecked_fn: fn(&'a [u8]) -> T,
+    ) -> Option<T> {
         if Self::valid_account_data(account_data) {
-            Some(Self::unpack_account_owner_unchecked(account_data))
+            Some(unpack_unchecked_fn(account_data))
         } else {
             None
         }
     }
 
+    // UNCHECKED FNS
+
+    /// Call after account length has already been verified to unpack the
+    /// account mint
+    fn unpack_account_mint_unchecked(account_data: &[u8]) -> &Pubkey {
+        Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_MINT_OFFSET)
+    }
+
+    /// Call after account length has already been verified to unpack the
+    /// account owner
+    fn unpack_account_owner_unchecked(account_data: &[u8]) -> &Pubkey {
+        Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_OWNER_OFFSET)
+    }
+
+    /// Call after account length has already been verified to unpack the
+    /// account amount
+    fn unpack_account_amount_unchecked(account_data: &[u8]) -> u64 {
+        Self::unpack_le_u64_unchecked(account_data, SPL_TOKEN_ACCOUNT_AMOUNT_OFFSET)
+    }
+
+    /// Call after account length has already been verified to unpack the
+    /// account delegate
+    fn unpack_delegate_unchecked(account_data: &[u8]) -> COption<&Pubkey> {
+        Self::unpack_coption_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_DELEGATE_OFFSET)
+    }
+
+    /// Call after account length has already been verified to unpack the
+    /// account state
+    fn unpack_account_state_unchecked(account_data: &[u8]) -> AccountState {
+        AccountState::try_from_primitive(account_data[SPL_TOKEN_ACCOUNT_STATE_OFFSET]).unwrap()
+    }
+
+    /// Call after account length has already been verified to unpack the
+    /// account's is_native field
+    fn unpack_account_is_native_unchecked(account_data: &[u8]) -> COption<u64> {
+        let subslice = &account_data
+            [SPL_TOKEN_ACCOUNT_IS_NATIVE_OFFSET..SPL_TOKEN_ACCOUNT_IS_NATIVE_OFFSET + 12];
+        match subslice[..4] {
+            [0, 0, 0, 0] => COption::None,
+            [1, 0, 0, 0] => {
+                let body: &[u8; 8] = &subslice[4..].try_into().unwrap();
+                COption::Some(u64::from_le_bytes(*body))
+            }
+            _ => panic!(),
+        }
+    }
+
+    /// Call after account length has already been verified to unpack the
+    /// account delegated_amount
+    fn unpack_delegated_amount_unchecked(account_data: &[u8]) -> u64 {
+        Self::unpack_le_u64_unchecked(account_data, SPL_TOKEN_ACCOUNT_DELEGATED_AMOUNT_OFFSET)
+    }
+
+    /// Call after account length has already been verified to unpack the
+    /// account close_authority
+    fn unpack_close_authority_unchecked(account_data: &[u8]) -> COption<&Pubkey> {
+        Self::unpack_coption_pubkey_unchecked(
+            account_data,
+            SPL_TOKEN_ACCOUNT_CLOSE_AUTHORITY_OFFSET,
+        )
+    }
+
+    // CHECKED FNS
+
     /// Unpacks an account's mint from opaque account data.
     fn unpack_account_mint(account_data: &[u8]) -> Option<&Pubkey> {
-        if Self::valid_account_data(account_data) {
-            Some(Self::unpack_account_mint_unchecked(account_data))
-        } else {
-            None
-        }
+        Self::unpack_generic_field_checked(account_data, Self::unpack_account_mint_unchecked)
+    }
+
+    /// Unpacks an account's owner from opaque account data.
+    fn unpack_account_owner(account_data: &[u8]) -> Option<&Pubkey> {
+        Self::unpack_generic_field_checked(account_data, Self::unpack_account_owner_unchecked)
+    }
+
+    /// Unpacks an account's amount from opaque account data.
+    fn unpack_account_amount(account_data: &[u8]) -> Option<u64> {
+        Self::unpack_generic_field_checked(account_data, Self::unpack_account_amount_unchecked)
+    }
+
+    /// Unpacks an account's delegate from opaque account data.
+    fn unpack_account_delegate(account_data: &[u8]) -> Option<COption<&Pubkey>> {
+        Self::unpack_generic_field_checked(account_data, Self::unpack_delegate_unchecked)
+    }
+
+    /// Unpacks an account's state from opaque account data.
+    fn unpack_account_state(account_data: &[u8]) -> Option<AccountState> {
+        Self::unpack_generic_field_checked(account_data, Self::unpack_account_state_unchecked)
+    }
+
+    /// Unpacks an account's is_native field from opaque account data.
+    fn unpack_account_is_native(account_data: &[u8]) -> Option<COption<u64>> {
+        Self::unpack_generic_field_checked(account_data, Self::unpack_account_is_native_unchecked)
+    }
+
+    /// Unpacks an account's delegated amount from opaque account data.
+    fn unpack_delegated_amount(account_data: &[u8]) -> Option<u64> {
+        Self::unpack_generic_field_checked(account_data, Self::unpack_delegated_amount_unchecked)
+    }
+
+    /// Unpacks an account's close authority from opaque account data.
+    fn unpack_close_authority(account_data: &[u8]) -> Option<COption<&Pubkey>> {
+        Self::unpack_generic_field_checked(account_data, Self::unpack_close_authority_unchecked)
     }
 }
 
