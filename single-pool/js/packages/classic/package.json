@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@solana/web3.js": "^1.87.6",
-    "@solana/spl-single-pool": "workspace:*"
+    "@solana/spl-single-pool": "1.0.0"
   },
   "ava": {
     "extensions": {

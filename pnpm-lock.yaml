@@ -340,7 +340,7 @@ importers:
   single-pool/js/packages/classic:
     dependencies:
       '@solana/spl-single-pool':
-        specifier: workspace:*
+        specifier: 1.0.0
         version: link:../modern
       '@solana/web3.js':
         specifier: ^1.87.6
@@ -411,7 +411,7 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
       '@solana/spl-token':
-        specifier: workspace:*
+        specifier: 0.3.9
         version: link:../../token/js
       '@solana/web3.js':
         specifier: ^1.87.6
@@ -524,7 +524,7 @@ importers:
         specifier: ^11.1.1
         version: 11.1.5(rollup@4.7.0)(tslib@2.6.2)(typescript@5.3.3)
       '@solana/spl-token':
-        specifier: workspace:*
+        specifier: 0.3.9
         version: link:../../token/js
       '@solana/web3.js':
         specifier: ^1.87.6
@@ -664,7 +664,7 @@ importers:
         version: 0.2.0
     devDependencies:
       '@solana/spl-token':
-        specifier: workspace:*
+        specifier: 0.3.9
         version: link:../../token/js
       '@solana/web3.js':
         specifier: ^1.87.6
@@ -731,7 +731,7 @@ importers:
         version: 6.0.3
     devDependencies:
       '@solana/spl-memo':
-        specifier: workspace:*
+        specifier: 0.2.3
         version: link:../../memo/js
       '@solana/web3.js':
         specifier: ^1.87.6
