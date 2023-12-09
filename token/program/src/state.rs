@@ -316,9 +316,9 @@ pub trait GenericTokenAccount {
         bytemuck::from_bytes(&account_data[offset..offset + PUBKEY_BYTES])
     }
 
-    /// Call after account length has already been verified to unpack a COption<&Pubkey>
-    /// at the specified offset. Panics if `account_data.len()` is less than
-    /// 36 or COption tag is invalid
+    /// Call after account length has already been verified to unpack a
+    /// COption<&Pubkey> at the specified offset. Panics if
+    /// `account_data.len()` is less than 36 or COption tag is invalid
     fn unpack_coption_pubkey_unchecked(account_data: &[u8], offset: usize) -> COption<&Pubkey> {
         let subslice = &account_data[offset..offset + 36];
         match subslice[..4] {
