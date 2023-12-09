@@ -98,7 +98,7 @@ nothing will be deposited.
 The reserve stake account identifier is `J5XB7mWpeaUZxZ6ogXT57qSCobczx27vLZYSgfSbZoBB`.
 This account holds onto additional stake used when rebalancing between validators.
 
-For a stake pool with 1000 validators, the cost to create a stake pool is less
+For a stake pool with 1000 validators, the cost of creating a stake pool is less
 than 0.5 SOL.
 
 The `create-pool` command allows setting all of the accounts and keypairs to
@@ -335,7 +335,7 @@ required amount, it is not shown by the CLI.
 
 ### Remove validator stake account
 
-If the stake pool staker wants to stop delegating to a vote account, they can
+If the stake pool staker wants to stop delegating to a voting account, they can
 totally remove the validator stake account from the stake pool.
 
 As with adding a validator, the validator stake account must have exactly
@@ -647,10 +647,10 @@ Signature: 45x2UtA1b49eBPtRHdkvA3k8JneZzfwjptNN1kKQZaPABYiJ4hSA8qwi7qLNN5b3Fr4Z6
 
 The CLI will default to using the fee payer's
 [Associated Token Account](associated-token-account.md) for stake pool tokens
-and the withdraw authority on the deposited stake account.
+and the withdrawal authority on the deposited stake account.
 
 Alternatively, you can create an SPL token account yourself and pass it as the
-`token-receiver` for the command, and specify the withdraw authority on the
+`token-receiver` for the command, and specify the withdrawal authority on the
 stake account using the `withdraw-authority` flag.
 
 ```console
