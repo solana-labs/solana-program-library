@@ -47,7 +47,7 @@ python -m client.test
 
 `n_s` the number of long contracts owned by the seller
 
-We know from our college combinatorics/discrete math class that there are 3! = 6 ways to order 3 items. Let's list out all configurations of how these numbers can bet ordered from largest to smallest (assuming all distinct):
+We know from our college combinatorics/discrete math class that there are 3! = 6 ways to order 3 items. Let's list out all configurations of how these numbers can be ordered from largest to smallest (assuming all distinct):
 
 ```
 1) n_b > n_s > n
@@ -61,7 +61,7 @@ This is a lot of cases to consider, but we can group them into combined categori
 ```
 n_b >= n && n_s >= n
 ```
-This clause essentially groups 1) and 2) together. In this case, both buyer and seller are simply reducing their existing inventory. Therefore, we can just remove `n` long tokens and `n` short tokens from circulation. Both parties are also entitled to the locked up funds for their positions that were closed, so the buyer receives `n * sell_price` and the seller received `n * buy_price`. This might be confusing at first, but a good way to think about this is that there are no "sellers". Everyone with inventory is a "buyer". If an event as a probability `p` of occurring, the buyer is paying `p` and the seller is paying `1-p`. When a market participant receives funds, they are "selling out" (either locking in profits or losses) of their existing position.
+This clause essentially groups 1) and 2) together. In this case, both buyer and seller are simply reducing their existing inventory. Therefore, we can just remove `n` long tokens and `n` short tokens from circulation. Both parties are also entitled to the locked up funds for their positions that were closed, so the buyer receives `n * sell_price` and the seller received `n * buy_price`. This might be confusing at first, but a good way to think about this is that there are no "sellers". Everyone with inventory is a "buyer". If an event has a probability `p` of occurring, the buyer is paying `p` and the seller is paying `1-p`. When a market participant receives funds, they are "selling out" (either locking in profits or losses) of their existing position.
 
 ```
 n_b < n && n_s < n
