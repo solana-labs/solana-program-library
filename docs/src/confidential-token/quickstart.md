@@ -23,11 +23,11 @@ To create a new mint with confidential transfers enabled, run:
 $ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --enable-confidential-transfers auto
 ```
 
-The `auto` keyword means that any token user can permissionless configure their
+The `auto` keyword means that any token user can permissionlessly configure their
 account to perform confidential transfers.
 
 If you would like to gate confidential transfer functionality to certain users,
-you can set the approved policy to `manual`. With this approved policy, all users
+you can set the approve policy to `manual`. With this approve policy, all users
 must be manually approved to perform confidential transfers. Anyone can still use
 the token non-confidentially.
 
