@@ -139,7 +139,7 @@ decryption key of a decryptable balance ciphertext is only known to the owner of
 an account, the sender of a `Transfer` instruction cannot update the decryptable
 balance of the receiver's account.
 
-Therefore, in the case of the pending balance, the Token program stores two
+Therefore, for the case of the pending balance, the Token program stores two
 independent ElGamal ciphertexts, one encrypting the low bits of the 64-bit
 pending balance and one encrypting the high bits.
 
