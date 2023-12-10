@@ -52,7 +52,7 @@ The `MerkleTree` class is meant to follow a similar interface as `MerkleTree` fr
 | Feature    | Our Tree | `merkletreejs` | Notes                                                        |
 | ---------- | -------- | -------------- | ------------------------------------------------------------ |
 | updateLeaf | ✅        | ❌              | This is the unique feature of `ConcurrentMerkleTree`'s       |
-| multiProof | ❌        | ✅              | Possible to support in a future version of Account Compression |
+| multiProof | ❌        | ✅              | Possible to support in future version of Account Compression |
 | addLeaf    | ✅        | ✅              | Our version does this via `updateLeaf()`                     |
 
 If you'd like to see more features added, please create an issue with the title `Account Compression` and your feature request.
@@ -163,7 +163,7 @@ await sendAndConfirmTransaction(connection, tx, [payer]);
 
 ## Reference examples
 
-Here are some examples of using account compression in the wild:
+Here are some examples using account compression in the wild:
 
 * Solana Program Library [tests](https://github.com/solana-labs/solana-program-library/tree/master/account-compression/sdk/tests)
 
