@@ -238,7 +238,7 @@ zero-knowledge proofs.
   `lower_bound <= x < upper_bound`.
 
   In the confidential extension, we require that a transfer instruction includes
-  a range of proof that certifies the following:
+  a range proof that certifies the following:
 
   - The proof should certify that there are enough funds in the source account.
     Specifically, let `ct_source` be the encrypted balance of a source account
