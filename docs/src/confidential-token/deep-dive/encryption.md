@@ -256,7 +256,7 @@ struct ConfidentialTransferInstructionData {
 ```
 
 The fields `pending_balance_credit_counter` and
-`maximum_pending_balance_credit_counter` is used to limit amounts that are
+`maximum_pending_balance_credit_counter` are used to limit amounts that are
 encrypted in the pending balance ciphertexts `pending_balance_lo` and
 `pending_balance_hi`. The choice of the limit on the transfer amount is
 done to balance the efficiency of ElGamal decryption with the usability of a
