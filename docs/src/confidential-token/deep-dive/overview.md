@@ -299,7 +299,7 @@ decrypting transaction amounts allow for a more flexible interface.
 In a potential application, the decryption key for specific accounts can be
 shared among multiple users (e.g. regulators) that should have access to an
 account balance. Although these users can decrypt account balances, only the
-owner of the account that has access to the owner signing key can sign a
+owner of the account who has access to the owner signing key can sign a
 transaction that initiates a transfer of tokens. The owner of an account can
 update the account with a new encryption key using the `ConfigureAccount`.
 
@@ -369,7 +369,7 @@ Account {
 }
 ```
 
-Any outgoing funds from an account is subtracted from its available balance. Any
+Any outgoing funds from an account are subtracted from its available balance. Any
 incoming funds to an account is added to its pending balance.
 
 As an example, consider a transfer instruction that moves 10 tokens from a
