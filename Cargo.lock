@@ -7252,6 +7252,20 @@ dependencies = [
 [[package]]
 name = "spl-tlv-account-resolution"
 version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "062e148d3eab7b165582757453632ffeef490c02c86a48bfdb4988f63eefb3b9"
+dependencies = [
+ "bytemuck",
+ "solana-program",
+ "spl-discriminator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-pod 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-program-error 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-type-length-value 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "spl-tlv-account-resolution"
+version = "0.5.0"
 dependencies = [
  "bytemuck",
  "futures 0.3.29",
@@ -7264,20 +7278,6 @@ dependencies = [
  "spl-pod 0.1.0",
  "spl-program-error 0.3.0",
  "spl-type-length-value 0.3.0",
-]
-
-[[package]]
-name = "spl-tlv-account-resolution"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "062e148d3eab7b165582757453632ffeef490c02c86a48bfdb4988f63eefb3b9"
-dependencies = [
- "bytemuck",
- "solana-program",
- "spl-discriminator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-pod 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-program-error 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-type-length-value 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -7670,7 +7670,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-tlv-account-resolution 0.4.0",
+ "spl-tlv-account-resolution 0.5.0",
  "spl-token-2022 1.0.0",
  "spl-token-client",
  "spl-transfer-hook-interface 0.4.0",
@@ -7687,7 +7687,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-tlv-account-resolution 0.4.0",
+ "spl-tlv-account-resolution 0.5.0",
  "spl-token-2022 1.0.0",
  "spl-transfer-hook-interface 0.4.0",
  "spl-type-length-value 0.3.0",
@@ -7705,7 +7705,7 @@ dependencies = [
  "spl-discriminator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-pod 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-program-error 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-tlv-account-resolution 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-tlv-account-resolution 0.4.0",
  "spl-type-length-value 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -7719,7 +7719,7 @@ dependencies = [
  "spl-discriminator 0.1.0",
  "spl-pod 0.1.0",
  "spl-program-error 0.3.0",
- "spl-tlv-account-resolution 0.4.0",
+ "spl-tlv-account-resolution 0.5.0",
  "spl-type-length-value 0.3.0",
 ]
 
