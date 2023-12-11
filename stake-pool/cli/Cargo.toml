@@ -10,7 +10,7 @@ version = "1.0.0"
 
 [dependencies]
 borsh = "0.10"
-clap = "2.33.3"
+clap = "4.4.8"
 serde = "1.0.193"
 serde_derive = "1.0.130"
 serde_json = "1.0.108"
