@@ -81,7 +81,7 @@
         "shx": "^0.3.4",
         "start-server-and-test": "^2.0.3",
         "tslib": "^2.3.1",
-        "ts-node": "^10.9.1",
+        "ts-node": "^10.9.2",
         "typedoc": "^0.25.4",
         "typescript": "^5.3.3"
     }
