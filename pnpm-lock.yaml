@@ -577,8 +577,8 @@ importers:
         specifier: 2.0.0-experimental.8618508
         version: 2.0.0-experimental.8618508
       '@solana/codecs-data-structures':
-        specifier: 2.0.0-experimental.8618508
-        version: 2.0.0-experimental.8618508
+        specifier: 2.0.0-experimental.9741939
+        version: 2.0.0-experimental.9741939
       '@solana/codecs-numbers':
         specifier: 2.0.0-experimental.8618508
         version: 2.0.0-experimental.8618508
@@ -2258,17 +2258,27 @@ packages:
     resolution: {integrity: sha512-JCz7mKjVKtfZxkuDtwMAUgA7YvJcA2BwpZaA1NOLcted4OMC4Prwa3DUe3f3181ixPYaRyptbF0Ikq2MbDkYEA==}
     dev: false
 
-  /@solana/codecs-data-structures@2.0.0-experimental.8618508:
-    resolution: {integrity: sha512-sLpjL9sqzaDdkloBPV61Rht1tgaKq98BCtIKRuyscIrmVPu3wu0Bavk2n/QekmUzaTsj7K1pVSniM0YqCdnEBw==}
+  /@solana/codecs-core@2.0.0-experimental.9741939:
+    resolution: {integrity: sha512-7E51aEwLW+1ta6VWbEq0CbvwSUOcIwmaQCLpkOKsF6cwSNqE5GDv/jw9zKuiYOynlBFQO1Ws59a/hlb2wwwWKg==}
+    dev: false
+
+  /@solana/codecs-data-structures@2.0.0-experimental.9741939:
+    resolution: {integrity: sha512-Ghjx0pFEA22T/cpqg3zXHYlnxqKytjTr1QjgfhWvBrlVFkqr3ZQL4av9/V6sHKvpoi+JNkEwM1wE+tlpt/54CA==}
     dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.8618508
-      '@solana/codecs-numbers': 2.0.0-experimental.8618508
+      '@solana/codecs-core': 2.0.0-experimental.9741939
+      '@solana/codecs-numbers': 2.0.0-experimental.9741939
     dev: false
 
   /@solana/codecs-numbers@2.0.0-experimental.8618508:
     resolution: {integrity: sha512-EXQKfzFr3CkKKNzKSZPOOOzchXsFe90TVONWsSnVkonO9z+nGKALE0/L9uBmIFGgdzhhU9QQVFvxBMclIDJo2Q==}
     dependencies:
       '@solana/codecs-core': 2.0.0-experimental.8618508
+    dev: false
+
+  /@solana/codecs-numbers@2.0.0-experimental.9741939:
+    resolution: {integrity: sha512-VXBvw8LZdGUJGuC33EFzvaUxCvgNtr9y9Td8zjK9wJDqKSzR0+G53CJv5K4AF25LUu8du8XHBK3VEz3YHl44nQ==}
+    dependencies:
+      '@solana/codecs-core': 2.0.0-experimental.9741939
     dev: false
 
   /@solana/codecs-strings@2.0.0-experimental.8618508(fastestsmallesttextencoderdecoder@1.0.22):
