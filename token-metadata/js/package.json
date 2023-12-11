@@ -47,11 +47,11 @@
         "@solana/web3.js": "^1.87.6"
     },
     "dependencies": {
-        "@solana/codecs-core": "2.0.0-experimental.8618508",
-        "@solana/codecs-data-structures": "2.0.0-experimental.8618508",
-        "@solana/codecs-numbers": "2.0.0-experimental.8618508",
-        "@solana/codecs-strings": "2.0.0-experimental.8618508",
-        "@solana/options": "2.0.0-experimental.8618508",
+        "@solana/codecs-core": "2.0.0-experimental.9741939",
+        "@solana/codecs-data-structures": "2.0.0-experimental.9741939",
+        "@solana/codecs-numbers": "2.0.0-experimental.9741939",
+        "@solana/codecs-strings": "2.0.0-experimental.9741939",
+        "@solana/options": "2.0.0-experimental.9741939",
         "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
@@ -68,9 +68,9 @@
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.0",
         "mocha": "^10.1.0",
-        "prettier": "^3.1.0",
+        "prettier": "^3.1.1",
         "shx": "^0.3.4",
-        "ts-node": "^10.9.1",
+        "ts-node": "^10.9.2",
         "tslib": "^2.3.1",
         "typedoc": "^0.25.4",
         "typescript": "^5.3.3"
