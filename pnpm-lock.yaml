@@ -586,8 +586,8 @@ importers:
         specifier: 2.0.0-experimental.8618508
         version: 2.0.0-experimental.8618508(fastestsmallesttextencoderdecoder@1.0.22)
       '@solana/options':
-        specifier: 2.0.0-experimental.8618508
-        version: 2.0.0-experimental.8618508
+        specifier: 2.0.0-experimental.9741939
+        version: 2.0.0-experimental.9741939
       '@solana/spl-type-length-value':
         specifier: 0.1.0
         version: link:../../libraries/type-length-value/js
@@ -2327,11 +2327,11 @@ packages:
       '@solana/assertions': 2.0.0-experimental.21e994f
     dev: false
 
-  /@solana/options@2.0.0-experimental.8618508:
-    resolution: {integrity: sha512-fy/nIRAMC3QHvnKi63KEd86Xr/zFBVxNW4nEpVEU2OT0gCEKwHY4Z55YHf7XujhyuM3PNpiBKg/YYw5QlRU4vg==}
+  /@solana/options@2.0.0-experimental.9741939:
+    resolution: {integrity: sha512-Fj76WDb+SWEEN3i0gEVQHGPHR2v54ECHILluQ5r18deLHjtZpD48a0dZepf0YcyAG7OHofkRdPxInZ3YYDuZeQ==}
     dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.8618508
-      '@solana/codecs-numbers': 2.0.0-experimental.8618508
+      '@solana/codecs-core': 2.0.0-experimental.9741939
+      '@solana/codecs-numbers': 2.0.0-experimental.9741939
     dev: false
 
   /@solana/prettier-config-solana@0.0.4(prettier@3.1.1):
