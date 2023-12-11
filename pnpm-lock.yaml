@@ -583,8 +583,8 @@ importers:
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939
       '@solana/codecs-strings':
-        specifier: 2.0.0-experimental.8618508
-        version: 2.0.0-experimental.8618508(fastestsmallesttextencoderdecoder@1.0.22)
+        specifier: 2.0.0-experimental.9741939
+        version: 2.0.0-experimental.9741939(fastestsmallesttextencoderdecoder@1.0.22)
       '@solana/options':
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939
@@ -2254,10 +2254,6 @@ packages:
     dependencies:
       buffer: 6.0.3
 
-  /@solana/codecs-core@2.0.0-experimental.8618508:
-    resolution: {integrity: sha512-JCz7mKjVKtfZxkuDtwMAUgA7YvJcA2BwpZaA1NOLcted4OMC4Prwa3DUe3f3181ixPYaRyptbF0Ikq2MbDkYEA==}
-    dev: false
-
   /@solana/codecs-core@2.0.0-experimental.9741939:
     resolution: {integrity: sha512-7E51aEwLW+1ta6VWbEq0CbvwSUOcIwmaQCLpkOKsF6cwSNqE5GDv/jw9zKuiYOynlBFQO1Ws59a/hlb2wwwWKg==}
     dev: false
@@ -2269,25 +2265,19 @@ packages:
       '@solana/codecs-numbers': 2.0.0-experimental.9741939
     dev: false
 
-  /@solana/codecs-numbers@2.0.0-experimental.8618508:
-    resolution: {integrity: sha512-EXQKfzFr3CkKKNzKSZPOOOzchXsFe90TVONWsSnVkonO9z+nGKALE0/L9uBmIFGgdzhhU9QQVFvxBMclIDJo2Q==}
-    dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.8618508
-    dev: false
-
   /@solana/codecs-numbers@2.0.0-experimental.9741939:
     resolution: {integrity: sha512-VXBvw8LZdGUJGuC33EFzvaUxCvgNtr9y9Td8zjK9wJDqKSzR0+G53CJv5K4AF25LUu8du8XHBK3VEz3YHl44nQ==}
     dependencies:
       '@solana/codecs-core': 2.0.0-experimental.9741939
     dev: false
 
-  /@solana/codecs-strings@2.0.0-experimental.8618508(fastestsmallesttextencoderdecoder@1.0.22):
-    resolution: {integrity: sha512-b2yhinr1+oe+JDmnnsV0641KQqqDG8AQ16Z/x7GVWO+AWHMpRlHWVXOq8U1yhPMA4VXxl7i+D+C6ql0VGFp0GA==}
+  /@solana/codecs-strings@2.0.0-experimental.9741939(fastestsmallesttextencoderdecoder@1.0.22):
+    resolution: {integrity: sha512-J1DCTJsAMhFcIIvys/yNWM2Vr4HEWi+LzFB9xxdH+FHTynApjTMd4vI7frgnckuWH7ynp8EZFPnBTje1BphQrw==}
     peerDependencies:
       fastestsmallesttextencoderdecoder: ^1.0.22
     dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.8618508
-      '@solana/codecs-numbers': 2.0.0-experimental.8618508
+      '@solana/codecs-core': 2.0.0-experimental.9741939
+      '@solana/codecs-numbers': 2.0.0-experimental.9741939
       fastestsmallesttextencoderdecoder: 1.0.22
     dev: false
 
