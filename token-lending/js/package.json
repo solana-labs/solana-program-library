@@ -57,7 +57,7 @@
         "gh-pages": "^6.1.0",
         "prettier": "^3.1.0",
         "rollup": "^4.7.0",
-        "ts-node": "^10.7.0",
+        "ts-node": "^10.9.2",
         "tslib": "^2.3.0",
         "typedoc": "^0.25.4",
         "typescript": "^5.3.3"
