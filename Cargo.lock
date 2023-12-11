@@ -7659,7 +7659,7 @@ dependencies = [
 
 [[package]]
 name = "spl-transfer-hook-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap 3.2.25",
  "futures-util",
