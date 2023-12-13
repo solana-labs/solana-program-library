@@ -429,8 +429,8 @@ importers:
         specifier: ^25.0.0
         version: 25.0.7(rollup@4.8.0)
       '@rollup/plugin-json':
-        specifier: ^6.0.0
-        version: 6.0.1(rollup@4.8.0)
+        specifier: ^6.1.0
+        version: 6.1.0(rollup@4.8.0)
       '@rollup/plugin-multi-entry':
         specifier: ^6.0.0
         version: 6.0.1(rollup@4.8.0)
@@ -1969,8 +1969,8 @@ packages:
       rollup: 4.8.0
     dev: true
 
-  /@rollup/plugin-json@6.0.1(rollup@4.8.0):
-    resolution: {integrity: sha512-RgVfl5hWMkxN1h/uZj8FVESvPuBJ/uf6ly6GTj0GONnkfoBN5KC0MSz+PN2OLDgYXMhtG0mWpTrkiOjoxAIevw==}
+  /@rollup/plugin-json@6.1.0(rollup@4.8.0):
+    resolution: {integrity: sha512-EGI2te5ENk1coGeADSIwZ7G2Q8CJS2sF120T7jLw4xFw9n7wIOXHo+kIYRAoVpJAN+kmqZSoO3Fp4JtoNF4ReA==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
@@ -1978,7 +1978,7 @@ packages:
       rollup:
         optional: true
     dependencies:
-      '@rollup/pluginutils': 5.0.5(rollup@4.8.0)
+      '@rollup/pluginutils': 5.1.0(rollup@4.8.0)
       rollup: 4.8.0
     dev: true
 
@@ -2071,6 +2071,21 @@ packages:
 
   /@rollup/pluginutils@5.0.5(rollup@4.8.0):
     resolution: {integrity: sha512-6aEYR910NyP73oHiJglti74iRyOwgFU4x3meH/H8OJx6Ry0j6cOVZ5X/wTvub7G7Ao6qaHBEaNsV3GLJkSsF+Q==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+    dependencies:
+      '@types/estree': 1.0.5
+      estree-walker: 2.0.2
+      picomatch: 2.3.1
+      rollup: 4.8.0
+    dev: true
+
+  /@rollup/pluginutils@5.1.0(rollup@4.8.0):
+    resolution: {integrity: sha512-XTIWOPPcpvyKI6L1NHo0lFlCyznUEyPmPY1mc3KpPVDYulHSTvyeLNVW00QTLIAFNhR3kYnJTQHeGqU4M3n09g==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
