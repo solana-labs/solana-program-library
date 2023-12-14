@@ -7270,6 +7270,7 @@ dependencies = [
  "bytemuck",
  "futures 0.3.29",
  "futures-util",
+ "serde",
  "solana-client",
  "solana-program",
  "solana-program-test",
