@@ -252,16 +252,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("The token mint address for the transfer hook"),
                 )
                 .arg(
-                    Arg::with_name("transfer_hook_account")
+                    Arg::with_name("transfer_hook_accounts")
                         .value_parser(parse_transfer_hook_account_arg)
-                        .value_name("PUBKEY:ROLE")
+                        .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
                         .multiple(true)
                         .min_values(0)
                         .index(3)
-                        .help("Additional pubkey(s) required for a transfer hook and their \
-                            role, in the format \"<PUBKEY>:<ROLE>\". The role must be \
-                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\".")
+                        .help("Additional account(s) required for a transfer hook and their \
+                            respective configurations, whether they are a fixed address or PDA. \
+                            \nAdditional accounts with known fixed addresses can be passed at the \
+                            command line in the format \"<PUBKEY>:<ROLE>\". The role must be \
+                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\". \
+                            \n Additional acounts requiring seed configurations can be defined in a \
+                            configuration file using either JSON or YAML.")
                 )
                 .arg(
                     Arg::new("mint_authority")
@@ -295,16 +299,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("The token mint address for the transfer hook"),
                 )
                 .arg(
-                    Arg::with_name("transfer_hook_account")
+                    Arg::with_name("transfer_hook_accounts")
                         .value_parser(parse_transfer_hook_account_arg)
-                        .value_name("PUBKEY:ROLE")
+                        .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
                         .multiple(true)
                         .min_values(0)
                         .index(3)
-                        .help("Additional pubkey(s) required for a transfer hook and their \
-                            role, in the format \"<PUBKEY>:<ROLE>\". The role must be \
-                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\".")
+                        .help("Additional account(s) required for a transfer hook and their \
+                            respective configurations, whether they are a fixed address or PDA. \
+                            \nAdditional accounts with known fixed addresses can be passed at the \
+                            command line in the format \"<PUBKEY>:<ROLE>\". The role must be \
+                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\". \
+                            \n Additional acounts requiring seed configurations can be defined in a \
+                            configuration file using either JSON or YAML.")
                 )
                 .arg(
                     Arg::new("mint_authority")
