@@ -1,7 +1,7 @@
 pub mod meta;
 
 use {
-    crate::meta::parse_transfer_hook_account,
+    crate::meta::parse_transfer_hook_account_arg,
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{
         input_parsers::{parse_url_or_moniker, pubkey_of_signer},
@@ -12,7 +12,7 @@ use {
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         commitment_config::CommitmentConfig,
-        instruction::{AccountMeta, Instruction},
+        instruction::Instruction,
         pubkey::Pubkey,
         signature::{Signature, Signer},
         system_instruction, system_program,
@@ -109,7 +109,7 @@ async fn process_create_extra_account_metas(
     rpc_client: &RpcClient,
     program_id: &Pubkey,
     token: &Pubkey,
-    transfer_hook_accounts: Vec<AccountMeta>,
+    extra_account_metas: Vec<ExtraAccountMeta>,
     mint_authority: &dyn Signer,
     payer: &dyn Signer,
 ) -> Result<Signature, Box<dyn std::error::Error>> {
@@ -122,11 +122,6 @@ async fn process_create_extra_account_metas(
             return Err(format!("error: extra account metas for mint {token} and program {program_id} already exists").into());
         }
     }
-
-    let extra_account_metas = transfer_hook_accounts
-        .into_iter()
-        .map(|v| v.into())
-        .collect::<Vec<_>>();
 
     let instruction = initialize_extra_account_meta_list(
         program_id,
@@ -152,7 +147,7 @@ async fn process_update_extra_account_metas(
     rpc_client: &RpcClient,
     program_id: &Pubkey,
     token: &Pubkey,
-    transfer_hook_accounts: Vec<AccountMeta>,
+    extra_account_metas: Vec<ExtraAccountMeta>,
     mint_authority: &dyn Signer,
     payer: &dyn Signer,
 ) -> Result<Signature, Box<dyn std::error::Error>> {
@@ -166,11 +161,6 @@ async fn process_update_extra_account_metas(
         )
         .into());
     }
-
-    let extra_account_metas = transfer_hook_accounts
-        .into_iter()
-        .map(|v| v.into())
-        .collect::<Vec<_>>();
 
     let instruction = update_extra_account_meta_list(
         program_id,
@@ -263,7 +253,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .arg(
                     Arg::with_name("transfer_hook_account")
-                        .value_parser(parse_transfer_hook_account)
+                        .value_parser(parse_transfer_hook_account_arg)
                         .value_name("PUBKEY:ROLE")
                         .takes_value(true)
                         .multiple(true)
@@ -306,7 +296,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .arg(
                     Arg::with_name("transfer_hook_account")
-                        .value_parser(parse_transfer_hook_account)
+                        .value_parser(parse_transfer_hook_account_arg)
                         .value_name("PUBKEY:ROLE")
                         .takes_value(true)
                         .multiple(true)
@@ -380,7 +370,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap()
                 .unwrap();
             let transfer_hook_accounts = arg_matches
-                .get_many::<AccountMeta>("transfer_hook_account")
+                .get_many::<ExtraAccountMeta>("transfer_hook_account")
                 .unwrap_or_default()
                 .cloned()
                 .collect();
@@ -419,7 +409,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap()
                 .unwrap();
             let transfer_hook_accounts = arg_matches
-                .get_many::<AccountMeta>("transfer_hook_account")
+                .get_many::<ExtraAccountMeta>("transfer_hook_account")
                 .unwrap_or_default()
                 .cloned()
                 .collect();
@@ -460,7 +450,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 mod test {
     use {
         super::*,
-        solana_sdk::{bpf_loader_upgradeable, signer::keypair::Keypair},
+        solana_sdk::{bpf_loader_upgradeable, instruction::AccountMeta, signer::keypair::Keypair},
         solana_test_validator::{TestValidator, TestValidatorGenesis, UpgradeableProgramInfo},
         spl_token_client::{
             client::{
@@ -536,7 +526,7 @@ mod test {
             &rpc_client,
             &program_id,
             token.get_address(),
-            accounts,
+            accounts.iter().map(|a| a.into()).collect(),
             &mint_authority,
             payer.as_ref(),
         )
