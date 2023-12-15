@@ -378,7 +378,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap()
                 .unwrap();
             let transfer_hook_accounts = arg_matches
-                .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_account")
+                .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
                 .unwrap_or_default()
                 .flatten()
                 .cloned()
@@ -418,7 +418,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap()
                 .unwrap();
             let transfer_hook_accounts = arg_matches
-                .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_account")
+                .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
                 .unwrap_or_default()
                 .flatten()
                 .cloned()

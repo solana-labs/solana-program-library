@@ -108,7 +108,7 @@ pub fn parse_transfer_hook_account_arg(arg: &str) -> Result<Vec<ExtraAccountMeta
                     serde_json::from_str::<ExtraAccountMetaConfigFile>(v)
                         .map_err(|e| format!("Unable to parse file: {e}"))
                 },
-                Some("yaml") => |v: &str| {
+                Some("yaml") | Some("yml") => |v: &str| {
                     serde_yaml::from_str::<ExtraAccountMetaConfigFile>(v)
                         .map_err(|e| format!("Unable to parse file: {e}"))
                 },
