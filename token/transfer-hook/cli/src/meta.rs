@@ -47,46 +47,40 @@ struct ExtraAccountMetaConfig {
     #[serde(alias = "isWritable")]
     is_writable: Option<bool>,
 }
-impl ExtraAccountMetaConfig {
-    fn discriminator_and_address(&self) -> (u8, [u8; 32]) {
-        if self.pubkey.is_some() && self.seeds.is_some() {
-            panic!("Only one of `pubkey` or `seeds` must be present");
-        }
-        if let Some(pubkey_string) = &self.pubkey {
-            (0, Pubkey::from_str(pubkey_string).unwrap().to_bytes())
-        } else if let Some(seeds) = &self.seeds {
-            (1, Seed::pack_into_address_config(seeds).unwrap())
-        } else {
-            panic!("Either `pubkey` or `seeds` must be present");
-        }
-    }
-
-    fn bools(&self) -> (/* is_signer */ bool, /* is_writable */ bool) {
-        if self.role.is_none() && self.is_signer.is_none() && self.is_writable.is_none() {
-            panic!("Either `role` or `is_signer`/`is_writable` must be present");
-        }
-        if let Some(role) = self.role {
-            if self.is_signer.is_some() || self.is_writable.is_some() {
-                panic!("`role` and `is_signer`/`is_writable` are mutually exclusive");
-            }
-            role.bools()
-        } else {
-            if self.is_signer.is_none() || self.is_writable.is_none() {
-                panic!("`is_signer` and `is_writable` must be present when `role` is not present");
-            }
-            (self.is_signer.unwrap(), self.is_writable.unwrap())
-        }
-    }
-}
 impl From<&ExtraAccountMetaConfig> for ExtraAccountMeta {
     fn from(config: &ExtraAccountMetaConfig) -> Self {
-        let (discriminator, address_config) = config.discriminator_and_address();
-        let (is_signer, is_writable) = config.bools();
-        ExtraAccountMeta {
-            discriminator,
-            address_config,
-            is_signer: is_signer.into(),
-            is_writable: is_writable.into(),
+        if config.pubkey.is_some() && config.seeds.is_some() {
+            panic!("Only one of `pubkey` or `seeds` must be present");
+        }
+        let (is_signer, is_writable) = {
+            if config.role.is_none() && config.is_signer.is_none() && config.is_writable.is_none() {
+                panic!("Either `role` or `is_signer`/`is_writable` must be present");
+            }
+            if let Some(role) = config.role {
+                if config.is_signer.is_some() || config.is_writable.is_some() {
+                    panic!("`role` and `is_signer`/`is_writable` are mutually exclusive");
+                }
+                role.bools()
+            } else {
+                if config.is_signer.is_none() || config.is_writable.is_none() {
+                    panic!(
+                        "`is_signer` and `is_writable` must be present when `role` is not present"
+                    );
+                }
+                (config.is_signer.unwrap(), config.is_writable.unwrap())
+            }
+        };
+        if let Some(pubkey_string) = &config.pubkey {
+            ExtraAccountMeta::new_with_pubkey(
+                &Pubkey::from_str(pubkey_string).unwrap(),
+                is_signer,
+                is_writable,
+            )
+            .unwrap()
+        } else if let Some(seeds) = &config.seeds {
+            ExtraAccountMeta::new_with_seeds(seeds, is_signer, is_writable).unwrap()
+        } else {
+            panic!("Either `pubkey` or `seeds` must be present");
         }
     }
 }
