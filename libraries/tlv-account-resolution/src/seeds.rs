@@ -34,7 +34,7 @@ use {crate::error::AccountResolutionError, solana_program::program_error::Progra
 /// Enum to describe a required seed for a Program-Derived Address
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde-traits", serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 pub enum Seed {
     /// Uninitialized configuration byte space
     Uninitialized,
@@ -57,7 +57,7 @@ pub enum Seed {
     ///     * 1 - Discriminator
     ///     * 1 - Start index of instruction data
     ///     * 1 - Length of instruction data starting at index
-    #[cfg_attr(feature = "serde-traits", serde(alias = "instructionData"))]
+    #[cfg_attr(feature = "serde-traits", serde(alias = "instruction_data"))]
     InstructionData {
         /// The index where the bytes of an instruction argument begin
         index: u8,
@@ -72,7 +72,7 @@ pub enum Seed {
     /// Packed as:
     ///     * 1 - Discriminator
     ///     * 1 - Index of account in accounts list
-    #[cfg_attr(feature = "serde-traits", serde(alias = "accountKey"))]
+    #[cfg_attr(feature = "serde-traits", serde(alias = "account_key"))]
     AccountKey {
         /// The index of the account in the entire accounts list
         index: u8,
@@ -83,13 +83,16 @@ pub enum Seed {
     ///     * 1 - Index of account in accounts list
     ///     * 1 - Start index of account data
     ///     * 1 - Length of account data starting at index
-    #[cfg_attr(feature = "serde-traits", serde(alias = "accountData"))]
+    #[cfg_attr(
+        feature = "serde-traits",
+        serde(rename_all = "camelCase", alias = "account_data")
+    )]
     AccountData {
         /// The index of the account in the entire accounts list
-        #[cfg_attr(feature = "serde-traits", serde(alias = "accountIndex"))]
+        #[cfg_attr(feature = "serde-traits", serde(alias = "account_index"))]
         account_index: u8,
         /// The index where the bytes of an account data argument begin
-        #[cfg_attr(feature = "serde-traits", serde(alias = "dataIndex"))]
+        #[cfg_attr(feature = "serde-traits", serde(alias = "data_index"))]
         data_index: u8,
         /// The length of the argument (number of bytes)
         ///
