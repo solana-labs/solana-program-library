@@ -56,7 +56,7 @@ There are two UIs available which showcase the programs capabilities:
 
   It's a good starting point for developers to learn about the program and interact with it
 
-- [Governance UI](https://github.com/solana-labs/governance-ui) project build together
+- [Governance UI](https://github.com/solana-labs/governance-ui) project built together
   with the [MNGO](https://mango.markets/) team: [governance-ui](https://realms.today)
 
   This is advanced, user friendly and tasks oriented UI used by most of the existing DAOs on Solana
