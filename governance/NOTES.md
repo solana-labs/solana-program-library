@@ -16,7 +16,7 @@ A DAO wallet is 1) PDA with no data, 2) derived from its governance account and 
 
 If the intention is to manage a program, you should use the DAO wallet as the admin auth in your program
 
-*Note: as of 2022-09-17 the UI is not up-to-date and it is sill allowing users to create the deprecated asset specific governances.*
+*Note: as of 2022-09-17 the UI is not up-to-date and it is still allowing users to create the deprecated asset specific governances.*
 
 ### Signing transactions: Use the DAO Wallet
 
