@@ -224,7 +224,11 @@ async fn test_execute_transfer_transaction() {
     assert_eq!(15, instruction_token_account.amount);
 }
 
+// Ignored until program-test manages fork graphs correctly, see
+// https://github.com/solana-labs/solana/pull/34407 for the failing downstream
+// test
 #[tokio::test]
+#[ignore]
 async fn test_execute_upgrade_program_transaction() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
