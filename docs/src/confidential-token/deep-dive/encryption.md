@@ -16,7 +16,7 @@ ElGamal encryption scheme where a ciphertext is divided into two components:
 - A Pedersen commitment of the encrypted message. This component is independent
   of the public key.
 - A "decryption handle" that binds the encryption randomness with respect to a
-  specific ElGamal public key. This component is independent of the actually
+  specific ElGamal public key. This component is independent of the actual
   encrypted message.
 
 The structure of the twisted ElGamal ciphertexts simplifies their design of some

@@ -1,7 +1,7 @@
 # SPL Governance
 
 SPL Governance is a program the chief purpose of which is to provide core building blocks and primitives to create
-Decentralized Autonomous Organizations (DAOs) on Solana blockchain.
+Decentralized Autonomous Organizations (DAOs) on the Solana blockchain.
 
 The program is DAO type and asset type agnostic and can be used to build any type of DAOs
 which can own and manage any type of assets.
@@ -56,7 +56,7 @@ There are two UIs available which showcase the programs capabilities:
 
   It's a good starting point for developers to learn about the program and interact with it
 
-- [Governance UI](https://github.com/solana-labs/governance-ui) project build together
+- [Governance UI](https://github.com/solana-labs/governance-ui) project built together
   with the [MNGO](https://mango.markets/) team: [governance-ui](https://realms.today)
 
   This is advanced, user friendly and tasks oriented UI used by most of the existing DAOs on Solana
@@ -73,7 +73,7 @@ Discord server: [spl-governance-discord](https://discord.gg/VsPbrK2hJk)
 
 ## Program Accounts
 
-The diagram belows shows an illustrative configuration of the program accounts when used to control upgrades
+The diagram below shows an illustrative configuration of the program accounts when used to control upgrades
 of multiple programs through proposals
 
 ![Accounts diagram](./resources/governance-accounts.jpg)
