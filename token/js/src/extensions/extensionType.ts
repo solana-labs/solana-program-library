@@ -252,8 +252,8 @@ export function getNewAccountLenForExtensionLen(
 ): number {
     const data = getExtensionDataFromAccountInfo(address, info, e, programId);
 
-    // 2 bytes discriminator, 2 bytes length, extensionLen
-    const newExtensionLen = 2 + 2 + extensionLen;
+    // 2 bytes type, 2 bytes length, extensionLen
+    const newExtensionLen = TYPE_SIZE + LENGTH_SIZE + extensionLen;
 
     return info.data.length + newExtensionLen - (data?.length || 0);
 }

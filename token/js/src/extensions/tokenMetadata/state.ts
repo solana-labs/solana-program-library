@@ -7,7 +7,7 @@ import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import { ExtensionType, getExtensionData } from '../extensionType.js';
 import { getMint } from '../../state/mint.js';
 
-export const getNormalizedTokenMetadataField = (field: Field | string): string => {
+const getNormalizedTokenMetadataField = (field: Field | string): string => {
     if (field === Field.Name || field === 'Name' || field === 'name') {
         return 'name';
     }

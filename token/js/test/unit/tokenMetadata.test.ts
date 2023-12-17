@@ -3,28 +3,9 @@ import { expect } from 'chai';
 
 import type { TokenMetadata } from '@solana/spl-token-metadata';
 import { Field } from '@solana/spl-token-metadata';
-import { getNormalizedTokenMetadataField, updateTokenMetadata } from '../../src';
+import { updateTokenMetadata } from '../../src';
 
 describe('SPL Token 2022 Metadata Extension', () => {
-    it('can get normalized token metadata field', async () => {
-        expect(getNormalizedTokenMetadataField('name')).to.equal('name');
-        expect(getNormalizedTokenMetadataField('Name')).to.equal('name');
-        expect(getNormalizedTokenMetadataField(Field.Name)).to.equal('name');
-
-        expect(getNormalizedTokenMetadataField('symbol')).to.equal('symbol');
-        expect(getNormalizedTokenMetadataField('Symbol')).to.equal('symbol');
-        expect(getNormalizedTokenMetadataField(Field.Symbol)).to.equal('symbol');
-
-        expect(getNormalizedTokenMetadataField('uri')).to.equal('uri');
-        expect(getNormalizedTokenMetadataField('Uri')).to.equal('uri');
-        expect(getNormalizedTokenMetadataField(Field.Uri)).to.equal('uri');
-
-        expect(getNormalizedTokenMetadataField('mint')).to.equal('mint');
-        expect(getNormalizedTokenMetadataField('updateAuthority')).to.equal('updateAuthority');
-        expect(getNormalizedTokenMetadataField('Key1')).to.equal('Key1');
-        expect(getNormalizedTokenMetadataField('KEY_1')).to.equal('KEY_1');
-    });
-
     describe('Update token metadata', () => {
         it('guards against updates on mint or updateAuthority', async () => {
             const input = Object.freeze({

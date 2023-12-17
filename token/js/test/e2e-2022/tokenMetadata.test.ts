@@ -282,32 +282,42 @@ describe('Token Metadata operations', () => {
     });
 
     it('can successfully update with rent transfer', async () => {
-        await Promise.all([
-            tokenMetadataUpdateFieldWithRentTransfer(
-                connection,
-                payer,
-                authority,
-                mint.publicKey,
-                'TVL',
-                '1,000,000',
-                undefined,
-                undefined,
-                TEST_PROGRAM_ID
-            ),
-            tokenMetadataUpdateFieldWithRentTransfer(
-                connection,
-                payer,
-                authority,
-                mint.publicKey,
-                'name',
-                'TEST',
-                undefined,
-                undefined,
-                TEST_PROGRAM_ID
-            ),
-        ]);
+        await tokenMetadataUpdateFieldWithRentTransfer(
+            connection,
+            payer,
+            authority,
+            mint.publicKey,
+            'TVL',
+            '1,000,000',
+            undefined,
+            undefined,
+            TEST_PROGRAM_ID
+        );
 
-        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        let meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+
+        expect(meta).to.deep.equal({
+            updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
+            mint: mint.publicKey,
+            name: 'name',
+            symbol: 'symbol',
+            uri: 'uri',
+            additionalMetadata: [['TVL', '1,000,000']],
+        });
+
+        await tokenMetadataUpdateFieldWithRentTransfer(
+            connection,
+            payer,
+            authority,
+            mint.publicKey,
+            'name',
+            'TEST',
+            undefined,
+            undefined,
+            TEST_PROGRAM_ID
+        );
+
+        meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
 
         expect(meta).to.deep.equal({
             updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),

@@ -20,16 +20,6 @@ import {
 } from '../extensionType.js';
 import { updateTokenMetadata } from './state.js';
 
-/**
- * Calculates additional lamports need for variable length extension
- *
- * @param connection       Connection to use
- * @param address          Mint Account
- * @param tokenMetadata    Token Metadata
- * @param programId        SPL Token program account
- *
- * @return lamports to send
- */
 async function getAdditionalRentForNewMetadata(
     connection: Connection,
     address: PublicKey,
@@ -45,17 +35,6 @@ async function getAdditionalRentForNewMetadata(
     );
 }
 
-/**
- * Calculates additional lamports to update field
- *
- * @param connection       Connection to use
- * @param address          Mint Account
- * @param field            Field to update in the metadata
- * @param value            Value to write for the field
- * @param programId        SPL Token program account
- *
- * @return lamports to send
- */
 async function getAdditionalRentForUpdatedMetadata(
     connection: Connection,
     address: PublicKey,
@@ -168,14 +147,19 @@ export async function tokenMetadataInitializeWithRentTransfer(
 
     const transaction = new Transaction();
 
-    const lamports = await getAdditionalRentForNewMetadata(connection, mint, {
-        updateAuthority,
+    const lamports = await getAdditionalRentForNewMetadata(
+        connection,
         mint,
-        name,
-        symbol,
-        uri,
-        additionalMetadata: [],
-    });
+        {
+            updateAuthority,
+            mint,
+            name,
+            symbol,
+            uri,
+            additionalMetadata: [],
+        },
+        programId
+    );
 
     if (lamports > 0) {
         transaction.add(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: mint, lamports: lamports }));
@@ -277,7 +261,7 @@ export async function tokenMetadataUpdateFieldWithRentTransfer(
 
     const transaction = new Transaction();
 
-    const lamports = await getAdditionalRentForUpdatedMetadata(connection, mint, field, value);
+    const lamports = await getAdditionalRentForUpdatedMetadata(connection, mint, field, value, programId);
 
     if (lamports > 0) {
         transaction.add(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: mint, lamports: lamports }));
