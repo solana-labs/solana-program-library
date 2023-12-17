@@ -45,6 +45,10 @@ export enum ExtensionType {
 export const TYPE_SIZE = 2;
 export const LENGTH_SIZE = 2;
 
+function addTypeAndLengthToLen(len: number): number {
+    return len + TYPE_SIZE + LENGTH_SIZE;
+}
+
 // NOTE: All of these should eventually use their type's Span instead of these
 // constants.  This is provided for at least creation to work.
 export function getTypeLen(e: ExtensionType): number {
@@ -181,7 +185,7 @@ function getLen(extensionTypes: ExtensionType[], baseSize: number): number {
             ACCOUNT_TYPE_SIZE +
             extensionTypes
                 .filter((element, i) => i === extensionTypes.indexOf(element))
-                .map((element) => getTypeLen(element) + TYPE_SIZE + LENGTH_SIZE)
+                .map((element) => addTypeAndLengthToLen(getTypeLen(element)))
                 .reduce((a, b) => a + b);
         if (accountLength === MULTISIG_SIZE) {
             return accountLength + TYPE_SIZE;
@@ -201,10 +205,10 @@ export function getAccountLen(extensionTypes: ExtensionType[]): number {
 
 export function getExtensionData(extension: ExtensionType, tlvData: Buffer): Buffer | null {
     let extensionTypeIndex = 0;
-    while (extensionTypeIndex + TYPE_SIZE + LENGTH_SIZE <= tlvData.length) {
+    while (addTypeAndLengthToLen(extensionTypeIndex) <= tlvData.length) {
         const entryType = tlvData.readUInt16LE(extensionTypeIndex);
         const entryLength = tlvData.readUInt16LE(extensionTypeIndex + TYPE_SIZE);
-        const typeIndex = extensionTypeIndex + TYPE_SIZE + LENGTH_SIZE;
+        const typeIndex = addTypeAndLengthToLen(extensionTypeIndex);
         if (entryType == extension) {
             return tlvData.slice(typeIndex, typeIndex + entryLength);
         }
@@ -220,7 +224,7 @@ export function getExtensionTypes(tlvData: Buffer): ExtensionType[] {
         const entryType = tlvData.readUInt16LE(extensionTypeIndex);
         extensionTypes.push(entryType);
         const entryLength = tlvData.readUInt16LE(extensionTypeIndex + TYPE_SIZE);
-        extensionTypeIndex += TYPE_SIZE + LENGTH_SIZE + entryLength;
+        extensionTypeIndex += addTypeAndLengthToLen(entryLength);
     }
     return extensionTypes;
 }
@@ -241,8 +245,8 @@ export function getNewAccountLenForExtensionLen(
     const mint = unpackMint(address, info, programId);
     const extensionData = getExtensionData(e, mint.tlvData);
 
-    // 2 bytes type, 2 bytes length, extensionLen
-    const newExtensionLen = TYPE_SIZE + LENGTH_SIZE + extensionLen;
+    const currentExtensionLen = extensionData ? addTypeAndLengthToLen(extensionData.length) : 0;
+    const newExtensionLen = addTypeAndLengthToLen(extensionLen);
 
-    return info.data.length + newExtensionLen - (extensionData?.length || 0);
+    return info.data.length + newExtensionLen - currentExtensionLen;
 }
