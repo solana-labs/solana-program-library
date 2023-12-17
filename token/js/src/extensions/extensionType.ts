@@ -1,4 +1,4 @@
-import type { AccountInfo, Connection, PublicKey } from '@solana/web3.js';
+import type { AccountInfo, PublicKey } from '@solana/web3.js';
 
 import { ACCOUNT_SIZE } from '../state/account.js';
 import type { Mint } from '../state/mint.js';
@@ -17,7 +17,6 @@ import { PERMANENT_DELEGATE_SIZE } from './permanentDelegate.js';
 import { TRANSFER_FEE_AMOUNT_SIZE, TRANSFER_FEE_CONFIG_SIZE } from './transferFee/index.js';
 import { TRANSFER_HOOK_ACCOUNT_SIZE, TRANSFER_HOOK_SIZE } from './transferHook/index.js';
 import { TOKEN_2022_PROGRAM_ID } from '../constants.js';
-import { TokenAccountNotFoundError } from '../errors.js';
 
 // Sequence from https://github.com/solana-labs/solana-program-library/blob/master/token/program-2022/src/extension/mod.rs#L903
 export enum ExtensionType {
@@ -214,17 +213,6 @@ export function getExtensionData(extension: ExtensionType, tlvData: Buffer): Buf
     return null;
 }
 
-export function getExtensionDataFromAccountInfo(
-    address: PublicKey,
-    accountInfo: AccountInfo<Buffer> | null,
-    e: ExtensionType,
-    programId = TOKEN_2022_PROGRAM_ID
-): Buffer | null {
-    const mint = unpackMint(address, accountInfo, programId);
-
-    return getExtensionData(e, mint.tlvData);
-}
-
 export function getExtensionTypes(tlvData: Buffer): ExtensionType[] {
     const extensionTypes = [];
     let extensionTypeIndex = 0;
@@ -250,36 +238,11 @@ export function getNewAccountLenForExtensionLen(
     extensionLen: number,
     programId = TOKEN_2022_PROGRAM_ID
 ): number {
-    const data = getExtensionDataFromAccountInfo(address, info, e, programId);
+    const mint = unpackMint(address, info, programId);
+    const extensionData = getExtensionData(e, mint.tlvData);
 
     // 2 bytes type, 2 bytes length, extensionLen
     const newExtensionLen = TYPE_SIZE + LENGTH_SIZE + extensionLen;
 
-    return info.data.length + newExtensionLen - (data?.length || 0);
-}
-
-export async function getAdditionalRentForNewExtensionLen(
-    connection: Connection,
-    address: PublicKey,
-    e: ExtensionType,
-    extensionLen: number,
-    programId = TOKEN_2022_PROGRAM_ID,
-    accountInfo?: AccountInfo<Buffer> | null
-): Promise<number> {
-    // If account info was provided, don't fetch again
-    const info = accountInfo ?? (await connection.getAccountInfo(address));
-
-    if (!info) {
-        throw new TokenAccountNotFoundError();
-    }
-
-    const newAccountLen = getNewAccountLenForExtensionLen(info, address, e, extensionLen, programId);
-
-    if (newAccountLen <= info.data.length) {
-        return 0;
-    }
-
-    const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
-
-    return newRentExemptMinimum - info.lamports;
+    return info.data.length + newExtensionLen - (extensionData?.length || 0);
 }

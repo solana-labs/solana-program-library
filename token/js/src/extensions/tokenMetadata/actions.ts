@@ -13,12 +13,10 @@ import {
 
 import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import { getSigners } from '../../actions/internal.js';
-import {
-    ExtensionType,
-    getAdditionalRentForNewExtensionLen,
-    getExtensionDataFromAccountInfo,
-} from '../extensionType.js';
+import { ExtensionType, getExtensionData, getNewAccountLenForExtensionLen } from '../extensionType.js';
 import { updateTokenMetadata } from './state.js';
+import { TokenAccountNotFoundError } from '../../errors.js';
+import { unpackMint } from '../../state/index.js';
 
 async function getAdditionalRentForNewMetadata(
     connection: Connection,
@@ -26,13 +24,27 @@ async function getAdditionalRentForNewMetadata(
     tokenMetadata: TokenMetadata,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<number> {
-    return await getAdditionalRentForNewExtensionLen(
-        connection,
+    const info = await connection.getAccountInfo(address);
+    if (!info) {
+        throw new TokenAccountNotFoundError();
+    }
+
+    const extensionLen = pack(tokenMetadata).length;
+    const newAccountLen = getNewAccountLenForExtensionLen(
+        info,
         address,
         ExtensionType.TokenMetadata,
-        pack(tokenMetadata).length,
+        extensionLen,
         programId
     );
+
+    if (newAccountLen <= info.data.length) {
+        return 0;
+    }
+
+    const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
+
+    return newRentExemptMinimum - info.lamports;
 }
 
 async function getAdditionalRentForUpdatedMetadata(
@@ -43,25 +55,34 @@ async function getAdditionalRentForUpdatedMetadata(
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<number> {
     const info = await connection.getAccountInfo(address);
+    if (!info) {
+        throw new TokenAccountNotFoundError();
+    }
 
-    const data = getExtensionDataFromAccountInfo(address, info, ExtensionType.TokenMetadata, programId);
-
-    if (data === null) {
+    const mint = unpackMint(address, info, programId);
+    const extensionData = getExtensionData(ExtensionType.TokenMetadata, mint.tlvData);
+    if (extensionData === null) {
         throw new Error('TokenMetadata extension not initialised');
     }
 
-    const updatedTokenMetadata = updateTokenMetadata(unpack(data), field, value);
-
+    const updatedTokenMetadata = updateTokenMetadata(unpack(extensionData), field, value);
     const extensionLen = pack(updatedTokenMetadata).length;
 
-    return await getAdditionalRentForNewExtensionLen(
-        connection,
+    const newAccountLen = getNewAccountLenForExtensionLen(
+        info,
         address,
         ExtensionType.TokenMetadata,
         extensionLen,
-        programId,
-        info
+        programId
     );
+
+    if (newAccountLen <= info.data.length) {
+        return 0;
+    }
+
+    const newRentExemptMinimum = await connection.getMinimumBalanceForRentExemption(newAccountLen);
+
+    return newRentExemptMinimum - info.lamports;
 }
 
 /**
