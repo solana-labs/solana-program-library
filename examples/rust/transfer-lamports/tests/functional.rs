@@ -2,6 +2,7 @@ use {
     solana_program::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
+        rent::Rent,
     },
     solana_program_test::*,
     solana_sdk::{account::Account, signature::Signer, transaction::Transaction},
@@ -19,10 +20,12 @@ async fn test_lamport_transfer() {
         program_id,
         processor!(process_instruction),
     );
+    // The minimum balance to make an account with zero byte of data rent exempt
+    let minimum_balance = Rent::default().minimum_balance(0);
     program_test.add_account(
         source_pubkey,
         Account {
-            lamports: 5,
+            lamports: minimum_balance + 200,
             owner: program_id, // Can only withdraw lamports from accounts owned by the program
             ..Account::default()
         },
@@ -30,7 +33,7 @@ async fn test_lamport_transfer() {
     program_test.add_account(
         destination_pubkey,
         Account {
-            lamports: 890_875,
+            lamports: minimum_balance + 100,
             ..Account::default()
         },
     );
@@ -49,4 +52,9 @@ async fn test_lamport_transfer() {
     );
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
+
+    let source_balance = banks_client.get_balance(source_pubkey).await.unwrap();
+    assert_eq!(source_balance, minimum_balance + 195);
+    let destination_balance = banks_client.get_balance(destination_pubkey).await.unwrap();
+    assert_eq!(destination_balance, minimum_balance + 105);
 }
