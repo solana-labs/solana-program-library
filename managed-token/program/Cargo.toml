@@ -27,7 +27,7 @@ shank = "^0.2.1"
 solana-program = "1.17.6"
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [ "no-entrypoint", ] }
 spl-token = { version = "4.0", path = "../../token/program", features = ["no-entrypoint"] }
-thiserror = "^1.0.50"
+thiserror = "^1.0.51"
 
 [dev-dependencies]
 solana-program-test = "1.17.6"
