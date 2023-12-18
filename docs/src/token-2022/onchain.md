@@ -202,7 +202,7 @@ The test failures happen because the program is trying to deserialize a pure
 
 Token-2022 adds a new type called `StateWithExtensions`, which allows you to
 deserialize the base type, and then pull out any extensions on the fly. It's
-very close to the same cost as the normal `unpack`.
+very close to the cost of a normal `unpack`.
 
 Everywhere in your code, wherever you see `Mint::unpack` or `Account::unpack`,
 you'll have to change that to:
