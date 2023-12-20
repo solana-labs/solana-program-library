@@ -1,4 +1,3 @@
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { expect } from 'chai';
 
 import {
@@ -7,7 +6,29 @@ import {
     createRemoveKeyInstruction,
     createUpdateAuthorityInstruction,
     createUpdateFieldInstruction,
+    getFieldCodec,
+    getFieldConfig,
 } from '../src';
+import type { StructToDecoderTuple } from '@solana/codecs-data-structures';
+import { getBooleanDecoder, getBytesDecoder, getDataEnumCodec, getStructDecoder } from '@solana/codecs-data-structures';
+import { getStringDecoder } from '@solana/codecs-strings';
+import { splDiscriminate } from '@solana/spl-type-length-value';
+import { getU64Decoder } from '@solana/codecs-numbers';
+import type { Option } from '@solana/options';
+import { getOptionDecoder, some } from '@solana/options';
+import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
+
+function checkPackUnpack<T extends object>(
+    instruction: TransactionInstruction,
+    discriminator: Uint8Array,
+    layout: StructToDecoderTuple<T>,
+    values: T
+) {
+    expect(instruction.data.subarray(0, 8)).to.deep.equal(discriminator);
+    const decoder = getStructDecoder(layout);
+    const unpacked = decoder.decode(instruction.data.subarray(8));
+    expect(unpacked).to.deep.equal(values);
+}
 
 describe('Token Metadata Instructions', () => {
     const programId = new PublicKey('22222222222222222222222222222222222222222222');
@@ -17,150 +38,119 @@ describe('Token Metadata Instructions', () => {
     const mintAuthority = new PublicKey('66666666666666666666666666666666666666666666');
 
     it('Can create Initialize Instruction', () => {
-        const instruction = createInitializeInstruction({
-            programId,
-            metadata,
-            updateAuthority,
-            mint,
-            mintAuthority,
-            name: 'My test token',
-            symbol: 'TEST',
-            uri: 'http://test.test',
-        });
-
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+        const name = 'My test token';
+        const symbol = 'TEST';
+        const uri = 'http://test.test';
+        checkPackUnpack(
+            createInitializeInstruction({
                 programId,
-                keys: [
-                    { isSigner: false, isWritable: true, pubkey: metadata },
-                    { isSigner: false, isWritable: false, pubkey: updateAuthority },
-                    { isSigner: false, isWritable: false, pubkey: mint },
-                    { isSigner: true, isWritable: false, pubkey: mintAuthority },
-                ],
-                data: Buffer.from([
-                    // Output of rust implementation
-                    210, 225, 30, 162, 88, 184, 77, 141, 13, 0, 0, 0, 77, 121, 32, 116, 101, 115, 116, 32, 116, 111,
-                    107, 101, 110, 4, 0, 0, 0, 84, 69, 83, 84, 16, 0, 0, 0, 104, 116, 116, 112, 58, 47, 47, 116, 101,
-                    115, 116, 46, 116, 101, 115, 116,
-                ]),
-            })
+                metadata,
+                updateAuthority,
+                mint,
+                mintAuthority,
+                name,
+                symbol,
+                uri,
+            }),
+            splDiscriminate('spl_token_metadata_interface:initialize_account'),
+            [
+                ['name', getStringDecoder()],
+                ['symbol', getStringDecoder()],
+                ['uri', getStringDecoder()],
+            ],
+            { name, symbol, uri }
         );
     });
 
     it('Can create Update Field Instruction', () => {
-        const instruction = createUpdateFieldInstruction({
-            programId,
-            metadata,
-            updateAuthority,
-            field: 'MyTestField',
-            value: 'http://test.uri',
-        });
-
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+        const field = 'MyTestField';
+        const value = 'http://test.uri';
+        checkPackUnpack(
+            createUpdateFieldInstruction({
                 programId,
-                keys: [
-                    { isSigner: false, isWritable: true, pubkey: metadata },
-                    { isSigner: true, isWritable: false, pubkey: updateAuthority },
-                ],
-                data: Buffer.from([
-                    // Output of rust implementation
-                    221, 233, 49, 45, 181, 202, 220, 200, 3, 11, 0, 0, 0, 77, 121, 84, 101, 115, 116, 70, 105, 101, 108,
-                    100, 15, 0, 0, 0, 104, 116, 116, 112, 58, 47, 47, 116, 101, 115, 116, 46, 117, 114, 105,
-                ]),
-            })
+                metadata,
+                updateAuthority,
+                field,
+                value,
+            }),
+            splDiscriminate('spl_token_metadata_interface:updating_field'),
+            [
+                ['key', getDataEnumCodec(getFieldCodec())],
+                ['value', getStringDecoder()],
+            ],
+            { key: getFieldConfig(field), value }
         );
     });
 
     it('Can create Update Field Instruction with Field Enum', () => {
-        const instruction = createUpdateFieldInstruction({
-            programId,
-            metadata,
-            updateAuthority,
-            field: 'Name',
-            value: 'http://test.uri',
-        });
-
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+        const field = 'Name';
+        const value = 'http://test.uri';
+        checkPackUnpack(
+            createUpdateFieldInstruction({
                 programId,
-                keys: [
-                    { isSigner: false, isWritable: true, pubkey: metadata },
-                    { isSigner: true, isWritable: false, pubkey: updateAuthority },
-                ],
-                data: Buffer.from([
-                    // Output of rust implementation
-                    221, 233, 49, 45, 181, 202, 220, 200, 0, 15, 0, 0, 0, 104, 116, 116, 112, 58, 47, 47, 116, 101, 115,
-                    116, 46, 117, 114, 105,
-                ]),
-            })
+                metadata,
+                updateAuthority,
+                field,
+                value,
+            }),
+            splDiscriminate('spl_token_metadata_interface:updating_field'),
+            [
+                ['key', getDataEnumCodec(getFieldCodec())],
+                ['value', getStringDecoder()],
+            ],
+            { key: getFieldConfig(field), value }
         );
     });
 
     it('Can create Remove Key Instruction', () => {
-        const instruction = createRemoveKeyInstruction({
-            programId,
-            metadata,
-            updateAuthority: updateAuthority,
-            key: 'MyTestField',
-            idempotent: true,
-        });
-
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+        checkPackUnpack(
+            createRemoveKeyInstruction({
                 programId,
-                keys: [
-                    { isSigner: false, isWritable: true, pubkey: metadata },
-                    { isSigner: true, isWritable: false, pubkey: updateAuthority },
-                ],
-                data: Buffer.from([
-                    // Output of rust implementation
-                    234, 18, 32, 56, 89, 141, 37, 181, 1, 11, 0, 0, 0, 77, 121, 84, 101, 115, 116, 70, 105, 101, 108,
-                    100,
-                ]),
-            })
+                metadata,
+                updateAuthority: updateAuthority,
+                key: 'MyTestField',
+                idempotent: true,
+            }),
+            splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
+            [
+                ['idempotent', getBooleanDecoder()],
+                ['key', getStringDecoder()],
+            ],
+            { idempotent: true, key: 'MyTestField' }
         );
     });
 
     it('Can create Update Authority Instruction', () => {
-        const instruction = createUpdateAuthorityInstruction({
-            programId,
-            metadata,
-            oldAuthority: updateAuthority,
-            newAuthority: PublicKey.default,
-        });
-
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+        const newAuthority = PublicKey.default;
+        checkPackUnpack(
+            createUpdateAuthorityInstruction({
                 programId,
-                keys: [
-                    { isSigner: false, isWritable: true, pubkey: metadata },
-                    { isSigner: true, isWritable: false, pubkey: updateAuthority },
-                ],
-                data: Buffer.from([
-                    // Output of rust implementation
-                    215, 228, 166, 228, 84, 100, 86, 123, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                ]),
-            })
+                metadata,
+                oldAuthority: updateAuthority,
+                newAuthority,
+            }),
+            splDiscriminate('spl_token_metadata_interface:update_the_authority'),
+            [['newAuthority', getBytesDecoder({ size: 32 })]],
+            { newAuthority: Uint8Array.from(newAuthority.toBuffer()) }
         );
     });
-    it('Can create Emit Instruction', () => {
-        const instruction = createEmitInstruction({
-            programId,
-            metadata,
-            end: BigInt(10),
-        });
 
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+    it('Can create Emit Instruction', () => {
+        const start: Option<bigint> = some(0n);
+        const end: Option<bigint> = some(10n);
+        checkPackUnpack(
+            createEmitInstruction({
                 programId,
-                keys: [{ isSigner: false, isWritable: false, pubkey: metadata }],
-                data: Buffer.from([
-                    // Output of rust implementation
-                    250, 166, 180, 250, 13, 12, 184, 70, 0, 1, 10, 0, 0, 0, 0, 0, 0, 0,
-                ]),
-            })
+                metadata,
+                start: 0n,
+                end: 10n,
+            }),
+            splDiscriminate('spl_token_metadata_interface:emitter'),
+            [
+                ['start', getOptionDecoder(getU64Decoder())],
+                ['end', getOptionDecoder(getU64Decoder())],
+            ],
+            { start, end }
         );
     });
 });
