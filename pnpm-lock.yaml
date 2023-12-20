@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -408,7 +412,7 @@ importers:
         version: 4.0.1
       '@solana/spl-token':
         specifier: 0.3.9
-        version: link:../../token/js
+        version: 0.3.9(@solana/web3.js@1.87.6)
       '@solana/web3.js':
         specifier: ^1.87.6
         version: 1.87.6
@@ -521,7 +525,7 @@ importers:
         version: 11.1.5(rollup@4.9.0)(tslib@2.6.2)(typescript@5.3.3)
       '@solana/spl-token':
         specifier: 0.3.9
-        version: link:../../token/js
+        version: 0.3.9(@solana/web3.js@1.87.6)
       '@solana/web3.js':
         specifier: ^1.87.6
         version: 1.87.6
@@ -661,7 +665,7 @@ importers:
     devDependencies:
       '@solana/spl-token':
         specifier: 0.3.9
-        version: link:../../token/js
+        version: 0.3.9(@solana/web3.js@1.87.6)
       '@solana/web3.js':
         specifier: ^1.87.6
         version: 1.87.6
@@ -2261,7 +2265,6 @@ packages:
       - bufferutil
       - encoding
       - utf-8-validate
-    dev: false
 
   /@solana/buffer-layout@4.0.1:
     resolution: {integrity: sha512-E1ImOIAD1tBZFRdjeM4/pzTiTApC0AOBGwyAMS4fwIodCWArzJ3DWdoh8cKxeFM2fElkxBh2Aqts1BPC373rHA==}
@@ -2362,6 +2365,21 @@ packages:
       node-fetch: 2.7.0
       ws: 8.14.2(bufferutil@4.0.8)(utf-8-validate@5.0.10)
     dev: false
+
+  /@solana/spl-token@0.3.9(@solana/web3.js@1.87.6):
+    resolution: {integrity: sha512-1EXHxKICMnab35MvvY/5DBc/K/uQAOJCYnDZXw83McCAYUAfi+rwq6qfd6MmITmSTEhcfBcl/zYxmW/OSN0RmA==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@solana/web3.js': ^1.47.4
+    dependencies:
+      '@solana/buffer-layout': 4.0.1
+      '@solana/buffer-layout-utils': 0.2.0
+      '@solana/web3.js': 1.87.6
+      buffer: 6.0.3
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - utf-8-validate
 
   /@solana/transactions@2.0.0-experimental.21e994f:
     resolution: {integrity: sha512-DunbTMBzlC7jmTzkFsRm5DhGe+MjaZ8m+SJ7V520mQq+kxrbPrRmI3ikfUVdejg0WaEV4Dy+RwQ5xllsrJ47kA==}
@@ -3302,7 +3320,6 @@ packages:
 
   /bignumber.js@9.1.2:
     resolution: {integrity: sha512-2/mKyZH9K85bzOEfhXDBFZTGd1CTs+5IHpeFQo9luiBG7hghdC851Pj2WAhb6E3R6b9tZj/XKhbg4fum+Kepug==}
-    dev: false
 
   /binary-extensions@2.2.0:
     resolution: {integrity: sha512-jDctJ/IVQbZoJykoeHbhXpOlNBqGNcwXJKJog42E5HDPUwQTSdjCHdihjj0DlnheQ7blbT6dHOafNAiS8ooQKA==}
@@ -8011,7 +8028,3 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
