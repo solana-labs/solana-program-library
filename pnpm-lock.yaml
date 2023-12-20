@@ -495,6 +495,85 @@ importers:
         specifier: ^5.3.3
         version: 5.3.3
 
+  token-group/js:
+    dependencies:
+      '@solana/codecs-core':
+        specifier: 2.0.0-experimental.9741939
+        version: 2.0.0-experimental.9741939
+      '@solana/codecs-data-structures':
+        specifier: 2.0.0-experimental.9741939
+        version: 2.0.0-experimental.9741939
+      '@solana/codecs-numbers':
+        specifier: 2.0.0-experimental.9741939
+        version: 2.0.0-experimental.9741939
+      '@solana/codecs-strings':
+        specifier: 2.0.0-experimental.9741939
+        version: 2.0.0-experimental.9741939(fastestsmallesttextencoderdecoder@1.0.22)
+      '@solana/options':
+        specifier: 2.0.0-experimental.9741939
+        version: 2.0.0-experimental.9741939
+      '@solana/spl-type-length-value':
+        specifier: 0.1.0
+        version: link:../../libraries/type-length-value/js
+    devDependencies:
+      '@solana/web3.js':
+        specifier: ^1.87.6
+        version: 1.87.6
+      '@types/chai':
+        specifier: ^4.3.11
+        version: 4.3.11
+      '@types/mocha':
+        specifier: ^10.0.6
+        version: 10.0.6
+      '@types/node':
+        specifier: ^20.10.4
+        version: 20.10.4
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^6.14.0
+        version: 6.14.0(@typescript-eslint/parser@6.14.0)(eslint@8.55.0)(typescript@5.3.3)
+      '@typescript-eslint/parser':
+        specifier: ^6.14.0
+        version: 6.14.0(eslint@8.55.0)(typescript@5.3.3)
+      chai:
+        specifier: ^4.3.6
+        version: 4.3.10
+      eslint:
+        specifier: ^8.55.0
+        version: 8.55.0
+      eslint-config-prettier:
+        specifier: ^9.1.0
+        version: 9.1.0(eslint@8.55.0)
+      eslint-plugin-prettier:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/eslint@8.44.9)(eslint-config-prettier@9.1.0)(eslint@8.55.0)(prettier@3.1.1)
+      eslint-plugin-require-extensions:
+        specifier: ^0.1.1
+        version: 0.1.3(eslint@8.55.0)
+      gh-pages:
+        specifier: ^6.1.0
+        version: 6.1.0
+      mocha:
+        specifier: ^10.1.0
+        version: 10.2.0
+      prettier:
+        specifier: ^3.1.1
+        version: 3.1.1
+      shx:
+        specifier: ^0.3.4
+        version: 0.3.4
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@types/node@20.10.4)(typescript@5.3.3)
+      tslib:
+        specifier: ^2.3.1
+        version: 2.6.2
+      typedoc:
+        specifier: ^0.25.4
+        version: 0.25.4(typescript@5.3.3)
+      typescript:
+        specifier: ^5.3.3
+        version: 5.3.3
+
   token-lending/js:
     dependencies:
       '@solana/buffer-layout':
