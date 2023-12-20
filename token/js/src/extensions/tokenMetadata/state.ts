@@ -23,7 +23,7 @@ const getNormalizedTokenMetadataField = (field: Field | string): string => {
     return field;
 };
 
-export const updateTokenMetadata = (current: TokenMetadata, key: Field | string, value: string): TokenMetadata => {
+export function updateTokenMetadata(current: TokenMetadata, key: Field | string, value: string): TokenMetadata {
     const field = getNormalizedTokenMetadataField(key);
 
     if (field === 'mint' || field === 'updateAuthority') {
@@ -37,8 +37,6 @@ export const updateTokenMetadata = (current: TokenMetadata, key: Field | string,
             [field]: value,
         };
     }
-
-    // If we are here, we are updating the additional metadata
 
     // Avoid mutating input, make a shallow copy
     const additionalMetadata = [...current.additionalMetadata];
@@ -57,7 +55,7 @@ export const updateTokenMetadata = (current: TokenMetadata, key: Field | string,
         ...current,
         additionalMetadata,
     };
-};
+}
 
 /**
  * Retrieve Token Metadata Information

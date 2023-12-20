@@ -238,12 +238,12 @@ export function getAccountLenForMint(mint: Mint): number {
 export function getNewAccountLenForExtensionLen(
     info: AccountInfo<Buffer>,
     address: PublicKey,
-    e: ExtensionType,
+    extensionType: ExtensionType,
     extensionLen: number,
     programId = TOKEN_2022_PROGRAM_ID
 ): number {
     const mint = unpackMint(address, info, programId);
-    const extensionData = getExtensionData(e, mint.tlvData);
+    const extensionData = getExtensionData(extensionType, mint.tlvData);
 
     const currentExtensionLen = extensionData ? addTypeAndLengthToLen(extensionData.length) : 0;
     const newExtensionLen = addTypeAndLengthToLen(extensionLen);

@@ -2,7 +2,6 @@ import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignatur
 import { sendAndConfirmTransaction, SystemProgram, Transaction } from '@solana/web3.js';
 import type { Field, TokenMetadata } from '@solana/spl-token-metadata';
 import {
-    createEmitInstruction,
     createInitializeInstruction,
     createRemoveKeyInstruction,
     createUpdateAuthorityInstruction,
@@ -62,7 +61,7 @@ async function getAdditionalRentForUpdatedMetadata(
     const mint = unpackMint(address, info, programId);
     const extensionData = getExtensionData(ExtensionType.TokenMetadata, mint.tlvData);
     if (extensionData === null) {
-        throw new Error('TokenMetadata extension not initialised');
+        throw new Error('TokenMetadata extension not initialized');
     }
 
     const updatedTokenMetadata = updateTokenMetadata(unpack(extensionData), field, value);
@@ -90,8 +89,8 @@ async function getAdditionalRentForUpdatedMetadata(
  *
  * @param connection       Connection to use
  * @param payer            Payer of the transaction fees
- * @param updateAuthority  Update Authority
  * @param mint             Mint Account
+ * @param updateAuthority  Update Authority
  * @param mintAuthority    Mint Authority
  * @param name             Longer name of token
  * @param symbol           Shortened symbol of token
@@ -105,8 +104,8 @@ async function getAdditionalRentForUpdatedMetadata(
 export async function tokenMetadataInitialize(
     connection: Connection,
     payer: Signer,
-    updateAuthority: PublicKey,
     mint: PublicKey,
+    updateAuthority: PublicKey,
     mintAuthority: PublicKey | Signer,
     name: string,
     symbol: string,
@@ -139,8 +138,8 @@ export async function tokenMetadataInitialize(
  *
  * @param connection       Connection to use
  * @param payer            Payer of the transaction fees
- * @param updateAuthority  Update Authority
  * @param mint             Mint Account
+ * @param updateAuthority  Update Authority
  * @param mintAuthority    Mint Authority
  * @param name             Longer name of token
  * @param symbol           Shortened symbol of token
@@ -154,8 +153,8 @@ export async function tokenMetadataInitialize(
 export async function tokenMetadataInitializeWithRentTransfer(
     connection: Connection,
     payer: Signer,
-    updateAuthority: PublicKey,
     mint: PublicKey,
+    updateAuthority: PublicKey,
     mintAuthority: PublicKey | Signer,
     name: string,
     symbol: string,
@@ -211,8 +210,8 @@ export async function tokenMetadataInitializeWithRentTransfer(
  * totally new field denoted by a "key" string.
  * @param connection       Connection to use
  * @param payer            Payer of the transaction fees
- * @param updateAuthority  Update Authority
  * @param mint             Mint Account
+ * @param updateAuthority  Update Authority
  * @param field            Field to update in the metadata
  * @param value            Value to write for the field
  * @param multiSigners     Signing accounts if `authority` is a multisig
@@ -224,8 +223,8 @@ export async function tokenMetadataInitializeWithRentTransfer(
 export async function tokenMetadataUpdateField(
     connection: Connection,
     payer: Signer,
-    updateAuthority: PublicKey | Signer,
     mint: PublicKey,
+    updateAuthority: PublicKey | Signer,
     field: string | Field,
     value: string,
     multiSigners: Signer[] = [],
@@ -257,8 +256,8 @@ export async function tokenMetadataUpdateField(
  * totally new field denoted by a "key" string.
  * @param connection       Connection to use
  * @param payer            Payer of the transaction fees
- * @param updateAuthority  Update Authority
  * @param mint             Mint Account
+ * @param updateAuthority  Update Authority
  * @param field            Field to update in the metadata
  * @param value            Value to write for the field
  * @param multiSigners     Signing accounts if `authority` is a multisig
@@ -270,8 +269,8 @@ export async function tokenMetadataUpdateField(
 export async function tokenMetadataUpdateFieldWithRentTransfer(
     connection: Connection,
     payer: Signer,
-    updateAuthority: PublicKey | Signer,
     mint: PublicKey,
+    updateAuthority: PublicKey | Signer,
     field: string | Field,
     value: string,
     multiSigners: Signer[] = [],
@@ -302,42 +301,14 @@ export async function tokenMetadataUpdateFieldWithRentTransfer(
 }
 
 /**
- * Emits the token-metadata as return data
- *
- * @param connection       Connection to use
- * @param payer            Payer of the transaction fees
- * @param mint             Mint Account
- * @param confirmOptions   Options for confirming the transaction
- * @param programId        SPL Token program account
- *
- * @return Signature of the confirmed transaction
- */
-export async function tokenMetadataEmit(
-    connection: Connection,
-    payer: Signer,
-    mint: PublicKey,
-    confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
-): Promise<TransactionSignature> {
-    const transaction = new Transaction().add(
-        createEmitInstruction({
-            programId,
-            metadata: mint,
-        })
-    );
-
-    return await sendAndConfirmTransaction(connection, transaction, [payer], confirmOptions);
-}
-
-/**
  * Remove a field in a token-metadata account.
  *
  * The field can be one of the required fields (name, symbol, URI), or a
  * totally new field denoted by a "key" string.
  * @param connection       Connection to use
  * @param payer            Payer of the transaction fees
- * @param updateAuthority  Update Authority
  * @param mint             Mint Account
+ * @param updateAuthority  Update Authority
  * @param key              Key to remove in the additional metadata portion
  * @param idempotent       When true, instruction will not error if the key does not exist
  * @param multiSigners     Signing accounts if `authority` is a multisig
@@ -349,8 +320,8 @@ export async function tokenMetadataEmit(
 export async function tokenMetadataRemoveKey(
     connection: Connection,
     payer: Signer,
-    updateAuthority: PublicKey | Signer,
     mint: PublicKey,
+    updateAuthority: PublicKey | Signer,
     key: string,
     idempotent: boolean,
     multiSigners: Signer[] = [],
@@ -377,8 +348,8 @@ export async function tokenMetadataRemoveKey(
  *
  * @param connection       Connection to use
  * @param payer            Payer of the transaction fees
- * @param updateAuthority  Update Authority
  * @param mint             Mint Account
+ * @param updateAuthority  Update Authority
  * @param newAuthority     New authority for the token metadata, or unset
  * @param multiSigners     Signing accounts if `authority` is a multisig
  * @param confirmOptions   Options for confirming the transaction
@@ -389,8 +360,8 @@ export async function tokenMetadataRemoveKey(
 export async function tokenMetadataUpdateAuthority(
     connection: Connection,
     payer: Signer,
-    updateAuthority: PublicKey | Signer,
     mint: PublicKey,
+    updateAuthority: PublicKey | Signer,
     newAuthority: PublicKey | null,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,

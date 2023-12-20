@@ -1,9 +1,18 @@
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
-import type { Connection, Signer } from '@solana/web3.js';
-import { sendAndConfirmTransaction, PublicKey, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
-import { unpack } from '@solana/spl-token-metadata';
+import { getBase64Encoder } from '@solana/codecs-strings';
+import { createEmitInstruction, pack } from '@solana/spl-token-metadata';
+import {
+    type Connection,
+    sendAndConfirmTransaction,
+    Keypair,
+    type Signer,
+    SystemProgram,
+    Transaction,
+    VersionedTransaction,
+    TransactionMessage,
+} from '@solana/web3.js';
 
 import {
     ExtensionType,
@@ -11,7 +20,6 @@ import {
     createInitializeMintInstruction,
     getMintLen,
     getTokenMetadata,
-    tokenMetadataEmit,
     tokenMetadataInitialize,
     tokenMetadataInitializeWithRentTransfer,
     tokenMetadataRemoveKey,
@@ -24,30 +32,26 @@ import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../commo
 chai.use(chaiAsPromised);
 
 const TEST_TOKEN_DECIMALS = 2;
+const EXTENSIONS = [ExtensionType.MetadataPointer];
 
-describe('Token Metadata initialization', async () => {
-    const EXTENSIONS = [ExtensionType.MetadataPointer];
-    const mintLen = getMintLen(EXTENSIONS);
-
+describe('tokenMetadata', async () => {
     let connection: Connection;
     let payer: Signer;
     let mint: Keypair;
-    const authority = Keypair.fromSecretKey(
-        new Uint8Array([
-            118, 177, 37, 231, 15, 88, 210, 92, 79, 231, 202, 22, 11, 15, 121, 54, 95, 229, 149, 119, 48, 177, 187, 198,
-            223, 51, 225, 74, 12, 54, 172, 36, 207, 107, 122, 208, 209, 168, 61, 177, 190, 137, 23, 156, 84, 32, 34, 82,
-            158, 176, 55, 51, 236, 66, 130, 167, 118, 31, 120, 107, 100, 192, 147, 10,
-        ])
-    );
+    let mintAuthority: Keypair;
+    let updateAuthority: Keypair;
 
     before(async () => {
         connection = await getConnection();
         payer = await newAccountWithLamports(connection, 1000000000);
+        mintAuthority = Keypair.generate();
+        updateAuthority = Keypair.generate();
     });
 
     beforeEach(async () => {
         mint = Keypair.generate();
 
+        const mintLen = getMintLen(EXTENSIONS);
         const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
 
         const transaction = new Transaction().add(
@@ -60,14 +64,14 @@ describe('Token Metadata initialization', async () => {
             }),
             createInitializeMetadataPointerInstruction(
                 mint.publicKey,
-                authority.publicKey,
+                updateAuthority.publicKey,
                 mint.publicKey,
                 TEST_PROGRAM_ID
             ),
             createInitializeMintInstruction(
                 mint.publicKey,
                 TEST_TOKEN_DECIMALS,
-                authority.publicKey,
+                mintAuthority.publicKey,
                 null,
                 TEST_PROGRAM_ID
             )
@@ -76,25 +80,22 @@ describe('Token Metadata initialization', async () => {
         await sendAndConfirmTransaction(connection, transaction, [payer, mint], undefined);
     });
 
-    it('can successfully initialize', async () => {
-        // await expect(
-        //     tokenMetadataInitialize(
-        //         connection,
-        //         payer,
-        //         authority.publicKey,
-        //         mint.publicKey,
-        //         authority,
-        //         'name',
-        //         'symbol',
-        //         'uri',
-        //         [],
-        //         { skipPreflight: false },
-        //         TEST_PROGRAM_ID
-        //     )
-        // ).to.be.rejectedWith(/insufficient funds for rent/);
+    it('can fetch un-initialized token metadata as null', async () => {
+        expect(await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID)).to.deep.equal(null);
+    });
+
+    it('can initialize', async () => {
+        const tokenMetadata = {
+            updateAuthority: updateAuthority.publicKey,
+            mint: mint.publicKey,
+            name: 'name',
+            symbol: 'symbol',
+            uri: 'uri',
+            additionalMetadata: [],
+        };
 
         // Transfer the required amount for rent exemption
-        const lamports = await connection.getMinimumBalanceForRentExemption(mintLen + 2 + 2 + 93); // discriminator + length + data
+        const lamports = await connection.getMinimumBalanceForRentExemption(pack(tokenMetadata).length);
         const transaction = new Transaction().add(
             SystemProgram.transfer({
                 fromPubkey: payer.publicKey,
@@ -107,20 +108,20 @@ describe('Token Metadata initialization', async () => {
         await tokenMetadataInitialize(
             connection,
             payer,
-            authority.publicKey,
             mint.publicKey,
-            authority,
-            'name',
-            'symbol',
-            'uri',
-            undefined,
+            tokenMetadata.updateAuthority,
+            mintAuthority,
+            tokenMetadata.name,
+            tokenMetadata.symbol,
+            tokenMetadata.uri,
+            [mintAuthority],
             undefined,
             TEST_PROGRAM_ID
         );
 
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
-            updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
+            updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
             name: 'name',
             symbol: 'symbol',
@@ -129,23 +130,23 @@ describe('Token Metadata initialization', async () => {
         });
     });
 
-    it('can successfully initialize with rent transfer', async () => {
+    it('can initialize with rent transfer', async () => {
         await tokenMetadataInitializeWithRentTransfer(
             connection,
             payer,
-            authority.publicKey,
             mint.publicKey,
-            authority,
+            updateAuthority.publicKey,
+            mintAuthority,
             'name',
             'symbol',
             'uri',
-            undefined,
+            [mintAuthority],
             undefined,
             TEST_PROGRAM_ID
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
-            updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
+            updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
             name: 'name',
             symbol: 'symbol',
@@ -154,225 +155,247 @@ describe('Token Metadata initialization', async () => {
         });
     });
 
-    it('can handle get on un-initialize token metadata', async () => {
-        expect(await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID)).to.deep.equal(null);
-    });
-});
-
-describe('Token Metadata operations', () => {
-    const EXTENSIONS = [ExtensionType.MetadataPointer];
-    const mintLen = getMintLen(EXTENSIONS);
-
-    let connection: Connection;
-    let payer: Signer;
-    let mint: Keypair;
-    const authority = Keypair.fromSecretKey(
-        new Uint8Array([
-            118, 177, 37, 231, 15, 88, 210, 92, 79, 231, 202, 22, 11, 15, 121, 54, 95, 229, 149, 119, 48, 177, 187, 198,
-            223, 51, 225, 74, 12, 54, 172, 36, 207, 107, 122, 208, 209, 168, 61, 177, 190, 137, 23, 156, 84, 32, 34, 82,
-            158, 176, 55, 51, 236, 66, 130, 167, 118, 31, 120, 107, 100, 192, 147, 10,
-        ])
-    );
-
-    before(async () => {
-        connection = await getConnection();
-        payer = await newAccountWithLamports(connection, 1000000000);
-    });
-
-    beforeEach(async () => {
-        mint = Keypair.generate();
-
-        const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
-
-        const transaction = new Transaction().add(
-            SystemProgram.createAccount({
-                fromPubkey: payer.publicKey,
-                newAccountPubkey: mint.publicKey,
-                space: mintLen,
-                lamports: lamports,
-                programId: TEST_PROGRAM_ID,
-            }),
-            createInitializeMetadataPointerInstruction(
-                mint.publicKey,
-                authority.publicKey,
-                mint.publicKey,
-                TEST_PROGRAM_ID
-            ),
-            createInitializeMintInstruction(
-                mint.publicKey,
-                TEST_TOKEN_DECIMALS,
-                authority.publicKey,
-                null,
-                TEST_PROGRAM_ID
-            )
-        );
-
-        await sendAndConfirmTransaction(connection, transaction, [payer, mint], undefined);
-
+    it('can update an existing default field', async () => {
         await tokenMetadataInitializeWithRentTransfer(
             connection,
             payer,
-            authority.publicKey,
             mint.publicKey,
-            authority,
+            updateAuthority.publicKey,
+            mintAuthority,
             'name',
             'symbol',
             'uri',
-            undefined,
+            [mintAuthority],
             undefined,
             TEST_PROGRAM_ID
         );
-    });
-
-    it('can successfully initialize', async () => {
-        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
-        expect(meta).to.deep.equal({
-            updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
-            mint: mint.publicKey,
-            name: 'name',
-            symbol: 'symbol',
-            uri: 'uri',
-            additionalMetadata: [],
-        });
-    });
-
-    it('can successfully emit', async () => {
-        const signature = await tokenMetadataEmit(connection, payer, mint.publicKey);
-
-        // Get metadata emitted in the transaction to verify
-        const tx: any = await connection.getTransaction(signature, {
-            maxSupportedTransactionVersion: 2,
-        });
-
-        const data = Buffer.from(tx?.meta?.returnData?.data?.[0], 'base64');
-
-        expect(unpack(data)).to.deep.equal({
-            updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
-            mint: mint.publicKey,
-            name: 'name',
-            symbol: 'symbol',
-            uri: 'uri',
-            additionalMetadata: [],
-        });
-    });
-
-    it('can successfully update when reducing', async () => {
         await tokenMetadataUpdateField(
             connection,
             payer,
-            authority,
             mint.publicKey,
-            'symbol',
-            'TEST',
-            undefined,
-            undefined,
-            TEST_PROGRAM_ID
-        );
-
-        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
-
-        expect(meta).to.deep.equal({
-            updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
-            mint: mint.publicKey,
-            name: 'name',
-            symbol: 'TEST',
-            uri: 'uri',
-            additionalMetadata: [],
-        });
-    });
-
-    it('can successfully update with rent transfer', async () => {
-        await tokenMetadataUpdateFieldWithRentTransfer(
-            connection,
-            payer,
-            authority,
-            mint.publicKey,
-            'TVL',
-            '1,000,000',
-            undefined,
-            undefined,
-            TEST_PROGRAM_ID
-        );
-
-        let meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
-
-        expect(meta).to.deep.equal({
-            updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
-            mint: mint.publicKey,
-            name: 'name',
-            symbol: 'symbol',
-            uri: 'uri',
-            additionalMetadata: [['TVL', '1,000,000']],
-        });
-
-        await tokenMetadataUpdateFieldWithRentTransfer(
-            connection,
-            payer,
-            authority,
-            mint.publicKey,
+            updateAuthority.publicKey,
             'name',
             'TEST',
-            undefined,
+            [updateAuthority],
             undefined,
             TEST_PROGRAM_ID
         );
-
-        meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
-
+        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
-            updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
+            updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
             name: 'TEST',
             symbol: 'symbol',
             uri: 'uri',
-            additionalMetadata: [['TVL', '1,000,000']],
+            additionalMetadata: [],
         });
     });
 
-    it('can handle removal of default key', async () => {
-        await expect(
-            tokenMetadataRemoveKey(
-                connection,
-                payer,
-                authority,
-                mint.publicKey,
-                'name',
-                false,
-                undefined,
-                undefined,
-                TEST_PROGRAM_ID
-            )
-        ).to.be.rejectedWith(/Transaction simulation failed/);
-    });
-
-    it('can handle removal of additional metadata ', async () => {
-        await tokenMetadataUpdateFieldWithRentTransfer(
+    it('can update an existing default field with rent transfer', async () => {
+        await tokenMetadataInitializeWithRentTransfer(
             connection,
             payer,
-            authority,
             mint.publicKey,
-            'TVL',
-            '1,000,000',
-            undefined,
+            updateAuthority.publicKey,
+            mintAuthority,
+            'name',
+            'symbol',
+            'uri',
+            [mintAuthority],
             undefined,
             TEST_PROGRAM_ID
         );
-
-        await tokenMetadataRemoveKey(
+        await tokenMetadataUpdateFieldWithRentTransfer(
             connection,
             payer,
-            authority,
             mint.publicKey,
-            'TVL',
-            true,
-            undefined,
+            updateAuthority.publicKey,
+            'name',
+            'My Shiny New Token Metadata',
+            [updateAuthority],
             undefined,
             TEST_PROGRAM_ID
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
-
         expect(meta).to.deep.equal({
-            updateAuthority: new PublicKey('ExgT3gCWXJzY4a9SHqTqsTk6dPAj37WNq2uWNbmMG1JR'),
+            updateAuthority: updateAuthority.publicKey,
+            mint: mint.publicKey,
+            name: 'My Shiny New Token Metadata',
+            symbol: 'symbol',
+            uri: 'uri',
+            additionalMetadata: [],
+        });
+    });
+
+    it('can create a custom field with rent transfer', async () => {
+        await tokenMetadataInitializeWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            mintAuthority,
+            'name',
+            'symbol',
+            'uri',
+            [mintAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        await tokenMetadataUpdateFieldWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            'myCustomField',
+            'CUSTOM',
+            [updateAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        expect(meta).to.deep.equal({
+            updateAuthority: updateAuthority.publicKey,
+            mint: mint.publicKey,
+            name: 'name',
+            symbol: 'symbol',
+            uri: 'uri',
+            additionalMetadata: [['myCustomField', 'CUSTOM']],
+        });
+    });
+
+    it('can update a custom field', async () => {
+        await tokenMetadataInitializeWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            mintAuthority,
+            'name',
+            'symbol',
+            'uri',
+            [mintAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        await tokenMetadataUpdateFieldWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            'myCustomField',
+            'CUSTOM',
+            [updateAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        await tokenMetadataUpdateField(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            'myCustomField',
+            'test',
+            [updateAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        expect(meta).to.deep.equal({
+            updateAuthority: updateAuthority.publicKey,
+            mint: mint.publicKey,
+            name: 'name',
+            symbol: 'symbol',
+            uri: 'uri',
+            additionalMetadata: [['myCustomField', 'test']],
+        });
+    });
+
+    it('can update a custom field with rent transfer', async () => {
+        await tokenMetadataInitializeWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            mintAuthority,
+            'name',
+            'symbol',
+            'uri',
+            [mintAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        await tokenMetadataUpdateFieldWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            'myCustomField',
+            'CUSTOM',
+            [updateAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        await tokenMetadataUpdateFieldWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            'myCustomField',
+            'My Shiny Custom Field',
+            [updateAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        expect(meta).to.deep.equal({
+            updateAuthority: updateAuthority.publicKey,
+            mint: mint.publicKey,
+            name: 'name',
+            symbol: 'symbol',
+            uri: 'uri',
+            additionalMetadata: [['myCustomField', 'My Shiny Custom Field']],
+        });
+    });
+
+    it('can remove a custom field', async () => {
+        await tokenMetadataInitializeWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            mintAuthority,
+            'name',
+            'symbol',
+            'uri',
+            [mintAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        await tokenMetadataUpdateFieldWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            'myCustomField',
+            'CUSTOM',
+            [updateAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        await tokenMetadataRemoveKey(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            'myCustomField',
+            true,
+            [updateAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        expect(meta).to.deep.equal({
+            updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
             name: 'name',
             symbol: 'symbol',
@@ -381,21 +404,68 @@ describe('Token Metadata operations', () => {
         });
     });
 
-    it('can successfully update authority', async () => {
-        const newAuthority = PublicKey.unique();
-        await tokenMetadataUpdateAuthority(
+    it('can handle removal of a key that does not exist when idempotent is true', async () => {
+        await tokenMetadataInitializeWithRentTransfer(
             connection,
             payer,
-            authority,
             mint.publicKey,
-            newAuthority,
-            undefined,
+            updateAuthority.publicKey,
+            mintAuthority,
+            'name',
+            'symbol',
+            'uri',
+            [mintAuthority],
             undefined,
             TEST_PROGRAM_ID
         );
-
+        await tokenMetadataRemoveKey(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            'myCustomField',
+            true,
+            [updateAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        expect(meta).to.deep.equal({
+            updateAuthority: updateAuthority.publicKey,
+            mint: mint.publicKey,
+            name: 'name',
+            symbol: 'symbol',
+            uri: 'uri',
+            additionalMetadata: [],
+        });
+    });
 
+    it('can update the authority', async () => {
+        await tokenMetadataInitializeWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            mintAuthority,
+            'name',
+            'symbol',
+            'uri',
+            [mintAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const newAuthority = Keypair.generate().publicKey;
+        await tokenMetadataUpdateAuthority(
+            connection,
+            payer,
+            mint.publicKey,
+            updateAuthority.publicKey,
+            newAuthority,
+            [updateAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
             updateAuthority: newAuthority,
             mint: mint.publicKey,
@@ -406,26 +476,53 @@ describe('Token Metadata operations', () => {
         });
     });
 
-    it('can successfully remote update authority', async () => {
-        await tokenMetadataUpdateAuthority(
-            connection,
-            payer,
-            authority,
-            mint.publicKey,
-            null,
-            undefined,
-            undefined,
-            TEST_PROGRAM_ID
-        );
-
-        const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
-
-        expect(meta).to.deep.equal({
+    it('can emit part of a token metadata', async () => {
+        const tokenMetadata = {
+            updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
             name: 'name',
             symbol: 'symbol',
             uri: 'uri',
             additionalMetadata: [],
-        });
+        };
+
+        await tokenMetadataInitializeWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            tokenMetadata.updateAuthority,
+            mintAuthority,
+            tokenMetadata.name,
+            tokenMetadata.symbol,
+            tokenMetadata.uri,
+            undefined,
+            undefined,
+            TEST_PROGRAM_ID
+        );
+
+        const payerKey = payer.publicKey;
+        const recentBlockhash = await connection.getLatestBlockhash().then((res) => res.blockhash);
+        const instructions = [
+            createEmitInstruction({
+                programId: TEST_PROGRAM_ID,
+                metadata: mint.publicKey,
+                start: 0n,
+                end: 32n,
+            }),
+        ];
+        const messageV0 = new TransactionMessage({
+            payerKey,
+            recentBlockhash,
+            instructions,
+        }).compileToV0Message();
+        const tx = new VersionedTransaction(messageV0);
+        tx.sign([payer]);
+
+        const returnDataBase64 = (await connection
+            .simulateTransaction(tx)
+            .then((res) => res.value.returnData?.data[0])) as string;
+        const returnData = getBase64Encoder().encode(returnDataBase64);
+
+        expect(returnData).to.deep.equal(tokenMetadata.updateAuthority.toBuffer());
     });
 });
