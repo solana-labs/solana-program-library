@@ -1,3 +1,11 @@
+export {
+    createInitializeInstruction,
+    createUpdateFieldInstruction,
+    createRemoveKeyInstruction,
+    createUpdateAuthorityInstruction,
+    createEmitInstruction,
+} from '@solana/spl-token-metadata';
+
 export * from './associatedTokenAccount.js';
 export * from './decode.js';
 export * from './types.js';
