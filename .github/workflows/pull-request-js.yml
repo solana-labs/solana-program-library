@@ -45,6 +45,7 @@ jobs:
             single-pool,
             stake-pool,
             token,
+            token-group,
             token-lending,
             token-metadata,
             token-swap,

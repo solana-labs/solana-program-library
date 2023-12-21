@@ -1,6 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 import { getBytesCodec, getStructCodec } from '@solana/codecs-data-structures';
-import { PodU32 } from './tokenGroup.js';
+import { numberToU32Buffer } from './tokenGroup.js';
 
 const tokenGroupMemberCodec = getStructCodec([
     ['mint', getBytesCodec({ size: 32 })],
@@ -14,7 +14,7 @@ export interface TokenGroupMember {
     /** The pubkey of the `TokenGroup` */
     group: PublicKey;
     /** The member number */
-    memberNumber: PodU32;
+    memberNumber: number;
 }
 
 // Pack TokenGroupMember into byte slab
@@ -22,7 +22,7 @@ export const packTokenGroupMember = (member: TokenGroupMember): Uint8Array => {
     return tokenGroupMemberCodec.encode({
         mint: member.mint.toBuffer(),
         group: member.group.toBuffer(),
-        memberNumber: member.memberNumber.toBuffer(),
+        memberNumber: numberToU32Buffer(member.memberNumber),
     });
 };
 
@@ -32,6 +32,11 @@ export function unpackTokenGroupMember(buffer: Buffer | Uint8Array): TokenGroupM
     return {
         mint: new PublicKey(data.mint),
         group: new PublicKey(data.group),
-        memberNumber: new PodU32(data.memberNumber),
+        memberNumber: Buffer.from(data.memberNumber).readUInt32LE(),
     };
+}
+
+// Uint8Array(4) to number
+export function u32ToNumber(buffer: Buffer): number {
+    return buffer.readUInt32LE();
 }

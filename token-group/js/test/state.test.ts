@@ -2,7 +2,13 @@ import { PublicKey } from '@solana/web3.js';
 import { expect } from 'chai';
 
 import type { TokenGroup, TokenGroupMember } from '../src/state';
-import { unpackTokenGroupMember, packTokenGroupMember, unpackTokenGroup, packTokenGroup, PodU32 } from '../src';
+import {
+    unpackTokenGroupMember,
+    packTokenGroupMember,
+    unpackTokenGroup,
+    packTokenGroup,
+    numberToU32Buffer,
+} from '../src';
 
 describe('State', () => {
     describe('Token Group', () => {
@@ -10,8 +16,8 @@ describe('State', () => {
             const tokenGroup: TokenGroup = {
                 mint: new PublicKey('44444444444444444444444444444444444444444444'),
                 updateAuthority: new PublicKey('55555555555555555555555555555555555555555555'),
-                size: new PodU32(10),
-                maxSize: new PodU32(20),
+                size: 10,
+                maxSize: 20,
             };
 
             // From rust implementation
@@ -28,8 +34,8 @@ describe('State', () => {
         it('Can pack and unpack TokenGroup without updateAuthority as rust implementation', () => {
             const tokenGroup: TokenGroup = {
                 mint: new PublicKey('44444444444444444444444444444444444444444444'),
-                size: new PodU32(10),
-                maxSize: new PodU32(20),
+                size: 10,
+                maxSize: 20,
             };
 
             // From rust implementation
@@ -49,7 +55,7 @@ describe('State', () => {
             const tokenGroupMember: TokenGroupMember = {
                 mint: new PublicKey('55555555555555555555555555555555555555555555'),
                 group: new PublicKey('66666666666666666666666666666666666666666666'),
-                memberNumber: new PodU32(8),
+                memberNumber: 8,
             };
             // From rust implementation
             const bytes = Uint8Array.from([
