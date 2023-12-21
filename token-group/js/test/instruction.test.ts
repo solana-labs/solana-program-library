@@ -1,5 +1,9 @@
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { expect } from 'chai';
+import type { StructToDecoderTuple } from '@solana/codecs-data-structures';
+import { getBytesDecoder, getStructDecoder } from '@solana/codecs-data-structures';
+import { splDiscriminate } from '@solana/spl-type-length-value';
+import { getU32Decoder } from '@solana/codecs-numbers';
+import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 
 import {
     createInitializeGroupInstruction,
@@ -7,6 +11,18 @@ import {
     createUpdateGroupMaxSizeInstruction,
     createUpdateGroupAuthorityInstruction,
 } from '../src';
+
+function checkPackUnpack<T extends object>(
+    instruction: TransactionInstruction,
+    discriminator: Uint8Array,
+    layout: StructToDecoderTuple<T>,
+    values: T
+) {
+    expect(instruction.data.subarray(0, 8)).to.deep.equal(discriminator);
+    const decoder = getStructDecoder(layout);
+    const unpacked = decoder.decode(instruction.data.subarray(8));
+    expect(unpacked).to.deep.equal(values);
+}
 
 describe('Token Group Instructions', () => {
     const programId = new PublicKey('22222222222222222222222222222222222222222222');
@@ -17,76 +33,49 @@ describe('Token Group Instructions', () => {
     const maxSize = 100;
 
     it('Can create InitializeGroup Instruction', () => {
-        const instruction = createInitializeGroupInstruction({
-            programId,
-            group,
-            mint,
-            mintAuthority,
-            updateAuthority,
-            maxSize,
-        });
-
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+        checkPackUnpack(
+            createInitializeGroupInstruction({
                 programId,
-                keys: [
-                    { isSigner: false, isWritable: true, pubkey: group },
-                    { isSigner: false, isWritable: false, pubkey: mint },
-                    { isSigner: true, isWritable: false, pubkey: mintAuthority },
-                ],
-                data: Buffer.from([
-                    // Output of rust implementation
-                    121, 113, 108, 39, 54, 51, 0, 4, 45, 91, 65, 60, 101, 64, 222, 21, 12, 147, 115, 20, 77, 81, 51,
-                    202, 76, 184, 48, 186, 15, 117, 103, 22, 172, 234, 14, 80, 215, 148, 53, 229, 100, 0, 0, 0,
-                ]),
-            })
+                group,
+                mint,
+                mintAuthority,
+                updateAuthority,
+                maxSize,
+            }),
+            splDiscriminate('spl_token_group_interface:initialize_token_group'),
+            [
+                ['updateAuthority', getBytesDecoder({ size: 32 })],
+                ['maxSize', getU32Decoder()],
+            ],
+            { updateAuthority: Uint8Array.from(updateAuthority.toBuffer()), maxSize }
         );
     });
 
     it('Can create UpdateGroupMaxSize Instruction', () => {
-        const instruction = createUpdateGroupMaxSizeInstruction({
-            programId,
-            group,
-            updateAuthority,
-            maxSize,
-        });
-
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+        checkPackUnpack(
+            createUpdateGroupMaxSizeInstruction({
                 programId,
-                keys: [
-                    { isSigner: false, isWritable: true, pubkey: group },
-                    { isSigner: true, isWritable: false, pubkey: updateAuthority },
-                ],
-                data: Buffer.from([
-                    // Output of rust implementation
-                    108, 37, 171, 143, 248, 30, 18, 110, 100, 0, 0, 0,
-                ]),
-            })
+                group,
+                updateAuthority,
+                maxSize,
+            }),
+            splDiscriminate('spl_token_group_interface:update_group_max_size'),
+            [['maxSize', getU32Decoder()]],
+            { maxSize }
         );
     });
 
     it('Can create UpdateGroupAuthority Instruction', () => {
-        const instruction = createUpdateGroupAuthorityInstruction({
-            programId,
-            group,
-            currentAuthority: updateAuthority,
-            newAuthority: PublicKey.default,
-        });
-
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+        checkPackUnpack(
+            createUpdateGroupAuthorityInstruction({
                 programId,
-                keys: [
-                    { isSigner: false, isWritable: true, pubkey: group },
-                    { isSigner: true, isWritable: false, pubkey: updateAuthority },
-                ],
-                data: Buffer.from([
-                    // Output of rust implementation
-                    161, 105, 88, 1, 237, 221, 216, 203, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                ]),
-            })
+                group,
+                currentAuthority: updateAuthority,
+                newAuthority: PublicKey.default,
+            }),
+            splDiscriminate('spl_token_group_interface:update_authority'),
+            [['newAuthority', getBytesDecoder({ size: 32 })]],
+            { newAuthority: Uint8Array.from(PublicKey.default.toBuffer()) }
         );
     });
 
@@ -97,27 +86,18 @@ describe('Token Group Instructions', () => {
         const group = new PublicKey('55555555555555555555555555555555555555555555');
         const groupUpdateAuthority = new PublicKey('66666666666666666666666666666666666666666666');
 
-        const instruction = createInitializeMemberInstruction({
-            programId,
-            member,
-            memberMint,
-            memberMintAuthority,
-            group,
-            groupUpdateAuthority,
-        });
-
-        expect(instruction).to.deep.equal(
-            new TransactionInstruction({
+        checkPackUnpack(
+            createInitializeMemberInstruction({
                 programId,
-                keys: [
-                    { isSigner: false, isWritable: true, pubkey: member },
-                    { isSigner: false, isWritable: false, pubkey: memberMint },
-                    { isSigner: true, isWritable: false, pubkey: memberMintAuthority },
-                    { isSigner: false, isWritable: true, pubkey: group },
-                    { isSigner: true, isWritable: false, pubkey: groupUpdateAuthority },
-                ],
-                data: Buffer.from([152, 32, 222, 176, 223, 237, 116, 134]),
-            })
+                member,
+                memberMint,
+                memberMintAuthority,
+                group,
+                groupUpdateAuthority,
+            }),
+            splDiscriminate('spl_token_group_interface:initialize_member'),
+            [],
+            {}
         );
     });
 });
