@@ -1,11 +1,12 @@
 import { PublicKey } from '@solana/web3.js';
 import { getBytesCodec, getStructCodec } from '@solana/codecs-data-structures';
+import { getU32Codec } from '@solana/codecs-numbers';
 
 const tokenGroupCodec = getStructCodec([
     ['updateAuthority', getBytesCodec({ size: 32 })],
     ['mint', getBytesCodec({ size: 32 })],
-    ['size', getBytesCodec({ size: 4 })],
-    ['maxSize', getBytesCodec({ size: 4 })],
+    ['size', getU32Codec()],
+    ['maxSize', getU32Codec()],
 ]);
 
 export interface TokenGroup {
@@ -29,12 +30,6 @@ function isNonePubkey(buffer: Uint8Array): boolean {
     return true;
 }
 
-export function numberToU32Buffer(num: number): Buffer {
-    const buffer = Buffer.alloc(4);
-    buffer.writeUInt32LE(num);
-    return buffer;
-}
-
 // Pack TokenGroup into byte slab
 export const packTokenGroup = (group: TokenGroup): Uint8Array => {
     // If no updateAuthority given, set it to the None/Zero PublicKey for encoding
@@ -42,8 +37,8 @@ export const packTokenGroup = (group: TokenGroup): Uint8Array => {
     return tokenGroupCodec.encode({
         updateAuthority: updateAuthority.toBuffer(),
         mint: group.mint.toBuffer(),
-        size: numberToU32Buffer(group.size),
-        maxSize: numberToU32Buffer(group.maxSize),
+        size: group.size,
+        maxSize: group.maxSize,
     });
 };
 
@@ -54,13 +49,13 @@ export function unpackTokenGroup(buffer: Buffer | Uint8Array): TokenGroup {
     return isNonePubkey(data.updateAuthority)
         ? {
               mint: new PublicKey(data.mint),
-              size: Buffer.from(data.size).readUInt32LE(),
-              maxSize: Buffer.from(data.maxSize).readUInt32LE(),
+              size: data.size,
+              maxSize: data.maxSize,
           }
         : {
               updateAuthority: new PublicKey(data.updateAuthority),
               mint: new PublicKey(data.mint),
-              size: Buffer.from(data.size).readUInt32LE(),
-              maxSize: Buffer.from(data.maxSize).readUInt32LE(),
+              size: data.size,
+              maxSize: data.maxSize,
           };
 }
