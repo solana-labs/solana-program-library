@@ -24,7 +24,7 @@
     "ava": "^6.0.1",
     "eslint": "^8.55.0",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.0.1",
+    "eslint-plugin-prettier": "^5.1.0",
     "solana-bankrun": "^0.2.0",
     "tsx": "^4.6.2",
     "typescript": "^5.3.3"
