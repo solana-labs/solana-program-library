@@ -11,7 +11,7 @@ edition = "2021"
 serde-traits = ["dep:serde", "spl-pod/serde-traits"]
 
 [dependencies]
-borsh = "0.10"
+borsh = "1.3"
 serde = { version = "1.0.193", optional = true }
 solana-program = "1.17.6"
 spl-discriminator = { version = "0.1" , path = "../../libraries/discriminator" }
