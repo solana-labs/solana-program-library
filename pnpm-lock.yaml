@@ -23,8 +23,8 @@ importers:
         specifier: ^0.7.2
         version: 0.7.2
       '@metaplex-foundation/beet-solana':
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.4.1
+        version: 0.4.1
       '@solana/web3.js':
         specifier: ^1.87.6
         version: 1.87.6
@@ -1787,8 +1787,8 @@ packages:
       - utf-8-validate
     dev: true
 
-  /@metaplex-foundation/beet-solana@0.4.0:
-    resolution: {integrity: sha512-B1L94N3ZGMo53b0uOSoznbuM5GBNJ8LwSeznxBxJ+OThvfHQ4B5oMUqb+0zdLRfkKGS7Q6tpHK9P+QK0j3w2cQ==}
+  /@metaplex-foundation/beet-solana@0.4.1:
+    resolution: {integrity: sha512-/6o32FNUtwK8tjhotrvU/vorP7umBuRFvBZrC6XCk51aKidBHe5LPVPA5AjGPbV3oftMfRuXPNd9yAGeEqeCDQ==}
     dependencies:
       '@metaplex-foundation/beet': 0.7.2
       '@solana/web3.js': 1.87.6
