@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@metaplex-foundation/beet": "^0.7.2",
-    "@metaplex-foundation/beet-solana": "^0.4.0",
+    "@metaplex-foundation/beet-solana": "^0.4.1",
     "bn.js": "^5.2.1",
     "js-sha3": "^0.9.3",
     "typescript-collections": "^1.3.3"
