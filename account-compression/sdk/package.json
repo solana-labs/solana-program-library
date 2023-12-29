@@ -54,7 +54,7 @@
     "test": "start-server-and-test start-validator http://127.0.0.1:8899/health run-tests"
   },
   "dependencies": {
-    "@metaplex-foundation/beet": "^0.7.1",
+    "@metaplex-foundation/beet": "^0.7.2",
     "@metaplex-foundation/beet-solana": "^0.4.0",
     "bn.js": "^5.2.1",
     "js-sha3": "^0.9.3",
