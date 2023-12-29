@@ -95,7 +95,7 @@ fn new_throwaway_signer() -> (Arc<dyn Signer>, Pubkey) {
 }
 
 fn get_signer(
-    matches: &ArgMatches<'_>,
+    matches: &ArgMatches,
     keypair_name: &str,
     wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
 ) -> Option<(Arc<dyn Signer>, Pubkey)> {
@@ -3279,7 +3279,7 @@ struct ConfidentialTransferArgs {
 
 pub async fn process_command<'a>(
     sub_command: &CommandName,
-    sub_matches: &ArgMatches<'_>,
+    sub_matches: &ArgMatches,
     config: &Config<'a>,
     mut wallet_manager: Option<Rc<RemoteWalletManager>>,
     mut bulk_signers: Vec<Arc<dyn Signer>>,
