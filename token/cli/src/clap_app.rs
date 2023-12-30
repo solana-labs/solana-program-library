@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use {
     clap::{
         crate_description, crate_name, crate_version, App, AppSettings, Arg, ArgGroup, SubCommand,
@@ -1050,7 +1052,11 @@ pub fn app<'a>(
                     Arg::with_name("authority_type")
                         .value_name("AUTHORITY_TYPE")
                         .takes_value(true)
-                        .possible_values(&CliAuthorityType::iter().map(Into::into).collect::<Vec<_>>())
+                        .possible_values(CliAuthorityType::iter().map(|s| {
+                            let s: &str = s.into();
+                            s
+                        }))
+                        // .possible_values(&CliAuthorityType::iter().map(Into::into).collect::<Vec<_>>())
                         .index(2)
                         .required(true)
                         .help("The new authority type. \
