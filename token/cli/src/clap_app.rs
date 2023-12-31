@@ -1777,7 +1777,11 @@ pub fn app<'a>(
             SubCommand::with_name(CommandName::SyncNative.into())
                 .about("Sync a native SOL token account to its underlying lamports")
                 .arg(
-                    owner_address_arg()
+                    Arg::with_name(OWNER_ADDRESS_ARG.name)
+                        .takes_value(true)
+                        .value_name("OWNER_ADDRESS")
+                        .validator(|s| is_valid_signer(s))
+                        .help(OWNER_ADDRESS_ARG.help)
                         .index(1)
                         .conflicts_with("address")
                         .help("Owner of the associated account for the native token. \
@@ -2203,7 +2207,6 @@ pub fn app<'a>(
                 .about("Configure confidential transfers for token account")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2245,7 +2248,6 @@ pub fn app<'a>(
                 for the first time, use `configure-confidential-transfer-account` instead.")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .value_name("TOKEN_MINT_ADDRESS")
                         .validator(|s| is_valid_pubkey(s))
                         .takes_value(true)
@@ -2274,7 +2276,6 @@ pub fn app<'a>(
                 .about("Disable confidential transfers for token account")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2303,7 +2304,6 @@ pub fn app<'a>(
                 .about("Enable non-confidential transfers for token account.")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2332,7 +2332,6 @@ pub fn app<'a>(
                 .about("Disable non-confidential transfers for token account")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2361,7 +2360,6 @@ pub fn app<'a>(
                 .about("Deposit amounts for confidential transfers")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2399,7 +2397,6 @@ pub fn app<'a>(
                 .about("Withdraw amounts for confidential transfers")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2437,7 +2434,6 @@ pub fn app<'a>(
                 .about("Collect confidential tokens from pending to available balance")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
