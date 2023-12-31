@@ -392,9 +392,8 @@ where
         &multisig_member_help,
     )
     .get_matches_from(args);
-    let (sub_command, sub_matches) = app_matches.subcommand();
+    let (sub_command, matches) = app_matches.subcommand().unwrap();
     let sub_command = CommandName::from_str(sub_command).unwrap();
-    let matches = sub_matches.unwrap();
 
     let wallet_manager = None;
     let bulk_signers: Vec<Arc<dyn Signer>> = vec![Arc::new(clone_keypair(payer))];
@@ -412,9 +411,8 @@ async fn exec_test_cmd(config: &Config<'_>, args: &[&str]) -> CommandResult {
         &multisig_member_help,
     )
     .get_matches_from(args);
-    let (sub_command, sub_matches) = app_matches.subcommand();
+    let (sub_command, matches) = app_matches.subcommand().unwrap();
     let sub_command = CommandName::from_str(sub_command).unwrap();
-    let matches = sub_matches.unwrap();
 
     let mut wallet_manager = None;
     let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
