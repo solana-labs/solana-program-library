@@ -45,7 +45,7 @@ proptest = "1.4"
 serial_test = "2.0.0"
 solana-program-test = "1.17.6"
 solana-sdk = "1.17.6"
-serde_json = "1.0.108"
+serde_json = "1.0.109"
 
 [lib]
 crate-type = ["cdylib", "lib"]
