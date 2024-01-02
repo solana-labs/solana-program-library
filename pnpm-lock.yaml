@@ -123,8 +123,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.10.6)(typescript@5.3.3)
       typedoc:
-        specifier: ^0.25.5
-        version: 0.25.5(typescript@5.3.3)
+        specifier: ^0.25.6
+        version: 0.25.6(typescript@5.3.3)
       typescript:
         specifier: 5.3.3
         version: 5.3.3
@@ -254,8 +254,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.10.6)(typescript@5.3.3)
       typedoc:
-        specifier: ^0.25.5
-        version: 0.25.5(typescript@5.3.3)
+        specifier: ^0.25.6
+        version: 0.25.6(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -327,8 +327,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.10.6)(typescript@5.3.3)
       typedoc:
-        specifier: ^0.25.5
-        version: 0.25.5(typescript@5.3.3)
+        specifier: ^0.25.6
+        version: 0.25.6(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -565,8 +565,8 @@ importers:
         specifier: ^2.3.0
         version: 2.6.2
       typedoc:
-        specifier: ^0.25.5
-        version: 0.25.5(typescript@5.3.3)
+        specifier: ^0.25.6
+        version: 0.25.6(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -644,8 +644,8 @@ importers:
         specifier: ^2.3.1
         version: 2.6.2
       typedoc:
-        specifier: ^0.25.5
-        version: 0.25.5(typescript@5.3.3)
+        specifier: ^0.25.6
+        version: 0.25.6(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -802,8 +802,8 @@ importers:
         specifier: ^2.3.1
         version: 2.6.2
       typedoc:
-        specifier: ^0.25.5
-        version: 0.25.5(typescript@5.3.3)
+        specifier: ^0.25.6
+        version: 0.25.6(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -7732,8 +7732,8 @@ packages:
       is-typed-array: 1.1.12
     dev: true
 
-  /typedoc@0.25.5(typescript@5.3.3):
-    resolution: {integrity: sha512-K9HzybxB2pqZwUkJvOCbdGEIvOidMdUoUtJavpzw/rnw8Rm5bM6HugIKbGLveCmeojUEUqYO8Fqgdmnp0R2Vqg==}
+  /typedoc@0.25.6(typescript@5.3.3):
+    resolution: {integrity: sha512-1rdionQMpOkpA58qfym1J+YD+ukyA1IEIa4VZahQI2ZORez7dhOvEyUotQL/8rSoMBopdzOS+vAIsORpQO4cTA==}
     engines: {node: '>= 16'}
     hasBin: true
     peerDependencies:
