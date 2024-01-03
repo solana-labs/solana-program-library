@@ -1,11 +1,15 @@
 //! Program state
 use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    bytemuck::{Pod, Zeroable},
     solana_program::{program_pack::IsInitialized, pubkey::Pubkey},
 };
 
 /// Struct wrapping data and providing metadata
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, BorshSchema, PartialEq)]
+#[repr(C)]
+#[derive(
+    Clone, Copy, Debug, BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Pod, Zeroable,
+)]
 pub struct RecordData {
     /// Struct version, allows for upgrades to the program
     pub version: u8,
@@ -17,11 +21,26 @@ pub struct RecordData {
     pub data: Data,
 }
 
+/// The length of the data contained in the account for testing.
+const DATA_SIZE: usize = 8;
+
 /// Struct just for data
-#[derive(Clone, Debug, Default, BorshSerialize, BorshDeserialize, BorshSchema, PartialEq)]
+#[repr(C)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    BorshSerialize,
+    BorshDeserialize,
+    BorshSchema,
+    PartialEq,
+    Pod,
+    Zeroable,
+)]
 pub struct Data {
     /// The data contained by the account, could be anything or serializable
-    pub bytes: [u8; Self::DATA_SIZE],
+    pub bytes: [u8; DATA_SIZE],
 }
 
 impl Data {
@@ -46,7 +65,11 @@ impl IsInitialized for RecordData {
 
 #[cfg(test)]
 pub mod tests {
-    use {super::*, solana_program::program_error::ProgramError};
+    use {
+        super::*,
+        solana_program::program_error::ProgramError,
+        spl_pod::bytemuck::{pod_bytes_of, pod_from_bytes},
+    };
 
     /// Version for tests
     pub const TEST_VERSION: u8 = 1;
@@ -68,10 +91,10 @@ pub mod tests {
         let mut expected = vec![TEST_VERSION];
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
         expected.extend_from_slice(&TEST_DATA.bytes);
-        assert_eq!(TEST_RECORD_DATA.try_to_vec().unwrap(), expected);
+        assert_eq!(pod_bytes_of(&TEST_RECORD_DATA), expected);
         assert_eq!(
-            RecordData::try_from_slice(&expected).unwrap(),
-            TEST_RECORD_DATA
+            *pod_from_bytes::<RecordData>(&expected).unwrap(),
+            TEST_RECORD_DATA,
         );
     }
 
@@ -81,7 +104,7 @@ pub mod tests {
         let mut expected = vec![TEST_VERSION];
         expected.extend_from_slice(&TEST_PUBKEY.to_bytes());
         expected.extend_from_slice(&data);
-        let err: ProgramError = RecordData::try_from_slice(&expected).unwrap_err().into();
-        assert!(matches!(err, ProgramError::BorshIoError(_)));
+        let err: ProgramError = pod_from_bytes::<RecordData>(&expected).unwrap_err();
+        assert_eq!(err, ProgramError::InvalidArgument);
     }
 }
