@@ -1,15 +1,12 @@
 //! Program state
 use {
-    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     bytemuck::{Pod, Zeroable},
     solana_program::{program_pack::IsInitialized, pubkey::Pubkey},
 };
 
 /// Struct wrapping data and providing metadata
 #[repr(C)]
-#[derive(
-    Clone, Copy, Debug, BorshSerialize, BorshDeserialize, BorshSchema, PartialEq, Pod, Zeroable,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct RecordData {
     /// Struct version, allows for upgrades to the program
     pub version: u8,
@@ -26,18 +23,7 @@ const DATA_SIZE: usize = 8;
 
 /// Struct just for data
 #[repr(C)]
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    BorshSerialize,
-    BorshDeserialize,
-    BorshSchema,
-    PartialEq,
-    Pod,
-    Zeroable,
-)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct Data {
     /// The data contained by the account, could be anything or serializable
     pub bytes: [u8; DATA_SIZE],

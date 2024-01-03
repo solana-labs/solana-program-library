@@ -2,7 +2,6 @@
 
 use {
     crate::id,
-    borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
@@ -12,7 +11,7 @@ use {
 };
 
 /// Instructions supported by the program
-#[derive(Clone, Debug, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum RecordInstruction {
     /// Create a new record
     ///
