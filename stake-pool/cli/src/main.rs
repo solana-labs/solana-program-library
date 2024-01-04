@@ -47,10 +47,13 @@ use {
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
-        instruction::{FundingType, PreferredValidatorType},
+        instruction::{
+            cleanup_removed_validator_entries, update_stake_pool_balance,
+            update_stale_validator_list_balance, FundingType, PreferredValidatorType,
+        },
         minimum_delegation,
         state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
-        MINIMUM_RESERVE_LAMPORTS,
+        MAX_VALIDATORS_TO_UPDATE, MINIMUM_RESERVE_LAMPORTS,
     },
     std::{cmp::Ordering, num::NonZeroU32, process::exit, rc::Rc},
 };
@@ -1158,14 +1161,55 @@ fn command_update(
 
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
-    let (mut update_list_instructions, final_instructions) =
+    let (mut update_list_instructions, final_instructions) = if force {
         spl_stake_pool::instruction::update_stake_pool(
             &spl_stake_pool::id(),
             &stake_pool,
             &validator_list,
             stake_pool_address,
             no_merge,
-        );
+        )
+    } else {
+        let (withdraw_authority, _) =
+            find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address);
+        let update_list_instructions: Vec<Instruction> = validator_list
+            .validators
+            .chunks(MAX_VALIDATORS_TO_UPDATE)
+            .enumerate()
+            .filter_map(|(i, chunk)| {
+                update_stale_validator_list_balance(
+                    &spl_stake_pool::id(),
+                    stake_pool_address,
+                    &withdraw_authority,
+                    &stake_pool.validator_list,
+                    &stake_pool.reserve_stake,
+                    &validator_list,
+                    chunk.len(),
+                    i.saturating_mul(MAX_VALIDATORS_TO_UPDATE),
+                    no_merge,
+                    epoch_info.epoch,
+                )
+            })
+            .collect();
+        let final_instructions = vec![
+            update_stake_pool_balance(
+                &spl_stake_pool::id(),
+                stake_pool_address,
+                &withdraw_authority,
+                &stake_pool.validator_list,
+                &stake_pool.reserve_stake,
+                &stake_pool.manager_fee_account,
+                &stake_pool.pool_mint,
+                &stake_pool.token_program_id,
+            ),
+            cleanup_removed_validator_entries(
+                &spl_stake_pool::id(),
+                stake_pool_address,
+                &stake_pool.validator_list,
+            ),
+        ];
+        (update_list_instructions, final_instructions)
+    };
 
     let update_list_instructions_len = update_list_instructions.len();
     if update_list_instructions_len > 0 {

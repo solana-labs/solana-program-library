@@ -15,7 +15,9 @@ use {
     solana_program::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
-        stake, system_program, sysvar,
+        stake,
+        stake_history::Epoch,
+        system_program, sysvar,
     },
     std::num::NonZeroU32,
 };
@@ -1363,6 +1365,45 @@ pub fn decrease_additional_validator_stake_with_vote(
 
 /// Creates `UpdateValidatorListBalance` instruction (update validator stake
 /// account balances)
+///
+/// Returns None if all validators in the given chunk has already been updated
+/// for this epoch, returns the required instruction otherwise.
+pub fn update_stale_validator_list_balance(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list_address: &Pubkey,
+    reserve_stake: &Pubkey,
+    validator_list: &ValidatorList,
+    len: usize,
+    start_index: usize,
+    no_merge: bool,
+    current_epoch: Epoch,
+) -> Option<Instruction> {
+    let validator_list_subslice = validator_list
+        .validators
+        .get(start_index..start_index.saturating_add(len))?;
+    if validator_list_subslice.iter().all(|info| {
+        let last_update_epoch: u64 = info.last_update_epoch.into();
+        last_update_epoch >= current_epoch
+    }) {
+        return None;
+    }
+    Some(update_validator_list_balance(
+        program_id,
+        stake_pool,
+        stake_pool_withdraw_authority,
+        validator_list_address,
+        reserve_stake,
+        validator_list,
+        len,
+        start_index,
+        no_merge,
+    ))
+}
+
+/// Creates `UpdateValidatorListBalance` instruction (update validator stake
+/// account balances)
 pub fn update_validator_list_balance(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1389,13 +1430,6 @@ pub fn update_validator_list_balance(
     }
     .try_to_vec()
     .unwrap();
-    if start_index >= validator_list.validators.len() {
-        return Instruction {
-            program_id: *program_id,
-            accounts,
-            data,
-        };
-    }
     let validator_list_subslice = match validator_list
         .validators
         .get(start_index..start_index.saturating_add(len))
