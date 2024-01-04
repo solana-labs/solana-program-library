@@ -75,7 +75,7 @@ pub fn process_instruction(
             if end > data_info.data.borrow().len() {
                 Err(ProgramError::AccountDataTooSmall)
             } else {
-                data_info.data.borrow_mut()[start..end].copy_from_slice(&data);
+                data_info.data.borrow_mut()[start..end].copy_from_slice(data);
                 Ok(())
             }
         }
