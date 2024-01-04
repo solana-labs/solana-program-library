@@ -12,7 +12,7 @@ use {
 
 /// Instructions supported by the program
 #[derive(Clone, Debug, PartialEq)]
-pub enum RecordInstruction {
+pub enum RecordInstruction<'a> {
     /// Create a new record
     ///
     /// Accounts expected by this instruction:
@@ -31,7 +31,7 @@ pub enum RecordInstruction {
         /// Offset to start writing record, expressed as `u64`.
         offset: u64,
         /// Data to replace the existing record data
-        data: Vec<u8>,
+        data: &'a [u8],
     },
 
     /// Update the authority of the provided record account
@@ -54,9 +54,9 @@ pub enum RecordInstruction {
     CloseAccount,
 }
 
-impl RecordInstruction {
+impl<'a> RecordInstruction<'a> {
     /// Unpacks a byte buffer into a [RecordInstruction].
-    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+    pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
         let (&tag, rest) = input
             .split_first()
             .ok_or(ProgramError::InvalidInstructionData)?;
@@ -69,9 +69,11 @@ impl RecordInstruction {
                     .and_then(|slice| slice.try_into().ok())
                     .map(u64::from_le_bytes)
                     .ok_or(ProgramError::InvalidInstructionData)?;
-                let data = rest[U64_BYTES..].to_vec();
 
-                Self::Write { offset, data }
+                Self::Write {
+                    offset,
+                    data: &rest[U64_BYTES..],
+                }
             }
             2 => Self::SetAuthority,
             3 => Self::CloseAccount,
@@ -109,7 +111,7 @@ pub fn initialize(record_account: &Pubkey, authority: &Pubkey) -> Instruction {
 }
 
 /// Create a `RecordInstruction::Write` instruction
-pub fn write(record_account: &Pubkey, signer: &Pubkey, offset: u64, data: Vec<u8>) -> Instruction {
+pub fn write(record_account: &Pubkey, signer: &Pubkey, offset: u64, data: &[u8]) -> Instruction {
     Instruction {
         program_id: id(),
         accounts: vec![
@@ -169,10 +171,7 @@ mod tests {
     fn serialize_write() {
         let data = pod_bytes_of(&TEST_DATA);
         let offset = 0u64;
-        let instruction = RecordInstruction::Write {
-            offset: 0,
-            data: data.to_vec(),
-        };
+        let instruction = RecordInstruction::Write { offset: 0, data };
         let mut expected = vec![1];
         expected.extend_from_slice(&offset.to_le_bytes());
         expected.extend_from_slice(data);

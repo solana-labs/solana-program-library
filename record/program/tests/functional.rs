@@ -45,7 +45,7 @@ async fn initialize_storage_account(
                 &account.pubkey(),
                 &authority.pubkey(),
                 0,
-                pod_bytes_of(&data).to_vec(),
+                pod_bytes_of(&data),
             ),
         ],
         Some(&context.payer.pubkey()),
@@ -104,12 +104,7 @@ async fn initialize_with_seed_success() {
                 &id(),
             ),
             instruction::initialize(&account, &authority.pubkey()),
-            instruction::write(
-                &account,
-                &authority.pubkey(),
-                0,
-                pod_bytes_of(&data).to_vec(),
-            ),
+            instruction::write(&account, &authority.pubkey(), 0, pod_bytes_of(&data)),
         ],
         Some(&context.payer.pubkey()),
         &[&context.payer, &authority],
@@ -181,7 +176,7 @@ async fn write_success() {
             &account.pubkey(),
             &authority.pubkey(),
             0,
-            pod_bytes_of(&new_data).to_vec(),
+            pod_bytes_of(&new_data),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &authority],
@@ -225,7 +220,7 @@ async fn write_fail_wrong_authority() {
             &account.pubkey(),
             &wrong_authority.pubkey(),
             0,
-            pod_bytes_of(&new_data).to_vec(),
+            pod_bytes_of(&new_data),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_authority],
@@ -258,8 +253,7 @@ async fn write_fail_unsigned() {
 
     let data = pod_bytes_of(&Data {
         bytes: [200u8; Data::DATA_SIZE],
-    })
-    .to_vec();
+    });
 
     let transaction = Transaction::new_signed_with_payer(
         &[Instruction {
@@ -446,7 +440,7 @@ async fn set_authority_success() {
             &account.pubkey(),
             &new_authority.pubkey(),
             0,
-            pod_bytes_of(&new_data).to_vec(),
+            pod_bytes_of(&new_data),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &new_authority],
