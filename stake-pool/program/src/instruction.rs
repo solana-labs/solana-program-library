@@ -1389,13 +1389,6 @@ pub fn update_validator_list_balance(
     }
     .try_to_vec()
     .unwrap();
-    if start_index >= validator_list.validators.len() {
-        return Instruction {
-            program_id: *program_id,
-            accounts,
-            data,
-        };
-    }
     let validator_list_subslice = match validator_list
         .validators
         .get(start_index..start_index.saturating_add(len))
