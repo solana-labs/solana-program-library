@@ -94,7 +94,6 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake_account.vote.pubkey()],
             false,
         )
         .await;

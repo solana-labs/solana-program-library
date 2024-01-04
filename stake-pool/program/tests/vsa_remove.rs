@@ -87,7 +87,6 @@ async fn success() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -267,7 +266,6 @@ async fn fail_double_remove() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -567,7 +565,6 @@ async fn success_with_deactivating_transient_stake() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -629,7 +626,6 @@ async fn success_resets_preferred_validator() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -701,7 +697,6 @@ async fn success_with_hijacked_transient_account() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -746,7 +741,7 @@ async fn success_with_hijacked_transient_account() {
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &validator_list,
-                &[validator_stake.vote.pubkey()],
+                1,
                 0,
                 /* no_merge = */ false,
             ),
@@ -822,7 +817,6 @@ async fn success_with_hijacked_transient_account() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;

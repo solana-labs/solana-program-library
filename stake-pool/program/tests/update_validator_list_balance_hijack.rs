@@ -109,11 +109,6 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -143,11 +138,6 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -258,7 +248,7 @@ async fn check_ignored_hijacked_transient_stake(
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &validator_list,
-                &[stake_account.vote.pubkey()],
+                1,
                 0,
                 /* no_merge = */ false,
             ),
@@ -310,11 +300,6 @@ async fn check_ignored_hijacked_transient_stake(
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -427,7 +412,7 @@ async fn check_ignored_hijacked_validator_stake(
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &validator_list,
-                &[stake_account.vote.pubkey()],
+                1,
                 0,
                 /* no_merge = */ false,
             ),
@@ -479,11 +464,6 @@ async fn check_ignored_hijacked_validator_stake(
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;

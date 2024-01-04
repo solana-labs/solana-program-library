@@ -624,7 +624,6 @@ async fn fail_additional_with_increasing() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;

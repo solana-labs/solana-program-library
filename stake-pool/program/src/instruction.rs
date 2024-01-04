@@ -2,6 +2,8 @@
 
 #![allow(clippy::too_many_arguments)]
 
+use crate::state::ValidatorStakeInfo;
+
 use {
     crate::{
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
@@ -1370,8 +1372,8 @@ pub fn update_validator_list_balance(
     validator_list_address: &Pubkey,
     reserve_stake: &Pubkey,
     validator_list: &ValidatorList,
-    validator_vote_accounts: &[Pubkey],
-    start_index: u32,
+    len: usize,
+    start_index: usize,
     no_merge: bool,
 ) -> Instruction {
     let mut accounts = vec![
@@ -1383,43 +1385,61 @@ pub fn update_validator_list_balance(
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(stake::program::id(), false),
     ];
-    accounts.append(
-        &mut validator_vote_accounts
-            .iter()
-            .flat_map(|vote_account_address| {
-                let validator_stake_info = validator_list.find(vote_account_address);
-                if let Some(validator_stake_info) = validator_stake_info {
-                    let (validator_stake_account, _) = find_stake_program_address(
-                        program_id,
-                        vote_account_address,
-                        stake_pool,
-                        NonZeroU32::new(validator_stake_info.validator_seed_suffix.into()),
-                    );
-                    let (transient_stake_account, _) = find_transient_stake_program_address(
-                        program_id,
-                        vote_account_address,
-                        stake_pool,
-                        validator_stake_info.transient_seed_suffix.into(),
-                    );
-                    vec![
-                        AccountMeta::new(validator_stake_account, false),
-                        AccountMeta::new(transient_stake_account, false),
-                    ]
-                } else {
-                    vec![]
-                }
-            })
-            .collect::<Vec<AccountMeta>>(),
-    );
+    let data = StakePoolInstruction::UpdateValidatorListBalance {
+        start_index: start_index.try_into().unwrap(),
+        no_merge,
+    }
+    .try_to_vec()
+    .unwrap();
+    if start_index >= validator_list.validators.len() {
+        return Instruction {
+            program_id: *program_id,
+            accounts,
+            data,
+        };
+    }
+    let validator_list_subslice = match validator_list
+        .validators
+        .get(start_index..start_index + len)
+    {
+        Some(s) => s,
+        None => {
+            return Instruction {
+                program_id: *program_id,
+                accounts,
+                data,
+            }
+        }
+    };
+    accounts.extend(validator_list_subslice.iter().flat_map(
+        |ValidatorStakeInfo {
+             vote_account_address,
+             validator_seed_suffix,
+             transient_seed_suffix,
+             ..
+         }| {
+            let (validator_stake_account, _) = find_stake_program_address(
+                program_id,
+                vote_account_address,
+                stake_pool,
+                NonZeroU32::new((*validator_seed_suffix).into()),
+            );
+            let (transient_stake_account, _) = find_transient_stake_program_address(
+                program_id,
+                vote_account_address,
+                stake_pool,
+                (*transient_seed_suffix).into(),
+            );
+            [
+                AccountMeta::new(validator_stake_account, false),
+                AccountMeta::new(transient_stake_account, false),
+            ]
+        },
+    ));
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::UpdateValidatorListBalance {
-            start_index,
-            no_merge,
-        }
-        .try_to_vec()
-        .unwrap(),
+        data,
     }
 }
 
@@ -1482,18 +1502,15 @@ pub fn update_stake_pool(
     stake_pool_address: &Pubkey,
     no_merge: bool,
 ) -> (Vec<Instruction>, Vec<Instruction>) {
-    let vote_accounts: Vec<Pubkey> = validator_list
-        .validators
-        .iter()
-        .map(|item| item.vote_account_address)
-        .collect();
-
     let (withdraw_authority, _) =
         find_withdraw_authority_program_address(program_id, stake_pool_address);
 
     let mut update_list_instructions: Vec<Instruction> = vec![];
-    let mut start_index = 0;
-    for accounts_chunk in vote_accounts.chunks(MAX_VALIDATORS_TO_UPDATE) {
+    for (i, chunk) in validator_list
+        .validators
+        .chunks(MAX_VALIDATORS_TO_UPDATE)
+        .enumerate()
+    {
         update_list_instructions.push(update_validator_list_balance(
             program_id,
             stake_pool_address,
@@ -1501,11 +1518,10 @@ pub fn update_stake_pool(
             &stake_pool.validator_list,
             &stake_pool.reserve_stake,
             validator_list,
-            accounts_chunk,
-            start_index,
+            chunk.len(),
+            i * MAX_VALIDATORS_TO_UPDATE,
             no_merge,
         ));
-        start_index = start_index.saturating_add(MAX_VALIDATORS_TO_UPDATE as u32);
     }
 
     let final_instructions = vec![

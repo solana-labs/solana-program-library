@@ -172,7 +172,7 @@ async fn setup(
 #[test_case(MAX_POOL_SIZE; "no-compute-budget")]
 #[tokio::test]
 async fn update(max_validators: u32) {
-    let (mut context, stake_pool_accounts, vote_account_pubkeys, _, _, _, _) =
+    let (mut context, stake_pool_accounts, _, _, _, _, _) =
         setup(max_validators, max_validators, STAKE_AMOUNT).await;
 
     let error = stake_pool_accounts
@@ -180,7 +180,7 @@ async fn update(max_validators: u32) {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &vote_account_pubkeys[0..MAX_VALIDATORS_TO_UPDATE],
+            MAX_VALIDATORS_TO_UPDATE,
             false, /* no_merge */
         )
         .await;
@@ -335,7 +335,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[first_vote],
+            1,
             false, /* no_merge */
         )
         .await;
@@ -348,8 +348,8 @@ async fn remove_validator_from_pool(max_validators: u32) {
         &stake_pool_accounts.validator_list.pubkey(),
         &stake_pool_accounts.reserve_stake.pubkey(),
         &validator_list,
-        &[middle_vote],
-        middle_index as u32,
+        1,
+        middle_index,
         /* no_merge = */ false,
     )];
     stake_pool_accounts.maybe_add_compute_budget_instruction(&mut instructions);
@@ -373,8 +373,8 @@ async fn remove_validator_from_pool(max_validators: u32) {
         &stake_pool_accounts.validator_list.pubkey(),
         &stake_pool_accounts.reserve_stake.pubkey(),
         &validator_list,
-        &[last_vote],
-        last_index as u32,
+        1,
+        last_index,
         /* no_merge = */ false,
     )];
     stake_pool_accounts.maybe_add_compute_budget_instruction(&mut instructions);
