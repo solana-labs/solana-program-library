@@ -44,10 +44,15 @@ token groups, which can all overlap with each other and share common tooling.
 
 All of the following instructions are listed in greater detail in the source code.
 
+- [`InitializeGroup`](https://github.com/solana-labs/solana-program-library/blob/master/token-group/interface/src/instruction.rs#L22)
+- [`UpdateGroupMaxSize`](https://github.com/solana-labs/solana-program-library/blob/master/token-group/interface/src/instruction.rs#L33)
+- [`UpdateGroupAuthority`](https://github.com/solana-labs/solana-program-library/blob/master/token-group/interface/src/instruction.rs#L42)
+- [`InitializeMember`](https://github.com/solana-labs/solana-program-library/blob/master/token-group/interface/src/instruction.rs#L51)
+
 #### Initialize Group
 
 Initializes a token-group TLV entry in an account for group configurations with
-a provided maximum group size.
+a provided maximum group size and update authority.
 
 Must provide an SPL token mint and be signed by the mint authority.
 
@@ -77,14 +82,18 @@ authority.
 ### (Optional) State
 
 A program that implements the interface may write the following data fields
-into a type-length-value entry into an account.
+into a type-length-value entry into an account. Note the type discriminants
+for each.
 
 For a group:
 
 ```rust
-type Pubkey = [u8; 32];
 type OptionalNonZeroPubkey = Pubkey; // if all zeroes, interpreted as `None`
+type PodU32 = [u8; 4];
+type Pubkey = [u8; 32];
 
+/// Type discriminant: [121, 113, 108, 39, 54, 51, 0, 4]
+/// First 8 bytes of "spl_token_group_interface:initialize_token_group"
 pub struct TokenGroup {
     /// The authority that can sign to update the group
     pub update_authority: OptionalNonZeroPubkey,
@@ -101,6 +110,8 @@ pub struct TokenGroup {
 For a group member:
 
 ```rust
+/// Type discriminant: [152, 32, 222, 176, 223, 237, 116, 134]
+/// First 8 bytes of "spl_token_group_interface:initialize_member"
 pub struct TokenGroupMember {
     /// The associated mint, used to counter spoofing to be sure that member
     /// belongs to a particular mint
