@@ -63,16 +63,23 @@ impl<'a> RecordInstruction<'a> {
         Ok(match tag {
             0 => Self::Initialize,
             1 => {
+                const U32_BYTES: usize = 4;
                 const U64_BYTES: usize = 8;
                 let offset = rest
                     .get(..U64_BYTES)
                     .and_then(|slice| slice.try_into().ok())
                     .map(u64::from_le_bytes)
                     .ok_or(ProgramError::InvalidInstructionData)?;
+                let (length, data) = rest[U64_BYTES..].split_at(U32_BYTES);
+                let length = u32::from_le_bytes(
+                    length
+                        .try_into()
+                        .map_err(|_| ProgramError::InvalidInstructionData)?,
+                ) as usize;
 
                 Self::Write {
                     offset,
-                    data: &rest[U64_BYTES..],
+                    data: &data[..length],
                 }
             }
             2 => Self::SetAuthority,
@@ -89,6 +96,7 @@ impl<'a> RecordInstruction<'a> {
             Self::Write { offset, data } => {
                 buf.push(1);
                 buf.extend_from_slice(&offset.to_le_bytes());
+                buf.extend_from_slice(&(data.len() as u32).to_le_bytes());
                 buf.extend_from_slice(data);
             }
             Self::SetAuthority => buf.push(2),
@@ -174,6 +182,7 @@ mod tests {
         let instruction = RecordInstruction::Write { offset: 0, data };
         let mut expected = vec![1];
         expected.extend_from_slice(&offset.to_le_bytes());
+        expected.extend_from_slice(&(data.len() as u32).to_le_bytes());
         expected.extend_from_slice(data);
         assert_eq!(instruction.pack(), expected);
         assert_eq!(RecordInstruction::unpack(&expected).unwrap(), instruction);
