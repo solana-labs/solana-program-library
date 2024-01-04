@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
-
 importers:
 
   .:
@@ -501,9 +497,6 @@ importers:
 
   token-group/js:
     dependencies:
-      '@solana/codecs-core':
-        specifier: 2.0.0-experimental.9741939
-        version: 2.0.0-experimental.9741939
       '@solana/codecs-data-structures':
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939
@@ -8096,3 +8089,7 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false

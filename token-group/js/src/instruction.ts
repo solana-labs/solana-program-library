@@ -1,9 +1,7 @@
 import type { StructToEncoderTuple } from '@solana/codecs-data-structures';
 import type { PublicKey } from '@solana/web3.js';
-import { getBooleanEncoder, getBytesEncoder, getDataEnumCodec, getStructEncoder } from '@solana/codecs-data-structures';
-import { getU32Encoder, getU64Encoder } from '@solana/codecs-numbers';
-import { getStringEncoder } from '@solana/codecs-strings';
-import { getOptionEncoder } from '@solana/options';
+import { getBytesEncoder, getStructEncoder } from '@solana/codecs-data-structures';
+import { getU32Encoder } from '@solana/codecs-numbers';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import { TransactionInstruction } from '@solana/web3.js';
 

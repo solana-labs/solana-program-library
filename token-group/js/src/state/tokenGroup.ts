@@ -31,7 +31,7 @@ function isNonePubkey(buffer: Uint8Array): boolean {
 }
 
 // Pack TokenGroup into byte slab
-export const packTokenGroup = (group: TokenGroup): Uint8Array => {
+export function packTokenGroup(group: TokenGroup): Uint8Array {
     // If no updateAuthority given, set it to the None/Zero PublicKey for encoding
     const updateAuthority = group.updateAuthority ?? PublicKey.default;
     return tokenGroupCodec.encode({
@@ -40,7 +40,7 @@ export const packTokenGroup = (group: TokenGroup): Uint8Array => {
         size: group.size,
         maxSize: group.maxSize,
     });
-};
+}
 
 // unpack byte slab into TokenGroup
 export function unpackTokenGroup(buffer: Buffer | Uint8Array): TokenGroup {

@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import type { TokenGroup, TokenGroupMember } from '../src/state';
 import { unpackTokenGroupMember, packTokenGroupMember, unpackTokenGroup, packTokenGroup } from '../src';
 
-describe('State', () => {
+describe('Token Group State', () => {
     describe('Token Group', () => {
         function checkPackUnpack(tokenGroup: TokenGroup) {
             const packed = packTokenGroup(tokenGroup);
