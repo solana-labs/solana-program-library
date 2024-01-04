@@ -1398,7 +1398,7 @@ pub fn update_validator_list_balance(
     }
     let validator_list_subslice = match validator_list
         .validators
-        .get(start_index..start_index + len)
+        .get(start_index..start_index.saturating_add(len))
     {
         Some(s) => s,
         None => {
@@ -1517,7 +1517,7 @@ pub fn update_stake_pool(
             &stake_pool.reserve_stake,
             validator_list,
             chunk.len(),
-            i * MAX_VALIDATORS_TO_UPDATE,
+            i.saturating_mul(MAX_VALIDATORS_TO_UPDATE),
             no_merge,
         ));
     }
