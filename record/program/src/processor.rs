@@ -6,7 +6,6 @@ use {
         instruction::RecordInstruction,
         state::{Data, RecordData},
     },
-    borsh::BorshDeserialize,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -15,6 +14,7 @@ use {
         program_pack::IsInitialized,
         pubkey::Pubkey,
     },
+    spl_pod::bytemuck::{pod_from_bytes, pod_from_bytes_mut},
 };
 
 fn check_authority(authority_info: &AccountInfo, expected_authority: &Pubkey) -> ProgramResult {
@@ -35,7 +35,7 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let instruction = RecordInstruction::try_from_slice(input)?;
+    let instruction = RecordInstruction::unpack(input)?;
     let account_info_iter = &mut accounts.iter();
 
     match instruction {
@@ -45,7 +45,8 @@ pub fn process_instruction(
             let data_info = next_account_info(account_info_iter)?;
             let authority_info = next_account_info(account_info_iter)?;
 
-            let mut account_data = RecordData::try_from_slice(*data_info.data.borrow())?;
+            let raw_data = &mut data_info.data.borrow_mut();
+            let account_data = pod_from_bytes_mut::<RecordData>(raw_data)?;
             if account_data.is_initialized() {
                 msg!("Record account already initialized");
                 return Err(ProgramError::AccountAlreadyInitialized);
@@ -53,26 +54,28 @@ pub fn process_instruction(
 
             account_data.authority = *authority_info.key;
             account_data.version = RecordData::CURRENT_VERSION;
-            borsh::to_writer(&mut data_info.data.borrow_mut()[..], &account_data)
-                .map_err(|e| e.into())
+            Ok(())
         }
 
         RecordInstruction::Write { offset, data } => {
             msg!("RecordInstruction::Write");
             let data_info = next_account_info(account_info_iter)?;
             let authority_info = next_account_info(account_info_iter)?;
-            let account_data = RecordData::try_from_slice(&data_info.data.borrow())?;
-            if !account_data.is_initialized() {
-                msg!("Record account not initialized");
-                return Err(ProgramError::UninitializedAccount);
+            {
+                let raw_data = &data_info.data.borrow();
+                let account_data = pod_from_bytes::<RecordData>(raw_data)?;
+                if !account_data.is_initialized() {
+                    msg!("Record account not initialized");
+                    return Err(ProgramError::UninitializedAccount);
+                }
+                check_authority(authority_info, &account_data.authority)?;
             }
-            check_authority(authority_info, &account_data.authority)?;
             let start = RecordData::WRITABLE_START_INDEX.saturating_add(offset as usize);
             let end = start.saturating_add(data.len());
             if end > data_info.data.borrow().len() {
                 Err(ProgramError::AccountDataTooSmall)
             } else {
-                data_info.data.borrow_mut()[start..end].copy_from_slice(&data);
+                data_info.data.borrow_mut()[start..end].copy_from_slice(data);
                 Ok(())
             }
         }
@@ -82,15 +85,15 @@ pub fn process_instruction(
             let data_info = next_account_info(account_info_iter)?;
             let authority_info = next_account_info(account_info_iter)?;
             let new_authority_info = next_account_info(account_info_iter)?;
-            let mut account_data = RecordData::try_from_slice(&data_info.data.borrow())?;
+            let raw_data = &mut data_info.data.borrow_mut();
+            let account_data = pod_from_bytes_mut::<RecordData>(raw_data)?;
             if !account_data.is_initialized() {
                 msg!("Record account not initialized");
                 return Err(ProgramError::UninitializedAccount);
             }
             check_authority(authority_info, &account_data.authority)?;
             account_data.authority = *new_authority_info.key;
-            borsh::to_writer(&mut data_info.data.borrow_mut()[..], &account_data)
-                .map_err(|e| e.into())
+            Ok(())
         }
 
         RecordInstruction::CloseAccount => {
@@ -98,7 +101,8 @@ pub fn process_instruction(
             let data_info = next_account_info(account_info_iter)?;
             let authority_info = next_account_info(account_info_iter)?;
             let destination_info = next_account_info(account_info_iter)?;
-            let mut account_data = RecordData::try_from_slice(&data_info.data.borrow())?;
+            let raw_data = &mut data_info.data.borrow_mut();
+            let account_data = pod_from_bytes_mut::<RecordData>(raw_data)?;
             if !account_data.is_initialized() {
                 msg!("Record not initialized");
                 return Err(ProgramError::UninitializedAccount);
@@ -111,8 +115,7 @@ pub fn process_instruction(
                 .checked_add(data_lamports)
                 .ok_or(RecordError::Overflow)?;
             account_data.data = Data::default();
-            borsh::to_writer(&mut data_info.data.borrow_mut()[..], &account_data)
-                .map_err(|e| e.into())
+            Ok(())
         }
     }
 }

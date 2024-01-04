@@ -7111,12 +7111,13 @@ dependencies = [
 name = "spl-record"
 version = "0.1.0"
 dependencies = [
- "borsh 0.10.3",
+ "bytemuck",
  "num-derive 0.4.1",
  "num-traits",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "spl-pod 0.1.0",
  "thiserror",
 ]
 

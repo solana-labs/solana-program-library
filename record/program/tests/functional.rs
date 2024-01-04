@@ -1,9 +1,7 @@
 #![cfg(feature = "test-sbf")]
 
 use {
-    borsh::BorshSerialize,
     solana_program::{
-        borsh0_10::get_packed_len,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
         rent::Rent,
@@ -14,6 +12,7 @@ use {
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
+    spl_pod::bytemuck::{pod_bytes_of, pod_from_bytes, pod_get_packed_len},
     spl_record::{
         error::RecordError,
         id, instruction,
@@ -37,8 +36,8 @@ async fn initialize_storage_account(
             system_instruction::create_account(
                 &context.payer.pubkey(),
                 &account.pubkey(),
-                1.max(Rent::default().minimum_balance(get_packed_len::<RecordData>())),
-                get_packed_len::<RecordData>() as u64,
+                1.max(Rent::default().minimum_balance(pod_get_packed_len::<RecordData>())),
+                pod_get_packed_len::<RecordData>() as u64,
                 &id(),
             ),
             instruction::initialize(&account.pubkey(), &authority.pubkey()),
@@ -46,7 +45,7 @@ async fn initialize_storage_account(
                 &account.pubkey(),
                 &authority.pubkey(),
                 0,
-                data.try_to_vec().unwrap(),
+                pod_bytes_of(&data),
             ),
         ],
         Some(&context.payer.pubkey()),
@@ -69,12 +68,15 @@ async fn initialize_success() {
     let data = Data {
         bytes: [111u8; Data::DATA_SIZE],
     };
-    initialize_storage_account(&mut context, &authority, &account, data.clone()).await;
-    let account_data = context
+    initialize_storage_account(&mut context, &authority, &account, data).await;
+
+    let account = context
         .banks_client
-        .get_account_data_with_borsh::<RecordData>(account.pubkey())
+        .get_account(account.pubkey())
         .await
+        .unwrap()
         .unwrap();
+    let account_data = pod_from_bytes::<RecordData>(&account.data).unwrap();
     assert_eq!(account_data.data, data);
     assert_eq!(account_data.authority, authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
@@ -97,12 +99,12 @@ async fn initialize_with_seed_success() {
                 &account,
                 &authority.pubkey(),
                 seed,
-                1.max(Rent::default().minimum_balance(get_packed_len::<RecordData>())),
-                get_packed_len::<RecordData>() as u64,
+                1.max(Rent::default().minimum_balance(pod_get_packed_len::<RecordData>())),
+                pod_get_packed_len::<RecordData>() as u64,
                 &id(),
             ),
             instruction::initialize(&account, &authority.pubkey()),
-            instruction::write(&account, &authority.pubkey(), 0, data.try_to_vec().unwrap()),
+            instruction::write(&account, &authority.pubkey(), 0, pod_bytes_of(&data)),
         ],
         Some(&context.payer.pubkey()),
         &[&context.payer, &authority],
@@ -113,11 +115,13 @@ async fn initialize_with_seed_success() {
         .process_transaction(transaction)
         .await
         .unwrap();
-    let account_data = context
+    let account = context
         .banks_client
-        .get_account_data_with_borsh::<RecordData>(account)
+        .get_account(account)
         .await
+        .unwrap()
         .unwrap();
+    let account_data = pod_from_bytes::<RecordData>(&account.data).unwrap();
     assert_eq!(account_data.data, data);
     assert_eq!(account_data.authority, authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
@@ -172,7 +176,7 @@ async fn write_success() {
             &account.pubkey(),
             &authority.pubkey(),
             0,
-            new_data.try_to_vec().unwrap(),
+            pod_bytes_of(&new_data),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &authority],
@@ -184,11 +188,13 @@ async fn write_success() {
         .await
         .unwrap();
 
-    let account_data = context
+    let account = context
         .banks_client
-        .get_account_data_with_borsh::<RecordData>(account.pubkey())
+        .get_account(account.pubkey())
         .await
+        .unwrap()
         .unwrap();
+    let account_data = pod_from_bytes::<RecordData>(&account.data).unwrap();
     assert_eq!(account_data.data, new_data);
     assert_eq!(account_data.authority, authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
@@ -214,7 +220,7 @@ async fn write_fail_wrong_authority() {
             &account.pubkey(),
             &wrong_authority.pubkey(),
             0,
-            new_data.try_to_vec().unwrap(),
+            pod_bytes_of(&new_data),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_authority],
@@ -245,20 +251,19 @@ async fn write_fail_unsigned() {
     };
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
-    let data = Data {
+    let data = pod_bytes_of(&Data {
         bytes: [200u8; Data::DATA_SIZE],
-    }
-    .try_to_vec()
-    .unwrap();
+    });
+
     let transaction = Transaction::new_signed_with_payer(
-        &[Instruction::new_with_borsh(
-            id(),
-            &instruction::RecordInstruction::Write { offset: 0, data },
-            vec![
+        &[Instruction {
+            program_id: id(),
+            accounts: vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(authority.pubkey(), false),
             ],
-        )],
+            data: instruction::RecordInstruction::Write { offset: 0, data }.pack(),
+        }],
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
@@ -310,7 +315,7 @@ async fn close_account_success() {
         .unwrap();
     assert_eq!(
         account.lamports,
-        1.max(Rent::default().minimum_balance(get_packed_len::<RecordData>()))
+        1.max(Rent::default().minimum_balance(pod_get_packed_len::<RecordData>()))
     );
 }
 
@@ -327,15 +332,15 @@ async fn close_account_fail_wrong_authority() {
 
     let wrong_authority = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[Instruction::new_with_borsh(
-            id(),
-            &instruction::RecordInstruction::CloseAccount,
-            vec![
+        &[Instruction {
+            program_id: id(),
+            accounts: vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(wrong_authority.pubkey(), true),
                 AccountMeta::new(Pubkey::new_unique(), false),
             ],
-        )],
+            data: instruction::RecordInstruction::CloseAccount.pack(),
+        }],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_authority],
         context.last_blockhash,
@@ -366,15 +371,15 @@ async fn close_account_fail_unsigned() {
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[Instruction::new_with_borsh(
-            id(),
-            &instruction::RecordInstruction::CloseAccount,
-            vec![
+        &[Instruction {
+            program_id: id(),
+            accounts: vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(authority.pubkey(), false),
                 AccountMeta::new(Pubkey::new_unique(), false),
             ],
-        )],
+            data: instruction::RecordInstruction::CloseAccount.pack(),
+        }],
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
@@ -418,11 +423,13 @@ async fn set_authority_success() {
         .await
         .unwrap();
 
-    let account_data = context
+    let account_handle = context
         .banks_client
-        .get_account_data_with_borsh::<RecordData>(account.pubkey())
+        .get_account(account.pubkey())
         .await
+        .unwrap()
         .unwrap();
+    let account_data = pod_from_bytes::<RecordData>(&account_handle.data).unwrap();
     assert_eq!(account_data.authority, new_authority.pubkey());
 
     let new_data = Data {
@@ -433,7 +440,7 @@ async fn set_authority_success() {
             &account.pubkey(),
             &new_authority.pubkey(),
             0,
-            new_data.try_to_vec().unwrap(),
+            pod_bytes_of(&new_data),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &new_authority],
@@ -445,11 +452,13 @@ async fn set_authority_success() {
         .await
         .unwrap();
 
-    let account_data = context
+    let account_handle = context
         .banks_client
-        .get_account_data_with_borsh::<RecordData>(account.pubkey())
+        .get_account(account.pubkey())
         .await
+        .unwrap()
         .unwrap();
+    let account_data = pod_from_bytes::<RecordData>(&account_handle.data).unwrap();
     assert_eq!(account_data.data, new_data);
     assert_eq!(account_data.authority, new_authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
@@ -468,15 +477,15 @@ async fn set_authority_fail_wrong_authority() {
 
     let wrong_authority = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[Instruction::new_with_borsh(
-            id(),
-            &instruction::RecordInstruction::SetAuthority,
-            vec![
+        &[Instruction {
+            program_id: id(),
+            accounts: vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(wrong_authority.pubkey(), true),
                 AccountMeta::new(Pubkey::new_unique(), false),
             ],
-        )],
+            data: instruction::RecordInstruction::SetAuthority.pack(),
+        }],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_authority],
         context.last_blockhash,
@@ -507,15 +516,15 @@ async fn set_authority_fail_unsigned() {
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[Instruction::new_with_borsh(
-            id(),
-            &instruction::RecordInstruction::SetAuthority,
-            vec![
+        &[Instruction {
+            program_id: id(),
+            accounts: vec![
                 AccountMeta::new(account.pubkey(), false),
                 AccountMeta::new_readonly(authority.pubkey(), false),
                 AccountMeta::new(Pubkey::new_unique(), false),
             ],
-        )],
+            data: instruction::RecordInstruction::SetAuthority.pack(),
+        }],
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
