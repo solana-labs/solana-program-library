@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-use spl_stake_pool::MAX_VALIDATORS_TO_UPDATE;
-
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
@@ -34,7 +32,7 @@ use {
         instruction, minimum_delegation,
         processor::Processor,
         state::{self, FeeType, FutureEpoch, StakePool, ValidatorList},
-        MINIMUM_RESERVE_LAMPORTS,
+        MAX_VALIDATORS_TO_UPDATE, MINIMUM_RESERVE_LAMPORTS,
     },
     spl_token_2022::{
         extension::{ExtensionType, StateWithExtensionsOwned},

@@ -2,15 +2,13 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use crate::state::ValidatorStakeInfo;
-
 use {
     crate::{
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
         find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
         inline_mpl_token_metadata::{self, pda::find_metadata_account},
-        state::{Fee, FeeType, StakePool, ValidatorList},
+        state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
         MAX_VALIDATORS_TO_UPDATE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
