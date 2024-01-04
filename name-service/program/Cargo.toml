@@ -21,7 +21,7 @@ solana-program = "1.17.6"
 num-traits = "0.2"
 borsh = "0.10"
 num-derive = "0.4.1"
-thiserror = "1.0.50"
+thiserror = "1.0.56"
 
 [dev-dependencies]
 solana-program-test = "1.17.6"

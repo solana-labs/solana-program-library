@@ -19,7 +19,7 @@ spl-type-length-value = { version = "0.3", path = "../type-length-value" }
 spl-pod = { version = "0.1", path = "../pod" }
 
 [dev-dependencies]
-futures = "0.3.29"
+futures = "0.3.30"
 futures-util = "0.3"
 solana-client = "1.17.6"
 solana-program-test = "1.17.6"
