@@ -4,7 +4,7 @@ use {
     solana_program::{program_pack::IsInitialized, pubkey::Pubkey},
 };
 
-/// Struct wrapping data and providing metadata
+/// Header type for recorded account data
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct RecordData {
