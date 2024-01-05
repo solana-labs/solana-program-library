@@ -9,6 +9,12 @@ group or member configurations, and any tool that creates or modifies group
 or member configurations will just work with any program that implements the
 interface.
 
+This interface is compatible with any program that implements the SPL Token
+interface. However, other program implementations that are not SPL Token
+programs may still be compatible with an SPL Token Group program should that
+program's token standard support the proper components such as mint and mint
+authority accounts (see [Required Instructions](#required-instructions)).
+
 There are also structs for `TokenGroup` and `TokenGroupMember` that may
 optionally be implemented, but are not required.
 
