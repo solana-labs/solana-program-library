@@ -98,8 +98,8 @@ type OptionalNonZeroPubkey = Pubkey; // if all zeroes, interpreted as `None`
 type PodU32 = [u8; 4];
 type Pubkey = [u8; 32];
 
-/// Type discriminant: [121, 113, 108, 39, 54, 51, 0, 4]
-/// First 8 bytes of "spl_token_group_interface:initialize_token_group"
+/// Type discriminant: [214, 15, 63, 132, 49, 119, 209, 40]
+/// First 8 bytes of `hash("spl_token_group_interface:group")`
 pub struct TokenGroup {
     /// The authority that can sign to update the group
     pub update_authority: OptionalNonZeroPubkey,
@@ -116,8 +116,8 @@ pub struct TokenGroup {
 For a group member:
 
 ```rust
-/// Type discriminant: [152, 32, 222, 176, 223, 237, 116, 134]
-/// First 8 bytes of "spl_token_group_interface:initialize_member"
+/// Type discriminant: [254, 50, 168, 134, 88, 126, 100, 186]
+/// First 8 bytes of `hash("spl_token_group_interface:member")`
 pub struct TokenGroupMember {
     /// The associated mint, used to counter spoofing to be sure that member
     /// belongs to a particular mint
