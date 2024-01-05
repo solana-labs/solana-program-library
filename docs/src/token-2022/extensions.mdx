@@ -1763,3 +1763,158 @@ Coming soon!
 
   </TabItem>
 </Tabs>
+
+### Group Pointer
+
+Similar to the metadata pointer, the group pointer allows a token creator to
+designate a group account that describes the mint. However, rather than
+describing token metadata, the group account describes configurations for
+grouping tokens together.
+
+When a Token-2022 mint possesses a group pointer, the mint is considered to be
+a group mint (for example a Collection NFT). Group mints have configurations
+that allow them to be used as a point of reference for a related set of tokens.
+
+Similar to metadata, the group pointer can point to the mint itself, and a
+client must check that the mint and the group both point to each other.
+
+#### Example: Create a mint with a group pointer to an external account
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --group-address 7ZJVSav7y76M41eFeyA3xz39UDigQspVNwyJ469TgR1S
+Creating token EUMhJgfvjZa7Lb7fSqfD6WCUwELzzRVKunKSnSi4xK42 under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  EUMhJgfvjZa7Lb7fSqfD6WCUwELzzRVKunKSnSi4xK42
+Decimals:  9
+
+Signature: 3ug4Ejs16jJgEm1WyBwDDxzh9xqPzQ3a2cmy1hSYiPFcLQi9U12HYF1Dbhzb2bx75SSydfU6W4e11dGUXaPbJqVc
+```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+Coming soon!
+
+  </TabItem>
+</Tabs>
+
+### Group
+
+Token-2022 supports grouping of tokens through the group extension. The
+configurations for a group, which describe things like the update authority
+and the group's maximum size, can be stored directly in the mint itself.
+
+Token-2022 implements all of the instructions from the
+[spl-token-group-interface](https://github.com/solana-labs/solana-program-library/tree/master/token-group/interface).
+
+The group extension works directly with the group-pointer extension.
+To intialize group configurations within a mint, you must add the group-pointer
+extension, pointed at the mint itself, during mint creation.
+
+The tools do this for you automatically.
+
+#### Example: Create a mint with group configurations
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --enable-group
+Creating token 812A34SxxYx9KqFwUNAuW7Wpwtmuj2pc5u1TGQcvPnj3 under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+To initialize group configurations inside the mint, please run `spl-token initialize-group 812A34SxxYx9KqFwUNAuW7Wpwtmuj2pc5u1TGQcvPnj3 <MAX_SIZE>`, and sign with the mint authority.
+
+Address:  812A34SxxYx9KqFwUNAuW7Wpwtmuj2pc5u1TGQcvPnj3
+Decimals:  9
+
+Signature: 2BZH8KE7zVcBj7Mmnu6uCM9NT4ey7qHasZmEk6Bt3tyx1wKCXS3JtcgEvrXXEMFB5numQgA9wvR67o2Z4YQdEw7m
+
+$ spl-token initialize-group 812A34SxxYx9KqFwUNAuW7Wpwtmuj2pc5u1TGQcvPnj3 12 --update-authority 3pGiHDDek35npQuyWQ7FGcWxqJdHvVPDHDDmBFs2YxQj
+Signature: 2H16XtBqdwSbvvq8g5o2jhy4TknP6zgt71KHawEdyPvNuvusQrV4dPccUrMqjFeNTbk75AtzmzUVueH3yWiTjBCG
+```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+Coming soon!
+
+  </TabItem>
+</Tabs>
+
+### Member Pointer
+
+Similar to the metadata pointer and group pointer, the member pointer allows a
+token creator to designate a member account that describes the mint. This
+pointer describes configurations for a mint's membership of a group.
+
+When a Token-2022 mint possesses a member pointer, the mint is considered to be
+a member mint (for example an NFT that belongs to a collection).
+
+Similar to metadata and group, the member pointer can point to the mint itself,
+and a client must check that the mint and the member both point to each other.
+
+#### Example: Create a mint with a member pointer to an external account
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --member-address CXWuFdWifFQSvMMZ3UxZZVKtjYi2bZt89f5v3yV8zdVE
+Creating token 5anZzJbbj6rBkrXW7zzw7MH28xXufj7AB5oKX1Cv4fdh under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+
+Address:  5anZzJbbj6rBkrXW7zzw7MH28xXufj7AB5oKX1Cv4fdh
+Decimals:  9
+
+Signature: 3ug4Ejs16jJgEm1WyBwDDxzh9xqPzQ3a2cmy1hSYiPFcLQi9U12HYF1Dbhzb2bx75SSydfU6W4e11dGUXaPbJqVc
+```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+Coming soon!
+
+  </TabItem>
+</Tabs>
+
+### Member
+
+The member extension also plays a key role in managing groups of tokens with
+Token-2022. The configurations for a member, which describe things like the
+group address and the member's number, can be stored directly in the mint
+itself.
+
+The member extension, like the group extension, works directly with the
+member-pointer extension. To intialize member configurations within a mint,
+you must add the member-pointer extension, pointed at the mint itself, during
+mint creation.
+
+The tools do this for you automatically.
+
+#### Example: Create a mint with member configurations
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-token --program-id TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb create-token --enable-member
+Creating token 9uyqmf9Ued4yQKi4hXT5wMzPF5Nv1S6skAjkjxcCaAyV under program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb
+To initialize group member configurations inside the mint, please run `spl-token initialize-member 9uyqmf9Ued4yQKi4hXT5wMzPF5Nv1S6skAjkjxcCaAyV`, and sign with the mint authority.
+
+Address:  9uyqmf9Ued4yQKi4hXT5wMzPF5Nv1S6skAjkjxcCaAyV
+Decimals:  9
+
+Signature: 2BZH8KE7zVcBj7Mmnu6uCM9NT4ey7qHasZmEk6Bt3tyx1wKCXS3JtcgEvrXXEMFB5numQgA9wvR67o2Z4YQdEw7m
+
+$ spl-token initialize-member 9uyqmf9Ued4yQKi4hXT5wMzPF5Nv1S6skAjkjxcCaAyV --update-authority 3pGiHDDek35npQuyWQ7FGcWxqJdHvVPDHDDmBFs2YxQj
+Signature: 2H16XtBqdwSbvvq8g5o2jhy4TknP6zgt71KHawEdyPvNuvusQrV4dPccUrMqjFeNTbk75AtzmzUVueH3yWiTjBCG
+```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+Coming soon!
+
+  </TabItem>
+</Tabs>
