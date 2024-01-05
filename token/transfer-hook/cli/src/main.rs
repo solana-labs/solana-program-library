@@ -259,13 +259,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .multiple(true)
                         .min_values(0)
                         .index(3)
-                        .help("Additional account(s) required for a transfer hook and their \
-                            respective configurations, whether they are a fixed address or PDA. \
-                            \nAdditional accounts with known fixed addresses can be passed at the \
-                            command line in the format \"<PUBKEY>:<ROLE>\". The role must be \
-                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\". \
-                            \n Additional acounts requiring seed configurations can be defined in a \
-                            configuration file using either JSON or YAML.")
+                        .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
+
+Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonly-signer", or "writable-signer".
+
+Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
+                            
+```json
+{
+    "extraMetas": [
+        {
+            "pubkey": "39UhV...",
+            "role": "readonly-signer"
+        },
+        {
+            "seeds": [
+                {
+                    "literal": {
+                        "bytes": [1, 2, 3, 4, 5, 6]
+                    }
+                },
+                {
+                    "accountKey": {
+                        "index": 0
+                    }
+                }
+            ],
+            "role": "writable"
+        }
+    ]
+}
+```
+
+```yaml
+extraMetas:
+  - pubkey: "39UhV..."
+      role: "readonly-signer"
+  - seeds:
+      - literal:
+          bytes: [1, 2, 3, 4, 5, 6]
+      - accountKey:
+          index: 0
+      role: "writable"
+```
+"#)
                 )
                 .arg(
                     Arg::new("mint_authority")
@@ -306,13 +343,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .multiple(true)
                         .min_values(0)
                         .index(3)
-                        .help("Additional account(s) required for a transfer hook and their \
-                            respective configurations, whether they are a fixed address or PDA. \
-                            \nAdditional accounts with known fixed addresses can be passed at the \
-                            command line in the format \"<PUBKEY>:<ROLE>\". The role must be \
-                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\". \
-                            \n Additional acounts requiring seed configurations can be defined in a \
-                            configuration file using either JSON or YAML.")
+                        .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
+
+Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonly-signer", or "writable-signer".
+
+Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
+                            
+```json
+{
+    "extraMetas": [
+        {
+            "pubkey": "39UhV...",
+            "role": "readonly-signer"
+        },
+        {
+            "seeds": [
+                {
+                    "literal": {
+                        "bytes": [1, 2, 3, 4, 5, 6]
+                    }
+                },
+                {
+                    "accountKey": {
+                        "index": 0
+                    }
+                }
+            ],
+            "role": "writable"
+        }
+    ]
+}
+```
+
+```yaml
+extraMetas:
+  - pubkey: "39UhV..."
+      role: "readonly-signer"
+  - seeds:
+      - literal:
+          bytes: [1, 2, 3, 4, 5, 6]
+      - accountKey:
+          index: 0
+      role: "writable"
+```
+"#)
                 )
                 .arg(
                     Arg::new("mint_authority")

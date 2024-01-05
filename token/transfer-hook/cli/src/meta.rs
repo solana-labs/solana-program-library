@@ -97,7 +97,10 @@ fn get_parse_function(path: &Path) -> Result<ParseFn, String> {
         Some("yaml") | Some("yml") => Ok(|v: &str| {
             serde_yaml::from_str::<ConfigFile>(v).map_err(|e| format!("Unable to parse file: {e}"))
         }),
-        _ => Err(format!("Unsupported file extension: {}", path.display())),
+        _ => Err(format!(
+            "Unsupported file extension: {}. Only JSON and YAML files are supported",
+            path.display()
+        )),
     }
 }
 
