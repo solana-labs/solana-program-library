@@ -9,9 +9,7 @@ use {
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Access {
-    #[serde(alias = "is_signer")]
     is_signer: bool,
-    #[serde(alias = "is_writable")]
     is_writable: bool,
 }
 
@@ -51,7 +49,6 @@ struct Config {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ConfigFile {
-    #[serde(alias = "extra_metas")]
     extra_metas: Vec<Config>,
 }
 
@@ -259,30 +256,30 @@ mod tests {
     #[test]
     fn test_parse_yaml() {
         let config = r#"
-            extra_metas:
+            extraMetas:
                 - pubkey: "39UhVsxAmJwzPnoWhBSHsZ6nBDtdzt9D8rfDa8zGHrP6"
                   role: "readonly-signer"
                 - pubkey: "6WEvW9B9jTKc3EhP1ewGEJPrxw5d8vD9eMYCf2snNYsV"
-                  is_signer: false
-                  is_writable: false
+                  isSigner: false
+                  isWritable: false
                 - seeds:
                     - literal:
                         bytes: [1, 2, 3, 4, 5, 6]
-                    - instruction_data:
+                    - instructionData:
                         index: 0
                         length: 8
-                    - account_key:
+                    - accountKey:
                         index: 0
                   role: "writable"
                 - seeds:
-                    - account_data:
-                        account_index: 1
-                        data_index: 4
+                    - accountData:
+                        accountIndex: 1
+                        dataIndex: 4
                         length: 4
-                    - account_key:
+                    - accountKey:
                         index: 1
-                  is_signer: false
-                  is_writable: false
+                  isSigner: false
+                  isWritable: false
         "#;
         let parsed_config_file = serde_yaml::from_str::<ConfigFile>(config).unwrap();
         let parsed_extra_metas: Vec<ExtraAccountMeta> = parsed_config_file

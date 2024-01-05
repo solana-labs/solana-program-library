@@ -57,7 +57,6 @@ pub enum Seed {
     ///     * 1 - Discriminator
     ///     * 1 - Start index of instruction data
     ///     * 1 - Length of instruction data starting at index
-    #[cfg_attr(feature = "serde-traits", serde(alias = "instruction_data"))]
     InstructionData {
         /// The index where the bytes of an instruction argument begin
         index: u8,
@@ -72,7 +71,6 @@ pub enum Seed {
     /// Packed as:
     ///     * 1 - Discriminator
     ///     * 1 - Index of account in accounts list
-    #[cfg_attr(feature = "serde-traits", serde(alias = "account_key"))]
     AccountKey {
         /// The index of the account in the entire accounts list
         index: u8,
@@ -89,10 +87,8 @@ pub enum Seed {
     )]
     AccountData {
         /// The index of the account in the entire accounts list
-        #[cfg_attr(feature = "serde-traits", serde(alias = "account_index"))]
         account_index: u8,
         /// The index where the bytes of an account data argument begin
-        #[cfg_attr(feature = "serde-traits", serde(alias = "data_index"))]
         data_index: u8,
         /// The length of the argument (number of bytes)
         ///
