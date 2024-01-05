@@ -946,6 +946,7 @@ where
                         .map_ok(|opt| opt.map(|acc| acc.data))
                 },
                 self.get_address(),
+                amount,
             )
             .await
             .map_err(|_| TokenError::AccountNotFound)?;
