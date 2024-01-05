@@ -173,7 +173,9 @@ pub fn process_instruction(
             }
             msg!(
                 "reallocating +{:?} bytes",
-                needed_account_length - data_info.data_len()
+                needed_account_length
+                    .checked_sub(data_info.data_len())
+                    .unwrap(),
             );
             data_info.realloc(needed_account_length, false)?;
 
