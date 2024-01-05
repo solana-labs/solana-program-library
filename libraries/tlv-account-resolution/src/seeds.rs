@@ -27,10 +27,14 @@
 //! No matter which types of seeds you choose, the total size of all seed
 //! configurations must be less than or equal to 32 bytes.
 
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 use {crate::error::AccountResolutionError, solana_program::program_error::ProgramError};
 
 /// Enum to describe a required seed for a Program-Derived Address
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 pub enum Seed {
     /// Uninitialized configuration byte space
     Uninitialized,
@@ -77,6 +81,10 @@ pub enum Seed {
     ///     * 1 - Index of account in accounts list
     ///     * 1 - Start index of account data
     ///     * 1 - Length of account data starting at index
+    #[cfg_attr(
+        feature = "serde-traits",
+        serde(rename_all = "camelCase", alias = "account_data")
+    )]
     AccountData {
         /// The index of the account in the entire accounts list
         account_index: u8,

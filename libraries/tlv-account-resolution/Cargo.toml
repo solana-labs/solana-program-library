@@ -8,10 +8,12 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
+serde-traits = ["dep:serde"]
 test-sbf = []
 
 [dependencies]
 bytemuck = { version = "1.14.0", features = ["derive"] }
+serde = { version = "1.0.193", optional = true }
 solana-program = "1.17.6"
 spl-discriminator = { version = "0.1", path = "../discriminator" }
 spl-program-error = { version = "0.3", path = "../program-error" }
