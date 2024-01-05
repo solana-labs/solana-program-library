@@ -18,13 +18,13 @@ export interface TokenGroupMember {
 }
 
 // Pack TokenGroupMember into byte slab
-export const packTokenGroupMember = (member: TokenGroupMember): Uint8Array => {
+export function packTokenGroupMember(member: TokenGroupMember): Uint8Array {
     return tokenGroupMemberCodec.encode({
         mint: member.mint.toBuffer(),
         group: member.group.toBuffer(),
         memberNumber: member.memberNumber,
     });
-};
+}
 
 // unpack byte slab into TokenGroupMember
 export function unpackTokenGroupMember(buffer: Buffer | Uint8Array): TokenGroupMember {
