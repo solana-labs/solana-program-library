@@ -3,11 +3,14 @@
 pub use spl_transfer_hook_interface::offchain::{AccountDataResult, AccountFetchError};
 use {
     crate::{
+        error::TokenError,
         extension::{transfer_hook, StateWithExtensions},
         state::Mint,
     },
-    solana_program::{instruction::Instruction, program_error::ProgramError, pubkey::Pubkey},
-    spl_transfer_hook_interface::offchain::resolve_extra_account_metas,
+    solana_program::{instruction::Instruction, msg, program_error::ProgramError, pubkey::Pubkey},
+    spl_transfer_hook_interface::{
+        get_extra_account_metas_address, offchain::resolve_extra_account_metas,
+    },
     std::future::Future,
 };
 
@@ -33,10 +36,18 @@ use {
 ///     &mint,
 /// ).await?;
 /// ```
+/// Note that this offchain helper will build a new `Execute` instruction,
+/// resolve the extra account metas, and then add them to the transfer
+/// instruction. This is because the extra account metas are configured
+/// specifically for the `Execute` instruction, which requires five accounts
+/// (source, mint, destination, authority, and validation state), wheras the
+/// transfer instruction only requires four (source, mint, destination, and
+/// authority) in addition to `n` number of multisig authorities.
 pub async fn resolve_extra_transfer_account_metas<F, Fut>(
     instruction: &mut Instruction,
     fetch_account_data_fn: F,
     mint_address: &Pubkey,
+    amount: u64,
 ) -> Result<(), AccountFetchError>
 where
     F: Fn(Pubkey) -> Fut,
@@ -46,14 +57,38 @@ where
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
     let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+
     if let Some(program_id) = transfer_hook::get_program_id(&mint) {
+        // Convert the transfer instruction into an `Execute` instruction,
+        // then resolve the extra account metas as configured in the validation
+        // account data, then finally add the extra account metas to the original
+        // transfer instruction.
+        if instruction.accounts.len() < 4 {
+            msg!("Not a valid transfer instruction");
+            Err(TokenError::InvalidInstruction)?;
+        }
+
+        let mut execute_ix = spl_transfer_hook_interface::instruction::execute(
+            &program_id,
+            &instruction.accounts[0].pubkey,
+            &instruction.accounts[1].pubkey,
+            &instruction.accounts[2].pubkey,
+            &instruction.accounts[3].pubkey,
+            &get_extra_account_metas_address(mint_address, &program_id),
+            amount,
+        );
+
         resolve_extra_account_metas(
-            instruction,
+            &mut execute_ix,
             fetch_account_data_fn,
             mint_address,
             &program_id,
         )
         .await?;
+
+        instruction
+            .accounts
+            .extend_from_slice(&execute_ix.accounts[5..]);
     }
     Ok(())
 }

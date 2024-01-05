@@ -715,6 +715,7 @@ async fn success_transfers_using_onchain_helper() {
             )
         },
         &mint_a,
+        amount,
     )
     .await
     .unwrap();
@@ -730,6 +731,7 @@ async fn success_transfers_using_onchain_helper() {
             )
         },
         &mint_b,
+        amount,
     )
     .await
     .unwrap();
