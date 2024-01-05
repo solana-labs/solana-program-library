@@ -162,10 +162,7 @@ pub fn close_account(record_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*, crate::state::tests::TEST_DATA, solana_program::program_error::ProgramError,
-        spl_pod::bytemuck::pod_bytes_of,
-    };
+    use {super::*, crate::state::tests::TEST_BYTES, solana_program::program_error::ProgramError};
 
     #[test]
     fn serialize_initialize() {
@@ -177,7 +174,7 @@ mod tests {
 
     #[test]
     fn serialize_write() {
-        let data = pod_bytes_of(&TEST_DATA);
+        let data = &TEST_BYTES;
         let offset = 0u64;
         let instruction = RecordInstruction::Write { offset: 0, data };
         let mut expected = vec![1];
@@ -207,7 +204,7 @@ mod tests {
     #[test]
     fn deserialize_invalid_instruction() {
         let mut expected = vec![12];
-        expected.append(&mut pod_bytes_of(&TEST_DATA).to_vec());
+        expected.extend_from_slice(&TEST_BYTES);
         let err: ProgramError = RecordInstruction::unpack(&expected).unwrap_err();
         assert_eq!(err, ProgramError::InvalidInstructionData);
     }
