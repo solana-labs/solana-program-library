@@ -1,11 +1,7 @@
 //! Program state processor
 
 use {
-    crate::{
-        error::RecordError,
-        instruction::RecordInstruction,
-        state::{Data, RecordData},
-    },
+    crate::{error::RecordError, instruction::RecordInstruction, state::RecordData},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
@@ -46,7 +42,13 @@ pub fn process_instruction(
             let authority_info = next_account_info(account_info_iter)?;
 
             let raw_data = &mut data_info.data.borrow_mut();
-            let account_data = pod_from_bytes_mut::<RecordData>(raw_data)?;
+            if raw_data.len() < RecordData::WRITABLE_START_INDEX {
+                return Err(ProgramError::InvalidAccountData);
+            }
+
+            let account_data = pod_from_bytes_mut::<RecordData>(
+                &mut raw_data[..RecordData::WRITABLE_START_INDEX],
+            )?;
             if account_data.is_initialized() {
                 msg!("Record account already initialized");
                 return Err(ProgramError::AccountAlreadyInitialized);
@@ -63,7 +65,11 @@ pub fn process_instruction(
             let authority_info = next_account_info(account_info_iter)?;
             {
                 let raw_data = &data_info.data.borrow();
-                let account_data = pod_from_bytes::<RecordData>(raw_data)?;
+                if raw_data.len() < RecordData::WRITABLE_START_INDEX {
+                    return Err(ProgramError::InvalidAccountData);
+                }
+                let account_data =
+                    pod_from_bytes::<RecordData>(&raw_data[..RecordData::WRITABLE_START_INDEX])?;
                 if !account_data.is_initialized() {
                     msg!("Record account not initialized");
                     return Err(ProgramError::UninitializedAccount);
@@ -86,7 +92,12 @@ pub fn process_instruction(
             let authority_info = next_account_info(account_info_iter)?;
             let new_authority_info = next_account_info(account_info_iter)?;
             let raw_data = &mut data_info.data.borrow_mut();
-            let account_data = pod_from_bytes_mut::<RecordData>(raw_data)?;
+            if raw_data.len() < RecordData::WRITABLE_START_INDEX {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            let account_data = pod_from_bytes_mut::<RecordData>(
+                &mut raw_data[..RecordData::WRITABLE_START_INDEX],
+            )?;
             if !account_data.is_initialized() {
                 msg!("Record account not initialized");
                 return Err(ProgramError::UninitializedAccount);
@@ -102,7 +113,12 @@ pub fn process_instruction(
             let authority_info = next_account_info(account_info_iter)?;
             let destination_info = next_account_info(account_info_iter)?;
             let raw_data = &mut data_info.data.borrow_mut();
-            let account_data = pod_from_bytes_mut::<RecordData>(raw_data)?;
+            if raw_data.len() < RecordData::WRITABLE_START_INDEX {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            let account_data = pod_from_bytes_mut::<RecordData>(
+                &mut raw_data[..RecordData::WRITABLE_START_INDEX],
+            )?;
             if !account_data.is_initialized() {
                 msg!("Record not initialized");
                 return Err(ProgramError::UninitializedAccount);
@@ -114,7 +130,6 @@ pub fn process_instruction(
             **destination_info.lamports.borrow_mut() = destination_starting_lamports
                 .checked_add(data_lamports)
                 .ok_or(RecordError::Overflow)?;
-            account_data.data = Data::default();
             Ok(())
         }
     }

@@ -12,12 +12,9 @@ use {
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
-    spl_pod::bytemuck::{pod_bytes_of, pod_from_bytes, pod_get_packed_len},
+    spl_pod::bytemuck::{pod_from_bytes, pod_get_packed_len},
     spl_record::{
-        error::RecordError,
-        id, instruction,
-        processor::process_instruction,
-        state::{Data, RecordData},
+        error::RecordError, id, instruction, processor::process_instruction, state::RecordData,
     },
 };
 
@@ -29,24 +26,22 @@ async fn initialize_storage_account(
     context: &mut ProgramTestContext,
     authority: &Keypair,
     account: &Keypair,
-    data: Data,
+    data: &[u8],
 ) {
+    let account_length = pod_get_packed_len::<RecordData>()
+        .checked_add(data.len())
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::create_account(
                 &context.payer.pubkey(),
                 &account.pubkey(),
-                1.max(Rent::default().minimum_balance(pod_get_packed_len::<RecordData>())),
-                pod_get_packed_len::<RecordData>() as u64,
+                1.max(Rent::default().minimum_balance(account_length)),
+                account_length as u64,
                 &id(),
             ),
             instruction::initialize(&account.pubkey(), &authority.pubkey()),
-            instruction::write(
-                &account.pubkey(),
-                &authority.pubkey(),
-                0,
-                pod_bytes_of(&data),
-            ),
+            instruction::write(&account.pubkey(), &authority.pubkey(), 0, data),
         ],
         Some(&context.payer.pubkey()),
         &[&context.payer, account, authority],
@@ -65,9 +60,7 @@ async fn initialize_success() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [111u8; Data::DATA_SIZE],
-    };
+    let data = &[111u8; 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
     let account = context
@@ -76,10 +69,11 @@ async fn initialize_success() {
         .await
         .unwrap()
         .unwrap();
-    let account_data = pod_from_bytes::<RecordData>(&account.data).unwrap();
-    assert_eq!(account_data.data, data);
+    let account_data =
+        pod_from_bytes::<RecordData>(&account.data[..RecordData::WRITABLE_START_INDEX]).unwrap();
     assert_eq!(account_data.authority, authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
+    assert_eq!(&account.data[RecordData::WRITABLE_START_INDEX..], data);
 }
 
 #[tokio::test]
@@ -89,9 +83,10 @@ async fn initialize_with_seed_success() {
     let authority = Keypair::new();
     let seed = "storage";
     let account = Pubkey::create_with_seed(&authority.pubkey(), seed, &id()).unwrap();
-    let data = Data {
-        bytes: [111u8; Data::DATA_SIZE],
-    };
+    let data = &[111u8; 8];
+    let account_length = pod_get_packed_len::<RecordData>()
+        .checked_add(data.len())
+        .unwrap();
     let transaction = Transaction::new_signed_with_payer(
         &[
             system_instruction::create_account_with_seed(
@@ -99,12 +94,12 @@ async fn initialize_with_seed_success() {
                 &account,
                 &authority.pubkey(),
                 seed,
-                1.max(Rent::default().minimum_balance(pod_get_packed_len::<RecordData>())),
-                pod_get_packed_len::<RecordData>() as u64,
+                1.max(Rent::default().minimum_balance(account_length)),
+                account_length as u64,
                 &id(),
             ),
             instruction::initialize(&account, &authority.pubkey()),
-            instruction::write(&account, &authority.pubkey(), 0, pod_bytes_of(&data)),
+            instruction::write(&account, &authority.pubkey(), 0, data),
         ],
         Some(&context.payer.pubkey()),
         &[&context.payer, &authority],
@@ -121,10 +116,11 @@ async fn initialize_with_seed_success() {
         .await
         .unwrap()
         .unwrap();
-    let account_data = pod_from_bytes::<RecordData>(&account.data).unwrap();
-    assert_eq!(account_data.data, data);
+    let account_data =
+        pod_from_bytes::<RecordData>(&account.data[..RecordData::WRITABLE_START_INDEX]).unwrap();
     assert_eq!(account_data.authority, authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
+    assert_eq!(&account.data[RecordData::WRITABLE_START_INDEX..], data);
 }
 
 #[tokio::test]
@@ -133,9 +129,7 @@ async fn initialize_twice_fail() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [111u8; Data::DATA_SIZE],
-    };
+    let data = &[111u8; 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::initialize(
@@ -163,20 +157,16 @@ async fn write_success() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [222u8; Data::DATA_SIZE],
-    };
+    let data = &[222u8; 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
-    let new_data = Data {
-        bytes: [200u8; Data::DATA_SIZE],
-    };
+    let new_data = &[200u8; 8];
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::write(
             &account.pubkey(),
             &authority.pubkey(),
             0,
-            pod_bytes_of(&new_data),
+            new_data,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &authority],
@@ -194,10 +184,11 @@ async fn write_success() {
         .await
         .unwrap()
         .unwrap();
-    let account_data = pod_from_bytes::<RecordData>(&account.data).unwrap();
-    assert_eq!(account_data.data, new_data);
+    let account_data =
+        pod_from_bytes::<RecordData>(&account.data[..RecordData::WRITABLE_START_INDEX]).unwrap();
     assert_eq!(account_data.authority, authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
+    assert_eq!(&account.data[RecordData::WRITABLE_START_INDEX..], new_data);
 }
 
 #[tokio::test]
@@ -206,21 +197,17 @@ async fn write_fail_wrong_authority() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [222u8; Data::DATA_SIZE],
-    };
+    let data = &[222u8; 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
-    let new_data = Data {
-        bytes: [200u8; Data::DATA_SIZE],
-    };
+    let new_data = &[200u8; 8];
     let wrong_authority = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::write(
             &account.pubkey(),
             &wrong_authority.pubkey(),
             0,
-            pod_bytes_of(&new_data),
+            new_data,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_authority],
@@ -246,14 +233,10 @@ async fn write_fail_unsigned() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [222u8; Data::DATA_SIZE],
-    };
+    let data = &[222u8; 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
-    let data = pod_bytes_of(&Data {
-        bytes: [200u8; Data::DATA_SIZE],
-    });
+    let data = &[200u8; 8];
 
     let transaction = Transaction::new_signed_with_payer(
         &[Instruction {
@@ -285,9 +268,10 @@ async fn close_account_success() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [222u8; Data::DATA_SIZE],
-    };
+    let data = &[222u8; 8];
+    let account_length = pod_get_packed_len::<RecordData>()
+        .checked_add(data.len())
+        .unwrap();
     initialize_storage_account(&mut context, &authority, &account, data).await;
     let recipient = Pubkey::new_unique();
 
@@ -315,7 +299,7 @@ async fn close_account_success() {
         .unwrap();
     assert_eq!(
         account.lamports,
-        1.max(Rent::default().minimum_balance(pod_get_packed_len::<RecordData>()))
+        1.max(Rent::default().minimum_balance(account_length))
     );
 }
 
@@ -325,9 +309,7 @@ async fn close_account_fail_wrong_authority() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [222u8; Data::DATA_SIZE],
-    };
+    let data = &[222u8; 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
     let wrong_authority = Keypair::new();
@@ -365,9 +347,7 @@ async fn close_account_fail_unsigned() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [222u8; Data::DATA_SIZE],
-    };
+    let data = &[222u8, 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
     let transaction = Transaction::new_signed_with_payer(
@@ -401,9 +381,7 @@ async fn set_authority_success() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [222u8; Data::DATA_SIZE],
-    };
+    let data = &[222u8; 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
     let new_authority = Keypair::new();
 
@@ -429,18 +407,18 @@ async fn set_authority_success() {
         .await
         .unwrap()
         .unwrap();
-    let account_data = pod_from_bytes::<RecordData>(&account_handle.data).unwrap();
+    let account_data =
+        pod_from_bytes::<RecordData>(&account_handle.data[..RecordData::WRITABLE_START_INDEX])
+            .unwrap();
     assert_eq!(account_data.authority, new_authority.pubkey());
 
-    let new_data = Data {
-        bytes: [200u8; Data::DATA_SIZE],
-    };
+    let new_data = &[200u8; 8];
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::write(
             &account.pubkey(),
             &new_authority.pubkey(),
             0,
-            pod_bytes_of(&new_data),
+            new_data,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &new_authority],
@@ -458,10 +436,15 @@ async fn set_authority_success() {
         .await
         .unwrap()
         .unwrap();
-    let account_data = pod_from_bytes::<RecordData>(&account_handle.data).unwrap();
-    assert_eq!(account_data.data, new_data);
+    let account_data =
+        pod_from_bytes::<RecordData>(&account_handle.data[..RecordData::WRITABLE_START_INDEX])
+            .unwrap();
     assert_eq!(account_data.authority, new_authority.pubkey());
     assert_eq!(account_data.version, RecordData::CURRENT_VERSION);
+    assert_eq!(
+        &account_handle.data[RecordData::WRITABLE_START_INDEX..],
+        new_data,
+    );
 }
 
 #[tokio::test]
@@ -470,9 +453,7 @@ async fn set_authority_fail_wrong_authority() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [222u8; Data::DATA_SIZE],
-    };
+    let data = &[222u8; 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
     let wrong_authority = Keypair::new();
@@ -510,9 +491,7 @@ async fn set_authority_fail_unsigned() {
 
     let authority = Keypair::new();
     let account = Keypair::new();
-    let data = Data {
-        bytes: [222u8; Data::DATA_SIZE],
-    };
+    let data = &[222u8; 8];
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
     let transaction = Transaction::new_signed_with_payer(
