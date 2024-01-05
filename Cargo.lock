@@ -7146,6 +7146,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "solana-security-txt",
  "solana-vote-program",
  "spl-associated-token-account 2.3.0",
  "spl-token 4.0.0",

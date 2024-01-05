@@ -18,6 +18,7 @@ num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.1"
 solana-program = "1.17.6"
+solana-security-txt = "1.1.1"
 spl-token = { version = "4.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
