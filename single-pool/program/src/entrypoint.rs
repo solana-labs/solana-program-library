@@ -36,7 +36,7 @@ security_txt! {
     // Optional Fields
     preferred_languages: "en",
     source_code: "https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program",
-    source_revision: "",
-    source_release: "",
+    source_revision: "ef44df985e76a697ee9a8aabb3a223610e4cf1dc",
+    source_release: "single-pool-v1.0.0",
     auditors: "https://github.com/solana-labs/security-audits#single-stake-pool"
 }
