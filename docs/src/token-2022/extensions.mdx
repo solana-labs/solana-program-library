@@ -1810,9 +1810,9 @@ and the group's maximum size, can be stored directly in the mint itself.
 Token-2022 implements all of the instructions from the
 [spl-token-group-interface](https://github.com/solana-labs/solana-program-library/tree/master/token-group/interface).
 
-The group extension should work directly with the group-pointer extension.
-During mint creation, you should also add the group-pointer extension, pointed
-at the mint itself.
+The group extension works directly with the group-pointer extension.
+To intialize group configurations within a mint, you must add the group-pointer
+extension, pointed at the mint itself, during mint creation.
 
 The tools do this for you automatically.
 
@@ -1882,12 +1882,13 @@ Coming soon!
 
 The member extension also plays a key role in managing groups of tokens with
 Token-2022. The configurations for a member, which describe things like the
-update authority and the member's number, can be stored directly in the mint
+group address and the member's number, can be stored directly in the mint
 itself.
 
-The member extension should work directly with the member-pointer extension.
-During mint creation, you should also add the member-pointer extension, pointed
-at the mint itself.
+The member extension, like the group extension, works directly with the
+member-pointer extension. To intialize member configurations within a mint,
+you must add the member-pointer extension, pointed at the mint itself, during
+mint creation.
 
 The tools do this for you automatically.
 
