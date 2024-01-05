@@ -10,6 +10,7 @@ on:
       - 'single-pool/js/**'
       - 'stake-pool/js/**'
       - 'token/js/**'
+      - 'token-group/js/**'
       - 'token-lending/js/**'
       - 'token-metadata/js/**'
       - 'token-swap/js/**'
@@ -24,6 +25,7 @@ on:
       - 'single-pool/js/**'
       - 'stake-pool/js/**'
       - 'token/js/**'
+      - 'token-group/js/**'
       - 'token-lending/js/**'
       - 'token-metadata/js/**'
       - 'token-swap/js/**'
@@ -34,7 +36,20 @@ jobs:
   js-test:
     strategy:
       matrix:
-        package: [account-compression, libraries, memo, name-service, single-pool, stake-pool, token, token-lending, token-metadata, token-swap]
+        package:
+          [
+            account-compression,
+            libraries,
+            memo,
+            name-service,
+            single-pool,
+            stake-pool,
+            token,
+            token-group,
+            token-lending,
+            token-metadata,
+            token-swap,
+          ]
     runs-on: ubuntu-latest
     env:
       NODE_VERSION: 20.5

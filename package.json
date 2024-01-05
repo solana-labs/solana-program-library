@@ -7,6 +7,7 @@
         "single-pool/js",
         "stake-pool/js",
         "token/js",
+        "token-group/js",
         "token-lending/js",
         "token-metadata/js",
         "token-swap/js"

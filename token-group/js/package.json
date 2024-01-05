@@ -1,0 +1,77 @@
+{
+    "name": "@solana/spl-token-group",
+    "description": "SPL Token Group Interface JS API",
+    "version": "0.0.1",
+    "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
+    "repository": "https://github.com/solana-labs/solana-program-library",
+    "license": "Apache-2.0",
+    "type": "module",
+    "sideEffects": false,
+    "engines": {
+        "node": ">=16"
+    },
+    "files": [
+        "lib",
+        "src",
+        "LICENSE",
+        "README.md"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "main": "./lib/cjs/index.js",
+    "module": "./lib/esm/index.js",
+    "types": "./lib/types/index.d.ts",
+    "exports": {
+        "types": "./lib/types/index.d.ts",
+        "require": "./lib/cjs/index.js",
+        "import": "./lib/esm/index.js"
+    },
+    "scripts": {
+        "build": "tsc --build --verbose tsconfig.all.json",
+        "clean": "shx rm -rf lib **/*.tsbuildinfo || true",
+        "deploy": "npm run deploy:docs",
+        "deploy:docs": "npm run docs && gh-pages --dest token-group/js --dist docs --dotfiles",
+        "docs": "shx rm -rf docs && typedoc && shx cp .nojekyll docs/",
+        "fmt": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'",
+        "lint": "prettier --check '{*,**/*}.{ts,tsx,js,jsx,json}' && eslint --max-warnings 0 .",
+        "lint:fix": "npm run fmt && eslint --fix .",
+        "nuke": "shx rm -rf node_modules package-lock.json || true",
+        "postbuild": "shx echo '{ \"type\": \"commonjs\" }' > lib/cjs/package.json",
+        "reinstall": "npm run nuke && npm install",
+        "release": "npm run clean && npm run build",
+        "test": "mocha test",
+        "watch": "tsc --build --verbose --watch tsconfig.all.json"
+    },
+    "peerDependencies": {
+        "@solana/web3.js": "^1.87.6"
+    },
+    "dependencies": {
+        "@solana/codecs-data-structures": "2.0.0-experimental.9741939",
+        "@solana/codecs-numbers": "2.0.0-experimental.9741939",
+        "@solana/codecs-strings": "2.0.0-experimental.9741939",
+        "@solana/options": "2.0.0-experimental.9741939",
+        "@solana/spl-type-length-value": "0.1.0"
+    },
+    "devDependencies": {
+        "@solana/web3.js": "^1.87.6",
+        "@types/chai": "^4.3.11",
+        "@types/mocha": "^10.0.6",
+        "@types/node": "^20.10.4",
+        "@typescript-eslint/eslint-plugin": "^6.14.0",
+        "@typescript-eslint/parser": "^6.14.0",
+        "chai": "^4.3.6",
+        "eslint": "^8.55.0",
+        "eslint-config-prettier": "^9.1.0",
+        "eslint-plugin-prettier": "^5.0.1",
+        "eslint-plugin-require-extensions": "^0.1.1",
+        "gh-pages": "^6.1.0",
+        "mocha": "^10.1.0",
+        "prettier": "^3.1.1",
+        "shx": "^0.3.4",
+        "ts-node": "^10.9.2",
+        "tslib": "^2.3.1",
+        "typedoc": "^0.25.4",
+        "typescript": "^5.3.3"
+    }
+}
