@@ -261,7 +261,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .index(3)
                         .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
 
-Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonly-signer", or "writable-signer".
+Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
 
 Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
                             
@@ -270,7 +270,7 @@ Additional acounts requiring seed configurations can be defined in a configurati
     "extraMetas": [
         {
             "pubkey": "39UhV...",
-            "role": "readonly-signer"
+            "role": "readonlySigner"
         },
         {
             "seeds": [
@@ -294,7 +294,7 @@ Additional acounts requiring seed configurations can be defined in a configurati
 ```yaml
 extraMetas:
   - pubkey: "39UhV..."
-      role: "readonly-signer"
+      role: "readonlySigner"
   - seeds:
       - literal:
           bytes: [1, 2, 3, 4, 5, 6]
@@ -345,7 +345,7 @@ extraMetas:
                         .index(3)
                         .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
 
-Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonly-signer", or "writable-signer".
+Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
 
 Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
                             
@@ -354,7 +354,7 @@ Additional acounts requiring seed configurations can be defined in a configurati
     "extraMetas": [
         {
             "pubkey": "39UhV...",
-            "role": "readonly-signer"
+            "role": "readonlySigner"
         },
         {
             "seeds": [
@@ -378,7 +378,7 @@ Additional acounts requiring seed configurations can be defined in a configurati
 ```yaml
 extraMetas:
   - pubkey: "39UhV..."
-      role: "readonly-signer"
+      role: "readonlySigner"
   - seeds:
       - literal:
           bytes: [1, 2, 3, 4, 5, 6]

@@ -14,8 +14,8 @@ struct Access {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 enum Role {
     Readonly,
     Writable,
@@ -146,7 +146,7 @@ mod tests {
             "extraMetas": [
                 {
                     "pubkey": "39UhVsxAmJwzPnoWhBSHsZ6nBDtdzt9D8rfDa8zGHrP6",
-                    "role": "readonly-signer"
+                    "role": "readonlySigner"
                 },
                 {
                     "pubkey": "6WEvW9B9jTKc3EhP1ewGEJPrxw5d8vD9eMYCf2snNYsV",
@@ -248,7 +248,7 @@ mod tests {
         let config = r#"
             extraMetas:
                 - pubkey: "39UhVsxAmJwzPnoWhBSHsZ6nBDtdzt9D8rfDa8zGHrP6"
-                  role: "readonly-signer"
+                  role: "readonlySigner"
                 - pubkey: "6WEvW9B9jTKc3EhP1ewGEJPrxw5d8vD9eMYCf2snNYsV"
                   role: "readonly"
                 - seeds:
