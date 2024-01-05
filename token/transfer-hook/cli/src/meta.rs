@@ -24,13 +24,6 @@ enum Role {
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", untagged)]
-enum AccessLevel {
-    Access(Access),
-    Role { role: Role },
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum AddressConfig {
     Pubkey(String),
@@ -42,8 +35,7 @@ enum AddressConfig {
 struct Config {
     #[serde(flatten)]
     address_config: AddressConfig,
-    #[serde(flatten)]
-    access_level: AccessLevel,
+    role: Role,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -80,10 +72,7 @@ impl From<&Config> for ExtraAccountMeta {
         let Access {
             is_signer,
             is_writable,
-        } = match &config.access_level {
-            AccessLevel::Role { role } => role.into(),
-            AccessLevel::Access(access) => *access,
-        };
+        } = Access::from(&config.role);
         match &config.address_config {
             AddressConfig::Pubkey(pubkey_string) => ExtraAccountMeta::new_with_pubkey(
                 &Pubkey::from_str(pubkey_string).unwrap(),
@@ -158,8 +147,7 @@ mod tests {
                 },
                 {
                     "pubkey": "6WEvW9B9jTKc3EhP1ewGEJPrxw5d8vD9eMYCf2snNYsV",
-                    "isSigner": false,
-                    "isWritable": false
+                    "role": "readonly"
                 },
                 {
                     "seeds": [
@@ -197,8 +185,7 @@ mod tests {
                             }
                         }
                     ],
-                    "isSigner": false,
-                    "isWritable": false
+                    "role": "readonly"
                 }
             ]
         }"#;
@@ -260,8 +247,7 @@ mod tests {
                 - pubkey: "39UhVsxAmJwzPnoWhBSHsZ6nBDtdzt9D8rfDa8zGHrP6"
                   role: "readonly-signer"
                 - pubkey: "6WEvW9B9jTKc3EhP1ewGEJPrxw5d8vD9eMYCf2snNYsV"
-                  isSigner: false
-                  isWritable: false
+                  role: "readonly"
                 - seeds:
                     - literal:
                         bytes: [1, 2, 3, 4, 5, 6]
@@ -278,8 +264,7 @@ mod tests {
                         length: 4
                     - accountKey:
                         index: 1
-                  isSigner: false
-                  isWritable: false
+                  role: "readonly"
         "#;
         let parsed_config_file = serde_yaml::from_str::<ConfigFile>(config).unwrap();
         let parsed_extra_metas: Vec<ExtraAccountMeta> = parsed_config_file
