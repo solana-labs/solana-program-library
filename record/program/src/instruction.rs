@@ -56,8 +56,8 @@ pub enum RecordInstruction<'a> {
 
     /// Reallocate additional space in a record account
     ///
-    /// If the record account already has enough space to hold the specified data length, then the
-    /// instruction does nothing.
+    /// If the record account already has enough space to hold the specified
+    /// data length, then the instruction does nothing.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -66,7 +66,8 @@ pub enum RecordInstruction<'a> {
     /// 2. `[]` System program for reallocation funding
     /// 3. `[signer]` The account's owner
     Reallocate {
-        /// The length of the data to hold in the record account excluding meta data
+        /// The length of the data to hold in the record account excluding meta
+        /// data
         data_length: u64,
     },
 }

@@ -158,8 +158,8 @@ pub fn process_instruction(
                 check_authority(authority_info, &account_data.authority)?;
             }
 
-            // needed account length is the sum of the meta data length and the specified data
-            // length
+            // needed account length is the sum of the meta data length and the specified
+            // data length
             let needed_account_length = pod_get_packed_len::<RecordData>()
                 .checked_add(
                     usize::try_from(data_length).map_err(|_| ProgramError::InvalidArgument)?,
