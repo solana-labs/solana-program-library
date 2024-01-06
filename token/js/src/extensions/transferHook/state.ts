@@ -100,7 +100,7 @@ export const ExtraAccountMetaAccountDataLayout = struct<ExtraAccountMetaAccountD
 ]);
 
 /** Unpack an extra account metas account and parse the data into a list of ExtraAccountMetas */
-export function getExtraAccountMetas(account: AccountInfo<Buffer>): ExtraAccountMeta[] {
+export function getExtraAccountMetaList(account: AccountInfo<Buffer>): ExtraAccountMeta[] {
     const extraAccountsList = ExtraAccountMetaAccountDataLayout.decode(account.data).extraAccountsList;
     return extraAccountsList.extraAccounts.slice(0, extraAccountsList.count);
 }

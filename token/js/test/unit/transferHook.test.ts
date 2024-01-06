@@ -1,4 +1,4 @@
-import { getExtraAccountMetas, resolveExtraAccountMeta } from '../../src';
+import { getExtraAccountMetaList, resolveExtraAccountMeta } from '../../src';
 import { expect } from 'chai';
 import type { Connection } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
@@ -100,14 +100,14 @@ describe('transferHookExtraAccounts', () => {
         });
     });
 
-    it('getExtraAccountMetas', () => {
+    it('getExtraAccountMetaList', () => {
         const accountInfo = {
             data: extraAccountList,
             owner: PublicKey.default,
             executable: false,
             lamports: 0,
         };
-        const parsedExtraAccounts = getExtraAccountMetas(accountInfo);
+        const parsedExtraAccounts = getExtraAccountMetaList(accountInfo);
         expect(parsedExtraAccounts).to.not.be.null;
         if (parsedExtraAccounts == null) {
             return;
