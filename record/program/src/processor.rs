@@ -10,7 +10,7 @@ use {
         program_pack::IsInitialized,
         pubkey::Pubkey,
     },
-    spl_pod::bytemuck::{pod_from_bytes, pod_from_bytes_mut},
+    spl_pod::bytemuck::{pod_from_bytes, pod_from_bytes_mut, pod_get_packed_len},
 };
 
 fn check_authority(authority_info: &AccountInfo, expected_authority: &Pubkey) -> ProgramResult {
@@ -130,6 +130,49 @@ pub fn process_instruction(
             **destination_info.lamports.borrow_mut() = destination_starting_lamports
                 .checked_add(data_lamports)
                 .ok_or(RecordError::Overflow)?;
+            Ok(())
+        }
+
+        RecordInstruction::Reallocate { data_length } => {
+            msg!("RecordInstruction::Reallocate");
+            let data_info = next_account_info(account_info_iter)?;
+            let authority_info = next_account_info(account_info_iter)?;
+
+            {
+                let raw_data = &mut data_info.data.borrow_mut();
+                if raw_data.len() < RecordData::WRITABLE_START_INDEX {
+                    return Err(ProgramError::InvalidAccountData);
+                }
+                let account_data = pod_from_bytes_mut::<RecordData>(
+                    &mut raw_data[..RecordData::WRITABLE_START_INDEX],
+                )?;
+                if !account_data.is_initialized() {
+                    msg!("Record not initialized");
+                    return Err(ProgramError::UninitializedAccount);
+                }
+                check_authority(authority_info, &account_data.authority)?;
+            }
+
+            // needed account length is the sum of the meta data length and the specified
+            // data length
+            let needed_account_length = pod_get_packed_len::<RecordData>()
+                .checked_add(
+                    usize::try_from(data_length).map_err(|_| ProgramError::InvalidArgument)?,
+                )
+                .unwrap();
+
+            // reallocate
+            if data_info.data_len() >= needed_account_length {
+                msg!("no additional reallocation needed");
+                return Ok(());
+            }
+            msg!(
+                "reallocating +{:?} bytes",
+                needed_account_length
+                    .checked_sub(data_info.data_len())
+                    .unwrap(),
+            );
+            data_info.realloc(needed_account_length, false)?;
             Ok(())
         }
     }

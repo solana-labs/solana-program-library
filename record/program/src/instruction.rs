@@ -52,19 +52,35 @@ pub enum RecordInstruction<'a> {
     /// 1. `[signer]` Record authority
     /// 2. `[]` Receiver of account lamports
     CloseAccount,
+
+    /// Reallocate additional space in a record account
+    ///
+    /// If the record account already has enough space to hold the specified
+    /// data length, then the instruction does nothing.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    /// 0. `[writable]` The record account to reallocate
+    /// 1. `[signer]` The account's owner
+    Reallocate {
+        /// The length of the data to hold in the record account excluding meta
+        /// data
+        data_length: u64,
+    },
 }
 
 impl<'a> RecordInstruction<'a> {
     /// Unpacks a byte buffer into a [RecordInstruction].
     pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
+        const U32_BYTES: usize = 4;
+        const U64_BYTES: usize = 8;
+
         let (&tag, rest) = input
             .split_first()
             .ok_or(ProgramError::InvalidInstructionData)?;
         Ok(match tag {
             0 => Self::Initialize,
             1 => {
-                const U32_BYTES: usize = 4;
-                const U64_BYTES: usize = 8;
                 let offset = rest
                     .get(..U64_BYTES)
                     .and_then(|slice| slice.try_into().ok())
@@ -84,6 +100,15 @@ impl<'a> RecordInstruction<'a> {
             }
             2 => Self::SetAuthority,
             3 => Self::CloseAccount,
+            4 => {
+                let data_length = rest
+                    .get(..U64_BYTES)
+                    .and_then(|slice| slice.try_into().ok())
+                    .map(u64::from_le_bytes)
+                    .ok_or(ProgramError::InvalidInstructionData)?;
+
+                Self::Reallocate { data_length }
+            }
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }
@@ -101,6 +126,10 @@ impl<'a> RecordInstruction<'a> {
             }
             Self::SetAuthority => buf.push(2),
             Self::CloseAccount => buf.push(3),
+            Self::Reallocate { data_length } => {
+                buf.push(4);
+                buf.extend_from_slice(&data_length.to_le_bytes());
+            }
         };
         buf
     }
@@ -160,6 +189,18 @@ pub fn close_account(record_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey
     }
 }
 
+/// Create a `RecordInstruction::Reallocate` instruction
+pub fn reallocate(record_account: &Pubkey, signer: &Pubkey, data_length: u64) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![
+            AccountMeta::new(*record_account, false),
+            AccountMeta::new_readonly(*signer, true),
+        ],
+        data: RecordInstruction::Reallocate { data_length }.pack(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {super::*, crate::state::tests::TEST_BYTES, solana_program::program_error::ProgramError};
@@ -197,6 +238,16 @@ mod tests {
     fn serialize_close_account() {
         let instruction = RecordInstruction::CloseAccount;
         let expected = vec![3];
+        assert_eq!(instruction.pack(), expected);
+        assert_eq!(RecordInstruction::unpack(&expected).unwrap(), instruction);
+    }
+
+    #[test]
+    fn serialize_reallocate() {
+        let data_length = 16u64;
+        let instruction = RecordInstruction::Reallocate { data_length };
+        let mut expected = vec![4];
+        expected.extend_from_slice(&data_length.to_le_bytes());
         assert_eq!(instruction.pack(), expected);
         assert_eq!(RecordInstruction::unpack(&expected).unwrap(), instruction);
     }

@@ -518,3 +518,179 @@ async fn set_authority_fail_unsigned() {
         TransactionError::InstructionError(0, InstructionError::MissingRequiredSignature)
     );
 }
+
+#[tokio::test]
+async fn reallocate_success() {
+    let mut context = program_test().start_with_context().await;
+
+    let authority = Keypair::new();
+    let account = Keypair::new();
+    let data = &[222u8; 8];
+    initialize_storage_account(&mut context, &authority, &account, data).await;
+
+    let new_data_length = 16u64;
+    let expected_account_data_length = RecordData::WRITABLE_START_INDEX
+        .checked_add(new_data_length as usize)
+        .unwrap();
+
+    let delta_account_data_length = new_data_length.saturating_sub(data.len() as u64);
+    let additional_lamports_needed =
+        Rent::default().minimum_balance(delta_account_data_length as usize);
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            instruction::reallocate(&account.pubkey(), &authority.pubkey(), new_data_length),
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                &account.pubkey(),
+                additional_lamports_needed,
+            ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &authority],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let account_handle = context
+        .banks_client
+        .get_account(account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(account_handle.data.len(), expected_account_data_length);
+
+    // reallocate to a smaller length
+    let old_data_length = 8u64;
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::reallocate(
+            &account.pubkey(),
+            &authority.pubkey(),
+            old_data_length,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &authority],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let account = context
+        .banks_client
+        .get_account(account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(account.data.len(), expected_account_data_length);
+}
+
+#[tokio::test]
+async fn reallocate_fail_wrong_authority() {
+    let mut context = program_test().start_with_context().await;
+
+    let authority = Keypair::new();
+    let account = Keypair::new();
+    let data = &[222u8; 8];
+    initialize_storage_account(&mut context, &authority, &account, data).await;
+
+    let new_data_length = 16u64;
+    let delta_account_data_length = new_data_length.saturating_sub(data.len() as u64);
+    let additional_lamports_needed =
+        Rent::default().minimum_balance(delta_account_data_length as usize);
+
+    let wrong_authority = Keypair::new();
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            Instruction {
+                program_id: id(),
+                accounts: vec![
+                    AccountMeta::new(account.pubkey(), false),
+                    AccountMeta::new(wrong_authority.pubkey(), true),
+                ],
+                data: instruction::RecordInstruction::Reallocate {
+                    data_length: new_data_length,
+                }
+                .pack(),
+            },
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                &account.pubkey(),
+                additional_lamports_needed,
+            ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &wrong_authority],
+        context.last_blockhash,
+    );
+
+    assert_eq!(
+        context
+            .banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(RecordError::IncorrectAuthority as u32)
+        )
+    );
+}
+
+#[tokio::test]
+async fn reallocate_fail_unsigned() {
+    let mut context = program_test().start_with_context().await;
+
+    let authority = Keypair::new();
+    let account = Keypair::new();
+    let data = &[222u8; 8];
+    initialize_storage_account(&mut context, &authority, &account, data).await;
+
+    let new_data_length = 16u64;
+    let delta_account_data_length = new_data_length.saturating_sub(data.len() as u64);
+    let additional_lamports_needed =
+        Rent::default().minimum_balance(delta_account_data_length as usize);
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            Instruction {
+                program_id: id(),
+                accounts: vec![
+                    AccountMeta::new(account.pubkey(), false),
+                    AccountMeta::new(authority.pubkey(), false),
+                ],
+                data: instruction::RecordInstruction::Reallocate {
+                    data_length: new_data_length,
+                }
+                .pack(),
+            },
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                &account.pubkey(),
+                additional_lamports_needed,
+            ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+
+    assert_eq!(
+        context
+            .banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(0, InstructionError::MissingRequiredSignature)
+    );
+}
