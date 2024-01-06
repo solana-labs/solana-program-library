@@ -6,12 +6,9 @@ use {
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
         msg,
-        program::invoke,
         program_error::ProgramError,
         program_pack::IsInitialized,
         pubkey::Pubkey,
-        system_instruction,
-        sysvar::{rent::Rent, Sysvar},
     },
     spl_pod::bytemuck::{pod_from_bytes, pod_from_bytes_mut, pod_get_packed_len},
 };
@@ -139,8 +136,6 @@ pub fn process_instruction(
         RecordInstruction::Reallocate { data_length } => {
             msg!("RecordInstruction::Reallocate");
             let data_info = next_account_info(account_info_iter)?;
-            let payer_info = next_account_info(account_info_iter)?;
-            let system_program_info = next_account_info(account_info_iter)?;
             let authority_info = next_account_info(account_info_iter)?;
 
             {
@@ -178,24 +173,6 @@ pub fn process_instruction(
                     .unwrap(),
             );
             data_info.realloc(needed_account_length, false)?;
-
-            // if additional lamports needed to remain rent-exempt, transfer them
-            let current_lamport_reserve = data_info.lamports();
-            let rent = Rent::get()?;
-            let new_rent_exempt_reserve = rent.minimum_balance(needed_account_length);
-
-            let lamports_diff = new_rent_exempt_reserve.saturating_sub(current_lamport_reserve);
-            if lamports_diff > 0 {
-                invoke(
-                    &system_instruction::transfer(payer_info.key, data_info.key, lamports_diff),
-                    &[
-                        payer_info.clone(),
-                        data_info.clone(),
-                        system_program_info.clone(),
-                    ],
-                )?;
-            }
-
             Ok(())
         }
     }

@@ -6,7 +6,6 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
-        system_program,
     },
     std::mem::size_of,
 };
@@ -62,9 +61,7 @@ pub enum RecordInstruction<'a> {
     /// Accounts expected by this instruction:
     ///
     /// 0. `[writable]` The record account to reallocate
-    /// 1. `[signer, writable]` The payer account to fund reallocation
-    /// 2. `[]` System program for reallocation funding
-    /// 3. `[signer]` The account's owner
+    /// 1. `[signer]` The account's owner
     Reallocate {
         /// The length of the data to hold in the record account excluding meta
         /// data
@@ -193,18 +190,11 @@ pub fn close_account(record_account: &Pubkey, signer: &Pubkey, receiver: &Pubkey
 }
 
 /// Create a `RecordInstruction::Reallocate` instruction
-pub fn reallocate(
-    record_account: &Pubkey,
-    payer: &Pubkey,
-    signer: &Pubkey,
-    data_length: u64,
-) -> Instruction {
+pub fn reallocate(record_account: &Pubkey, signer: &Pubkey, data_length: u64) -> Instruction {
     Instruction {
         program_id: id(),
         accounts: vec![
             AccountMeta::new(*record_account, false),
-            AccountMeta::new(*payer, true),
-            AccountMeta::new_readonly(system_program::id(), false),
             AccountMeta::new_readonly(*signer, true),
         ],
         data: RecordInstruction::Reallocate { data_length }.pack(),

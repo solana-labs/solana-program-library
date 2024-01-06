@@ -5,7 +5,7 @@ use {
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
         rent::Rent,
-        system_instruction, system_program,
+        system_instruction,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -533,13 +533,19 @@ async fn reallocate_success() {
         .checked_add(new_data_length as usize)
         .unwrap();
 
+    let delta_account_data_length = new_data_length.saturating_sub(data.len() as u64);
+    let additional_lamports_needed =
+        Rent::default().minimum_balance(delta_account_data_length as usize);
+
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::reallocate(
-            &account.pubkey(),
-            &context.payer.pubkey(),
-            &authority.pubkey(),
-            new_data_length,
-        )],
+        &[
+            instruction::reallocate(&account.pubkey(), &authority.pubkey(), new_data_length),
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                &account.pubkey(),
+                additional_lamports_needed,
+            ),
+        ],
         Some(&context.payer.pubkey()),
         &[&context.payer, &authority],
         context.last_blockhash,
@@ -564,7 +570,6 @@ async fn reallocate_success() {
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::reallocate(
             &account.pubkey(),
-            &context.payer.pubkey(),
             &authority.pubkey(),
             old_data_length,
         )],
@@ -598,22 +603,30 @@ async fn reallocate_fail_wrong_authority() {
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
     let new_data_length = 16u64;
+    let delta_account_data_length = new_data_length.saturating_sub(data.len() as u64);
+    let additional_lamports_needed =
+        Rent::default().minimum_balance(delta_account_data_length as usize);
 
     let wrong_authority = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[Instruction {
-            program_id: id(),
-            accounts: vec![
-                AccountMeta::new(account.pubkey(), false),
-                AccountMeta::new(context.payer.pubkey(), true),
-                AccountMeta::new_readonly(system_program::id(), false),
-                AccountMeta::new(wrong_authority.pubkey(), true),
-            ],
-            data: instruction::RecordInstruction::Reallocate {
-                data_length: new_data_length,
-            }
-            .pack(),
-        }],
+        &[
+            Instruction {
+                program_id: id(),
+                accounts: vec![
+                    AccountMeta::new(account.pubkey(), false),
+                    AccountMeta::new(wrong_authority.pubkey(), true),
+                ],
+                data: instruction::RecordInstruction::Reallocate {
+                    data_length: new_data_length,
+                }
+                .pack(),
+            },
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                &account.pubkey(),
+                additional_lamports_needed,
+            ),
+        ],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_authority],
         context.last_blockhash,
@@ -643,21 +656,29 @@ async fn reallocate_fail_unsigned() {
     initialize_storage_account(&mut context, &authority, &account, data).await;
 
     let new_data_length = 16u64;
+    let delta_account_data_length = new_data_length.saturating_sub(data.len() as u64);
+    let additional_lamports_needed =
+        Rent::default().minimum_balance(delta_account_data_length as usize);
 
     let transaction = Transaction::new_signed_with_payer(
-        &[Instruction {
-            program_id: id(),
-            accounts: vec![
-                AccountMeta::new(account.pubkey(), false),
-                AccountMeta::new(context.payer.pubkey(), true),
-                AccountMeta::new_readonly(system_program::id(), false),
-                AccountMeta::new(authority.pubkey(), false),
-            ],
-            data: instruction::RecordInstruction::Reallocate {
-                data_length: new_data_length,
-            }
-            .pack(),
-        }],
+        &[
+            Instruction {
+                program_id: id(),
+                accounts: vec![
+                    AccountMeta::new(account.pubkey(), false),
+                    AccountMeta::new(authority.pubkey(), false),
+                ],
+                data: instruction::RecordInstruction::Reallocate {
+                    data_length: new_data_length,
+                }
+                .pack(),
+            },
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                &account.pubkey(),
+                additional_lamports_needed,
+            ),
+        ],
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
