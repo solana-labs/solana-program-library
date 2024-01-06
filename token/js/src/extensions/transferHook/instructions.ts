@@ -9,7 +9,12 @@ import { publicKey } from '@solana/buffer-layout-utils';
 import { createTransferCheckedInstruction } from '../../instructions/transferChecked.js';
 import { createTransferCheckedWithFeeInstruction } from '../transferFee/instructions.js';
 import { getMint } from '../../state/mint.js';
-import { getExtraAccountMetaAddress, getExtraAccountMetas, getTransferHook, resolveExtraAccountMeta } from './state.js';
+import {
+    getExtraAccountMetaAddress,
+    getExtraAccountMetaList,
+    getTransferHook,
+    resolveExtraAccountMeta,
+} from './state.js';
 
 export enum TransferHookInstruction {
     Initialize = 0,
@@ -136,58 +141,109 @@ function deEscalateAccountMeta(accountMeta: AccountMeta, accountMetas: AccountMe
     return accountMeta;
 }
 
+function createExecuteInstructionFromTransfer(
+    transferInstruction: TransactionInstruction,
+    validateStatePubkey: PublicKey,
+    transferHookProgramId: PublicKey,
+    amount: bigint
+): TransactionInstruction {
+    if (transferInstruction.keys.length < 4) {
+        throw new Error('Not a valid transfer instruction');
+    }
+
+    const keys = [
+        transferInstruction.keys[0].pubkey,
+        transferInstruction.keys[1].pubkey,
+        transferInstruction.keys[2].pubkey,
+        transferInstruction.keys[3].pubkey,
+        validateStatePubkey,
+    ].map((pubkey) => ({
+        pubkey,
+        isSigner: false,
+        isWritable: false,
+    }));
+
+    const programId = transferHookProgramId;
+
+    const data = Buffer.alloc(16);
+    data.set(Buffer.from([105, 37, 101, 197, 75, 251, 102, 26]), 0); // `Execute` discriminator
+    data.writeBigUInt64LE(amount, 8);
+
+    return new TransactionInstruction({ keys, programId, data });
+}
+
 /**
  * Add extra accounts needed for transfer hook to an instruction
  *
+ * Note that this offchain helper will build a new `Execute` instruction,
+ * resolve the extra account metas, and then add them to the transfer
+ * instruction. This is because the extra account metas are configured
+ * specifically for the `Execute` instruction, which requires five accounts
+ * (source, mint, destination, authority, and validation state), wheras the
+ * transfer instruction only requires four (source, mint, destination, and
+ * authority) in addition to `n` number of multisig authorities.
+ *
  * @param connection      Connection to use
  * @param instruction     The transferChecked instruction to add accounts to
+ * @param mint            Mint being transferred
+ * @param amount          Amount being transferred
  * @param commitment      Commitment to use
  * @param programId       SPL Token program account
  *
  * @return Instruction to add to a transaction
  */
-export async function addExtraAccountsToInstruction(
+export async function addExtraAccountsToTransferInstruction(
     connection: Connection,
     instruction: TransactionInstruction,
     mint: PublicKey,
+    amount: bigint,
     commitment?: Commitment,
-    programId = TOKEN_PROGRAM_ID
+    tokenProgramId = TOKEN_PROGRAM_ID
 ): Promise<TransactionInstruction> {
-    if (!programSupportsExtensions(programId)) {
+    if (!programSupportsExtensions(tokenProgramId)) {
         throw new TokenUnsupportedInstructionError();
     }
 
-    const mintInfo = await getMint(connection, mint, commitment, programId);
+    const mintInfo = await getMint(connection, mint, commitment, tokenProgramId);
     const transferHook = getTransferHook(mintInfo);
     if (transferHook == null) {
         return instruction;
     }
 
-    const extraAccountsAccount = getExtraAccountMetaAddress(mint, transferHook.programId);
-    const extraAccountsInfo = await connection.getAccountInfo(extraAccountsAccount, commitment);
-    if (extraAccountsInfo == null) {
+    // Convert the transfer instruction into an `Execute` instruction,
+    // then resolve the extra account metas as configured in the validation
+    // account data, then finally add the extra account metas to the original
+    // transfer instruction.
+    const validateStatePubkey = getExtraAccountMetaAddress(mint, transferHook.programId);
+    const validateStateAccount = await connection.getAccountInfo(validateStatePubkey, commitment);
+    if (validateStateAccount == null) {
         return instruction;
     }
 
-    const extraAccountMetas = getExtraAccountMetas(extraAccountsInfo);
+    const executeIx = createExecuteInstructionFromTransfer(
+        instruction,
+        validateStatePubkey,
+        transferHook.programId,
+        amount
+    );
 
-    const accountMetas = instruction.keys;
-
-    for (const extraAccountMeta of extraAccountMetas) {
+    for (const extraAccountMeta of getExtraAccountMetaList(validateStateAccount)) {
         const accountMetaUnchecked = await resolveExtraAccountMeta(
             connection,
             extraAccountMeta,
-            accountMetas,
-            instruction.data,
-            transferHook.programId
+            executeIx.keys,
+            executeIx.data,
+            executeIx.programId
         );
-        const accountMeta = deEscalateAccountMeta(accountMetaUnchecked, accountMetas);
-        accountMetas.push(accountMeta);
+        const accountMeta = deEscalateAccountMeta(accountMetaUnchecked, executeIx.keys);
+        executeIx.keys.push(accountMeta);
     }
-    accountMetas.push({ pubkey: transferHook.programId, isSigner: false, isWritable: false });
-    accountMetas.push({ pubkey: extraAccountsAccount, isSigner: false, isWritable: false });
+    executeIx.keys.push({ pubkey: transferHook.programId, isSigner: false, isWritable: false });
+    executeIx.keys.push({ pubkey: validateStatePubkey, isSigner: false, isWritable: false });
 
-    return new TransactionInstruction({ keys: accountMetas, programId, data: instruction.data });
+    instruction.keys.push(...executeIx.keys.slice(5));
+
+    return instruction;
 }
 
 /**
@@ -229,10 +285,11 @@ export async function createTransferCheckedWithTransferHookInstruction(
         programId
     );
 
-    const hydratedInstruction = await addExtraAccountsToInstruction(
+    const hydratedInstruction = await addExtraAccountsToTransferInstruction(
         connection,
         rawInstruction,
         mint,
+        amount,
         commitment,
         programId
     );
@@ -282,10 +339,11 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
         programId
     );
 
-    const hydratedInstruction = await addExtraAccountsToInstruction(
+    const hydratedInstruction = await addExtraAccountsToTransferInstruction(
         connection,
         rawInstruction,
         mint,
+        amount,
         commitment,
         programId
     );
