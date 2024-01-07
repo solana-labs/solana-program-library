@@ -98,6 +98,9 @@ fn process_create_mint(
         }
     }
     
+    let (_, bump_seed) = get_wrapped_mint_address_with_seed(unwrapped_mint_account.key, token_program.key);
+    let bumps = &[bump_seed];
+    let wrapped_mint_authority_seeds: &[&[u8]]  = &get_wrapped_mint_signer_seeds(unwrapped_mint_account.key, token_program.key, bumps);
 
         
     match *token_program.key {
@@ -108,10 +111,7 @@ fn process_create_mint(
             msg!("unwrapped_mint account {:?}", unwrapped_mint_account);
             msg!("funding account {:?}", funding_account);
             msg!("lamports {:?}", lamports);
-            let (_, bump_seed) = get_wrapped_mint_address_with_seed(unwrapped_mint_account.key, token_program.key);
-            let bumps = &[bump_seed];
-            let wrapped_mint_authority_seeds: &[&[u8]]  = &get_wrapped_mint_signer_seeds(unwrapped_mint_account.key, token_program.key, bumps);
-
+            
             
             let create_account_ix = system_instruction::create_account(
                 funding_account.key,
@@ -166,13 +166,14 @@ fn process_create_mint(
                 Mint2022::LEN as u64,
                 &spl_token_2022::ID,
             );
-            invoke(
+            invoke_signed(
                 &create_account_ix,
                 &[
                     funding_account.clone(),
                     wrapped_mint_account.clone(),
                     system_program.clone(),
                 ],
+                &[wrapped_mint_authority_seeds]
             )?;
             
             let unwrapped_mint_unpacked = MintOld::unpack(&unwrapped_mint_account.data.borrow())?;
@@ -188,12 +189,13 @@ fn process_create_mint(
             freeze_authority.as_ref(),
             unwrapped_mint_unpacked.decimals,
         )?;
-        invoke(
+        invoke_signed(
             &init_mint_ix,
             &[
                 wrapped_mint_account.clone(),
                 token_program.clone(),
             ],
+            &[wrapped_mint_authority_seeds],
         )?;
         },
         _ => return Err(ProgramError::InvalidAccountData),
