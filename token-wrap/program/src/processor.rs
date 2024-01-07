@@ -57,6 +57,13 @@ fn process_create_mint(
 
     let rent = Rent::get()?;
 
+    let idempotent = match input[0] {
+        0 => false,
+        1 => true,
+        _ => return Err(ProgramError::InvalidInstructionData),
+    };
+
+
     
     
     assert_eq!(token_program.key, &spl_token::ID, "{}", ProgramError::IncorrectProgramId);
@@ -65,6 +72,34 @@ fn process_create_mint(
     assert_eq!(backpointer_account.owner, &solana_program::system_program::ID, "{}", ProgramError::IncorrectProgramId);
     assert_eq!(backpointer_account.key, &get_wrapped_mint_backpointer_address(unwrapped_mint_account.key), "{}", ProgramError::InvalidArgument);
     assert_eq!(wrapped_mint_account.key, &get_wrapped_mint_address(unwrapped_mint_account.key, token_program.key), "{}", ProgramError::InvalidArgument);
+
+
+    if idempotent 
+        && wrapped_mint_account.owner == token_program.key
+    {
+            
+        // Check Backpointer Account
+        let backpointer_data = Backpointer {
+            unwrapped_mint: *unwrapped_mint_account.key,
+        };
+        let data = &mut backpointer_account.data.borrow();
+        let backpointer_data_bytes = bytemuck::bytes_of(&backpointer_data);
+        if data.len() == backpointer_data_bytes.len() {
+            let mut equal = true;
+            for (i, byte) in backpointer_data_bytes.iter().enumerate() {
+                if data[i] != *byte {
+                    equal = false;
+                    break;
+                }
+            }
+            if equal {
+                return Err(ProgramError::AccountAlreadyInitialized);
+            }
+        }
+    }
+    
+
+        
     match *token_program.key {
         spl_token::ID => {
             // Handle SPL Token logic
