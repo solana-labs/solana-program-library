@@ -37,7 +37,7 @@ pub(crate) fn get_wrapped_mint_seeds<'a>(
     ]
 }
 
-pub(crate) fn _get_wrapped_mint_signer_seeds<'a>(
+pub(crate) fn get_wrapped_mint_signer_seeds<'a>(
     unwrapped_mint: &'a Pubkey,
     wrapped_token_program_id: &'a Pubkey,
     bump_seed: &'a [u8],
@@ -90,7 +90,7 @@ pub(crate) fn get_wrapped_mint_backpointer_address_seeds(wrapped_mint: &Pubkey) 
     [WRAPPED_MINT_BACKPOINTER_SEED, wrapped_mint.as_ref()]
 }
 
-pub(crate) fn _get_wrapped_mint_backpointer_address_signer_seeds<'a>(
+pub(crate) fn get_wrapped_mint_backpointer_address_signer_seeds<'a>(
     wrapped_mint: &'a Pubkey,
     bump_seed: &'a [u8],
 ) -> [&'a [u8]; 3] {

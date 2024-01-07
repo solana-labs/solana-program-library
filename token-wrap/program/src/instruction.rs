@@ -1,9 +1,10 @@
 //! Program instructions
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use borsh::{BorshDeserialize, BorshSerialize};
 
 /// Instructions supported by the Token Wrap program
-#[derive(Clone, Debug, PartialEq, TryFromPrimitive, IntoPrimitive)]
+#[derive(Clone, Debug, PartialEq, TryFromPrimitive, IntoPrimitive, BorshDeserialize, BorshSerialize)]
 #[repr(u8)]
 pub enum TokenWrapInstruction {
     /// Create a wrapped token mint
