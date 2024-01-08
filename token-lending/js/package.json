@@ -45,7 +45,7 @@
         "@rollup/plugin-node-resolve": "^15.0.2",
         "@rollup/plugin-typescript": "^11.1.1",
         "@solana/spl-token": "0.3.10",
-        "@solana/web3.js": "^1.87.6",
+        "@solana/web3.js": "^1.88.0",
         "@types/eslint": "^8.56.1",
         "@types/eslint-plugin-prettier": "^3.1.0",
         "@types/node": "^20.10.7",
