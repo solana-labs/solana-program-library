@@ -92,7 +92,7 @@
     "ts-jest": "^29.0.0",
     "ts-jest-resolver": "^2.0.1",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.25.6",
+    "typedoc": "^0.25.7",
     "typescript": "5.3.3"
   },
   "prettier": "@solana/prettier-config-solana"
