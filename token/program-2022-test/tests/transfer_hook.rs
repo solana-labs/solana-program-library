@@ -688,23 +688,20 @@ async fn success_transfers_using_onchain_helper() {
     let (source_b_account, destination_b_account) =
         setup_accounts(&token_b_context, Keypair::new(), Keypair::new(), amount).await;
     let authority_b = token_b_context.alice;
-    let account_metas = vec![
+
+    // Since we need to add extra account metas for our swap, which is a
+    // combination of two transfers, we need to resolve the extra metas
+    // for each transfer instruction.
+    let transfer_1_metas = vec![
         AccountMeta::new(source_a_account, false),
         AccountMeta::new_readonly(mint_a, false),
         AccountMeta::new(destination_a_account, false),
         AccountMeta::new_readonly(authority_a.pubkey(), true),
-        AccountMeta::new_readonly(spl_token_2022::id(), false),
-        AccountMeta::new(source_b_account, false),
-        AccountMeta::new_readonly(mint_b, false),
-        AccountMeta::new(destination_b_account, false),
-        AccountMeta::new_readonly(authority_b.pubkey(), true),
-        AccountMeta::new_readonly(spl_token_2022::id(), false),
     ];
-
-    let mut instruction = Instruction::new_with_bytes(swap_program_id, &[], account_metas);
-
+    let mut transfer_1_instruction =
+        Instruction::new_with_bytes(swap_program_id, &[], transfer_1_metas.clone());
     offchain::resolve_extra_transfer_account_metas(
-        &mut instruction,
+        &mut transfer_1_instruction,
         |address| {
             token_a.get_account(address).map_ok_or_else(
                 |e| match e {
@@ -719,8 +716,17 @@ async fn success_transfers_using_onchain_helper() {
     )
     .await
     .unwrap();
+
+    let transfer_2_metas = vec![
+        AccountMeta::new(source_b_account, false),
+        AccountMeta::new_readonly(mint_b, false),
+        AccountMeta::new(destination_b_account, false),
+        AccountMeta::new_readonly(authority_b.pubkey(), true),
+    ];
+    let mut transfer_2_instruction =
+        Instruction::new_with_bytes(swap_program_id, &[], transfer_2_metas.clone());
     offchain::resolve_extra_transfer_account_metas(
-        &mut instruction,
+        &mut transfer_2_instruction,
         |address| {
             token_a.get_account(address).map_ok_or_else(
                 |e| match e {
@@ -736,8 +742,23 @@ async fn success_transfers_using_onchain_helper() {
     .await
     .unwrap();
 
+    let mut swap_metas = vec![
+        AccountMeta::new(source_a_account, false),
+        AccountMeta::new_readonly(mint_a, false),
+        AccountMeta::new(destination_a_account, false),
+        AccountMeta::new_readonly(authority_a.pubkey(), true),
+        AccountMeta::new_readonly(spl_token_2022::id(), false),
+        AccountMeta::new(source_b_account, false),
+        AccountMeta::new_readonly(mint_b, false),
+        AccountMeta::new(destination_b_account, false),
+        AccountMeta::new_readonly(authority_b.pubkey(), true),
+        AccountMeta::new_readonly(spl_token_2022::id(), false),
+    ];
+    swap_metas.extend_from_slice(&transfer_1_instruction.accounts[4..]); // Remaining accounts from transfer 1
+    swap_metas.extend_from_slice(&transfer_2_instruction.accounts[4..]); // Remaining accounts from transfer 2
+    let swap_instruction = Instruction::new_with_bytes(swap_program_id, &[], swap_metas);
     token_a
-        .process_ixs(&[instruction], &[&authority_a, &authority_b])
+        .process_ixs(&[swap_instruction], &[&authority_a, &authority_b])
         .await
         .unwrap();
 }
