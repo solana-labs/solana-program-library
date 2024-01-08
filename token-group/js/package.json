@@ -44,7 +44,7 @@
         "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.87.6"
+        "@solana/web3.js": "^1.88.0"
     },
     "dependencies": {
         "@solana/codecs-data-structures": "2.0.0-experimental.9741939",
@@ -54,7 +54,7 @@
         "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
-        "@solana/web3.js": "^1.87.6",
+        "@solana/web3.js": "^1.88.0",
         "@types/chai": "^4.3.11",
         "@types/mocha": "^10.0.6",
         "@types/node": "^20.10.7",

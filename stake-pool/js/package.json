@@ -46,7 +46,7 @@
     "@coral-xyz/borsh": "^0.29.0",
     "@solana/buffer-layout": "^4.0.1",
     "@solana/spl-token": "0.3.10",
-    "@solana/web3.js": "^1.87.6",
+    "@solana/web3.js": "^1.88.0",
     "bn.js": "^5.2.0",
     "buffer": "^6.0.3",
     "superstruct": "^1.0.3"
