@@ -2,8 +2,8 @@
 title: Project Status
 ---
 
-The Token-2022 program is ready for full production use. All clusters have the
-latest program deployed **without confidential transfer functionality**.
+All clusters have the latest program deployed **without confidential transfer
+functionality**.
 
 The program with confidential transfer functionality will be deployed once
 Solana v1.17 reaches mainnet-beta with the appropriate syscalls enabled.

@@ -8,13 +8,6 @@ fungible and non-fungible tokens.
 The Token-2022 Program is a superset of the functionality provided by the
 [Token Program](token.mdx).
 
-The program is ready for full production use. All clusters have the latest
-program deployed **without confidential transfer functionality**.
-
-The program with confidential transfer functionality will be deployed once
-Solana v1.17 reaches mainnet-beta with the appropriate syscalls enabled. See the
-[Project Status](token-2022/status.md) for more information.
-
 | Information | Account Address |
 | --- | --- |
 | Token-2022 Program | `TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb` |
@@ -141,8 +134,8 @@ For information about the types and instructions, the Rust docs are available at
 
 ## Security Audits
 
-The Token-2022 Program has been audited multiple times to ensure safety of
-funds. All audits are published here as they are completed.
+The Token-2022 Program has been audited multiple times. All audits are published
+here as they are completed.
 
 Here are the completed audits as of 13 December 2023:
 
