@@ -2,9 +2,11 @@
 title: Project Status
 ---
 
-The Token-2022 program is still under audit and not meant for full production use.
-In the meantime, all clusters have the latest program deployed **for testing and
-development purposes ONLY**.
+All clusters have the latest program deployed **without confidential transfer
+functionality**.
+
+The program with confidential transfer functionality will be deployed once
+Solana v1.17 reaches mainnet-beta with the appropriate syscalls enabled.
 
 ## Timeline
 
@@ -12,7 +14,6 @@ Here is the general program timeline and rough ETAs:
 
 | Issue                       | ETA                            |
 | --------------------------- | ------------------------------ |
-| Code-complete & final audit | Fall 2023                      |
 | Mainnet recommendation      | Winter 2024 (depends on v1.17) |
 | More ZK features            | Spring 2024 (depends on v1.18) |
 | Freeze program              | 2024                           |
@@ -34,13 +35,6 @@ In order to use confidential tokens, the cluster must run at least version 1.17
 with the ZK Token proof program enabled.
 
 More information: https://github.com/solana-labs/solana/pull/32613
-
-The ZK Token proof program was recently updated to support the splitting of
-the longer zero-knowledge proofs into smaller components. The
-token-2022 program is in the process of active development to properly process
-the new proof format.
-
-More information: https://github.com/solana-labs/solana-program-library/issues/4817
 
 ## Future work
 
