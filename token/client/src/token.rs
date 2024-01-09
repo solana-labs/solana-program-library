@@ -515,16 +515,6 @@ where
         let fee_payer = Some(&payer_key);
 
         {
-            // the most expensive instruction is VERIFY_TRANSFER_WITH_FEE_COMPUTE_UNITS
-            let requested_units = 500_000;
-            instructions.push(
-                solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(
-                    requested_units,
-                ),
-            );
-        }
-
-        {
             let mut w_memo = self.memo.write().unwrap();
             if let Some(memo) = w_memo.take() {
                 let signing_pubkeys = signing_keypairs.pubkeys();
@@ -541,6 +531,16 @@ where
         }
 
         instructions.extend_from_slice(token_instructions);
+
+        {
+            // the most expensive instruction is VERIFY_TRANSFER_WITH_FEE_COMPUTE_UNITS
+            let requested_units = 500_000;
+            instructions.push(
+                solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(
+                    requested_units,
+                ),
+            );
+        }
 
         let (message, blockhash) =
             if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
