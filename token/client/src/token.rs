@@ -2149,20 +2149,28 @@ where
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
-        self.process_ixs(
-            &confidential_transfer::instruction::transfer(
-                &self.program_id,
-                source_account,
-                &self.pubkey,
-                destination_account,
-                new_decryptable_available_balance,
-                source_authority,
-                &multisig_signers,
-                proof_location,
-            )?,
-            signing_keypairs,
+        let mut instructions = confidential_transfer::instruction::transfer(
+            &self.program_id,
+            source_account,
+            &self.pubkey,
+            destination_account,
+            new_decryptable_available_balance,
+            source_authority,
+            &multisig_signers,
+            proof_location,
+        )?;
+        offchain::resolve_extra_transfer_account_metas(
+            &mut instructions[0],
+            |address| {
+                self.client
+                    .get_account(address)
+                    .map_ok(|opt| opt.map(|acc| acc.data))
+            },
+            self.get_address(),
         )
         .await
+        .map_err(|_| TokenError::AccountNotFound)?;
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Transfer tokens confidentially using split proofs.
@@ -2195,22 +2203,28 @@ where
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
-        self.process_ixs(
-            &[
-                confidential_transfer::instruction::transfer_with_split_proofs(
-                    &self.program_id,
-                    source_account,
-                    &self.pubkey,
-                    destination_account,
-                    new_decryptable_available_balance.into(),
-                    source_authority,
-                    context_state_accounts,
-                    source_decrypt_handles,
-                )?,
-            ],
-            signing_keypairs,
+        let mut instruction = confidential_transfer::instruction::transfer_with_split_proofs(
+            &self.program_id,
+            source_account,
+            &self.pubkey,
+            destination_account,
+            new_decryptable_available_balance.into(),
+            source_authority,
+            context_state_accounts,
+            source_decrypt_handles,
+        )?;
+        offchain::resolve_extra_transfer_account_metas(
+            &mut instruction,
+            |address| {
+                self.client
+                    .get_account(address)
+                    .map_ok(|opt| opt.map(|acc| acc.data))
+            },
+            self.get_address(),
         )
         .await
+        .map_err(|_| TokenError::AccountNotFound)?;
+        self.process_ixs(&[instruction], signing_keypairs).await
     }
 
     /// Transfer tokens confidentially using split proofs in parallel
@@ -2261,16 +2275,28 @@ where
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
-        let transfer_instruction = confidential_transfer::instruction::transfer_with_split_proofs(
-            &self.program_id,
-            source_account,
-            &self.pubkey,
-            destination_account,
-            new_decryptable_available_balance.into(),
-            source_authority,
-            context_state_accounts,
-            &source_decrypt_handles,
-        )?;
+        let mut transfer_instruction =
+            confidential_transfer::instruction::transfer_with_split_proofs(
+                &self.program_id,
+                source_account,
+                &self.pubkey,
+                destination_account,
+                new_decryptable_available_balance.into(),
+                source_authority,
+                context_state_accounts,
+                &source_decrypt_handles,
+            )?;
+        offchain::resolve_extra_transfer_account_metas(
+            &mut transfer_instruction,
+            |address| {
+                self.client
+                    .get_account(address)
+                    .map_ok(|opt| opt.map(|acc| acc.data))
+            },
+            self.get_address(),
+        )
+        .await
+        .map_err(|_| TokenError::AccountNotFound)?;
 
         let transfer_with_equality_and_ciphertext_validity = self
             .create_equality_and_ciphertext_validity_proof_context_states_for_transfer_parallel(
@@ -2685,21 +2711,28 @@ where
         // additional compute budget required for `VerifyTransferWithFee`
         const TRANSFER_WITH_FEE_COMPUTE_BUDGET: u32 = 500_000;
 
-        self.process_ixs_with_additional_compute_budget(
-            &confidential_transfer::instruction::transfer_with_fee(
-                &self.program_id,
-                source_account,
-                destination_account,
-                &self.pubkey,
-                new_decryptable_available_balance,
-                source_authority,
-                &multisig_signers,
-                proof_location,
-            )?,
-            TRANSFER_WITH_FEE_COMPUTE_BUDGET,
-            signing_keypairs,
+        let mut instructions = confidential_transfer::instruction::transfer_with_fee(
+            &self.program_id,
+            source_account,
+            destination_account,
+            &self.pubkey,
+            new_decryptable_available_balance,
+            source_authority,
+            &multisig_signers,
+            proof_location,
+        )?;
+        offchain::resolve_extra_transfer_account_metas(
+            &mut instructions[0],
+            |address| {
+                self.client
+                    .get_account(address)
+                    .map_ok(|opt| opt.map(|acc| acc.data))
+            },
+            self.get_address(),
         )
         .await
+        .map_err(|_| TokenError::AccountNotFound)?;
+        self.process_ixs_with_additional_compute_budget(&instructions, TRANSFER_WITH_FEE_COMPUTE_BUDGET, signing_keypairs).await
     }
 
     /// Transfer tokens confidentially with fee using split proofs.
@@ -2732,22 +2765,29 @@ where
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
-        self.process_ixs(
-            &[
-                confidential_transfer::instruction::transfer_with_fee_and_split_proofs(
-                    &self.program_id,
-                    source_account,
-                    &self.pubkey,
-                    destination_account,
-                    new_decryptable_available_balance.into(),
-                    source_authority,
-                    context_state_accounts,
-                    source_decrypt_handles,
-                )?,
-            ],
-            signing_keypairs,
+        let mut instruction =
+            confidential_transfer::instruction::transfer_with_fee_and_split_proofs(
+                &self.program_id,
+                source_account,
+                &self.pubkey,
+                destination_account,
+                new_decryptable_available_balance.into(),
+                source_authority,
+                context_state_accounts,
+                source_decrypt_handles,
+            )?;
+        offchain::resolve_extra_transfer_account_metas(
+            &mut instruction,
+            |address| {
+                self.client
+                    .get_account(address)
+                    .map_ok(|opt| opt.map(|acc| acc.data))
+            },
+            self.get_address(),
         )
         .await
+        .map_err(|_| TokenError::AccountNotFound)?;
+        self.process_ixs(&[instruction], signing_keypairs).await
     }
 
     /// Transfer tokens confidentially using split proofs in parallel
@@ -2823,7 +2863,7 @@ where
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
-        let transfer_instruction =
+        let mut transfer_instruction =
             confidential_transfer::instruction::transfer_with_fee_and_split_proofs(
                 &self.program_id,
                 source_account,
@@ -2834,6 +2874,17 @@ where
                 context_state_accounts,
                 &source_decrypt_handles,
             )?;
+        offchain::resolve_extra_transfer_account_metas(
+            &mut transfer_instruction,
+            |address| {
+                self.client
+                    .get_account(address)
+                    .map_ok(|opt| opt.map(|acc| acc.data))
+            },
+            self.get_address(),
+        )
+        .await
+        .map_err(|_| TokenError::AccountNotFound)?;
 
         let transfer_with_equality_and_ciphertext_valdity = self
             .create_equality_and_ciphertext_validity_proof_context_states_for_transfer_with_fee_parallel(
