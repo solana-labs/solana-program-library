@@ -248,17 +248,20 @@ describe('extensionType', () => {
         expect(getMintLen([ExtensionType.TransferHook])).to.eql(234);
         expect(getMintLen([ExtensionType.MetadataPointer])).to.eql(234);
         expect(
-            getMintLen(
-                [ExtensionType.TransferFeeConfig, ExtensionType.NonTransferable],
-                [[ExtensionType.TokenMetadata, 200]]
-            )
+            getMintLen([ExtensionType.TransferFeeConfig, ExtensionType.NonTransferable], {
+                [ExtensionType.TokenMetadata]: 200,
+            })
         ).to.eql(486);
+        expect(
+            getMintLen([], {
+                [ExtensionType.TokenMetadata]: 200,
+            })
+        ).to.eql(370);
         // Should error on an extension that isn't variable-length
         expect(() =>
-            getMintLen(
-                [ExtensionType.TransferFeeConfig, ExtensionType.NonTransferable],
-                [[ExtensionType.TransferHook, 200]]
-            )
+            getMintLen([ExtensionType.TransferFeeConfig, ExtensionType.NonTransferable], {
+                [ExtensionType.TransferHook]: 200,
+            })
         ).to.throw('Extension 14 is not variable length');
     });
 

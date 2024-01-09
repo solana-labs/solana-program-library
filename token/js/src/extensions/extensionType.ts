@@ -188,29 +188,26 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
 function getLen(
     extensionTypes: ExtensionType[],
     baseSize: number,
-    variableLengthExtensions?: [ExtensionType, number][]
+    variableLengthExtensions: { [E in ExtensionType]?: number } = {}
 ): number {
-    if (extensionTypes.length === 0) {
+    if (extensionTypes.length === 0 && Object.keys(variableLengthExtensions).length === 0) {
         return baseSize;
     } else {
-        let accountLength =
+        const accountLength =
             ACCOUNT_SIZE +
             ACCOUNT_TYPE_SIZE +
             extensionTypes
                 .filter((element, i) => i === extensionTypes.indexOf(element))
                 .map((element) => addTypeAndLengthToLen(getTypeLen(element)))
-                .reduce((a, b) => a + b);
-        if (variableLengthExtensions) {
-            accountLength += variableLengthExtensions
-                .filter((element, i) => i === variableLengthExtensions.indexOf(element))
+                .reduce((a, b) => a + b, 0) +
+            Object.entries(variableLengthExtensions)
                 .map(([extension, len]) => {
-                    if (!isVariableLengthExtension(extension)) {
+                    if (!isVariableLengthExtension(Number(extension))) {
                         throw Error(`Extension ${extension} is not variable length`);
                     }
                     return addTypeAndLengthToLen(len);
                 })
-                .reduce((a, b) => a + b);
-        }
+                .reduce((a, b) => a + b, 0);
         if (accountLength === MULTISIG_SIZE) {
             return accountLength + TYPE_SIZE;
         } else {
@@ -221,7 +218,7 @@ function getLen(
 
 export function getMintLen(
     extensionTypes: ExtensionType[],
-    variableLengthExtensions?: [ExtensionType, number][]
+    variableLengthExtensions: { [E in ExtensionType]?: number } = {}
 ): number {
     return getLen(extensionTypes, MINT_SIZE, variableLengthExtensions);
 }
