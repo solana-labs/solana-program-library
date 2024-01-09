@@ -232,7 +232,7 @@ async function resolveExtraAccountMetasForTransfer(
  *
  * @return Instruction to add to a transaction
  */
-export async function createTransferCheckedWithTransferHookInstruction(
+export async function createTransferCheckedInstructionWithExtraMetas(
     connection: Connection,
     source: PublicKey,
     mint: PublicKey,
@@ -288,7 +288,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
  *
  * @return Instruction to add to a transaction
  */
-export async function createTransferCheckedWithFeeAndTransferHookInstruction(
+export async function createTransferCheckedWithFeeInstructionWithExtraMetas(
     connection: Connection,
     source: PublicKey,
     mint: PublicKey,

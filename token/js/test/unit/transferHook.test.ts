@@ -1,6 +1,5 @@
 import {
-    createTransferCheckedInstruction,
-    createTransferCheckedWithTransferHookInstruction,
+    createTransferCheckedInstructionWithExtraMetas,
     getExtraAccountMetaAddress,
     getExtraAccountMetaList,
     resolveExtraAccountMeta,
@@ -348,7 +347,7 @@ describe('transferHook', () => {
             const connection = await getConnection();
             connection.getAccountInfo = mockFetchAccountDataFn;
 
-            const transferInstruction = await createTransferCheckedWithTransferHookInstruction(
+            const transferInstruction = await createTransferCheckedInstructionWithExtraMetas(
                 connection,
                 sourcePubkey,
                 mintPubkey,
