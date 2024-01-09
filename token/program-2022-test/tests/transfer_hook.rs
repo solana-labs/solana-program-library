@@ -3,7 +3,9 @@
 mod program_test;
 use {
     futures_util::TryFutureExt,
-    program_test::{TestContext, TokenContext},
+    program_test::{
+        ConfidentialTokenAccountBalances, ConfidentialTokenAccountMeta, TestContext, TokenContext,
+    },
     solana_program_test::{processor, tokio, ProgramTest},
     solana_sdk::{
         account::Account,
@@ -243,6 +245,41 @@ async fn setup(mint: Keypair, program_id: &Pubkey, authority: &Pubkey) -> TestCo
                 authority: Some(*authority),
                 program_id: Some(*program_id),
             }],
+            None,
+        )
+        .await
+        .unwrap();
+    context
+}
+
+async fn setup_with_confidential_transfers(
+    mint: Keypair,
+    program_id: &Pubkey,
+    authority: &Pubkey,
+) -> TestContext {
+    let mut program_test = setup_program_test(program_id);
+    add_validation_account(&mut program_test, &mint.pubkey(), program_id);
+
+    let context = program_test.start_with_context().await;
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+    let mut context = TestContext {
+        context,
+        token_context: None,
+    };
+    context
+        .init_token_with_mint_keypair_and_freeze_authority(
+            mint,
+            vec![
+                ExtensionInitializationParams::TransferHook {
+                    authority: Some(*authority),
+                    program_id: Some(*program_id),
+                },
+                ExtensionInitializationParams::ConfidentialTransferMint {
+                    authority: Some(*authority),
+                    auto_approve_new_accounts: true,
+                    auditor_elgamal_pubkey: None,
+                },
+            ],
             None,
         )
         .await
@@ -773,4 +810,106 @@ async fn success_transfers_using_onchain_helper() {
         .process_ixs(&[instruction], &[&authority_a, &authority_b])
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn success_confidential_transfer() {
+    let authority = Keypair::new();
+    let program_id = Pubkey::new_unique();
+    let mint_keypair = Keypair::new();
+    let token_context =
+        setup_with_confidential_transfers(mint_keypair, &program_id, &authority.pubkey())
+            .await
+            .token_context
+            .take()
+            .unwrap();
+    let amount = 10;
+
+    let TokenContext {
+        token,
+        alice,
+        bob,
+        mint_authority,
+        decimals,
+        ..
+    } = token_context;
+
+    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
+        &token,
+        &alice,
+        None,
+        false,
+        false,
+        &mint_authority,
+        amount,
+        decimals,
+    )
+    .await;
+
+    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, Some(2), false, false).await;
+
+    token
+        .confidential_transfer_transfer(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice.pubkey(),
+            None,
+            amount,
+            None,
+            &alice_meta.elgamal_keypair,
+            &alice_meta.aes_key,
+            bob_meta.elgamal_keypair.pubkey(),
+            None, // auditor
+            &[&alice],
+        )
+        .await
+        .unwrap();
+
+    let destination = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    alice_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: 0,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
+    bob_meta
+        .check_balances(
+            &token,
+            ConfidentialTokenAccountBalances {
+                pending_balance_lo: amount,
+                pending_balance_hi: 0,
+                available_balance: 0,
+                decryptable_available_balance: 0,
+            },
+        )
+        .await;
+
+    // the example program checks that the transferring flag was set to true,
+    // so make sure that it was correctly unset by the token program
+    assert_eq!(
+        destination
+            .get_extension::<TransferHookAccount>()
+            .unwrap()
+            .transferring,
+        false.into()
+    );
+    let source = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    assert_eq!(
+        source
+            .get_extension::<TransferHookAccount>()
+            .unwrap()
+            .transferring,
+        false.into()
+    );
 }
