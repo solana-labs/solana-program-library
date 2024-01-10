@@ -1,6 +1,7 @@
 //! Offchain helper for fetching required accounts to build instructions
 
 pub use spl_transfer_hook_interface::offchain::{AccountDataResult, AccountFetchError};
+#[allow(deprecated)]
 use {
     crate::{
         extension::{transfer_hook, StateWithExtensions},
@@ -33,6 +34,7 @@ use {
 ///     &mint,
 /// ).await?;
 /// ```
+#[allow(deprecated)]
 pub async fn resolve_extra_transfer_account_metas<F, Fut>(
     instruction: &mut Instruction,
     fetch_account_data_fn: F,
