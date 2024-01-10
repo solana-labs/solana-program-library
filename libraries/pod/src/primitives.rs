@@ -54,6 +54,11 @@ macro_rules! impl_int_conversion {
                 Self::from_le_bytes(pod.0)
             }
         }
+        impl Into<usize> for $P {
+            fn into(self) -> usize {
+                usize::try_from(<$I>::from_le_bytes(self.0)).unwrap()
+            }
+        }
     };
 }
 

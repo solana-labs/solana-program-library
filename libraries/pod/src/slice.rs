@@ -14,21 +14,21 @@ use {
 
 const LENGTH_SIZE: usize = std::mem::size_of::<PodU32>();
 /// Special type for using a slice of `Pod`s in a zero-copy way
-pub struct PodSlice<'data, T: Pod> {
-    length: &'data PodU32,
+pub struct PodSlice<'data, T: Pod, S: Pod + Into<usize>> {
+    length: &'data S,
     data: &'data [T],
 }
-impl<'data, T: Pod> PodSlice<'data, T> {
+impl<'data, T: Pod, S: Pod + Into<usize>> PodSlice<'data, T, S> {
     /// Unpack the buffer into a slice
     pub fn unpack<'a>(data: &'a [u8]) -> Result<Self, ProgramError>
     where
         'a: 'data,
     {
-        if data.len() < LENGTH_SIZE {
+        if data.len() < std::mem::size_of::<S>() {
             return Err(PodSliceError::BufferTooSmall.into());
         }
-        let (length, data) = data.split_at(LENGTH_SIZE);
-        let length = pod_from_bytes::<PodU32>(length)?;
+        let (length, data) = data.split_at(std::mem::size_of::<S>());
+        let length = pod_from_bytes::<S>(length)?;
         let _max_length = max_len_for_type::<T>(data.len())?;
         let data = pod_slice_from_bytes(data)?;
         Ok(Self { length, data })
@@ -36,7 +36,7 @@ impl<'data, T: Pod> PodSlice<'data, T> {
 
     /// Get the slice data
     pub fn data(&self) -> &[T] {
-        let length = u32::from(*self.length) as usize;
+        let length = (*self.length).into();
         &self.data[..length]
     }
 
@@ -44,7 +44,7 @@ impl<'data, T: Pod> PodSlice<'data, T> {
     pub fn size_of(num_items: usize) -> Result<usize, ProgramError> {
         std::mem::size_of::<T>()
             .checked_mul(num_items)
-            .and_then(|len| len.checked_add(LENGTH_SIZE))
+            .and_then(|len| len.checked_add(std::mem::size_of::<S>()))
             .ok_or_else(|| PodSliceError::CalculationFailure.into())
     }
 }
@@ -129,7 +129,14 @@ fn max_len_for_type<T>(data_len: usize) -> Result<usize, ProgramError> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::bytemuck::pod_slice_to_bytes, bytemuck::Zeroable};
+    use {
+        super::*,
+        crate::{bytemuck::pod_slice_to_bytes, primitives::PodU64},
+        bincode::serialize,
+        bytemuck::Zeroable,
+        solana_program::stake_history::{StakeHistory, StakeHistoryEntry, MAX_ENTRIES},
+        std::ops::Deref,
+    };
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -155,14 +162,14 @@ mod tests {
         pod_slice_bytes[0..4].copy_from_slice(&len_bytes);
         pod_slice_bytes[4..70].copy_from_slice(&data_bytes);
 
-        let pod_slice = PodSlice::<TestStruct>::unpack(&pod_slice_bytes).unwrap();
+        let pod_slice = PodSlice::<TestStruct, PodU32>::unpack(&pod_slice_bytes).unwrap();
         let pod_slice_data = pod_slice.data();
 
         assert_eq!(*pod_slice.length, PodU32::from(2));
         assert_eq!(pod_slice_to_bytes(pod_slice.data()), data_bytes);
         assert_eq!(pod_slice_data[0].test_field, test_field_bytes[0]);
         assert_eq!(pod_slice_data[0].test_pubkey, test_pubkey_bytes);
-        assert_eq!(PodSlice::<TestStruct>::size_of(1).unwrap(), 37);
+        assert_eq!(PodSlice::<TestStruct, PodU32>::size_of(1).unwrap(), 37);
     }
 
     #[test]
@@ -170,7 +177,7 @@ mod tests {
         // 1 `TestStruct` + length = 37 bytes
         // we pass 38 to trigger BufferTooLarge
         let pod_slice_bytes = [1; 38];
-        let err = PodSlice::<TestStruct>::unpack(&pod_slice_bytes)
+        let err = PodSlice::<TestStruct, PodU32>::unpack(&pod_slice_bytes)
             .err()
             .unwrap();
         assert_eq!(
@@ -185,7 +192,7 @@ mod tests {
         // 1 `TestStruct` + length = 37 bytes
         // we pass 36 to trigger BufferTooSmall
         let pod_slice_bytes = [1; 36];
-        let err = PodSlice::<TestStruct>::unpack(&pod_slice_bytes)
+        let err = PodSlice::<TestStruct, PodU32>::unpack(&pod_slice_bytes)
             .err()
             .unwrap();
         assert_eq!(
@@ -212,5 +219,59 @@ mod tests {
             .push(TestStruct::default())
             .expect_err("Expected an `PodSliceError::BufferTooSmall` error");
         assert_eq!(err, PodSliceError::BufferTooSmall.into());
+    }
+
+    #[repr(C)]
+    #[derive(Debug, PartialEq, Default, Clone, Copy, Pod, Zeroable)]
+    pub struct EpochAndStakeHistoryEntry {
+        pub epoch: PodU64,
+        pub entry: PodStakeHistoryEntry,
+    }
+
+    #[repr(C)]
+    #[derive(Debug, PartialEq, Default, Clone, Copy, Pod, Zeroable)]
+    pub struct PodStakeHistoryEntry {
+        pub effective: PodU64,    // effective stake at this epoch
+        pub activating: PodU64,   // sum of portion of stakes not fully warmed up
+        pub deactivating: PodU64, // requested to be cooled down, not fully deactivated yet
+    }
+
+    impl From<PodStakeHistoryEntry> for StakeHistoryEntry {
+        fn from(item: PodStakeHistoryEntry) -> Self {
+            Self {
+                effective: item.effective.into(),
+                activating: item.activating.into(),
+                deactivating: item.deactivating.into(),
+            }
+        }
+    }
+
+    fn test_stake_history() -> StakeHistory {
+        let mut stake_history = StakeHistory::default();
+        for i in 0..MAX_ENTRIES as u64 + 1 {
+            stake_history.add(
+                i,
+                StakeHistoryEntry {
+                    activating: i,
+                    ..StakeHistoryEntry::default()
+                },
+            );
+        }
+        stake_history
+    }
+
+    #[test]
+    fn test_serde() {
+        let stake_history = test_stake_history();
+        let serialized = serialize(&stake_history).unwrap();
+        let pod_slice = PodSlice::<EpochAndStakeHistoryEntry, PodU64>::unpack(&serialized).unwrap();
+        assert_eq!(
+            &pod_slice
+                .data()
+                .iter()
+                .map(|x| (u64::from(x.epoch), x.entry.into()))
+                .collect::<Vec<_>>(),
+            stake_history.deref()
+        );
     }
 }

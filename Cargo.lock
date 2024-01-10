@@ -7036,6 +7036,7 @@ name = "spl-pod"
 version = "0.1.0"
 dependencies = [
  "base64 0.21.6",
+ "bincode",
  "borsh 0.10.3",
  "bytemuck",
  "serde",
