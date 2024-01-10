@@ -913,43 +913,71 @@ where
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
-        let mut instruction = if let Some(decimals) = self.decimals {
-            instruction::transfer_checked(
-                &self.program_id,
-                source,
-                &self.pubkey,
-                destination,
-                authority,
-                &multisig_signers,
-                amount,
-                decimals,
-            )?
-        } else {
-            #[allow(deprecated)]
-            instruction::transfer(
-                &self.program_id,
-                source,
-                destination,
-                authority,
-                &multisig_signers,
-                amount,
-            )?
+        let fetch_account_data_fn = |address| {
+            self.client
+                .get_account(address)
+                .map_ok(|opt| opt.map(|acc| acc.data))
         };
-        if let Some(transfer_hook_accounts) = &self.transfer_hook_accounts {
-            instruction.accounts.extend(transfer_hook_accounts.clone());
+
+        let instruction = if let Some(decimals) = self.decimals {
+            if let Some(transfer_hook_accounts) = &self.transfer_hook_accounts {
+                let mut instruction = instruction::transfer_checked(
+                    &self.program_id,
+                    source,
+                    self.get_address(),
+                    destination,
+                    authority,
+                    &multisig_signers,
+                    amount,
+                    decimals,
+                )?;
+                instruction.accounts.extend(transfer_hook_accounts.clone());
+                instruction
+            } else {
+                offchain::create_transfer_checked_instruction_with_extra_metas(
+                    &self.program_id,
+                    source,
+                    self.get_address(),
+                    destination,
+                    authority,
+                    &multisig_signers,
+                    amount,
+                    decimals,
+                    fetch_account_data_fn,
+                )
+                .await
+                .map_err(|_| TokenError::AccountNotFound)?
+            }
         } else {
             #[allow(deprecated)]
-            offchain::resolve_extra_transfer_account_metas(
-                &mut instruction,
-                |address| {
-                    self.client
-                        .get_account(address)
-                        .map_ok(|opt| opt.map(|acc| acc.data))
-                },
-                self.get_address(),
-            )
-            .await
-            .map_err(|_| TokenError::AccountNotFound)?;
+            let mut instruction = instruction::transfer(
+                &self.program_id,
+                source,
+                destination,
+                authority,
+                &multisig_signers,
+                amount,
+            )?;
+            if let Some(transfer_hook_accounts) = &self.transfer_hook_accounts {
+                instruction.accounts.extend(transfer_hook_accounts.clone());
+            } else {
+                let mint = self.get_mint_info().await?;
+                if let Some(program_id) = transfer_hook::get_program_id(&mint) {
+                    spl_transfer_hook_interface::offchain::add_extra_account_metas_for_execute(
+                        &mut instruction,
+                        &program_id,
+                        source,
+                        self.get_address(),
+                        destination,
+                        authority,
+                        amount,
+                        fetch_account_data_fn,
+                    )
+                    .await
+                    .map_err(|_| TokenError::AccountNotFound)?;
+                }
+            };
+            instruction
         };
 
         self.process_ixs(&[instruction], signing_keypairs).await
