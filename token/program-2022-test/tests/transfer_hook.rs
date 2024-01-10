@@ -17,6 +17,7 @@ use {
         transaction::TransactionError,
         transport::TransportError,
     },
+    spl_tlv_account_resolution::{account::ExtraAccountMeta, seeds::Seed},
     spl_token_2022::{
         error::TokenError,
         extension::{
@@ -191,6 +192,28 @@ fn add_validation_account(program_test: &mut ProgramTest, mint: &Pubkey, program
             is_writable: false,
         }
         .into(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::AccountKey { index: 0 }, // source
+                Seed::AccountKey { index: 2 }, // destination
+                Seed::AccountKey { index: 4 }, // validation state
+            ],
+            false,
+            true,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::Literal {
+                    bytes: vec![1, 2, 3, 4, 5, 6],
+                },
+                Seed::AccountKey { index: 2 }, // destination
+                Seed::AccountKey { index: 5 }, // extra meta 1
+            ],
+            false,
+            true,
+        )
+        .unwrap(),
     ];
     program_test.add_account(
         validation_address,
