@@ -80,6 +80,16 @@ where
 /// Offchain helper to get all additional required account metas for an execute
 /// instruction, based on a validation state account.
 ///
+/// The instruction being provided to this function must contain at least the
+/// same account keys as the ones being provided, in order. Specifically:
+/// 1. source
+/// 2. mint
+/// 3. destination
+/// 4. authority
+///
+/// The `program_id` should be the program ID of the program that the
+/// created `ExecuteInstruction` is for.
+///
 /// To be client-agnostic and to avoid pulling in the full solana-sdk, this
 /// simply takes a function that will return its data as `Future<Vec<u8>>` for
 /// the given address. Can be called in the following way:

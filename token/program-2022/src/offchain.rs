@@ -1,14 +1,12 @@
 //! Offchain helper for fetching required accounts to build instructions
 
 pub use spl_transfer_hook_interface::offchain::{AccountDataResult, AccountFetchError};
-#[allow(deprecated)]
 use {
     crate::{
         extension::{transfer_hook, StateWithExtensions},
         state::Mint,
     },
     solana_program::{instruction::Instruction, program_error::ProgramError, pubkey::Pubkey},
-    spl_transfer_hook_interface::offchain::resolve_extra_account_metas,
     std::future::Future,
 };
 
@@ -34,7 +32,6 @@ use {
 ///     &mint,
 /// ).await?;
 /// ```
-#[allow(deprecated)]
 pub async fn resolve_extra_transfer_account_metas<F, Fut>(
     instruction: &mut Instruction,
     fetch_account_data_fn: F,
@@ -49,7 +46,8 @@ where
         .ok_or(ProgramError::InvalidAccountData)?;
     let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
     if let Some(program_id) = transfer_hook::get_program_id(&mint) {
-        resolve_extra_account_metas(
+        #[allow(deprecated)]
+        spl_transfer_hook_interface::offchain::resolve_extra_account_metas(
             instruction,
             fetch_account_data_fn,
             mint_address,
