@@ -137,6 +137,8 @@ function deEscalateAccountMeta(accountMeta: AccountMeta, accountMetas: AccountMe
 }
 
 /**
+ * @deprecated Deprecated since v0.4.0. Please use {@link addExtraAccountMetasForExecute} instead.
+ *
  * Add extra accounts needed for transfer hook to an instruction
  *
  * @param connection      Connection to use
@@ -191,13 +193,119 @@ export async function addExtraAccountsToInstruction(
 }
 
 /**
+ * Construct an `ExecuteInstruction` for a transfer hook program
+ *
+ * @param programId             The program ID of the transfer hook program
+ * @param source                The source account
+ * @param mint                  The mint account
+ * @param destination           The destination account
+ * @param owner                 Owner of the source account
+ * @param validateStatePubkey   The validate state pubkey
+ * @param amount                The amount of tokens to transfer
+ * @returns Instruction to add to a transaction
+ */
+export function createExecuteInstruction(
+    programId: PublicKey,
+    source: PublicKey,
+    mint: PublicKey,
+    destination: PublicKey,
+    authority: PublicKey,
+    validateStatePubkey: PublicKey,
+    amount: number | bigint
+): TransactionInstruction {
+    const keys = [source, mint, destination, authority, validateStatePubkey].map((pubkey) => ({
+        pubkey,
+        isSigner: false,
+        isWritable: false,
+    }));
+
+    const data = Buffer.alloc(16);
+    data.set(Buffer.from([105, 37, 101, 197, 75, 251, 102, 26]), 0); // `ExecuteInstruction` discriminator
+    data.writeBigUInt64LE(BigInt(amount), 8);
+
+    return new TransactionInstruction({ keys, programId, data });
+}
+
+/**
+ * Adds all the extra accounts needed for a transfer hook to an instruction
+ *
+ * @param connection            Connection to use
+ * @param instruction           The instruction to add accounts to
+ * @param programId             Transfer hook program ID
+ * @param source                The source account
+ * @param mint                  The mint account
+ * @param destination           The destination account
+ * @param authority             Owner of the source account
+ * @param amount                The amount of tokens to transfer
+ * @param commitment            Commitment to use
+ * @returns A new instruction with the extra account metas added
+ */
+export async function addExtraAccountMetasForExecute(
+    connection: Connection,
+    instruction: TransactionInstruction,
+    programId: PublicKey,
+    source: PublicKey,
+    mint: PublicKey,
+    destination: PublicKey,
+    authority: PublicKey,
+    amount: number | bigint,
+    commitment?: Commitment
+) {
+    const validateStatePubkey = getExtraAccountMetaAddress(mint, programId);
+    const validateStateAccount = await connection.getAccountInfo(validateStatePubkey, commitment);
+    if (validateStateAccount == null) {
+        return instruction;
+    }
+    const validateStateData = getExtraAccountMetas(validateStateAccount);
+
+    // Check to make sure the provided keys are in the instruction
+    if (![source, mint, destination, authority].every((key) => instruction.keys.some((meta) => meta.pubkey === key))) {
+        throw new Error('Missing required account in instruction');
+    }
+
+    const executeInstruction = createExecuteInstruction(
+        programId,
+        source,
+        mint,
+        destination,
+        authority,
+        validateStatePubkey,
+        amount
+    );
+
+    for (const extraAccountMeta of validateStateData) {
+        executeInstruction.keys.push(
+            deEscalateAccountMeta(
+                await resolveExtraAccountMeta(
+                    connection,
+                    extraAccountMeta,
+                    executeInstruction.keys,
+                    executeInstruction.data,
+                    executeInstruction.programId
+                ),
+                executeInstruction.keys
+            )
+        );
+    }
+
+    // Add only the extra accounts resolved from the validation state
+    instruction.keys.push(...executeInstruction.keys.slice(5));
+
+    // Add the transfer hook program ID and the validation state account
+    instruction.keys.push({ pubkey: programId, isSigner: false, isWritable: false });
+    instruction.keys.push({ pubkey: validateStatePubkey, isSigner: false, isWritable: false });
+
+    return instruction;
+}
+
+/**
  * Construct an transferChecked instruction with extra accounts for transfer hook
  *
  * @param connection            Connection to use
  * @param source                Source account
  * @param mint                  Mint to update
  * @param destination           Destination account
- * @param authority             The mint's transfer hook authority
+ * @param authority             Owner of the source account
  * @param amount                The amount of tokens to transfer
  * @param decimals              Number of decimals in transfer amount
  * @param multiSigners          The signer account(s) for a multisig
@@ -229,15 +337,22 @@ export async function createTransferCheckedWithTransferHookInstruction(
         programId
     );
 
-    const hydratedInstruction = await addExtraAccountsToInstruction(
-        connection,
-        rawInstruction,
-        mint,
-        commitment,
-        programId
-    );
+    const mintInfo = await getMint(connection, mint, commitment, programId);
+    const transferHook = getTransferHook(mintInfo);
 
-    return hydratedInstruction;
+    return transferHook
+        ? addExtraAccountMetasForExecute(
+              connection,
+              rawInstruction,
+              transferHook.programId,
+              source,
+              mint,
+              destination,
+              authority,
+              amount,
+              commitment
+          )
+        : rawInstruction;
 }
 
 /**
@@ -247,7 +362,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
  * @param source                Source account
  * @param mint                  Mint to update
  * @param destination           Destination account
- * @param authority             The mint's transfer hook authority
+ * @param authority             Owner of the source account
  * @param amount                The amount of tokens to transfer
  * @param decimals              Number of decimals in transfer amount
  * @param fee                   The calculated fee for the transfer fee extension
@@ -282,13 +397,20 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
         programId
     );
 
-    const hydratedInstruction = await addExtraAccountsToInstruction(
-        connection,
-        rawInstruction,
-        mint,
-        commitment,
-        programId
-    );
+    const mintInfo = await getMint(connection, mint, commitment, programId);
+    const transferHook = getTransferHook(mintInfo);
 
-    return hydratedInstruction;
+    return transferHook
+        ? addExtraAccountMetasForExecute(
+              connection,
+              rawInstruction,
+              transferHook.programId,
+              source,
+              mint,
+              destination,
+              authority,
+              amount,
+              commitment
+          )
+        : rawInstruction;
 }
