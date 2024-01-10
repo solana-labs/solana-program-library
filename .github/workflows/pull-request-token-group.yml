@@ -17,6 +17,10 @@ on:
       - '.github/workflows/pull-request-token-group.yml'
       - '!token-group/js/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cargo-test-sbf:
     runs-on: ubuntu-latest

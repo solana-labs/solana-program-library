@@ -19,6 +19,10 @@ on:
       - ".github/workflows/pull-request-account-compression.yml"
       - "!account-compression/sdk/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   anchor-build-account-compression:
     runs-on: ubuntu-latest
