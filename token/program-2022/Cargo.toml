@@ -12,11 +12,13 @@ exclude = ["js/**"]
 no-entrypoint = []
 test-sbf = []
 serde-traits = ["dep:serde", "dep:serde_with", "dep:base64", "spl-pod/serde-traits"]
-default = ["token-group", "zk-ops"]
+default = ["confidential-hook", "token-group", "zk-ops"]
 # Remove this feature once the underlying syscalls are released on all networks
 zk-ops = []
 # Remove this feature once the token group implementation has been audited
 token-group = []
+# Remove this feature once the confidential transfer hook has been audited
+confidential-hook = []
 
 [dependencies]
 arrayref = "0.3.7"
