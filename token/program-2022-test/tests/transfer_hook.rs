@@ -27,7 +27,9 @@ use {
         processor::Processor,
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
-    spl_transfer_hook_interface::{get_extra_account_metas_address, offchain::add_extra_account_metas_for_execute},
+    spl_transfer_hook_interface::{
+        get_extra_account_metas_address, offchain::add_extra_account_metas_for_execute,
+    },
     std::{convert::TryInto, sync::Arc},
 };
 
