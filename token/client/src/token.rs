@@ -950,34 +950,14 @@ where
             }
         } else {
             #[allow(deprecated)]
-            let mut instruction = instruction::transfer(
+            instruction::transfer(
                 &self.program_id,
                 source,
                 destination,
                 authority,
                 &multisig_signers,
                 amount,
-            )?;
-            if let Some(transfer_hook_accounts) = &self.transfer_hook_accounts {
-                instruction.accounts.extend(transfer_hook_accounts.clone());
-            } else {
-                let mint = self.get_mint_info().await?;
-                if let Some(program_id) = transfer_hook::get_program_id(&mint) {
-                    spl_transfer_hook_interface::offchain::add_extra_account_metas_for_execute(
-                        &mut instruction,
-                        &program_id,
-                        source,
-                        self.get_address(),
-                        destination,
-                        authority,
-                        amount,
-                        fetch_account_data_fn,
-                    )
-                    .await
-                    .map_err(|_| TokenError::AccountNotFound)?;
-                }
-            };
-            instruction
+            )?
         };
 
         self.process_ixs(&[instruction], signing_keypairs).await
