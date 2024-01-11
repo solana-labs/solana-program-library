@@ -627,6 +627,7 @@ async fn success_downgrade_writable_and_signer_accounts() {
         .unwrap();
 }
 
+#[allow(deprecated)]
 #[tokio::test]
 async fn success_transfers_using_onchain_helper() {
     let authority = Pubkey::new_unique();
