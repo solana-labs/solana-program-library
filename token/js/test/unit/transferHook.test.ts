@@ -397,7 +397,7 @@ describe('transferHook', () => {
                 )
             ).to.be.rejectedWith('Missing required account in instruction');
 
-            const rawInstruction = new TransactionInstruction({
+            const instruction = new TransactionInstruction({
                 keys: [
                     { pubkey: sourcePubkey, isSigner: false, isWritable: true },
                     { pubkey: mintPubkey, isSigner: false, isWritable: false },
@@ -407,9 +407,9 @@ describe('transferHook', () => {
                 programId: transferHookProgramId,
             });
 
-            const hydratedInstruction = await addExtraAccountMetasForExecute(
+            await addExtraAccountMetasForExecute(
                 connection,
-                rawInstruction,
+                instruction,
                 transferHookProgramId,
                 sourcePubkey,
                 mintPubkey,
@@ -433,7 +433,7 @@ describe('transferHook', () => {
                 { pubkey: validateStatePubkey, isSigner: false, isWritable: false },
             ];
 
-            expect(hydratedInstruction.keys).to.eql(checkMetas);
+            expect(instruction.keys).to.eql(checkMetas);
         });
 
         it('can create a transfer instruction with extra metas', async () => {

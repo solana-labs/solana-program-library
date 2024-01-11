@@ -228,7 +228,9 @@ export function createExecuteInstruction(
 }
 
 /**
- * Adds all the extra accounts needed for a transfer hook to an instruction
+ * Adds all the extra accounts needed for a transfer hook to an instruction.
+ *
+ * Note this will modify the instruction passed in.
  *
  * @param connection            Connection to use
  * @param instruction           The instruction to add accounts to
@@ -239,7 +241,6 @@ export function createExecuteInstruction(
  * @param owner                 Owner of the source account
  * @param amount                The amount of tokens to transfer
  * @param commitment            Commitment to use
- * @returns A new instruction with the extra account metas added
  */
 export async function addExtraAccountMetasForExecute(
     connection: Connection,
@@ -295,8 +296,6 @@ export async function addExtraAccountMetasForExecute(
     // Add the transfer hook program ID and the validation state account
     instruction.keys.push({ pubkey: programId, isSigner: false, isWritable: false });
     instruction.keys.push({ pubkey: validateStatePubkey, isSigner: false, isWritable: false });
-
-    return instruction;
 }
 
 /**
@@ -327,7 +326,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
     commitment?: Commitment,
     programId = TOKEN_PROGRAM_ID
 ) {
-    const rawInstruction = createTransferCheckedInstruction(
+    const instruction = createTransferCheckedInstruction(
         source,
         mint,
         destination,
@@ -341,19 +340,21 @@ export async function createTransferCheckedWithTransferHookInstruction(
     const mintInfo = await getMint(connection, mint, commitment, programId);
     const transferHook = getTransferHook(mintInfo);
 
-    return transferHook
-        ? addExtraAccountMetasForExecute(
-              connection,
-              rawInstruction,
-              transferHook.programId,
-              source,
-              mint,
-              destination,
-              owner,
-              amount,
-              commitment
-          )
-        : rawInstruction;
+    if (transferHook) {
+        await addExtraAccountMetasForExecute(
+            connection,
+            instruction,
+            transferHook.programId,
+            source,
+            mint,
+            destination,
+            owner,
+            amount,
+            commitment
+        );
+    }
+
+    return instruction;
 }
 
 /**
@@ -386,7 +387,7 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
     commitment?: Commitment,
     programId = TOKEN_PROGRAM_ID
 ) {
-    const rawInstruction = createTransferCheckedWithFeeInstruction(
+    const instruction = createTransferCheckedWithFeeInstruction(
         source,
         mint,
         destination,
@@ -401,17 +402,19 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
     const mintInfo = await getMint(connection, mint, commitment, programId);
     const transferHook = getTransferHook(mintInfo);
 
-    return transferHook
-        ? addExtraAccountMetasForExecute(
-              connection,
-              rawInstruction,
-              transferHook.programId,
-              source,
-              mint,
-              destination,
-              owner,
-              amount,
-              commitment
-          )
-        : rawInstruction;
+    if (transferHook) {
+        await addExtraAccountMetasForExecute(
+            connection,
+            instruction,
+            transferHook.programId,
+            source,
+            mint,
+            destination,
+            owner,
+            amount,
+            commitment
+        );
+    }
+
+    return instruction;
 }
