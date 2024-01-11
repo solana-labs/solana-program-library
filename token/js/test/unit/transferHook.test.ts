@@ -197,8 +197,116 @@ describe('transferHook', () => {
         });
     });
 
-    // prettier-ignore
     describe('adding extra metas to instructions', () => {
+        let connection: Connection;
+
+        let transferHookProgramId: PublicKey;
+
+        let sourcePubkey: PublicKey;
+        let mintPubkey: PublicKey;
+        let destinationPubkey: PublicKey;
+        let authorityPubkey: PublicKey;
+        let validateStatePubkey: PublicKey;
+
+        const amount = 100n;
+        const amountInLeBytes = Buffer.alloc(8);
+        amountInLeBytes.writeBigUInt64LE(amount);
+        const decimals = 0;
+
+        // Arbitrary program ID included to test external PDAs
+        let arbitraryProgramId: PublicKey;
+
+        beforeEach(async () => {
+            connection = await getConnection();
+
+            transferHookProgramId = Keypair.generate().publicKey;
+
+            sourcePubkey = Keypair.generate().publicKey;
+            mintPubkey = Keypair.generate().publicKey;
+            destinationPubkey = Keypair.generate().publicKey;
+            authorityPubkey = Keypair.generate().publicKey;
+            validateStatePubkey = getExtraAccountMetaAddress(mintPubkey, transferHookProgramId);
+
+            arbitraryProgramId = Keypair.generate().publicKey;
+        });
+
+        function createMockFetchAccountDataFn(extraAccounts: ExtraAccountMeta[]) {
+            return async function mockFetchAccountDataFn(
+                publicKey: PublicKey,
+                _commitmentOrConfig?: Parameters<Connection['getAccountInfo']>[1]
+            ): ReturnType<Connection['getAccountInfo']> {
+                // Mocked mint state
+                if (publicKey.equals(mintPubkey)) {
+                    const data = Buffer.alloc(
+                        ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE + TYPE_SIZE + LENGTH_SIZE + TRANSFER_HOOK_SIZE
+                    );
+                    MintLayout.encode(
+                        {
+                            mintAuthorityOption: 0,
+                            mintAuthority: PublicKey.default,
+                            supply: 10000n,
+                            decimals,
+                            isInitialized: true,
+                            freezeAuthorityOption: 0,
+                            freezeAuthority: PublicKey.default,
+                        },
+                        data,
+                        0
+                    );
+                    data.writeUint8(1, ACCOUNT_SIZE); // Account type (1): Mint = 1
+                    data.writeUint16LE(ExtensionType.TransferHook, ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE);
+                    data.writeUint16LE(TRANSFER_HOOK_SIZE, ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE + TYPE_SIZE);
+                    TransferHookLayout.encode(
+                        {
+                            authority: Keypair.generate().publicKey,
+                            programId: transferHookProgramId,
+                        },
+                        data,
+                        ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE + TYPE_SIZE + LENGTH_SIZE
+                    );
+                    return {
+                        data,
+                        owner: TOKEN_2022_PROGRAM_ID,
+                        executable: false,
+                        lamports: 0,
+                    };
+                }
+
+                // Mocked validate state
+                if (publicKey.equals(validateStatePubkey)) {
+                    const extraAccountsList: ExtraAccountMetaList = {
+                        count: extraAccounts.length,
+                        extraAccounts,
+                    };
+                    const instructionDiscriminator = Buffer.from([
+                        105, 37, 101, 197, 75, 251, 102, 26,
+                    ]).readBigUInt64LE();
+                    const data = Buffer.alloc(8 + 4 + 4 + ExtraAccountMetaLayout.span * extraAccounts.length);
+                    ExtraAccountMetaAccountDataLayout.encode(
+                        {
+                            instructionDiscriminator,
+                            length: 4 + ExtraAccountMetaLayout.span * extraAccounts.length,
+                            extraAccountsList,
+                        },
+                        data
+                    );
+                    return {
+                        data,
+                        owner: transferHookProgramId,
+                        executable: false,
+                        lamports: 0,
+                    };
+                }
+
+                return {
+                    data: Buffer.from([]),
+                    owner: PublicKey.default,
+                    executable: false,
+                    lamports: 0,
+                };
+            };
+        }
+
         const addressConfig = (data: Uint8Array) => {
             const addressConfig = Buffer.alloc(32);
             addressConfig.set(data, 0);
@@ -227,85 +335,43 @@ describe('transferHook', () => {
         });
 
         it('can add extra account metas for execute', async () => {
-            const transferHookProgramId = Keypair.generate().publicKey;
-
-            const sourcePubkey = Keypair.generate().publicKey;
-            const mintPubkey = Keypair.generate().publicKey;
-            const destinationPubkey = Keypair.generate().publicKey;
-            const authorityPubkey = Keypair.generate().publicKey;
-            const validateStatePubkey = getExtraAccountMetaAddress(mintPubkey, transferHookProgramId);
-            const amount = 100n;
-            const decimals = 0;
-
             const extraMeta1Pubkey = Keypair.generate().publicKey;
             const extraMeta2Pubkey = Keypair.generate().publicKey;
             const extraMeta3Pubkey = Keypair.generate().publicKey;
 
-            const connection = await getConnection();
-            connection.getAccountInfo = async function mockFetchAccountDataFn(
-                publicKey: PublicKey,
-                _commitmentOrConfig?: Parameters<Connection['getAccountInfo']>[1]
-            ): ReturnType<Connection['getAccountInfo']> {
-                // Mocked validate state
-                const extraAccounts: ExtraAccountMeta[] = [
-                    fixedAddress(extraMeta1Pubkey, false, false),
-                    fixedAddress(extraMeta2Pubkey, false, false),
-                    fixedAddress(extraMeta3Pubkey, false, false),
-                    pda([
-                        3, 0, // First seed: Account key at index 0 (2)
-                        3, 4, // Second seed: Account key at index 4 (2)
-                    ], false, false),
-                    pda([
-                        3, 5, // First seed: Account key at index 5 (2)
-                        3, 6, // Second seed: Account key at index 6 (2)
-                    ], false, false),
-                    pda([
-                        1, 6, 112, 114, 101, 102, 105, 120, // First seed: Literal "prefix" (8)
-                        2, 8, 8, // Second seed: Instruction data 8..16 (3)
-                    ], false, false),
-                ];
-                const extraAccountsList: ExtraAccountMetaList =  {
-                    count: extraAccounts.length,
-                    extraAccounts,
-                }
-                const instructionDiscriminator = Buffer.from([105, 37, 101, 197, 75, 251, 102, 26]).readBigUInt64LE();
-                const data = Buffer.alloc(8 + 4 + 4 + ExtraAccountMetaLayout.span * extraAccounts.length);
-                ExtraAccountMetaAccountDataLayout.encode({
-                    instructionDiscriminator,
-                    length: 4 + ExtraAccountMetaLayout.span * extraAccounts.length,
-                    extraAccountsList,
-                }, data);
-                return {
-                    data,
-                    owner: transferHookProgramId,
-                    executable: false,
-                    lamports: 0,
-                };
-            };
-
-            const amountInLeBytes = Buffer.alloc(8);
-            amountInLeBytes.writeBigUInt64LE(amount);
+            // prettier-ignore
+            connection.getAccountInfo = createMockFetchAccountDataFn([
+                fixedAddress(extraMeta1Pubkey, false, false),
+                fixedAddress(extraMeta2Pubkey, false, false),
+                fixedAddress(extraMeta3Pubkey, false, false),
+                pda([
+                    3, 0, // First seed: Account key at index 0 (2)
+                    3, 4, // Second seed: Account key at index 4 (2)
+                ], false, false),
+                pda([
+                    3, 5, // First seed: Account key at index 5 (2)
+                    3, 6, // Second seed: Account key at index 6 (2)
+                ], false, false),
+                pda([
+                    1, 6, 112, 114, 101, 102, 105, 120, // First seed: Literal "prefix" (8)
+                    2, 8, 8, // Second seed: Instruction data 8..16 (3)
+                ], false, false),
+            ]);
 
             const extraMeta4Pubkey = PublicKey.findProgramAddressSync(
-                [
-                    sourcePubkey.toBuffer(),
-                    validateStatePubkey.toBuffer(),
-                ],
-                transferHookProgramId,
+                [sourcePubkey.toBuffer(), validateStatePubkey.toBuffer()],
+                transferHookProgramId
             )[0];
             const extraMeta5Pubkey = PublicKey.findProgramAddressSync(
-                [
-                    extraMeta1Pubkey.toBuffer(),
-                    extraMeta2Pubkey.toBuffer(),
-                ],
-                transferHookProgramId,
+                [extraMeta1Pubkey.toBuffer(), extraMeta2Pubkey.toBuffer()],
+                transferHookProgramId
             )[0];
             const extraMeta6Pubkey = PublicKey.findProgramAddressSync(
                 [
-                    Buffer.from("prefix"),
+                    Buffer.from('prefix'),
                     amountInLeBytes, // Instruction data 8..16
                 ],
-                transferHookProgramId,
+                transferHookProgramId
             )[0];
 
             // Fail missing key
@@ -327,9 +393,9 @@ describe('transferHook', () => {
                     mintPubkey,
                     destinationPubkey,
                     authorityPubkey,
-                    amount,
+                    amount
                 )
-            ).to.be.rejectedWith("Missing required account in instruction");
+            ).to.be.rejectedWith('Missing required account in instruction');
 
             const rawInstruction = new TransactionInstruction({
                 keys: [
@@ -349,7 +415,7 @@ describe('transferHook', () => {
                 mintPubkey,
                 destinationPubkey,
                 authorityPubkey,
-                amount,
+                amount
             );
 
             const checkMetas = [
@@ -371,146 +437,71 @@ describe('transferHook', () => {
         });
 
         it('can create a transfer instruction with extra metas', async () => {
-            const transferHookProgramId = Keypair.generate().publicKey;
-
-            const sourcePubkey = Keypair.generate().publicKey;
-            const mintPubkey = Keypair.generate().publicKey;
-            const destinationPubkey = Keypair.generate().publicKey;
-            const authorityPubkey = Keypair.generate().publicKey;
-            const validateStatePubkey = getExtraAccountMetaAddress(mintPubkey, transferHookProgramId);
-            const amount = 100n;
-            const decimals = 0;
-
-            // Arbitrary program ID included to test external PDAs
-            const arbitraryProgramId = Keypair.generate().publicKey;
-
-            const connection = await getConnection();
-            connection.getAccountInfo = async function mockFetchAccountDataFn(
-                publicKey: PublicKey,
-                _commitmentOrConfig?: Parameters<Connection['getAccountInfo']>[1]
-            ): ReturnType<Connection['getAccountInfo']> {
-                // Mocked mint state
-                if (publicKey.equals(mintPubkey)) {
-                    const data = Buffer.alloc(ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE + TYPE_SIZE + LENGTH_SIZE + TRANSFER_HOOK_SIZE);
-                    MintLayout.encode({
-                        mintAuthorityOption: 0,
-                        mintAuthority: PublicKey.default,
-                        supply: 10000n,
-                        decimals,
-                        isInitialized: true,
-                        freezeAuthorityOption: 0,
-                        freezeAuthority: PublicKey.default,
-                    }, data, 0);
-                    data.writeUint8(1, ACCOUNT_SIZE); // Account type (1): Mint = 1
-                    data.writeUint16LE(ExtensionType.TransferHook, ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE);
-                    data.writeUint16LE(TRANSFER_HOOK_SIZE, ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE + TYPE_SIZE);
-                    TransferHookLayout.encode({
-                        authority: Keypair.generate().publicKey,
-                        programId: transferHookProgramId,
-                    }, data, ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE + TYPE_SIZE + LENGTH_SIZE);
-                    return {
-                        data,
-                        owner: TOKEN_2022_PROGRAM_ID,
-                        executable: false,
-                        lamports: 0,
-                    };
-                }
-
-                // Mocked validate state
-                if (publicKey.equals(validateStatePubkey)) {
-                    const extraAccounts: ExtraAccountMeta[] = [
-                        pda([
-                            3, 0, // First seed: Account key at index 0 (2)
-                            3, 1, // Second seed: Account key at index 1 (2)
-                        ], false, false),
-                        pda([
-                            3, 4, // First seed: Account key at index 4 (2)
-                        ], false, false),
-                        pda([
-                            1, 6, 112, 114, 101, 102, 105, 120, // First seed: Literal "prefix" (8)
-                            2, 8, 8, // Second seed: Instruction data 8..16 (3)
-                        ], false, false),
-                        fixedAddress(arbitraryProgramId, false, false),
-                        externalPda(8, [
-                            1, 6, 112, 114, 101, 102, 105, 120, // First seed: Literal "prefix" (8)
-                            2, 8, 8, // Second seed: Instruction data 8..16 (3)
-                            3, 6, // Third seed: Account key at index 6 (2)
-                        ], false, false),
-                        externalPda(8, [
-                            1, 14, 97, 110, 111, 116, 104, 101, 114, 95, 112, 114, 101, 102, 105,
-                            120, // First seed: Literal "another_prefix" (16)
-                            2, 8, 8, // Second seed: Instruction data 8..16 (3)
-                            3, 6, // Third seed: Account key at index 6 (2)
-                            3, 9, // Fourth seed: Account key at index 9 (2)
-                        ], false, false),
-                    ];
-                    const extraAccountsList: ExtraAccountMetaList =  {
-                        count: extraAccounts.length,
-                        extraAccounts,
-                    }
-                    const instructionDiscriminator = Buffer.from([105, 37, 101, 197, 75, 251, 102, 26]).readBigUInt64LE();
-                    const data = Buffer.alloc(8 + 4 + 4 + ExtraAccountMetaLayout.span * extraAccounts.length);
-                    ExtraAccountMetaAccountDataLayout.encode({
-                        instructionDiscriminator,
-                        length: 4 + ExtraAccountMetaLayout.span * extraAccounts.length,
-                        extraAccountsList,
-                    }, data);
-                    return {
-                        data,
-                        owner: transferHookProgramId,
-                        executable: false,
-                        lamports: 0,
-                    };
-                }
-
-                return {
-                    data: Buffer.from([]),
-                    owner: PublicKey.default,
-                    executable: false,
-                    lamports: 0,
-                };
-            };
-
-            const amountInLeBytes = Buffer.alloc(8);
-            amountInLeBytes.writeBigUInt64LE(amount);
+            // prettier-ignore
+            connection.getAccountInfo = createMockFetchAccountDataFn([
+                pda([
+                    3, 0, // First seed: Account key at index 0 (2)
+                    3, 1, // Second seed: Account key at index 1 (2)
+                ], false, false),
+                pda([
+                    3, 4, // First seed: Account key at index 4 (2)
+                ], false, false),
+                pda([
+                    1, 6, 112, 114, 101, 102, 105, 120, // First seed: Literal "prefix" (8)
+                    2, 8, 8, // Second seed: Instruction data 8..16 (3)
+                ], false, false),
+                fixedAddress(arbitraryProgramId, false, false),
+                externalPda(8, [
+                    1, 6, 112, 114, 101, 102, 105, 120, // First seed: Literal "prefix" (8)
+                    2, 8, 8, // Second seed: Instruction data 8..16 (3)
+                    3, 6, // Third seed: Account key at index 6 (2)
+                ], false, false),
+                externalPda(8, [
+                    1, 14, 97, 110, 111, 116, 104, 101, 114, 95, 112, 114, 101, 102, 105,
+                    120, // First seed: Literal "another_prefix" (16)
+                    2, 8, 8, // Second seed: Instruction data 8..16 (3)
+                    3, 6, // Third seed: Account key at index 6 (2)
+                    3, 9, // Fourth seed: Account key at index 9 (2)
+                ], false, false),
+            ]);
 
             const extraMeta1Pubkey = PublicKey.findProgramAddressSync(
                 [
                     sourcePubkey.toBuffer(), // Account key at index 0
-                    mintPubkey.toBuffer(),   // Account key at index 1
+                    mintPubkey.toBuffer(), // Account key at index 1
                 ],
-                transferHookProgramId,
+                transferHookProgramId
             )[0];
             const extraMeta2Pubkey = PublicKey.findProgramAddressSync(
                 [
                     validateStatePubkey.toBuffer(), // Account key at index 4
                 ],
-                transferHookProgramId,
+                transferHookProgramId
             )[0];
             const extraMeta3Pubkey = PublicKey.findProgramAddressSync(
                 [
-                    Buffer.from("prefix"),
+                    Buffer.from('prefix'),
                     amountInLeBytes, // Instruction data 8..16
                 ],
-                transferHookProgramId,
+                transferHookProgramId
             )[0];
             const extraMeta4Pubkey = arbitraryProgramId;
             const extraMeta5Pubkey = PublicKey.findProgramAddressSync(
                 [
-                    Buffer.from("prefix"),
+                    Buffer.from('prefix'),
                     amountInLeBytes, // Instruction data 8..16
                     extraMeta2Pubkey.toBuffer(),
                 ],
-                extraMeta4Pubkey, // PDA off of the arbitrary program ID
+                extraMeta4Pubkey // PDA off of the arbitrary program ID
             )[0];
             const extraMeta6Pubkey = PublicKey.findProgramAddressSync(
                 [
-                    Buffer.from("another_prefix"),
+                    Buffer.from('another_prefix'),
                     amountInLeBytes, // Instruction data 8..16
                     extraMeta2Pubkey.toBuffer(),
                     extraMeta5Pubkey.toBuffer(),
                 ],
-                extraMeta4Pubkey, // PDA off of the arbitrary program ID
+                extraMeta4Pubkey // PDA off of the arbitrary program ID
             )[0];
 
             const instruction = await createTransferCheckedWithTransferHookInstruction(
@@ -540,7 +531,7 @@ describe('transferHook', () => {
                 { pubkey: transferHookProgramId, isSigner: false, isWritable: false },
                 { pubkey: validateStatePubkey, isSigner: false, isWritable: false },
             ];
-            
+
             expect(instruction.keys).to.eql(checkMetas);
         });
     });
