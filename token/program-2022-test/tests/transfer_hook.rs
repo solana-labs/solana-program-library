@@ -27,7 +27,9 @@ use {
         processor::Processor,
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
-    spl_transfer_hook_interface::get_extra_account_metas_address,
+    spl_transfer_hook_interface::{
+        get_extra_account_metas_address, offchain::add_extra_account_metas_for_execute,
+    },
     std::{convert::TryInto, sync::Arc},
 };
 
@@ -627,7 +629,6 @@ async fn success_downgrade_writable_and_signer_accounts() {
         .unwrap();
 }
 
-#[allow(deprecated)]
 #[tokio::test]
 async fn success_transfers_using_onchain_helper() {
     let authority = Pubkey::new_unique();
@@ -704,8 +705,14 @@ async fn success_transfers_using_onchain_helper() {
 
     let mut instruction = Instruction::new_with_bytes(swap_program_id, &[], account_metas);
 
-    offchain::resolve_extra_transfer_account_metas(
+    add_extra_account_metas_for_execute(
         &mut instruction,
+        &program_id,
+        &source_a_account,
+        &mint_a,
+        &destination_a_account,
+        &authority_a.pubkey(),
+        amount,
         |address| {
             token_a.get_account(address).map_ok_or_else(
                 |e| match e {
@@ -715,12 +722,17 @@ async fn success_transfers_using_onchain_helper() {
                 |acc| Ok(Some(acc.data)),
             )
         },
-        &mint_a,
     )
     .await
     .unwrap();
-    offchain::resolve_extra_transfer_account_metas(
+    add_extra_account_metas_for_execute(
         &mut instruction,
+        &program_id,
+        &source_b_account,
+        &mint_b,
+        &destination_b_account,
+        &authority_b.pubkey(),
+        amount,
         |address| {
             token_a.get_account(address).map_ok_or_else(
                 |e| match e {
@@ -730,7 +742,6 @@ async fn success_transfers_using_onchain_helper() {
                 |acc| Ok(Some(acc.data)),
             )
         },
-        &mint_b,
     )
     .await
     .unwrap();
