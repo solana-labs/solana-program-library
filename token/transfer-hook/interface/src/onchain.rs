@@ -129,24 +129,6 @@ pub fn add_extra_accounts_for_execute_cpi<'a>(
         .find(|&x| x.key == program_id)
         .ok_or(TransferHookError::IncorrectAccount)?;
 
-    // Check to make sure the provided keys are in the instruction
-    if [
-        source_info.key,
-        mint_info.key,
-        destination_info.key,
-        authority_info.key,
-    ]
-    .iter()
-    .any(|&key| {
-        !cpi_instruction
-            .accounts
-            .iter()
-            .any(|meta| meta.pubkey == *key)
-            || !cpi_account_infos.iter().any(|info| info.key == key)
-    }) {
-        Err(TransferHookError::IncorrectAccount)?;
-    }
-
     let mut execute_instruction = instruction::execute(
         program_id,
         source_info.key,
@@ -428,56 +410,6 @@ mod tests {
             transfer_hook_program_account_info.clone(),
             validate_state_account_info.clone(),
         ];
-
-        // Fail missing key
-        let mut cpi_instruction_missing_key = Instruction::new_with_bytes(
-            spl_token_2022_program_id,
-            &[],
-            vec![
-                // source missing
-                AccountMeta::new_readonly(mint_pubkey, false),
-                AccountMeta::new(destination_pubkey, false),
-                AccountMeta::new_readonly(authority_pubkey, true),
-            ],
-        );
-        assert_eq!(
-            add_extra_accounts_for_execute_cpi(
-                &mut cpi_instruction_missing_key, // Missing key
-                &mut cpi_account_infos,
-                &transfer_hook_program_id,
-                source_account_info.clone(),
-                mint_account_info.clone(),
-                destination_account_info.clone(),
-                authority_account_info.clone(),
-                amount,
-                &additional_account_infos,
-            )
-            .unwrap_err(),
-            TransferHookError::IncorrectAccount.into()
-        );
-
-        // Fail missing account info
-        let mut cpi_account_infos_missing_infos = vec![
-            source_account_info.clone(),
-            mint_account_info.clone(),
-            // destination missing
-            authority_account_info.clone(),
-        ];
-        assert_eq!(
-            add_extra_accounts_for_execute_cpi(
-                &mut cpi_instruction,
-                &mut cpi_account_infos_missing_infos, // Missing account info
-                &transfer_hook_program_id,
-                source_account_info.clone(),
-                mint_account_info.clone(),
-                destination_account_info.clone(),
-                authority_account_info.clone(),
-                amount,
-                &additional_account_infos,
-            )
-            .unwrap_err(),
-            TransferHookError::IncorrectAccount.into()
-        );
 
         // Fail missing validation info from additional account infos
         let additional_account_infos_missing_infos = vec![
