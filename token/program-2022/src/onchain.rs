@@ -11,6 +11,7 @@ use {
         account_info::AccountInfo, entrypoint::ProgramResult, instruction::AccountMeta,
         program::invoke_signed, pubkey::Pubkey,
     },
+    spl_transfer_hook_interface::onchain::add_extra_accounts_for_execute_cpi,
 };
 
 /// Helper to CPI into token-2022 on-chain, looking through the additional
@@ -39,10 +40,10 @@ pub fn invoke_transfer_checked<'a>(
     )?;
 
     let mut cpi_account_infos = vec![
-        source_info,
+        source_info.clone(),
         mint_info.clone(),
-        destination_info,
-        authority_info,
+        destination_info.clone(),
+        authority_info.clone(),
     ];
 
     // if it's a signer, it might be a multisig signer, throw it in!
@@ -61,12 +62,15 @@ pub fn invoke_transfer_checked<'a>(
         let mint_data = mint_info.try_borrow_data()?;
         let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
         if let Some(program_id) = transfer_hook::get_program_id(&mint) {
-            #[allow(deprecated)]
-            spl_transfer_hook_interface::onchain::add_cpi_accounts_for_execute(
+            add_extra_accounts_for_execute_cpi(
                 &mut cpi_instruction,
                 &mut cpi_account_infos,
-                mint_info.key,
                 &program_id,
+                source_info,
+                mint_info.clone(),
+                destination_info,
+                authority_info,
+                amount,
                 additional_accounts,
             )?;
         }
