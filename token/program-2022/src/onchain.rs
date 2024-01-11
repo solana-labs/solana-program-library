@@ -11,7 +11,6 @@ use {
         account_info::AccountInfo, entrypoint::ProgramResult, instruction::AccountMeta,
         program::invoke_signed, pubkey::Pubkey,
     },
-    spl_transfer_hook_interface::onchain::add_cpi_accounts_for_execute,
 };
 
 /// Helper to CPI into token-2022 on-chain, looking through the additional
@@ -62,7 +61,8 @@ pub fn invoke_transfer_checked<'a>(
         let mint_data = mint_info.try_borrow_data()?;
         let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
         if let Some(program_id) = transfer_hook::get_program_id(&mint) {
-            add_cpi_accounts_for_execute(
+            #[allow(deprecated)]
+            spl_transfer_hook_interface::onchain::add_cpi_accounts_for_execute(
                 &mut cpi_instruction,
                 &mut cpi_account_infos,
                 mint_info.key,
