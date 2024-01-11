@@ -111,36 +111,30 @@ pub fn add_extra_accounts_for_execute_cpi<'a>(
     cpi_instruction: &mut Instruction,
     cpi_account_infos: &mut Vec<AccountInfo<'a>>,
     program_id: &Pubkey,
-    source_pubkey: &Pubkey,
-    mint_pubkey: &Pubkey,
-    destination_pubkey: &Pubkey,
-    authority_pubkey: &Pubkey,
+    source_info: AccountInfo<'a>,
+    mint_info: AccountInfo<'a>,
+    destination_info: AccountInfo<'a>,
+    authority_info: AccountInfo<'a>,
     amount: u64,
     additional_accounts: &[AccountInfo<'a>],
 ) -> ProgramResult {
-    let extract_account_info = |key: &Pubkey, infos: &[AccountInfo<'a>]| {
-        infos
-            .iter()
-            .find(|&info| info.key == key)
-            .ok_or(TransferHookError::IncorrectAccount)
-            .map(|info| info.clone())
-    };
+    let validate_state_pubkey = get_extra_account_metas_address(mint_info.key, program_id);
+    let validate_state_info = additional_accounts
+        .iter()
+        .find(|&x| *x.key == validate_state_pubkey)
+        .ok_or(TransferHookError::IncorrectAccount)?;
 
-    let validate_state_pubkey = get_extra_account_metas_address(mint_pubkey, program_id);
-
-    let source_info = extract_account_info(source_pubkey, cpi_account_infos)?;
-    let mint_info = extract_account_info(mint_pubkey, cpi_account_infos)?;
-    let destination_info = extract_account_info(destination_pubkey, cpi_account_infos)?;
-    let authority_info = extract_account_info(authority_pubkey, cpi_account_infos)?;
-    let program_info = extract_account_info(program_id, additional_accounts)?;
-    let validate_state_info = extract_account_info(&validate_state_pubkey, additional_accounts)?;
+    let program_info = additional_accounts
+        .iter()
+        .find(|&x| x.key == program_id)
+        .ok_or(TransferHookError::IncorrectAccount)?;
 
     // Check to make sure the provided keys are in the instruction
     if [
-        source_pubkey,
-        mint_pubkey,
-        destination_pubkey,
-        authority_pubkey,
+        source_info.key,
+        mint_info.key,
+        destination_info.key,
+        authority_info.key,
     ]
     .iter()
     .any(|&key| {
@@ -148,16 +142,17 @@ pub fn add_extra_accounts_for_execute_cpi<'a>(
             .accounts
             .iter()
             .any(|meta| meta.pubkey == *key)
+            || !cpi_account_infos.iter().any(|info| info.key == key)
     }) {
         Err(TransferHookError::IncorrectAccount)?;
     }
 
     let mut execute_instruction = instruction::execute(
         program_id,
-        source_pubkey,
-        mint_pubkey,
-        destination_pubkey,
-        authority_pubkey,
+        source_info.key,
+        mint_info.key,
+        destination_info.key,
+        authority_info.key,
         &validate_state_pubkey,
         amount,
     );
@@ -189,8 +184,8 @@ pub fn add_extra_accounts_for_execute_cpi<'a>(
     cpi_instruction
         .accounts
         .push(AccountMeta::new_readonly(validate_state_pubkey, false));
-    cpi_account_infos.push(program_info);
-    cpi_account_infos.push(validate_state_info);
+    cpi_account_infos.push(program_info.clone());
+    cpi_account_infos.push(validate_state_info.clone());
 
     Ok(())
 }
@@ -450,10 +445,10 @@ mod tests {
                 &mut cpi_instruction_missing_key, // Missing key
                 &mut cpi_account_infos,
                 &transfer_hook_program_id,
-                &source_pubkey,
-                &mint_pubkey,
-                &destination_pubkey,
-                &authority_pubkey,
+                source_account_info.clone(),
+                mint_account_info.clone(),
+                destination_account_info.clone(),
+                authority_account_info.clone(),
                 amount,
                 &additional_account_infos,
             )
@@ -473,10 +468,10 @@ mod tests {
                 &mut cpi_instruction,
                 &mut cpi_account_infos_missing_infos, // Missing account info
                 &transfer_hook_program_id,
-                &source_pubkey,
-                &mint_pubkey,
-                &destination_pubkey,
-                &authority_pubkey,
+                source_account_info.clone(),
+                mint_account_info.clone(),
+                destination_account_info.clone(),
+                authority_account_info.clone(),
                 amount,
                 &additional_account_infos,
             )
@@ -498,10 +493,10 @@ mod tests {
                 &mut cpi_instruction,
                 &mut cpi_account_infos,
                 &transfer_hook_program_id,
-                &source_pubkey,
-                &mint_pubkey,
-                &destination_pubkey,
-                &authority_pubkey,
+                source_account_info.clone(),
+                mint_account_info.clone(),
+                destination_account_info.clone(),
+                authority_account_info.clone(),
                 amount,
                 &additional_account_infos_missing_infos, // Missing account info
             )
@@ -523,10 +518,10 @@ mod tests {
                 &mut cpi_instruction,
                 &mut cpi_account_infos,
                 &transfer_hook_program_id,
-                &source_pubkey,
-                &mint_pubkey,
-                &destination_pubkey,
-                &authority_pubkey,
+                source_account_info.clone(),
+                mint_account_info.clone(),
+                destination_account_info.clone(),
+                authority_account_info.clone(),
                 amount,
                 &additional_account_infos_missing_infos, // Missing account info
             )
@@ -548,10 +543,10 @@ mod tests {
                 &mut cpi_instruction,
                 &mut cpi_account_infos,
                 &transfer_hook_program_id,
-                &source_pubkey,
-                &mint_pubkey,
-                &destination_pubkey,
-                &authority_pubkey,
+                source_account_info.clone(),
+                mint_account_info.clone(),
+                destination_account_info.clone(),
+                authority_account_info.clone(),
                 amount,
                 &additional_account_infos_missing_infos, // Missing account info
             )
@@ -564,10 +559,10 @@ mod tests {
             &mut cpi_instruction,
             &mut cpi_account_infos,
             &transfer_hook_program_id,
-            &source_pubkey,
-            &mint_pubkey,
-            &destination_pubkey,
-            &authority_pubkey,
+            source_account_info.clone(),
+            mint_account_info.clone(),
+            destination_account_info.clone(),
+            authority_account_info.clone(),
             amount,
             &additional_account_infos,
         )
