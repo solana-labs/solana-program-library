@@ -212,7 +212,7 @@ export function createExecuteInstruction(
     destination: PublicKey,
     owner: PublicKey,
     validateStatePubkey: PublicKey,
-    amount: number | bigint
+    amount: bigint
 ): TransactionInstruction {
     const keys = [source, mint, destination, owner, validateStatePubkey].map((pubkey) => ({
         pubkey,
@@ -271,7 +271,7 @@ export async function addExtraAccountMetasForExecute(
         destination,
         owner,
         validateStatePubkey,
-        amount
+        BigInt(amount)
     );
 
     for (const extraAccountMeta of validateStateData) {
