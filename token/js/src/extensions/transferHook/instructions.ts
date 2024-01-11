@@ -137,7 +137,7 @@ function deEscalateAccountMeta(accountMeta: AccountMeta, accountMetas: AccountMe
 }
 
 /**
- * @deprecated Deprecated since v0.4.0. Please use {@link addExtraAccountMetasForExecute} instead.
+ * @deprecated Deprecated since v0.3.12. Please use {@link addExtraAccountMetasForExecute} instead.
  *
  * Add extra accounts needed for transfer hook to an instruction
  *
@@ -193,7 +193,8 @@ export async function addExtraAccountsToInstruction(
 }
 
 /**
- * Construct an `ExecuteInstruction` for a transfer hook program
+ * Construct an `ExecuteInstruction` for a transfer hook program, without the
+ * additional accounts
  *
  * @param programId             The program ID of the transfer hook program
  * @param source                The source account
@@ -209,11 +210,11 @@ export function createExecuteInstruction(
     source: PublicKey,
     mint: PublicKey,
     destination: PublicKey,
-    authority: PublicKey,
+    owner: PublicKey,
     validateStatePubkey: PublicKey,
     amount: number | bigint
 ): TransactionInstruction {
-    const keys = [source, mint, destination, authority, validateStatePubkey].map((pubkey) => ({
+    const keys = [source, mint, destination, owner, validateStatePubkey].map((pubkey) => ({
         pubkey,
         isSigner: false,
         isWritable: false,
@@ -235,7 +236,7 @@ export function createExecuteInstruction(
  * @param source                The source account
  * @param mint                  The mint account
  * @param destination           The destination account
- * @param authority             Owner of the source account
+ * @param owner                 Owner of the source account
  * @param amount                The amount of tokens to transfer
  * @param commitment            Commitment to use
  * @returns A new instruction with the extra account metas added
@@ -247,7 +248,7 @@ export async function addExtraAccountMetasForExecute(
     source: PublicKey,
     mint: PublicKey,
     destination: PublicKey,
-    authority: PublicKey,
+    owner: PublicKey,
     amount: number | bigint,
     commitment?: Commitment
 ) {
@@ -259,7 +260,7 @@ export async function addExtraAccountMetasForExecute(
     const validateStateData = getExtraAccountMetas(validateStateAccount);
 
     // Check to make sure the provided keys are in the instruction
-    if (![source, mint, destination, authority].every((key) => instruction.keys.some((meta) => meta.pubkey === key))) {
+    if (![source, mint, destination, owner].every((key) => instruction.keys.some((meta) => meta.pubkey === key))) {
         throw new Error('Missing required account in instruction');
     }
 
@@ -268,7 +269,7 @@ export async function addExtraAccountMetasForExecute(
         source,
         mint,
         destination,
-        authority,
+        owner,
         validateStatePubkey,
         amount
     );
@@ -305,7 +306,7 @@ export async function addExtraAccountMetasForExecute(
  * @param source                Source account
  * @param mint                  Mint to update
  * @param destination           Destination account
- * @param authority             Owner of the source account
+ * @param owner                 Owner of the source account
  * @param amount                The amount of tokens to transfer
  * @param decimals              Number of decimals in transfer amount
  * @param multiSigners          The signer account(s) for a multisig
@@ -319,7 +320,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
     source: PublicKey,
     mint: PublicKey,
     destination: PublicKey,
-    authority: PublicKey,
+    owner: PublicKey,
     amount: bigint,
     decimals: number,
     multiSigners: (Signer | PublicKey)[] = [],
@@ -330,7 +331,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
         source,
         mint,
         destination,
-        authority,
+        owner,
         amount,
         decimals,
         multiSigners,
@@ -348,7 +349,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
               source,
               mint,
               destination,
-              authority,
+              owner,
               amount,
               commitment
           )
@@ -362,7 +363,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
  * @param source                Source account
  * @param mint                  Mint to update
  * @param destination           Destination account
- * @param authority             Owner of the source account
+ * @param owner                 Owner of the source account
  * @param amount                The amount of tokens to transfer
  * @param decimals              Number of decimals in transfer amount
  * @param fee                   The calculated fee for the transfer fee extension
@@ -377,7 +378,7 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
     source: PublicKey,
     mint: PublicKey,
     destination: PublicKey,
-    authority: PublicKey,
+    owner: PublicKey,
     amount: bigint,
     decimals: number,
     fee: bigint,
@@ -389,7 +390,7 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
         source,
         mint,
         destination,
-        authority,
+        owner,
         amount,
         decimals,
         fee,
@@ -408,7 +409,7 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
               source,
               mint,
               destination,
-              authority,
+              owner,
               amount,
               commitment
           )
