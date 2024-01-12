@@ -508,6 +508,7 @@ where
     async fn construct_tx<S: Signers>(
         &self,
         token_instructions: &[Instruction],
+        additional_compute_budget: Option<u32>,
         signing_keypairs: &S,
     ) -> TokenResult<Transaction> {
         let mut instructions = vec![];
@@ -531,6 +532,14 @@ where
         }
 
         instructions.extend_from_slice(token_instructions);
+
+        if let Some(additional_compute_budget) = additional_compute_budget {
+            instructions.push(
+                solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(
+                    additional_compute_budget,
+                ),
+            );
+        }
 
         let (message, blockhash) =
             if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
@@ -581,7 +590,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::SimulationOutput> {
         let transaction = self
-            .construct_tx(token_instructions, signing_keypairs)
+            .construct_tx(token_instructions, None, signing_keypairs)
             .await?;
 
         self.client
@@ -595,8 +604,22 @@ where
         token_instructions: &[Instruction],
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
+        self.process_ixs_with_additional_compute_budget(token_instructions, None, signing_keypairs)
+            .await
+    }
+
+    pub async fn process_ixs_with_additional_compute_budget<S: Signers>(
+        &self,
+        token_instructions: &[Instruction],
+        additional_compute_budget: Option<u32>,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
         let transaction = self
-            .construct_tx(token_instructions, signing_keypairs)
+            .construct_tx(
+                token_instructions,
+                additional_compute_budget,
+                signing_keypairs,
+            )
             .await?;
 
         self.client
