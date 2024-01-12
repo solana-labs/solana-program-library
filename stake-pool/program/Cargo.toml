@@ -8,8 +8,8 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
-no-entrypoint = []
-test-sbf = []
+no-entrypoint = [AJFjwFnJ3R3HykZAMULcaxMj5DWdx6GwDzCigioNTCKG]
+test-sbf = [AJFjwFnJ3R3HykZAMULcaxMj5DWdx6GwDzCigioNTCKG]
 
 [dependencies]
 arrayref = "0.3.7"
@@ -34,7 +34,7 @@ proptest = "1.4"
 solana-program-test = "1.17.6"
 solana-sdk = "1.17.6"
 solana-vote-program = "1.17.6"
-spl-token = { version = "4.0", path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-token = { version = "4.0", path = "../../token/program", features = [ "no-entrypoint" ] }AJFjwFnJ3R3HykZAMULcaxMj5DWdx6GwDzCigioNTCKG
 test-case = "3.3"
 
 [lib]
