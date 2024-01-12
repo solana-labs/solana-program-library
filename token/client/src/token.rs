@@ -508,6 +508,7 @@ where
     async fn construct_tx<S: Signers>(
         &self,
         token_instructions: &[Instruction],
+        additional_compute_budget: Option<u32>,
         signing_keypairs: &S,
     ) -> TokenResult<Transaction> {
         let mut instructions = vec![];
@@ -531,6 +532,14 @@ where
         }
 
         instructions.extend_from_slice(token_instructions);
+
+        if let Some(additional_compute_budget) = additional_compute_budget {
+            instructions.push(
+                solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(
+                    additional_compute_budget,
+                ),
+            );
+        }
 
         let (message, blockhash) =
             if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
@@ -581,7 +590,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::SimulationOutput> {
         let transaction = self
-            .construct_tx(token_instructions, signing_keypairs)
+            .construct_tx(token_instructions, None, signing_keypairs)
             .await?;
 
         self.client
@@ -596,7 +605,27 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let transaction = self
-            .construct_tx(token_instructions, signing_keypairs)
+            .construct_tx(token_instructions, None, signing_keypairs)
+            .await?;
+
+        self.client
+            .send_transaction(&transaction)
+            .await
+            .map_err(TokenError::Client)
+    }
+
+    pub async fn process_ixs_with_additional_compute_budget<S: Signers>(
+        &self,
+        token_instructions: &[Instruction],
+        additional_compute_budget: u32,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let transaction = self
+            .construct_tx(
+                token_instructions,
+                Some(additional_compute_budget),
+                signing_keypairs,
+            )
             .await?;
 
         self.client
@@ -2653,7 +2682,10 @@ where
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
-        self.process_ixs(
+        // additional compute budget required for `VerifyTransferWithFee`
+        const TRANSFER_WITH_FEE_COMPUTE_BUDGET: u32 = 500_000;
+
+        self.process_ixs_with_additional_compute_budget(
             &confidential_transfer::instruction::transfer_with_fee(
                 &self.program_id,
                 source_account,
@@ -2664,6 +2696,7 @@ where
                 &multisig_signers,
                 proof_location,
             )?,
+            TRANSFER_WITH_FEE_COMPUTE_BUDGET,
             signing_keypairs,
         )
         .await
