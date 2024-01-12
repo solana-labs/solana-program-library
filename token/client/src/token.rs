@@ -2641,7 +2641,10 @@ where
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
-        self.process_ixs(
+        // additional compute budget required for `VerifyTransferWithFee`
+        const TRANSFER_WITH_FEE_COMPUTE_BUDGET: u32 = 500_000;
+
+        self.process_ixs_with_additional_compute_budget(
             &confidential_transfer::instruction::transfer_with_fee(
                 &self.program_id,
                 source_account,
@@ -2652,6 +2655,7 @@ where
                 &multisig_signers,
                 proof_location,
             )?,
+            Some(TRANSFER_WITH_FEE_COMPUTE_BUDGET),
             signing_keypairs,
         )
         .await
