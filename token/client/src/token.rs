@@ -979,6 +979,12 @@ where
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
 
+        let fetch_account_data_fn = |address| {
+            self.client
+                .get_account(address)
+                .map_ok(|opt| opt.map(|acc| acc.data))
+        };
+
         if *destination != self.get_associated_token_address(destination_owner) {
             return Err(TokenError::AccountInvalidAssociatedAddress);
         }
@@ -1006,16 +1012,36 @@ where
                 fee,
             )?);
         } else if let Some(decimals) = self.decimals {
-            instructions.push(instruction::transfer_checked(
-                &self.program_id,
-                source,
-                &self.pubkey,
-                destination,
-                authority,
-                &multisig_signers,
-                amount,
-                decimals,
-            )?);
+            instructions.push(
+                if let Some(transfer_hook_accounts) = &self.transfer_hook_accounts {
+                    let mut instruction = instruction::transfer_checked(
+                        &self.program_id,
+                        source,
+                        self.get_address(),
+                        destination,
+                        authority,
+                        &multisig_signers,
+                        amount,
+                        decimals,
+                    )?;
+                    instruction.accounts.extend(transfer_hook_accounts.clone());
+                    instruction
+                } else {
+                    offchain::create_transfer_checked_instruction_with_extra_metas(
+                        &self.program_id,
+                        source,
+                        self.get_address(),
+                        destination,
+                        authority,
+                        &multisig_signers,
+                        amount,
+                        decimals,
+                        fetch_account_data_fn,
+                    )
+                    .await
+                    .map_err(|_| TokenError::AccountNotFound)?
+                },
+            );
         } else {
             #[allow(deprecated)]
             instructions.push(instruction::transfer(
