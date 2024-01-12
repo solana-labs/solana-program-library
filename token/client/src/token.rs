@@ -604,20 +604,26 @@ where
         token_instructions: &[Instruction],
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
-        self.process_ixs_with_additional_compute_budget(token_instructions, None, signing_keypairs)
+        let transaction = self
+            .construct_tx(token_instructions, None, signing_keypairs)
+            .await?;
+
+        self.client
+            .send_transaction(&transaction)
             .await
+            .map_err(TokenError::Client)
     }
 
     pub async fn process_ixs_with_additional_compute_budget<S: Signers>(
         &self,
         token_instructions: &[Instruction],
-        additional_compute_budget: Option<u32>,
+        additional_compute_budget: u32,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let transaction = self
             .construct_tx(
                 token_instructions,
-                additional_compute_budget,
+                Some(additional_compute_budget),
                 signing_keypairs,
             )
             .await?;
@@ -2655,7 +2661,7 @@ where
                 &multisig_signers,
                 proof_location,
             )?,
-            Some(TRANSFER_WITH_FEE_COMPUTE_BUDGET),
+            TRANSFER_WITH_FEE_COMPUTE_BUDGET,
             signing_keypairs,
         )
         .await
