@@ -602,9 +602,9 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "base64"
-version = "0.21.6"
+version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79fed4cdb43e993fcdadc7e58a09fd0e3e649c4436fa11da71c9f1f3ee7feb9"
+checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
 name = "base64ct"
@@ -4184,7 +4184,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "046cd98826c46c2ac8ddecae268eb5c2e58628688a5fc7a2643704a73faba95b"
 dependencies = [
  "async-compression",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -4560,7 +4560,7 @@ version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64cd236ccc1b7a29e7e2739f27c0b2dd199804abc4290e32f59f3b68d6405c23"
 dependencies = [
- "base64 0.21.6",
+ "base64 0.21.7",
  "chrono",
  "hex",
  "indexmap 1.9.3",
@@ -4903,7 +4903,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df7138257d4e2cdc6349a6385825a51d20ab1a458661df7ca1d31e3436165a40"
 dependencies = [
  "Inflector",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "bs58",
  "bv",
@@ -5162,7 +5162,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ee743558a1a7351e2cb2f015983c6cf7f374e8d94e182961d93c82963c153d7"
 dependencies = [
  "Inflector",
- "base64 0.21.6",
+ "base64 0.21.7",
  "chrono",
  "clap 2.34.0",
  "console",
@@ -5267,7 +5267,7 @@ version = "1.17.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11aa4c8445a309d914fb4b4c295cb32f25ae718cb6b88fa9aa9fe49335bfdf19"
 dependencies = [
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "bs58",
  "bytes",
@@ -5740,7 +5740,7 @@ dependencies = [
  "ark-ec",
  "ark-ff",
  "ark-serialize",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "bitflags 2.4.1",
  "blake3",
@@ -5790,7 +5790,7 @@ version = "1.17.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a9218a980dd08e26c7663b2ce584046f754f65b468a7429543c9ac48e9ffeef"
 dependencies = [
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "eager",
  "enum-iterator",
@@ -5820,7 +5820,7 @@ checksum = "e972cb9918dceb671aeb8cc0172a64ce9fcab4e24b3bcaf0c4311b12949ac08b"
 dependencies = [
  "assert_matches",
  "async-trait",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "chrono-humanize",
  "crossbeam-channel",
@@ -5930,7 +5930,7 @@ version = "1.17.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18a789c3326a58ec42eef950c6015fd2b46c93e1271151d6a377d62bdc894a22"
 dependencies = [
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "bs58",
  "crossbeam-channel",
@@ -5988,7 +5988,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c2b5de95f647b2019adeb6624c75df343d659ee85256e7996adddb64400df75"
 dependencies = [
  "async-trait",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "bs58",
  "indicatif",
@@ -6013,7 +6013,7 @@ version = "1.17.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f29f7871d826499cd1a021c3257f7bcc409a6b71e9f6e7064c9b1d8c698ec78"
 dependencies = [
- "base64 0.21.6",
+ "base64 0.21.7",
  "bs58",
  "jsonrpc-core",
  "reqwest",
@@ -6049,7 +6049,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba5766627c68b40e71afe3de08195b7b5a78c4ed848c74e5e3e85995d97aef9b"
 dependencies = [
  "arrayref",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "blake3",
  "bv",
@@ -6126,7 +6126,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa9856edf27de2d32b91dc4faf08852e2231cc6b127337d71b34c43f248bf832"
 dependencies = [
  "assert_matches",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "bitflags 2.4.1",
  "borsh 0.10.3",
@@ -6326,7 +6326,7 @@ version = "1.17.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8a34020858231aea05c5575949592d4d0a69f26c6ade2fbff2be8160ba61d82"
 dependencies = [
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "crossbeam-channel",
  "log",
@@ -6398,7 +6398,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a0b68e5d2103184b34ed047e7424c564459fcf0ddad1e6b74eaefd44f341626"
 dependencies = [
  "Inflector",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "borsh 0.10.3",
  "bs58",
@@ -6546,7 +6546,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac110323e0eaf7b2d1764ab35efbb8c17d40fbcfaecbd0829c025e357a6318f6"
 dependencies = [
  "aes-gcm-siv",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "bytemuck",
  "byteorder",
@@ -6841,7 +6841,7 @@ version = "3.1.1"
 dependencies = [
  "arrayref",
  "assert_matches",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bincode",
  "borsh 0.10.3",
  "num-derive 0.4.1",
@@ -7035,7 +7035,7 @@ dependencies = [
 name = "spl-pod"
 version = "0.1.0"
 dependencies = [
- "base64 0.21.6",
+ "base64 0.21.7",
  "borsh 0.10.3",
  "bytemuck",
  "serde",
@@ -7332,7 +7332,7 @@ name = "spl-token-2022"
 version = "1.0.0"
 dependencies = [
  "arrayref",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bytemuck",
  "lazy_static",
  "num-derive 0.4.1",
@@ -7389,7 +7389,7 @@ name = "spl-token-cli"
 version = "3.3.0"
 dependencies = [
  "assert_cmd",
- "base64 0.21.6",
+ "base64 0.21.7",
  "clap 2.34.0",
  "console",
  "futures 0.3.30",
@@ -8327,7 +8327,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "axum",
- "base64 0.21.6",
+ "base64 0.21.7",
  "bytes",
  "futures-core",
  "futures-util",
