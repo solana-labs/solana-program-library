@@ -86,4 +86,4 @@ If the associated token account for a given wallet address does not yet exist,
 it may be created by *anybody* by issuing a transaction containing the
 instruction returned by [create_associated_token_account](https://docs.rs/spl-associated-token-account/latest/spl_associated_token_account/instruction/fn.create_associated_token_account.html).
 
-Regardless of the creator, the new associated token account's authority will be the wallet, as if the wallet itself had created the associated token account.
+Regardless of the creator, the new associated token account's AccountOwner will be the wallet, as if the wallet itself had created the associated token account.
