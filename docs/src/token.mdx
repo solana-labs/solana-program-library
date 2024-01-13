@@ -978,7 +978,7 @@ account.
   <TabItem value="jsx" label="JS">
 
 The main difference in using multisign is specifying the owner as the multisig key,
-and giving the list of signers when contructing a transaction. Normally you would
+and giving the list of signers when constructing a transaction. Normally you would
 provide the signer that has authority to run the transaction as the owner, but in
 the multisig case the owner would be the multisig key.
 
@@ -1239,7 +1239,7 @@ console.log(`Minted ${mintInfo.supply} token`);
 
 ### Example: Offline signing with multisig
 
-Sometimes online signing is not possible or desireable. Such is the case for example when signers are not in the same geographic location
+Sometimes online signing is not possible or desirable. Such is the case for example when signers are not in the same geographic location
 or when they use air-gapped devices not connected to the network.  In this case, we use offline signing which combines the
 previous examples of [multisig](#example-mint-with-multisig-authority) with [offline signing](https://docs.solana.com/offline-signing)
 and a [nonce account](https://docs.solana.com/offline-signing/durable-nonce).
