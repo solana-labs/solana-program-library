@@ -341,7 +341,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
         .await;
     assert!(error.is_none(), "{:?}", error);
 
-    let mut instructions = vec![instruction::update_validator_list_balance(
+    let mut instructions = vec![instruction::update_validator_list_balance_chunk(
         &id(),
         &stake_pool_accounts.stake_pool.pubkey(),
         &stake_pool_accounts.withdraw_authority,
@@ -351,7 +351,8 @@ async fn remove_validator_from_pool(max_validators: u32) {
         1,
         middle_index,
         /* no_merge = */ false,
-    )];
+    )
+    .unwrap()];
     stake_pool_accounts.maybe_add_compute_budget_instruction(&mut instructions);
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
@@ -366,7 +367,7 @@ async fn remove_validator_from_pool(max_validators: u32) {
         .err();
     assert!(error.is_none(), "{:?}", error);
 
-    let mut instructions = vec![instruction::update_validator_list_balance(
+    let mut instructions = vec![instruction::update_validator_list_balance_chunk(
         &id(),
         &stake_pool_accounts.stake_pool.pubkey(),
         &stake_pool_accounts.withdraw_authority,
@@ -376,7 +377,8 @@ async fn remove_validator_from_pool(max_validators: u32) {
         1,
         last_index,
         /* no_merge = */ false,
-    )];
+    )
+    .unwrap()];
     stake_pool_accounts.maybe_add_compute_budget_instruction(&mut instructions);
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
