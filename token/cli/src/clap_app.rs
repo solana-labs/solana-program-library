@@ -977,11 +977,12 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                         Arg::with_name("max_size")
-                            .value_name("MAX_SIZE")
-                            .takes_value(true)
-                            .required(true)
-                            .index(2)
-                            .help("The number of members in the group."),
+                        .validator(is_amount)
+                        .value_name("MAX_SIZE")
+                        .takes_value(true)
+                        .required(true)
+                        .index(2)
+                        .help("The number of members in the group."),
                     )
                 .arg(
                     Arg::with_name("mint_authority")
