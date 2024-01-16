@@ -777,8 +777,6 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("enable_member")
                         .long("enable-member")
-                        .conflicts_with("group_address")
-                        .conflicts_with("enable_group")
                         .conflicts_with("member_address")
                         .takes_value(false)
                         .help("Enables group member configurations in the mint. The mint authority must initialize the member."),
