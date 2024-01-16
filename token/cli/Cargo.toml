@@ -12,7 +12,7 @@ version = "3.3.0"
 walkdir = "2"
 
 [dependencies]
-base64 = "0.21.6"
+base64 = "0.21.7"
 clap = "2.33.3"
 console = "0.15.8"
 futures = "0.3"
@@ -48,8 +48,8 @@ tokio = "1.35"
 
 [dev-dependencies]
 solana-test-validator = "=1.17.6"
-assert_cmd = "2.0.12"
-libtest-mimic = "0.6"
+assert_cmd = "2.0.13"
+libtest-mimic = "0.7"
 serial_test = "3.0.0"
 tempfile = "3.9.0"
 
