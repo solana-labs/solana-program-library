@@ -23,7 +23,7 @@ use {
     spl_token_client::client::{
         ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
     },
-    std::{process::exit, rc::Rc, sync::Arc},
+    std::{process::exit, rc::Rc, str::FromStr, sync::Arc},
 };
 
 type SignersOf = Vec<(Arc<dyn Signer>, Pubkey)>;
@@ -254,14 +254,26 @@ impl<'a> Config<'a> {
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
         let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
 
+        // In clap v3, `value_of` panics if the argument id is not previously defined
+        // where as in clap v2, it returns `None` in this case. Add a temporary closure
+        // to replace `value_of` with `try_get_one`. We can remove this closure and remove
+        // `value_of` altogether when we upgrade to 1.18.
+        let pubkey_from_matches = |name| {
+            matches
+                .try_get_one::<String>(name)
+                .ok()
+                .flatten()
+                .and_then(|pubkey| Pubkey::from_str(pubkey).ok())
+        };
+
         let default_program_id = spl_token::id();
         let (program_id, restrict_to_program_id) =
-            if let Some(program_id) = value_of(matches, "program_id") {
+            if let Some(program_id) = pubkey_from_matches("program_id") {
                 (program_id, true)
             } else if !sign_only {
-                if let Some(address) = value_of(matches, "token")
-                    .or_else(|| value_of(matches, "account"))
-                    .or_else(|| value_of(matches, "address"))
+                if let Some(address) = pubkey_from_matches("token")
+                    .or_else(|| pubkey_from_matches("account"))
+                    .or_else(|| pubkey_from_matches("address"))
                 {
                     (
                         rpc_client
