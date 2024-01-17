@@ -63,8 +63,8 @@ importers:
         specifier: ^29.5.11
         version: 29.5.11
       '@types/node-fetch':
-        specifier: ^2.6.10
-        version: 2.6.10
+        specifier: ^2.6.11
+        version: 2.6.11
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.19.0
         version: 6.19.0(@typescript-eslint/parser@6.19.0)(eslint@8.56.0)(typescript@5.3.3)
@@ -206,8 +206,8 @@ importers:
         specifier: ^20.11.5
         version: 20.11.5
       '@types/node-fetch':
-        specifier: ^2.6.10
-        version: 2.6.10
+        specifier: ^2.6.11
+        version: 2.6.11
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.19.0
         version: 6.19.0(@typescript-eslint/parser@6.19.0)(eslint@8.56.0)(typescript@5.3.3)
@@ -453,8 +453,8 @@ importers:
         specifier: ^20.11.5
         version: 20.11.5
       '@types/node-fetch':
-        specifier: ^2.6.10
-        version: 2.6.10
+        specifier: ^2.6.11
+        version: 2.6.11
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.19.0
         version: 6.19.0(@typescript-eslint/parser@6.19.0)(eslint@8.56.0)(typescript@5.3.3)
@@ -827,8 +827,8 @@ importers:
         specifier: ^20.11.5
         version: 20.11.5
       '@types/node-fetch':
-        specifier: ^2.6.10
-        version: 2.6.10
+        specifier: ^2.6.11
+        version: 2.6.11
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.19.0
         version: 6.19.0(@typescript-eslint/parser@6.19.0)(eslint@8.56.0)(typescript@5.3.3)
@@ -2624,8 +2624,8 @@ packages:
     resolution: {integrity: sha512-dJvrYWxP/UcXm36Qn36fxhUKu8A/xMRXVT2cliFF1Z7UA9liG5Psj3ezNSZw+5puH2czDXRLcXQxf8JbJt0ejg==}
     dev: true
 
-  /@types/node-fetch@2.6.10:
-    resolution: {integrity: sha512-PPpPK6F9ALFTn59Ka3BaL+qGuipRfxNE8qVgkp0bVixeiR2c2/L+IVOiBdu9JhhT22sWnQEp6YyHGI2b2+CMcA==}
+  /@types/node-fetch@2.6.11:
+    resolution: {integrity: sha512-24xFj9R5+rfQJLRyM56qh+wnVSYhyXC2tkoBndtY0U+vubqNsYXGjufB2nn8Q6gt0LrARwL6UBtMCSVCwl4B1g==}
     dependencies:
       '@types/node': 20.11.5
       form-data: 4.0.0
