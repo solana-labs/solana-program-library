@@ -2876,7 +2876,11 @@ async fn command_configure_confidential_transfer_account(
     // Reallocation (if needed)
     let mut existing_extensions: Vec<ExtensionType> = state_with_extension.get_extension_types()?;
     if !existing_extensions.contains(&ExtensionType::ConfidentialTransferAccount) {
-        existing_extensions.push(ExtensionType::ConfidentialTransferAccount);
+        let mut extra_extensions = vec![ExtensionType::ConfidentialTransferAccount];
+        if existing_extensions.contains(&ExtensionType::TransferFeeAmount) {
+            extra_extensions.push(ExtensionType::ConfidentialTransferFeeAmount);
+        }
+        existing_extensions.extend_from_slice(&extra_extensions);
         let needed_account_len =
             ExtensionType::try_calculate_account_len::<Account>(&existing_extensions)?;
         if needed_account_len > current_account_len {
@@ -2884,7 +2888,7 @@ async fn command_configure_confidential_transfer_account(
                 .reallocate(
                     &token_account_address,
                     &owner,
-                    &[ExtensionType::ConfidentialTransferAccount],
+                    &extra_extensions,
                     &bulk_signers,
                 )
                 .await?;
