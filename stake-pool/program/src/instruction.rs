@@ -2,8 +2,6 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use solana_program::program_error::ProgramError;
-
 use {
     crate::{
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
@@ -16,6 +14,7 @@ use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
         pubkey::Pubkey,
         stake, system_program, sysvar,
     },
@@ -1575,7 +1574,8 @@ pub fn update_stake_pool(
                 chunk.len(),
                 i.saturating_mul(MAX_VALIDATORS_TO_UPDATE),
                 no_merge,
-            ).unwrap()
+            )
+            .unwrap()
         })
         .collect();
 
