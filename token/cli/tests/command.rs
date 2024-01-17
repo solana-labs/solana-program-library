@@ -131,6 +131,7 @@ async fn main() {
         async_trial!(group_member_pointer, test_validator, payer),
         async_trial!(transfer_hook, test_validator, payer),
         async_trial!(metadata, test_validator, payer),
+        async_trial!(group, test_validator, payer),
         async_trial!(confidential_transfer_with_fee, test_validator, payer),
         // GC messes with every other test, so have it on its own test validator
         async_trial!(gc, gc_test_validator, gc_payer),
@@ -3787,4 +3788,44 @@ async fn metadata(test_validator: &TestValidator, payer: &Keypair) {
         fetched_metadata.update_authority,
         Some(mint).try_into().unwrap()
     );
+}
+
+async fn group(test_validator: &TestValidator, payer: &Keypair) {
+    let program_id = spl_token_2022::id();
+    let config = test_config_with_default_signer(test_validator, payer, &program_id);
+    let max_size = "10";
+
+    let result = process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            "--program-id",
+            &program_id.to_string(),
+            "--enable-group",
+        ],
+    )
+    .await;
+
+    let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+    let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+    let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+
+    let extension = mint_state.get_extension::<GroupPointer>().unwrap();
+    assert_eq!(extension.group_address, Some(mint).try_into().unwrap());
+
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::InitializeGroup.into(),
+            &mint.to_string(),
+            max_size,
+        ],
+    )
+    .await
+    .unwrap();
 }
