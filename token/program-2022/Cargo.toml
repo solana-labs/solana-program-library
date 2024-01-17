@@ -24,9 +24,9 @@ bytemuck = { version = "1.14.0", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.2"
-solana-program = "1.17.6"
+solana-program = "1.17.13"
 solana-security-txt = "1.1.1"
-solana-zk-token-sdk = "1.17.6"
+solana-zk-token-sdk = "1.17.13"
 spl-memo = { version = "4.0.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
 spl-token = { version = "4.0",  path = "../program", features = ["no-entrypoint"] }
 spl-token-group-interface = { version = "0.1.0", path = "../../token-group/interface" }
@@ -43,8 +43,8 @@ base64 = { version = "0.21.7", optional = true }
 lazy_static = "1.4.0"
 proptest = "1.4"
 serial_test = "3.0.0"
-solana-program-test = "1.17.6"
-solana-sdk = "1.17.6"
+solana-program-test = "1.17.13"
+solana-sdk = "1.17.13"
 spl-tlv-account-resolution = { version = "0.5.0", path = "../../libraries/tlv-account-resolution" }
 serde_json = "1.0.111"
 
