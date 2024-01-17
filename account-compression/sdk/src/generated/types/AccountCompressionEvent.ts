@@ -37,10 +37,10 @@ export type AccountCompressionEventRecord = {
 export type AccountCompressionEvent = beet.DataEnumKeyAsKind<AccountCompressionEventRecord>;
 
 export const isAccountCompressionEventChangeLog = (
-    x: AccountCompressionEvent
+    x: AccountCompressionEvent,
 ): x is AccountCompressionEvent & { __kind: 'ChangeLog' } => x.__kind === 'ChangeLog';
 export const isAccountCompressionEventApplicationData = (
-    x: AccountCompressionEvent
+    x: AccountCompressionEvent,
 ): x is AccountCompressionEvent & { __kind: 'ApplicationData' } => x.__kind === 'ApplicationData';
 
 /**
@@ -52,14 +52,14 @@ export const accountCompressionEventBeet = beet.dataEnum<AccountCompressionEvent
         'ChangeLog',
         new beet.FixableBeetArgsStruct<AccountCompressionEventRecord['ChangeLog']>(
             [['fields', beet.tuple([changeLogEventBeet])]],
-            'AccountCompressionEventRecord["ChangeLog"]'
+            'AccountCompressionEventRecord["ChangeLog"]',
         ),
     ],
     [
         'ApplicationData',
         new beet.FixableBeetArgsStruct<AccountCompressionEventRecord['ApplicationData']>(
             [['fields', beet.tuple([applicationDataEventBeet])]],
-            'AccountCompressionEventRecord["ApplicationData"]'
+            'AccountCompressionEventRecord["ApplicationData"]',
         ),
     ],
 ]) as beet.FixableBeet<AccountCompressionEvent>;

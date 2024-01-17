@@ -35,7 +35,7 @@ export async function execute(
         txid = await provider.sendAndConfirm!(tx, signers, {
             skipPreflight,
         });
-    } catch (e: any) {
+    } catch (e) {
         console.log('Tx error!', e.logs);
         throw e;
     }

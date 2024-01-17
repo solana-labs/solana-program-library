@@ -20,5 +20,5 @@ export const pathNodeBeet = new beet.BeetArgsStruct<PathNode>(
         ['node', beet.uniformFixedSizeArray(beet.u8, 32)],
         ['index', beet.u32],
     ],
-    'PathNode'
+    'PathNode',
 );

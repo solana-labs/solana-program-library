@@ -30,7 +30,7 @@ export class ConcurrentMerkleTreeAccount {
     static async fromAccountAddress(
         connection: Connection,
         publicKey: PublicKey,
-        commitmentOrConfig?: Commitment | GetAccountInfoConfig
+        commitmentOrConfig?: Commitment | GetAccountInfoConfig,
     ): Promise<ConcurrentMerkleTreeAccount> {
         const account = await connection.getAccountInfo(publicKey, commitmentOrConfig);
         if (!account) {
@@ -149,7 +149,7 @@ function deserializeConcurrentMerkleTree(buffer: Buffer): ConcurrentMerkleTreeAc
     const header = versionedHeader.header.fields[0];
     const [tree, offsetIncr2] = concurrentMerkleTreeBeetFactory(header.maxDepth, header.maxBufferSize).deserialize(
         buffer,
-        offset
+        offset,
     );
     offset = offsetIncr2;
 
@@ -181,7 +181,7 @@ export function getConcurrentMerkleTreeAccountSize(
     maxDepth: number,
     maxBufferSize: number,
     canopyDepth?: number,
-    headerVersion = 'V1'
+    headerVersion = 'V1',
 ): number {
     if (headerVersion != 'V1') {
         throw Error('Unsupported header version');

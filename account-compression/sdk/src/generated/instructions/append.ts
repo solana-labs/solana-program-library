@@ -30,7 +30,7 @@ export const appendStruct = new beet.BeetArgsStruct<
         ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
         ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
     ],
-    'AppendInstructionArgs'
+    'AppendInstructionArgs',
 );
 /**
  * Accounts required by the _append_ instruction
@@ -64,7 +64,7 @@ export const appendInstructionDiscriminator = [149, 120, 18, 222, 236, 225, 88, 
 export function createAppendInstruction(
     accounts: AppendInstructionAccounts,
     args: AppendInstructionArgs,
-    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
 ) {
     const [data] = appendStruct.serialize({
         instructionDiscriminator: appendInstructionDiscriminator,

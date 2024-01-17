@@ -46,7 +46,7 @@ export const applicationDataEventBeet = beet.dataEnum<ApplicationDataEventRecord
         'V1',
         new beet.FixableBeetArgsStruct<ApplicationDataEventRecord['V1']>(
             [['fields', beet.tuple([applicationDataEventV1Beet])]],
-            'ApplicationDataEventRecord["V1"]'
+            'ApplicationDataEventRecord["V1"]',
         ),
     ],
 ]) as beet.FixableBeet<ApplicationDataEvent>;

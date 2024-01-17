@@ -16,5 +16,5 @@ export type ApplicationDataEventV1 = {
  */
 export const applicationDataEventV1Beet = new beet.FixableBeetArgsStruct<ApplicationDataEventV1>(
     [['applicationData', beet.bytes]],
-    'ApplicationDataEventV1'
+    'ApplicationDataEventV1',
 );
