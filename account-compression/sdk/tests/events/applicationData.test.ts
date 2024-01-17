@@ -1,5 +1,6 @@
+import { strict as assert } from "node:assert";
+
 import { BN } from "bn.js";
-import { assert } from "chai";
 
 import { deserializeApplicationDataEvent } from "../../src";
 
