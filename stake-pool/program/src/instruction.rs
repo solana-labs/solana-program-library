@@ -2,6 +2,8 @@
 
 #![allow(clippy::too_many_arguments)]
 
+use solana_program::program_error::ProgramError;
+
 use {
     crate::{
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
@@ -1431,7 +1433,7 @@ pub fn update_validator_list_balance(
 /// account balances) to update `validator_list[start_index..start_index +
 /// len]`.
 ///
-/// Returns `None` if:
+/// Returns `Err(ProgramError::InvalidInstructionData)` if:
 /// - `start_index..start_index + len` is out of bounds for
 ///   `validator_list.validators`
 pub fn update_validator_list_balance_chunk(
@@ -1444,7 +1446,7 @@ pub fn update_validator_list_balance_chunk(
     len: usize,
     start_index: usize,
     no_merge: bool,
-) -> Option<Instruction> {
+) -> Result<Instruction, ProgramError> {
     let mut accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
@@ -1456,7 +1458,8 @@ pub fn update_validator_list_balance_chunk(
     ];
     let validator_list_subslice = validator_list
         .validators
-        .get(start_index..start_index.saturating_add(len))?;
+        .get(start_index..start_index.saturating_add(len))
+        .ok_or(ProgramError::InvalidInstructionData)?;
     accounts.extend(validator_list_subslice.iter().flat_map(
         |ValidatorStakeInfo {
              vote_account_address,
@@ -1482,7 +1485,7 @@ pub fn update_validator_list_balance_chunk(
             ]
         },
     ));
-    Some(Instruction {
+    Ok(Instruction {
         program_id: *program_id,
         accounts,
         data: StakePoolInstruction::UpdateValidatorListBalance {
@@ -1560,7 +1563,8 @@ pub fn update_stake_pool(
         .validators
         .chunks(MAX_VALIDATORS_TO_UPDATE)
         .enumerate()
-        .filter_map(|(i, chunk)| {
+        .map(|(i, chunk)| {
+            // unwrap-safety: chunk len and offset are derived
             update_validator_list_balance_chunk(
                 program_id,
                 stake_pool_address,
@@ -1571,7 +1575,7 @@ pub fn update_stake_pool(
                 chunk.len(),
                 i.saturating_mul(MAX_VALIDATORS_TO_UPDATE),
                 no_merge,
-            )
+            ).unwrap()
         })
         .collect();
 
