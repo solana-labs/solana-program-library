@@ -23,5 +23,5 @@ export const concurrentMerkleTreeHeaderBeet = new beet.FixableBeetArgsStruct<Con
         ['accountType', compressionAccountTypeBeet],
         ['header', concurrentMerkleTreeHeaderDataBeet],
     ],
-    'ConcurrentMerkleTreeHeader'
+    'ConcurrentMerkleTreeHeader',
 );

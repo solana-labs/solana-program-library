@@ -10,13 +10,13 @@
         "declaration": true,
         "moduleResolution": "node",
         "stripInternal": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
     },
     "files": ["rollup.config.ts"],
     "include": ["src"],
     "exclude": ["lib", "node_modules"],
     "typedocOptions": {
         "entryPoints": ["src/index.ts"],
-        "out": "docs"
-    }
+        "out": "docs",
+    },
 }

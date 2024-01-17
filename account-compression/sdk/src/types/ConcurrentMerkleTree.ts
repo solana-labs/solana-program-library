@@ -23,7 +23,7 @@ const changeLogBeetFactory = (maxDepth: number) => {
             ['index', beet.u32],
             ['_padding', beet.u32],
         ],
-        'ChangeLog'
+        'ChangeLog',
     );
 };
 
@@ -55,6 +55,6 @@ export const concurrentMerkleTreeBeetFactory = (maxDepth: number, maxBufferSize:
             ['changeLogs', beet.uniformFixedSizeArray(changeLogBeetFactory(maxDepth), maxBufferSize)],
             ['rightMostPath', pathBeetFactory(maxDepth)],
         ],
-        'ConcurrentMerkleTree'
+        'ConcurrentMerkleTree',
     );
 };

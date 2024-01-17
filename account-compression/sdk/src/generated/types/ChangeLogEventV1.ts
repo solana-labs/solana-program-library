@@ -28,5 +28,5 @@ export const changeLogEventV1Beet = new beet.FixableBeetArgsStruct<ChangeLogEven
         ['seq', beet.u64],
         ['index', beet.u32],
     ],
-    'ChangeLogEventV1'
+    'ChangeLogEventV1',
 );

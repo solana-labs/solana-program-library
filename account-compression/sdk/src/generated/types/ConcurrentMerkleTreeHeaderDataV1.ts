@@ -28,5 +28,5 @@ export const concurrentMerkleTreeHeaderDataV1Beet = new beet.BeetArgsStruct<Conc
         ['creationSlot', beet.u64],
         ['padding', beet.uniformFixedSizeArray(beet.u8, 6)],
     ],
-    'ConcurrentMerkleTreeHeaderDataV1'
+    'ConcurrentMerkleTreeHeaderDataV1',
 );

@@ -1,5 +1,5 @@
 import { AnchorProvider } from '@project-serum/anchor';
-import { Keypair, Signer, Transaction, TransactionInstruction } from '@solana/web3.js';
+import { Keypair, SendTransactionError, Signer, Transaction, TransactionInstruction } from '@solana/web3.js';
 import * as crypto from 'crypto';
 
 import { createAllocTreeIx, createAppendIx, createInitEmptyMerkleTreeIx, ValidDepthSizePair } from '../src';
@@ -35,8 +35,10 @@ export async function execute(
         txid = await provider.sendAndConfirm!(tx, signers, {
             skipPreflight,
         });
-    } catch (e: any) {
-        console.log('Tx error!', e.logs);
+    } catch (e) {
+        if (e instanceof SendTransactionError) {
+            console.log('Tx error!', e.logs);
+	}
         throw e;
     }
 

@@ -31,7 +31,7 @@ export const transferAuthorityStruct = new beet.BeetArgsStruct<
         ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
         ['newAuthority', beetSolana.publicKey],
     ],
-    'TransferAuthorityInstructionArgs'
+    'TransferAuthorityInstructionArgs',
 );
 /**
  * Accounts required by the _transferAuthority_ instruction
@@ -63,7 +63,7 @@ export const transferAuthorityInstructionDiscriminator = [48, 169, 76, 72, 229, 
 export function createTransferAuthorityInstruction(
     accounts: TransferAuthorityInstructionAccounts,
     args: TransferAuthorityInstructionArgs,
-    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
 ) {
     const [data] = transferAuthorityStruct.serialize({
         instructionDiscriminator: transferAuthorityInstructionDiscriminator,
