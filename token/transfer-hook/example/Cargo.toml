@@ -13,15 +13,15 @@ test-sbf = []
 
 [dependencies]
 arrayref = "0.3.7"
-solana-program = "1.17.6"
+solana-program = "1.17.13"
 spl-tlv-account-resolution = { version = "0.5" , path = "../../../libraries/tlv-account-resolution" }
 spl-token-2022 = { version = "1.0",  path = "../../program-2022", features = ["no-entrypoint"] }
 spl-transfer-hook-interface = { version = "0.4" , path = "../interface" }
 spl-type-length-value = { version = "0.3" , path = "../../../libraries/type-length-value" }
 
 [dev-dependencies]
-solana-program-test = "1.17.6"
-solana-sdk = "1.17.6"
+solana-program-test = "1.17.13"
+solana-sdk = "1.17.13"
 
 [lib]
 crate-type = ["cdylib", "lib"]
