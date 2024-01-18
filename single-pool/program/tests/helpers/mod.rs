@@ -4,6 +4,7 @@ use {
     solana_program_test::*,
     solana_sdk::{
         account::Account as SolanaAccount,
+        feature_set::stake_raise_minimum_delegation_to_1_sol,
         hash::Hash,
         program_error::ProgramError,
         pubkey::Pubkey,
@@ -34,13 +35,17 @@ pub use stake::*;
 pub const FIRST_NORMAL_EPOCH: u64 = 15;
 pub const USER_STARTING_LAMPORTS: u64 = 10_000_000_000_000; // 10k sol
 
-pub fn program_test() -> ProgramTest {
+pub fn program_test(enable_minimum_delegation: bool) -> ProgramTest {
     let mut program_test = ProgramTest::default();
+
     program_test.add_program("mpl_token_metadata", inline_mpl_token_metadata::id(), None);
-
     program_test.add_program("spl_single_pool", id(), processor!(Processor::process));
-
     program_test.prefer_bpf(false);
+
+    if !enable_minimum_delegation {
+        program_test.deactivate_feature(stake_raise_minimum_delegation_to_1_sol::id());
+    }
+
     program_test
 }
 
@@ -227,7 +232,7 @@ impl SinglePoolAccounts {
         .await;
 
         let rent = context.banks_client.get_rent().await.unwrap();
-        let minimum_delegation = get_minimum_delegation(
+        let minimum_delegation = get_pool_minimum_delegation(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
