@@ -46,6 +46,7 @@ use {
         },
         token::Token,
     },
+    spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::TokenMetadata,
     std::{ffi::OsString, path::PathBuf, str::FromStr, sync::Arc},
     tempfile::NamedTempFile,
@@ -3793,8 +3794,9 @@ async fn metadata(test_validator: &TestValidator, payer: &Keypair) {
 async fn group(test_validator: &TestValidator, payer: &Keypair) {
     let program_id = spl_token_2022::id();
     let config = test_config_with_default_signer(test_validator, payer, &program_id);
-    let max_size = "10";
+    let max_size = 10;
 
+    // Create token
     let result = process_test_command(
         &config,
         payer,
@@ -3810,12 +3812,8 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
 
     let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
     let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
-    let account = config.rpc_client.get_account(&mint).await.unwrap();
-    let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
 
-    let extension = mint_state.get_extension::<GroupPointer>().unwrap();
-    assert_eq!(extension.group_address, Some(mint).try_into().unwrap());
-
+    // Initialize the group
     process_test_command(
         &config,
         payer,
@@ -3823,9 +3821,25 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
             "spl-token",
             CommandName::InitializeGroup.into(),
             &mint.to_string(),
-            max_size,
+            &max_size.to_string(),
         ],
     )
     .await
     .unwrap();
+
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+    let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+
+    let extension = mint_state.get_extension::<TokenGroup>().unwrap();
+    assert_eq!(
+        extension.update_authority,
+        Some(payer.pubkey()).try_into().unwrap()
+    );
+    assert_eq!(extension.max_size, max_size.into());
+
+    let extension_pointer = mint_state.get_extension::<GroupPointer>().unwrap();
+    assert_eq!(
+        extension_pointer.group_address,
+        Some(mint).try_into().unwrap()
+    );
 }
