@@ -2159,14 +2159,18 @@ where
             &multisig_signers,
             proof_location,
         )?;
-        offchain::resolve_extra_transfer_account_metas(
+        offchain::add_extra_account_metas(
             &mut instructions[0],
+            source_account,
+            self.get_address(),
+            destination_account,
+            source_authority,
+            u64::MAX,
             |address| {
                 self.client
                     .get_account(address)
                     .map_ok(|opt| opt.map(|acc| acc.data))
             },
-            self.get_address(),
         )
         .await
         .map_err(|_| TokenError::AccountNotFound)?;
@@ -2213,14 +2217,18 @@ where
             context_state_accounts,
             source_decrypt_handles,
         )?;
-        offchain::resolve_extra_transfer_account_metas(
+        offchain::add_extra_account_metas(
             &mut instruction,
+            source_account,
+            self.get_address(),
+            destination_account,
+            source_authority,
+            u64::MAX,
             |address| {
                 self.client
                     .get_account(address)
                     .map_ok(|opt| opt.map(|acc| acc.data))
             },
-            self.get_address(),
         )
         .await
         .map_err(|_| TokenError::AccountNotFound)?;
@@ -2286,14 +2294,18 @@ where
                 context_state_accounts,
                 &source_decrypt_handles,
             )?;
-        offchain::resolve_extra_transfer_account_metas(
+        offchain::add_extra_account_metas(
             &mut transfer_instruction,
+            source_account,
+            self.get_address(),
+            destination_account,
+            source_authority,
+            u64::MAX,
             |address| {
                 self.client
                     .get_account(address)
                     .map_ok(|opt| opt.map(|acc| acc.data))
             },
-            self.get_address(),
         )
         .await
         .map_err(|_| TokenError::AccountNotFound)?;
@@ -2721,18 +2733,27 @@ where
             &multisig_signers,
             proof_location,
         )?;
-        offchain::resolve_extra_transfer_account_metas(
+        offchain::add_extra_account_metas(
             &mut instructions[0],
+            source_account,
+            self.get_address(),
+            destination_account,
+            source_authority,
+            u64::MAX,
             |address| {
                 self.client
                     .get_account(address)
                     .map_ok(|opt| opt.map(|acc| acc.data))
             },
-            self.get_address(),
         )
         .await
         .map_err(|_| TokenError::AccountNotFound)?;
-        self.process_ixs_with_additional_compute_budget(&instructions, TRANSFER_WITH_FEE_COMPUTE_BUDGET, signing_keypairs).await
+        self.process_ixs_with_additional_compute_budget(
+            &instructions,
+            TRANSFER_WITH_FEE_COMPUTE_BUDGET,
+            signing_keypairs,
+        )
+        .await
     }
 
     /// Transfer tokens confidentially with fee using split proofs.
@@ -2776,14 +2797,18 @@ where
                 context_state_accounts,
                 source_decrypt_handles,
             )?;
-        offchain::resolve_extra_transfer_account_metas(
+        offchain::add_extra_account_metas(
             &mut instruction,
+            source_account,
+            self.get_address(),
+            destination_account,
+            source_authority,
+            u64::MAX,
             |address| {
                 self.client
                     .get_account(address)
                     .map_ok(|opt| opt.map(|acc| acc.data))
             },
-            self.get_address(),
         )
         .await
         .map_err(|_| TokenError::AccountNotFound)?;
@@ -2874,14 +2899,18 @@ where
                 context_state_accounts,
                 &source_decrypt_handles,
             )?;
-        offchain::resolve_extra_transfer_account_metas(
+        offchain::add_extra_account_metas(
             &mut transfer_instruction,
+            source_account,
+            self.get_address(),
+            destination_account,
+            source_authority,
+            u64::MAX,
             |address| {
                 self.client
                     .get_account(address)
                     .map_ok(|opt| opt.map(|acc| acc.data))
             },
-            self.get_address(),
         )
         .await
         .map_err(|_| TokenError::AccountNotFound)?;
