@@ -112,6 +112,61 @@ where
         decimals,
     )?;
 
+    add_extra_account_metas(
+        &mut transfer_instruction,
+        source_pubkey,
+        mint_pubkey,
+        destination_pubkey,
+        authority_pubkey,
+        amount,
+        fetch_account_data_fn,
+    )
+    .await?;
+
+    Ok(transfer_instruction)
+}
+
+/// Offchain helper to add required account metas to an instruction, including
+/// the ones required by the transfer hook.
+///
+/// To be client-agnostic and to avoid pulling in the full solana-sdk, this
+/// simply takes a function that will return its data as `Future<Vec<u8>>` for
+/// the given address. Can be called in the following way:
+///
+/// ```rust,ignore
+/// let mut transfer_instruction = spl_token_2022::instruction::transfer_checked(
+///     &spl_token_2022::id(),
+///     source_pubkey,
+///     mint_pubkey,
+///     destination_pubkey,
+///     authority_pubkey,
+///     signer_pubkeys,
+///     amount,
+///     decimals,
+/// )?;
+/// add_extra_account_metas(
+///     &mut transfer_instruction,
+///     source_pubkey,
+///     mint_pubkey,
+///     destination_pubkey,
+///     authority_pubkey,
+///     amount,
+///     fetch_account_data_fn,
+/// ).await?;
+/// ```
+pub async fn add_extra_account_metas<F, Fut>(
+    instruction: &mut Instruction,
+    source_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    destination_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    amount: u64,
+    fetch_account_data_fn: F,
+) -> Result<(), AccountFetchError>
+where
+    F: Fn(Pubkey) -> Fut,
+    Fut: Future<Output = AccountDataResult>,
+{
     let mint_data = fetch_account_data_fn(*mint_pubkey)
         .await?
         .ok_or(ProgramError::InvalidAccountData)?;
@@ -119,7 +174,7 @@ where
 
     if let Some(program_id) = transfer_hook::get_program_id(&mint) {
         add_extra_account_metas_for_execute(
-            &mut transfer_instruction,
+            instruction,
             &program_id,
             source_pubkey,
             mint_pubkey,
@@ -131,7 +186,7 @@ where
         .await?;
     }
 
-    Ok(transfer_instruction)
+    Ok(())
 }
 
 #[cfg(test)]
