@@ -11,20 +11,35 @@ use {
     test_case::test_case,
 };
 
-#[test_case(true, 0, false; "activated")]
-#[test_case(false, 0, false; "activating")]
-#[test_case(true, 100_000, false; "activated_extra")]
-#[test_case(false, 100_000, false; "activating_extra")]
-#[test_case(true, 0, true; "activated_second")]
-#[test_case(false, 0, true; "activating_second")]
+#[test_case(true, 0, false, false, false; "activated::minimum_disabled")]
+#[test_case(true, 0, false, false, true; "activated::minimum_disabled::small")]
+#[test_case(true, 0, false, true, false; "activated::minimum_enabled")]
+#[test_case(false, 0, false, false, false; "activating::minimum_disabled")]
+#[test_case(false, 0, false, false, true; "activating::minimum_disabled::small")]
+#[test_case(false, 0, false, true, false; "activating::minimum_enabled")]
+#[test_case(true, 100_000, false, false, false; "activated::extra")]
+#[test_case(false, 100_000, false, false, false; "activating::extra")]
+#[test_case(true, 0, true, false, false; "activated::second")]
+#[test_case(false, 0, true, false, false; "activating::second")]
 #[tokio::test]
-async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
-    let mut context = program_test().start_with_context().await;
+async fn success(
+    activate: bool,
+    extra_lamports: u64,
+    prior_deposit: bool,
+    enable_minimum_delegation: bool,
+    small_deposit: bool,
+) {
+    let mut context = program_test(enable_minimum_delegation)
+        .start_with_context()
+        .await;
     let accounts = SinglePoolAccounts::default();
+
+    let amount_deposited = if small_deposit { 1 } else { TEST_STAKE_AMOUNT };
+
     let minimum_delegation = accounts
         .initialize_for_withdraw(
             &mut context,
-            TEST_STAKE_AMOUNT,
+            amount_deposited,
             if prior_deposit {
                 Some(TEST_STAKE_AMOUNT * 10)
             } else {
@@ -89,9 +104,9 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
     // when active, the depositor gets their rent back, but when activating, its
     // just added to stake
     let expected_deposit = if activate {
-        TEST_STAKE_AMOUNT
+        amount_deposited
     } else {
-        get_stake_account_rent(&mut context.banks_client).await + TEST_STAKE_AMOUNT
+        amount_deposited + get_stake_account_rent(&mut context.banks_client).await
     };
 
     let prior_deposits = if prior_deposit {
@@ -138,7 +153,7 @@ async fn success_with_rewards() {
     let alice_deposit = TEST_STAKE_AMOUNT;
     let bob_deposit = TEST_STAKE_AMOUNT * 3;
 
-    let mut context = program_test().start_with_context().await;
+    let mut context = program_test(false).start_with_context().await;
     let accounts = SinglePoolAccounts::default();
     let minimum_delegation = accounts
         .initialize_for_withdraw(&mut context, alice_deposit, Some(bob_deposit), true)
@@ -211,7 +226,7 @@ async fn success_with_rewards() {
 #[test_case(false; "activating")]
 #[tokio::test]
 async fn fail_automorphic(activate: bool) {
-    let mut context = program_test().start_with_context().await;
+    let mut context = program_test(false).start_with_context().await;
     let accounts = SinglePoolAccounts::default();
     accounts
         .initialize_for_withdraw(&mut context, TEST_STAKE_AMOUNT, None, activate)

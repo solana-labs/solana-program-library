@@ -59,7 +59,7 @@ async fn build_instructions(
         .await;
 
         let rent = context.banks_client.get_rent().await.unwrap();
-        let minimum_delegation = get_minimum_delegation(
+        let minimum_delegation = get_pool_minimum_delegation(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -145,7 +145,7 @@ async fn build_instructions(
 #[test_case(TestMode::Withdraw; "withdraw")]
 #[tokio::test]
 async fn fail_account_checks(test_mode: TestMode) {
-    let mut context = program_test().start_with_context().await;
+    let mut context = program_test(false).start_with_context().await;
     let accounts = SinglePoolAccounts::default();
     let (instructions, i) = build_instructions(&mut context, &accounts, test_mode).await;
 
