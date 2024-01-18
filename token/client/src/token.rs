@@ -2152,7 +2152,7 @@ where
         let mut instructions = confidential_transfer::instruction::transfer(
             &self.program_id,
             source_account,
-            &self.pubkey,
+            self.get_address(),
             destination_account,
             new_decryptable_available_balance,
             source_authority,
@@ -2210,7 +2210,7 @@ where
         let mut instruction = confidential_transfer::instruction::transfer_with_split_proofs(
             &self.program_id,
             source_account,
-            &self.pubkey,
+            self.get_address(),
             destination_account,
             new_decryptable_available_balance.into(),
             source_authority,
@@ -2287,7 +2287,7 @@ where
             confidential_transfer::instruction::transfer_with_split_proofs(
                 &self.program_id,
                 source_account,
-                &self.pubkey,
+                self.get_address(),
                 destination_account,
                 new_decryptable_available_balance.into(),
                 source_authority,
@@ -2727,7 +2727,7 @@ where
             &self.program_id,
             source_account,
             destination_account,
-            &self.pubkey,
+            self.get_address(),
             new_decryptable_available_balance,
             source_authority,
             &multisig_signers,
@@ -2790,7 +2790,7 @@ where
             confidential_transfer::instruction::transfer_with_fee_and_split_proofs(
                 &self.program_id,
                 source_account,
-                &self.pubkey,
+                self.get_address(),
                 destination_account,
                 new_decryptable_available_balance.into(),
                 source_authority,
@@ -2892,7 +2892,7 @@ where
             confidential_transfer::instruction::transfer_with_fee_and_split_proofs(
                 &self.program_id,
                 source_account,
-                &self.pubkey,
+                self.get_address(),
                 destination_account,
                 new_decryptable_available_balance.into(),
                 source_authority,
