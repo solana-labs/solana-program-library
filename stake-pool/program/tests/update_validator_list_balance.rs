@@ -5,7 +5,7 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{borsh0_10::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey},
+    solana_program::{borsh0_10::try_from_slice_unchecked, program_pack::Pack},
     solana_program_test::*,
     solana_sdk::{hash::Hash, signature::Signer, stake::state::StakeStateV2},
     spl_stake_pool::{
@@ -107,11 +107,6 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -140,11 +135,6 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -223,11 +213,6 @@ async fn success_with_normal() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -299,11 +284,6 @@ async fn merge_into_reserve() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -339,11 +319,6 @@ async fn merge_into_reserve() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -435,11 +410,6 @@ async fn merge_into_validator_stake() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -475,11 +445,6 @@ async fn merge_into_validator_stake() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -591,11 +556,6 @@ async fn merge_transient_stake_after_remove() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             true,
         )
         .await;
@@ -628,11 +588,7 @@ async fn merge_transient_stake_after_remove() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
+            validator_list.validators.len(),
             false,
         )
         .await;
@@ -706,16 +662,8 @@ async fn merge_transient_stake_after_remove() {
 #[tokio::test]
 async fn success_with_burned_tokens() {
     let num_validators = 5;
-    let (
-        mut context,
-        last_blockhash,
-        stake_pool_accounts,
-        stake_accounts,
-        deposit_accounts,
-        _,
-        _,
-        mut slot,
-    ) = setup(num_validators).await;
+    let (mut context, last_blockhash, stake_pool_accounts, _, deposit_accounts, _, _, mut slot) =
+        setup(num_validators).await;
 
     let mint_info = get_account(
         &mut context.banks_client,
@@ -762,11 +710,6 @@ async fn success_with_burned_tokens() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;

@@ -5,9 +5,7 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{
-        borsh0_10::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey,
-    },
+    solana_program::{borsh0_10::try_from_slice_unchecked, instruction::InstructionError},
     solana_program_test::*,
     solana_sdk::{
         hash::Hash,
@@ -180,11 +178,6 @@ async fn success() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
@@ -293,11 +286,6 @@ async fn success_absorbing_extra_lamports() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
             false,
         )
         .await;
