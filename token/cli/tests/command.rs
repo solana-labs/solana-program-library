@@ -3842,4 +3842,35 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
         extension_pointer.group_address,
         Some(mint).try_into().unwrap()
     );
+
+    let new_max_size = 12;
+
+    // Update token-group max-size
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::UpdateGroupMaxSize.into(),
+            &mint.to_string(),
+            &new_max_size.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+
+    let updated_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+
+    let updated_extension = updated_mint_state.get_extension::<TokenGroup>().unwrap();
+    assert_eq!(updated_extension.max_size, new_max_size.into());
+
+    // let mint_state =
+    // StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap(); // let
+    // fetched_metadata = mint_state //
+    // .get_variable_len_extension::<TokenGroup>() //     .unwrap();
+    // let fetched_token_group =
+    // mint_state.get_extension::<TokenGroup>().unwrap();
+    // assert_eq!(fetched_token_group.max_size, 10.into());
 }
