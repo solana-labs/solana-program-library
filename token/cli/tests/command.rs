@@ -3865,12 +3865,4 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
 
     let updated_extension = updated_mint_state.get_extension::<TokenGroup>().unwrap();
     assert_eq!(updated_extension.max_size, new_max_size.into());
-
-    // let mint_state =
-    // StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap(); // let
-    // fetched_metadata = mint_state //
-    // .get_variable_len_extension::<TokenGroup>() //     .unwrap();
-    // let fetched_token_group =
-    // mint_state.get_extension::<TokenGroup>().unwrap();
-    // assert_eq!(fetched_token_group.max_size, 10.into());
 }
