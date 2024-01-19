@@ -214,7 +214,7 @@ async fn fail_overdraw_reserve() {
         .await;
     assert!(error.is_none(), "{:?}", error);
 
-    // try to withdraw one lamport, will overdraw
+    // try to withdraw one lamport after fees, will overdraw
     let error = stake_pool_accounts
         .withdraw_sol(
             &mut context.banks_client,
@@ -222,7 +222,7 @@ async fn fail_overdraw_reserve() {
             &context.last_blockhash,
             &user,
             &pool_token_account,
-            1,
+            2,
             None,
         )
         .await

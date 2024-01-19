@@ -6,10 +6,10 @@ mod helpers;
 use {
     bincode::deserialize,
     helpers::*,
-    solana_program::{borsh0_10::try_from_slice_unchecked, pubkey::Pubkey, stake},
+    solana_program::{pubkey::Pubkey, stake},
     solana_program_test::*,
     solana_sdk::signature::{Keypair, Signer},
-    spl_stake_pool::{minimum_stake_lamports, state},
+    spl_stake_pool::minimum_stake_lamports,
 };
 
 #[tokio::test]
@@ -183,20 +183,8 @@ async fn success_empty_out_stake_with_fee() {
             .await;
     let lamports_to_withdraw =
         validator_stake_account.lamports - minimum_stake_lamports(&meta, stake_minimum_delegation);
-    let stake_pool_account = get_account(
-        &mut context.banks_client,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    )
-    .await;
-    let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(stake_pool_account.data.as_slice()).unwrap();
-    let fee = stake_pool.stake_withdrawal_fee;
-    let inverse_fee = state::Fee {
-        numerator: fee.denominator - fee.numerator,
-        denominator: fee.denominator,
-    };
     let pool_tokens_to_withdraw =
-        lamports_to_withdraw * inverse_fee.denominator / inverse_fee.numerator;
+        stake_pool_accounts.calculate_inverse_withdrawal_fee(lamports_to_withdraw);
 
     let last_blockhash = context
         .banks_client
