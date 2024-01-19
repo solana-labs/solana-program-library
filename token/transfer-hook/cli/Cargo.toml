@@ -6,7 +6,7 @@ homepage = "https://spl.solana.com/token"
 license = "Apache-2.0"
 name = "spl-transfer-hook-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "0.1.0"
+version = "0.1.1"
 
 [dependencies]
 clap = { version = "3", features = ["cargo"] }
@@ -17,7 +17,7 @@ solana-client = "=1.17.13"
 solana-logger = "=1.17.13"
 solana-remote-wallet = "=1.17.13"
 solana-sdk = "=1.17.13"
-spl-transfer-hook-interface = { version = "0.4", path = "../interface" }
+spl-transfer-hook-interface = { version = "0.5", path = "../interface" }
 spl-tlv-account-resolution = { version = "0.5.1" , path = "../../../libraries/tlv-account-resolution", features = ["serde-traits"] }
 strum = "0.25"
 strum_macros = "0.25"

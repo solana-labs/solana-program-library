@@ -7366,7 +7366,7 @@ dependencies = [
  "spl-token 4.0.0",
  "spl-token-group-interface",
  "spl-token-metadata-interface 0.2.0",
- "spl-transfer-hook-interface 0.4.1",
+ "spl-transfer-hook-interface 0.5.0",
  "spl-type-length-value 0.3.0",
  "thiserror",
 ]
@@ -7391,7 +7391,7 @@ dependencies = [
  "spl-token-group-interface",
  "spl-token-metadata-interface 0.2.0",
  "spl-transfer-hook-example",
- "spl-transfer-hook-interface 0.4.1",
+ "spl-transfer-hook-interface 0.5.0",
  "test-case",
  "walkdir",
 ]
@@ -7454,7 +7454,7 @@ dependencies = [
  "spl-token-2022 1.0.0",
  "spl-token-group-interface",
  "spl-token-metadata-interface 0.2.0",
- "spl-transfer-hook-interface 0.4.1",
+ "spl-transfer-hook-interface 0.5.0",
  "thiserror",
 ]
 
@@ -7666,7 +7666,7 @@ dependencies = [
 
 [[package]]
 name = "spl-transfer-hook-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap 3.2.25",
  "futures-util",
@@ -7683,7 +7683,7 @@ dependencies = [
  "spl-tlv-account-resolution 0.5.1",
  "spl-token-2022 1.0.0",
  "spl-token-client",
- "spl-transfer-hook-interface 0.4.1",
+ "spl-transfer-hook-interface 0.5.0",
  "strum 0.25.0",
  "strum_macros 0.25.3",
  "tokio",
@@ -7699,7 +7699,7 @@ dependencies = [
  "solana-sdk",
  "spl-tlv-account-resolution 0.5.1",
  "spl-token-2022 1.0.0",
- "spl-transfer-hook-interface 0.4.1",
+ "spl-transfer-hook-interface 0.5.0",
  "spl-type-length-value 0.3.0",
 ]
 
@@ -7721,7 +7721,7 @@ dependencies = [
 
 [[package]]
 name = "spl-transfer-hook-interface"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "arrayref",
  "bytemuck",
