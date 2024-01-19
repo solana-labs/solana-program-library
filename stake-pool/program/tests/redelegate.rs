@@ -92,10 +92,6 @@ async fn setup(
                 &mut context.banks_client,
                 &context.payer,
                 &context.last_blockhash,
-                &[
-                    source_validator_stake.vote.pubkey(),
-                    destination_validator_stake.vote.pubkey(),
-                ],
                 false,
             )
             .await;
@@ -296,10 +292,6 @@ async fn success() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[
-                source_validator_stake.vote.pubkey(),
-                destination_validator_stake.vote.pubkey(),
-            ],
             false,
         )
         .await;
@@ -548,10 +540,6 @@ async fn success_with_increasing_stake() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[
-                source_validator_stake.vote.pubkey(),
-                destination_validator_stake.vote.pubkey(),
-            ],
             false,
         )
         .await;
@@ -638,10 +626,6 @@ async fn fail_with_decreasing_stake() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[
-                source_validator_stake.vote.pubkey(),
-                destination_validator_stake.vote.pubkey(),
-            ],
             false,
         )
         .await;
@@ -1059,10 +1043,6 @@ async fn fail_redelegate_twice() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[
-                source_validator_stake.vote.pubkey(),
-                destination_validator_stake.vote.pubkey(),
-            ],
             false,
         )
         .await;

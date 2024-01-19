@@ -137,62 +137,6 @@ function deEscalateAccountMeta(accountMeta: AccountMeta, accountMetas: AccountMe
 }
 
 /**
- * @deprecated Deprecated since v0.3.12. Please use {@link addExtraAccountMetasForExecute} instead.
- *
- * Add extra accounts needed for transfer hook to an instruction
- *
- * @param connection      Connection to use
- * @param instruction     The transferChecked instruction to add accounts to
- * @param commitment      Commitment to use
- * @param programId       SPL Token program account
- *
- * @return Instruction to add to a transaction
- */
-export async function addExtraAccountsToInstruction(
-    connection: Connection,
-    instruction: TransactionInstruction,
-    mint: PublicKey,
-    commitment?: Commitment,
-    programId = TOKEN_PROGRAM_ID
-): Promise<TransactionInstruction> {
-    if (!programSupportsExtensions(programId)) {
-        throw new TokenUnsupportedInstructionError();
-    }
-
-    const mintInfo = await getMint(connection, mint, commitment, programId);
-    const transferHook = getTransferHook(mintInfo);
-    if (transferHook == null) {
-        return instruction;
-    }
-
-    const extraAccountsAccount = getExtraAccountMetaAddress(mint, transferHook.programId);
-    const extraAccountsInfo = await connection.getAccountInfo(extraAccountsAccount, commitment);
-    if (extraAccountsInfo == null) {
-        return instruction;
-    }
-
-    const extraAccountMetas = getExtraAccountMetas(extraAccountsInfo);
-
-    const accountMetas = instruction.keys;
-
-    for (const extraAccountMeta of extraAccountMetas) {
-        const accountMetaUnchecked = await resolveExtraAccountMeta(
-            connection,
-            extraAccountMeta,
-            accountMetas,
-            instruction.data,
-            transferHook.programId
-        );
-        const accountMeta = deEscalateAccountMeta(accountMetaUnchecked, accountMetas);
-        accountMetas.push(accountMeta);
-    }
-    accountMetas.push({ pubkey: transferHook.programId, isSigner: false, isWritable: false });
-    accountMetas.push({ pubkey: extraAccountsAccount, isSigner: false, isWritable: false });
-
-    return new TransactionInstruction({ keys: accountMetas, programId, data: instruction.data });
-}
-
-/**
  * Construct an `ExecuteInstruction` for a transfer hook program, without the
  * additional accounts
  *

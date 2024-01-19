@@ -26,6 +26,6 @@ export type Canopy = {
 export const canopyBeetFactory = (canopyDepth: number) => {
     return new beet.BeetArgsStruct<Canopy>(
         [['canopyBytes', beet.uniformFixedSizeArray(beet.u8, Math.max(((1 << (canopyDepth + 1)) - 2) * 32, 0))]],
-        'Canopy'
+        'Canopy',
     );
 };

@@ -46,9 +46,9 @@
     "devDependencies": {
         "@types/chai": "^4.3.11",
         "@types/mocha": "^10.0.6",
-        "@types/node": "^20.11.1",
-        "@typescript-eslint/eslint-plugin": "^6.18.1",
-        "@typescript-eslint/parser": "^6.18.1",
+        "@types/node": "^20.11.5",
+        "@typescript-eslint/eslint-plugin": "^6.19.0",
+        "@typescript-eslint/parser": "^6.19.0",
         "chai": "^4.3.10",
         "chai-as-promised": "^7.1.1",
         "eslint": "^8.56.0",
@@ -57,7 +57,7 @@
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
         "mocha": "^10.1.0",
-        "prettier": "^3.2.2",
+        "prettier": "^3.2.4",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3"

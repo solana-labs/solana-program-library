@@ -32,7 +32,7 @@ export const initEmptyMerkleTreeStruct = new beet.BeetArgsStruct<
         ['maxDepth', beet.u32],
         ['maxBufferSize', beet.u32],
     ],
-    'InitEmptyMerkleTreeInstructionArgs'
+    'InitEmptyMerkleTreeInstructionArgs',
 );
 /**
  * Accounts required by the _initEmptyMerkleTree_ instruction
@@ -66,7 +66,7 @@ export const initEmptyMerkleTreeInstructionDiscriminator = [191, 11, 119, 7, 180
 export function createInitEmptyMerkleTreeInstruction(
     accounts: InitEmptyMerkleTreeInstructionAccounts,
     args: InitEmptyMerkleTreeInstructionArgs,
-    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
 ) {
     const [data] = initEmptyMerkleTreeStruct.serialize({
         instructionDiscriminator: initEmptyMerkleTreeInstructionDiscriminator,

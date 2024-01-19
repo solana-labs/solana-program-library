@@ -54,49 +54,6 @@ pub fn invoke_execute<'a>(
     invoke(&cpi_instruction, &cpi_account_infos)
 }
 
-/// Helper to add accounts required for the transfer-hook program on-chain,
-/// looking through the additional account infos to add the proper accounts
-#[deprecated(
-    since = "0.5.0",
-    note = "Please use `add_extra_accounts_for_execute_cpi` instead"
-)]
-pub fn add_cpi_accounts_for_execute<'a>(
-    cpi_instruction: &mut Instruction,
-    cpi_account_infos: &mut Vec<AccountInfo<'a>>,
-    mint_pubkey: &Pubkey,
-    program_id: &Pubkey,
-    additional_accounts: &[AccountInfo<'a>],
-) -> ProgramResult {
-    let validation_pubkey = get_extra_account_metas_address(mint_pubkey, program_id);
-    let validation_info = additional_accounts
-        .iter()
-        .find(|&x| *x.key == validation_pubkey)
-        .ok_or(TransferHookError::IncorrectAccount)?;
-
-    let program_info = additional_accounts
-        .iter()
-        .find(|&x| x.key == program_id)
-        .ok_or(TransferHookError::IncorrectAccount)?;
-
-    ExtraAccountMetaList::add_to_cpi_instruction::<instruction::ExecuteInstruction>(
-        cpi_instruction,
-        cpi_account_infos,
-        &validation_info.try_borrow_data()?,
-        additional_accounts,
-    )?;
-    // The onchain helpers pull out the required accounts from an opaque
-    // slice by pubkey, so the order doesn't matter here!
-    cpi_account_infos.push(validation_info.clone());
-    cpi_account_infos.push(program_info.clone());
-    cpi_instruction
-        .accounts
-        .push(AccountMeta::new_readonly(validation_pubkey, false));
-    cpi_instruction
-        .accounts
-        .push(AccountMeta::new_readonly(*program_id, false));
-    Ok(())
-}
-
 /// Helper to add accounts required for an `ExecuteInstruction` on-chain,
 /// looking through the additional account infos to add the proper accounts.
 ///

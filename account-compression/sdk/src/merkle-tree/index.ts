@@ -272,7 +272,7 @@ function buildLeaves(leaves: Buffer[]): [Collections.Queue<TreeNode>, TreeNode[]
     leaves.forEach((buffer, index) => {
         if (buffer.length != LEAF_BUFFER_LENGTH) {
             throw Error(
-                `Provided leaf has length: ${buffer.length}, but we need all leaves to be length ${LEAF_BUFFER_LENGTH}`
+                `Provided leaf has length: ${buffer.length}, but we need all leaves to be length ${LEAF_BUFFER_LENGTH}`,
             );
         }
 

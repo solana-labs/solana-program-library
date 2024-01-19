@@ -155,7 +155,6 @@ async fn success_update() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[voter_pubkey],
             false,
         )
         .await;
@@ -272,7 +271,6 @@ async fn success_remove_validator() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[voter_pubkey],
             false,
         )
         .await;
@@ -311,7 +309,6 @@ async fn success_remove_validator() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[voter_pubkey],
             false,
         )
         .await;

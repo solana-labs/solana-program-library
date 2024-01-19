@@ -18,9 +18,9 @@
     "test": "sed -i '1s/.*/{ \"type\": \"module\",/' package.json && NODE_OPTIONS='--loader=tsx' ava ; ret=$?; sed -i '1s/.*/{/' package.json && exit $ret"
   },
   "devDependencies": {
-    "@types/node": "^20.11.1",
+    "@types/node": "^20.11.5",
     "@ava/typescript": "^4.1.0",
-    "@typescript-eslint/eslint-plugin": "^6.18.1",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
     "ava": "^6.0.1",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
@@ -30,7 +30,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@solana/web3.js": "^1.89.0",
+    "@solana/web3.js": "^1.89.1",
     "@solana/spl-single-pool": "1.0.0"
   },
   "ava": {

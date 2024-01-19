@@ -32,7 +32,7 @@ use {
         instruction, minimum_delegation,
         processor::Processor,
         state::{self, FeeType, FutureEpoch, StakePool, ValidatorList},
-        MINIMUM_RESERVE_LAMPORTS,
+        MAX_VALIDATORS_TO_UPDATE, MINIMUM_RESERVE_LAMPORTS,
     },
     spl_token_2022::{
         extension::{ExtensionType, StateWithExtensionsOwned},
@@ -1412,21 +1412,22 @@ impl StakePoolAccounts {
         banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
-        validator_vote_accounts: &[Pubkey],
+        len: usize,
         no_merge: bool,
     ) -> Option<TransportError> {
         let validator_list = self.get_validator_list(banks_client).await;
-        let mut instructions = vec![instruction::update_validator_list_balance(
+        let mut instructions = vec![instruction::update_validator_list_balance_chunk(
             &id(),
             &self.stake_pool.pubkey(),
             &self.withdraw_authority,
             &self.validator_list.pubkey(),
             &self.reserve_stake.pubkey(),
             &validator_list,
-            validator_vote_accounts,
+            len,
             0,
             no_merge,
-        )];
+        )
+        .unwrap()];
         self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
             &instructions,
@@ -1501,22 +1502,31 @@ impl StakePoolAccounts {
         banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
-        validator_vote_accounts: &[Pubkey],
         no_merge: bool,
     ) -> Option<TransportError> {
         let validator_list = self.get_validator_list(banks_client).await;
-        let mut instructions = vec![
-            instruction::update_validator_list_balance(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.withdraw_authority,
-                &self.validator_list.pubkey(),
-                &self.reserve_stake.pubkey(),
-                &validator_list,
-                validator_vote_accounts,
-                0,
-                no_merge,
-            ),
+        let mut instructions = vec![];
+        for (i, chunk) in validator_list
+            .validators
+            .chunks(MAX_VALIDATORS_TO_UPDATE)
+            .enumerate()
+        {
+            instructions.push(
+                instruction::update_validator_list_balance_chunk(
+                    &id(),
+                    &self.stake_pool.pubkey(),
+                    &self.withdraw_authority,
+                    &self.validator_list.pubkey(),
+                    &self.reserve_stake.pubkey(),
+                    &validator_list,
+                    chunk.len(),
+                    i * MAX_VALIDATORS_TO_UPDATE,
+                    no_merge,
+                )
+                .unwrap(),
+            );
+        }
+        instructions.extend([
             instruction::update_stake_pool_balance(
                 &id(),
                 &self.stake_pool.pubkey(),
@@ -1532,7 +1542,7 @@ impl StakePoolAccounts {
                 &self.stake_pool.pubkey(),
                 &self.validator_list.pubkey(),
             ),
-        ];
+        ]);
         self.maybe_add_compute_budget_instruction(&mut instructions);
         let transaction = Transaction::new_signed_with_payer(
             &instructions,

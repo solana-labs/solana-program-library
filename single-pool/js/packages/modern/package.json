@@ -16,8 +16,8 @@
     "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
-    "@types/node": "^20.11.1",
-    "@typescript-eslint/eslint-plugin": "^6.18.1",
+    "@types/node": "^20.11.5",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",

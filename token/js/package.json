@@ -51,7 +51,7 @@
         "deploy:docs": "npm run docs && gh-pages --dest token/js --dist docs --dotfiles"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.89.0"
+        "@solana/web3.js": "^1.89.1"
     },
     "dependencies": {
         "@solana/buffer-layout": "^4.0.0",
@@ -62,14 +62,14 @@
     "devDependencies": {
         "@solana/codecs-strings": "2.0.0-experimental.9741939",
         "@solana/spl-memo": "0.2.3",
-        "@solana/web3.js": "^1.89.0",
+        "@solana/web3.js": "^1.89.1",
         "@types/chai-as-promised": "^7.1.4",
         "@types/chai": "^4.3.11",
         "@types/mocha": "^10.0.6",
-        "@types/node": "^20.11.1",
-        "@types/node-fetch": "^2.6.10",
-        "@typescript-eslint/eslint-plugin": "^6.18.1",
-        "@typescript-eslint/parser": "^6.18.1",
+        "@types/node": "^20.11.5",
+        "@types/node-fetch": "^2.6.11",
+        "@typescript-eslint/eslint-plugin": "^6.19.0",
+        "@typescript-eslint/parser": "^6.19.0",
         "chai": "^4.3.6",
         "chai-as-promised": "^7.1.1",
         "eslint": "^8.56.0",
@@ -78,7 +78,7 @@
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
         "mocha": "^10.1.0",
-        "prettier": "^3.2.2",
+        "prettier": "^3.2.4",
         "process": "^0.11.10",
         "shx": "^0.3.4",
         "start-server-and-test": "^2.0.3",

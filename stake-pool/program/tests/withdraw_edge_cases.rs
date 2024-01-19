@@ -53,7 +53,6 @@ async fn fail_remove_validator() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -119,7 +118,6 @@ async fn success_remove_validator(multiple: u64) {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -163,7 +161,6 @@ async fn success_remove_validator(multiple: u64) {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -271,7 +268,6 @@ async fn fail_with_reserve() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -342,7 +338,6 @@ async fn success_with_reserve() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -768,7 +763,6 @@ async fn success_with_small_preferred_withdraw() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[validator_stake.vote.pubkey()],
             false,
         )
         .await;
@@ -843,10 +837,6 @@ async fn success_with_small_preferred_withdraw() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[
-                validator_stake.vote.pubkey(),
-                preferred_validator.vote.pubkey(),
-            ],
             false,
         )
         .await;

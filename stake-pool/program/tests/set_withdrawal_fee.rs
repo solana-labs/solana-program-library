@@ -117,7 +117,6 @@ async fn success() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[],
             false,
         )
         .await;
@@ -150,7 +149,6 @@ async fn success() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[],
             false,
         )
         .await;
@@ -242,7 +240,6 @@ async fn success_fee_cannot_increase_more_than_once() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[],
             false,
         )
         .await;
@@ -275,7 +272,6 @@ async fn success_fee_cannot_increase_more_than_once() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[],
             false,
         )
         .await;
@@ -443,7 +439,6 @@ async fn success_reset_fee_after_one_epoch() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[],
             false,
         )
         .await;
@@ -600,7 +595,6 @@ async fn success_increase_fee_from_0() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[],
             false,
         )
         .await;
@@ -633,7 +627,6 @@ async fn success_increase_fee_from_0() {
             &mut context.banks_client,
             &context.payer,
             &last_blockhash,
-            &[],
             false,
         )
         .await;
