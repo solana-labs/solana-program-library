@@ -107,6 +107,7 @@ pub enum CommandName {
     SetTransferHook,
     InitializeMetadata,
     UpdateMetadata,
+    InitializeGroup,
     UpdateConfidentialTransferSettings,
     ConfigureConfidentialTransferAccount,
     EnableConfidentialCredits,
@@ -959,6 +960,52 @@ pub fn app<'a, 'b>(
                 .nonce_args(true)
                 .arg(transfer_lamports_arg())
                 .offline_args_config(&SignOnlyNeedsTransferLamports{}),
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::InitializeGroup.into())
+                .about("Initialize group extension on a token mint")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The token address of the group account."),
+                )
+                .arg(
+                        Arg::with_name("max_size")
+                        .validator(is_amount)
+                        .value_name("MAX_SIZE")
+                        .takes_value(true)
+                        .required(true)
+                        .index(2)
+                        .help("The number of members in the group."),
+                    )
+                .arg(
+                    Arg::with_name("mint_authority")
+                        .long("mint-authority")
+                        .alias("owner")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the mint authority keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             Defaults to the client keypair."
+                        ),
+                )
+                .arg(
+                    Arg::with_name("update_authority")
+                        .long("update-authority")
+                        .value_name("ADDRESS")
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help(
+                            "Specify the update authority address. \
+                             Defaults to the client keypair address."
+                        ),
+                )
         )
         .subcommand(
             SubCommand::with_name(CommandName::CreateAccount.into())

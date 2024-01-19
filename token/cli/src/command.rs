@@ -596,6 +596,37 @@ async fn command_update_metadata(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
+async fn command_initialize_group(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    mint_authority: Pubkey,
+    update_authority: Pubkey,
+    max_size: u32,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    let res = token
+        .token_group_initialize_with_rent_transfer(
+            &config.fee_payer()?.pubkey(),
+            &mint_authority,
+            &update_authority,
+            max_size,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
 async fn command_set_transfer_fee(
     config: &Config<'_>,
     token_pubkey: Pubkey,
@@ -3451,6 +3482,27 @@ pub async fn process_command<'a>(
                 field,
                 value,
                 transfer_lamports,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::InitializeGroup, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let max_size = value_t_or_exit!(arg_matches, "max_size", u32);
+            let (mint_authority_signer, mint_authority) =
+                config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
+            let update_authority =
+                config.pubkey_or_default(arg_matches, "update_authority", &mut wallet_manager)?;
+            let bulk_signers = vec![mint_authority_signer];
+
+            command_initialize_group(
+                config,
+                token_pubkey,
+                mint_authority,
+                update_authority,
+                max_size,
                 bulk_signers,
             )
             .await
