@@ -7691,7 +7691,7 @@ dependencies = [
 
 [[package]]
 name = "spl-transfer-hook-example"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "arrayref",
  "solana-program",
