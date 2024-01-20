@@ -47,13 +47,10 @@ use {
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
-        instruction::{
-            cleanup_removed_validator_entries, update_stake_pool_balance,
-            update_validator_list_balance_chunk, FundingType, PreferredValidatorType,
-        },
+        instruction::{FundingType, PreferredValidatorType},
         minimum_delegation,
         state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
-        MAX_VALIDATORS_TO_UPDATE, MINIMUM_RESERVE_LAMPORTS,
+        MINIMUM_RESERVE_LAMPORTS,
     },
     std::{cmp::Ordering, num::NonZeroU32, process::exit, rc::Rc},
 };
@@ -433,7 +430,7 @@ fn command_vsa_add(
     }
 
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
 
     // iterate until a free account is found
@@ -491,7 +488,7 @@ fn command_vsa_remove(
     vote_account: &Pubkey,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
@@ -538,7 +535,7 @@ fn command_increase_validator_stake(
 ) -> CommandResult {
     let lamports = native_token::sol_to_lamports(amount);
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
@@ -577,7 +574,7 @@ fn command_decrease_validator_stake(
 ) -> CommandResult {
     let lamports = native_token::sol_to_lamports(amount);
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
@@ -674,7 +671,7 @@ fn command_deposit_stake(
     referrer_token_account: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
@@ -805,7 +802,7 @@ fn command_deposit_all_stake(
     referrer_token_account: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let stake_addresses = get_all_stake(&config.rpc_client, stake_authority)?;
@@ -948,7 +945,7 @@ fn command_deposit_sol(
     amount: f64,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let amount = native_token::sol_to_lamports(amount);
@@ -1142,6 +1139,7 @@ fn command_update(
     stake_pool_address: &Pubkey,
     force: bool,
     no_merge: bool,
+    fresh: bool,
 ) -> CommandResult {
     if config.no_update {
         println!("Update requested, but --no-update flag specified, so doing nothing");
@@ -1161,7 +1159,7 @@ fn command_update(
 
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
-    let (mut update_list_instructions, final_instructions) = if force {
+    let (mut update_list_instructions, final_instructions) = if fresh {
         spl_stake_pool::instruction::update_stake_pool(
             &spl_stake_pool::id(),
             &stake_pool,
@@ -1170,45 +1168,14 @@ fn command_update(
             no_merge,
         )
     } else {
-        let (withdraw_authority, _) =
-            find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address);
-        let update_list_instructions: Vec<Instruction> = validator_list
-            .validators
-            .chunks(MAX_VALIDATORS_TO_UPDATE)
-            .enumerate()
-            .filter_map(|(i, chunk)| {
-                update_validator_list_balance_chunk(
-                    &spl_stake_pool::id(),
-                    stake_pool_address,
-                    &withdraw_authority,
-                    &stake_pool.validator_list,
-                    &stake_pool.reserve_stake,
-                    &validator_list,
-                    chunk.len(),
-                    i.saturating_mul(MAX_VALIDATORS_TO_UPDATE),
-                    no_merge,
-                )
-                .ok()
-            })
-            .collect();
-        let final_instructions = vec![
-            update_stake_pool_balance(
-                &spl_stake_pool::id(),
-                stake_pool_address,
-                &withdraw_authority,
-                &stake_pool.validator_list,
-                &stake_pool.reserve_stake,
-                &stake_pool.manager_fee_account,
-                &stake_pool.pool_mint,
-                &stake_pool.token_program_id,
-            ),
-            cleanup_removed_validator_entries(
-                &spl_stake_pool::id(),
-                stake_pool_address,
-                &stake_pool.validator_list,
-            ),
-        ];
-        (update_list_instructions, final_instructions)
+        spl_stake_pool::instruction::update_stale_stake_pool(
+            &spl_stake_pool::id(),
+            &stake_pool,
+            &validator_list,
+            stake_pool_address,
+            no_merge,
+            epoch_info.epoch,
+        )
     };
 
     let update_list_instructions_len = update_list_instructions.len();
@@ -1404,7 +1371,7 @@ fn command_withdraw_stake(
     pool_amount: f64,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
@@ -1675,7 +1642,7 @@ fn command_withdraw_sol(
     pool_amount: f64,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
@@ -1792,7 +1759,7 @@ fn command_set_manager(
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
@@ -1844,7 +1811,7 @@ fn command_set_staker(
     new_staker: &Pubkey,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
@@ -1869,7 +1836,7 @@ fn command_set_funding_authority(
     funding_type: FundingType,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
@@ -1894,7 +1861,7 @@ fn command_set_fee(
     new_fee: FeeType,
 ) -> CommandResult {
     if !config.no_update {
-        command_update(config, stake_pool_address, false, false)?;
+        command_update(config, stake_pool_address, false, false, false)?;
     }
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
@@ -2470,6 +2437,12 @@ fn main() {
                     .takes_value(false)
                     .help("Do not automatically merge transient stakes. Useful if the stake pool is in an expected state, but the balances still need to be updated."),
             )
+            .arg(
+                Arg::with_name("fresh")
+                    .long("fresh")
+                    .takes_value(false)
+                    .help("If set, updates all validator balances on the validator list. Otherwise, this command only updates validator list balances that have not been updated for this epoch."),
+            )
         )
         .subcommand(SubCommand::with_name("withdraw-stake")
             .about("Withdraw active stake from the stake pool in exchange for pool tokens")
@@ -2947,7 +2920,8 @@ fn main() {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let no_merge = arg_matches.is_present("no_merge");
             let force = arg_matches.is_present("force");
-            command_update(&config, &stake_pool_address, force, no_merge)
+            let fresh = arg_matches.is_present("fresh");
+            command_update(&config, &stake_pool_address, force, no_merge, fresh)
         }
         ("withdraw-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
