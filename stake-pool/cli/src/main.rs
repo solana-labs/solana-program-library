@@ -5,6 +5,7 @@ mod output;
 // use instruction::create_associated_token_account once ATA 1.0.5 is released
 #[allow(deprecated)]
 use spl_associated_token_account::create_associated_token_account;
+use spl_stake_pool::instruction::update_validator_list_balance_chunk;
 use {
     crate::{
         client::*,
@@ -48,8 +49,8 @@ use {
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
         instruction::{
-            cleanup_removed_validator_entries, update_stake_pool_balance,
-            update_stale_validator_list_balance, FundingType, PreferredValidatorType,
+            cleanup_removed_validator_entries, update_stake_pool_balance, FundingType,
+            PreferredValidatorType,
         },
         minimum_delegation,
         state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
@@ -1177,7 +1178,7 @@ fn command_update(
             .chunks(MAX_VALIDATORS_TO_UPDATE)
             .enumerate()
             .filter_map(|(i, chunk)| {
-                update_stale_validator_list_balance(
+                update_validator_list_balance_chunk(
                     &spl_stake_pool::id(),
                     stake_pool_address,
                     &withdraw_authority,
@@ -1187,8 +1188,8 @@ fn command_update(
                     chunk.len(),
                     i.saturating_mul(MAX_VALIDATORS_TO_UPDATE),
                     no_merge,
-                    epoch_info.epoch,
                 )
+                .ok()
             })
             .collect();
         let final_instructions = vec![

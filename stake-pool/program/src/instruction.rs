@@ -16,9 +16,7 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
-        stake,
-        stake_history::Epoch,
-        system_program, sysvar,
+        stake, system_program, sysvar,
     },
     std::num::NonZeroU32,
 };
