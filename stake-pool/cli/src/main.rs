@@ -5,7 +5,6 @@ mod output;
 // use instruction::create_associated_token_account once ATA 1.0.5 is released
 #[allow(deprecated)]
 use spl_associated_token_account::create_associated_token_account;
-use spl_stake_pool::instruction::update_validator_list_balance_chunk;
 use {
     crate::{
         client::*,
@@ -49,8 +48,8 @@ use {
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
         instruction::{
-            cleanup_removed_validator_entries, update_stake_pool_balance, FundingType,
-            PreferredValidatorType,
+            cleanup_removed_validator_entries, update_stake_pool_balance,
+            update_validator_list_balance_chunk, FundingType, PreferredValidatorType,
         },
         minimum_delegation,
         state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
