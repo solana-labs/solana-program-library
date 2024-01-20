@@ -2,8 +2,6 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use solana_program::stake_history::Epoch;
-
 use {
     crate::{
         find_deposit_authority_program_address, find_ephemeral_stake_program_address,
@@ -18,7 +16,9 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
-        stake, system_program, sysvar,
+        stake,
+        stake_history::Epoch,
+        system_program, sysvar,
     },
     std::num::NonZeroU32,
 };
@@ -1642,11 +1642,12 @@ pub fn update_stake_pool(
     (update_list_instructions, final_instructions)
 }
 
-/// Creates the `UpdateValidatorListBalance` instructions only for validators on `validator_list`
-/// that have not been updated for this epoch, and the `UpdateStakePoolBalance` instruction
-/// for fully updating the stake pool.
+/// Creates the `UpdateValidatorListBalance` instructions only for validators on
+/// `validator_list` that have not been updated for this epoch, and the
+/// `UpdateStakePoolBalance` instruction for fully updating the stake pool.
 ///
-/// Basically same as [`update_stake_pool`], but skips validators that are already updated for this epoch
+/// Basically same as [`update_stake_pool`], but skips validators that are
+/// already updated for this epoch
 pub fn update_stale_stake_pool(
     program_id: &Pubkey,
     stake_pool: &StakePool,
