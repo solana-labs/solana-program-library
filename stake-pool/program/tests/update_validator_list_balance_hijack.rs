@@ -1,6 +1,8 @@
 #![allow(clippy::arithmetic_side_effects)]
 #![cfg(feature = "test-sbf")]
 
+use spl_stake_pool::instruction;
+
 mod helpers;
 
 use {
@@ -17,8 +19,7 @@ use {
     },
     spl_stake_pool::{
         error::StakePoolError, find_stake_program_address, find_transient_stake_program_address,
-        find_withdraw_authority_program_address, id, instruction, state::StakePool,
-        MINIMUM_RESERVE_LAMPORTS,
+        find_withdraw_authority_program_address, id, state::StakePool, MINIMUM_RESERVE_LAMPORTS,
     },
     std::num::NonZeroU32,
 };
@@ -241,7 +242,7 @@ async fn check_ignored_hijacked_transient_stake(
     .0;
     let transaction = Transaction::new_signed_with_payer(
         &[
-            instruction::update_validator_list_balance(
+            instruction::update_validator_list_balance_chunk(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.withdraw_authority,
@@ -251,7 +252,8 @@ async fn check_ignored_hijacked_transient_stake(
                 1,
                 0,
                 /* no_merge = */ false,
-            ),
+            )
+            .unwrap(),
             system_instruction::transfer(
                 &context.payer.pubkey(),
                 &transient_stake_address,
@@ -405,7 +407,7 @@ async fn check_ignored_hijacked_validator_stake(
         .await;
     let transaction = Transaction::new_signed_with_payer(
         &[
-            instruction::update_validator_list_balance(
+            instruction::update_validator_list_balance_chunk(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.withdraw_authority,
@@ -415,7 +417,8 @@ async fn check_ignored_hijacked_validator_stake(
                 1,
                 0,
                 /* no_merge = */ false,
-            ),
+            )
+            .unwrap(),
             system_instruction::transfer(
                 &context.payer.pubkey(),
                 &stake_account.stake_account,

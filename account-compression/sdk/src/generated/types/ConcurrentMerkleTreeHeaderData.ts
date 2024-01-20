@@ -38,7 +38,7 @@ export type ConcurrentMerkleTreeHeaderDataRecord = {
 export type ConcurrentMerkleTreeHeaderData = beet.DataEnumKeyAsKind<ConcurrentMerkleTreeHeaderDataRecord>;
 
 export const isConcurrentMerkleTreeHeaderDataV1 = (
-    x: ConcurrentMerkleTreeHeaderData
+    x: ConcurrentMerkleTreeHeaderData,
 ): x is ConcurrentMerkleTreeHeaderData & { __kind: 'V1' } => x.__kind === 'V1';
 
 /**
@@ -50,7 +50,7 @@ export const concurrentMerkleTreeHeaderDataBeet = beet.dataEnum<ConcurrentMerkle
         'V1',
         new beet.BeetArgsStruct<ConcurrentMerkleTreeHeaderDataRecord['V1']>(
             [['fields', beet.fixedSizeTuple([concurrentMerkleTreeHeaderDataV1Beet])]],
-            'ConcurrentMerkleTreeHeaderDataRecord["V1"]'
+            'ConcurrentMerkleTreeHeaderDataRecord["V1"]',
         ),
     ],
 ]) as beet.FixableBeet<ConcurrentMerkleTreeHeaderData>;

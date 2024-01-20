@@ -1,6 +1,6 @@
 [package]
 name = "spl-single-pool"
-version = "1.0.0"
+version = "1.0.1"
 description = "Solana Program Library Single-Validator Stake Pool"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -16,16 +16,17 @@ arrayref = "0.3.7"
 borsh = "0.10"
 num-derive = "0.4"
 num-traits = "0.2"
-num_enum = "0.7.1"
-solana-program = "1.17.6"
+num_enum = "0.7.2"
+solana-program = "1.17.13"
+solana-security-txt = "1.1.1"
 spl-token = { version = "4.0", path = "../../token/program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 
 [dev-dependencies]
-solana-program-test = "1.17.6"
-solana-sdk = "1.17.6"
-solana-vote-program = "1.17.6"
+solana-program-test = "1.17.13"
+solana-sdk = "1.17.13"
+solana-vote-program = "1.17.13"
 test-case = "3.3"
 bincode = "1.3.1"
 rand = "0.8.5"

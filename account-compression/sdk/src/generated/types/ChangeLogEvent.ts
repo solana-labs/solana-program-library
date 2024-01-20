@@ -45,7 +45,7 @@ export const changeLogEventBeet = beet.dataEnum<ChangeLogEventRecord>([
         'V1',
         new beet.FixableBeetArgsStruct<ChangeLogEventRecord['V1']>(
             [['fields', beet.tuple([changeLogEventV1Beet])]],
-            'ChangeLogEventRecord["V1"]'
+            'ChangeLogEventRecord["V1"]',
         ),
     ],
 ]) as beet.FixableBeet<ChangeLogEvent>;

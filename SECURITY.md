@@ -51,13 +51,10 @@ the Solana Mainnet Beta. Currently, this includes:
 * [name-service](https://github.com/solana-labs/solana-program-library/tree/master/name-service/program)
 * [stake-pool](https://github.com/solana-labs/solana-program-library/tree/master/stake-pool/program)
 * [token](https://github.com/solana-labs/solana-program-library/tree/master/token/program)
+* [token-2022](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022)
 
 If you discover a critical security issue in an out-of-scope program, your finding
 may still be valuable.
-
-[token-2022](https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022)
-is still under audit and not meant for full production use. In the meantime, all
-clusters have the latest program deployed **for testing and development purposes ONLY**.
 
 Many programs, including
 [token-swap](https://github.com/solana-labs/solana-program-library/tree/master/token-swap/program)

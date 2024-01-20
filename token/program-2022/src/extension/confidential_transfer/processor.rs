@@ -1,4 +1,6 @@
 // Remove feature once zk ops syscalls are enabled on all networks
+#[cfg(feature = "confidential-hook")]
+use crate::extension::transfer_hook;
 #[cfg(feature = "zk-ops")]
 use {
     crate::extension::non_transferable::NonTransferable,
@@ -445,11 +447,11 @@ fn process_transfer(
     let account_info_iter = &mut accounts.iter();
     let source_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
-    let destination_token_account_info = next_account_info(account_info_iter)?;
+    let destination_account_info = next_account_info(account_info_iter)?;
 
     check_program_account(mint_info.owner)?;
-    let mint_data = &mint_info.data.borrow_mut();
-    let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
+    let mint_data = mint_info.data.borrow_mut();
+    let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
 
     if mint.get_extension::<NonTransferable>().is_ok() {
         return Err(TokenError::NonTransferable.into());
@@ -466,7 +468,7 @@ fn process_transfer(
     //   - If the mint is extended for fees and the instruction is not a
     //     self-transfer, then
     //   transfer fee is required.
-    if mint.get_extension::<TransferFeeConfig>().is_err() {
+    let authority_info = if mint.get_extension::<TransferFeeConfig>().is_err() {
         // Transfer fee is not required. Decode the zero-knowledge proof as
         // `TransferData`.
         //
@@ -521,7 +523,7 @@ fn process_transfer(
         )?;
 
         process_destination_for_transfer(
-            destination_token_account_info,
+            destination_account_info,
             mint_info,
             maybe_proof_context.as_ref(),
         )?;
@@ -532,6 +534,7 @@ fn process_transfer(
             executed"
             );
         }
+        authority_info
     } else {
         // Transfer fee is required.
         let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
@@ -608,9 +611,9 @@ fn process_transfer(
             new_source_decryptable_available_balance,
         )?;
 
-        let is_self_transfer = source_account_info.key == destination_token_account_info.key;
+        let is_self_transfer = source_account_info.key == destination_account_info.key;
         process_destination_for_transfer_with_fee(
-            destination_token_account_info,
+            destination_account_info,
             mint_info,
             maybe_proof_context.as_ref(),
             is_self_transfer,
@@ -621,6 +624,43 @@ fn process_transfer(
                 "Context state not fully initialized: returning with no op; transfer is NOT yet executed"
             );
         }
+        authority_info
+    };
+
+    #[cfg(feature = "confidential-hook")]
+    if let Some(program_id) = transfer_hook::get_program_id(&mint) {
+        // set transferring flags, scope the borrow to avoid double-borrow during CPI
+        {
+            let mut source_account_data = source_account_info.data.borrow_mut();
+            let mut source_account =
+                StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+            transfer_hook::set_transferring(&mut source_account)?;
+        }
+        {
+            let mut destination_account_data = destination_account_info.data.borrow_mut();
+            let mut destination_account =
+                StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
+            transfer_hook::set_transferring(&mut destination_account)?;
+        }
+
+        // can't doubly-borrow the mint data either
+        drop(mint_data);
+
+        // Since the amount is unknown during a confidential transfer, pass in
+        // u64::MAX as a convention.
+        spl_transfer_hook_interface::onchain::invoke_execute(
+            &program_id,
+            source_account_info.clone(),
+            mint_info.clone(),
+            destination_account_info.clone(),
+            authority_info.clone(),
+            account_info_iter.as_slice(),
+            u64::MAX,
+        )?;
+
+        // unset transferring flag
+        transfer_hook::unset_transferring(source_account_info)?;
+        transfer_hook::unset_transferring(destination_account_info)?;
     }
 
     Ok(())
@@ -696,12 +736,12 @@ fn process_source_for_transfer(
 
 #[cfg(feature = "zk-ops")]
 fn process_destination_for_transfer(
-    destination_token_account_info: &AccountInfo,
+    destination_account_info: &AccountInfo,
     mint_info: &AccountInfo,
     maybe_transfer_proof_context_info: Option<&TransferProofContextInfo>,
 ) -> ProgramResult {
-    check_program_account(destination_token_account_info.owner)?;
-    let destination_token_account_data = &mut destination_token_account_info.data.borrow_mut();
+    check_program_account(destination_account_info.owner)?;
+    let destination_token_account_data = &mut destination_account_info.data.borrow_mut();
     let mut destination_token_account =
         StateWithExtensionsMut::<Account>::unpack(destination_token_account_data)?;
 
@@ -824,13 +864,13 @@ fn process_source_for_transfer_with_fee(
 
 #[cfg(feature = "zk-ops")]
 fn process_destination_for_transfer_with_fee(
-    destination_token_account_info: &AccountInfo,
+    destination_account_info: &AccountInfo,
     mint_info: &AccountInfo,
     maybe_proof_context: Option<&TransferWithFeeProofContextInfo>,
     is_self_transfer: bool,
 ) -> ProgramResult {
-    check_program_account(destination_token_account_info.owner)?;
-    let destination_token_account_data = &mut destination_token_account_info.data.borrow_mut();
+    check_program_account(destination_account_info.owner)?;
+    let destination_token_account_data = &mut destination_account_info.data.borrow_mut();
     let mut destination_token_account =
         StateWithExtensionsMut::<Account>::unpack(destination_token_account_data)?;
 

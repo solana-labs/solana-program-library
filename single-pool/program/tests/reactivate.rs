@@ -21,7 +21,7 @@ use {
 
 #[tokio::test]
 async fn success() {
-    let mut context = program_test().start_with_context().await;
+    let mut context = program_test(false).start_with_context().await;
     let accounts = SinglePoolAccounts::default();
     accounts
         .initialize_for_deposit(&mut context, TEST_STAKE_AMOUNT, None)
@@ -131,7 +131,7 @@ async fn success() {
 #[test_case(false; "activating")]
 #[tokio::test]
 async fn fail_not_deactivated(activate: bool) {
-    let mut context = program_test().start_with_context().await;
+    let mut context = program_test(false).start_with_context().await;
     let accounts = SinglePoolAccounts::default();
     accounts.initialize(&mut context).await;
 

@@ -734,7 +734,7 @@ async fn success_with_hijacked_transient_account() {
     .0;
     let transaction = Transaction::new_signed_with_payer(
         &[
-            instruction::update_validator_list_balance(
+            instruction::update_validator_list_balance_chunk(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.withdraw_authority,
@@ -744,7 +744,8 @@ async fn success_with_hijacked_transient_account() {
                 1,
                 0,
                 /* no_merge = */ false,
-            ),
+            )
+            .unwrap(),
             system_instruction::transfer(
                 &context.payer.pubkey(),
                 &transient_stake_address,

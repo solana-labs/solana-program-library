@@ -49,6 +49,15 @@ function addTypeAndLengthToLen(len: number): number {
     return len + TYPE_SIZE + LENGTH_SIZE;
 }
 
+function isVariableLengthExtension(e: ExtensionType): boolean {
+    switch (e) {
+        case ExtensionType.TokenMetadata:
+            return true;
+        default:
+            return false;
+    }
+}
+
 // NOTE: All of these should eventually use their type's Span instead of these
 // constants.  This is provided for at least creation to work.
 export function getTypeLen(e: ExtensionType): number {
@@ -176,8 +185,12 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
     }
 }
 
-function getLen(extensionTypes: ExtensionType[], baseSize: number): number {
-    if (extensionTypes.length === 0) {
+function getLen(
+    extensionTypes: ExtensionType[],
+    baseSize: number,
+    variableLengthExtensions: { [E in ExtensionType]?: number } = {}
+): number {
+    if (extensionTypes.length === 0 && Object.keys(variableLengthExtensions).length === 0) {
         return baseSize;
     } else {
         const accountLength =
@@ -186,7 +199,15 @@ function getLen(extensionTypes: ExtensionType[], baseSize: number): number {
             extensionTypes
                 .filter((element, i) => i === extensionTypes.indexOf(element))
                 .map((element) => addTypeAndLengthToLen(getTypeLen(element)))
-                .reduce((a, b) => a + b);
+                .reduce((a, b) => a + b, 0) +
+            Object.entries(variableLengthExtensions)
+                .map(([extension, len]) => {
+                    if (!isVariableLengthExtension(Number(extension))) {
+                        throw Error(`Extension ${extension} is not variable length`);
+                    }
+                    return addTypeAndLengthToLen(len);
+                })
+                .reduce((a, b) => a + b, 0);
         if (accountLength === MULTISIG_SIZE) {
             return accountLength + TYPE_SIZE;
         } else {
@@ -195,11 +216,15 @@ function getLen(extensionTypes: ExtensionType[], baseSize: number): number {
     }
 }
 
-export function getMintLen(extensionTypes: ExtensionType[]): number {
-    return getLen(extensionTypes, MINT_SIZE);
+export function getMintLen(
+    extensionTypes: ExtensionType[],
+    variableLengthExtensions: { [E in ExtensionType]?: number } = {}
+): number {
+    return getLen(extensionTypes, MINT_SIZE, variableLengthExtensions);
 }
 
 export function getAccountLen(extensionTypes: ExtensionType[]): number {
+    // There are currently no variable length extensions for accounts
     return getLen(extensionTypes, ACCOUNT_SIZE);
 }
 

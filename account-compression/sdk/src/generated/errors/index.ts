@@ -91,7 +91,7 @@ export class ConcurrentMerkleTreeConstantsErrorError extends Error {
 createErrorFromCodeLookup.set(0x1773, () => new ConcurrentMerkleTreeConstantsErrorError());
 createErrorFromNameLookup.set(
     'ConcurrentMerkleTreeConstantsError',
-    () => new ConcurrentMerkleTreeConstantsErrorError()
+    () => new ConcurrentMerkleTreeConstantsErrorError(),
 );
 
 /**

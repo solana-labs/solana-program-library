@@ -12,16 +12,16 @@ serde-traits = ["dep:serde", "dep:base64"]
 borsh = ["dep:borsh"]
 
 [dependencies]
-base64 = { version = "0.21.5", optional = true }
+base64 = { version = "0.21.7", optional = true }
 borsh = { version = "0.10", optional = true }
 bytemuck = { version = "1.14.0" }
-serde = { version = "1.0.194", optional = true }
-solana-program = "1.17.6"
-solana-zk-token-sdk = "1.17.6"
+serde = { version = "1.0.195", optional = true }
+solana-program = "1.17.13"
+solana-zk-token-sdk = "1.17.13"
 spl-program-error = { version = "0.3", path = "../program-error" }
 
 [dev-dependencies]
-serde_json = "1.0.110"
+serde_json = "1.0.111"
 
 [lib]
 crate-type = ["cdylib", "lib"]

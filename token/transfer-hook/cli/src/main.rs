@@ -1,4 +1,7 @@
+pub mod meta;
+
 use {
+    crate::meta::parse_transfer_hook_account_arg,
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{
         input_parsers::{parse_url_or_moniker, pubkey_of_signer},
@@ -9,7 +12,7 @@ use {
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         commitment_config::CommitmentConfig,
-        instruction::{AccountMeta, Instruction},
+        instruction::Instruction,
         pubkey::Pubkey,
         signature::{Signature, Signer},
         system_instruction, system_program,
@@ -20,38 +23,8 @@ use {
         get_extra_account_metas_address,
         instruction::{initialize_extra_account_meta_list, update_extra_account_meta_list},
     },
-    std::{fmt, process::exit, rc::Rc, str::FromStr},
-    strum_macros::{EnumString, IntoStaticStr},
+    std::{process::exit, rc::Rc},
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
-#[strum(serialize_all = "kebab-case")]
-pub enum AccountMetaRole {
-    Readonly,
-    Writable,
-    ReadonlySigner,
-    WritableSigner,
-}
-impl fmt::Display for AccountMetaRole {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-fn parse_transfer_hook_account(arg: &str) -> Result<AccountMeta, String> {
-    match arg.split(':').collect::<Vec<_>>().as_slice() {
-        [address, role] => {
-            let address = Pubkey::from_str(address).map_err(|e| format!("{e}"))?;
-            let meta = match AccountMetaRole::from_str(role).map_err(|e| format!("{e}"))? {
-                AccountMetaRole::Readonly => AccountMeta::new_readonly(address, false),
-                AccountMetaRole::Writable => AccountMeta::new(address, false),
-                AccountMetaRole::ReadonlySigner => AccountMeta::new_readonly(address, true),
-                AccountMetaRole::WritableSigner => AccountMeta::new(address, true),
-            };
-            Ok(meta)
-        }
-        _ => Err("Transfer hook account must be present as <ADDRESS>:<ROLE>".to_string()),
-    }
-}
 
 fn clap_is_valid_pubkey(arg: &str) -> Result<(), String> {
     is_valid_pubkey(arg)
@@ -136,7 +109,7 @@ async fn process_create_extra_account_metas(
     rpc_client: &RpcClient,
     program_id: &Pubkey,
     token: &Pubkey,
-    transfer_hook_accounts: Vec<AccountMeta>,
+    extra_account_metas: Vec<ExtraAccountMeta>,
     mint_authority: &dyn Signer,
     payer: &dyn Signer,
 ) -> Result<Signature, Box<dyn std::error::Error>> {
@@ -149,11 +122,6 @@ async fn process_create_extra_account_metas(
             return Err(format!("error: extra account metas for mint {token} and program {program_id} already exists").into());
         }
     }
-
-    let extra_account_metas = transfer_hook_accounts
-        .into_iter()
-        .map(|v| v.into())
-        .collect::<Vec<_>>();
 
     let instruction = initialize_extra_account_meta_list(
         program_id,
@@ -179,7 +147,7 @@ async fn process_update_extra_account_metas(
     rpc_client: &RpcClient,
     program_id: &Pubkey,
     token: &Pubkey,
-    transfer_hook_accounts: Vec<AccountMeta>,
+    extra_account_metas: Vec<ExtraAccountMeta>,
     mint_authority: &dyn Signer,
     payer: &dyn Signer,
 ) -> Result<Signature, Box<dyn std::error::Error>> {
@@ -193,11 +161,6 @@ async fn process_update_extra_account_metas(
         )
         .into());
     }
-
-    let extra_account_metas = transfer_hook_accounts
-        .into_iter()
-        .map(|v| v.into())
-        .collect::<Vec<_>>();
 
     let instruction = update_extra_account_meta_list(
         program_id,
@@ -289,16 +252,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("The token mint address for the transfer hook"),
                 )
                 .arg(
-                    Arg::with_name("transfer_hook_account")
-                        .value_parser(parse_transfer_hook_account)
-                        .value_name("PUBKEY:ROLE")
+                    Arg::with_name("transfer_hook_accounts")
+                        .value_parser(parse_transfer_hook_account_arg)
+                        .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
                         .multiple(true)
                         .min_values(0)
                         .index(3)
-                        .help("Additional pubkey(s) required for a transfer hook and their \
-                            role, in the format \"<PUBKEY>:<ROLE>\". The role must be \
-                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\".")
+                        .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
+
+Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
+
+Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
+                            
+```json
+{
+    "extraMetas": [
+        {
+            "pubkey": "39UhV...",
+            "role": "readonlySigner"
+        },
+        {
+            "seeds": [
+                {
+                    "literal": {
+                        "bytes": [1, 2, 3, 4, 5, 6]
+                    }
+                },
+                {
+                    "accountKey": {
+                        "index": 0
+                    }
+                }
+            ],
+            "role": "writable"
+        }
+    ]
+}
+```
+
+```yaml
+extraMetas:
+  - pubkey: "39UhV..."
+      role: "readonlySigner"
+  - seeds:
+      - literal:
+          bytes: [1, 2, 3, 4, 5, 6]
+      - accountKey:
+          index: 0
+      role: "writable"
+```
+"#)
                 )
                 .arg(
                     Arg::new("mint_authority")
@@ -332,16 +336,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("The token mint address for the transfer hook"),
                 )
                 .arg(
-                    Arg::with_name("transfer_hook_account")
-                        .value_parser(parse_transfer_hook_account)
-                        .value_name("PUBKEY:ROLE")
+                    Arg::with_name("transfer_hook_accounts")
+                        .value_parser(parse_transfer_hook_account_arg)
+                        .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
                         .multiple(true)
                         .min_values(0)
                         .index(3)
-                        .help("Additional pubkey(s) required for a transfer hook and their \
-                            role, in the format \"<PUBKEY>:<ROLE>\". The role must be \
-                            \"readonly\", \"writable\". \"readonly-signer\", or \"writable-signer\".")
+                        .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
+
+Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
+
+Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
+                            
+```json
+{
+    "extraMetas": [
+        {
+            "pubkey": "39UhV...",
+            "role": "readonlySigner"
+        },
+        {
+            "seeds": [
+                {
+                    "literal": {
+                        "bytes": [1, 2, 3, 4, 5, 6]
+                    }
+                },
+                {
+                    "accountKey": {
+                        "index": 0
+                    }
+                }
+            ],
+            "role": "writable"
+        }
+    ]
+}
+```
+
+```yaml
+extraMetas:
+  - pubkey: "39UhV..."
+      role: "readonlySigner"
+  - seeds:
+      - literal:
+          bytes: [1, 2, 3, 4, 5, 6]
+      - accountKey:
+          index: 0
+      role: "writable"
+```
+"#)
                 )
                 .arg(
                     Arg::new("mint_authority")
@@ -407,8 +452,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap()
                 .unwrap();
             let transfer_hook_accounts = arg_matches
-                .get_many::<AccountMeta>("transfer_hook_account")
+                .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
                 .unwrap_or_default()
+                .flatten()
                 .cloned()
                 .collect();
             let mint_authority = DefaultSigner::new(
@@ -446,8 +492,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap()
                 .unwrap();
             let transfer_hook_accounts = arg_matches
-                .get_many::<AccountMeta>("transfer_hook_account")
+                .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
                 .unwrap_or_default()
+                .flatten()
                 .cloned()
                 .collect();
             let mint_authority = DefaultSigner::new(
@@ -487,7 +534,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 mod test {
     use {
         super::*,
-        solana_sdk::{bpf_loader_upgradeable, signer::keypair::Keypair},
+        solana_sdk::{bpf_loader_upgradeable, instruction::AccountMeta, signer::keypair::Keypair},
         solana_test_validator::{TestValidator, TestValidatorGenesis, UpgradeableProgramInfo},
         spl_token_client::{
             client::{
@@ -563,7 +610,7 @@ mod test {
             &rpc_client,
             &program_id,
             token.get_address(),
-            accounts,
+            accounts.iter().map(|a| a.into()).collect(),
             &mint_authority,
             payer.as_ref(),
         )

@@ -13,6 +13,10 @@ on:
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-instruction-padding.yml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cargo-test-sbf:
     runs-on: ubuntu-latest

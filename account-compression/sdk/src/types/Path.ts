@@ -28,6 +28,6 @@ export const pathBeetFactory = (maxDepth: number) => {
             ['index', beet.u32],
             ['_padding', beet.u32],
         ],
-        'Path'
+        'Path',
     );
 };

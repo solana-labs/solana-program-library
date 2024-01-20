@@ -23,6 +23,7 @@ import {
     createInitializeAccount3Instruction,
     createAmountToUiAmountInstruction,
     createUiAmountToAmountInstruction,
+    getMintLen,
 } from '../../src';
 
 chai.use(chaiAsPromised);
@@ -234,11 +235,34 @@ describe('state', () => {
 });
 
 describe('extensionType', () => {
-    it('calculates size', () => {
+    it('calculates size for accounts', () => {
         expect(getAccountLen([ExtensionType.MintCloseAuthority, ExtensionType.TransferFeeConfig])).to.eql(314);
         expect(getAccountLen([])).to.eql(165);
         expect(getAccountLen([ExtensionType.ImmutableOwner])).to.eql(170);
         expect(getAccountLen([ExtensionType.PermanentDelegate])).to.eql(202);
+    });
+
+    it('calculates size for mints', () => {
+        expect(getMintLen([ExtensionType.TransferFeeConfig, ExtensionType.NonTransferable])).to.eql(282);
+        expect(getMintLen([])).to.eql(82);
+        expect(getMintLen([ExtensionType.TransferHook])).to.eql(234);
+        expect(getMintLen([ExtensionType.MetadataPointer])).to.eql(234);
+        expect(
+            getMintLen([ExtensionType.TransferFeeConfig, ExtensionType.NonTransferable], {
+                [ExtensionType.TokenMetadata]: 200,
+            })
+        ).to.eql(486);
+        expect(
+            getMintLen([], {
+                [ExtensionType.TokenMetadata]: 200,
+            })
+        ).to.eql(370);
+        // Should error on an extension that isn't variable-length
+        expect(() =>
+            getMintLen([ExtensionType.TransferFeeConfig, ExtensionType.NonTransferable], {
+                [ExtensionType.TransferHook]: 200,
+            })
+        ).to.throw('Extension 14 is not variable length');
     });
 
     it('exclusive and exhaustive predicates', () => {

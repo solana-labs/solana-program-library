@@ -2,7 +2,9 @@
 
 mod program_test;
 use {
-    program_test::{TestContext, TokenContext},
+    program_test::{
+        ConfidentialTokenAccountBalances, ConfidentialTokenAccountMeta, TestContext, TokenContext,
+    },
     solana_program_test::tokio,
     solana_sdk::{
         instruction::InstructionError,
@@ -36,9 +38,8 @@ use {
         },
     },
     spl_token_client::{
-        client::{SendTransaction, SimulateTransaction},
         proof_generation::transfer_with_fee_split_proof_data,
-        token::{ExtensionInitializationParams, Token, TokenError as TokenClientError},
+        token::{ExtensionInitializationParams, TokenError as TokenClientError},
     },
     std::{convert::TryInto, mem::size_of},
 };
@@ -47,181 +48,6 @@ use {
 const TEST_MAXIMUM_FEE: u64 = 100;
 #[cfg(feature = "zk-ops")]
 const TEST_FEE_BASIS_POINTS: u16 = 250;
-
-struct ConfidentialTokenAccountMeta {
-    token_account: Pubkey,
-    elgamal_keypair: ElGamalKeypair,
-    aes_key: AeKey,
-}
-
-impl ConfidentialTokenAccountMeta {
-    async fn new<T>(
-        token: &Token<T>,
-        owner: &Keypair,
-        maximum_pending_balance_credit_counter: Option<u64>,
-        require_memo: bool,
-        require_fee: bool,
-    ) -> Self
-    where
-        T: SendTransaction + SimulateTransaction,
-    {
-        let token_account_keypair = Keypair::new();
-
-        let mut extensions = vec![ExtensionType::ConfidentialTransferAccount];
-        if require_memo {
-            extensions.push(ExtensionType::MemoTransfer);
-        }
-        if require_fee {
-            extensions.push(ExtensionType::ConfidentialTransferFeeAmount);
-        }
-
-        token
-            .create_auxiliary_token_account_with_extension_space(
-                &token_account_keypair,
-                &owner.pubkey(),
-                extensions,
-            )
-            .await
-            .unwrap();
-        let token_account = token_account_keypair.pubkey();
-
-        let elgamal_keypair =
-            ElGamalKeypair::new_from_signer(owner, &token_account.to_bytes()).unwrap();
-        let aes_key = AeKey::new_from_signer(owner, &token_account.to_bytes()).unwrap();
-
-        token
-            .confidential_transfer_configure_token_account(
-                &token_account,
-                &owner.pubkey(),
-                None,
-                maximum_pending_balance_credit_counter,
-                &elgamal_keypair,
-                &aes_key,
-                &[owner],
-            )
-            .await
-            .unwrap();
-
-        if require_memo {
-            token
-                .enable_required_transfer_memos(&token_account, &owner.pubkey(), &[owner])
-                .await
-                .unwrap();
-        }
-
-        Self {
-            token_account,
-            elgamal_keypair,
-            aes_key,
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    #[cfg(feature = "zk-ops")]
-    async fn new_with_tokens<T>(
-        token: &Token<T>,
-        owner: &Keypair,
-        maximum_pending_balance_credit_counter: Option<u64>,
-        require_memo: bool,
-        require_fee: bool,
-        mint_authority: &Keypair,
-        amount: u64,
-        decimals: u8,
-    ) -> Self
-    where
-        T: SendTransaction + SimulateTransaction,
-    {
-        let meta = Self::new(
-            token,
-            owner,
-            maximum_pending_balance_credit_counter,
-            require_memo,
-            require_fee,
-        )
-        .await;
-
-        token
-            .mint_to(
-                &meta.token_account,
-                &mint_authority.pubkey(),
-                amount,
-                &[mint_authority],
-            )
-            .await
-            .unwrap();
-
-        token
-            .confidential_transfer_deposit(
-                &meta.token_account,
-                &owner.pubkey(),
-                amount,
-                decimals,
-                &[owner],
-            )
-            .await
-            .unwrap();
-
-        token
-            .confidential_transfer_apply_pending_balance(
-                &meta.token_account,
-                &owner.pubkey(),
-                None,
-                meta.elgamal_keypair.secret(),
-                &meta.aes_key,
-                &[owner],
-            )
-            .await
-            .unwrap();
-        meta
-    }
-
-    #[cfg(feature = "zk-ops")]
-    async fn check_balances<T>(&self, token: &Token<T>, expected: ConfidentialTokenAccountBalances)
-    where
-        T: SendTransaction + SimulateTransaction,
-    {
-        let state = token.get_account_info(&self.token_account).await.unwrap();
-        let extension = state
-            .get_extension::<ConfidentialTransferAccount>()
-            .unwrap();
-
-        assert_eq!(
-            extension
-                .pending_balance_lo
-                .decrypt(self.elgamal_keypair.secret())
-                .unwrap(),
-            expected.pending_balance_lo,
-        );
-        assert_eq!(
-            extension
-                .pending_balance_hi
-                .decrypt(self.elgamal_keypair.secret())
-                .unwrap(),
-            expected.pending_balance_hi,
-        );
-        assert_eq!(
-            extension
-                .available_balance
-                .decrypt(self.elgamal_keypair.secret())
-                .unwrap(),
-            expected.available_balance,
-        );
-        assert_eq!(
-            self.aes_key
-                .decrypt(&extension.decryptable_available_balance.try_into().unwrap())
-                .unwrap(),
-            expected.decryptable_available_balance,
-        );
-    }
-}
-
-#[cfg(feature = "zk-ops")]
-struct ConfidentialTokenAccountBalances {
-    pending_balance_lo: u64,
-    pending_balance_hi: u64,
-    available_balance: u64,
-    decryptable_available_balance: u64,
-}
 
 #[tokio::test]
 async fn confidential_transfer_configure_token_account() {
@@ -568,12 +394,13 @@ async fn confidential_transfer_enable_disable_non_confidential_credits() {
         .unwrap();
     assert!(bool::from(&extension.allow_non_confidential_credits));
 
+    // transfer a different number to change the signature
     token
         .transfer(
             &alice_meta.token_account,
             &bob_meta.token_account,
             &alice.pubkey(),
-            10,
+            9,
             &[&alice],
         )
         .await

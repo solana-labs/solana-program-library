@@ -36,7 +36,7 @@ export const replaceLeafStruct = new beet.BeetArgsStruct<
         ['newLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
         ['index', beet.u32],
     ],
-    'ReplaceLeafInstructionArgs'
+    'ReplaceLeafInstructionArgs',
 );
 /**
  * Accounts required by the _replaceLeaf_ instruction
@@ -70,7 +70,7 @@ export const replaceLeafInstructionDiscriminator = [204, 165, 76, 100, 73, 147, 
 export function createReplaceLeafInstruction(
     accounts: ReplaceLeafInstructionAccounts,
     args: ReplaceLeafInstructionArgs,
-    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
+    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
 ) {
     const [data] = replaceLeafStruct.serialize({
         instructionDiscriminator: replaceLeafInstructionDiscriminator,

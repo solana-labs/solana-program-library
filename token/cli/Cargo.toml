@@ -12,22 +12,22 @@ version = "3.3.0"
 walkdir = "2"
 
 [dependencies]
-base64 = "0.21.5"
+base64 = "0.21.7"
 clap = "2.33.3"
-console = "0.15.7"
+console = "0.15.8"
 futures = "0.3"
-serde = "1.0.194"
+serde = "1.0.195"
 serde_derive = "1.0.103"
-serde_json = "1.0.110"
-solana-account-decoder = "=1.17.6"
-solana-clap-utils = "=1.17.6"
-solana-cli-config = "=1.17.6"
-solana-cli-output = "=1.17.6"
-solana-client = "=1.17.6"
-solana-logger = "=1.17.6"
-solana-remote-wallet = "=1.17.6"
-solana-sdk = "=1.17.6"
-solana-transaction-status = "=1.17.6"
+serde_json = "1.0.111"
+solana-account-decoder = "=1.17.13"
+solana-clap-utils = "=1.17.13"
+solana-cli-config = "=1.17.13"
+solana-cli-output = "=1.17.13"
+solana-client = "=1.17.13"
+solana-logger = "=1.17.13"
+solana-remote-wallet = "=1.17.13"
+solana-sdk = "=1.17.13"
+solana-transaction-status = "=1.17.13"
 spl-token = { version = "4.0", path = "../program", features = [
   "no-entrypoint",
 ] }
@@ -36,6 +36,7 @@ spl-token-2022 = { version = "1.0", path = "../program-2022", features = [
 ] }
 spl-token-client = { version = "0.8", path = "../client" }
 spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
+spl-token-group-interface = { version = "0.1", path = "../../token-group/interface" }
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
 ] }
@@ -47,10 +48,10 @@ strum_macros = "0.25"
 tokio = "1.35"
 
 [dev-dependencies]
-solana-test-validator = "=1.17.6"
-assert_cmd = "2.0.12"
-libtest-mimic = "0.6"
-serial_test = "2.0.0"
+solana-test-validator = "=1.17.13"
+assert_cmd = "2.0.13"
+libtest-mimic = "0.7"
+serial_test = "3.0.0"
 tempfile = "3.9.0"
 
 [[bin]]

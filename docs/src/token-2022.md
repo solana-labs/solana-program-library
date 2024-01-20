@@ -8,10 +8,6 @@ fungible and non-fungible tokens.
 The Token-2022 Program is a superset of the functionality provided by the
 [Token Program](token.mdx).
 
-The program is still under audit and not meant for full production use. In the
-meantime, all clusters have the latest program deployed **for testing and development
-purposes ONLY**.
-
 | Information | Account Address |
 | --- | --- |
 | Token-2022 Program | `TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb` |
@@ -138,8 +134,8 @@ For information about the types and instructions, the Rust docs are available at
 
 ## Security Audits
 
-The Token-2022 Program is currently under multiple audits to ensure safety of
-funds. All audits will be published here as they are completed.
+The Token-2022 Program has been audited multiple times. All audits are published
+here as they are completed.
 
 Here are the completed audits as of 13 December 2023:
 
