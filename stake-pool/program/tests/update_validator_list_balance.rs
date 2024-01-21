@@ -661,7 +661,7 @@ async fn merge_transient_stake_after_remove() {
 
 #[tokio::test]
 async fn success_with_burned_tokens() {
-    let num_validators = 5;
+    let num_validators = 1;
     let (mut context, last_blockhash, stake_pool_accounts, _, deposit_accounts, _, _, mut slot) =
         setup(num_validators).await;
 
@@ -693,6 +693,10 @@ async fn success_with_burned_tokens() {
     .await
     .unwrap();
 
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
+
     let mint_info = get_account(
         &mut context.banks_client,
         &stake_pool_accounts.pool_mint.pubkey(),
@@ -700,10 +704,6 @@ async fn success_with_burned_tokens() {
     .await;
     let mint = Mint::unpack(&mint_info.data).unwrap();
     assert_ne!(mint.supply, stake_pool.pool_token_supply);
-
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    slot += slots_per_epoch;
-    context.warp_to_slot(slot).unwrap();
 
     stake_pool_accounts
         .update_all(

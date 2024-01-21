@@ -19,20 +19,32 @@ use {
     test_case::test_case,
 };
 
-#[test_case(true, 0, false; "activated")]
-#[test_case(false, 0, false; "activating")]
-#[test_case(true, 100_000, false; "activated_extra")]
-#[test_case(false, 100_000, false; "activating_extra")]
-#[test_case(true, 0, true; "activated_second")]
-#[test_case(false, 0, true; "activating_second")]
+#[test_case(true, 0, false, false, false; "activated::minimum_disabled")]
+#[test_case(true, 0, false, false, true; "activated::minimum_disabled::small")]
+#[test_case(true, 0, false, true, false; "activated::minimum_enabled")]
+#[test_case(false, 0, false, false, false; "activating::minimum_disabled")]
+#[test_case(false, 0, false, false, true; "activating::minimum_disabled::small")]
+#[test_case(false, 0, false, true, false; "activating::minimum_enabled")]
+#[test_case(true, 100_000, false, false, false; "activated::extra")]
+#[test_case(false, 100_000, false, false, false; "activating::extra")]
+#[test_case(true, 0, true, false, false; "activated::second")]
+#[test_case(false, 0, true, false, false; "activating::second")]
 #[tokio::test]
-async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
-    let mut context = program_test().start_with_context().await;
+async fn success(
+    activate: bool,
+    extra_lamports: u64,
+    prior_deposit: bool,
+    enable_minimum_delegation: bool,
+    small_deposit: bool,
+) {
+    let mut context = program_test(enable_minimum_delegation)
+        .start_with_context()
+        .await;
     let accounts = SinglePoolAccounts::default();
     accounts
         .initialize_for_deposit(
             &mut context,
-            TEST_STAKE_AMOUNT,
+            if small_deposit { 1 } else { TEST_STAKE_AMOUNT },
             if prior_deposit {
                 Some(TEST_STAKE_AMOUNT * 10)
             } else {
@@ -158,11 +170,17 @@ async fn success(activate: bool, extra_lamports: u64, prior_deposit: bool) {
     );
 }
 
-#[test_case(true; "activated")]
-#[test_case(false; "activating")]
+#[test_case(true, false, false; "activated::minimum_disabled")]
+#[test_case(true, false, true; "activated::minimum_disabled::small")]
+#[test_case(true, true, false; "activated::minimum_enabled")]
+#[test_case(false, false, false; "activating::minimum_disabled")]
+#[test_case(false, false, true; "activating::minimum_disabled::small")]
+#[test_case(false, true, false; "activating::minimum_enabled")]
 #[tokio::test]
-async fn success_with_seed(activate: bool) {
-    let mut context = program_test().start_with_context().await;
+async fn success_with_seed(activate: bool, enable_minimum_delegation: bool, small_deposit: bool) {
+    let mut context = program_test(enable_minimum_delegation)
+        .start_with_context()
+        .await;
     let accounts = SinglePoolAccounts::default();
     let rent = context.banks_client.get_rent().await.unwrap();
     let minimum_stake = accounts.initialize(&mut context).await;
@@ -174,7 +192,7 @@ async fn success_with_seed(activate: bool) {
         &accounts.vote_account.pubkey(),
         &accounts.alice.pubkey(),
         &rent,
-        minimum_stake,
+        if small_deposit { 1 } else { minimum_stake },
     );
     let transaction = Transaction::new_signed_with_payer(
         &instructions,
@@ -261,7 +279,7 @@ async fn success_with_seed(activate: bool) {
 #[test_case(false; "activating")]
 #[tokio::test]
 async fn fail_uninitialized(activate: bool) {
-    let mut context = program_test().start_with_context().await;
+    let mut context = program_test(false).start_with_context().await;
     let accounts = SinglePoolAccounts::default();
     let stake_account = Keypair::new();
 
@@ -331,13 +349,13 @@ async fn fail_uninitialized(activate: bool) {
     check_error(e, SinglePoolError::InvalidPoolAccount);
 }
 
-#[test_case(true, true; "activated_automorph")]
-#[test_case(false, true; "activating_automorph")]
-#[test_case(true, false; "activated_unauth")]
-#[test_case(false, false; "activating_unauth")]
+#[test_case(true, true; "activated::automorph")]
+#[test_case(false, true; "activating::automorph")]
+#[test_case(true, false; "activated::unauth")]
+#[test_case(false, false; "activating::unauth")]
 #[tokio::test]
 async fn fail_bad_account(activate: bool, automorph: bool) {
-    let mut context = program_test().start_with_context().await;
+    let mut context = program_test(false).start_with_context().await;
     let accounts = SinglePoolAccounts::default();
     accounts
         .initialize_for_deposit(&mut context, TEST_STAKE_AMOUNT, None)
@@ -382,10 +400,10 @@ async fn fail_bad_account(activate: bool, automorph: bool) {
 #[test_case(false; "user_active")]
 #[tokio::test]
 async fn fail_activation_mismatch(pool_first: bool) {
-    let mut context = program_test().start_with_context().await;
+    let mut context = program_test(false).start_with_context().await;
     let accounts = SinglePoolAccounts::default();
 
-    let minimum_delegation = get_minimum_delegation(
+    let minimum_delegation = get_pool_minimum_delegation(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,

@@ -6,6 +6,7 @@ use {
     solana_program_test::BanksClient,
     solana_sdk::{
         hash::Hash,
+        native_token::LAMPORTS_PER_SOL,
         pubkey::Pubkey,
         signature::{Keypair, Signer},
         stake::{
@@ -38,7 +39,7 @@ pub async fn get_stake_account_rent(banks_client: &mut BanksClient) -> u64 {
     rent.minimum_balance(std::mem::size_of::<stake::state::StakeStateV2>())
 }
 
-pub async fn get_minimum_delegation(
+pub async fn get_pool_minimum_delegation(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
@@ -59,7 +60,9 @@ pub async fn get_minimum_delegation(
         .unwrap()
         .data;
     data.resize(8, 0);
-    data.try_into().map(u64::from_le_bytes).unwrap()
+    let stake_program_minimum = data.try_into().map(u64::from_le_bytes).unwrap();
+
+    std::cmp::max(stake_program_minimum, LAMPORTS_PER_SOL)
 }
 
 #[allow(clippy::too_many_arguments)]

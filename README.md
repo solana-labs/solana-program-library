@@ -32,7 +32,7 @@ In addition, one program is planned for deployment to Solana Mainnet Beta:
 
 | Program | Version |
 | --- | --- |
-| [single-pool](https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program) | [1.0.0](https://github.com/solana-labs/solana-program-library/releases/tag/single-pool-v1.0.0) |
+| [single-pool](https://github.com/solana-labs/solana-program-library/tree/master/single-pool/program) | [1.0.1](https://github.com/solana-labs/solana-program-library/releases/tag/single-pool-v1.0.1) |
 
 ## Audits
 

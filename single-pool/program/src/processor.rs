@@ -862,11 +862,6 @@ impl Processor {
             .and_then(|amount| amount.checked_sub(pool_stake_meta.rent_exempt_reserve))
             .ok_or(SinglePoolError::ArithmeticOverflow)?;
 
-        // sanity check: we have not somehow gone below the minimum
-        if post_pool_stake < minimum_delegation {
-            return Err(SinglePoolError::UnexpectedMathError.into());
-        }
-
         // sanity check: the user stake account is empty
         if user_stake_info.lamports() != 0 {
             return Err(SinglePoolError::UnexpectedMathError.into());
