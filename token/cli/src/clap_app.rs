@@ -1033,7 +1033,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("update_authority")
                         .long("update-authority")
                         .value_name("ADDRESS")
-                        .validator(is_valid_pubkey)
+                        .validator(is_valid_signer)
                         .takes_value(true)
                         .help(
                             "Specify the update authority address. \
