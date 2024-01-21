@@ -1010,7 +1010,7 @@ pub fn app<'a, 'b>(
         )
         .subcommand(
             SubCommand::with_name(CommandName::UpdateGroupMaxSize.into())
-                .about("Updates the number of member in the group.")
+                .about("Updates the maximum number of members for a group.")
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
