@@ -1032,7 +1032,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("update_authority")
                         .long("update-authority")
-                        .value_name("ADDRESS")
+                        .value_name("SIGNER")
                         .validator(is_valid_signer)
                         .takes_value(true)
                         .help(
