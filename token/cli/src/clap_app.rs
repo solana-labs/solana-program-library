@@ -108,6 +108,7 @@ pub enum CommandName {
     InitializeMetadata,
     UpdateMetadata,
     InitializeGroup,
+    UpdateGroupMaxSize,
     UpdateConfidentialTransferSettings,
     ConfigureConfidentialTransferAccount,
     EnableConfidentialCredits,
@@ -1000,6 +1001,39 @@ pub fn app<'a, 'b>(
                         .long("update-authority")
                         .value_name("ADDRESS")
                         .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help(
+                            "Specify the update authority address. \
+                             Defaults to the client keypair address."
+                        ),
+                )
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::UpdateGroupMaxSize.into())
+                .about("Updates the maximum number of members for a group.")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The token address of the group account."),
+                )
+                .arg(
+                        Arg::with_name("new_max_size")
+                        .validator(is_amount)
+                        .value_name("NEW_MAX_SIZE")
+                        .takes_value(true)
+                        .required(true)
+                        .index(2)
+                        .help("The number of members in the group."),
+                    )
+                .arg(
+                    Arg::with_name("update_authority")
+                        .long("update-authority")
+                        .value_name("SIGNER")
+                        .validator(is_valid_signer)
                         .takes_value(true)
                         .help(
                             "Specify the update authority address. \

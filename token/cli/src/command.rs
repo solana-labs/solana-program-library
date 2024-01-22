@@ -627,6 +627,32 @@ async fn command_initialize_group(
         }
     })
 }
+
+#[allow(clippy::too_many_arguments)]
+async fn command_update_group_max_size(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    update_authority: Pubkey,
+    new_max_size: u32,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    let res = token
+        .token_group_update_max_size(&update_authority, new_max_size, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 async fn command_set_transfer_fee(
     config: &Config<'_>,
     token_pubkey: Pubkey,
@@ -3503,6 +3529,24 @@ pub async fn process_command<'a>(
                 mint_authority,
                 update_authority,
                 max_size,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::UpdateGroupMaxSize, arg_matches) => {
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let new_max_size = value_t_or_exit!(arg_matches, "new_max_size", u32);
+            let (update_authority_signer, update_authority) =
+                config.signer_or_default(arg_matches, "update_authority", &mut wallet_manager);
+            let bulk_signers = vec![update_authority_signer];
+
+            command_update_group_max_size(
+                config,
+                token_pubkey,
+                update_authority,
+                new_max_size,
                 bulk_signers,
             )
             .await
