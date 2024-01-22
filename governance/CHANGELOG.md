@@ -1,5 +1,9 @@
 # SPL Governance Changelog
 
+## v4.0.0 - WIP
+
+- Mandatory signatories
+
 ## v3.1.1 - 25 Apr 2022
 
 - Weighted multi choice voting
