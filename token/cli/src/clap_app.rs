@@ -1077,8 +1077,8 @@ pub fn app<'a, 'b>(
                         ),
                 )
                 .arg(
-                    Arg::with_name("update_authority")
-                        .long("update-authority")
+                    Arg::with_name("group_update_authority")
+                        .long("group-update-authority")
                         .value_name("KEYPAIR")
                         .validator(is_valid_signer)
                         .takes_value(true)

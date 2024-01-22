@@ -658,7 +658,7 @@ async fn command_initialize_member(
     member_token_pubkey: Pubkey,
     mint_authority: Pubkey,
     group_token_pubkey: Pubkey,
-    update_authority: Pubkey,
+    group_update_authority: Pubkey,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = token_client_from_config(config, &member_token_pubkey, None)?;
@@ -668,7 +668,7 @@ async fn command_initialize_member(
             &config.fee_payer()?.pubkey(),
             &mint_authority,
             &group_token_pubkey,
-            &update_authority,
+            &group_update_authority,
             &bulk_signers,
         )
         .await?;
@@ -3592,17 +3592,20 @@ pub async fn process_command<'a>(
                     .unwrap();
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
-            let (update_authority_signer, update_authority) =
-                config.signer_or_default(arg_matches, "update_authority", &mut wallet_manager);
+            let (group_update_authority_signer, group_update_authority) = config.signer_or_default(
+                arg_matches,
+                "group_update_authority",
+                &mut wallet_manager,
+            );
             let mut bulk_signers = vec![mint_authority_signer];
-            push_signer_with_dedup(update_authority_signer, &mut bulk_signers);
+            push_signer_with_dedup(group_update_authority_signer, &mut bulk_signers);
 
             command_initialize_member(
                 config,
                 member_token_pubkey,
                 mint_authority,
                 group_token_pubkey,
-                update_authority,
+                group_update_authority,
                 bulk_signers,
             )
             .await
