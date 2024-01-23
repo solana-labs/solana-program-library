@@ -1,7 +1,7 @@
 import { struct, u16, u8 } from '@solana/buffer-layout';
-import { publicKey, u64 } from '@solana/buffer-layout-utils';
-import type { AccountMeta, Signer } from '@solana/web3.js';
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import { u64 } from '@solana/buffer-layout-utils';
+import type { AccountMeta, Signer, PublicKey } from '@solana/web3.js';
+import { TransactionInstruction } from '@solana/web3.js';
 import { programSupportsExtensions, TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import {
     TokenInvalidInstructionDataError,
@@ -12,6 +12,7 @@ import {
 } from '../../errors.js';
 import { addSigners } from '../../instructions/internal.js';
 import { TokenInstruction } from '../../instructions/types.js';
+import { COptionPublicKeyLayout } from '../../serialization.js';
 
 export enum TransferFeeInstruction {
     InitializeTransferFeeConfig = 0,
@@ -28,10 +29,8 @@ export enum TransferFeeInstruction {
 export interface InitializeTransferFeeConfigInstructionData {
     instruction: TokenInstruction.TransferFeeExtension;
     transferFeeInstruction: TransferFeeInstruction.InitializeTransferFeeConfig;
-    transferFeeConfigAuthorityOption: 1 | 0;
-    transferFeeConfigAuthority: PublicKey;
-    withdrawWithheldAuthorityOption: 1 | 0;
-    withdrawWithheldAuthority: PublicKey;
+    transferFeeConfigAuthority: PublicKey | null;
+    withdrawWithheldAuthority: PublicKey | null;
     transferFeeBasisPoints: number;
     maximumFee: bigint;
 }
@@ -40,10 +39,8 @@ export interface InitializeTransferFeeConfigInstructionData {
 export const initializeTransferFeeConfigInstructionData = struct<InitializeTransferFeeConfigInstructionData>([
     u8('instruction'),
     u8('transferFeeInstruction'),
-    u8('transferFeeConfigAuthorityOption'),
-    publicKey('transferFeeConfigAuthority'),
-    u8('withdrawWithheldAuthorityOption'),
-    publicKey('withdrawWithheldAuthority'),
+    new COptionPublicKeyLayout('transferFeeConfigAuthority'),
+    new COptionPublicKeyLayout('withdrawWithheldAuthority'),
     u16('transferFeeBasisPoints'),
     u64('maximumFee'),
 ]);
@@ -78,10 +75,8 @@ export function createInitializeTransferFeeConfigInstruction(
         {
             instruction: TokenInstruction.TransferFeeExtension,
             transferFeeInstruction: TransferFeeInstruction.InitializeTransferFeeConfig,
-            transferFeeConfigAuthorityOption: transferFeeConfigAuthority ? 1 : 0,
-            transferFeeConfigAuthority: transferFeeConfigAuthority || new PublicKey(0),
-            withdrawWithheldAuthorityOption: withdrawWithheldAuthority ? 1 : 0,
-            withdrawWithheldAuthority: withdrawWithheldAuthority || new PublicKey(0),
+            transferFeeConfigAuthority: transferFeeConfigAuthority,
+            withdrawWithheldAuthority: withdrawWithheldAuthority,
             transferFeeBasisPoints: transferFeeBasisPoints,
             maximumFee: maximumFee,
         },
@@ -174,9 +169,7 @@ export function decodeInitializeTransferFeeConfigInstructionUnchecked({
     const {
         instruction,
         transferFeeInstruction,
-        transferFeeConfigAuthorityOption,
         transferFeeConfigAuthority,
-        withdrawWithheldAuthorityOption,
         withdrawWithheldAuthority,
         transferFeeBasisPoints,
         maximumFee,
@@ -190,8 +183,8 @@ export function decodeInitializeTransferFeeConfigInstructionUnchecked({
         data: {
             instruction,
             transferFeeInstruction,
-            transferFeeConfigAuthority: transferFeeConfigAuthorityOption ? transferFeeConfigAuthority : null,
-            withdrawWithheldAuthority: withdrawWithheldAuthorityOption ? withdrawWithheldAuthority : null,
+            transferFeeConfigAuthority,
+            withdrawWithheldAuthority,
             transferFeeBasisPoints,
             maximumFee,
         },
