@@ -653,6 +653,37 @@ async fn command_update_group_max_size(
     })
 }
 
+async fn command_initialize_member(
+    config: &Config<'_>,
+    member_token_pubkey: Pubkey,
+    mint_authority: Pubkey,
+    group_token_pubkey: Pubkey,
+    group_update_authority: Pubkey,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &member_token_pubkey, None)?;
+
+    let res = token
+        .token_group_initialize_member_with_rent_transfer(
+            &config.fee_payer()?.pubkey(),
+            &mint_authority,
+            &group_token_pubkey,
+            &group_update_authority,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 async fn command_set_transfer_fee(
     config: &Config<'_>,
     token_pubkey: Pubkey,
@@ -3547,6 +3578,34 @@ pub async fn process_command<'a>(
                 token_pubkey,
                 update_authority,
                 new_max_size,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::InitializeMember, arg_matches) => {
+            let member_token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let group_token_pubkey =
+                pubkey_of_signer(arg_matches, "group_token", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
+            let (mint_authority_signer, mint_authority) =
+                config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
+            let (group_update_authority_signer, group_update_authority) = config.signer_or_default(
+                arg_matches,
+                "group_update_authority",
+                &mut wallet_manager,
+            );
+            let mut bulk_signers = vec![mint_authority_signer];
+            push_signer_with_dedup(group_update_authority_signer, &mut bulk_signers);
+
+            command_initialize_member(
+                config,
+                member_token_pubkey,
+                mint_authority,
+                group_token_pubkey,
+                group_update_authority,
                 bulk_signers,
             )
             .await

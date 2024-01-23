@@ -109,6 +109,7 @@ pub enum CommandName {
     UpdateMetadata,
     InitializeGroup,
     UpdateGroupMaxSize,
+    InitializeMember,
     UpdateConfidentialTransferSettings,
     ConfigureConfidentialTransferAccount,
     EnableConfidentialCredits,
@@ -1037,6 +1038,53 @@ pub fn app<'a, 'b>(
                         .takes_value(true)
                         .help(
                             "Specify the update authority address. \
+                             Defaults to the client keypair address."
+                        ),
+                )
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::InitializeMember.into())
+                .about("Initialize group member extension on a token mint")
+                .arg(
+                    Arg::with_name("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(1)
+                        .help("The token address of the member account."),
+                )
+                .arg(
+                    Arg::with_name("group_token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .index(2)
+                        .help("The token address of the group account that the token will join."),
+                )
+                .arg(
+                    Arg::with_name("mint_authority")
+                        .long("mint-authority")
+                        .alias("owner")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the mint authority keypair. \
+                             This may be a keypair file or the ASK keyword. \
+                             Defaults to the client keypair."
+                        ),
+                )
+                .arg(
+                    Arg::with_name("group_update_authority")
+                        .long("group-update-authority")
+                        .value_name("KEYPAIR")
+                        .validator(is_valid_signer)
+                        .takes_value(true)
+                        .help(
+                            "Specify the update authority keypair. \
+                             This may be a keypair file or the ASK keyword. \
                              Defaults to the client keypair address."
                         ),
                 )

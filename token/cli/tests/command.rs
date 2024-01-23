@@ -46,7 +46,7 @@ use {
         },
         token::Token,
     },
-    spl_token_group_interface::state::TokenGroup,
+    spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_token_metadata_interface::state::TokenMetadata,
     std::{ffi::OsString, path::PathBuf, str::FromStr, sync::Arc},
     tempfile::NamedTempFile,
@@ -3865,4 +3865,51 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
 
     let updated_extension = updated_mint_state.get_extension::<TokenGroup>().unwrap();
     assert_eq!(updated_extension.max_size, new_max_size.into());
+
+    // Create member token
+    let result = process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            "--program-id",
+            &program_id.to_string(),
+            "--enable-member",
+        ],
+    )
+    .await
+    .unwrap();
+
+    let value: serde_json::Value = serde_json::from_str(&result).unwrap();
+    let member_mint =
+        Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+
+    // Initialize it as a member of the group
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::InitializeMember.into(),
+            &member_mint.to_string(),
+            &mint.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+    let group_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = group_mint_state.get_extension::<TokenGroup>().unwrap();
+    assert_eq!(u32::from(extension.size), 1);
+
+    let account = config.rpc_client.get_account(&member_mint).await.unwrap();
+    let member_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = member_mint_state
+        .get_extension::<TokenGroupMember>()
+        .unwrap();
+    assert_eq!(extension.group, mint);
+    assert_eq!(extension.mint, member_mint);
+    assert_eq!(u32::from(extension.member_number), 1);
 }
