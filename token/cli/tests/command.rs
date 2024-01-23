@@ -3912,4 +3912,24 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
     assert_eq!(extension.group, mint);
     assert_eq!(extension.mint, member_mint);
     assert_eq!(u32::from(extension.member_number), 1);
+
+    // update authority
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::Authorize.into(),
+            &mint.to_string(),
+            "group",
+            &mint.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+    let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = mint_state.get_extension::<TokenGroup>().unwrap();
+    assert_eq!(extension.update_authority, Some(mint).try_into().unwrap());
 }

@@ -70,6 +70,7 @@ use {
         client::{ProgramRpcClientSendTransaction, RpcClientResponse},
         token::{ExtensionInitializationParams, Token},
     },
+    spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::{Field, TokenMetadata},
     std::{collections::HashMap, fmt::Display, process::exit, rc::Rc, str::FromStr, sync::Arc},
 };
@@ -1016,6 +1017,13 @@ async fn command_authorize(
                         ))
                     }
                 }
+                CliAuthorityType::Group => {
+                    if let Ok(extension) = mint.get_extension::<TokenGroup>() {
+                        Ok(Option::<Pubkey>::from(extension.update_authority))
+                    } else {
+                        Err(format!("Mint `{}` does not support token groups", account))
+                    }
+                }
             }?;
 
             Ok((account, previous_authority))
@@ -1056,6 +1064,7 @@ async fn command_authorize(
                 | CliAuthorityType::MetadataPointer
                 | CliAuthorityType::Metadata
                 | CliAuthorityType::GroupPointer
+                | CliAuthorityType::Group
                 | CliAuthorityType::GroupMemberPointer => Err(format!(
                     "Authority type `{auth_str}` not supported for SPL Token accounts",
                 )),
@@ -1107,20 +1116,28 @@ async fn command_authorize(
         ),
     );
 
-    let res = if let CliAuthorityType::Metadata = authority_type {
-        token
-            .token_metadata_update_authority(&authority, new_authority, &bulk_signers)
-            .await?
-    } else {
-        token
-            .set_authority(
-                &account,
-                &authority,
-                new_authority.as_ref(),
-                authority_type.try_into()?,
-                &bulk_signers,
-            )
-            .await?
+    let res = match authority_type {
+        CliAuthorityType::Metadata => {
+            token
+                .token_metadata_update_authority(&authority, new_authority, &bulk_signers)
+                .await?
+        }
+        CliAuthorityType::Group => {
+            token
+                .token_group_update_authority(&authority, new_authority, &bulk_signers)
+                .await?
+        }
+        _ => {
+            token
+                .set_authority(
+                    &account,
+                    &authority,
+                    new_authority.as_ref(),
+                    authority_type.try_into()?,
+                    &bulk_signers,
+                )
+                .await?
+        }
     };
 
     let tx_return = finish_tx(config, &res, false).await?;
