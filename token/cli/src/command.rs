@@ -1021,10 +1021,7 @@ async fn command_authorize(
                     if let Ok(extension) = mint.get_extension::<TokenGroup>() {
                         Ok(Option::<Pubkey>::from(extension.update_authority))
                     } else {
-                        Err(format!(
-                            "Mint `{}` does not support a group member pointer",
-                            account
-                        ))
+                        Err(format!("Mint `{}` does not support token groups", account))
                     }
                 }
             }?;
