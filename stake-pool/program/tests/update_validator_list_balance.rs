@@ -141,7 +141,7 @@ async fn setup(
 
     let last_blockhash = context
         .banks_client
-        .get_new_latest_blockhash(&context.last_blockhash)
+        .get_new_latest_blockhash(&last_blockhash)
         .await
         .unwrap();
 
@@ -696,6 +696,12 @@ async fn success_with_burned_tokens() {
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
     slot += slots_per_epoch;
     context.warp_to_slot(slot).unwrap();
+
+    let last_blockhash = context
+        .banks_client
+        .get_new_latest_blockhash(&last_blockhash)
+        .await
+        .unwrap();
 
     let mint_info = get_account(
         &mut context.banks_client,
