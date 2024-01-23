@@ -1017,7 +1017,7 @@ async fn command_authorize(
                         ))
                     }
                 }
-                CliAuthorityType::TokenGroup => {
+                CliAuthorityType::Group => {
                     if let Ok(extension) = mint.get_extension::<TokenGroup>() {
                         Ok(Option::<Pubkey>::from(extension.update_authority))
                     } else {
@@ -1064,7 +1064,7 @@ async fn command_authorize(
                 | CliAuthorityType::MetadataPointer
                 | CliAuthorityType::Metadata
                 | CliAuthorityType::GroupPointer
-                | CliAuthorityType::TokenGroup
+                | CliAuthorityType::Group
                 | CliAuthorityType::GroupMemberPointer => Err(format!(
                     "Authority type `{auth_str}` not supported for SPL Token accounts",
                 )),
@@ -1122,7 +1122,7 @@ async fn command_authorize(
                 .token_metadata_update_authority(&authority, new_authority, &bulk_signers)
                 .await?
         }
-        CliAuthorityType::TokenGroup => {
+        CliAuthorityType::Group => {
             token
                 .token_group_update_authority(&authority, new_authority, &bulk_signers)
                 .await?

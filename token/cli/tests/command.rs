@@ -3921,7 +3921,7 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
             "spl-token",
             CommandName::Authorize.into(),
             &mint.to_string(),
-            "token-group",
+            "group",
             &mint.to_string(),
         ],
     )
