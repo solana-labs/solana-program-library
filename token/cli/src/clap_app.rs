@@ -191,7 +191,7 @@ pub enum CliAuthorityType {
     Metadata,
     GroupPointer,
     GroupMemberPointer,
-    TokenGroup,
+    Group,
 }
 impl TryFrom<CliAuthorityType> for AuthorityType {
     type Error = Error;
