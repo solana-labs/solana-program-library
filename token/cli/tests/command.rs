@@ -3930,9 +3930,6 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
 
     let account = config.rpc_client.get_account(&mint).await.unwrap();
     let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
-    let fetched_metadata = mint_state.get_extension::<TokenGroup>().unwrap();
-    assert_eq!(
-        fetched_metadata.update_authority,
-        Some(mint).try_into().unwrap()
-    );
+    let extension = mint_state.get_extension::<TokenGroup>().unwrap();
+    assert_eq!(extension.update_authority, Some(mint).try_into().unwrap());
 }
