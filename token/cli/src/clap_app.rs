@@ -191,6 +191,7 @@ pub enum CliAuthorityType {
     Metadata,
     GroupPointer,
     GroupMemberPointer,
+    TokenGroup,
 }
 impl TryFrom<CliAuthorityType> for AuthorityType {
     type Error = Error;
@@ -218,6 +219,9 @@ impl TryFrom<CliAuthorityType> for AuthorityType {
             }
             CliAuthorityType::GroupPointer => Ok(AuthorityType::GroupPointer),
             CliAuthorityType::GroupMemberPointer => Ok(AuthorityType::GroupMemberPointer),
+            CliAuthorityType::TokenGroup => {
+                Err("Token Group update authority does not map to a token authority type".into())
+            }
         }
     }
 }
