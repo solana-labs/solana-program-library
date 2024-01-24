@@ -65,5 +65,16 @@ module.exports = {
         "account-compression/usage",
       ]
     },
+    {
+      type: "category",
+      label: "Transfer Hook Interface",
+      collapsed: true,
+      items: [
+        "transfer-hook-interface/introduction",
+        "transfer-hook-interface/specification",
+        "transfer-hook-interface/configuring-extra-accounts",
+        "transfer-hook-interface/examples",
+      ]
+    },
   ],
 };
