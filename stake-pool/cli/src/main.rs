@@ -1139,7 +1139,7 @@ fn command_update(
     stake_pool_address: &Pubkey,
     force: bool,
     no_merge: bool,
-    fresh: bool,
+    stale_only: bool,
 ) -> CommandResult {
     if config.no_update {
         println!("Update requested, but --no-update flag specified, so doing nothing");
@@ -1159,15 +1159,7 @@ fn command_update(
 
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
-    let (mut update_list_instructions, final_instructions) = if fresh {
-        spl_stake_pool::instruction::update_stake_pool(
-            &spl_stake_pool::id(),
-            &stake_pool,
-            &validator_list,
-            stake_pool_address,
-            no_merge,
-        )
-    } else {
+    let (mut update_list_instructions, final_instructions) = if stale_only {
         spl_stake_pool::instruction::update_stale_stake_pool(
             &spl_stake_pool::id(),
             &stake_pool,
@@ -1175,6 +1167,14 @@ fn command_update(
             stake_pool_address,
             no_merge,
             epoch_info.epoch,
+        )
+    } else {
+        spl_stake_pool::instruction::update_stake_pool(
+            &spl_stake_pool::id(),
+            &stake_pool,
+            &validator_list,
+            stake_pool_address,
+            no_merge,
         )
     };
 
@@ -2429,7 +2429,7 @@ fn main() {
                 Arg::with_name("force")
                     .long("force")
                     .takes_value(false)
-                    .help("Update all balances, even if it has already been performed this epoch."),
+                    .help("Update balances, even if it has already been performed this epoch."),
             )
             .arg(
                 Arg::with_name("no_merge")
@@ -2438,10 +2438,10 @@ fn main() {
                     .help("Do not automatically merge transient stakes. Useful if the stake pool is in an expected state, but the balances still need to be updated."),
             )
             .arg(
-                Arg::with_name("fresh")
-                    .long("fresh")
+                Arg::with_name("stale_only")
+                    .long("stale-only")
                     .takes_value(false)
-                    .help("If set, updates all validator balances on the validator list. Otherwise, this command only updates validator list balances that have not been updated for this epoch."),
+                    .help("If set, only updates validator list balances that have not been updated for this epoch. Otherwise, updates all validator balances on the validator list."),
             )
         )
         .subcommand(SubCommand::with_name("withdraw-stake")
@@ -2920,8 +2920,8 @@ fn main() {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let no_merge = arg_matches.is_present("no_merge");
             let force = arg_matches.is_present("force");
-            let fresh = arg_matches.is_present("fresh");
-            command_update(&config, &stake_pool_address, force, no_merge, fresh)
+            let stale_only = arg_matches.is_present("stale_only");
+            command_update(&config, &stake_pool_address, force, no_merge, stale_only)
         }
         ("withdraw-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
