@@ -147,9 +147,6 @@ importers:
       chai:
         specifier: ^5.0.0
         version: 5.0.0
-      chai-as-promised:
-        specifier: ^7.1.1
-        version: 7.1.1(chai@5.0.0)
       eslint:
         specifier: ^8.56.0
         version: 8.56.0
