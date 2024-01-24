@@ -897,15 +897,17 @@ impl StakePoolAccounts {
     }
 
     pub fn calculate_fee(&self, amount: u64) -> u64 {
-        amount * self.epoch_fee.numerator / self.epoch_fee.denominator
+        (amount * self.epoch_fee.numerator + self.epoch_fee.denominator - 1)
+            / self.epoch_fee.denominator
     }
 
     pub fn calculate_withdrawal_fee(&self, pool_tokens: u64) -> u64 {
-        pool_tokens * self.withdrawal_fee.numerator / self.withdrawal_fee.denominator
+        (pool_tokens * self.withdrawal_fee.numerator + self.withdrawal_fee.denominator - 1)
+            / self.withdrawal_fee.denominator
     }
 
     pub fn calculate_inverse_withdrawal_fee(&self, pool_tokens: u64) -> u64 {
-        pool_tokens * self.withdrawal_fee.denominator
+        (pool_tokens * self.withdrawal_fee.denominator + self.withdrawal_fee.denominator - 1)
             / (self.withdrawal_fee.denominator - self.withdrawal_fee.numerator)
     }
 
@@ -914,7 +916,8 @@ impl StakePoolAccounts {
     }
 
     pub fn calculate_sol_deposit_fee(&self, pool_tokens: u64) -> u64 {
-        pool_tokens * self.sol_deposit_fee.numerator / self.sol_deposit_fee.denominator
+        (pool_tokens * self.sol_deposit_fee.numerator + self.sol_deposit_fee.denominator - 1)
+            / self.sol_deposit_fee.denominator
     }
 
     pub fn calculate_sol_referral_fee(&self, deposit_fee_collected: u64) -> u64 {

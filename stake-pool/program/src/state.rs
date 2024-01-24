@@ -942,9 +942,13 @@ impl Fee {
         if self.denominator == 0 {
             return Some(0);
         }
-        (amt as u128)
-            .checked_mul(self.numerator as u128)?
-            .checked_div(self.denominator as u128)
+        let numerator = (amt as u128).checked_mul(self.numerator as u128)?;
+        // ceiling the calculation by adding (denominator - 1) to the numerator
+        let denominator = self.denominator as u128;
+        numerator
+            .checked_add(denominator)?
+            .checked_sub(1)?
+            .checked_div(denominator)
     }
 
     /// Withdrawal fees have some additional restrictions,
