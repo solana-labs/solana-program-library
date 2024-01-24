@@ -17,10 +17,12 @@ import {
     getExtraAccountMetas,
     resolveExtraAccountMeta,
 } from '../../src';
-import { expect } from 'chai';
+import { expect, use } from 'chai';
+import chaiAsPromised from 'chai-as-promised';
 import type { Connection } from '@solana/web3.js';
 import { Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { getConnection } from '../common';
+use(chaiAsPromised);
 
 describe('transferHook', () => {
     describe('validation data', () => {

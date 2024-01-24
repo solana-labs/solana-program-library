@@ -1,13 +1,10 @@
 import { Keypair } from '@solana/web3.js';
-import chai, { expect } from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import { expect } from 'chai';
 import {
     createInitializeMintCloseAuthorityInstruction,
     createInitializePermanentDelegateInstruction,
     TOKEN_2022_PROGRAM_ID,
 } from '../../src';
-
-chai.use(chaiAsPromised);
 
 describe('spl-token-2022 instructions', () => {
     it('InitializeMintCloseAuthority', () => {

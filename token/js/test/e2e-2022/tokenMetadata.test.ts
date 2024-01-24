@@ -1,6 +1,4 @@
-import chai, { expect } from 'chai';
-import chaiAsPromised from 'chai-as-promised';
-
+import { expect } from 'chai';
 import { getBase64Encoder } from '@solana/codecs-strings';
 import { createEmitInstruction, pack } from '@solana/spl-token-metadata';
 import {
@@ -28,8 +26,6 @@ import {
     tokenMetadataUpdateFieldWithRentTransfer,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
-
-chai.use(chaiAsPromised);
 
 const TEST_TOKEN_DECIMALS = 2;
 const EXTENSIONS = [ExtensionType.MetadataPointer];

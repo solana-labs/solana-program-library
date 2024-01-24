@@ -1,9 +1,6 @@
 import type { Connection, PublicKey, Signer } from '@solana/web3.js';
 import { Keypair, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
-
-import chai, { expect } from 'chai';
-import chaiAsPromised from 'chai-as-promised';
-chai.use(chaiAsPromised);
+import { expect } from 'chai';
 
 import {
     ASSOCIATED_TOKEN_PROGRAM_ID,
