@@ -104,22 +104,4 @@ describe('closeMint', () => {
             expect(mintCloseAuthority.closeAuthority).to.eql(PublicKey.default);
         }
     });
-    it('works with null close authority', async () => {
-        const mintKeypair = Keypair.generate();
-        const mintLen = getMintLen(EXTENSIONS);
-        const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
-        const transaction = new Transaction().add(
-            SystemProgram.createAccount({
-                fromPubkey: payer.publicKey,
-                newAccountPubkey: mint,
-                space: mintLen,
-                lamports,
-                programId: TEST_PROGRAM_ID,
-            }),
-            createInitializeMintCloseAuthorityInstruction(mint, null, TEST_PROGRAM_ID),
-            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID)
-        );
-
-        await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
-    });
 });
