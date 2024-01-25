@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-bytemuck = "1.14.0"
+bytemuck = "1.14.1"
 solana-program = "1.17.13"
 spl-discriminator = { version = "0.1.0" , path = "../../libraries/discriminator" }
 spl-pod = { version = "0.1.0" , path = "../../libraries/pod", features = ["borsh"] }
