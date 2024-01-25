@@ -43,21 +43,26 @@ of entries.
 
 This custom slice structure is called a `PodSlice` and is part of the Solana
 Program Library's
+[Pod](https://github.com/solana-labs/solana-program-library/tree/master/libraries/pod)
+library. The Pod library provides a handful of fixed-length types that
+implement the `bytemuck`
+[`Pod`](https://docs.rs/bytemuck/latest/bytemuck/trait.Pod.html) trait, as well
+as the `PodSlice`.
+
+Another SPL library
+useful for Type-Length-Value encoded data is
 [Type-Length-Value](https://github.com/solana-labs/solana-program-library/tree/master/libraries/type-length-value)
-library, which is used extensively to manage serialization/deserialization of
-these lists of extra accounts.
+which is used extensively to manage TLV-encoded data structures.
 
 ### Dynamic Account Resolution
 
-When clients build transactions to either your transfer hook program directly
-or to programs that will CPI to your transfer hook program, they must ensure the
-instruction includes all required accounts, especially the extra required accounts
-you've specified in the validation account.
+When clients build a transfer instruction to the token program, they must
+ensure the instruction includes all required accounts, especially the extra
+required accounts you've specified in the validation account.
 
 These additional accounts must be _resolved_, and another library used to pull off
 the resolution of additional accounts for transfer hooks is
-[TLV Account
-Resolution](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution).
+[TLV Account Resolution](https://github.com/solana-labs/solana-program-library/tree/master/libraries/tlv-account-resolution).
 
 Using the TLV Account Resolution library, transfer hook programs can empower
 **dynamic account resolution** of additional required accounts. This means that
@@ -79,7 +84,7 @@ and roles (signer, writeable, etc.) for accounts.
 ### The `ExtraAccountMeta` Struct
 
 A member of the TLV Account Resolution library, the
-[`ExtrAccountMeta`](https://github.com/solana-labs/solana-program-library/blob/65a92e6e0a4346920582d9b3893cacafd85bb017/libraries/tlv-account-resolution/src/account.rs#L75)
+[`ExtraAccountMeta`](https://github.com/solana-labs/solana-program-library/blob/65a92e6e0a4346920582d9b3893cacafd85bb017/libraries/tlv-account-resolution/src/account.rs#L75)
 struct allows account configurations to be serialized into a fixed-length data
 format of length 35 bytes.
 
@@ -115,7 +120,7 @@ determining this index later.
 #### Accounts With Static Addresses
 
 Static-address additional accounts are straightforward to serialize with
-`ExtrAccountMeta`. The discriminator is simply `0` and the `address_config` is
+`ExtraAccountMeta`. The discriminator is simply `0` and the `address_config` is
 the 32-byte public key.
 
 #### PDAs Off the Transfer Hook Program
@@ -124,7 +129,7 @@ You might be wondering: "how can I store all of my PDA seeds in only 32 bytes?".
 Well, you don't. Instead, you tell the account resolution functionality _where_
 to find the seeds you need.
 
-To do this, program can use the
+To do this, the transfer hook program can use the
 [`Seed`](https://github.com/solana-labs/solana-program-library/blob/65a92e6e0a4346920582d9b3893cacafd85bb017/libraries/tlv-account-resolution/src/seeds.rs#L38)
 enum to describe their seeds and where to find them. With the exception of
 literals, these seed configurations comprise only a small handful of bytes.

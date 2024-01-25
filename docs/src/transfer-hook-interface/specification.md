@@ -19,10 +19,10 @@ will live.
 - **Data:**
   - `amount: u64` - The transfer amount
 - **Accounts:**
-  - 1 `[]`: Source
+  - 1 `[]`: Source token account
   - 2 `[]`: Mint
-  - 3 `[]`: Destination
-  - 4 `[]`: Authority
+  - 3 `[]`: Destination token account
+  - 4 `[]`: Source token account authority
   - 5 `[]`: Validation account
   - `n` number of additional accounts, written into the validation account
 
@@ -54,11 +54,10 @@ configurations for the `Execute` instruction.
 
 ### (Optional) Instruction: `UpdateExtraAccountMetaList`
 
-In the case that an on-chain program needs a method for updating its list of
-required accounts for `Execute`, the `UpdateExtraAccountMetaList` instruction
-allows for exactly that. By implementing this instruction, developers can make
-updates to their list of required extra accounts stored in the validation
-account.
+The `UpdateExtraAccountMetaList` instruction allows an on-chain program to
+update its list of required accounts for `Execute`. By implementing this
+instruction, developers can make updates to their list of required extra
+accounts stored in the validation account.
 
 - **Discriminator:** First 8 bytes of the hash of the string literal
   `"spl-transfer-hook-interface:update-extra-account-metas"`
