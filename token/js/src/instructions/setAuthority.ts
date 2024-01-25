@@ -1,7 +1,7 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
-import type { AccountMeta, Signer } from '@solana/web3.js';
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
+import type { AccountMeta, Signer, PublicKey } from '@solana/web3.js';
+import { TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants.js';
 import {
     TokenInvalidInstructionDataError,
@@ -11,6 +11,7 @@ import {
 } from '../errors.js';
 import { addSigners } from './internal.js';
 import { TokenInstruction } from './types.js';
+import { COptionPublicKeyLayout } from '../serialization.js';
 
 /** Authority types defined by the program */
 export enum AuthorityType {
@@ -33,16 +34,14 @@ export enum AuthorityType {
 export interface SetAuthorityInstructionData {
     instruction: TokenInstruction.SetAuthority;
     authorityType: AuthorityType;
-    newAuthorityOption: 1 | 0;
-    newAuthority: PublicKey;
+    newAuthority: PublicKey | null;
 }
 
 /** TODO: docs */
 export const setAuthorityInstructionData = struct<SetAuthorityInstructionData>([
     u8('instruction'),
     u8('authorityType'),
-    u8('newAuthorityOption'),
-    publicKey('newAuthority'),
+    new COptionPublicKeyLayout('newAuthority'),
 ]);
 
 /**
@@ -72,8 +71,7 @@ export function createSetAuthorityInstruction(
         {
             instruction: TokenInstruction.SetAuthority,
             authorityType,
-            newAuthorityOption: newAuthority ? 1 : 0,
-            newAuthority: newAuthority || new PublicKey(0),
+            newAuthority,
         },
         data
     );
@@ -158,7 +156,7 @@ export function decodeSetAuthorityInstructionUnchecked({
     keys: [account, currentAuthority, ...multiSigners],
     data,
 }: TransactionInstruction): DecodedSetAuthorityInstructionUnchecked {
-    const { instruction, authorityType, newAuthorityOption, newAuthority } = setAuthorityInstructionData.decode(data);
+    const { instruction, authorityType, newAuthority } = setAuthorityInstructionData.decode(data);
 
     return {
         programId,
@@ -170,7 +168,7 @@ export function decodeSetAuthorityInstructionUnchecked({
         data: {
             instruction,
             authorityType,
-            newAuthority: newAuthorityOption ? newAuthority : null,
+            newAuthority,
         },
     };
 }
