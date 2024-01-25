@@ -4,6 +4,7 @@ import { createHash } from 'crypto';
 import {
   AccountInfo,
   Connection,
+  GetProgramAccountsFilter,
   Keypair,
   PublicKey,
   Transaction,
@@ -34,7 +35,7 @@ export class Numberu32 extends BN {
   /**
    * Construct a Numberu64 from Buffer representation
    */
-  static fromBuffer(buffer): BN {
+  static fromBuffer(buffer: Buffer): BN {
     assert(buffer.length === 4, `Invalid buffer length: ${buffer.length}`);
     return new BN(
       [...buffer]
@@ -66,7 +67,7 @@ export class Numberu64 extends BN {
   /**
    * Construct a Numberu64 from Buffer representation
    */
-  static fromBuffer(buffer): BN {
+  static fromBuffer(buffer: Buffer): BN {
     assert(buffer.length === 8, `Invalid buffer length: ${buffer.length}`);
     return new BN(
       [...buffer]
@@ -135,7 +136,7 @@ export async function getNameOwner(
 export async function getFilteredProgramAccounts(
   connection: Connection,
   programId: PublicKey,
-  filters,
+  filters: GetProgramAccountsFilter[],
 ): Promise<{ publicKey: PublicKey; accountInfo: AccountInfo<Buffer> }[]> {
   const resp = await connection.getProgramAccounts(programId, {
     commitment: connection.commitment,

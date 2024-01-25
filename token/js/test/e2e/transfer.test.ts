@@ -1,7 +1,3 @@
-import chai, { expect } from 'chai';
-import chaiAsPromised from 'chai-as-promised';
-chai.use(chaiAsPromised);
-
 import type { Connection, PublicKey, Signer } from '@solana/web3.js';
 import { Keypair } from '@solana/web3.js';
 
@@ -18,6 +14,9 @@ import {
 } from '../../src';
 
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
+import { expect, use } from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+use(chaiAsPromised);
 
 const TEST_TOKEN_DECIMALS = 2;
 describe('transfer', () => {

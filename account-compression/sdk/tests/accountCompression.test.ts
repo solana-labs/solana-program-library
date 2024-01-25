@@ -1,8 +1,9 @@
+import { strict as assert } from 'node:assert';
+
 import { AnchorProvider } from '@project-serum/anchor';
 import NodeWallet from '@project-serum/anchor/dist/cjs/nodewallet';
 import { Connection, Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { BN } from 'bn.js';
-import { assert } from 'chai';
 import * as crypto from 'crypto';
 
 import {

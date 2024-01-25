@@ -311,13 +311,13 @@ export async function getTwitterRegistryData(
     {
       memcmp: {
         offset: 0,
-        bytes: TWITTER_ROOT_PARENT_REGISTRY_KEY.toBytes(),
+        bytes: TWITTER_ROOT_PARENT_REGISTRY_KEY.toBase58(),
       },
     },
     {
       memcmp: {
         offset: 32,
-        bytes: verifiedPubkey.toBytes(),
+        bytes: verifiedPubkey.toBase58(),
       },
     },
     {

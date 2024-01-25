@@ -1,4 +1,5 @@
-import { assert } from "chai";
+import { strict as assert } from "node:assert";
+
 import * as crypto from "crypto";
 
 import { emptyNode, MerkleTree } from "../src";

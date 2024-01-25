@@ -4,8 +4,6 @@ import {
   PublicKey,
   SystemProgram,
 } from '@solana/web3.js';
-import chai, { expect } from 'chai';
-import chaiAsPromised from 'chai-as-promised';
 
 import {
   createInstruction,
@@ -16,7 +14,7 @@ import {
 } from '../../src';
 import { Numberu32, Numberu64 } from '../../src/utils';
 
-chai.use(chaiAsPromised);
+import { describe, expect, test } from '@jest/globals';
 
 describe('SplNameService Instructions', () => {
   const nameServiceAddress = new PublicKey(
@@ -30,7 +28,7 @@ describe('SplNameService Instructions', () => {
   const nameParentOwner = Keypair.generate().publicKey;
   const name = Buffer.from('hello');
 
-  it('createInstruction without class and parent name key', () => {
+  test('createInstruction without class and parent name key', () => {
     const instruction = createInstruction(
       nameServiceAddress,
       SystemProgram.programId,
@@ -42,7 +40,7 @@ describe('SplNameService Instructions', () => {
       new Numberu64(10),
     );
 
-    expect(instruction.keys).to.have.length(6);
+    expect(instruction.keys).toHaveLength(6);
     instruction.keys[0].pubkey.equals(SystemProgram.programId);
     instruction.keys[1].pubkey.equals(payerKey);
     instruction.keys[2].pubkey.equals(nameAccountKey);
@@ -51,7 +49,7 @@ describe('SplNameService Instructions', () => {
     instruction.keys[5].pubkey.equals(new PublicKey(Buffer.alloc(32)));
   });
 
-  it('createInstruction with class and parent name key', () => {
+  test('createInstruction with class and parent name key', () => {
     const instruction = createInstruction(
       nameServiceAddress,
       SystemProgram.programId,
@@ -66,7 +64,7 @@ describe('SplNameService Instructions', () => {
       nameParentOwner,
     );
 
-    expect(instruction.keys).to.have.length(7);
+    expect(instruction.keys).toHaveLength(7);
     instruction.keys[0].pubkey.equals(SystemProgram.programId);
     instruction.keys[1].pubkey.equals(payerKey);
     instruction.keys[2].pubkey.equals(nameAccountKey);
@@ -76,7 +74,7 @@ describe('SplNameService Instructions', () => {
     instruction.keys[6].pubkey.equals(nameParentOwner);
   });
 
-  it('updateInstruction', () => {
+  test('updateInstruction', () => {
     const data = Buffer.from('@Dudl');
     const instruction = updateInstruction(
       nameServiceAddress,
@@ -87,12 +85,12 @@ describe('SplNameService Instructions', () => {
       undefined,
     );
 
-    expect(instruction.keys).to.have.length(2);
+    expect(instruction.keys).toHaveLength(2);
     instruction.keys[0].pubkey.equals(nameAccountKey);
     instruction.keys[1].pubkey.equals(nameOwnerKey);
   });
 
-  it('transferInstruction', () => {
+  test('transferInstruction', () => {
     const newOwner = Keypair.generate().publicKey;
     const instruction = transferInstruction(
       nameServiceAddress,
@@ -101,12 +99,12 @@ describe('SplNameService Instructions', () => {
       nameOwnerKey,
     );
 
-    expect(instruction.keys).to.have.length(2);
+    expect(instruction.keys).toHaveLength(2);
     instruction.keys[0].pubkey.equals(nameAccountKey);
     instruction.keys[1].pubkey.equals(nameOwnerKey);
   });
 
-  it('deleteInstruction', () => {
+  test('deleteInstruction', () => {
     const instruction = deleteInstruction(
       nameServiceAddress,
       nameAccountKey,
@@ -114,13 +112,13 @@ describe('SplNameService Instructions', () => {
       nameOwnerKey,
     );
 
-    expect(instruction.keys).to.have.length(3);
+    expect(instruction.keys).toHaveLength(3);
     instruction.keys[0].pubkey.equals(nameAccountKey);
     instruction.keys[1].pubkey.equals(nameOwnerKey);
     instruction.keys[2].pubkey.equals(payerKey);
   });
 
-  it('reallocInstruction', () => {
+  test('reallocInstruction', () => {
     const instruction = reallocInstruction(
       nameServiceAddress,
       SystemProgram.programId,
@@ -130,7 +128,7 @@ describe('SplNameService Instructions', () => {
       new Numberu32(30),
     );
 
-    expect(instruction.keys).to.have.length(4);
+    expect(instruction.keys).toHaveLength(4);
     instruction.keys[0].pubkey.equals(SystemProgram.programId);
     instruction.keys[1].pubkey.equals(payerKey);
     instruction.keys[2].pubkey.equals(nameAccountKey);

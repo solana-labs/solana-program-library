@@ -1,6 +1,5 @@
 import { Keypair, PublicKey } from '@solana/web3.js';
-import chai, { expect } from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import { expect, use } from 'chai';
 import {
     ASSOCIATED_TOKEN_PROGRAM_ID,
     createAssociatedTokenAccountInstruction,
@@ -25,8 +24,8 @@ import {
     createUiAmountToAmountInstruction,
     getMintLen,
 } from '../../src';
-
-chai.use(chaiAsPromised);
+import chaiAsPromised from 'chai-as-promised';
+use(chaiAsPromised);
 
 describe('spl-token instructions', () => {
     it('TransferChecked', () => {

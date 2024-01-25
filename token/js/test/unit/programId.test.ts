@@ -1,5 +1,4 @@
-import chai, { expect } from 'chai';
-import chaiAsPromised from 'chai-as-promised';
+import { expect } from 'chai';
 import { PublicKey } from '@solana/web3.js';
 import {
     AccountState,
@@ -18,7 +17,6 @@ import {
     createEnableCpiGuardInstruction,
     createInitializeTransferHookInstruction,
 } from '../../src';
-chai.use(chaiAsPromised);
 
 describe('unsupported extensions in spl-token', () => {
     const mint = new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z');
