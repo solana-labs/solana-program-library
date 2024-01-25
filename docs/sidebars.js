@@ -70,7 +70,11 @@ module.exports = {
       label: "Transfer Hook Interface",
       collapsed: true,
       items: [
-        "transfer-hook-interface/introduction",
+        {
+          type: 'doc',
+          label: 'Introduction',
+          id: 'transfer-hook-interface',
+        },
         "transfer-hook-interface/specification",
         "transfer-hook-interface/configuring-extra-accounts",
         "transfer-hook-interface/examples",
