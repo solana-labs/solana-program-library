@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -392,7 +396,7 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
       '@solana/spl-token':
-        specifier: 0.3.11
+        specifier: 0.4.0
         version: link:../../token/js
       '@solana/web3.js':
         specifier: ^1.89.1
@@ -581,7 +585,7 @@ importers:
         specifier: ^11.1.6
         version: 11.1.6(rollup@4.9.6)(tslib@2.6.2)(typescript@5.3.3)
       '@solana/spl-token':
-        specifier: 0.3.11
+        specifier: 0.4.0
         version: link:../../token/js
       '@solana/web3.js':
         specifier: ^1.89.1
@@ -721,7 +725,7 @@ importers:
         version: 0.2.0
     devDependencies:
       '@solana/spl-token':
-        specifier: 0.3.11
+        specifier: 0.4.0
         version: link:../../token/js
       '@solana/web3.js':
         specifier: ^1.89.1
@@ -8116,7 +8120,3 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
