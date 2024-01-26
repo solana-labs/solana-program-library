@@ -6694,22 +6694,22 @@ dependencies = [
 [[package]]
 name = "spl-discriminator"
 version = "0.1.0"
-dependencies = [
- "borsh 0.10.3",
- "bytemuck",
- "solana-program",
- "spl-discriminator-derive 0.1.1",
-]
-
-[[package]]
-name = "spl-discriminator"
-version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cce5d563b58ef1bb2cdbbfe0dfb9ffdc24903b10ae6a4df2d8f425ece375033f"
 dependencies = [
  "bytemuck",
  "solana-program",
  "spl-discriminator-derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "spl-discriminator"
+version = "0.1.1"
+dependencies = [
+ "borsh 0.10.3",
+ "bytemuck",
+ "solana-program",
+ "spl-discriminator-derive 0.1.1",
 ]
 
 [[package]]
@@ -7260,7 +7260,7 @@ checksum = "062e148d3eab7b165582757453632ffeef490c02c86a48bfdb4988f63eefb3b9"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator 0.1.0",
  "spl-pod 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-program-error 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-type-length-value 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -7278,7 +7278,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-discriminator 0.1.0",
+ "spl-discriminator 0.1.1",
  "spl-pod 0.1.0",
  "spl-program-error 0.3.0",
  "spl-type-length-value 0.3.0",
@@ -7465,7 +7465,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-discriminator 0.1.0",
+ "spl-discriminator 0.1.1",
  "spl-pod 0.1.0",
  "spl-program-error 0.3.0",
  "spl-token-2022 1.0.0",
@@ -7483,7 +7483,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-discriminator 0.1.0",
+ "spl-discriminator 0.1.1",
  "spl-pod 0.1.0",
  "spl-token-2022 1.0.0",
  "spl-token-client",
@@ -7498,7 +7498,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.1.0",
+ "spl-discriminator 0.1.1",
  "spl-pod 0.1.0",
  "spl-program-error 0.3.0",
  "spl-type-length-value 0.3.0",
@@ -7560,7 +7560,7 @@ dependencies = [
  "serde",
  "serde_json",
  "solana-program",
- "spl-discriminator 0.1.0",
+ "spl-discriminator 0.1.1",
  "spl-pod 0.1.0",
  "spl-program-error 0.3.0",
  "spl-type-length-value 0.3.0",
@@ -7574,7 +7574,7 @@ checksum = "4c16ce3ba6979645fb7627aa1e435576172dd63088dc7848cb09aa331fa1fe4f"
 dependencies = [
  "borsh 0.10.3",
  "solana-program",
- "spl-discriminator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator 0.1.0",
  "spl-pod 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-program-error 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-type-length-value 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -7712,7 +7712,7 @@ dependencies = [
  "arrayref",
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator 0.1.0",
  "spl-pod 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-program-error 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-tlv-account-resolution 0.4.0",
@@ -7726,7 +7726,7 @@ dependencies = [
  "arrayref",
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.1.0",
+ "spl-discriminator 0.1.1",
  "spl-pod 0.1.0",
  "spl-program-error 0.3.0",
  "spl-tlv-account-resolution 0.5.1",
@@ -7740,7 +7740,7 @@ version = "0.3.0"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.1.0",
+ "spl-discriminator 0.1.1",
  "spl-pod 0.1.0",
  "spl-program-error 0.3.0",
  "spl-type-length-value-derive",
@@ -7754,7 +7754,7 @@ checksum = "a468e6f6371f9c69aae760186ea9f1a01c2908351b06a5e0026d21cfc4d7ecac"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator 0.1.0",
  "spl-pod 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-program-error 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -7774,7 +7774,7 @@ version = "0.1.0"
 dependencies = [
  "borsh 0.10.3",
  "solana-program",
- "spl-discriminator 0.1.0",
+ "spl-discriminator 0.1.1",
  "spl-type-length-value 0.3.0",
 ]
 
