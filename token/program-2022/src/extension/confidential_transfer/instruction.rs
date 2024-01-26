@@ -1359,7 +1359,6 @@ pub fn disable_non_confidential_credits(
 
 /// Create a `TransferWithSplitProof` instruction without fee
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn transfer_with_split_proofs(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1438,7 +1437,6 @@ pub fn transfer_with_split_proofs(
 
 /// Create a `TransferWithSplitProof` instruction with fee
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn transfer_with_fee_and_split_proofs(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
