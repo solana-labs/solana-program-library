@@ -24,7 +24,7 @@ solana-program = ">=1.17.13,<=2"
 solana-security-txt = "1.1.1"
 spl-math = { version = "0.2", path = "../../libraries/math", features = [ "no-entrypoint" ] }
 spl-pod = { version = "0.1", path = "../../libraries/pod", features = ["borsh"] }
-spl-token-2022 = { version = "1.0", path = "../../token/program-2022", features = [ "no-entrypoint" ] }
+spl-token-2022 = { version = "2.0", path = "../../token/program-2022", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 bincode = "1.3.1"
 

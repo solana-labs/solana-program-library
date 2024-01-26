@@ -31,7 +31,7 @@ solana-transaction-status = ">=1.17.13,<=2"
 spl-token = { version = "4.0", path = "../program", features = [
   "no-entrypoint",
 ] }
-spl-token-2022 = { version = "1.0", path = "../program-2022", features = [
+spl-token-2022 = { version = "2.0", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
 spl-token-client = { version = "0.8", path = "../client" }

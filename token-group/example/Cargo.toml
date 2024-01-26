@@ -14,7 +14,7 @@ test-sbf = []
 [dependencies]
 solana-program = ">=1.17.13,<=2"
 spl-pod = { version = "0.1.0", path = "../../libraries/pod" }
-spl-token-2022 = { version = "1.0", path = "../../token/program-2022", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "2.0", path = "../../token/program-2022", features = ["no-entrypoint"] }
 spl-token-group-interface = { version = "0.1.0", path = "../interface" }
 spl-type-length-value = { version = "0.3.0", path = "../../libraries/type-length-value" }
 
