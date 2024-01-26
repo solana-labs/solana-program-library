@@ -12,11 +12,11 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-solana-program = "1.17.13"
+solana-program = ">=1.17.13,<=2"
 
 [dev-dependencies]
-solana-program-test = "1.17.13"
-solana-sdk = "1.17.13"
+solana-program-test = ">=1.17.13,<=2"
+solana-sdk = ">=1.17.13,<=2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

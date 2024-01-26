@@ -14,6 +14,9 @@
 if [[ -n $SOLANA_VERSION ]]; then
   solana_version="$SOLANA_VERSION"
 else
+  # This file is now out of sync with the versions in Cargo.toml.
+  # https://github.com/solana-labs/solana-program-library/pull/6182
+  # This will require some manual cleanup the next time the version is updated.
   solana_version=v1.17.13
 fi
 
