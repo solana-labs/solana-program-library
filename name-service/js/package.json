@@ -50,7 +50,7 @@
     "@jest/globals": "^29.7.0",
     "@types/bn.js": "^5.1.1",
     "@types/jest": "^29.5.11",
-    "@types/node": "^20.11.6",
+    "@types/node": "^20.11.7",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
     "eslint": "^8.56.0",
