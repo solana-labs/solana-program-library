@@ -6699,7 +6699,7 @@ checksum = "cce5d563b58ef1bb2cdbbfe0dfb9ffdc24903b10ae6a4df2d8f425ece375033f"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator-derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator-derive 0.1.1",
 ]
 
 [[package]]
@@ -6709,16 +6709,7 @@ dependencies = [
  "borsh 0.10.3",
  "bytemuck",
  "solana-program",
- "spl-discriminator-derive 0.1.1",
-]
-
-[[package]]
-name = "spl-discriminator-derive"
-version = "0.1.1"
-dependencies = [
- "quote",
- "spl-discriminator-syn 0.1.1",
- "syn 2.0.46",
+ "spl-discriminator-derive 0.1.2",
 ]
 
 [[package]]
@@ -6729,6 +6720,15 @@ checksum = "fadbefec4f3c678215ca72bd71862697bb06b41fd77c0088902dd3203354387b"
 dependencies = [
  "quote",
  "spl-discriminator-syn 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 2.0.46",
+]
+
+[[package]]
+name = "spl-discriminator-derive"
+version = "0.1.2"
+dependencies = [
+ "quote",
+ "spl-discriminator-syn 0.1.1",
  "syn 2.0.46",
 ]
 

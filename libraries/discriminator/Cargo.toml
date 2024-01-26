@@ -16,7 +16,7 @@ borsh = ["dep:borsh"]
 borsh = { version = "0.10", optional = true }
 bytemuck = { version = "1.14.1", features = ["derive"] }
 solana-program = ">=1.17.13,<=2"
-spl-discriminator-derive = { version = "0.1.0", path = "./derive" }
+spl-discriminator-derive = { version = "0.1.2", path = "./derive" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
