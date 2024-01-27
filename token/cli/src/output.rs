@@ -8,8 +8,9 @@ use {
         parse_token_extension::{
             UiConfidentialTransferAccount, UiConfidentialTransferFeeAmount,
             UiConfidentialTransferFeeConfig, UiConfidentialTransferMint, UiCpiGuard,
-            UiDefaultAccountState, UiExtension, UiInterestBearingConfig, UiMemoTransfer,
-            UiMetadataPointer, UiMintCloseAuthority, UiPermanentDelegate, UiTokenMetadata,
+            UiDefaultAccountState, UiExtension, UiGroupMemberPointer, UiGroupPointer,
+            UiInterestBearingConfig, UiMemoTransfer, UiMetadataPointer, UiMintCloseAuthority,
+            UiPermanentDelegate, UiTokenGroup, UiTokenGroupMember, UiTokenMetadata,
             UiTransferFeeAmount, UiTransferFeeConfig, UiTransferHook, UiTransferHookAccount,
         },
     },
@@ -905,6 +906,84 @@ fn display_ui_extension(
                 writeln_name_value(f, &format!("    {key}:"), value)?;
             }
             Ok(())
+        }
+        UiExtension::GroupPointer(UiGroupPointer {
+            authority,
+            group_address,
+        }) => {
+            writeln!(f, "  {}", style("Group Pointer:").bold())?;
+            writeln_name_value(
+                f,
+                "    Authority:",
+                if let Some(pubkey) = authority {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(
+                f,
+                "    Group address:",
+                if let Some(pubkey) = group_address {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )
+        }
+        UiExtension::GroupMemberPointer(UiGroupMemberPointer {
+            authority,
+            member_address,
+        }) => {
+            writeln!(f, "  {}", style("Group Member Pointer:").bold())?;
+            writeln_name_value(
+                f,
+                "    Authority:",
+                if let Some(pubkey) = authority {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(
+                f,
+                "    Member address:",
+                if let Some(pubkey) = member_address {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )
+        }
+        UiExtension::TokenGroup(UiTokenGroup {
+            update_authority,
+            mint,
+            size,
+            max_size,
+        }) => {
+            writeln!(f, "  {}", style("Token Group:").bold())?;
+            writeln_name_value(
+                f,
+                "    Update Authority:",
+                if let Some(pubkey) = update_authority {
+                    pubkey
+                } else {
+                    "Disabled"
+                },
+            )?;
+            writeln_name_value(f, "    Mint:", mint)?;
+            writeln_name_value(f, "    Size:", &format!("{size}"))?;
+            writeln_name_value(f, "    Max Size:", &format!("{max_size}"))
+        }
+        UiExtension::TokenGroupMember(UiTokenGroupMember {
+            mint,
+            group,
+            member_number,
+        }) => {
+            writeln!(f, "  {}", style("Token Group Member:").bold())?;
+            writeln_name_value(f, "    Mint:", mint)?;
+            writeln_name_value(f, "    Group:", group)?;
+            writeln_name_value(f, "    Member Number:", &format!("{member_number}"))
         }
         // ExtensionType::Uninitialized is a hack to ensure a mint/account is never the same length
         // as a multisig
