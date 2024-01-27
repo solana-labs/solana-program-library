@@ -179,7 +179,6 @@ class ValidatorList(NamedTuple):
     def decode(cls, data: str, encoding: str):
         data_bytes = decode_byte_string(data, encoding)
         parsed = DECODE_VALIDATOR_LIST_LAYOUT.parse(data_bytes)
-        print(parsed)
         return ValidatorList(
             max_validators=parsed['max_validators'],
             validators=[ValidatorStakeInfo.decode_container(container) for container in parsed['validators']],
