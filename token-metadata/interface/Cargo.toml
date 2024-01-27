@@ -13,11 +13,13 @@ serde-traits = ["dep:serde", "spl-pod/serde-traits"]
 [dependencies]
 borsh = "0.10"
 serde = { version = "1.0.196", optional = true }
-solana-program = ">=1.17.13,<=2"
-spl-discriminator = { version = "0.1" , path = "../../libraries/discriminator" }
-spl-program-error = { version = "0.3" , path = "../../libraries/program-error" }
+solana-program = ">=1.17.17,<=2"
+spl-discriminator = { version = "0.1", path = "../../libraries/discriminator" }
+spl-program-error = { version = "0.3", path = "../../libraries/program-error" }
 spl-type-length-value = { version = "0.3", path = "../../libraries/type-length-value" }
-spl-pod = { version = "0.1", path = "../../libraries/pod", features = ["borsh"] }
+spl-pod = { version = "0.1", path = "../../libraries/pod", features = [
+  "borsh",
+] }
 
 [dev-dependencies]
 serde_json = "1.0.113"
