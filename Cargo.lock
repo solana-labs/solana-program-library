@@ -7427,7 +7427,7 @@ dependencies = [
  "spl-token-client",
  "spl-token-group-interface",
  "spl-token-metadata-interface 0.2.0",
- "strum 0.25.0",
+ "strum 0.26.1",
  "strum_macros 0.26.1",
  "tempfile",
  "tokio",
@@ -7684,7 +7684,7 @@ dependencies = [
  "spl-token-2022 2.0.0",
  "spl-token-client",
  "spl-transfer-hook-interface 0.5.0",
- "strum 0.25.0",
+ "strum 0.26.1",
  "strum_macros 0.26.1",
  "tokio",
 ]
@@ -7831,9 +7831,9 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.25.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
+checksum = "723b93e8addf9aa965ebe2d11da6d7540fa2283fcea14b3371ff055f7ba13f5f"
 
 [[package]]
 name = "strum_macros"
