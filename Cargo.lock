@@ -2192,7 +2192,7 @@ dependencies = [
  "futures-sink",
  "futures-util",
  "http",
- "indexmap 2.0.2",
+ "indexmap 2.2.1",
  "slab",
  "tokio",
  "tokio-util 0.7.1",
@@ -2575,9 +2575,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.0.2"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8adf3ddd720272c6ea8bf59463c04e0f93d0bbf7c5439b691bca2987e0270897"
+checksum = "433de089bd45971eecf4668ee0ee8f4cec17db4f8bd8f7bc3197a6ce37aa7d9b"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.1",
@@ -4576,7 +4576,7 @@ dependencies = [
  "chrono",
  "hex",
  "indexmap 1.9.3",
- "indexmap 2.0.2",
+ "indexmap 2.2.1",
  "serde",
  "serde_json",
  "serde_with_macros 3.5.1",
@@ -4609,11 +4609,11 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.9.30"
+version = "0.9.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1bf28c79a99f70ee1f1d83d10c875d2e70618417fda01ad1785e027579d9d38"
+checksum = "adf8a49373e98a4c5f0ceb5d05aa7c648d75f63774981ed95b7c7443bbd50c6e"
 dependencies = [
- "indexmap 2.0.2",
+ "indexmap 2.2.1",
  "itoa",
  "ryu",
  "serde",
@@ -5205,7 +5205,7 @@ dependencies = [
  "dashmap 4.0.2",
  "futures 0.3.30",
  "futures-util",
- "indexmap 2.0.2",
+ "indexmap 2.2.1",
  "indicatif",
  "log",
  "quinn",
@@ -5261,7 +5261,7 @@ dependencies = [
  "bincode",
  "crossbeam-channel",
  "futures-util",
- "indexmap 2.0.2",
+ "indexmap 2.2.1",
  "log",
  "rand 0.8.5",
  "rayon",
@@ -5510,7 +5510,7 @@ dependencies = [
  "clap 2.34.0",
  "crossbeam-channel",
  "flate2",
- "indexmap 2.0.2",
+ "indexmap 2.2.1",
  "itertools",
  "log",
  "lru",
@@ -6297,7 +6297,7 @@ dependencies = [
  "crossbeam-channel",
  "futures-util",
  "histogram",
- "indexmap 2.0.2",
+ "indexmap 2.2.1",
  "itertools",
  "libc",
  "log",
@@ -6388,7 +6388,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "futures-util",
- "indexmap 2.0.2",
+ "indexmap 2.2.1",
  "indicatif",
  "log",
  "rayon",
