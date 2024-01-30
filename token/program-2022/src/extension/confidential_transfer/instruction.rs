@@ -641,7 +641,6 @@ pub struct CloseSplitContextStateAccounts<'a> {
 }
 
 /// Create a `InitializeMint` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -666,7 +665,6 @@ pub fn initialize_mint(
 }
 
 /// Create a `UpdateMint` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -699,7 +697,6 @@ pub fn update_mint(
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn inner_configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -752,7 +749,6 @@ pub fn inner_configure_account(
 
 /// Create a `ConfigureAccount` instruction
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -985,7 +981,6 @@ pub fn inner_withdraw(
 
 /// Create a `Withdraw` instruction
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn withdraw(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1081,7 +1076,6 @@ pub fn inner_transfer(
 
 /// Create a `Transfer` instruction with regular (no-fee) proof
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1175,7 +1169,6 @@ pub fn inner_transfer_with_fee(
 
 /// Create a `Transfer` instruction with fee proof
 #[allow(clippy::too_many_arguments)]
-#[cfg(not(target_os = "solana"))]
 pub fn transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1248,7 +1241,6 @@ pub fn inner_apply_pending_balance(
 }
 
 /// Create a `ApplyPendingBalance` instruction
-#[cfg(not(target_os = "solana"))]
 pub fn apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
