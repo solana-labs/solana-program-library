@@ -542,6 +542,7 @@ class UpdateTokenMetadataParams(NamedTuple):
     uri: str
     """URI of the uploaded metadata of the spl-token."""
 
+
 class IncreaseAdditionalValidatorStakeParams(NamedTuple):
     """(Staker only) Increase stake on a validator from the reserve account."""
 
@@ -582,9 +583,10 @@ class IncreaseAdditionalValidatorStakeParams(NamedTuple):
     """Amount of lamports to split into the transient stake account."""
     transient_stake_seed: int
     """Seed to used to create the transient stake account."""
-    
+
     ephemeral_stake: PublicKey
     ephemeral_stake_seed: int
+
 
 class DecreaseAdditionalValidatorStakeParams(NamedTuple):
     """(Staker only) Decrease active stake on a validator, eventually moving it to the reserve"""
@@ -620,10 +622,11 @@ class DecreaseAdditionalValidatorStakeParams(NamedTuple):
     """Amount of lamports to split into the transient stake account."""
     transient_stake_seed: int
     """Seed to used to create the transient stake account."""
-    
+
     reserve_stake: PublicKey
     ephemeral_stake: PublicKey
     ephemeral_stake_seed: int
+
 
 class InstructionType(IntEnum):
     """Stake Pool Instruction Types."""
@@ -1090,6 +1093,7 @@ def increase_validator_stake(params: IncreaseValidatorStakeParams) -> Transactio
         )
     )
 
+
 def increase_additional_validator_stake(
     params: IncreaseAdditionalValidatorStakeParams,
   ) -> TransactionInstruction:
@@ -1153,8 +1157,10 @@ def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> Transactio
         )
     )
 
+
 def decrease_additional_validator_stake(params: DecreaseAdditionalValidatorStakeParams) -> TransactionInstruction:
-    """ Creates `DecreaseAdditionalValidatorStake` instruction (rebalance from validator account to transient account)."""
+    """ Creates `DecreaseAdditionalValidatorStake` instruction (rebalance from validator account to 
+    transient account)."""
     return TransactionInstruction(
         keys=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
@@ -1182,7 +1188,8 @@ def decrease_additional_validator_stake(params: DecreaseAdditionalValidatorStake
             )
         )
     )
-    
+
+
 def decrease_validator_stake_with_reserve(params: DecreaseValidatorStakeWithReserveParams) -> TransactionInstruction:
     """Creates instruction to decrease the stake on a validator."""
     return TransactionInstruction(
