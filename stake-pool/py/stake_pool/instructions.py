@@ -1170,7 +1170,6 @@ def decrease_additional_validator_stake(params: DecreaseAdditionalValidatorStake
             AccountMeta(pubkey=params.ephemeral_stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.transient_stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
-            AccountMeta(pubkey=params.stake_history_sysvar, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.system_program_id, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
         ],
