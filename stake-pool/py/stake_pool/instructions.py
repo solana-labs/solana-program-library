@@ -1159,7 +1159,7 @@ def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> Transactio
 
 
 def decrease_additional_validator_stake(params: DecreaseAdditionalValidatorStakeParams) -> TransactionInstruction:
-    """ Creates `DecreaseAdditionalValidatorStake` instruction (rebalance from validator account to 
+    """ Creates `DecreaseAdditionalValidatorStake` instruction (rebalance from validator account to
     transient account)."""
     return TransactionInstruction(
         keys=[
