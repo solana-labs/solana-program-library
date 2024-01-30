@@ -602,16 +602,14 @@ class DecreaseAdditionalValidatorStakeParams(NamedTuple):
     """`[]` Stake pool withdraw authority."""
     validator_list: PublicKey
     """`[w]` Validator stake list storage account."""
-    reserve_stake: PublicKey
-    """`[w]` Stake pool's reserve."""
     validator_stake: PublicKey
     """`[w]` Canonical stake to split from."""
     transient_stake: PublicKey
     """`[w]` Transient stake account to receive split."""
     clock_sysvar: PublicKey
     """`[]` Clock sysvar."""
-    stake_history_sysvar: PublicKey
-    """'[]' Stake history sysvar."""
+    rent_sysvar: PublicKey
+    """`[]` Rent sysvar."""
     system_program_id: PublicKey
     """`[]` System program."""
     stake_program_id: PublicKey
