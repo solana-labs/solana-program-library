@@ -82,7 +82,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
         assert validator.transient_stake_lamports == decrease_amount // 2 + stake_rent_exemption
-        assert validator.active_stake_lamports == increase_amount - decrease_amount + minimum_amount
+        assert validator.active_stake_lamports == increase_amount - decrease_amount // 2 + minimum_amount
 
     # decrease the same amount to test the decrease additional instruction
     futures = [
