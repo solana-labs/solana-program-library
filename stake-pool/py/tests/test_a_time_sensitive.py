@@ -34,7 +34,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     ]
     await asyncio.gather(*futures)
 
-    # valite the increase is now on the transient account
+    # validate the increase is now on the transient account
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
     data = resp['result']['value']['data']
     validator_list = ValidatorList.decode(data[0], data[1])
@@ -55,7 +55,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     data = resp['result']['value']['data']
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
-        assert validator.transient_stake_lamports == increase_amount + stake_rent_exemption
+        assert validator.transient_stake_lamports == increase_amount + stake_rent_exemption * 2
         assert validator.active_stake_lamports == minimum_amount
 
     print("Waiting for epoch to roll over")
@@ -99,7 +99,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     data = resp['result']['value']['data']
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
-        assert validator.transient_stake_lamports == decrease_amount + stake_rent_exemption
+        assert validator.transient_stake_lamports == decrease_amount + stake_rent_exemption * 2
         assert validator.active_stake_lamports == increase_amount - decrease_amount + minimum_amount
 
     print("Waiting for epoch to roll over")
