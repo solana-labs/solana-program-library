@@ -303,12 +303,9 @@ impl GenericTokenAccount for Account {
     fn valid_account_data(account_data: &[u8]) -> bool {
         // Use spl_token::state::Account::valid_account_data once possible
         account_data.len() == Account::LEN && is_initialized_account(account_data)
-            || (account_data.len() >= Account::LEN
+            || (account_data.len() > Account::LEN
                 && account_data.len() != Multisig::LEN
-                && ACCOUNTTYPE_ACCOUNT
-                    == *account_data
-                        .get(spl_token::state::Account::get_packed_len())
-                        .unwrap_or(&(AccountType::Uninitialized as u8))
+                && ACCOUNTTYPE_ACCOUNT == account_data[Account::LEN]
                 && is_initialized_account(account_data))
     }
 }
