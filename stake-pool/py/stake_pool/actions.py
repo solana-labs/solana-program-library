@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 from solana.keypair import Keypair
 from solana.publickey import PublicKey
@@ -481,13 +481,13 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
 
 
 async def increase_validator_stake(
-    client: AsyncClient, 
-    payer: Keypair, 
-    staker: Keypair, 
+    client: AsyncClient,
+    payer: Keypair,
+    staker: Keypair,
     stake_pool_address: PublicKey,
-    validator_vote: PublicKey, 
+    validator_vote: PublicKey,
     lamports: int,
-    ephemeral_stake_seed : int = None
+    ephemeral_stake_seed: Optional[int] = None
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp['result']['value']['data']
@@ -504,7 +504,7 @@ async def increase_validator_stake(
         transient_stake_seed = validator_info.transient_seed_suffix + 1  # bump up by one to avoid reuse
     else:
         # we are updating an existing transient stake account, so we must use the same seed
-        transient_stake_seed = validator_info.transient_seed_suffix 
+        transient_stake_seed = validator_info.transient_seed_suffix
 
     validator_stake_seed = validator_info.validator_seed_suffix or None
     (transient_stake, _) = find_transient_stake_program_address(
@@ -553,8 +553,8 @@ async def increase_validator_stake(
                     ephemeral_stake_seed=ephemeral_stake_seed
                 )
             )
-        )    
-        
+        )
+
     else:
         txn.add(
             sp.increase_validator_stake(
@@ -586,13 +586,13 @@ async def increase_validator_stake(
 
 
 async def decrease_validator_stake(
-    client: AsyncClient, 
-    payer: Keypair, 
-    staker: Keypair, 
+    client: AsyncClient,
+    payer: Keypair,
+    staker: Keypair,
     stake_pool_address: PublicKey,
-    validator_vote: PublicKey, 
+    validator_vote: PublicKey,
     lamports: int,
-    ephemeral_stake_seed : int = None
+    ephemeral_stake_seed: Optional[int] = None
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp['result']['value']['data']
@@ -629,7 +629,7 @@ async def decrease_validator_stake(
 
     if ephemeral_stake_seed is not None:
 
-         # We assume there is an existing transient account that we will update
+        # We assume there is an existing transient account that we will update
         (ephemeral_stake, _) = find_ephemeral_stake_program_address(
             STAKE_POOL_PROGRAM_ID,
             stake_pool_address,
@@ -647,6 +647,7 @@ async def decrease_validator_stake(
                     validator_stake=validator_stake,
                     transient_stake=transient_stake,
                     clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                    rent_sysvar=SYSVAR_RENT_PUBKEY,
                     stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
                     system_program_id=sys.SYS_PROGRAM_ID,
                     stake_program_id=STAKE_PROGRAM_ID,
@@ -656,10 +657,10 @@ async def decrease_validator_stake(
                     ephemeral_stake_seed=ephemeral_stake_seed
                 )
             )
-        )    
-        
+        )
+
     else:
-        
+
         txn.add(
             sp.decrease_validator_stake_with_reserve(
                 sp.DecreaseValidatorStakeWithReserveParams(

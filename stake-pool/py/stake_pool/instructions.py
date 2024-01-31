@@ -580,12 +580,13 @@ class IncreaseAdditionalValidatorStakeParams(NamedTuple):
 
     # Params
     lamports: int
-    """Amount of lamports to split into the transient stake account."""
+    """Amount of lamports to increase on the given validator."""
     transient_stake_seed: int
     """Seed to used to create the transient stake account."""
-
     ephemeral_stake: PublicKey
+    """The ephemeral stake account used during the operation."""
     ephemeral_stake_seed: int
+    """The seed used to generate the ephemeral stake account"""
 
 
 class DecreaseAdditionalValidatorStakeParams(NamedTuple):
@@ -610,6 +611,8 @@ class DecreaseAdditionalValidatorStakeParams(NamedTuple):
     """`[]` Clock sysvar."""
     rent_sysvar: PublicKey
     """`[]` Rent sysvar."""
+    stake_history_sysvar: PublicKey
+    """'[]' Stake history sysvar."""
     system_program_id: PublicKey
     """`[]` System program."""
     stake_program_id: PublicKey
@@ -620,10 +623,12 @@ class DecreaseAdditionalValidatorStakeParams(NamedTuple):
     """Amount of lamports to split into the transient stake account."""
     transient_stake_seed: int
     """Seed to used to create the transient stake account."""
-
     reserve_stake: PublicKey
+    """The reserve stake account to move the stake to."""
     ephemeral_stake: PublicKey
+    """The ephemeral stake account used during the operation."""
     ephemeral_stake_seed: int
+    """The seed used to generate the ephemeral stake account"""
 
 
 class InstructionType(IntEnum):
