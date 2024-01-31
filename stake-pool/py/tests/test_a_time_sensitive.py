@@ -86,7 +86,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
 
     # decrease the same amount to test the decrease additional instruction
     futures = [
-        decrease_validator_stake(async_client, payer, payer, stake_pool_address, validator, decrease_amount // 2)
+        decrease_validator_stake(async_client, payer, payer, stake_pool_address, validator, decrease_amount // 2, ephemeral_stake_seed=0)
         for validator in validators
     ]
     await asyncio.gather(*futures)
