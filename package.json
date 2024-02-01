@@ -23,7 +23,7 @@
     "devDependencies": {
         "@solana/eslint-config-solana": "^1.0.2",
         "@solana/prettier-config-solana": "^0.0.4",
-        "eslint-config-turbo": "^1.12.0",
+        "eslint-config-turbo": "^1.12.2",
         "turbo": "^1.12.0"
     },
     "engines": {
