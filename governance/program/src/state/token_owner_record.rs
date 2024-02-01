@@ -25,7 +25,8 @@ use {
     std::slice::Iter,
 };
 
-/// A lock of Token Owner Record which can be issued by external authorities to prevent token withdrawals
+/// A lock of Token Owner Record which can be issued by external authorities to
+/// prevent token withdrawals
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct TokenOwnerRecordLock {
     /// The authority issuing the lock
@@ -34,7 +35,8 @@ pub struct TokenOwnerRecordLock {
     /// The timestamp when the lock expires or None if it never expires
     pub expiry: Option<UnixTimestamp>,
 
-    /// Custom lock type id which can be used by the authority to identify the lock type
+    /// Custom lock type id which can be used by the authority to identify
+    ///  the lock type
     pub lock_type: u8,
 }
 
@@ -112,7 +114,8 @@ pub struct TokenOwnerRecordV2 {
     /// Note: V1 accounts must be resized before using this space
     pub reserved_v2: [u8; 124],
 
-    /// A list of locks which can be issued by external authorities to prevent token withdrawals
+    /// A list of locks which can be issued by external authorities
+    /// to prevent token withdrawals
     pub locks: Vec<TokenOwnerRecordLock>,
 }
 
