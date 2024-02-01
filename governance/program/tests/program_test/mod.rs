@@ -572,7 +572,8 @@ impl GovernanceProgramTest {
             outstanding_proposal_count: 0,
             version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         };
 
         let token_owner_record_address = get_token_owner_record_address(
@@ -810,7 +811,8 @@ impl GovernanceProgramTest {
             outstanding_proposal_count: 0,
             version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         };
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
@@ -877,7 +879,8 @@ impl GovernanceProgramTest {
             outstanding_proposal_count: 0,
             version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         };
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());

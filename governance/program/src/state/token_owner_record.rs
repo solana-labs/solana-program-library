@@ -15,6 +15,7 @@ use {
     borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
+        clock::UnixTimestamp,
         program_error::ProgramError,
         program_pack::IsInitialized,
         pubkey::Pubkey,
@@ -23,6 +24,19 @@ use {
     spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize},
     std::slice::Iter,
 };
+
+/// A lock of Token Owner Record which can be issued by external authorities to prevent token withdrawals
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct TokenOwnerRecordLock {
+    /// The authority issuing the lock
+    pub authority: Pubkey,
+
+    /// The timestamp when the lock expires or None if it never expires
+    pub expiry: Option<UnixTimestamp>,
+
+    /// Custom lock type id which can be used by the authority to identify the lock type
+    pub lock_type: u8,
+}
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
@@ -96,7 +110,10 @@ pub struct TokenOwnerRecordV2 {
 
     /// Reserved space for versions v2 and onwards
     /// Note: V1 accounts must be resized before using this space
-    pub reserved_v2: [u8; 128],
+    pub reserved_v2: [u8; 124],
+
+    /// A list of locks which can be issued by external authorities to prevent token withdrawals
+    pub locks: Vec<TokenOwnerRecordLock>,
 }
 
 /// The current version of TokenOwnerRecord account layout
@@ -282,7 +299,7 @@ impl TokenOwnerRecordV2 {
 
             // If reserved_v2 is used it must be individually asses for v1 backward
             // compatibility impact
-            if self.reserved_v2 != [0; 128] {
+            if self.reserved_v2 != [0; 124] {
                 panic!("Extended data not supported by TokenOwnerRecordV1")
             }
 
@@ -361,7 +378,8 @@ pub fn get_token_owner_record_data(
             governance_delegate: token_owner_record_data_v1.governance_delegate,
 
             // Add the extra reserved_v2 padding
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         }
     } else {
         get_account_data::<TokenOwnerRecordV2>(program_id, token_owner_record_info)?
@@ -450,10 +468,7 @@ pub fn get_token_owner_record_data_for_proposal_owner(
 
 #[cfg(test)]
 mod test {
-    use {
-        super::*,
-        solana_program::{borsh0_10::get_packed_len, stake_history::Epoch},
-    };
+    use {super::*, solana_program::stake_history::Epoch};
 
     fn create_test_token_owner_record() -> TokenOwnerRecordV2 {
         TokenOwnerRecordV2 {
@@ -467,7 +482,8 @@ mod test {
             outstanding_proposal_count: 1,
             version: 1,
             reserved: [0; 6],
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         }
     }
 
@@ -492,7 +508,7 @@ mod test {
         let token_owner_record = create_test_token_owner_record();
 
         // Act
-        let size = get_packed_len::<TokenOwnerRecordV2>();
+        let size = token_owner_record.try_to_vec().unwrap().len();
 
         // Assert
         assert_eq!(token_owner_record.get_max_size(), Some(size));

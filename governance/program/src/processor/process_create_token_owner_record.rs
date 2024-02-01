@@ -55,7 +55,8 @@ pub fn process_create_token_owner_record(
         outstanding_proposal_count: 0,
         version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
         reserved: [0; 6],
-        reserved_v2: [0; 128],
+        reserved_v2: [0; 124],
+        locks: vec![],
     };
 
     create_and_serialize_account_signed(
