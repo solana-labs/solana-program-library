@@ -1,4 +1,5 @@
 #![allow(clippy::arithmetic_side_effects)]
+
 use {
     borsh::BorshSerialize,
     solana_program::{
@@ -19,9 +20,10 @@ use {
             create_program_governance, create_proposal, create_realm, create_token_governance,
             create_token_owner_record, deposit_governing_tokens, execute_transaction,
             finalize_vote, flag_transaction_error, insert_transaction, refund_proposal_deposit,
-            relinquish_vote, remove_required_signatory, remove_transaction,
-            revoke_governing_tokens, set_governance_config, set_governance_delegate,
-            set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
+            relinquish_vote, remove_required_signatory, remove_token_owner_record_lock,
+            remove_transaction, revoke_governing_tokens, set_governance_config,
+            set_governance_delegate, set_realm_authority, set_realm_config,
+            set_token_owner_record_lock, sign_off_proposal, upgrade_program_metadata,
             withdraw_governing_tokens, AddSignatoryAuthority,
         },
         processor::process_instruction,
@@ -77,14 +79,14 @@ pub mod cookies;
 pub mod legacy;
 
 use {
-    self::cookies::ProposalDepositCookie,
     crate::{
         args::{PluginSetupArgs, RealmSetupArgs},
         cookies::{
             GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
             GovernedTokenCookie, MaxVoterWeightRecordCookie, NativeTreasuryCookie,
-            ProgramMetadataCookie, ProposalCookie, ProposalTransactionCookie, RealmCookie,
-            TokenOwnerRecordCookie, VoteRecordCookie,
+            ProgramMetadataCookie, ProposalCookie, ProposalDepositCookie,
+            ProposalTransactionCookie, RealmCookie, TokenOwnerRecordCookie,
+            TokenOwnerRecordLockCookie, VoteRecordCookie,
         },
         program_test::cookies::{
             RealmConfigCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
@@ -3368,6 +3370,63 @@ impl GovernanceProgramTest {
                 Some(&[complete_proposal_authority]),
             )
             .await?;
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_token_owner_record_lock(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority: &Keypair,
+    ) -> Result<TokenOwnerRecordLockCookie, ProgramError> {
+        let lock_type = 5;
+        let expiry: Option<UnixTimestamp> = Some(100);
+
+        let set_token_owner_record_lock_ix = set_token_owner_record_lock(
+            &self.program_id,
+            &token_owner_record_cookie.address,
+            &token_owner_record_lock_authority.pubkey(),
+            lock_type,
+            expiry,
+        );
+
+        self.bench
+            .process_transaction(
+                &[set_token_owner_record_lock_ix],
+                Some(&[&token_owner_record_lock_authority]),
+            )
+            .await
+            .unwrap();
+
+        Ok(TokenOwnerRecordLockCookie {
+            authority: token_owner_record_lock_authority.pubkey(),
+            lock_type,
+            expiry,
+        })
+    }
+
+    #[allow(dead_code)]
+    pub async fn remove_token_owner_record_lock(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority: &Keypair,
+        lock_type: u8,
+    ) -> Result<(), ProgramError> {
+        let remove_token_owner_record_lock_ix = remove_token_owner_record_lock(
+            &self.program_id,
+            &token_owner_record_cookie.address,
+            &token_owner_record_lock_authority.pubkey(),
+            lock_type,
+        );
+
+        self.bench
+            .process_transaction(
+                &[remove_token_owner_record_lock_ix],
+                Some(&[&token_owner_record_lock_authority]),
+            )
+            .await
+            .unwrap();
 
         Ok(())
     }

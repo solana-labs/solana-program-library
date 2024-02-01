@@ -29,6 +29,7 @@ use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         bpf_loader_upgradeable,
+        clock::UnixTimestamp,
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
         system_program, sysvar,
@@ -663,6 +664,31 @@ pub enum GovernanceInstruction {
     ///  2. `[writable]` Beneficiary Account which would receive lamports from
     ///     the disposed RequiredSignatory Account
     RemoveRequiredSignatory,
+
+    /// Sets TokenOwnerRecord lock for the given authority and lock type
+    ///
+    ///   0. `[writable]` TokenOwnerRecord the lock is set for
+    ///   1. `[signer]` Lock authority issuing the lock
+    SetTokenOwnerRecordLock {
+        /// Custom lock type id which can be used by the authority to issue
+        /// different lock types
+        #[allow(dead_code)]
+        lock_type: u8,
+
+        /// The timestamp when the lock expires or None if it never expires
+        #[allow(dead_code)]
+        expiry: Option<UnixTimestamp>,
+    },
+
+    /// Removes TokenOwnerRecord lock for the given authority and lock type
+    ///
+    ///   0. `[writable]` TokenOwnerRecord the lock is set for
+    ///   1. `[signer]` Lock authority issuing the lock
+    RemoveTokenOwnerRecordLock {
+        /// Custom lock type identifying the lock to remove
+        #[allow(dead_code)]
+        lock_type: u8,
+    },
 }
 
 /// Creates CreateRealm instruction
@@ -1876,6 +1902,54 @@ pub fn complete_proposal(
     ];
 
     let instruction = GovernanceInstruction::CompleteProposal {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates SetTokenOwnerRecordLock instruction to issue TokenOwnerRecord lock
+pub fn set_token_owner_record_lock(
+    program_id: &Pubkey,
+    // Accounts
+    token_owner_record: &Pubkey,
+    token_owner_record_lock_authority: &Pubkey,
+    // Args
+    lock_type: u8,
+    expiry: Option<UnixTimestamp>,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*token_owner_record, false),
+        AccountMeta::new_readonly(*token_owner_record_lock_authority, true),
+    ];
+
+    let instruction = GovernanceInstruction::SetTokenOwnerRecordLock { lock_type, expiry };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates RemoveTokenOwnerRecordLock instruction to issue TokenOwnerRecord
+/// lock
+pub fn remove_token_owner_record_lock(
+    program_id: &Pubkey,
+    // Accounts
+    token_owner_record: &Pubkey,
+    token_owner_record_lock_authority: &Pubkey,
+    // Args
+    lock_type: u8,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*token_owner_record, false),
+        AccountMeta::new_readonly(*token_owner_record_lock_authority, true),
+    ];
+
+    let instruction = GovernanceInstruction::RemoveTokenOwnerRecordLock { lock_type };
 
     Instruction {
         program_id: *program_id,

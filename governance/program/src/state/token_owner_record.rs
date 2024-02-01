@@ -29,15 +29,15 @@ use {
 /// prevent token withdrawals
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct TokenOwnerRecordLock {
+    /// Custom lock type id which can be used by the authority to issue
+    /// different lock types
+    pub lock_type: u8,
+
     /// The authority issuing the lock
     pub authority: Pubkey,
 
     /// The timestamp when the lock expires or None if it never expires
     pub expiry: Option<UnixTimestamp>,
-
-    /// Custom lock type id which can be used by the authority to identify
-    ///  the lock type
-    pub lock_type: u8,
 }
 
 /// Governance Token Owner Record
