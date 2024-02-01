@@ -20,9 +20,11 @@ default = []
 [dependencies]
 anchor-lang = "0.29.0"
 bytemuck = "1.13"
-solana-program = ">=1.17.13,<=2"
-spl-concurrent-merkle-tree = { version="0.2.0", path="../../../libraries/concurrent-merkle-tree", features = [ "sol-log" ]}
-spl-noop = { version = "0.2.0", path="../noop", features = [ "no-entrypoint" ]}
+solana-program = ">=1.17.17,<=2"
+spl-concurrent-merkle-tree = { version = "0.2.0", path = "../../../libraries/concurrent-merkle-tree", features = [
+  "sol-log",
+] }
+spl-noop = { version = "0.2.0", path = "../noop", features = ["no-entrypoint"] }
 
 [profile.release]
 overflow-checks = true

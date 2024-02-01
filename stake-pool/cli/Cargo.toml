@@ -14,18 +14,24 @@ clap = "2.33.3"
 serde = "1.0.196"
 serde_derive = "1.0.130"
 serde_json = "1.0.113"
-solana-account-decoder = ">=1.17.13,<=2"
-solana-clap-utils = ">=1.17.13,<=2"
-solana-cli-config = ">=1.17.13,<=2"
-solana-cli-output = ">=1.17.13,<=2"
-solana-client = ">=1.17.13,<=2"
-solana-logger = ">=1.17.13,<=2"
-solana-program = ">=1.17.13,<=2"
-solana-remote-wallet = ">=1.17.13,<=2"
-solana-sdk = ">=1.17.13,<=2"
-spl-associated-token-account = { version = "=2.3", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
-spl-stake-pool = { version = "=1.0.0", path="../program", features = [ "no-entrypoint" ] }
-spl-token = { version = "=4.0", path="../../token/program", features = [ "no-entrypoint" ]  }
+solana-account-decoder = ">=1.17.17,<=2"
+solana-clap-utils = ">=1.17.17,<=2"
+solana-cli-config = ">=1.17.17,<=2"
+solana-cli-output = ">=1.17.17,<=2"
+solana-client = ">=1.17.17,<=2"
+solana-logger = ">=1.17.17,<=2"
+solana-program = ">=1.17.17,<=2"
+solana-remote-wallet = ">=1.17.17,<=2"
+solana-sdk = ">=1.17.17,<=2"
+spl-associated-token-account = { version = "=2.3", path = "../../associated-token-account/program", features = [
+  "no-entrypoint",
+] }
+spl-stake-pool = { version = "=1.0.0", path = "../program", features = [
+  "no-entrypoint",
+] }
+spl-token = { version = "=4.0", path = "../../token/program", features = [
+  "no-entrypoint",
+] }
 bs58 = "0.4.0"
 bincode = "1.3.1"
 
