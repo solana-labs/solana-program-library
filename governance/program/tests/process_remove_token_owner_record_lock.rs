@@ -4,6 +4,11 @@ mod program_test;
 
 use {program_test::*, solana_program_test::tokio, solana_sdk::signature::Keypair};
 
+// TODO: Test only authority which set the lock can remove it
+// test: Remove lock for authority no longer on list of accepted authorities
+// test: Try to remove for other authority
+// test: Try to remove without signing
+
 #[tokio::test]
 async fn test_remove_token_owner_record_lock() {
     // Arrange
@@ -37,9 +42,9 @@ async fn test_remove_token_owner_record_lock() {
         .unwrap();
 
     // Assert
-    let _token_owner_record_account = governance_test
+    let token_owner_record_account = governance_test
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    //assert_eq!(0, token_owner_record_account.locks.len());
+    assert_eq!(0, token_owner_record_account.locks.len());
 }

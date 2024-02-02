@@ -3384,8 +3384,12 @@ impl GovernanceProgramTest {
         let clock = self.bench.get_clock().await;
         let expiry: Option<UnixTimestamp> = Some(clock.unix_timestamp + 100);
 
+        let realm_config_address =
+            get_realm_config_address(&self.program_id, &token_owner_record_cookie.account.realm);
+
         let set_token_owner_record_lock_ix = set_token_owner_record_lock(
             &self.program_id,
+            &realm_config_address,
             &token_owner_record_cookie.address,
             &token_owner_record_lock_authority.pubkey(),
             &self.bench.payer.pubkey(),
