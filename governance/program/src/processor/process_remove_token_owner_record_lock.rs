@@ -33,7 +33,7 @@ pub fn process_remove_token_owner_record_lock(
 
     // Trim existing locks
     token_owner_record_data.locks.retain(|lock| {
-        // Remove existing lock for the authority and lock type we set
+        // Remove existing lock for the authority and lock type
         if lock.lock_type == lock_type
             && lock.authority == *token_owner_record_lock_authority_info.key
         {

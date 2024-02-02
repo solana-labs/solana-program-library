@@ -97,7 +97,7 @@ pub fn process_set_token_owner_record_lock(
             system_info,
         )?;
 
-        // When the account is resized we have to change the type is V2 to preserve
+        // When the account is resized we have to change the type to V2 to preserve
         // the extra data
         if token_owner_record_data.account_type == GovernanceAccountType::TokenOwnerRecordV1 {
             token_owner_record_data.account_type = GovernanceAccountType::TokenOwnerRecordV2;

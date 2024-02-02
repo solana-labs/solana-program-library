@@ -111,7 +111,13 @@ pub struct RealmConfigAccount {
 
 impl AccountMaxSize for RealmConfigAccount {
     fn get_max_size(&self) -> Option<usize> {
-        Some(1 + 32 + 75 * 2 + 110)
+        Some(
+            1 + 32
+                + 75 * 2
+                + 110
+                + self.community_token_config.lock_authorities.len() * 32
+                + self.council_token_config.lock_authorities.len() * 32,
+        )
     }
 }
 
@@ -328,6 +334,33 @@ mod test {
                 token_type: GoverningTokenType::Liquid,
                 reserved: [0; 4],
                 lock_authorities: vec![],
+            },
+            reserved: Reserved110::default(),
+        };
+
+        let size = realm_config.try_to_vec().unwrap().len();
+
+        assert_eq!(realm_config.get_max_size(), Some(size));
+    }
+
+    #[test]
+    fn test_max_size_with_lock_authorities() {
+        let realm_config = RealmConfigAccount {
+            account_type: GovernanceAccountType::RealmV2,
+            realm: Pubkey::new_unique(),
+            community_token_config: GoverningTokenConfig {
+                voter_weight_addin: Some(Pubkey::new_unique()),
+                max_voter_weight_addin: Some(Pubkey::new_unique()),
+                token_type: GoverningTokenType::Liquid,
+                reserved: [0; 4],
+                lock_authorities: vec![Pubkey::new_unique()],
+            },
+            council_token_config: GoverningTokenConfig {
+                voter_weight_addin: Some(Pubkey::new_unique()),
+                max_voter_weight_addin: Some(Pubkey::new_unique()),
+                token_type: GoverningTokenType::Liquid,
+                reserved: [0; 4],
+                lock_authorities: vec![Pubkey::new_unique(), Pubkey::new_unique()],
             },
             reserved: Reserved110::default(),
         };
