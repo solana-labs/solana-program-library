@@ -5,7 +5,8 @@ use {
         error::GovernanceError,
         state::{
             enums::GovernanceAccountType,
-            token_owner_record::{get_token_owner_record_data, TokenOwnerRecordLock},
+            realm_config::get_realm_config_data,
+            token_owner_record::{get_token_owner_record_data_for_realm, TokenOwnerRecordLock},
         },
     },
     solana_program::{
@@ -28,10 +29,11 @@ pub fn process_set_token_owner_record_lock(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let token_owner_record_info = next_account_info(account_info_iter)?; // 0
-    let token_owner_record_lock_authority_info = next_account_info(account_info_iter)?; // 1
-    let payer_info = next_account_info(account_info_iter)?; // 2
-    let system_info = next_account_info(account_info_iter)?; // 3
+    let realm_config_info = next_account_info(account_info_iter)?; // 0
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 1
+    let token_owner_record_lock_authority_info = next_account_info(account_info_iter)?; // 2
+    let payer_info = next_account_info(account_info_iter)?; // 3
+    let system_info = next_account_info(account_info_iter)?; // 4
 
     let rent = Rent::get()?;
     let clock = Clock::get()?;
@@ -40,16 +42,21 @@ pub fn process_set_token_owner_record_lock(
         return Err(GovernanceError::TokenOwnerRecordLockAuthorityMustSign.into());
     }
 
-    // TODO:
-    // 1) Assert the authority is on the list for the given token
-
     // Reject the lock if already expired
     if Some(clock.unix_timestamp) > expiry {
         return Err(GovernanceError::ExpiredTokenOwnerRecordLock.into());
     }
 
-    let mut token_owner_record_data =
-        get_token_owner_record_data(program_id, token_owner_record_info)?;
+    let realm_config_data = get_realm_config_data(program_id, realm_config_info)?;
+
+    let mut token_owner_record_data = get_token_owner_record_data_for_realm(
+        program_id,
+        token_owner_record_info,
+        &realm_config_data.realm,
+    )?;
+
+    // TODO:
+    // 1) Assert the authority is on the list for the given token
 
     // Trim existing locks
     token_owner_record_data.locks.retain(|lock| {

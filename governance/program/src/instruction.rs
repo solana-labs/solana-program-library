@@ -667,8 +667,9 @@ pub enum GovernanceInstruction {
 
     /// Sets TokenOwnerRecord lock for the given authority and lock type
     ///
-    ///   0. `[writable]` TokenOwnerRecord the lock is set for
-    ///   1. `[signer]` Lock authority issuing the lock
+    ///   0. `[]` RealmConfig
+    ///   1. `[writable]` TokenOwnerRecord the lock is set for
+    ///   2. `[signer]` Lock authority issuing the lock
     ///   3. `[signer]` Payer
     ///   4. `[]` System
     SetTokenOwnerRecordLock {
@@ -1916,6 +1917,7 @@ pub fn complete_proposal(
 pub fn set_token_owner_record_lock(
     program_id: &Pubkey,
     // Accounts
+    realm_config: &Pubkey,
     token_owner_record: &Pubkey,
     token_owner_record_lock_authority: &Pubkey,
     payer: &Pubkey,
@@ -1924,6 +1926,7 @@ pub fn set_token_owner_record_lock(
     expiry: Option<UnixTimestamp>,
 ) -> Instruction {
     let accounts = vec![
+        AccountMeta::new_readonly(*realm_config, false),
         AccountMeta::new(*token_owner_record, false),
         AccountMeta::new_readonly(*token_owner_record_lock_authority, true),
         AccountMeta::new_readonly(*payer, true),
