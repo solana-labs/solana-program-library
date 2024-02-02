@@ -528,6 +528,10 @@ pub enum GovernanceError {
     /// TokenOwnerRecordLock is expired
     #[error("TokenOwnerRecordLock is expired ")]
     ExpiredTokenOwnerRecordLock,
+
+    /// TokenOwnerRecordLocked locked
+    #[error("TokenOwnerRecord locked")]
+    TokenOwnerRecordLocked,
 }
 
 impl PrintProgramError for GovernanceError {

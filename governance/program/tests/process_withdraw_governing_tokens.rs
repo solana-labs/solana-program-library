@@ -20,6 +20,9 @@ use {
     },
 };
 
+// TODO:
+// Test: withdraw when TOR lock exists
+
 #[tokio::test]
 async fn test_withdraw_community_tokens() {
     // Arrange

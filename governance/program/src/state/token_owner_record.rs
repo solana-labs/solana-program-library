@@ -227,7 +227,10 @@ impl TokenOwnerRecordV2 {
     }
 
     /// Asserts TokenOwner can withdraw tokens from Realm
-    pub fn assert_can_withdraw_governing_tokens(&self) -> Result<(), ProgramError> {
+    pub fn assert_can_withdraw_governing_tokens(
+        &self,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> Result<(), ProgramError> {
         if self.unrelinquished_votes_count > 0 {
             return Err(
                 GovernanceError::AllVotesMustBeRelinquishedToWithdrawGoverningTokens.into(),
@@ -240,8 +243,11 @@ impl TokenOwnerRecordV2 {
             );
         }
 
-        // TODO:
-        // Assert no active locks
+        for lock in self.locks.iter() {
+            if lock.expiry.is_none() || lock.expiry > Some(current_unix_timestamp) {
+                return Err(GovernanceError::TokenOwnerRecordLocked.into());
+            }
+        }
 
         Ok(())
     }
