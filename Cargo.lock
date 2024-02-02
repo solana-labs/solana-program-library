@@ -6722,7 +6722,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fadbefec4f3c678215ca72bd71862697bb06b41fd77c0088902dd3203354387b"
 dependencies = [
  "quote",
- "spl-discriminator-syn 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-discriminator-syn 0.1.1",
  "syn 2.0.46",
 ]
 
@@ -6731,13 +6731,15 @@ name = "spl-discriminator-derive"
 version = "0.1.2"
 dependencies = [
  "quote",
- "spl-discriminator-syn 0.1.1",
+ "spl-discriminator-syn 0.1.2",
  "syn 2.0.46",
 ]
 
 [[package]]
 name = "spl-discriminator-syn"
 version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e5f2044ca42c8938d54d1255ce599c79a1ffd86b677dfab695caa20f9ffc3f2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6748,9 +6750,7 @@ dependencies = [
 
 [[package]]
 name = "spl-discriminator-syn"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e5f2044ca42c8938d54d1255ce599c79a1ffd86b677dfab695caa20f9ffc3f2"
+version = "0.1.2"
 dependencies = [
  "proc-macro2",
  "quote",
