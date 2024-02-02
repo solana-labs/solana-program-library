@@ -70,7 +70,7 @@
     "@solana/eslint-config-solana": "^1.0.2",
     "@solana/prettier-config-solana": "^0.0.4",
     "@types/bn.js": "^5.1.0",
-    "@types/jest": "^29.5.11",
+    "@types/jest": "^29.5.12",
     "@types/node-fetch": "^2.6.11",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
