@@ -7082,7 +7082,7 @@ dependencies = [
  "num-derive 0.4.1",
  "num-traits",
  "solana-program",
- "spl-program-error-derive 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-program-error-derive 0.3.1",
  "thiserror",
 ]
 
@@ -7096,13 +7096,15 @@ dependencies = [
  "serial_test",
  "solana-program",
  "solana-sdk",
- "spl-program-error-derive 0.3.1",
+ "spl-program-error-derive 0.3.2",
  "thiserror",
 ]
 
 [[package]]
 name = "spl-program-error-derive"
 version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab5269c8e868da17b6552ef35a51355a017bd8e0eae269c201fef830d35fa52c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7112,9 +7114,7 @@ dependencies = [
 
 [[package]]
 name = "spl-program-error-derive"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab5269c8e868da17b6552ef35a51355a017bd8e0eae269c201fef830d35fa52c"
+version = "0.3.2"
 dependencies = [
  "proc-macro2",
  "quote",
