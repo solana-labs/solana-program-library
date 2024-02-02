@@ -1,12 +1,13 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
+use {
+    crate::error::GovernanceError,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+    },
 };
-
-use crate::error::GovernanceError;
 
 /// Processes RemoveTokenOwnerRecordLock instruction
 pub fn process_remove_token_owner_record_lock(

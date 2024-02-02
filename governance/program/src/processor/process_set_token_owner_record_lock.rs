@@ -1,21 +1,22 @@
 //! Program state processor
 
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::UnixTimestamp,
-    entrypoint::ProgramResult,
-    pubkey::Pubkey,
-    rent::Rent,
-    sysvar::Sysvar,
-};
-use spl_governance_tools::account::{extend_account_size, AccountMaxSize};
-
-use crate::{
-    error::GovernanceError,
-    state::{
-        enums::GovernanceAccountType,
-        token_owner_record::{get_token_owner_record_data, TokenOwnerRecordLock},
+use {
+    crate::{
+        error::GovernanceError,
+        state::{
+            enums::GovernanceAccountType,
+            token_owner_record::{get_token_owner_record_data, TokenOwnerRecordLock},
+        },
     },
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::UnixTimestamp,
+        entrypoint::ProgramResult,
+        pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
+    },
+    spl_governance_tools::account::{extend_account_size, AccountMaxSize},
 };
 
 /// Processes SetTokenOwnerRecordLock instruction
@@ -63,7 +64,8 @@ pub fn process_set_token_owner_record_lock(
             system_info,
         )?;
 
-        // When the account is resized we have to ensure the type is V2 to preserve the extra data
+        // When the account is resized we have to ensure the type is V2 to preserve
+        // the extra data
         if token_owner_record_data.account_type == GovernanceAccountType::TokenOwnerRecordV1 {
             token_owner_record_data.account_type = GovernanceAccountType::TokenOwnerRecordV2;
         }
