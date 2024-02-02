@@ -669,6 +669,8 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` TokenOwnerRecord the lock is set for
     ///   1. `[signer]` Lock authority issuing the lock
+    ///   3. `[signer]` Payer
+    ///   4. `[]` System
     SetTokenOwnerRecordLock {
         /// Custom lock type id which can be used by the authority to issue
         /// different lock types
@@ -1916,6 +1918,7 @@ pub fn set_token_owner_record_lock(
     // Accounts
     token_owner_record: &Pubkey,
     token_owner_record_lock_authority: &Pubkey,
+    payer: &Pubkey,
     // Args
     lock_type: u8,
     expiry: Option<UnixTimestamp>,
@@ -1923,6 +1926,8 @@ pub fn set_token_owner_record_lock(
     let accounts = vec![
         AccountMeta::new(*token_owner_record, false),
         AccountMeta::new_readonly(*token_owner_record_lock_authority, true),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
     ];
 
     let instruction = GovernanceInstruction::SetTokenOwnerRecordLock { lock_type, expiry };

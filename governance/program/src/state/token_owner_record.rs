@@ -129,7 +129,7 @@ pub const TOKEN_OWNER_RECORD_LAYOUT_VERSION: u8 = 1;
 
 impl AccountMaxSize for TokenOwnerRecordV2 {
     fn get_max_size(&self) -> Option<usize> {
-        Some(282)
+        Some(282 + self.locks.len() * 42)
     }
 }
 
@@ -239,6 +239,9 @@ impl TokenOwnerRecordV2 {
                 GovernanceError::AllProposalsMustBeFinalisedToWithdrawGoverningTokens.into(),
             );
         }
+
+        // TODO:
+        // Assert no active locks
 
         Ok(())
     }
@@ -509,6 +512,28 @@ mod test {
     fn test_max_size() {
         // Arrange
         let token_owner_record = create_test_token_owner_record();
+
+        // Act
+        let size = token_owner_record.try_to_vec().unwrap().len();
+
+        // Assert
+        assert_eq!(token_owner_record.get_max_size(), Some(size));
+    }
+
+    #[test]
+    fn test_max_size_with_locks() {
+        // Arrange
+        let mut token_owner_record = create_test_token_owner_record();
+        token_owner_record.locks.push(TokenOwnerRecordLock {
+            lock_type: 1,
+            authority: Pubkey::new_unique(),
+            expiry: Some(10),
+        });
+        token_owner_record.locks.push(TokenOwnerRecordLock {
+            lock_type: 1,
+            authority: Pubkey::new_unique(),
+            expiry: Some(10),
+        });
 
         // Act
         let size = token_owner_record.try_to_vec().unwrap().len();

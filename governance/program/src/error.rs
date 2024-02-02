@@ -520,6 +520,10 @@ pub enum GovernanceError {
     /// Proposal is missing signatories required by its governance
     #[error("Proposal is missing required signatories")]
     MissingRequiredSignatories,
+
+    /// TokenOwnerRecordLock authority must sign
+    #[error("TokenOwnerRecordLock authority must sign")]
+    TokenOwnerRecordLockAuthorityMustSign,
 }
 
 impl PrintProgramError for GovernanceError {

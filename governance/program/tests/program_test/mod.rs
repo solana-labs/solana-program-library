@@ -3387,6 +3387,7 @@ impl GovernanceProgramTest {
             &self.program_id,
             &token_owner_record_cookie.address,
             &token_owner_record_lock_authority.pubkey(),
+            &self.bench.payer.pubkey(),
             lock_type,
             expiry,
         );

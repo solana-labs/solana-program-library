@@ -4,6 +4,11 @@ mod program_test;
 
 use {program_test::*, solana_program_test::tokio, solana_sdk::signature::Keypair};
 
+// TODO:
+// 1) Assert the authority is on the list for the given token
+// Assert authority signed
+// test V1 -> V2 upgrade
+
 #[tokio::test]
 async fn test_set_token_owner_record_lock() {
     // Arrange
@@ -32,5 +37,5 @@ async fn test_set_token_owner_record_lock() {
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    assert_eq!(0, token_owner_record_account.locks.len());
+    assert_eq!(1, token_owner_record_account.locks.len());
 }
