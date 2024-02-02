@@ -384,7 +384,8 @@ impl GovernanceProgramTest {
                         .community_token_config_args
                         .token_type
                         .clone(),
-                    reserved: [0; 8],
+                    reserved: [0; 4],
+                    lock_authorities: vec![],
                 },
                 council_token_config: GoverningTokenConfig {
                     voter_weight_addin: realm_setup_args
@@ -397,7 +398,8 @@ impl GovernanceProgramTest {
                         .council_token_config_args
                         .token_type
                         .clone(),
-                    reserved: [0; 8],
+                    reserved: [0; 4],
+                    lock_authorities: vec![],
                 },
             },
         };
@@ -1198,7 +1200,8 @@ impl GovernanceProgramTest {
                         .community_token_config_args
                         .token_type
                         .clone(),
-                    reserved: [0; 8],
+                    reserved: [0; 4],
+                    lock_authorities: vec![],
                 },
                 council_token_config: GoverningTokenConfig {
                     voter_weight_addin: realm_setup_args
@@ -1211,7 +1214,8 @@ impl GovernanceProgramTest {
                         .council_token_config_args
                         .token_type
                         .clone(),
-                    reserved: [0; 8],
+                    reserved: [0; 4],
+                    lock_authorities: vec![],
                 },
             },
         };
@@ -3384,12 +3388,9 @@ impl GovernanceProgramTest {
         let clock = self.bench.get_clock().await;
         let expiry: Option<UnixTimestamp> = Some(clock.unix_timestamp + 100);
 
-        let realm_config_address =
-            get_realm_config_address(&self.program_id, &token_owner_record_cookie.account.realm);
-
         let set_token_owner_record_lock_ix = set_token_owner_record_lock(
             &self.program_id,
-            &realm_config_address,
+            &token_owner_record_cookie.account.realm,
             &token_owner_record_cookie.address,
             &token_owner_record_lock_authority.pubkey(),
             &self.bench.payer.pubkey(),

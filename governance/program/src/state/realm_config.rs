@@ -83,7 +83,10 @@ pub struct GoverningTokenConfig {
     pub token_type: GoverningTokenType,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 4],
+
+    /// Lock authorities for TokenOwnerRecords
+    pub lock_authorities: Vec<Pubkey>,
 }
 
 /// RealmConfig account
@@ -295,7 +298,8 @@ pub fn resolve_governing_token_config(
         voter_weight_addin,
         max_voter_weight_addin,
         token_type: governing_token_config_args.token_type.clone(),
-        reserved: [0; 8],
+        reserved: [0; 4],
+        lock_authorities: vec![],
     })
 }
 
@@ -315,13 +319,15 @@ mod test {
                 voter_weight_addin: Some(Pubkey::new_unique()),
                 max_voter_weight_addin: Some(Pubkey::new_unique()),
                 token_type: GoverningTokenType::Liquid,
-                reserved: [0; 8],
+                reserved: [0; 4],
+                lock_authorities: vec![],
             },
             council_token_config: GoverningTokenConfig {
                 voter_weight_addin: Some(Pubkey::new_unique()),
                 max_voter_weight_addin: Some(Pubkey::new_unique()),
                 token_type: GoverningTokenType::Liquid,
-                reserved: [0; 8],
+                reserved: [0; 4],
+                lock_authorities: vec![],
             },
             reserved: Reserved110::default(),
         };

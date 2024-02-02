@@ -5,7 +5,8 @@ use {
         error::GovernanceError,
         state::{
             enums::GovernanceAccountType,
-            realm_config::get_realm_config_data,
+            realm::get_realm_data,
+            realm_config::get_realm_config_data_for_realm,
             token_owner_record::{get_token_owner_record_data_for_realm, TokenOwnerRecordLock},
         },
     },
@@ -29,11 +30,12 @@ pub fn process_set_token_owner_record_lock(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let realm_config_info = next_account_info(account_info_iter)?; // 0
-    let token_owner_record_info = next_account_info(account_info_iter)?; // 1
-    let token_owner_record_lock_authority_info = next_account_info(account_info_iter)?; // 2
-    let payer_info = next_account_info(account_info_iter)?; // 3
-    let system_info = next_account_info(account_info_iter)?; // 4
+    let realm_info = next_account_info(account_info_iter)?; // 0
+    let realm_config_info = next_account_info(account_info_iter)?; // 1
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 2
+    let token_owner_record_lock_authority_info = next_account_info(account_info_iter)?; // 3
+    let payer_info = next_account_info(account_info_iter)?; // 4
+    let system_info = next_account_info(account_info_iter)?; // 5
 
     let rent = Rent::get()?;
     let clock = Clock::get()?;
@@ -47,7 +49,9 @@ pub fn process_set_token_owner_record_lock(
         return Err(GovernanceError::ExpiredTokenOwnerRecordLock.into());
     }
 
-    let realm_config_data = get_realm_config_data(program_id, realm_config_info)?;
+    let realm_data = get_realm_data(program_id, realm_info)?;
+    let realm_config_data =
+        get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
 
     let mut token_owner_record_data = get_token_owner_record_data_for_realm(
         program_id,
@@ -55,8 +59,13 @@ pub fn process_set_token_owner_record_lock(
         &realm_config_data.realm,
     )?;
 
-    // TODO:
-    // 1) Assert the authority is on the list for the given token
+    if !realm_config_data
+        .get_token_config(&realm_data, &token_owner_record_data.governing_token_mint)?
+        .lock_authorities
+        .contains(token_owner_record_lock_authority_info.key)
+    {
+        return Err(GovernanceError::InvalidTokenOwnerRecordLockAuthority.into());
+    }
 
     // Trim existing locks
     token_owner_record_data.locks.retain(|lock| {
