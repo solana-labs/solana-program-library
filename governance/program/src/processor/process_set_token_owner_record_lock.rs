@@ -42,10 +42,11 @@ pub fn process_set_token_owner_record_lock(
 
     // TODO:
     // 1) Assert the authority is on the list for the given token
-    // 2) Find existing by (authority,type) and update or insert new
-    // 3) Trim expired locks
-    // 4) Save as V2 and resize as needed
-    // 5) Should expired lock be rejected ?
+
+    // Reject the lock if already expired
+    if Some(clock.unix_timestamp) > expiry {
+        return Err(GovernanceError::ExpiredTokenOwnerRecordLock.into());
+    }
 
     let mut token_owner_record_data =
         get_token_owner_record_data(program_id, token_owner_record_info)?;

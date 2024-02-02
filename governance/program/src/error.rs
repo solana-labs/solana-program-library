@@ -524,6 +524,10 @@ pub enum GovernanceError {
     /// TokenOwnerRecordLock authority must sign
     #[error("TokenOwnerRecordLock authority must sign")]
     TokenOwnerRecordLockAuthorityMustSign,
+
+    /// TokenOwnerRecordLock is expired
+    #[error("TokenOwnerRecordLock is expired ")]
+    ExpiredTokenOwnerRecordLock,
 }
 
 impl PrintProgramError for GovernanceError {
