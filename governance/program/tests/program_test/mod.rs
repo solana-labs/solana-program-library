@@ -3381,7 +3381,8 @@ impl GovernanceProgramTest {
         token_owner_record_lock_authority: &Keypair,
     ) -> Result<TokenOwnerRecordLockCookie, ProgramError> {
         let lock_type = 5;
-        let expiry: Option<UnixTimestamp> = Some(100);
+        let clock = self.bench.get_clock().await;
+        let expiry: Option<UnixTimestamp> = Some(clock.unix_timestamp + 100);
 
         let set_token_owner_record_lock_ix = set_token_owner_record_lock(
             &self.program_id,

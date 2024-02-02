@@ -39,3 +39,42 @@ async fn test_set_token_owner_record_lock() {
 
     assert_eq!(1, token_owner_record_account.locks.len());
 }
+
+#[tokio::test]
+async fn test_override_existing_token_owner_record_lock() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let token_owner_record_lock_authority = Keypair::new();
+
+    let _token_owner_record_lock_cookie = governance_test
+        .with_token_owner_record_lock(
+            &token_owner_record_cookie,
+            &token_owner_record_lock_authority,
+        )
+        .await
+        .unwrap();
+
+    // Act
+    let _token_owner_record_lock_cookie = governance_test
+        .with_token_owner_record_lock(
+            &token_owner_record_cookie,
+            &token_owner_record_lock_authority,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+    let token_owner_record_account = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(1, token_owner_record_account.locks.len());
+}
