@@ -37,7 +37,7 @@ async fn test_remove_token_owner_record_lock() {
         .unwrap();
 
     // Assert
-    let token_owner_record_account = governance_test
+    let _token_owner_record_account = governance_test
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
