@@ -18,7 +18,7 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     stake_rent_exemption = resp['result']
     minimum_amount = MINIMUM_ACTIVE_STAKE + stake_rent_exemption
     increase_amount = MINIMUM_ACTIVE_STAKE * 4
-    decrease_amount = increase_amount // 2
+    decrease_amount = increase_amount - increase_amount // 3
     deposit_amount = (increase_amount + stake_rent_exemption) * len(validators)
 
     resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
@@ -70,10 +70,13 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
         assert validator.transient_stake_lamports == 0
         assert validator.active_stake_lamports == increase_amount + minimum_amount + stake_rent_exemption
 
+    def decrease(validator, decrease_amount, ephemeral_stake_seed=None):
+        return decrease_validator_stake(async_client, payer, payer, stake_pool_address, validator,
+                                        decrease_amount, ephemeral_stake_seed=ephemeral_stake_seed)
+
     # decrease from all
     futures = [
-        decrease_validator_stake(async_client, payer, payer, stake_pool_address, validator,
-                                 decrease_amount // 2)
+        decrease(validator, decrease_amount // 2)
         for validator in validators
     ]
     await asyncio.gather(*futures)
@@ -84,12 +87,11 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
         assert validator.transient_stake_lamports == decrease_amount // 2 + stake_rent_exemption
-        assert validator.active_stake_lamports == increase_amount - decrease_amount // 2 + minimum_amount
+        assert validator.active_stake_lamports == increase_amount-decrease_amount//2+minimum_amount+stake_rent_exemption
 
     # decrease the same amount to test the decrease additional instruction
     futures = [
-        decrease_validator_stake(async_client, payer, payer, stake_pool_address, validator, decrease_amount // 2,
-                                 ephemeral_stake_seed=0)
+        decrease(validator, decrease_amount // 2, ephemeral_stake_seed=1)
         for validator in validators
     ]
     await asyncio.gather(*futures)
