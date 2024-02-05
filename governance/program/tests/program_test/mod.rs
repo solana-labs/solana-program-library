@@ -1,13 +1,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
-use spl_governance::{
-    instruction::set_realm_config_item, state::realm::SetRealmConfigItemArgs,
-    tools::structs::SetItemActionType,
-};
-
-use self::cookies::TokenOwnerRecordLockAuthorityCookie;
-
 use {
+    self::cookies::TokenOwnerRecordLockAuthorityCookie,
     borsh::BorshSerialize,
     solana_program::{
         bpf_loader_upgradeable::{self, UpgradeableLoaderState},
@@ -29,7 +23,7 @@ use {
             finalize_vote, flag_transaction_error, insert_transaction, refund_proposal_deposit,
             relinquish_vote, remove_required_signatory, remove_token_owner_record_lock,
             remove_transaction, revoke_governing_tokens, set_governance_config,
-            set_governance_delegate, set_realm_authority, set_realm_config,
+            set_governance_delegate, set_realm_authority, set_realm_config, set_realm_config_item,
             set_token_owner_record_lock, sign_off_proposal, upgrade_program_metadata,
             withdraw_governing_tokens, AddSignatoryAuthority,
         },
@@ -56,6 +50,7 @@ use {
             realm::{
                 get_governing_token_holding_address, get_realm_address,
                 GoverningTokenConfigAccountArgs, RealmConfig, RealmV2, SetRealmAuthorityAction,
+                SetRealmConfigItemArgs,
             },
             realm_config::{get_realm_config_address, GoverningTokenConfig, RealmConfigAccount},
             required_signatory::RequiredSignatory,
@@ -68,7 +63,7 @@ use {
         },
         tools::{
             bpf_loader_upgradeable::get_program_data_address,
-            structs::{Reserved110, Reserved119},
+            structs::{Reserved110, Reserved119, SetItemActionType},
         },
     },
     spl_governance_addin_api::{

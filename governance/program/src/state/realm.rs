@@ -29,7 +29,8 @@ use {
 
 /// SetRealmConfigItem instruction arguments to set a single Realm config item
 /// Note: In the current version only TokenOwnerRecordLockAuthority is supported
-/// Eventually all Realm config items should be supported for single config item change
+/// Eventually all Realm config items should be supported for single config item
+/// change
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum SetRealmConfigItemArgs {
     /// Set TokenOwnerRecord lock authority

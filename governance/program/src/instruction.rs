@@ -695,10 +695,11 @@ pub enum GovernanceInstruction {
     },
 
     /// Sets Realm config item
-    /// Note: This instruction is used to set a single RealmConfig item at a time
-    /// In the current version it only supports TokenOwnerRecordLockAuthority but
-    /// eventually all Realm configuration items should be set using this instruction
-    /// and SetRealmConfig instruction should be deprecated
+    /// Note:
+    /// This instruction is used to set a single RealmConfig item at a time
+    /// In the current version it only supports TokenOwnerRecordLockAuthority
+    /// however eventually all Realm configuration items should be set using
+    /// this instruction and SetRealmConfig instruction should be deprecated
     ///
     ///   0. `[writable]` Realm account
     ///   1. `[writable]` RealmConfig account
