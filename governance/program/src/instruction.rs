@@ -16,7 +16,7 @@ use {
             realm::{
                 get_governing_token_holding_address, get_realm_address,
                 GoverningTokenConfigAccountArgs, GoverningTokenConfigArgs, RealmConfigArgs,
-                SetRealmAuthorityAction,
+                SetRealmAuthorityAction, SetRealmConfigItemArgs,
             },
             realm_config::get_realm_config_address,
             required_signatory::get_required_signatory_address,
@@ -692,6 +692,23 @@ pub enum GovernanceInstruction {
         /// Custom lock type identifying the lock to remove
         #[allow(dead_code)]
         lock_type: u8,
+    },
+
+    /// Sets Realm config item
+    /// Note: This instruction is used to set a single RealmConfig item at a time
+    /// In the current version it only supports TokenOwnerRecordLockAuthority but
+    /// eventually all Realm configuration items should be set using this instruction
+    /// and SetRealmConfig instruction should be deprecated
+    ///
+    ///   0. `[writable]` Realm account
+    ///   1. `[writable]` RealmConfig account
+    ///   2. `[signer]`  Realm authority
+    ///   3. `[signer]` Payer
+    ///   4. `[]` System
+    SetRealmConfigItem {
+        #[allow(dead_code)]
+        /// Config args
+        args: SetRealmConfigItemArgs,
     },
 }
 
@@ -1926,14 +1943,14 @@ pub fn set_token_owner_record_lock(
     lock_type: u8,
     expiry: Option<UnixTimestamp>,
 ) -> Instruction {
-    let realm_config_address = get_realm_config_address(program_id, &realm);
+    let realm_config_address = get_realm_config_address(program_id, realm);
 
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(realm_config_address, false),
         AccountMeta::new(*token_owner_record, false),
         AccountMeta::new_readonly(*token_owner_record_lock_authority, true),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
@@ -1962,6 +1979,35 @@ pub fn remove_token_owner_record_lock(
     ];
 
     let instruction = GovernanceInstruction::RemoveTokenOwnerRecordLock { lock_type };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates SetRealmConfigItem instruction to set realm config
+pub fn set_realm_config_item(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    realm_authority: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    args: SetRealmConfigItemArgs,
+) -> Instruction {
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
+    let accounts = vec![
+        AccountMeta::new(*realm, false),
+        AccountMeta::new(realm_config_address, false),
+        AccountMeta::new_readonly(*realm_authority, true),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::SetRealmConfigItem { args };
 
     Instruction {
         program_id: *program_id,

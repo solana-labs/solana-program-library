@@ -204,3 +204,8 @@ pub struct TokenOwnerRecordLockCookie {
     pub lock_type: u8,
     pub expiry: Option<UnixTimestamp>,
 }
+
+#[derive(Debug)]
+pub struct TokenOwnerRecordLockAuthorityCookie {
+    pub authority: Keypair,
+}

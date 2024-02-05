@@ -28,6 +28,7 @@ mod process_set_governance_config;
 mod process_set_governance_delegate;
 mod process_set_realm_authority;
 mod process_set_realm_config;
+mod process_set_realm_config_item;
 mod process_set_token_owner_record_lock;
 mod process_sign_off_proposal;
 mod process_update_program_metadata;
@@ -63,6 +64,7 @@ use {
     process_set_governance_delegate::*,
     process_set_realm_authority::*,
     process_set_realm_config::*,
+    process_set_realm_config_item::*,
     process_set_token_owner_record_lock::*,
     process_sign_off_proposal::*,
     process_update_program_metadata::*,
@@ -254,6 +256,10 @@ pub fn process_instruction(
 
         GovernanceInstruction::RemoveTokenOwnerRecordLock { lock_type } => {
             process_remove_token_owner_record_lock(program_id, accounts, lock_type)
+        }
+
+        GovernanceInstruction::SetRealmConfigItem { args } => {
+            process_set_realm_config_item(program_id, accounts, args)
         }
     }
 }

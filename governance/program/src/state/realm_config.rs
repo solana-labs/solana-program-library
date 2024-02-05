@@ -145,6 +145,23 @@ impl RealmConfigAccount {
         Ok(token_config)
     }
 
+    /// Returns mutable GoverningTokenConfig for the given governing_token_mint
+    pub fn get_token_config_mut(
+        &mut self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<&mut GoverningTokenConfig, ProgramError> {
+        let token_config = if *governing_token_mint == realm_data.community_mint {
+            &mut self.community_token_config
+        } else if Some(*governing_token_mint) == realm_data.config.council_mint {
+            &mut self.council_token_config
+        } else {
+            return Err(GovernanceError::InvalidGoverningTokenMint.into());
+        };
+
+        Ok(token_config)
+    }
+
     /// Asserts the given governing token can be revoked
     pub fn assert_can_revoke_governing_token(
         &self,

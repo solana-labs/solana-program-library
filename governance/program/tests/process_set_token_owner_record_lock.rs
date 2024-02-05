@@ -2,7 +2,7 @@
 
 mod program_test;
 
-use {program_test::*, solana_program_test::tokio, solana_sdk::signature::Keypair};
+use {program_test::*, solana_program_test::tokio, solana_sdk::signer::Signer};
 
 // TODO:
 // 1) Assert the authority is on the list for the given token
@@ -21,13 +21,16 @@ async fn test_set_token_owner_record_lock() {
         .await
         .unwrap();
 
-    let token_owner_record_lock_authority = Keypair::new();
+    let token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
 
     // Act
-    let _token_owner_record_lock_cookie = governance_test
+    governance_test
         .with_token_owner_record_lock(
             &token_owner_record_cookie,
-            &token_owner_record_lock_authority,
+            &token_owner_record_lock_authority_cookie,
         )
         .await
         .unwrap();
@@ -38,6 +41,10 @@ async fn test_set_token_owner_record_lock() {
         .await;
 
     assert_eq!(1, token_owner_record_account.locks.len());
+    assert_eq!(
+        token_owner_record_lock_authority_cookie.authority.pubkey(),
+        token_owner_record_account.locks[0].authority
+    );
 }
 
 #[tokio::test]
@@ -52,21 +59,26 @@ async fn test_override_existing_token_owner_record_lock() {
         .await
         .unwrap();
 
-    let token_owner_record_lock_authority = Keypair::new();
+    let token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
 
-    let _token_owner_record_lock_cookie = governance_test
+    governance_test
         .with_token_owner_record_lock(
             &token_owner_record_cookie,
-            &token_owner_record_lock_authority,
+            &token_owner_record_lock_authority_cookie,
         )
         .await
         .unwrap();
 
     // Act
-    let _token_owner_record_lock_cookie = governance_test
+
+    // TODO: Override lock type and expiry and assert the change
+    governance_test
         .with_token_owner_record_lock(
             &token_owner_record_cookie,
-            &token_owner_record_lock_authority,
+            &token_owner_record_lock_authority_cookie,
         )
         .await
         .unwrap();
@@ -77,4 +89,8 @@ async fn test_override_existing_token_owner_record_lock() {
         .await;
 
     assert_eq!(1, token_owner_record_account.locks.len());
+    assert_eq!(
+        token_owner_record_lock_authority_cookie.authority.pubkey(),
+        token_owner_record_account.locks[0].authority
+    );
 }

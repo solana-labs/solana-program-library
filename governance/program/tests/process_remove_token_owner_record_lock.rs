@@ -2,7 +2,7 @@
 
 mod program_test;
 
-use {program_test::*, solana_program_test::tokio, solana_sdk::signature::Keypair};
+use {program_test::*, solana_program_test::tokio};
 
 // TODO: Test only authority which set the lock can remove it
 // test: Remove lock for authority no longer on list of accepted authorities
@@ -21,12 +21,15 @@ async fn test_remove_token_owner_record_lock() {
         .await
         .unwrap();
 
-    let token_owner_record_lock_authority = Keypair::new();
+    let token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
 
     let token_owner_record_lock_cookie = governance_test
         .with_token_owner_record_lock(
             &token_owner_record_cookie,
-            &token_owner_record_lock_authority,
+            &token_owner_record_lock_authority_cookie,
         )
         .await
         .unwrap();
@@ -35,7 +38,7 @@ async fn test_remove_token_owner_record_lock() {
     governance_test
         .remove_token_owner_record_lock(
             &token_owner_record_cookie,
-            &token_owner_record_lock_authority,
+            &token_owner_record_lock_authority_cookie.authority,
             token_owner_record_lock_cookie.lock_type,
         )
         .await

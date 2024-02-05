@@ -43,3 +43,13 @@ impl Default for Reserved119 {
         }
     }
 }
+
+/// Enum describing the action type for a set
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum SetItemActionType {
+    /// Add item
+    Add,
+
+    /// Remove item
+    Remove,
+}

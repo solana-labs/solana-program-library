@@ -1,5 +1,12 @@
 #![allow(clippy::arithmetic_side_effects)]
 
+use spl_governance::{
+    instruction::set_realm_config_item, state::realm::SetRealmConfigItemArgs,
+    tools::structs::SetItemActionType,
+};
+
+use self::cookies::TokenOwnerRecordLockAuthorityCookie;
+
 use {
     borsh::BorshSerialize,
     solana_program::{
@@ -3382,7 +3389,7 @@ impl GovernanceProgramTest {
     pub async fn with_token_owner_record_lock(
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        token_owner_record_lock_authority: &Keypair,
+        token_owner_record_lock_authority_cookie: &TokenOwnerRecordLockAuthorityCookie,
     ) -> Result<TokenOwnerRecordLockCookie, ProgramError> {
         let lock_type = 5;
         let clock = self.bench.get_clock().await;
@@ -3392,7 +3399,7 @@ impl GovernanceProgramTest {
             &self.program_id,
             &token_owner_record_cookie.account.realm,
             &token_owner_record_cookie.address,
-            &token_owner_record_lock_authority.pubkey(),
+            &token_owner_record_lock_authority_cookie.authority.pubkey(),
             &self.bench.payer.pubkey(),
             lock_type,
             expiry,
@@ -3401,13 +3408,13 @@ impl GovernanceProgramTest {
         self.bench
             .process_transaction(
                 &[set_token_owner_record_lock_ix],
-                Some(&[&token_owner_record_lock_authority]),
+                Some(&[&token_owner_record_lock_authority_cookie.authority]),
             )
             .await
             .unwrap();
 
         Ok(TokenOwnerRecordLockCookie {
-            authority: token_owner_record_lock_authority.pubkey(),
+            authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
             lock_type,
             expiry,
         })
@@ -3436,5 +3443,72 @@ impl GovernanceProgramTest {
             .unwrap();
 
         Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_config_item(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        args: SetRealmConfigItemArgs,
+    ) -> Result<(), ProgramError> {
+        let set_realm_config_item_ix = set_realm_config_item(
+            &self.program_id,
+            &realm_cookie.address,
+            &realm_cookie.account.authority.unwrap(),
+            &self.bench.payer.pubkey(),
+            args,
+        );
+
+        self.bench
+            .process_transaction(
+                &[set_realm_config_item_ix],
+                Some(&[&realm_cookie.realm_authority.as_ref().unwrap()]),
+            )
+            .await
+            .unwrap();
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_community_token_owner_record_lock_authority(
+        &mut self,
+        realm_cookie: &RealmCookie,
+    ) -> Result<TokenOwnerRecordLockAuthorityCookie, ProgramError> {
+        let token_owner_record_lock_authority = Keypair::new();
+        let args = SetRealmConfigItemArgs::TokenOwnerRecordLockAuthority {
+            action: SetItemActionType::Add,
+            governing_token_mint: realm_cookie.account.community_mint,
+            authority: token_owner_record_lock_authority.pubkey(),
+        };
+
+        self.set_realm_config_item(realm_cookie, args)
+            .await
+            .unwrap();
+
+        Ok(TokenOwnerRecordLockAuthorityCookie {
+            authority: token_owner_record_lock_authority,
+        })
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_council_token_owner_record_lock_authority(
+        &mut self,
+        realm_cookie: &RealmCookie,
+    ) -> Result<TokenOwnerRecordLockAuthorityCookie, ProgramError> {
+        let token_owner_record_lock_authority = Keypair::new();
+        let args = SetRealmConfigItemArgs::TokenOwnerRecordLockAuthority {
+            action: SetItemActionType::Add,
+            governing_token_mint: realm_cookie.account.config.council_mint.unwrap(),
+            authority: token_owner_record_lock_authority.pubkey(),
+        };
+
+        self.set_realm_config_item(realm_cookie, args)
+            .await
+            .unwrap();
+
+        Ok(TokenOwnerRecordLockAuthorityCookie {
+            authority: token_owner_record_lock_authority,
+        })
     }
 }
