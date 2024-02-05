@@ -68,7 +68,7 @@
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
         "mocha": "^10.1.0",
-        "prettier": "^3.2.4",
+        "prettier": "^3.2.5",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
         "tslib": "^2.3.1",

@@ -78,7 +78,7 @@
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
         "mocha": "^10.1.0",
-        "prettier": "^3.2.4",
+        "prettier": "^3.2.5",
         "process": "^0.11.10",
         "shx": "^0.3.4",
         "start-server-and-test": "^2.0.3",
