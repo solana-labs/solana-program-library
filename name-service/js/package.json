@@ -59,7 +59,7 @@
     "eslint-plugin-functional": "^6.0.0",
     "eslint-plugin-import": "^2.29.1",
     "jest": "^29.7.0",
-    "prettier": "^3.2.4",
+    "prettier": "^3.2.5",
     "start-server-and-test": "^2.0.3",
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
