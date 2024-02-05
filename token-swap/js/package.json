@@ -40,8 +40,8 @@
     "lint": "npm run pretty && eslint --max-warnings 0 .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
     "build:program": "cargo build-sbf --manifest-path ../program/Cargo.toml",
-    "pretty": "prettier --check '{,???/**/}*.ts'",
-    "pretty:fix": "prettier --write '{,???/**/}*.ts'"
+    "pretty": "prettier --check '{*,**/*}.{ts,tsx,js,jsx,json}'",
+    "pretty:fix": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'"
   },
   "keywords": [],
   "dependencies": {
