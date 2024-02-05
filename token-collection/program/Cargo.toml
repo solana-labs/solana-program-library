@@ -13,18 +13,18 @@ test-sbf = []
 
 [dependencies]
 solana-program = ">=1.17.17,<=2"
-spl-pod = { version = "0.1.0", path = "../../libraries/pod" }
-spl-program-error = { version = "0.3.0" , path = "../../libraries/program-error" }
+spl-pod = { version = "0.1.1", path = "../../libraries/pod" }
+spl-program-error = { version = "0.3.1" , path = "../../libraries/program-error" }
 spl-token-2022 = { version = "2.0", path = "../../token/program-2022", features = ["no-entrypoint"] }
 spl-token-group-example = { version = "0.1.0", path = "../../token-group/example", features = ["no-entrypoint"] }
-spl-token-group-interface = { version = "0.1.0", path = "../../token-group/interface" }
+spl-token-group-interface = { version = "0.1.1", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
-spl-type-length-value = { version = "0.3.0", path = "../../libraries/type-length-value" }
+spl-type-length-value = { version = "0.3.1", path = "../../libraries/type-length-value" }
 
 [dev-dependencies]
 solana-program-test = ">=1.17.17,<=2"
 solana-sdk = ">=1.17.17,<=2"
-spl-discriminator = { version = "0.1.0", path = "../../libraries/discriminator" }
+spl-discriminator = { version = "0.1.1", path = "../../libraries/discriminator" }
 spl-token-client = { version = "0.8", path = "../../token/client" }
 
 [lib]

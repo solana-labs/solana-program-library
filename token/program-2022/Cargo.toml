@@ -29,13 +29,13 @@ num_enum = "0.7.2"
 solana-program = ">=1.17.17,<=2"
 solana-security-txt = "1.1.1"
 solana-zk-token-sdk = ">=1.17.17,<=2"
-spl-memo = { version = "4.0.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
+spl-memo = { version = "4.0.1", path = "../../memo/program", features = [ "no-entrypoint" ] }
 spl-token = { version = "4.0",  path = "../program", features = ["no-entrypoint"] }
-spl-token-group-interface = { version = "0.1.0", path = "../../token-group/interface" }
-spl-token-metadata-interface = { version = "0.2.0", path = "../../token-metadata/interface" }
-spl-transfer-hook-interface = { version = "0.5.0", path = "../transfer-hook/interface" }
-spl-type-length-value = { version = "0.3.0", path = "../../libraries/type-length-value" }
-spl-pod = { version = "0.1.0", path = "../../libraries/pod" }
+spl-token-group-interface = { version = "0.1.1", path = "../../token-group/interface" }
+spl-token-metadata-interface = { version = "0.2.1", path = "../../token-metadata/interface" }
+spl-transfer-hook-interface = { version = "0.5.1", path = "../transfer-hook/interface" }
+spl-type-length-value = { version = "0.3.1", path = "../../libraries/type-length-value" }
+spl-pod = { version = "0.1.1", path = "../../libraries/pod" }
 thiserror = "1.0"
 serde = { version = "1.0.196", optional = true }
 serde_with = { version = "3.6.0", optional = true }
@@ -47,7 +47,7 @@ proptest = "1.4"
 serial_test = "3.0.0"
 solana-program-test = ">=1.17.17,<=2"
 solana-sdk = ">=1.17.17,<=2"
-spl-tlv-account-resolution = { version = "0.5.0", path = "../../libraries/tlv-account-resolution" }
+spl-tlv-account-resolution = { version = "0.5.2", path = "../../libraries/tlv-account-resolution" }
 serde_json = "1.0.113"
 
 [lib]

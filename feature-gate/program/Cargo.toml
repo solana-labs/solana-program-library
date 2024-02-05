@@ -14,7 +14,7 @@ test-sbf = []
 [dependencies]
 num_enum = "0.7.2"
 solana-program = ">=1.17.17,<=2"
-spl-program-error = { version = "0.3.0", path = "../../libraries/program-error" }
+spl-program-error = { version = "0.3.1", path = "../../libraries/program-error" }
 
 [dev-dependencies]
 solana-program-test = ">=1.17.17,<=2"

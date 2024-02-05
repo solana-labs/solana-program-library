@@ -1,6 +1,6 @@
 [package]
 name = "spl-discriminator"
-version = "0.1.0"
+version = "0.1.1"
 description = "Solana Program Library 8-Byte Discriminator Management"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -14,7 +14,7 @@ borsh = ["dep:borsh"]
 borsh = { version = "0.10", optional = true }
 bytemuck = { version = "1.14.1", features = ["derive"] }
 solana-program = ">=1.17.17,<=2"
-spl-discriminator-derive = { version = "0.1.0", path = "./derive" }
+spl-discriminator-derive = { version = "0.1.2", path = "./derive" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
