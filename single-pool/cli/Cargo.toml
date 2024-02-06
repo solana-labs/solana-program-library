@@ -42,7 +42,7 @@ spl-single-pool = { version = "1.0.0", path = "../program", features = [
 solana-test-validator = ">=1.17.17,<=2"
 serial_test = "3.0.0"
 test-case = "3.3"
-tempfile = "3.9.0"
+tempfile = "3.10.0"
 
 [[bin]]
 name = "spl-single-pool"
