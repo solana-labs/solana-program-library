@@ -271,3 +271,32 @@ async fn test_add_token_owner_record_lock_authority_with_authority_already_exist
         GovernanceError::TokenOwnerRecordLockAuthorityAlreadyExists.into()
     );
 }
+
+#[tokio::test]
+async fn test_set_realm_config_item_without_realm_config() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    governance_test.remove_realm_config_account(&realm_cookie.realm_config.address);
+
+    // Act
+    let token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Assert
+    let realm_config_account = governance_test
+        .get_realm_config_account(&realm_cookie.realm_config.address)
+        .await;
+
+    assert_eq!(
+        1,
+        realm_config_account
+            .community_token_config
+            .lock_authorities
+            .len()
+    );
+}

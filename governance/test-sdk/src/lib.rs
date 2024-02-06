@@ -370,6 +370,15 @@ impl ProgramTestBench {
         self.context.set_account(address, &data);
     }
 
+    /// Removes an account by setting its data to empty and owner to system
+    /// subverting normal runtime checks
+    pub fn remove_account(&mut self, address: &Pubkey) {
+        let data =
+            AccountSharedData::create(0, vec![], system_program::id(), false, Epoch::default());
+
+        self.context.set_account(address, &data);
+    }
+
     #[allow(dead_code)]
     pub async fn get_account(&mut self, address: &Pubkey) -> Option<Account> {
         self.context

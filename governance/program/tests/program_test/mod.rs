@@ -3115,6 +3115,11 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub fn remove_realm_config_account(&mut self, realm_config_address: &Pubkey) {
+        self.bench.remove_account(realm_config_address);
+    }
+
+    #[allow(dead_code)]
     pub async fn get_governance_account(&mut self, governance_address: &Pubkey) -> GovernanceV2 {
         self.bench
             .get_borsh_account::<GovernanceV2>(governance_address)
