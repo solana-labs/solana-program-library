@@ -3446,7 +3446,19 @@ impl GovernanceProgramTest {
         realm_cookie: &RealmCookie,
         args: SetRealmConfigItemArgs,
     ) -> Result<(), ProgramError> {
-        let set_realm_config_item_ix = set_realm_config_item(
+        self.set_realm_config_item_using_ix(realm_cookie, args, NopOverride, None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_config_item_using_ix<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        args: SetRealmConfigItemArgs,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut set_realm_config_item_ix = set_realm_config_item(
             &self.program_id,
             &realm_cookie.address,
             &realm_cookie.account.authority.unwrap(),
@@ -3454,15 +3466,14 @@ impl GovernanceProgramTest {
             args,
         );
 
-        self.bench
-            .process_transaction(
-                &[set_realm_config_item_ix],
-                Some(&[&realm_cookie.realm_authority.as_ref().unwrap()]),
-            )
-            .await
-            .unwrap();
+        instruction_override(&mut set_realm_config_item_ix);
 
-        Ok(())
+        let default_signers = &[realm_cookie.realm_authority.as_ref().unwrap()];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        self.bench
+            .process_transaction(&[set_realm_config_item_ix], Some(signers))
+            .await
     }
 
     #[allow(dead_code)]

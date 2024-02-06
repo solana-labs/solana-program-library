@@ -536,6 +536,10 @@ pub enum GovernanceError {
     /// Invalid TokenOwnerRecordLockAuthority
     #[error("Invalid TokenOwnerRecordLockAuthority")]
     InvalidTokenOwnerRecordLockAuthority, // 628
+
+    /// TokenOwnerRecordLock authority already exists
+    #[error("TokenOwnerRecordLock authority already exists")]
+    TokenOwnerRecordLockAuthorityAlreadyExists, // 628
 }
 
 impl PrintProgramError for GovernanceError {

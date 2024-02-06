@@ -60,7 +60,12 @@ pub fn process_set_realm_config_item(
 
             match action {
                 SetConfigItemActionType::Add => {
-                    // TODO: Check for duplicates
+                    if token_config.lock_authorities.contains(&authority) {
+                        return Err(
+                            GovernanceError::TokenOwnerRecordLockAuthorityAlreadyExists.into()
+                        );
+                    }
+
                     token_config.lock_authorities.push(authority);
                 }
                 SetConfigItemActionType::Remove => {
