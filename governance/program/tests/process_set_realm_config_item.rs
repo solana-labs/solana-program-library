@@ -8,9 +8,15 @@ use {
     solana_program_test::tokio,
     solana_sdk::{signature::Keypair, signer::Signer},
     spl_governance::{
-        error::GovernanceError, state::realm::SetRealmConfigItemArgs,
-        tools::structs::SetConfigItemActionType,
+        error::GovernanceError,
+        state::{
+            enums::GovernanceAccountType,
+            realm::SetRealmConfigItemArgs,
+            realm_config::{GoverningTokenConfig, RealmConfigAccount},
+        },
+        tools::structs::{Reserved110, SetConfigItemActionType},
     },
+    spl_governance_tools::account::AccountMaxSize,
 };
 
 #[tokio::test]
@@ -298,5 +304,40 @@ async fn test_set_realm_config_item_without_realm_config() {
             .community_token_config
             .lock_authorities
             .len()
+    );
+}
+
+#[tokio::test]
+async fn test_set_realm_config_item_with_extended_account_size() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    // Act
+    governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Assert
+    let realm_config_account = governance_test
+        .bench
+        .get_account(&realm_cookie.realm_config.address)
+        .await
+        .unwrap();
+
+    // RealmConfig without any lock authorities
+    let realm_config = RealmConfigAccount {
+        account_type: GovernanceAccountType::RealmConfig,
+        realm: realm_cookie.address,
+        community_token_config: GoverningTokenConfig::default(),
+        council_token_config: GoverningTokenConfig::default(),
+        reserved: Reserved110::default(),
+    };
+
+    assert_eq!(
+        realm_config.get_max_size().unwrap() + 32,
+        realm_config_account.data.len()
     );
 }
