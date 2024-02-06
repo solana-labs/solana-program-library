@@ -680,9 +680,10 @@ export async function increaseValidatorStake(
   );
 
   // Bump transient seed suffix by one to avoid reuse when not using the increaseAdditionalStake instruction
-  const transientStakeSeed = ephemeralStakeSeed == undefined ? 
-    validatorInfo.transientSeedSuffixStart.addn(1) 
-    : validatorInfo.transientSeedSuffixStart;
+  const transientStakeSeed =
+    ephemeralStakeSeed == undefined
+      ? validatorInfo.transientSeedSuffixStart.addn(1)
+      : validatorInfo.transientSeedSuffixStart;
 
   const transientStake = await findTransientStakeProgramAddress(
     STAKE_POOL_PROGRAM_ID,
@@ -779,9 +780,10 @@ export async function decreaseValidatorStake(
   );
 
   // Bump transient seed suffix by one to avoid reuse when not using the decreaseAdditionalStake instruction
-  const transientStakeSeed = ephemeralStakeSeed == undefined ? 
-    validatorInfo.transientSeedSuffixStart.addn(1) 
-    : validatorInfo.transientSeedSuffixStart;
+  const transientStakeSeed =
+    ephemeralStakeSeed == undefined
+      ? validatorInfo.transientSeedSuffixStart.addn(1)
+      : validatorInfo.transientSeedSuffixStart;
 
   const transientStake = await findTransientStakeProgramAddress(
     STAKE_POOL_PROGRAM_ID,
