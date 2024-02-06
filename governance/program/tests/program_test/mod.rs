@@ -63,7 +63,7 @@ use {
         },
         tools::{
             bpf_loader_upgradeable::get_program_data_address,
-            structs::{Reserved110, Reserved119, SetItemActionType},
+            structs::{Reserved110, Reserved119, SetConfigItemActionType},
         },
     },
     spl_governance_addin_api::{
@@ -3472,7 +3472,7 @@ impl GovernanceProgramTest {
     ) -> Result<TokenOwnerRecordLockAuthorityCookie, ProgramError> {
         let token_owner_record_lock_authority = Keypair::new();
         let args = SetRealmConfigItemArgs::TokenOwnerRecordLockAuthority {
-            action: SetItemActionType::Add,
+            action: SetConfigItemActionType::Add,
             governing_token_mint: realm_cookie.account.community_mint,
             authority: token_owner_record_lock_authority.pubkey(),
         };
@@ -3493,7 +3493,7 @@ impl GovernanceProgramTest {
     ) -> Result<TokenOwnerRecordLockAuthorityCookie, ProgramError> {
         let token_owner_record_lock_authority = Keypair::new();
         let args = SetRealmConfigItemArgs::TokenOwnerRecordLockAuthority {
-            action: SetItemActionType::Add,
+            action: SetConfigItemActionType::Add,
             governing_token_mint: realm_cookie.account.config.council_mint.unwrap(),
             authority: token_owner_record_lock_authority.pubkey(),
         };

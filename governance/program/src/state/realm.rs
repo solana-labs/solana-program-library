@@ -10,7 +10,7 @@ use {
             token_owner_record::get_token_owner_record_data_for_realm,
             vote_record::VoteKind,
         },
-        tools::structs::SetItemActionType,
+        tools::structs::SetConfigItemActionType,
         PROGRAM_AUTHORITY_SEED,
     },
     borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
@@ -37,8 +37,8 @@ pub enum SetRealmConfigItemArgs {
     TokenOwnerRecordLockAuthority {
         /// Action indicating whether to add or remove the lock authority
         #[allow(dead_code)]
-        action: SetItemActionType,
-        /// Mint of the token to  the lock authority for
+        action: SetConfigItemActionType,
+        /// Mint of the governing token the lock authority is for
         #[allow(dead_code)]
         governing_token_mint: Pubkey,
         /// Authority to change

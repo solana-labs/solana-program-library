@@ -44,12 +44,12 @@ impl Default for Reserved119 {
     }
 }
 
-/// Enum describing the action type for a set
+/// Enum describing the action type for setting a config item
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum SetItemActionType {
-    /// Add item
+pub enum SetConfigItemActionType {
+    /// Add config item
     Add,
 
-    /// Remove item
+    /// Remove config item
     Remove,
 }

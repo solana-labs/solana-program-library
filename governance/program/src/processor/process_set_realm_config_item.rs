@@ -9,7 +9,7 @@ use {
                 get_realm_config_address_seeds, get_realm_config_data_for_realm, RealmConfigAccount,
             },
         },
-        tools::structs::SetItemActionType,
+        tools::structs::SetConfigItemActionType,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -59,11 +59,11 @@ pub fn process_set_realm_config_item(
                 realm_config_data.get_token_config_mut(&realm_data, &governing_token_mint)?;
 
             match action {
-                SetItemActionType::Add => {
+                SetConfigItemActionType::Add => {
                     // TODO: Check for duplicates
                     token_config.lock_authorities.push(authority);
                 }
-                SetItemActionType::Remove => {
+                SetConfigItemActionType::Remove => {
                     token_config
                         .lock_authorities
                         .retain(|lock_authority| lock_authority != &authority);

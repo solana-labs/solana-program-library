@@ -686,8 +686,8 @@ pub enum GovernanceInstruction {
 
     /// Removes TokenOwnerRecord lock for the given authority and lock type
     ///
-    ///   0. `[writable]` TokenOwnerRecord the lock is set for
-    ///   1. `[signer]` Lock authority issuing the lock
+    ///   0. `[writable]` TokenOwnerRecord the lock is removed from
+    ///   1. `[signer]` Lock authority which issued the lock
     RemoveTokenOwnerRecordLock {
         /// Custom lock type identifying the lock to remove
         #[allow(dead_code)]

@@ -6,7 +6,9 @@ use {
     program_test::*,
     solana_program_test::tokio,
     solana_sdk::signer::Signer,
-    spl_governance::{state::realm::SetRealmConfigItemArgs, tools::structs::SetItemActionType},
+    spl_governance::{
+        state::realm::SetRealmConfigItemArgs, tools::structs::SetConfigItemActionType,
+    },
 };
 
 #[tokio::test]
@@ -60,7 +62,7 @@ async fn test_remove_community_token_owner_record_lock_authority() {
     // Act
 
     let args = SetRealmConfigItemArgs::TokenOwnerRecordLockAuthority {
-        action: SetItemActionType::Remove,
+        action: SetConfigItemActionType::Remove,
         governing_token_mint: realm_cookie.account.community_mint,
         authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
     };
