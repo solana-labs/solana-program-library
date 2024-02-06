@@ -52,7 +52,7 @@ solana-test-validator = ">=1.17.17,<=2"
 assert_cmd = "2.0.13"
 libtest-mimic = "0.7"
 serial_test = "3.0.0"
-tempfile = "3.9.0"
+tempfile = "3.10.0"
 
 [[bin]]
 name = "spl-token"
