@@ -45,7 +45,7 @@ pub fn process_set_token_owner_record_lock(
     }
 
     // Reject the lock if already expired
-    if Some(clock.unix_timestamp) > expiry {
+    if expiry.is_some() && clock.unix_timestamp > expiry.unwrap() {
         return Err(GovernanceError::ExpiredTokenOwnerRecordLock.into());
     }
 
