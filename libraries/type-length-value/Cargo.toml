@@ -12,7 +12,7 @@ exclude = ["js/**"]
 derive = ["dep:spl-type-length-value-derive"]
 
 [dependencies]
-bytemuck = { version = "1.14.1", features = ["derive"] }
+bytemuck = { version = "1.14.2", features = ["derive"] }
 solana-program = ">=1.17.17,<=2"
 spl-discriminator = { version = "0.1", path = "../discriminator" }
 spl-program-error = { version = "0.3", path = "../program-error" }
