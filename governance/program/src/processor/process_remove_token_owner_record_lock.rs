@@ -31,18 +31,12 @@ pub fn process_remove_token_owner_record_lock(
     let mut token_owner_record_data =
         get_token_owner_record_data(program_id, token_owner_record_info)?;
 
-    // Trim existing locks
-    token_owner_record_data.locks.retain(|lock| {
-        // Remove existing lock for the authority and lock type
-        if lock.lock_type == lock_type
-            && lock.authority == *token_owner_record_lock_authority_info.key
-        {
-            false
-        } else {
-            // Retain only unexpired locks
-            lock.expiry > Some(clock.unix_timestamp)
-        }
-    });
+    // Remove expired locks and matching the authority and lock type to remove
+    token_owner_record_data.trim_locks(
+        clock.unix_timestamp,
+        lock_type,
+        token_owner_record_lock_authority_info.key,
+    );
 
     token_owner_record_data.serialize(&mut token_owner_record_info.data.borrow_mut()[..])?;
 

@@ -65,18 +65,12 @@ pub fn process_set_token_owner_record_lock(
         return Err(GovernanceError::InvalidTokenOwnerRecordLockAuthority.into());
     }
 
-    // Trim existing locks
-    token_owner_record_data.locks.retain(|lock| {
-        // Remove existing lock for the authority and lock type we set
-        if lock.lock_type == lock_type
-            && lock.authority == *token_owner_record_lock_authority_info.key
-        {
-            false
-        } else {
-            // Retain only unexpired locks
-            lock.expiry > Some(clock.unix_timestamp)
-        }
-    });
+    // Remove expired locks and matching the authority and lock type we set
+    token_owner_record_data.trim_locks(
+        clock.unix_timestamp,
+        lock_type,
+        token_owner_record_lock_authority_info.key,
+    );
 
     // Add the new lock
     token_owner_record_data.locks.push(TokenOwnerRecordLock {

@@ -304,6 +304,26 @@ impl TokenOwnerRecordV2 {
         }
     }
 
+    /// Trim locks by removing locks already expired and
+    /// matching the given type and authority
+    pub fn trim_locks(
+        &mut self,
+        current_unix_timestamp: UnixTimestamp,
+        lock_type: u8,
+        lock_authority: &Pubkey,
+    ) {
+        // Trim existing locks
+        self.locks.retain(|lock| {
+            // Remove existing lock for the given authority and lock type
+            if lock.lock_type == lock_type && lock.authority == *lock_authority {
+                false
+            } else {
+                // Retain only unexpired locks
+                lock.expiry > Some(current_unix_timestamp)
+            }
+        });
+    }
+
     /// Serializes TokenOwnerRecord and resizes it if required
     /// If the account is TokenOwnerRecordV1 and needs to be resized
     /// then its type is changed to TokenOwnerRecordV2 to preserve the extra

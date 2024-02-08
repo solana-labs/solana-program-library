@@ -1964,7 +1964,7 @@ pub fn set_token_owner_record_lock(
     }
 }
 
-/// Creates RemoveTokenOwnerRecordLock instruction to issue TokenOwnerRecord
+/// Creates RemoveTokenOwnerRecordLock instruction to remove TokenOwnerRecord
 /// lock
 pub fn remove_token_owner_record_lock(
     program_id: &Pubkey,
