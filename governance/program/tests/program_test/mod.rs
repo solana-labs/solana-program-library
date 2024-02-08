@@ -3466,22 +3466,40 @@ impl GovernanceProgramTest {
         token_owner_record_lock_authority: &Keypair,
         lock_type: u8,
     ) -> Result<(), ProgramError> {
-        let remove_token_owner_record_lock_ix = remove_token_owner_record_lock(
+        self.remove_token_owner_record_lock_using_ix(
+            token_owner_record_cookie,
+            token_owner_record_lock_authority,
+            lock_type,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn remove_token_owner_record_lock_using_ix<F: Fn(&mut Instruction)>(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority: &Keypair,
+        lock_type: u8,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut remove_token_owner_record_lock_ix = remove_token_owner_record_lock(
             &self.program_id,
             &token_owner_record_cookie.address,
             &token_owner_record_lock_authority.pubkey(),
             lock_type,
         );
 
-        self.bench
-            .process_transaction(
-                &[remove_token_owner_record_lock_ix],
-                Some(&[&token_owner_record_lock_authority]),
-            )
-            .await
-            .unwrap();
+        instruction_override(&mut remove_token_owner_record_lock_ix);
 
-        Ok(())
+        let default_signers = &[token_owner_record_lock_authority];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        self.bench
+            .process_transaction(&[remove_token_owner_record_lock_ix], Some(signers))
+            .await
     }
 
     #[allow(dead_code)]
