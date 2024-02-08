@@ -6,12 +6,12 @@ use {
     program_test::*,
     solana_program_test::tokio,
     solana_sdk::{signature::Keypair, signer::Signer},
-    spl_governance::error::GovernanceError,
+    spl_governance::{
+        error::GovernanceError,
+        state::{enums::GovernanceAccountType, legacy::TokenOwnerRecordV1},
+    },
+    spl_governance_tools::account::AccountMaxSize,
 };
-
-// TODO:
-
-// test V1 -> V2 upgrade
 
 #[tokio::test]
 async fn test_set_token_owner_record_lock() {
@@ -510,6 +510,75 @@ async fn test_set_token_owner_record_lock_with_extended_account_size() {
 
     assert_eq!(
         token_owner_record_account_size + 42,
+        token_owner_record_account.data.len()
+    );
+}
+
+#[tokio::test]
+async fn test_set_token_owner_record_lock_for_v1_account() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
+
+    let token_owner_record_data_v1 = TokenOwnerRecordV1 {
+        account_type: GovernanceAccountType::TokenOwnerRecordV1,
+        realm: token_owner_record_cookie.account.realm,
+        governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
+        governing_token_owner: token_owner_record_cookie.account.governing_token_owner,
+        governing_token_deposit_amount: token_owner_record_cookie
+            .account
+            .governing_token_deposit_amount,
+        governance_delegate: token_owner_record_cookie.account.governance_delegate,
+        unrelinquished_votes_count: token_owner_record_cookie.account.unrelinquished_votes_count,
+        outstanding_proposal_count: token_owner_record_cookie.account.outstanding_proposal_count,
+        version: 0,
+        reserved: [0; 6],
+    };
+
+    governance_test.bench.set_borsh_account(
+        &governance_test.program_id,
+        &token_owner_record_cookie.address,
+        &token_owner_record_data_v1,
+    );
+
+    // Act
+    governance_test
+        .with_token_owner_record_lock(
+            &token_owner_record_cookie,
+            &token_owner_record_lock_authority_cookie,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+    let token_owner_record_data = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(
+        GovernanceAccountType::TokenOwnerRecordV2,
+        token_owner_record_data.account_type
+    );
+
+    let token_owner_record_account = governance_test
+        .bench
+        .get_account(&token_owner_record_cookie.address)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        token_owner_record_data.get_max_size().unwrap(),
         token_owner_record_account.data.len()
     );
 }
