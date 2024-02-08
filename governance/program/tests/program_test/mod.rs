@@ -3401,8 +3401,7 @@ impl GovernanceProgramTest {
             lock_type,
             expiry,
         )
-        .await
-        .unwrap();
+        .await?;
 
         Ok(TokenOwnerRecordLockCookie {
             authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
