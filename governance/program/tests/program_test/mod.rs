@@ -3393,9 +3393,54 @@ impl GovernanceProgramTest {
     ) -> Result<TokenOwnerRecordLockCookie, ProgramError> {
         let lock_type = 5;
         let clock = self.bench.get_clock().await;
-        let expiry: Option<UnixTimestamp> = Some(clock.unix_timestamp + 100);
+        let expiry: Option<UnixTimestamp> = Some(clock.unix_timestamp + 1);
 
-        let set_token_owner_record_lock_ix = set_token_owner_record_lock(
+        self.set_token_owner_record_lock(
+            token_owner_record_cookie,
+            token_owner_record_lock_authority_cookie,
+            lock_type,
+            expiry,
+        )
+        .await
+        .unwrap();
+
+        Ok(TokenOwnerRecordLockCookie {
+            authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
+            lock_type,
+            expiry,
+        })
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_token_owner_record_lock(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority_cookie: &TokenOwnerRecordLockAuthorityCookie,
+        lock_type: u8,
+        expiry: Option<UnixTimestamp>,
+    ) -> Result<(), ProgramError> {
+        self.set_token_owner_record_lock_using_ix(
+            token_owner_record_cookie,
+            token_owner_record_lock_authority_cookie,
+            lock_type,
+            expiry,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_token_owner_record_lock_using_ix<F: Fn(&mut Instruction)>(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority_cookie: &TokenOwnerRecordLockAuthorityCookie,
+        lock_type: u8,
+        expiry: Option<UnixTimestamp>,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut set_token_owner_record_lock_ix = set_token_owner_record_lock(
             &self.program_id,
             &token_owner_record_cookie.account.realm,
             &token_owner_record_cookie.address,
@@ -3405,19 +3450,14 @@ impl GovernanceProgramTest {
             expiry,
         );
 
-        self.bench
-            .process_transaction(
-                &[set_token_owner_record_lock_ix],
-                Some(&[&token_owner_record_lock_authority_cookie.authority]),
-            )
-            .await
-            .unwrap();
+        instruction_override(&mut set_token_owner_record_lock_ix);
 
-        Ok(TokenOwnerRecordLockCookie {
-            authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
-            lock_type,
-            expiry,
-        })
+        let default_signers = &[&token_owner_record_lock_authority_cookie.authority];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        self.bench
+            .process_transaction(&[set_token_owner_record_lock_ix], Some(signers))
+            .await
     }
 
     #[allow(dead_code)]
