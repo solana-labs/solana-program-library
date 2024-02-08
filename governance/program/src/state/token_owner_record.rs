@@ -308,7 +308,7 @@ impl TokenOwnerRecordV2 {
     /// If the account is TokenOwnerRecordV1 and needs to be resized
     /// then its type is changed to TokenOwnerRecordV2 to preserve the extra
     /// data
-    pub fn resize_and_serialize<'a>(
+    pub fn serialize_with_resize<'a>(
         mut self,
         token_owner_record_info: &AccountInfo<'a>,
         payer_info: &AccountInfo<'a>,

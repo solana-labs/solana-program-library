@@ -14,8 +14,11 @@ use {
         program_error::ProgramError,
         program_pack::IsInitialized,
         pubkey::Pubkey,
+        rent::Rent,
     },
-    spl_governance_tools::account::{get_account_data, AccountMaxSize},
+    spl_governance_tools::account::{
+        create_and_serialize_account_signed, extend_account_size, get_account_data, AccountMaxSize,
+    },
     std::slice::Iter,
 };
 
@@ -235,6 +238,49 @@ impl RealmConfigAccount {
         {
             return Err(GovernanceError::CannotChangeCommunityTokenTypeToMembership.into());
         }
+
+        Ok(())
+    }
+
+    /// Serializes RealmConfigAccount and resizes it if required
+    /// If the account doesn't exist yet then it's created
+    pub fn serialize<'a>(
+        self,
+        program_id: &Pubkey,
+        realm_config_info: &AccountInfo<'a>,
+        payer_info: &AccountInfo<'a>,
+        system_info: &AccountInfo<'a>,
+        rent: &Rent,
+    ) -> Result<(), ProgramError> {
+        // Update or create RealmConfigAccount
+        if realm_config_info.data_is_empty() {
+            // For older Realm accounts (pre program V3) RealmConfigAccount might not exist
+            // yet and we have to create it
+
+            create_and_serialize_account_signed::<RealmConfigAccount>(
+                payer_info,
+                realm_config_info,
+                &self,
+                &get_realm_config_address_seeds(&self.realm),
+                program_id,
+                system_info,
+                rent,
+                0,
+            )?;
+        } else {
+            let realm_config_max_size = self.get_max_size().unwrap();
+            if realm_config_info.data_len() < realm_config_max_size {
+                extend_account_size(
+                    realm_config_info,
+                    payer_info,
+                    realm_config_max_size,
+                    rent,
+                    system_info,
+                )?;
+            }
+
+            borsh::to_writer(&mut realm_config_info.data.borrow_mut()[..], &self)?;
+        };
 
         Ok(())
     }

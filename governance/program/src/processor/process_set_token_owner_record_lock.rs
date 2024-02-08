@@ -85,7 +85,7 @@ pub fn process_set_token_owner_record_lock(
         expiry,
     });
 
-    token_owner_record_data.resize_and_serialize(
+    token_owner_record_data.serialize_with_resize(
         token_owner_record_info,
         payer_info,
         system_info,

@@ -5,9 +5,7 @@ use {
         error::GovernanceError,
         state::{
             realm::{get_realm_data_for_authority, SetRealmConfigItemArgs},
-            realm_config::{
-                get_realm_config_address_seeds, get_realm_config_data_for_realm, RealmConfigAccount,
-            },
+            realm_config::get_realm_config_data_for_realm,
         },
         tools::structs::SetConfigItemActionType,
     },
@@ -17,9 +15,6 @@ use {
         pubkey::Pubkey,
         rent::Rent,
         sysvar::Sysvar,
-    },
-    spl_governance_tools::account::{
-        create_and_serialize_account_signed, extend_account_size, AccountMaxSize,
     },
 };
 
@@ -77,40 +72,13 @@ pub fn process_set_realm_config_item(
         }
     }
 
-    // Update or create RealmConfigAccount
-    if realm_config_info.data_is_empty() {
-        // For older Realm accounts (pre program V3) RealmConfigAccount might not exist
-        // yet and we have to create it
-
-        let rent = Rent::get()?;
-
-        create_and_serialize_account_signed::<RealmConfigAccount>(
-            payer_info,
-            realm_config_info,
-            &realm_config_data,
-            &get_realm_config_address_seeds(realm_info.key),
-            program_id,
-            system_info,
-            &rent,
-            0,
-        )?;
-    } else {
-        let realm_config_max_size = realm_config_data.get_max_size().unwrap();
-        if realm_config_info.data_len() < realm_config_max_size {
-            extend_account_size(
-                realm_config_info,
-                payer_info,
-                realm_config_max_size,
-                &rent,
-                system_info,
-            )?;
-        }
-
-        borsh::to_writer(
-            &mut realm_config_info.data.borrow_mut()[..],
-            &realm_config_data,
-        )?;
-    }
+    realm_config_data.serialize(
+        program_id,
+        realm_config_info,
+        payer_info,
+        system_info,
+        &rent,
+    )?;
 
     Ok(())
 }
