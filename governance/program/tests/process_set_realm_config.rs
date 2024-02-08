@@ -340,3 +340,29 @@ async fn test_set_realm_config_for_council_token_config() {
             .max_voter_weight_addin
     );
 }
+
+#[tokio::test]
+async fn test_set_realm_config_without_existing_realm_config() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+
+    let realm_setup_args = RealmSetupArgs::default();
+
+    governance_test.remove_realm_config_account(&realm_cookie.realm_config.address);
+    
+    // Act
+
+    governance_test
+        .set_realm_config(&mut realm_cookie, &realm_setup_args)
+        .await
+        .unwrap();
+
+    // Assert
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(realm_cookie.account, realm_account);
+}

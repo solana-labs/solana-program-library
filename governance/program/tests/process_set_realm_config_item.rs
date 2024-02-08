@@ -279,7 +279,7 @@ async fn test_add_token_owner_record_lock_authority_with_authority_already_exist
 }
 
 #[tokio::test]
-async fn test_set_realm_config_item_without_realm_config() {
+async fn test_set_realm_config_item_without_existing_realm_config() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 

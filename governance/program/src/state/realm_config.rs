@@ -243,7 +243,7 @@ impl RealmConfigAccount {
     }
 
     /// Serializes RealmConfigAccount and resizes it if required
-    /// If the account doesn't exist yet then it's created
+    /// If the account doesn't exist then it's created
     pub fn serialize<'a>(
         self,
         program_id: &Pubkey,
