@@ -351,7 +351,7 @@ async fn test_set_realm_config_without_existing_realm_config() {
     let realm_setup_args = RealmSetupArgs::default();
 
     governance_test.remove_realm_config_account(&realm_cookie.realm_config.address);
-    
+
     // Act
 
     governance_test
