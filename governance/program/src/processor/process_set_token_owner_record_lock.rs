@@ -4,7 +4,6 @@ use {
     crate::{
         error::GovernanceError,
         state::{
-            enums::GovernanceAccountType,
             realm::get_realm_data,
             realm_config::get_realm_config_data_for_realm,
             token_owner_record::{get_token_owner_record_data_for_realm, TokenOwnerRecordLock},
@@ -18,7 +17,6 @@ use {
         rent::Rent,
         sysvar::Sysvar,
     },
-    spl_governance_tools::account::{extend_account_size, AccountMaxSize},
 };
 
 /// Processes SetTokenOwnerRecordLock instruction
@@ -87,24 +85,12 @@ pub fn process_set_token_owner_record_lock(
         expiry,
     });
 
-    let token_owner_record_data_max_size = token_owner_record_data.get_max_size().unwrap();
-    if token_owner_record_info.data_len() < token_owner_record_data_max_size {
-        extend_account_size(
-            token_owner_record_info,
-            payer_info,
-            token_owner_record_data_max_size,
-            &rent,
-            system_info,
-        )?;
-
-        // When the account is resized we have to change the type to V2 to preserve
-        // the extra data
-        if token_owner_record_data.account_type == GovernanceAccountType::TokenOwnerRecordV1 {
-            token_owner_record_data.account_type = GovernanceAccountType::TokenOwnerRecordV2;
-        }
-    }
-
-    token_owner_record_data.serialize(&mut token_owner_record_info.data.borrow_mut()[..])?;
+    token_owner_record_data.resize_and_serialize(
+        token_owner_record_info,
+        payer_info,
+        system_info,
+        &rent,
+    )?;
 
     Ok(())
 }

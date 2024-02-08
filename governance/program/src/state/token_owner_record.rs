@@ -19,9 +19,12 @@ use {
         program_error::ProgramError,
         program_pack::IsInitialized,
         pubkey::Pubkey,
+        rent::Rent,
     },
     spl_governance_addin_api::voter_weight::VoterWeightAction,
-    spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize},
+    spl_governance_tools::account::{
+        extend_account_size, get_account_data, get_account_type, AccountMaxSize,
+    },
     std::slice::Iter,
 };
 
@@ -299,6 +302,36 @@ impl TokenOwnerRecordV2 {
         } else {
             Ok(self.governing_token_deposit_amount)
         }
+    }
+
+    /// Serializes TokenOwnerRecord and resizes it if required
+    /// If the account is TokenOwnerRecordV1 and needs to be resized
+    /// then its type is changed to TokenOwnerRecordV2 to preserve the extra data
+    pub fn resize_and_serialize<'a>(
+        mut self,
+        token_owner_record_info: &AccountInfo<'a>,
+        payer_info: &AccountInfo<'a>,
+        system_info: &AccountInfo<'a>,
+        rent: &Rent,
+    ) -> Result<(), ProgramError> {
+        let token_owner_record_data_max_size = self.get_max_size().unwrap();
+        if token_owner_record_info.data_len() < token_owner_record_data_max_size {
+            extend_account_size(
+                token_owner_record_info,
+                payer_info,
+                token_owner_record_data_max_size,
+                &rent,
+                system_info,
+            )?;
+
+            // When the account is resized we have to change the type to V2 to preserve
+            // the extra data
+            if self.account_type == GovernanceAccountType::TokenOwnerRecordV1 {
+                self.account_type = GovernanceAccountType::TokenOwnerRecordV2;
+            }
+        }
+
+        self.serialize(&mut token_owner_record_info.data.borrow_mut()[..])
     }
 
     /// Serializes account into the target buffer
