@@ -10,6 +10,7 @@ on:
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-token-collection.yml'
     - '!token/js/**'
+    - '!token-group/js/**'
     - '!token-metadata/js/**'
   push:
     branches: [master]
@@ -21,6 +22,7 @@ on:
     - 'ci/*-version.sh'
     - '.github/workflows/pull-request-token-collection.yml'
     - '!token/js/**'
+    - '!token-group/js/**'
     - '!token-metadata/js/**'
 
 concurrency:
