@@ -6650,7 +6650,7 @@ dependencies = [
  "num-traits",
  "solana-program",
  "spl-token 4.0.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "thiserror",
 ]
 
@@ -6663,7 +6663,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 2.3.1",
  "spl-token 4.0.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
 ]
 
 [[package]]
@@ -7225,7 +7225,7 @@ dependencies = [
  "spl-math",
  "spl-pod 0.1.1",
  "spl-token 4.0.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "test-case",
  "thiserror",
 ]
@@ -7346,7 +7346,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-2022"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "arrayref",
  "base64 0.21.7",
@@ -7391,7 +7391,7 @@ dependencies = [
  "spl-memo 4.0.1",
  "spl-pod 0.1.1",
  "spl-tlv-account-resolution 0.5.2",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-token-client",
  "spl-token-group-interface 0.1.1",
  "spl-token-metadata-interface 0.2.1",
@@ -7428,7 +7428,7 @@ dependencies = [
  "spl-associated-token-account 2.3.1",
  "spl-memo 4.0.1",
  "spl-token 4.0.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-token-client",
  "spl-token-group-interface 0.1.1",
  "spl-token-metadata-interface 0.2.1",
@@ -7456,7 +7456,7 @@ dependencies = [
  "spl-associated-token-account 2.3.1",
  "spl-memo 4.0.1",
  "spl-token 4.0.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-token-group-interface 0.1.1",
  "spl-token-metadata-interface 0.2.1",
  "spl-transfer-hook-interface 0.5.1",
@@ -7473,7 +7473,7 @@ dependencies = [
  "spl-discriminator 0.1.1",
  "spl-pod 0.1.1",
  "spl-program-error 0.3.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-token-client",
  "spl-token-group-example",
  "spl-token-group-interface 0.1.1",
@@ -7490,7 +7490,7 @@ dependencies = [
  "solana-sdk",
  "spl-discriminator 0.1.1",
  "spl-pod 0.1.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-token-client",
  "spl-token-group-interface 0.1.1",
  "spl-token-metadata-interface 0.2.1",
@@ -7563,7 +7563,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-pod 0.1.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-token-client",
  "spl-token-metadata-interface 0.2.1",
  "spl-type-length-value 0.3.1",
@@ -7613,7 +7613,7 @@ dependencies = [
  "solana-sdk",
  "spl-math",
  "spl-token 4.0.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "test-case",
  "thiserror",
 ]
@@ -7641,7 +7641,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 4.0.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-token-client",
  "test-case",
  "thiserror",
@@ -7662,7 +7662,7 @@ dependencies = [
  "solana-test-validator",
  "spl-associated-token-account 2.3.1",
  "spl-token 4.0.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-token-client",
  "spl-token-upgrade",
  "tokio",
@@ -7678,7 +7678,7 @@ dependencies = [
  "solana-program",
  "spl-associated-token-account 2.3.1",
  "spl-token 4.0.1",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "thiserror",
 ]
 
@@ -7699,7 +7699,7 @@ dependencies = [
  "solana-sdk",
  "solana-test-validator",
  "spl-tlv-account-resolution 0.5.2",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-token-client",
  "spl-transfer-hook-interface 0.5.1",
  "strum 0.26.1",
@@ -7716,7 +7716,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-tlv-account-resolution 0.5.2",
- "spl-token-2022 2.0.0",
+ "spl-token-2022 2.0.1",
  "spl-transfer-hook-interface 0.5.1",
  "spl-type-length-value 0.3.1",
 ]
