@@ -10,7 +10,10 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{transfer_fee::TransferFee, ExtensionType},
+        extension::{
+            immutable_owner::ImmutableOwner, transfer_fee::TransferFee, BaseStateWithExtensions,
+            ExtensionType,
+        },
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
 };
@@ -40,6 +43,14 @@ async fn transfer() {
         .unwrap();
     let alice_account = alice.pubkey();
 
+    // immutable ownership is added to alice's account during initialization
+    token
+        .get_account_info(&alice_account)
+        .await
+        .unwrap()
+        .get_extension::<ImmutableOwner>()
+        .unwrap();
+
     token
         .create_auxiliary_token_account_with_extension_space(
             &bob,
@@ -50,8 +61,8 @@ async fn transfer() {
         .unwrap();
     let bob_account = bob.pubkey();
 
-    // mint fails because the account does not have immutable ownership
-    let error = token
+    // mint to alice should be successful
+    token
         .mint_to(
             &alice_account,
             &mint_authority.pubkey(),
@@ -59,19 +70,8 @@ async fn transfer() {
             &[&mint_authority],
         )
         .await
-        .unwrap_err();
+        .unwrap();
 
-    assert_eq!(
-        error,
-        TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(
-                0,
-                InstructionError::Custom(TokenError::NonTransferableNeedsImmutableOwnership as u32)
-            )
-        )))
-    );
-
-    // mint succeeds if the account has immutable ownership
     token
         .mint_to(
             &bob_account,

@@ -7310,6 +7310,91 @@ mod tests {
     }
 
     #[test]
+    fn initialize_account_on_non_transferable_mint() {
+        let program_id = crate::id();
+        let account = Pubkey::new_unique();
+        let account_len = ExtensionType::try_calculate_account_len::<Mint>(&[
+            ExtensionType::NonTransferableAccount,
+        ])
+        .unwrap();
+        let mut account_without_enough_length = SolanaAccount::new(
+            Rent::default().minimum_balance(account_len),
+            account_len,
+            &program_id,
+        );
+
+        let account2 = Pubkey::new_unique();
+        let account2_len = ExtensionType::try_calculate_account_len::<Mint>(&[
+            ExtensionType::NonTransferableAccount,
+            ExtensionType::ImmutableOwner,
+        ])
+        .unwrap();
+        let mut account_with_enough_length = SolanaAccount::new(
+            Rent::default().minimum_balance(account2_len),
+            account2_len,
+            &program_id,
+        );
+
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::default();
+        let mint_key = Pubkey::new_unique();
+        let mint_len =
+            ExtensionType::try_calculate_account_len::<Mint>(&[ExtensionType::NonTransferable])
+                .unwrap();
+        let mut mint_account = SolanaAccount::new(
+            Rent::default().minimum_balance(mint_len),
+            mint_len,
+            &program_id,
+        );
+        let mut rent_sysvar = rent_sysvar();
+
+        // create a non-transferable mint
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                initialize_non_transferable_mint(&program_id, &mint_key).unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+                vec![&mut mint_account, &mut rent_sysvar]
+            )
+        );
+
+        //fail when account space is not enough for adding the immutable ownership
+        // extension
+        assert_eq!(
+            Err(ProgramError::InvalidAccountData),
+            do_process_instruction(
+                initialize_account(&program_id, &account, &mint_key, &owner_key).unwrap(),
+                vec![
+                    &mut account_without_enough_length,
+                    &mut mint_account,
+                    &mut owner_account,
+                    &mut rent_sysvar,
+                ]
+            )
+        );
+
+        //success to initialize an account with enough data space
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                initialize_account(&program_id, &account2, &mint_key, &owner_key).unwrap(),
+                vec![
+                    &mut account_with_enough_length,
+                    &mut mint_account,
+                    &mut owner_account,
+                    &mut rent_sysvar,
+                ]
+            )
+        );
+    }
+
+    #[test]
     fn test_sync_native() {
         let program_id = crate::id();
         let mint_key = Pubkey::new_unique();
