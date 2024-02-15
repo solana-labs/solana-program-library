@@ -48,7 +48,7 @@
         "@solana/web3.js": "^1.90.0",
         "@types/eslint": "^8.56.2",
         "@types/eslint-plugin-prettier": "^3.1.0",
-        "@types/node": "^20.11.17",
+        "@types/node": "^20.11.18",
         "@typescript-eslint/eslint-plugin": "^7.0.1",
         "@typescript-eslint/parser": "^7.0.1",
         "eslint": "^8.56.0",
