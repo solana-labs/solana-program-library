@@ -812,6 +812,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             ExtensionType::TransferFeeAmount => {
                 self.init_extension::<TransferFeeAmount>(true).map(|_| ())
             }
+            ExtensionType::ImmutableOwner => {
+                self.init_extension::<ImmutableOwner>(true).map(|_| ())
+            }
             ExtensionType::NonTransferableAccount => self
                 .init_extension::<NonTransferableAccount>(true)
                 .map(|_| ()),
@@ -1133,6 +1136,7 @@ impl ExtensionType {
                 }
                 ExtensionType::NonTransferable => {
                     account_extension_types.push(ExtensionType::NonTransferableAccount);
+                    account_extension_types.push(ExtensionType::ImmutableOwner);
                 }
                 ExtensionType::TransferHook => {
                     account_extension_types.push(ExtensionType::TransferHookAccount);
