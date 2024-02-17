@@ -6,7 +6,7 @@ chardet==4.0.0
 cheroot==8.5.2
 CherryPy==18.6.0
 construct==2.10.67
-cryptography==42.0.0
+cryptography==42.0.2
 ed25519==1.5
 idna==2.10
 iniconfig==1.1.1
