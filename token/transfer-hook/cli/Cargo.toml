@@ -22,7 +22,7 @@ spl-tlv-account-resolution = { version = "0.5.2" , path = "../../../libraries/tl
 strum = "0.26"
 strum_macros = "0.26"
 tokio = { version = "1", features = ["full"] }
-serde = { version = "1.0.196", features = ["derive"] }
+serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.113"
 serde_yaml = "0.9.32"
 
