@@ -12,7 +12,7 @@ serde-traits = ["dep:serde", "spl-pod/serde-traits"]
 
 [dependencies]
 borsh = "0.10"
-serde = { version = "1.0.196", optional = true }
+serde = { version = "1.0.197", optional = true }
 solana-program = ">=1.17.17,<=2"
 spl-discriminator = { version = "0.1", path = "../../libraries/discriminator" }
 spl-program-error = { version = "0.3", path = "../../libraries/program-error" }
