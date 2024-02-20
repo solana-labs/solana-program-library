@@ -29,16 +29,25 @@ pub fn map_transaction_error(transport_error: TransportError) -> ProgramError {
         TransportError::TransactionError(TransactionError::InstructionError(
             _,
             instruction_error,
-        )) => ProgramError::try_from(instruction_error).unwrap_or_else(|ie| match ie {
+        )) => match instruction_error {
+            // In solana-sdk v1.19.0, there is a ProgramError for
+            // InstructionError::IncorrectAuthority. This results in the error mapping
+            // returning two different values: one for sdk < v1.19 and another for sdk >= v1.19.0.
+            // To avoid this situation, handle InstructionError::IncorrectAuthority earlier.
+            // Can be removed when Solana v1.19.0 becomes a stable channel (also need to update the
+            // test assert for
+            // `test_create_program_governance_with_incorrect_upgrade_authority_error`)
             InstructionError::IncorrectAuthority => {
                 ProgramInstructionError::IncorrectAuthority.into()
             }
-            InstructionError::PrivilegeEscalation => {
-                ProgramInstructionError::PrivilegeEscalation.into()
-            }
-            _ => panic!("TEST-INSTRUCTION-ERROR {:?}", ie),
-        }),
-
+            _ => ProgramError::try_from(instruction_error).unwrap_or_else(|ie| match ie {
+                InstructionError::IncorrectAuthority => unreachable!(),
+                InstructionError::PrivilegeEscalation => {
+                    ProgramInstructionError::PrivilegeEscalation.into()
+                }
+                _ => panic!("TEST-INSTRUCTION-ERROR {:?}", ie),
+            }),
+        },
         _ => panic!("TEST-TRANSPORT-ERROR: {:?}", transport_error),
     }
 }
