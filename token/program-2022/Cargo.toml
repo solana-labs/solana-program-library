@@ -48,7 +48,7 @@ serial_test = "3.0.0"
 solana-program-test = ">=1.17.17,<=2"
 solana-sdk = ">=1.17.17,<=2"
 spl-tlv-account-resolution = { version = "0.5.2", path = "../../libraries/tlv-account-resolution" }
-serde_json = "1.0.113"
+serde_json = "1.0.114"
 
 [lib]
 crate-type = ["cdylib", "lib"]
