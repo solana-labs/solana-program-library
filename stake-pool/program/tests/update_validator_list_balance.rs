@@ -5,7 +5,7 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{borsh0_10::try_from_slice_unchecked, program_pack::Pack},
+    solana_program::{borsh1::try_from_slice_unchecked, program_pack::Pack},
     solana_program_test::*,
     solana_sdk::{hash::Hash, signature::Signer, stake::state::StakeStateV2},
     spl_stake_pool::{

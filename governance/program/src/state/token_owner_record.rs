@@ -452,7 +452,7 @@ pub fn get_token_owner_record_data_for_proposal_owner(
 mod test {
     use {
         super::*,
-        solana_program::{borsh0_10::get_packed_len, stake_history::Epoch},
+        solana_program::{borsh1::get_packed_len, stake_history::Epoch},
     };
 
     fn create_test_token_owner_record() -> TokenOwnerRecordV2 {

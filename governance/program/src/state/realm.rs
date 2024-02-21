@@ -480,7 +480,7 @@ mod test {
 
     use {
         super::*, crate::instruction::GovernanceInstruction,
-        solana_program::borsh0_10::try_from_slice_unchecked,
+        solana_program::borsh1::try_from_slice_unchecked,
     };
 
     #[test]

@@ -170,7 +170,7 @@ mod tests {
     fn test_get_packed_len() {
         assert_eq!(
             FeatureProposalInstruction::get_packed_len(),
-            solana_program::borsh0_10::get_packed_len::<FeatureProposalInstruction>()
+            solana_program::borsh1::get_packed_len::<FeatureProposalInstruction>()
         )
     }
 

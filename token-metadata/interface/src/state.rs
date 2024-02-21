@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
-        borsh0_10::{get_instance_packed_len, try_from_slice_unchecked},
+        borsh1::{get_instance_packed_len, try_from_slice_unchecked},
         program_error::ProgramError,
         pubkey::Pubkey,
     },

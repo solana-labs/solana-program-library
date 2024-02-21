@@ -5,7 +5,7 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{borsh0_10::try_from_slice_unchecked, instruction::InstructionError},
+    solana_program::{borsh1::try_from_slice_unchecked, instruction::InstructionError},
     solana_program_test::*,
     solana_sdk::{
         hash::Hash,

@@ -3,7 +3,7 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
-        borsh0_10::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
+        borsh1::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
         instruction::Instruction,
         program_option::COption,

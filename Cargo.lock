@@ -632,7 +632,7 @@ name = "binary-option"
 version = "0.1.0"
 dependencies = [
  "arrayref",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "solana-program",
  "spl-token 4.0.1",
  "thiserror",
@@ -790,11 +790,11 @@ dependencies = [
 
 [[package]]
 name = "borsh"
-version = "1.3.1"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f58b559fd6448c6e2fd0adb5720cd98a2506594cafa4737ff98c396f3e82f667"
+checksum = "9897ef0f1bd2362169de6d7e436ea2237dc1085d7d1e4db75f4be34d86f309d1"
 dependencies = [
- "borsh-derive 1.3.1",
+ "borsh-derive 1.2.1",
  "cfg_aliases",
 ]
 
@@ -826,12 +826,12 @@ dependencies = [
 
 [[package]]
 name = "borsh-derive"
-version = "1.3.1"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7aadb5b6ccbd078890f6d7003694e33816e6b784358f18e15e7e6d9f065a57cd"
+checksum = "478b41ff04256c5c8330f3dfdaaae2a5cc976a8e75088bafa4625b0d0208de8c"
 dependencies = [
  "once_cell",
- "proc-macro-crate 3.1.0",
+ "proc-macro-crate 2.0.0",
  "proc-macro2",
  "quote",
  "syn 2.0.46",
@@ -3899,9 +3899,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-crate"
-version = "3.1.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d37c51ca738a55da99dc0c4a34860fd675453b8b36209178c2249bb13651284"
+checksum = "7e8366a6159044a37876a2b9817124296703c586a5c92e2c53751fa06d8d43e8"
 dependencies = [
  "toml_edit",
 ]
@@ -5160,7 +5160,7 @@ version = "1.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9f2d9fd34407846e07edf34d3f423f883ea19ed191669ec2af11394df986ead"
 dependencies = [
- "borsh 1.3.1",
+ "borsh 1.2.1",
  "futures 0.3.30",
  "solana-banks-interface",
  "solana-program",
@@ -5905,7 +5905,7 @@ dependencies = [
  "blake3",
  "borsh 0.10.3",
  "borsh 0.9.3",
- "borsh 1.3.1",
+ "borsh 1.2.1",
  "bs58",
  "bv",
  "bytemuck",
@@ -6289,7 +6289,7 @@ dependencies = [
  "base64 0.21.7",
  "bincode",
  "bitflags 2.4.2",
- "borsh 1.3.1",
+ "borsh 1.2.1",
  "bs58",
  "bytemuck",
  "byteorder",
@@ -6832,7 +6832,7 @@ name = "spl-associated-token-account"
 version = "2.3.1"
 dependencies = [
  "assert_matches",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "num-derive 0.4.2",
  "num-traits",
  "solana-program",
@@ -6857,7 +6857,7 @@ dependencies = [
 name = "spl-binary-oracle-pair"
 version = "0.1.0"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "num-derive 0.4.2",
  "num-traits",
  "solana-program",
@@ -7016,7 +7016,7 @@ dependencies = [
 name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -7045,7 +7045,7 @@ dependencies = [
  "assert_matches",
  "base64 0.21.7",
  "bincode",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "num-derive 0.4.2",
  "num-traits",
  "proptest",
@@ -7066,7 +7066,7 @@ dependencies = [
 name = "spl-governance-addin-api"
 version = "0.1.4"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "solana-program",
  "spl-governance-tools",
 ]
@@ -7078,7 +7078,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "bincode",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "num-derive 0.4.2",
  "num-traits",
  "proptest",
@@ -7101,7 +7101,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "bincode",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "num-derive 0.4.2",
  "num-traits",
  "proptest",
@@ -7125,7 +7125,7 @@ version = "0.1.4"
 dependencies = [
  "arrayref",
  "bincode",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "lazy_static",
  "num-derive 0.4.2",
  "num-traits",
@@ -7144,7 +7144,7 @@ version = "0.1.4"
 dependencies = [
  "arrayref",
  "bincode",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "num-derive 0.4.2",
  "num-traits",
  "serde",
@@ -7168,7 +7168,7 @@ dependencies = [
 name = "spl-managed-token"
 version = "0.1.0"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "shank",
  "solana-program",
  "solana-program-test",
@@ -7182,7 +7182,7 @@ dependencies = [
 name = "spl-math"
 version = "0.2.0"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "libm",
  "num-derive 0.4.2",
  "num-traits",
@@ -7224,7 +7224,7 @@ dependencies = [
 name = "spl-name-service"
 version = "0.3.0"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "num-derive 0.4.2",
  "num-traits",
  "solana-program",
@@ -7251,7 +7251,7 @@ name = "spl-pod"
 version = "0.1.1"
 dependencies = [
  "base64 0.21.7",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "bytemuck",
  "serde",
  "serde_json",
@@ -7340,7 +7340,7 @@ dependencies = [
  "approx",
  "arrayref",
  "bincode",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "num-derive 0.4.2",
  "num-traits",
  "num_enum 0.7.2",
@@ -7361,7 +7361,7 @@ name = "spl-single-pool-cli"
 version = "1.0.0"
 dependencies = [
  "bincode",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "clap 3.2.25",
  "console",
  "serde",
@@ -7396,7 +7396,7 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "bincode",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "bytemuck",
  "num-derive 0.4.2",
  "num-traits",
@@ -7422,7 +7422,7 @@ name = "spl-stake-pool-cli"
 version = "1.0.0"
 dependencies = [
  "bincode",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "bs58",
  "clap 2.34.0",
  "serde",
@@ -7568,7 +7568,7 @@ name = "spl-token-2022-test"
 version = "0.0.1"
 dependencies = [
  "async-trait",
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "futures-util",
  "solana-program",
  "solana-program-test",
@@ -7775,7 +7775,7 @@ dependencies = [
 name = "spl-token-metadata-interface"
 version = "0.2.1"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "serde",
  "serde_json",
  "solana-program",
@@ -7977,7 +7977,7 @@ dependencies = [
 name = "spl-type-length-value-derive-test"
 version = "0.1.0"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "solana-program",
  "spl-discriminator 0.1.1",
  "spl-type-length-value 0.3.1",
@@ -7987,7 +7987,7 @@ dependencies = [
 name = "stateless-asks"
 version = "0.1.0"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -8555,9 +8555,9 @@ checksum = "3550f4e9685620ac18a50ed434eb3aec30db8ba93b0287467bca5826ea25baf1"
 
 [[package]]
 name = "toml_edit"
-version = "0.21.1"
+version = "0.20.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a8534fd7f78b5405e860340ad6575217ce99f38d4d5c8f2442cb5ecb50090e1"
+checksum = "70f427fce4d84c72b5b732388bf4a9f4531b53f74e2887e3ecb2481f68f66d81"
 dependencies = [
  "indexmap 2.2.1",
  "toml_datetime",

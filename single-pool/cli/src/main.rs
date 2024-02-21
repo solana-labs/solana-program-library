@@ -9,7 +9,7 @@ use {
         rpc_filter::{Memcmp, RpcFilterType},
     },
     solana_sdk::{
-        borsh0_10::try_from_slice_unchecked,
+        borsh1::try_from_slice_unchecked,
         pubkey::Pubkey,
         signature::{Keypair, Signature, Signer},
         stake,
