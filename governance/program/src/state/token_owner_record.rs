@@ -12,7 +12,7 @@ use {
         },
         PROGRAM_AUTHORITY_SEED,
     },
-    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    borsh::{io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         program_error::ProgramError,
@@ -504,7 +504,7 @@ mod test {
         let governance = create_test_program_v1_token_owner_record();
 
         // Act
-        let size = governance.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&governance).unwrap().len();
 
         // Assert
         assert_eq!(154, size);

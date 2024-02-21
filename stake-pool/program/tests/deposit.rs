@@ -4,7 +4,6 @@
 mod helpers;
 
 use {
-    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
         borsh1::try_from_slice_unchecked,
@@ -498,9 +497,7 @@ async fn fail_with_wrong_stake_program_id() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::DepositStake
-            .try_to_vec()
-            .unwrap(),
+        data: borsh::to_vec(&instruction::StakePoolInstruction::DepositStake).unwrap(),
     };
 
     let mut transaction =

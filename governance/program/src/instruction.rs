@@ -731,7 +731,7 @@ pub fn create_realm(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -779,7 +779,7 @@ pub fn deposit_governing_tokens(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -820,7 +820,7 @@ pub fn withdraw_governing_tokens(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -854,7 +854,7 @@ pub fn set_governance_delegate(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -899,7 +899,7 @@ pub fn create_governance(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -946,7 +946,7 @@ pub fn create_program_governance(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -990,7 +990,7 @@ pub fn create_mint_governance(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1034,7 +1034,7 @@ pub fn create_token_governance(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1093,7 +1093,7 @@ pub fn create_proposal(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1141,7 +1141,7 @@ pub fn add_signatory(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1191,7 +1191,7 @@ pub fn sign_off_proposal(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1242,7 +1242,7 @@ pub fn cast_vote(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1278,7 +1278,7 @@ pub fn finalize_vote(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1316,7 +1316,7 @@ pub fn relinquish_vote(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1343,7 +1343,7 @@ pub fn cancel_proposal(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1391,7 +1391,7 @@ pub fn insert_transaction(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1418,7 +1418,7 @@ pub fn remove_transaction(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1446,7 +1446,7 @@ pub fn execute_transaction(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1465,7 +1465,7 @@ pub fn set_governance_config(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1490,7 +1490,7 @@ pub fn flag_transaction_error(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1524,7 +1524,7 @@ pub fn set_realm_authority(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1589,7 +1589,7 @@ pub fn set_realm_config(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1651,7 +1651,7 @@ pub fn create_token_owner_record(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1674,7 +1674,7 @@ pub fn upgrade_program_metadata(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1699,7 +1699,7 @@ pub fn create_native_treasury(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1742,7 +1742,7 @@ pub fn revoke_governing_tokens(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1772,7 +1772,7 @@ pub fn add_required_signatory(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1798,7 +1798,7 @@ pub fn remove_required_signatory(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1856,7 +1856,7 @@ pub fn refund_proposal_deposit(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -1880,6 +1880,6 @@ pub fn complete_proposal(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }

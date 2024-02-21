@@ -22,7 +22,7 @@ use {
         tools::spl_token::get_spl_token_mint_supply,
         PROGRAM_AUTHORITY_SEED,
     },
-    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    borsh::{io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         clock::{Slot, UnixTimestamp},
@@ -1395,7 +1395,7 @@ mod test {
             max_winning_options: 1,
         };
 
-        let size = proposal.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&proposal).unwrap().len();
 
         assert_eq!(proposal.get_max_size(), Some(size));
     }
@@ -1410,7 +1410,7 @@ mod test {
             max_winning_options: 3,
         };
 
-        let size = proposal.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&proposal).unwrap().len();
 
         assert_eq!(proposal.get_max_size(), Some(size));
     }

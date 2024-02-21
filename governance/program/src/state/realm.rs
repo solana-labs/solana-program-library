@@ -12,7 +12,7 @@ use {
         },
         PROGRAM_AUTHORITY_SEED,
     },
-    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    borsh::{io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         program_error::ProgramError,
@@ -505,7 +505,7 @@ mod test {
             reserved_v2: [0; 128],
         };
 
-        let size = realm.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&realm).unwrap().len();
 
         assert_eq!(realm.get_max_size(), Some(size));
     }

@@ -125,7 +125,7 @@ pub fn create(
     name_parent_opt: Option<Pubkey>,
     name_parent_owner_opt: Option<Pubkey>,
 ) -> Result<Instruction, ProgramError> {
-    let data = instruction_data.try_to_vec().unwrap();
+    let data = borsh::to_vec(&instruction_data).unwrap();
     let mut accounts = vec![
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new(payer_key, true),
@@ -162,7 +162,7 @@ pub fn update(
     name_parent: Option<Pubkey>,
 ) -> Result<Instruction, ProgramError> {
     let instruction_data = NameRegistryInstruction::Update { offset, data };
-    let data = instruction_data.try_to_vec().unwrap();
+    let data = borsh::to_vec(&instruction_data).unwrap();
     let mut accounts = vec![
         AccountMeta::new(name_account_key, false),
         AccountMeta::new_readonly(name_update_signer, true),
@@ -187,7 +187,7 @@ pub fn transfer(
     name_class_opt: Option<Pubkey>,
 ) -> Result<Instruction, ProgramError> {
     let instruction_data = NameRegistryInstruction::Transfer { new_owner };
-    let data = instruction_data.try_to_vec().unwrap();
+    let data = borsh::to_vec(&instruction_data).unwrap();
     let mut accounts = vec![
         AccountMeta::new(name_account_key, false),
         AccountMeta::new_readonly(name_owner_key, true),
@@ -211,7 +211,7 @@ pub fn delete(
     refund_target: Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let instruction_data = NameRegistryInstruction::Delete;
-    let data = instruction_data.try_to_vec().unwrap();
+    let data = borsh::to_vec(&instruction_data).unwrap();
     let accounts = vec![
         AccountMeta::new(name_account_key, false),
         AccountMeta::new_readonly(name_owner_key, true),
@@ -233,7 +233,7 @@ pub fn realloc(
     space: u32,
 ) -> Result<Instruction, ProgramError> {
     let instruction_data = NameRegistryInstruction::Realloc { space };
-    let data = instruction_data.try_to_vec().unwrap();
+    let data = borsh::to_vec(&instruction_data).unwrap();
     let accounts = vec![
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new(payer_key, true),

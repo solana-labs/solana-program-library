@@ -1162,7 +1162,7 @@ mod test {
     fn validator_list_deserialize_mut_slice() {
         let max_validators = 10;
         let stake_list = test_validator_list(max_validators);
-        let mut serialized = stake_list.try_to_vec().unwrap();
+        let mut serialized = borsh::to_vec(&stake_list).unwrap();
         let (header, mut big_vec) = ValidatorListHeader::deserialize_vec(&mut serialized).unwrap();
         let list = ValidatorListHeader::deserialize_mut_slice(
             &mut big_vec,
@@ -1207,7 +1207,7 @@ mod test {
     fn validator_list_iter() {
         let max_validators = 10;
         let stake_list = test_validator_list(max_validators);
-        let mut serialized = stake_list.try_to_vec().unwrap();
+        let mut serialized = borsh::to_vec(&stake_list).unwrap();
         let (_, big_vec) = ValidatorListHeader::deserialize_vec(&mut serialized).unwrap();
         for (a, b) in big_vec
             .deserialize_slice::<ValidatorStakeInfo>(0, big_vec.len() as usize)

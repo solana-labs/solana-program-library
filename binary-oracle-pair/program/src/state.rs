@@ -85,7 +85,7 @@ mod test {
             decision: Decision::Fail,
         };
 
-        let packed = p.try_to_vec().unwrap();
+        let packed = borsh::to_vec(&p).unwrap();
 
         let unpacked = Pool::try_from_slice(packed.as_slice()).unwrap();
 

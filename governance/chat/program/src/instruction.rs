@@ -90,6 +90,6 @@ pub fn post_message(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
