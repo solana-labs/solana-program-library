@@ -264,6 +264,8 @@ async fn test_add_token_owner_record_lock_authority_with_authority_already_exist
         authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
     };
 
+    governance_test.advance_clock().await;
+
     // Act
     let err = governance_test
         .set_realm_config_item(&realm_cookie, args)
