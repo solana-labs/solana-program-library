@@ -529,7 +529,7 @@ pub enum GovernanceError {
     #[error("TokenOwnerRecordLock is expired ")]
     ExpiredTokenOwnerRecordLock, // 626
 
-    /// TokenOwnerRecordLocked locked
+    /// TokenOwnerRecord locked
     #[error("TokenOwnerRecord locked")]
     TokenOwnerRecordLocked, // 627
 
