@@ -201,7 +201,7 @@ pub struct NativeTreasuryCookie {
 #[derive(Debug)]
 pub struct TokenOwnerRecordLockCookie {
     pub authority: Pubkey,
-    pub lock_type: u8,
+    pub lock_id: u8,
     pub expiry: Option<UnixTimestamp>,
 }
 

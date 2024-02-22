@@ -42,7 +42,7 @@ async fn test_remove_token_owner_record_lock() {
         .remove_token_owner_record_lock(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie.authority,
-            token_owner_record_lock_cookie.lock_type,
+            token_owner_record_lock_cookie.lock_id,
         )
         .await
         .unwrap();
@@ -87,7 +87,7 @@ async fn test_remove_token_owner_record_lock_with_invalid_authority() {
         .remove_token_owner_record_lock(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority,
-            token_owner_record_lock_cookie.lock_type,
+            token_owner_record_lock_cookie.lock_id,
         )
         .await
         .unwrap();
@@ -130,7 +130,7 @@ async fn test_remove_token_owner_record_lock_with_authority_must_sign_error() {
         .remove_token_owner_record_lock_using_ix(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie.authority,
-            token_owner_record_lock_cookie.lock_type,
+            token_owner_record_lock_cookie.lock_id,
             |i| i.accounts[1].is_signer = false,
             Some(&[]),
         )
@@ -187,7 +187,7 @@ async fn test_remove_token_owner_record_lock_after_authority_revoked() {
         .remove_token_owner_record_lock(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie.authority,
-            token_owner_record_lock_cookie.lock_type,
+            token_owner_record_lock_cookie.lock_id,
         )
         .await
         .unwrap();
@@ -252,7 +252,7 @@ async fn test_remove_token_owner_record_lock_and_trim_expired_locks() {
         .remove_token_owner_record_lock(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie.authority,
-            token_owner_record_lock_cookie2.lock_type,
+            token_owner_record_lock_cookie2.lock_id,
         )
         .await
         .unwrap();

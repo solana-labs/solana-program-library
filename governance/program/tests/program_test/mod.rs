@@ -3391,21 +3391,21 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         token_owner_record_lock_authority_cookie: &TokenOwnerRecordLockAuthorityCookie,
     ) -> Result<TokenOwnerRecordLockCookie, ProgramError> {
-        let lock_type = 5;
+        let lock_id = 5;
         let clock = self.bench.get_clock().await;
         let expiry: Option<UnixTimestamp> = Some(clock.unix_timestamp + 1);
 
         self.set_token_owner_record_lock(
             token_owner_record_cookie,
             token_owner_record_lock_authority_cookie,
-            lock_type,
+            lock_id,
             expiry,
         )
         .await?;
 
         Ok(TokenOwnerRecordLockCookie {
             authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
-            lock_type,
+            lock_id,
             expiry,
         })
     }
@@ -3415,13 +3415,13 @@ impl GovernanceProgramTest {
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         token_owner_record_lock_authority_cookie: &TokenOwnerRecordLockAuthorityCookie,
-        lock_type: u8,
+        lock_id: u8,
         expiry: Option<UnixTimestamp>,
     ) -> Result<(), ProgramError> {
         self.set_token_owner_record_lock_using_ix(
             token_owner_record_cookie,
             token_owner_record_lock_authority_cookie,
-            lock_type,
+            lock_id,
             expiry,
             NopOverride,
             None,
@@ -3434,7 +3434,7 @@ impl GovernanceProgramTest {
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         token_owner_record_lock_authority_cookie: &TokenOwnerRecordLockAuthorityCookie,
-        lock_type: u8,
+        lock_id: u8,
         expiry: Option<UnixTimestamp>,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
@@ -3445,7 +3445,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.address,
             &token_owner_record_lock_authority_cookie.authority.pubkey(),
             &self.bench.payer.pubkey(),
-            lock_type,
+            lock_id,
             expiry,
         );
 
@@ -3464,12 +3464,12 @@ impl GovernanceProgramTest {
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         token_owner_record_lock_authority: &Keypair,
-        lock_type: u8,
+        lock_id: u8,
     ) -> Result<(), ProgramError> {
         self.remove_token_owner_record_lock_using_ix(
             token_owner_record_cookie,
             token_owner_record_lock_authority,
-            lock_type,
+            lock_id,
             NopOverride,
             None,
         )
@@ -3481,7 +3481,7 @@ impl GovernanceProgramTest {
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         token_owner_record_lock_authority: &Keypair,
-        lock_type: u8,
+        lock_id: u8,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
@@ -3489,7 +3489,7 @@ impl GovernanceProgramTest {
             &self.program_id,
             &token_owner_record_cookie.address,
             &token_owner_record_lock_authority.pubkey(),
-            lock_type,
+            lock_id,
         );
 
         instruction_override(&mut remove_token_owner_record_lock_ix);

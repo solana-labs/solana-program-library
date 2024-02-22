@@ -15,7 +15,7 @@ use {
 pub fn process_remove_token_owner_record_lock(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    lock_type: u8,
+    lock_id: u8,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -34,7 +34,7 @@ pub fn process_remove_token_owner_record_lock(
     // Remove expired locks and matching the authority and lock type to remove
     token_owner_record_data.trim_locks(
         clock.unix_timestamp,
-        lock_type,
+        lock_id,
         token_owner_record_lock_authority_info.key,
     );
 

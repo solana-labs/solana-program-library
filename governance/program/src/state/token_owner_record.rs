@@ -32,9 +32,9 @@ use {
 /// prevent token withdrawals
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct TokenOwnerRecordLock {
-    /// Custom lock type id which can be used by the authority to issue
-    /// different lock types
-    pub lock_type: u8,
+    /// Custom lock id which can be used by the authority to issue
+    /// different locks
+    pub lock_id: u8,
 
     /// The authority issuing the lock
     pub authority: Pubkey,
@@ -309,13 +309,13 @@ impl TokenOwnerRecordV2 {
     pub fn trim_locks(
         &mut self,
         current_unix_timestamp: UnixTimestamp,
-        lock_type: u8,
+        lock_id: u8,
         lock_authority: &Pubkey,
     ) {
         // Trim existing locks
         self.locks.retain(|lock| {
             // Remove existing lock for the given authority and lock type
-            if lock.lock_type == lock_type && lock.authority == *lock_authority {
+            if lock.lock_id == lock_id && lock.authority == *lock_authority {
                 false
             } else {
                 // Retain only unexpired locks
@@ -585,12 +585,12 @@ mod test {
         // Arrange
         let mut token_owner_record = create_test_token_owner_record();
         token_owner_record.locks.push(TokenOwnerRecordLock {
-            lock_type: 1,
+            lock_id: 1,
             authority: Pubkey::new_unique(),
             expiry: Some(10),
         });
         token_owner_record.locks.push(TokenOwnerRecordLock {
-            lock_type: 1,
+            lock_id: 1,
             authority: Pubkey::new_unique(),
             expiry: Some(10),
         });

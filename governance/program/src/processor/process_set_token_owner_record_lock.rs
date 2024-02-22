@@ -23,7 +23,7 @@ use {
 pub fn process_set_token_owner_record_lock(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    lock_type: u8,
+    lock_id: u8,
     expiry: Option<UnixTimestamp>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -68,13 +68,13 @@ pub fn process_set_token_owner_record_lock(
     // Remove expired locks and matching the authority and lock type we set
     token_owner_record_data.trim_locks(
         clock.unix_timestamp,
-        lock_type,
+        lock_id,
         token_owner_record_lock_authority_info.key,
     );
 
     // Add the new lock
     token_owner_record_data.locks.push(TokenOwnerRecordLock {
-        lock_type,
+        lock_id,
         authority: *token_owner_record_lock_authority_info.key,
         expiry,
     });

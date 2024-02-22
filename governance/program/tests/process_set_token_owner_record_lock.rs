@@ -50,8 +50,8 @@ async fn test_set_token_owner_record_lock() {
         token_owner_record_account.locks[0].authority
     );
     assert_eq!(
-        token_owner_record_lock_cookie.lock_type,
-        token_owner_record_account.locks[0].lock_type
+        token_owner_record_lock_cookie.lock_id,
+        token_owner_record_account.locks[0].lock_id
     );
     assert_eq!(
         token_owner_record_lock_cookie.expiry,
@@ -85,7 +85,7 @@ async fn test_override_existing_token_owner_record_lock() {
         .unwrap();
 
     let expiry = None;
-    let lock_type = token_owner_record_lock_cookie.lock_type;
+    let lock_id = token_owner_record_lock_cookie.lock_id;
 
     // Act
 
@@ -93,7 +93,7 @@ async fn test_override_existing_token_owner_record_lock() {
         .set_token_owner_record_lock(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie,
-            lock_type,
+            lock_id,
             expiry,
         )
         .await
@@ -109,7 +109,7 @@ async fn test_override_existing_token_owner_record_lock() {
         token_owner_record_lock_authority_cookie.authority.pubkey(),
         token_owner_record_account.locks[0].authority
     );
-    assert_eq!(lock_type, token_owner_record_account.locks[0].lock_type);
+    assert_eq!(lock_id, token_owner_record_account.locks[0].lock_id);
     assert_eq!(expiry, token_owner_record_account.locks[0].expiry);
 }
 
@@ -143,7 +143,7 @@ async fn test_set_token_owner_record_lock_and_trim_expired_lock() {
         .await;
 
     let expiry = None;
-    let lock_type = 101;
+    let lock_id = 101;
 
     // Act
 
@@ -151,7 +151,7 @@ async fn test_set_token_owner_record_lock_and_trim_expired_lock() {
         .set_token_owner_record_lock(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie,
-            lock_type,
+            lock_id,
             expiry,
         )
         .await
@@ -167,7 +167,7 @@ async fn test_set_token_owner_record_lock_and_trim_expired_lock() {
         token_owner_record_lock_authority_cookie.authority.pubkey(),
         token_owner_record_account.locks[0].authority
     );
-    assert_eq!(lock_type, token_owner_record_account.locks[0].lock_type);
+    assert_eq!(lock_id, token_owner_record_account.locks[0].lock_id);
     assert_eq!(expiry, token_owner_record_account.locks[0].expiry);
 }
 
@@ -244,14 +244,14 @@ async fn test_set_token_owner_record_lock_with_lock_authority_must_sign_error() 
         .unwrap();
 
     let expiry = None;
-    let lock_type = 101;
+    let lock_id = 101;
 
     // Act
     let err = governance_test
         .set_token_owner_record_lock_using_ix(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie,
-            lock_type,
+            lock_id,
             expiry,
             |i| i.accounts[3].is_signer = false,
             Some(&[]),
@@ -285,7 +285,7 @@ async fn test_set_token_owner_record_lock_with_invalid_lock_authority_error() {
         .unwrap();
 
     let expiry = None;
-    let lock_type = 101;
+    let lock_id = 101;
     let lock_authority = Keypair::new();
 
     // Act
@@ -293,7 +293,7 @@ async fn test_set_token_owner_record_lock_with_invalid_lock_authority_error() {
         .set_token_owner_record_lock_using_ix(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie,
-            lock_type,
+            lock_id,
             expiry,
             |i| i.accounts[3].pubkey = lock_authority.pubkey(),
             Some(&[&lock_authority]),
@@ -328,14 +328,14 @@ async fn test_set_token_owner_record_lock_with_invalid_realm_config_error() {
         .unwrap();
 
     let expiry = None;
-    let lock_type = 101;
+    let lock_id = 101;
 
     // Act
     let err = governance_test
         .set_token_owner_record_lock_using_ix(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie,
-            lock_type,
+            lock_id,
             expiry,
             |i| i.accounts[1].pubkey = realm_cookie2.realm_config.address,
             None,
@@ -372,14 +372,14 @@ async fn test_set_token_owner_record_lock_with_invalid_token_owner_record_error(
         .unwrap();
 
     let expiry = None;
-    let lock_type = 101;
+    let lock_id = 101;
 
     // Act
     let err = governance_test
         .set_token_owner_record_lock_using_ix(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie,
-            lock_type,
+            lock_id,
             expiry,
             |i| i.accounts[2].pubkey = token_owner_record_cookie2.address,
             None,
@@ -449,14 +449,14 @@ async fn test_set_community_token_owner_record_lock_with_expired_lock_error() {
         .unwrap();
 
     let expiry = Some(0);
-    let lock_type = 101;
+    let lock_id = 101;
 
     // Act
     let err = governance_test
         .set_token_owner_record_lock(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie,
-            lock_type,
+            lock_id,
             expiry,
         )
         .await

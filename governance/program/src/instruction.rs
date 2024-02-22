@@ -665,7 +665,7 @@ pub enum GovernanceInstruction {
     ///     the disposed RequiredSignatory Account
     RemoveRequiredSignatory,
 
-    /// Sets TokenOwnerRecord lock for the given authority and lock type
+    /// Sets TokenOwnerRecord lock for the given authority and lock id
     ///
     ///   0. `[]` Realm
     ///   1. `[]` RealmConfig
@@ -674,24 +674,24 @@ pub enum GovernanceInstruction {
     ///   4. `[signer]` Payer
     ///   5. `[]` System
     SetTokenOwnerRecordLock {
-        /// Custom lock type id which can be used by the authority to issue
-        /// different lock types
+        /// Custom lock id which can be used by the authority to issue
+        /// different locks
         #[allow(dead_code)]
-        lock_type: u8,
+        lock_id: u8,
 
         /// The timestamp when the lock expires or None if it never expires
         #[allow(dead_code)]
         expiry: Option<UnixTimestamp>,
     },
 
-    /// Removes TokenOwnerRecord lock for the given authority and lock type
+    /// Removes TokenOwnerRecord lock for the given authority and lock id
     ///
     ///   0. `[writable]` TokenOwnerRecord the lock is removed from
     ///   1. `[signer]` Lock authority which issued the lock
     RemoveTokenOwnerRecordLock {
-        /// Custom lock type identifying the lock to remove
+        /// Custom lock id identifying the lock to remove
         #[allow(dead_code)]
-        lock_type: u8,
+        lock_id: u8,
     },
 
     /// Sets Realm config item
@@ -1941,7 +1941,7 @@ pub fn set_token_owner_record_lock(
     token_owner_record_lock_authority: &Pubkey,
     payer: &Pubkey,
     // Args
-    lock_type: u8,
+    lock_id: u8,
     expiry: Option<UnixTimestamp>,
 ) -> Instruction {
     let realm_config_address = get_realm_config_address(program_id, realm);
@@ -1955,7 +1955,7 @@ pub fn set_token_owner_record_lock(
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
-    let instruction = GovernanceInstruction::SetTokenOwnerRecordLock { lock_type, expiry };
+    let instruction = GovernanceInstruction::SetTokenOwnerRecordLock { lock_id, expiry };
 
     Instruction {
         program_id: *program_id,
@@ -1972,14 +1972,14 @@ pub fn remove_token_owner_record_lock(
     token_owner_record: &Pubkey,
     token_owner_record_lock_authority: &Pubkey,
     // Args
-    lock_type: u8,
+    lock_id: u8,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*token_owner_record, false),
         AccountMeta::new_readonly(*token_owner_record_lock_authority, true),
     ];
 
-    let instruction = GovernanceInstruction::RemoveTokenOwnerRecordLock { lock_type };
+    let instruction = GovernanceInstruction::RemoveTokenOwnerRecordLock { lock_id };
 
     Instruction {
         program_id: *program_id,

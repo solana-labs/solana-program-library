@@ -250,12 +250,12 @@ pub fn process_instruction(
             process_remove_required_signatory(program_id, accounts)
         }
 
-        GovernanceInstruction::SetTokenOwnerRecordLock { lock_type, expiry } => {
-            process_set_token_owner_record_lock(program_id, accounts, lock_type, expiry)
+        GovernanceInstruction::SetTokenOwnerRecordLock { lock_id, expiry } => {
+            process_set_token_owner_record_lock(program_id, accounts, lock_id, expiry)
         }
 
-        GovernanceInstruction::RemoveTokenOwnerRecordLock { lock_type } => {
-            process_remove_token_owner_record_lock(program_id, accounts, lock_type)
+        GovernanceInstruction::RemoveTokenOwnerRecordLock { lock_id } => {
+            process_remove_token_owner_record_lock(program_id, accounts, lock_id)
         }
 
         GovernanceInstruction::SetRealmConfigItem { args } => {
