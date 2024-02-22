@@ -218,11 +218,14 @@ async fn test_remove_token_owner_record_lock_and_trim_expired_locks() {
         .unwrap();
 
     // Set none expiring lock
+
+    let lock_id = 100;
+
     governance_test
         .set_token_owner_record_lock(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie,
-            101,
+            lock_id,
             None,
         )
         .await
@@ -262,5 +265,6 @@ async fn test_remove_token_owner_record_lock_and_trim_expired_locks() {
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    assert_eq!(0, token_owner_record_account.locks.len());
+    assert_eq!(1, token_owner_record_account.locks.len());
+    assert_eq!(lock_id, token_owner_record_account.locks[0].lock_id);
 }

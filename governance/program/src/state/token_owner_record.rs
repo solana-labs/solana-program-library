@@ -43,6 +43,14 @@ pub struct TokenOwnerRecordLock {
     pub expiry: Option<UnixTimestamp>,
 }
 
+impl TokenOwnerRecordLock {
+    /// Checks whether the lock is expired
+    pub fn is_expired(&self, current_unix_timestamp: UnixTimestamp) -> bool {
+        // If the expiry is None then the lock never expires
+        self.expiry.is_some() && Some(current_unix_timestamp) > self.expiry
+    }
+}
+
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -246,10 +254,12 @@ impl TokenOwnerRecordV2 {
             );
         }
 
-        for lock in self.locks.iter() {
-            if lock.expiry.is_none() || lock.expiry > Some(current_unix_timestamp) {
-                return Err(GovernanceError::TokenOwnerRecordLocked.into());
-            }
+        if self
+            .locks
+            .iter()
+            .any(|lock| !lock.is_expired(current_unix_timestamp))
+        {
+            return Err(GovernanceError::TokenOwnerRecordLocked.into());
         }
 
         Ok(())
@@ -318,8 +328,8 @@ impl TokenOwnerRecordV2 {
             if lock.lock_id == lock_id && lock.authority == *lock_authority {
                 false
             } else {
-                // Retain only unexpired locks
-                lock.expiry > Some(current_unix_timestamp)
+                // Retain unexpired locks only
+                !lock.is_expired(current_unix_timestamp)
             }
         });
     }

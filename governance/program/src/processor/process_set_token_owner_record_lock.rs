@@ -42,8 +42,14 @@ pub fn process_set_token_owner_record_lock(
         return Err(GovernanceError::TokenOwnerRecordLockAuthorityMustSign.into());
     }
 
+    let token_owner_record_lock = TokenOwnerRecordLock {
+        lock_id,
+        authority: *token_owner_record_lock_authority_info.key,
+        expiry,
+    };
+
     // Reject the lock if already expired
-    if expiry.is_some() && clock.unix_timestamp > expiry.unwrap() {
+    if token_owner_record_lock.is_expired(clock.unix_timestamp) {
         return Err(GovernanceError::ExpiredTokenOwnerRecordLock.into());
     }
 
@@ -65,19 +71,15 @@ pub fn process_set_token_owner_record_lock(
         return Err(GovernanceError::InvalidTokenOwnerRecordLockAuthority.into());
     }
 
-    // Remove expired locks and matching the authority and lock type we set
+    // Remove expired locks and matching the authority and lock id we set
     token_owner_record_data.trim_locks(
         clock.unix_timestamp,
-        lock_id,
-        token_owner_record_lock_authority_info.key,
+        token_owner_record_lock.lock_id,
+        &token_owner_record_lock.authority,
     );
 
     // Add the new lock
-    token_owner_record_data.locks.push(TokenOwnerRecordLock {
-        lock_id,
-        authority: *token_owner_record_lock_authority_info.key,
-        expiry,
-    });
+    token_owner_record_data.locks.push(token_owner_record_lock);
 
     token_owner_record_data.serialize_with_resize(
         token_owner_record_info,

@@ -582,3 +582,125 @@ async fn test_set_token_owner_record_lock_for_v1_account() {
         token_owner_record_account.data.len()
     );
 }
+
+#[tokio::test]
+async fn test_set_token_owner_record_lock_with_non_expiring_and_expiring_locks() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
+
+    let lock_id1 = 0;
+    let expiry1 = None;
+
+    let lock_id2 = 1;
+    let clock = governance_test.bench.get_clock().await;
+    let expiry2 = Some(clock.unix_timestamp + 1);
+
+    // Act
+
+    governance_test
+        .set_token_owner_record_lock(
+            &token_owner_record_cookie,
+            &token_owner_record_lock_authority_cookie,
+            lock_id1,
+            expiry1,
+        )
+        .await
+        .unwrap();
+
+    governance_test
+        .set_token_owner_record_lock(
+            &token_owner_record_cookie,
+            &token_owner_record_lock_authority_cookie,
+            lock_id2,
+            expiry2,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+    let token_owner_record_account = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(None, token_owner_record_account.locks[0].expiry);
+    assert_eq!(expiry2, token_owner_record_account.locks[1].expiry);
+}
+
+#[tokio::test]
+async fn test_set_token_owner_record_lock_with_multiple_non_expiring_locks() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
+
+    let lock_id1 = 0;
+    let expiry1 = None;
+
+    let lock_id2 = 1;
+    let expiry2 = None;
+
+    governance_test
+        .set_token_owner_record_lock(
+            &token_owner_record_cookie,
+            &token_owner_record_lock_authority_cookie,
+            lock_id1,
+            expiry1,
+        )
+        .await
+        .unwrap();
+
+    governance_test
+        .set_token_owner_record_lock(
+            &token_owner_record_cookie,
+            &token_owner_record_lock_authority_cookie,
+            lock_id2,
+            expiry2,
+        )
+        .await
+        .unwrap();
+
+    let clock = governance_test.bench.get_clock().await;
+    let new_expiry1 = Some(clock.unix_timestamp + 1);
+
+    // Act
+
+    governance_test
+        .set_token_owner_record_lock(
+            &token_owner_record_cookie,
+            &token_owner_record_lock_authority_cookie,
+            lock_id1,
+            new_expiry1,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+    let token_owner_record_account = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(None, token_owner_record_account.locks[0].expiry);
+    assert_eq!(new_expiry1, token_owner_record_account.locks[1].expiry);
+}
