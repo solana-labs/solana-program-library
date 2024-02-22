@@ -348,6 +348,7 @@ pub fn get_realm_config_address(program_id: &Pubkey, realm: &Pubkey) -> Pubkey {
 pub fn resolve_governing_token_config(
     account_info_iter: &mut Iter<AccountInfo>,
     governing_token_config_args: &GoverningTokenConfigArgs,
+    existing_governing_token_config: Option<GoverningTokenConfig>,
 ) -> Result<GoverningTokenConfig, ProgramError> {
     let voter_weight_addin = if governing_token_config_args.use_voter_weight_addin {
         let voter_weight_addin_info = next_account_info(account_info_iter)?;
@@ -363,12 +364,19 @@ pub fn resolve_governing_token_config(
         None
     };
 
+    let lock_authorities =
+        if let Some(existing_governing_token_config) = existing_governing_token_config {
+            existing_governing_token_config.lock_authorities
+        } else {
+            vec![]
+        };
+
     Ok(GoverningTokenConfig {
         voter_weight_addin,
         max_voter_weight_addin,
         token_type: governing_token_config_args.token_type.clone(),
         reserved: [0; 4],
-        lock_authorities: vec![],
+        lock_authorities,
     })
 }
 
