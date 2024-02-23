@@ -24,7 +24,7 @@ use {
                 EncryptedWithheldAmount,
             },
             transfer_fee::TransferFeeConfig,
-            BaseStateWithExtensions, StateWithExtensionsMut,
+            BaseStateWithExtensions, BaseStateWithExtensionsMut, StateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
         processor::Processor,
