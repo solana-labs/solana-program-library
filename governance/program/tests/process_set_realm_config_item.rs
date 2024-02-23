@@ -252,18 +252,19 @@ async fn test_add_token_owner_record_lock_authority_with_authority_already_exist
 
     let realm_cookie = governance_test.with_realm().await;
 
-    let token_owner_record_lock_authority_cookie = governance_test
-        .with_council_token_owner_record_lock_authority(&realm_cookie)
-        .await
-        .unwrap();
-
     let args = SetRealmConfigItemArgs::TokenOwnerRecordLockAuthority {
         action: SetConfigItemActionType::Add,
         governing_token_mint: realm_cookie.account.config.council_mint.unwrap(),
         // Set the same authority
-        authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
+        authority: Pubkey::new_unique(),
     };
 
+    governance_test
+        .set_realm_config_item(&realm_cookie, args.clone())
+        .await
+        .unwrap();
+
+    // Advance the clock to accept the same transaction
     governance_test.advance_clock().await;
 
     // Act

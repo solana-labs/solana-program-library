@@ -28,7 +28,7 @@ use {
     std::slice::Iter,
 };
 
-/// A lock of Token Owner Record which can be issued by external authorities to
+/// A lock of TokenOwnerRecord which can be issued by external authorities to
 /// prevent token withdrawals
 #[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct TokenOwnerRecordLock {
