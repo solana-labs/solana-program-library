@@ -3463,7 +3463,7 @@ impl GovernanceProgramTest {
     pub async fn relinquish_token_owner_record_locks(
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        token_owner_record_lock_authority: &Keypair,
+        token_owner_record_lock_authority: Option<&Keypair>,
         lock_id: Option<u8>,
     ) -> Result<(), ProgramError> {
         self.relinquish_token_owner_record_locks_using_ix(
@@ -3480,22 +3480,30 @@ impl GovernanceProgramTest {
     pub async fn relinquish_token_owner_record_locks_using_ix<F: Fn(&mut Instruction)>(
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        token_owner_record_lock_authority: &Keypair,
+        token_owner_record_lock_authority: Option<&Keypair>,
         lock_id: Option<u8>,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
+        let token_owner_record_lock_authority_pubkey =
+            token_owner_record_lock_authority.map(|kp| kp.pubkey());
+
         let mut remove_token_owner_record_lock_ix = relinquish_token_owner_record_locks(
             &self.program_id,
             &token_owner_record_cookie.address,
-            &token_owner_record_lock_authority.pubkey(),
+            token_owner_record_lock_authority_pubkey,
             lock_id,
         );
 
         instruction_override(&mut remove_token_owner_record_lock_ix);
 
-        let default_signers = &[token_owner_record_lock_authority];
-        let signers = signers_override.unwrap_or(default_signers);
+        let default_signers =
+            if let Some(token_owner_record_lock_authority) = token_owner_record_lock_authority {
+                vec![token_owner_record_lock_authority]
+            } else {
+                vec![]
+            };
+        let signers = signers_override.unwrap_or(&default_signers);
 
         self.bench
             .process_transaction(&[remove_token_owner_record_lock_ix], Some(signers))

@@ -1974,14 +1974,18 @@ pub fn relinquish_token_owner_record_locks(
     program_id: &Pubkey,
     // Accounts
     token_owner_record: &Pubkey,
-    token_owner_record_lock_authority: &Pubkey,
+    token_owner_record_lock_authority: Option<Pubkey>,
     // Args
     lock_id: Option<u8>,
 ) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*token_owner_record, false),
-        AccountMeta::new_readonly(*token_owner_record_lock_authority, true),
-    ];
+    let mut accounts = vec![AccountMeta::new(*token_owner_record, false)];
+
+    if let Some(token_owner_record_lock_authority) = token_owner_record_lock_authority {
+        accounts.push(AccountMeta::new_readonly(
+            token_owner_record_lock_authority,
+            true,
+        ));
+    }
 
     let instruction = GovernanceInstruction::RelinquishTokenOwnerRecordLocks { lock_id };
 
