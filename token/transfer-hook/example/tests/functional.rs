@@ -22,7 +22,10 @@ use {
         state::ExtraAccountMetaList,
     },
     spl_token_2022::{
-        extension::{transfer_hook::TransferHookAccount, ExtensionType, StateWithExtensionsMut},
+        extension::{
+            transfer_hook::TransferHookAccount, BaseStateWithExtensionsMut, ExtensionType,
+            StateWithExtensionsMut,
+        },
         state::{Account, AccountState, Mint},
     },
     spl_transfer_hook_interface::{

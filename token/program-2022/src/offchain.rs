@@ -141,7 +141,10 @@ where
 mod tests {
     use {
         super::*,
-        crate::extension::{transfer_hook::TransferHook, ExtensionType, StateWithExtensionsMut},
+        crate::extension::{
+            transfer_hook::TransferHook, BaseStateWithExtensionsMut, ExtensionType,
+            StateWithExtensionsMut,
+        },
         solana_program::{instruction::AccountMeta, program_option::COption},
         solana_program_test::tokio,
         spl_pod::optional_keys::OptionalNonZeroPubkey,

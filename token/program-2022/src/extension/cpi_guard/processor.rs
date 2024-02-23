@@ -4,7 +4,7 @@ use {
         error::TokenError,
         extension::{
             cpi_guard::{in_cpi, instruction::CpiGuardInstruction, CpiGuard},
-            StateWithExtensionsMut,
+            BaseStateWithExtensionsMut, StateWithExtensionsMut,
         },
         instruction::decode_instruction_type,
         processor::Processor,

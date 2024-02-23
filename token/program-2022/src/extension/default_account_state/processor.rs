@@ -7,7 +7,7 @@ use {
                 instruction::{decode_instruction, DefaultAccountStateInstruction},
                 DefaultAccountState,
             },
-            StateWithExtensionsMut,
+            BaseStateWithExtensionsMut, StateWithExtensionsMut,
         },
         processor::Processor,
         state::{AccountState, Mint},

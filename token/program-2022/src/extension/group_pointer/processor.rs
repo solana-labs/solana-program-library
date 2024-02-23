@@ -9,7 +9,7 @@ use {
                 },
                 GroupPointer,
             },
-            StateWithExtensionsMut,
+            BaseStateWithExtensionsMut, StateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
         processor::Processor,
