@@ -78,6 +78,23 @@ def find_transient_stake_program_address(
     )
 
 
+def find_ephemeral_stake_program_address(
+    program_id: PublicKey,
+    stake_pool_address: PublicKey,
+    seed: int
+) -> Tuple[PublicKey, int]:
+
+    """Generates the ephemeral program address for stake pool redelegation"""
+    return PublicKey.find_program_address(
+        [
+            EPHEMERAL_STAKE_SEED_PREFIX,
+            bytes(stake_pool_address),
+            seed.to_bytes(8, 'little'),
+        ],
+        program_id,
+    )
+
+
 def find_metadata_account(
     mint_key: PublicKey
 ) -> Tuple[PublicKey, int]:
@@ -100,3 +117,5 @@ TRANSIENT_STAKE_SEED_PREFIX = b"transient"
 """Seed used to derive transient stake accounts."""
 METADATA_SEED_PREFIX = b"metadata"
 """Seed used to avoid certain collision attacks."""
+EPHEMERAL_STAKE_SEED_PREFIX = b'ephemeral'
+"""Seed for ephemeral stake account"""
