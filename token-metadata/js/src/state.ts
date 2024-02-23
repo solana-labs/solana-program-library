@@ -47,7 +47,7 @@ export function pack(meta: TokenMetadata): Uint8Array {
         updateAuthority: updateAuthority.toBuffer(),
         mint: meta.mint.toBuffer(),
     });
-};
+}
 
 // unpack byte slab into TokenMetadata
 export function unpack(buffer: Buffer | Uint8Array): TokenMetadata {
