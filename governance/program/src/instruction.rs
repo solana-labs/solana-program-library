@@ -684,14 +684,18 @@ pub enum GovernanceInstruction {
         expiry: Option<UnixTimestamp>,
     },
 
-    /// Removes TokenOwnerRecord lock for the given authority and lock id
+    /// Removes all expired TokenOwnerRecord locks and if specified
+    /// the lock identified by the given lock id and authority
     ///
-    ///   0. `[writable]` TokenOwnerRecord the lock is removed from
-    ///   1. `[signer]` Lock authority which issued the lock
-    RemoveTokenOwnerRecordLock {
+    ///
+    ///   0. `[writable]` TokenOwnerRecord the locks are removed from
+    ///   1. `[signer]` Optional lock authority which issued the lock
+    ///       specified by lock_id
+    RelinquishTokenOwnerRecordLocks {
         /// Custom lock id identifying the lock to remove
+        /// If the lock_id is None then only expired locks are removed
         #[allow(dead_code)]
-        lock_id: u8,
+        lock_id: Option<u8>,
     },
 
     /// Sets Realm config item
@@ -1964,22 +1968,22 @@ pub fn set_token_owner_record_lock(
     }
 }
 
-/// Creates RemoveTokenOwnerRecordLock instruction to remove TokenOwnerRecord
-/// lock
-pub fn remove_token_owner_record_lock(
+/// Creates RelinquishTokenOwnerRecordLocks instruction to remove TokenOwnerRecord
+/// locks
+pub fn relinquish_token_owner_record_locks(
     program_id: &Pubkey,
     // Accounts
     token_owner_record: &Pubkey,
     token_owner_record_lock_authority: &Pubkey,
     // Args
-    lock_id: u8,
+    lock_id: Option<u8>,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*token_owner_record, false),
         AccountMeta::new_readonly(*token_owner_record_lock_authority, true),
     ];
 
-    let instruction = GovernanceInstruction::RemoveTokenOwnerRecordLock { lock_id };
+    let instruction = GovernanceInstruction::RelinquishTokenOwnerRecordLocks { lock_id };
 
     Instruction {
         program_id: *program_id,

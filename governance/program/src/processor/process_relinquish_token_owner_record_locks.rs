@@ -11,11 +11,11 @@ use {
     },
 };
 
-/// Processes RemoveTokenOwnerRecordLock instruction
-pub fn process_remove_token_owner_record_lock(
+/// Processes RelinquishTokenOwnerRecordLocks instruction
+pub fn process_relinquish_token_owner_record_locks(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    lock_id: u8,
+    lock_id: Option<u8>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -32,7 +32,8 @@ pub fn process_remove_token_owner_record_lock(
         get_token_owner_record_data(program_id, token_owner_record_info)?;
 
     // Remove the lock
-    token_owner_record_data.remove_lock(lock_id, token_owner_record_lock_authority_info.key)?;
+    token_owner_record_data
+        .remove_lock(lock_id.unwrap(), token_owner_record_lock_authority_info.key)?;
 
     // Trim expired locks
     token_owner_record_data.remove_expired_locks(clock.unix_timestamp);

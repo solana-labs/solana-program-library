@@ -39,10 +39,10 @@ async fn test_remove_token_owner_record_lock() {
 
     // Act
     governance_test
-        .remove_token_owner_record_lock(
+        .relinquish_token_owner_record_locks(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie.authority,
-            token_owner_record_lock_cookie.lock_id,
+            Some(token_owner_record_lock_cookie.lock_id),
         )
         .await
         .unwrap();
@@ -84,10 +84,10 @@ async fn test_remove_token_owner_record_lock_with_invalid_authority_error() {
 
     // Act
     let err = governance_test
-        .remove_token_owner_record_lock(
+        .relinquish_token_owner_record_locks(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority,
-            token_owner_record_lock_cookie.lock_id,
+            Some(token_owner_record_lock_cookie.lock_id),
         )
         .await
         .err()
@@ -124,10 +124,10 @@ async fn test_remove_token_owner_record_lock_with_authority_must_sign_error() {
 
     // Act
     let err = governance_test
-        .remove_token_owner_record_lock_using_ix(
+        .relinquish_token_owner_record_locks_using_ix(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie.authority,
-            token_owner_record_lock_cookie.lock_id,
+            Some(token_owner_record_lock_cookie.lock_id),
             |i| i.accounts[1].is_signer = false,
             Some(&[]),
         )
@@ -181,10 +181,10 @@ async fn test_remove_token_owner_record_lock_after_authority_revoked() {
 
     // Act
     governance_test
-        .remove_token_owner_record_lock(
+        .relinquish_token_owner_record_locks(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie.authority,
-            token_owner_record_lock_cookie.lock_id,
+            Some(token_owner_record_lock_cookie.lock_id),
         )
         .await
         .unwrap();
@@ -249,10 +249,10 @@ async fn test_remove_token_owner_record_lock_and_trim_expired_locks() {
 
     // Act
     governance_test
-        .remove_token_owner_record_lock(
+        .relinquish_token_owner_record_locks(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority_cookie2.authority,
-            token_owner_record_lock_cookie2.lock_id,
+            Some(token_owner_record_lock_cookie2.lock_id),
         )
         .await
         .unwrap();

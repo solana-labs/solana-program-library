@@ -21,7 +21,7 @@ use {
             create_program_governance, create_proposal, create_realm, create_token_governance,
             create_token_owner_record, deposit_governing_tokens, execute_transaction,
             finalize_vote, flag_transaction_error, insert_transaction, refund_proposal_deposit,
-            relinquish_vote, remove_required_signatory, remove_token_owner_record_lock,
+            relinquish_token_owner_record_locks, relinquish_vote, remove_required_signatory,
             remove_transaction, revoke_governing_tokens, set_governance_config,
             set_governance_delegate, set_realm_authority, set_realm_config, set_realm_config_item,
             set_token_owner_record_lock, sign_off_proposal, upgrade_program_metadata,
@@ -3460,13 +3460,13 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn remove_token_owner_record_lock(
+    pub async fn relinquish_token_owner_record_locks(
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         token_owner_record_lock_authority: &Keypair,
-        lock_id: u8,
+        lock_id: Option<u8>,
     ) -> Result<(), ProgramError> {
-        self.remove_token_owner_record_lock_using_ix(
+        self.relinquish_token_owner_record_locks_using_ix(
             token_owner_record_cookie,
             token_owner_record_lock_authority,
             lock_id,
@@ -3477,15 +3477,15 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn remove_token_owner_record_lock_using_ix<F: Fn(&mut Instruction)>(
+    pub async fn relinquish_token_owner_record_locks_using_ix<F: Fn(&mut Instruction)>(
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         token_owner_record_lock_authority: &Keypair,
-        lock_id: u8,
+        lock_id: Option<u8>,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
-        let mut remove_token_owner_record_lock_ix = remove_token_owner_record_lock(
+        let mut remove_token_owner_record_lock_ix = relinquish_token_owner_record_locks(
             &self.program_id,
             &token_owner_record_cookie.address,
             &token_owner_record_lock_authority.pubkey(),
