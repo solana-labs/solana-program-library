@@ -254,8 +254,8 @@ pub fn process_instruction(
             process_set_token_owner_record_lock(program_id, accounts, lock_id, expiry)
         }
 
-        GovernanceInstruction::RelinquishTokenOwnerRecordLocks { lock_id } => {
-            process_relinquish_token_owner_record_locks(program_id, accounts, lock_id)
+        GovernanceInstruction::RelinquishTokenOwnerRecordLocks { lock_ids } => {
+            process_relinquish_token_owner_record_locks(program_id, accounts, lock_ids)
         }
 
         GovernanceInstruction::SetRealmConfigItem { args } => {

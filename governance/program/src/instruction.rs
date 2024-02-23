@@ -685,17 +685,23 @@ pub enum GovernanceInstruction {
     },
 
     /// Removes all expired TokenOwnerRecord locks and if specified
-    /// the lock identified by the given lock id and authority
+    /// the locks identified by the given lock ids and authority
     ///
     ///
-    ///   0. `[writable]` TokenOwnerRecord the locks are removed from
-    ///   1. `[signer]` Optional lock authority which issued the lock specified
-    ///      by lock_id
+    ///   0. `[]` Realm
+    ///   1. `[]` RealmConfig
+    ///   2. `[writable]` TokenOwnerRecord the locks are removed from
+    ///   3. `[signer]` Optional lock authority which issued the locks specified
+    ///      by lock_ids
+    ///      If the authority is configured in RealmConfig then
+    ///      it must sign the transaction
+    ///      If the authority is no longer configured then the locks are removed
+    ///      without the authority signature
     RelinquishTokenOwnerRecordLocks {
-        /// Custom lock id identifying the lock to remove
+        /// Custom lock ids identifying the lock to remove
         /// If the lock_id is None then only expired locks are removed
         #[allow(dead_code)]
-        lock_id: Option<u8>,
+        lock_ids: Option<Vec<u8>>,
     },
 
     /// Sets Realm config item
@@ -1973,12 +1979,19 @@ pub fn set_token_owner_record_lock(
 pub fn relinquish_token_owner_record_locks(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
     token_owner_record: &Pubkey,
     token_owner_record_lock_authority: Option<Pubkey>,
     // Args
-    lock_id: Option<u8>,
+    lock_ids: Option<Vec<u8>>,
 ) -> Instruction {
-    let mut accounts = vec![AccountMeta::new(*token_owner_record, false)];
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
+    let mut accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new_readonly(realm_config_address, false),
+        AccountMeta::new(*token_owner_record, false),
+    ];
 
     if let Some(token_owner_record_lock_authority) = token_owner_record_lock_authority {
         accounts.push(AccountMeta::new_readonly(
@@ -1987,7 +2000,7 @@ pub fn relinquish_token_owner_record_locks(
         ));
     }
 
-    let instruction = GovernanceInstruction::RelinquishTokenOwnerRecordLocks { lock_id };
+    let instruction = GovernanceInstruction::RelinquishTokenOwnerRecordLocks { lock_ids };
 
     Instruction {
         program_id: *program_id,

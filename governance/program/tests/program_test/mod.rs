@@ -3464,12 +3464,12 @@ impl GovernanceProgramTest {
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         token_owner_record_lock_authority: Option<&Keypair>,
-        lock_id: Option<u8>,
+        lock_ids: Option<Vec<u8>>,
     ) -> Result<(), ProgramError> {
         self.relinquish_token_owner_record_locks_using_ix(
             token_owner_record_cookie,
             token_owner_record_lock_authority,
-            lock_id,
+            lock_ids,
             NopOverride,
             None,
         )
@@ -3481,7 +3481,7 @@ impl GovernanceProgramTest {
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         token_owner_record_lock_authority: Option<&Keypair>,
-        lock_id: Option<u8>,
+        lock_ids: Option<Vec<u8>>,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
@@ -3490,9 +3490,10 @@ impl GovernanceProgramTest {
 
         let mut remove_token_owner_record_lock_ix = relinquish_token_owner_record_locks(
             &self.program_id,
+            &token_owner_record_cookie.account.realm,
             &token_owner_record_cookie.address,
             token_owner_record_lock_authority_pubkey,
-            lock_id,
+            lock_ids,
         );
 
         instruction_override(&mut remove_token_owner_record_lock_ix);
