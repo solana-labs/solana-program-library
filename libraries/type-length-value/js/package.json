@@ -28,17 +28,20 @@
         "import": "./lib/esm/index.js"
     },
     "scripts": {
-        "nuke": "shx rm -rf node_modules package-lock.json || true",
-        "reinstall": "npm run nuke && npm install",
-        "clean": "shx rm -rf lib **/*.tsbuildinfo || true",
         "build": "tsc --build --verbose tsconfig.all.json",
-        "postbuild": "shx echo '{ \"type\": \"commonjs\" }' > lib/cjs/package.json",
-        "watch": "tsc --build --verbose --watch tsconfig.all.json",
-        "release": "npm run clean && npm run build",
+        "clean": "shx rm -rf lib **/*.tsbuildinfo || true",
+        "deploy": "npm run deploy:docs",
+        "deploy:docs": "npm run docs && gh-pages --dest type-length-value/js --dist docs --dotfiles",
+        "docs": "shx rm -rf docs && typedoc && shx cp .nojekyll docs/",
         "fmt": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'",
         "lint": "prettier --check '{*,**/*}.{ts,tsx,js,jsx,json}' && eslint --max-warnings 0 .",
         "lint:fix": "npm run fmt && eslint --fix .",
-        "test": "mocha test"
+        "nuke": "shx rm -rf node_modules package-lock.json || true",
+        "postbuild": "shx echo '{ \"type\": \"commonjs\" }' > lib/cjs/package.json",
+        "reinstall": "npm run nuke && npm install",
+        "release": "npm run clean && npm run build",
+        "test": "mocha test",
+        "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "dependencies": {
         "buffer": "^6.0.3"
@@ -59,6 +62,7 @@
         "prettier": "^3.2.5",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
+        "typedoc": "^0.25.8",
         "typescript": "^5.3.3"
     }
 }
