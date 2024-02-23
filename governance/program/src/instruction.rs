@@ -689,8 +689,8 @@ pub enum GovernanceInstruction {
     ///
     ///
     ///   0. `[writable]` TokenOwnerRecord the locks are removed from
-    ///   1. `[signer]` Optional lock authority which issued the lock
-    ///       specified by lock_id
+    ///   1. `[signer]` Optional lock authority which issued the lock specified
+    ///      by lock_id
     RelinquishTokenOwnerRecordLocks {
         /// Custom lock id identifying the lock to remove
         /// If the lock_id is None then only expired locks are removed
@@ -1968,8 +1968,8 @@ pub fn set_token_owner_record_lock(
     }
 }
 
-/// Creates RelinquishTokenOwnerRecordLocks instruction to remove TokenOwnerRecord
-/// locks
+/// Creates RelinquishTokenOwnerRecordLocks instruction to remove
+/// TokenOwnerRecord locks
 pub fn relinquish_token_owner_record_locks(
     program_id: &Pubkey,
     // Accounts

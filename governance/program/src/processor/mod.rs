@@ -19,9 +19,9 @@ mod process_finalize_vote;
 mod process_flag_transaction_error;
 mod process_insert_transaction;
 mod process_refund_proposal_deposit;
+mod process_relinquish_token_owner_record_locks;
 mod process_relinquish_vote;
 mod process_remove_required_signatory;
-mod process_relinquish_token_owner_record_locks;
 mod process_remove_transaction;
 mod process_revoke_governing_tokens;
 mod process_set_governance_config;
@@ -55,9 +55,9 @@ use {
     process_flag_transaction_error::*,
     process_insert_transaction::*,
     process_refund_proposal_deposit::*,
+    process_relinquish_token_owner_record_locks::*,
     process_relinquish_vote::*,
     process_remove_required_signatory::*,
-    process_relinquish_token_owner_record_locks::*,
     process_remove_transaction::*,
     process_revoke_governing_tokens::*,
     process_set_governance_config::*,
