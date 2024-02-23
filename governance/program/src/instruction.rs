@@ -692,11 +692,9 @@ pub enum GovernanceInstruction {
     ///   1. `[]` RealmConfig
     ///   2. `[writable]` TokenOwnerRecord the locks are removed from
     ///   3. `[signer]` Optional lock authority which issued the locks specified
-    ///      by lock_ids
-    ///      If the authority is configured in RealmConfig then
-    ///      it must sign the transaction
-    ///      If the authority is no longer configured then the locks are removed
-    ///      without the authority signature
+    ///      by lock_ids. If the authority is configured in RealmConfig then it
+    ///      must sign the transaction. If the authority is no longer configured
+    ///      then the locks are removed without the authority signature
     RelinquishTokenOwnerRecordLocks {
         /// Custom lock ids identifying the lock to remove
         /// If the lock_id is None then only expired locks are removed
