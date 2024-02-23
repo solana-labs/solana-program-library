@@ -56,7 +56,7 @@ async fn test_remove_token_owner_record_lock() {
 }
 
 #[tokio::test]
-async fn test_remove_token_owner_record_lock_with_invalid_authority() {
+async fn test_remove_token_owner_record_lock_with_invalid_authority_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -83,21 +83,18 @@ async fn test_remove_token_owner_record_lock_with_invalid_authority() {
     let token_owner_record_lock_authority = Keypair::new();
 
     // Act
-    governance_test
+    let err = governance_test
         .remove_token_owner_record_lock(
             &token_owner_record_cookie,
             &token_owner_record_lock_authority,
             token_owner_record_lock_cookie.lock_id,
         )
         .await
+        .err()
         .unwrap();
 
     // Assert
-    let token_owner_record_account = governance_test
-        .get_token_owner_record_account(&token_owner_record_cookie.address)
-        .await;
-
-    assert_eq!(1, token_owner_record_account.locks.len());
+    assert_eq!(err, GovernanceError::TokenOwnerRecordLockNotFound.into());
 }
 
 #[tokio::test]
@@ -254,7 +251,7 @@ async fn test_remove_token_owner_record_lock_and_trim_expired_locks() {
     governance_test
         .remove_token_owner_record_lock(
             &token_owner_record_cookie,
-            &token_owner_record_lock_authority_cookie.authority,
+            &token_owner_record_lock_authority_cookie2.authority,
             token_owner_record_lock_cookie2.lock_id,
         )
         .await

@@ -701,6 +701,6 @@ async fn test_set_token_owner_record_lock_with_multiple_non_expiring_locks() {
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    assert_eq!(None, token_owner_record_account.locks[0].expiry);
-    assert_eq!(new_expiry1, token_owner_record_account.locks[1].expiry);
+    assert_eq!(new_expiry1, token_owner_record_account.locks[0].expiry);
+    assert_eq!(None, token_owner_record_account.locks[1].expiry);
 }

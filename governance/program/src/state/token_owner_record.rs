@@ -314,24 +314,39 @@ impl TokenOwnerRecordV2 {
         }
     }
 
-    /// Trim locks by removing locks already expired and
-    /// matching the given type and authority
-    pub fn trim_locks(
+    /// Removes expired locks
+    pub fn remove_expired_locks(&mut self, current_unix_timestamp: UnixTimestamp) {
+        self.locks
+            .retain(|lock| !lock.is_expired(current_unix_timestamp));
+    }
+
+    /// Removes a lock by its id and authority
+    pub fn remove_lock(
         &mut self,
-        current_unix_timestamp: UnixTimestamp,
         lock_id: u8,
         lock_authority: &Pubkey,
-    ) {
-        // Trim existing locks
-        self.locks.retain(|lock| {
-            // Remove existing lock for the given authority and lock type
-            if lock.lock_id == lock_id && lock.authority == *lock_authority {
-                false
-            } else {
-                // Retain unexpired locks only
-                !lock.is_expired(current_unix_timestamp)
-            }
-        });
+    ) -> Result<(), ProgramError> {
+        if let Some(lock_index) = self
+            .locks
+            .iter()
+            .position(|lock| lock.lock_id == lock_id && lock.authority == *lock_authority)
+        {
+            self.locks.remove(lock_index);
+            Ok(())
+        } else {
+            Err(GovernanceError::TokenOwnerRecordLockNotFound.into())
+        }
+    }
+
+    /// Upserts (updates or inserts) a lock by its id and authority
+    pub fn upsert_lock(&mut self, lock: TokenOwnerRecordLock) {
+        if let Some(lock_index) = self.locks.iter().position(|existing_lock| {
+            existing_lock.lock_id == lock.lock_id && existing_lock.authority == lock.authority
+        }) {
+            self.locks[lock_index] = lock;
+        } else {
+            self.locks.push(lock);
+        }
     }
 
     /// Serializes TokenOwnerRecord and resizes it if required
