@@ -70,13 +70,9 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
         assert validator.transient_stake_lamports == 0
         assert validator.active_stake_lamports == increase_amount + minimum_amount + stake_rent_exemption
 
-    def decrease(validator, decrease_amount, ephemeral_stake_seed=None):
-        return decrease_validator_stake(async_client, payer, payer, stake_pool_address, validator,
-                                        decrease_amount, ephemeral_stake_seed=ephemeral_stake_seed)
-
     # decrease from all
     futures = [
-        decrease(validator, decrease_amount // 2)
+        decrease_validator_stake(async_client, payer, payer, stake_pool_address, validator, decrease_amount)
         for validator in validators
     ]
     await asyncio.gather(*futures)
@@ -86,13 +82,14 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     data = resp['result']['value']['data']
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
-        assert validator.transient_stake_lamports == decrease_amount // 2 + stake_rent_exemption
-        assert validator.active_stake_lamports == increase_amount-decrease_amount//2+minimum_amount+stake_rent_exemption
+        assert validator.transient_stake_lamports == decrease_amount + stake_rent_exemption
+        assert validator.active_stake_lamports == increase_amount - decrease_amount + minimum_amount + \
+            stake_rent_exemption
 
     # DO NOT test decrese additional instruction as it is confirmed NOT to be working as advertised
 
     # roll over one epoch and verify we have the balances that we expect
-    expected_active_stake_lamports = increase_amount - decrease_amount//2 + minimum_amount + stake_rent_exemption
+    expected_active_stake_lamports = increase_amount - decrease_amount + minimum_amount + stake_rent_exemption
 
     print("Waiting for epoch to roll over")
     await waiter.wait_for_next_epoch(async_client)

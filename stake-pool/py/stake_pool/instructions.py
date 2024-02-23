@@ -559,6 +559,8 @@ class IncreaseAdditionalValidatorStakeParams(NamedTuple):
     """`[w]` Validator stake list storage account."""
     reserve_stake: PublicKey
     """`[w]` Stake pool's reserve."""
+    ephemeral_stake: PublicKey
+    """The ephemeral stake account used during the operation."""
     transient_stake: PublicKey
     """`[w]` Transient stake account to receive split."""
     validator_stake: PublicKey
@@ -583,8 +585,6 @@ class IncreaseAdditionalValidatorStakeParams(NamedTuple):
     """Amount of lamports to increase on the given validator."""
     transient_stake_seed: int
     """Seed to used to create the transient stake account."""
-    ephemeral_stake: PublicKey
-    """The ephemeral stake account used during the operation."""
     ephemeral_stake_seed: int
     """The seed used to generate the ephemeral stake account"""
 
@@ -603,8 +603,12 @@ class DecreaseAdditionalValidatorStakeParams(NamedTuple):
     """`[]` Stake pool withdraw authority."""
     validator_list: PublicKey
     """`[w]` Validator stake list storage account."""
+    reserve_stake: PublicKey
+    """The reserve stake account to move the stake to."""
     validator_stake: PublicKey
     """`[w]` Canonical stake to split from."""
+    ephemeral_stake: PublicKey
+    """The ephemeral stake account used during the operation."""
     transient_stake: PublicKey
     """`[w]` Transient stake account to receive split."""
     clock_sysvar: PublicKey
@@ -623,10 +627,6 @@ class DecreaseAdditionalValidatorStakeParams(NamedTuple):
     """Amount of lamports to split into the transient stake account."""
     transient_stake_seed: int
     """Seed to used to create the transient stake account."""
-    reserve_stake: PublicKey
-    """The reserve stake account to move the stake to."""
-    ephemeral_stake: PublicKey
-    """The ephemeral stake account used during the operation."""
     ephemeral_stake_seed: int
     """The seed used to generate the ephemeral stake account"""
 
