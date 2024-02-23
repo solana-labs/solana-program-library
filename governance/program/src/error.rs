@@ -544,6 +544,10 @@ pub enum GovernanceError {
     /// TokenOwnerRecordLock not found
     #[error("TokenOwnerRecordLock not found")]
     TokenOwnerRecordLockNotFound, // 630
+
+    /// TokenOwnerRecordLockAuthority not found
+    #[error("TokenOwnerRecordLockAuthority not found")]
+    TokenOwnerRecordLockAuthorityNotFound, // 631
 }
 
 impl PrintProgramError for GovernanceError {

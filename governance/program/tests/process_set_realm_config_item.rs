@@ -344,3 +344,43 @@ async fn test_set_realm_config_item_with_extended_account_size() {
         realm_config_account.data.len()
     );
 }
+
+#[tokio::test]
+async fn test_remove_token_owner_record_lock_authority_with_authority_not_found_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
+
+    let args = SetRealmConfigItemArgs::TokenOwnerRecordLockAuthority {
+        action: SetConfigItemActionType::Remove,
+        governing_token_mint: realm_cookie.account.community_mint,
+        authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
+    };
+
+    governance_test
+        .set_realm_config_item(&realm_cookie, args.clone())
+        .await
+        .unwrap();
+
+    // Advance the clock to accept the same transaction
+    governance_test.advance_clock().await;
+
+    // Act
+    let err = governance_test
+        .set_realm_config_item(&realm_cookie, args)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::TokenOwnerRecordLockAuthorityNotFound.into()
+    );
+}

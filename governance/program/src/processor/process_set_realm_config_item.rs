@@ -64,9 +64,15 @@ pub fn process_set_realm_config_item(
                     token_config.lock_authorities.push(authority);
                 }
                 SetConfigItemActionType::Remove => {
-                    token_config
+                    if let Some(lock_authority_index) = token_config
                         .lock_authorities
-                        .retain(|lock_authority| lock_authority != &authority);
+                        .iter()
+                        .position(|lock_authority| lock_authority == &authority)
+                    {
+                        token_config.lock_authorities.remove(lock_authority_index);
+                    } else {
+                        return Err(GovernanceError::TokenOwnerRecordLockAuthorityNotFound.into());
+                    }
                 }
             }
         }
