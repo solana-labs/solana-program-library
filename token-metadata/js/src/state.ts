@@ -39,7 +39,7 @@ function isNonePubkey(buffer: Uint8Array): boolean {
 }
 
 // Pack TokenMetadata into byte slab
-export const pack = (meta: TokenMetadata): Uint8Array => {
+export function pack(meta: TokenMetadata): Uint8Array {
     // If no updateAuthority given, set it to the None/Zero PublicKey for encoding
     const updateAuthority = meta.updateAuthority ?? PublicKey.default;
     return tokenMetadataCodec.encode({
@@ -47,7 +47,7 @@ export const pack = (meta: TokenMetadata): Uint8Array => {
         updateAuthority: updateAuthority.toBuffer(),
         mint: meta.mint.toBuffer(),
     });
-};
+}
 
 // unpack byte slab into TokenMetadata
 export function unpack(buffer: Buffer | Uint8Array): TokenMetadata {
