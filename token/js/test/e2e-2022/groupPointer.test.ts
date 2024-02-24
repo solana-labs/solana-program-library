@@ -4,9 +4,11 @@ import { PublicKey } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
 
 import {
+    AuthorityType,
     ExtensionType,
     createInitializeGroupPointerInstruction,
     createInitializeMintInstruction,
+    createSetAuthorityInstruction,
     createUpdateGroupPointerInstruction,
     getGroupPointerState,
     getMint,
@@ -92,6 +94,51 @@ describe('Group pointer', () => {
         expect(groupPointer).to.deep.equal({
             authority: mintAuthority.publicKey,
             groupAddress: newGroupAddress,
+        });
+    });
+
+    it('can update authority', async () => {
+        const newAuthority = PublicKey.unique();
+        const transaction = new Transaction().add(
+            createSetAuthorityInstruction(
+                mint.publicKey,
+                mintAuthority.publicKey,
+                AuthorityType.GroupPointer,
+                newAuthority,
+                [],
+                TEST_PROGRAM_ID
+            )
+        );
+        await sendAndConfirmTransaction(connection, transaction, [payer, mintAuthority], undefined);
+
+        const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        const groupPointer = getGroupPointerState(mintInfo);
+
+        expect(groupPointer).to.deep.equal({
+            authority: newAuthority,
+            groupAddress,
+        });
+    });
+
+    it('can update authority to null', async () => {
+        const transaction = new Transaction().add(
+            createSetAuthorityInstruction(
+                mint.publicKey,
+                mintAuthority.publicKey,
+                AuthorityType.GroupPointer,
+                null,
+                [],
+                TEST_PROGRAM_ID
+            )
+        );
+        await sendAndConfirmTransaction(connection, transaction, [payer, mintAuthority], undefined);
+
+        const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        const groupPointer = getGroupPointerState(mintInfo);
+
+        expect(groupPointer).to.deep.equal({
+            authority: null,
+            groupAddress,
         });
     });
 });

@@ -4,9 +4,11 @@ import { PublicKey } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
 
 import {
+    AuthorityType,
     ExtensionType,
     createInitializeGroupMemberPointerInstruction,
     createInitializeMintInstruction,
+    createSetAuthorityInstruction,
     createUpdateGroupMemberPointerInstruction,
     getGroupMemberPointerState,
     getMint,
@@ -92,6 +94,51 @@ describe('GroupMember pointer', () => {
         expect(groupMemberPointer).to.deep.equal({
             authority: mintAuthority.publicKey,
             memberAddress: newGroupMemberAddress,
+        });
+    });
+
+    it('can update authority', async () => {
+        const newAuthority = PublicKey.unique();
+        const transaction = new Transaction().add(
+            createSetAuthorityInstruction(
+                mint.publicKey,
+                mintAuthority.publicKey,
+                AuthorityType.GroupMemberPointer,
+                newAuthority,
+                [],
+                TEST_PROGRAM_ID
+            )
+        );
+        await sendAndConfirmTransaction(connection, transaction, [payer, mintAuthority], undefined);
+
+        const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        const groupMemberPointer = getGroupMemberPointerState(mintInfo);
+
+        expect(groupMemberPointer).to.deep.equal({
+            authority: newAuthority,
+            memberAddress,
+        });
+    });
+
+    it('can update authority to null', async () => {
+        const transaction = new Transaction().add(
+            createSetAuthorityInstruction(
+                mint.publicKey,
+                mintAuthority.publicKey,
+                AuthorityType.GroupMemberPointer,
+                null,
+                [],
+                TEST_PROGRAM_ID
+            )
+        );
+        await sendAndConfirmTransaction(connection, transaction, [payer, mintAuthority], undefined);
+
+        const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        const groupMemberPointer = getGroupMemberPointerState(mintInfo);
+
+        expect(groupMemberPointer).to.deep.equal({
+            authority: null,
+            memberAddress,
         });
     });
 });
