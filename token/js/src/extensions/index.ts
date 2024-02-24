@@ -2,6 +2,7 @@ export * from './accountType.js';
 export * from './cpiGuard/index.js';
 export * from './defaultAccountState/index.js';
 export * from './extensionType.js';
+export * from './groupPointer/index.js';
 export * from './immutableOwner.js';
 export * from './interestBearingMint/index.js';
 export * from './memoTransfer/index.js';
