@@ -56,6 +56,7 @@
     "dependencies": {
         "@solana/buffer-layout": "^4.0.0",
         "@solana/buffer-layout-utils": "^0.2.0",
+        "@solana/spl-token-group": "^0.0.1",
         "@solana/spl-token-metadata": "^0.1.2",
         "buffer": "^6.0.3"
     },
@@ -82,7 +83,6 @@
         "process": "^0.11.10",
         "shx": "^0.3.4",
         "start-server-and-test": "^2.0.3",
-        "tslib": "^2.3.1",
         "ts-node": "^10.9.2",
         "typedoc": "^0.25.12",
         "typescript": "^5.4.3"
