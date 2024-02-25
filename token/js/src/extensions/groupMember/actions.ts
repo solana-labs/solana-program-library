@@ -24,7 +24,7 @@ import { getSigners } from '../../actions/internal.js';
  *
  * @return Signature of the confirmed transaction
  */
-export async function tokenGroupInitializeMember(
+export async function tokenGroupMemberInitialize(
     connection: Connection,
     payer: Signer,
     mint: PublicKey,
