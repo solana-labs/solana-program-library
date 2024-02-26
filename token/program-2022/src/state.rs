@@ -16,6 +16,14 @@ use {
     },
 };
 
+/// Simplified version of the `Pack` trait which only gives the size of the
+/// packed struct. Useful when a function doesn't need a type to implement all
+/// of `Pack`, but a size is still needed.
+pub trait PackedSizeOf {
+    /// The packed size of the struct
+    const SIZE_OF: usize;
+}
+
 /// Mint data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -85,6 +93,9 @@ impl Pack for Mint {
         is_initialized_dst[0] = is_initialized as u8;
         pack_coption_key(freeze_authority, freeze_authority_dst);
     }
+}
+impl PackedSizeOf for Mint {
+    const SIZE_OF: usize = Self::LEN;
 }
 
 /// Account data.
@@ -184,6 +195,9 @@ impl Pack for Account {
         pack_coption_key(close_authority, close_authority_dst);
     }
 }
+impl PackedSizeOf for Account {
+    const SIZE_OF: usize = Self::LEN;
+}
 
 /// Account state.
 #[repr(u8)]
@@ -253,6 +267,9 @@ impl Pack for Multisig {
             dst_array.copy_from_slice(src.as_ref());
         }
     }
+}
+impl PackedSizeOf for Multisig {
+    const SIZE_OF: usize = Self::LEN;
 }
 
 // Helpers
