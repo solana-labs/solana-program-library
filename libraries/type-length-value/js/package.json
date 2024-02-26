@@ -47,7 +47,7 @@
         "buffer": "^6.0.3"
     },
     "devDependencies": {
-        "@types/chai": "^4.3.11",
+        "@types/chai": "^4.3.12",
         "@types/mocha": "^10.0.6",
         "@types/node": "^20.11.20",
         "@typescript-eslint/eslint-plugin": "^7.0.2",
