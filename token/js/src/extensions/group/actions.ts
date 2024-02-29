@@ -1,10 +1,12 @@
 import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignature } from '@solana/web3.js';
-import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { sendAndConfirmTransaction, SystemProgram, Transaction } from '@solana/web3.js';
 import {
     createInitializeGroupInstruction,
     createUpdateGroupMaxSizeInstruction,
     createUpdateGroupAuthorityInstruction,
     createInitializeMemberInstruction,
+    TOKEN_GROUP_SIZE,
+    TOKEN_GROUP_MEMBER_SIZE,
 } from '@solana/spl-token-group';
 
 import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
@@ -41,6 +43,57 @@ export async function tokenGroupInitializeGroup(
     const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
 
     const transaction = new Transaction().add(
+        createInitializeGroupInstruction({
+            programId,
+            group: mint,
+            mint,
+            mintAuthority: mintAuthorityPublicKey,
+            updateAuthority,
+            maxSize,
+        })
+    );
+
+    return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
+}
+
+/**
+ * Initialize a new `Group` with rent transfer.
+ *
+ * Assumes one has already initialized a mint for the group.
+ *
+ * @param connection       Connection to use
+ * @param payer            Payer of the transaction fees
+ * @param mint             Mint Account
+ * @param mintAuthority    Mint Authority
+ * @param updateAuthority  Update Authority
+ * @param maxSize          Maximum number of members in the group
+ * @param multiSigners     Signing accounts if `authority` is a multisig
+ * @param confirmOptions   Options for confirming the transaction
+ * @param programId        SPL Token program account
+ *
+ * @return Signature of the confirmed transaction
+ */
+export async function tokenGroupInitializeGroupWithRentTransfer(
+    connection: Connection,
+    payer: Signer,
+    mint: PublicKey,
+    mintAuthority: PublicKey,
+    updateAuthority: PublicKey | null,
+    maxSize: number,
+    multiSigners: Signer[] = [],
+    confirmOptions?: ConfirmOptions,
+    programId = TOKEN_2022_PROGRAM_ID
+): Promise<TransactionSignature> {
+    const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
+
+    const lamports = await connection.getMinimumBalanceForRentExemption(TOKEN_GROUP_SIZE);
+
+    const transaction = new Transaction().add(
+        SystemProgram.transfer({
+            fromPubkey: payer.publicKey,
+            toPubkey: mint,
+            lamports,
+        }),
         createInitializeGroupInstruction({
             programId,
             group: mint,
@@ -164,6 +217,60 @@ export async function tokenGroupMemberInitialize(
     const [memberMintAuthorityPublicKey, signers] = getSigners(memberMintAuthority, multiSigners);
 
     const transaction = new Transaction().add(
+        createInitializeMemberInstruction({
+            programId,
+            member,
+            memberMint,
+            memberMintAuthority: memberMintAuthorityPublicKey,
+            group,
+            groupUpdateAuthority,
+        })
+    );
+
+    return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
+}
+
+/**
+ * Initialize a new `Member` of a `Group` with rent transfer.
+ *
+ * Assumes the `Group` has already been initialized,
+ * as well as the mint for the member.
+ *
+ * @param connection             Connection to use
+ * @param payer                  Payer of the transaction fees
+ * @param member                 Member Account
+ * @param memberMint             Mint Account for the member
+ * @param memberMintAuthority    Mint Authority for the member
+ * @param group                  Group Account
+ * @param groupUpdateAuthority   Update Authority for the group
+ * @param multiSigners           Signing accounts if `authority` is a multisig
+ * @param confirmOptions         Options for confirming the transaction
+ * @param programId              SPL Token program account
+ *
+ * @return Signature of the confirmed transaction
+ */
+export async function tokenGroupMemberInitializeWithRentTransfer(
+    connection: Connection,
+    payer: Signer,
+    member: PublicKey,
+    memberMint: PublicKey,
+    memberMintAuthority: PublicKey,
+    group: PublicKey,
+    groupUpdateAuthority: PublicKey,
+    multiSigners: Signer[] = [],
+    confirmOptions?: ConfirmOptions,
+    programId = TOKEN_2022_PROGRAM_ID
+): Promise<TransactionSignature> {
+    const [memberMintAuthorityPublicKey, signers] = getSigners(memberMintAuthority, multiSigners);
+
+    const lamports = await connection.getMinimumBalanceForRentExemption(TOKEN_GROUP_MEMBER_SIZE);
+
+    const transaction = new Transaction().add(
+        SystemProgram.transfer({
+            fromPubkey: payer.publicKey,
+            toPubkey: memberMint,
+            lamports,
+        }),
         createInitializeMemberInstruction({
             programId,
             member,
