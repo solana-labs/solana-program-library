@@ -2,24 +2,23 @@ import { expect } from 'chai';
 import type { Connection, Signer } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 import { sendAndConfirmTransaction, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
-import { TokenGroup, packTokenGroup, packTokenGroupMember } from '@solana/spl-token-group';
 
 import {
     ExtensionType,
     createInitializeMintInstruction,
-    createInitializeGroupInstruction,
-    tokenGroupMemberInitialize,
     getTokenGroupState,
     getMint,
     getMintLen,
     createInitializeGroupMemberPointerInstruction,
     createInitializeGroupPointerInstruction,
     getTokenGroupMemberState,
+    tokenGroupInitializeGroupWithRentTransfer,
+    tokenGroupMemberInitializeWithRentTransfer,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
 const TEST_TOKEN_DECIMALS = 2;
-const EXTENSIONS = [ExtensionType.GroupMemberPointer, ExtensionType.GroupPointer];
+const EXTENSIONS = [ExtensionType.GroupMemberPointer];
 
 describe('tokenGroupMember', async () => {
     let connection: Connection;
@@ -29,14 +28,12 @@ describe('tokenGroupMember', async () => {
     let updateAuthority: Keypair;
     let groupAddress: PublicKey;
     let memberAddress: PublicKey;
-    let memberMintAuthority: Keypair;
 
     before(async () => {
         connection = await getConnection();
         payer = await newAccountWithLamports(connection, 1000000000);
         mintAuthority = Keypair.generate();
         updateAuthority = Keypair.generate();
-        memberMintAuthority = Keypair.generate();
     });
 
     beforeEach(async () => {
@@ -61,12 +58,6 @@ describe('tokenGroupMember', async () => {
                 memberAddress,
                 TEST_PROGRAM_ID
             ),
-            createInitializeGroupPointerInstruction(
-                mint.publicKey,
-                mintAuthority.publicKey,
-                groupAddress,
-                TEST_PROGRAM_ID
-            ),
             createInitializeMintInstruction(
                 mint.publicKey,
                 TEST_TOKEN_DECIMALS,
@@ -79,32 +70,19 @@ describe('tokenGroupMember', async () => {
         await sendAndConfirmTransaction(connection, transaction, [payer, mint], undefined);
     });
 
-    it('can initialize', async () => {
+    it('can initialize group member', async () => {
         const tokenGroupMember = {
             mint: mint.publicKey,
             group: groupAddress,
             memberNumber: 1,
         };
 
-        // Transfer the required amount for rent exemption
-        const lamports = await connection.getMinimumBalanceForRentExemption(
-            packTokenGroupMember(tokenGroupMember).length
-        );
-        const transaction = new Transaction().add(
-            SystemProgram.transfer({
-                fromPubkey: payer.publicKey,
-                toPubkey: mint.publicKey,
-                lamports,
-            })
-        );
-        await sendAndConfirmTransaction(connection, transaction, [payer], undefined);
-
-        await tokenGroupMemberInitialize(
+        await tokenGroupMemberInitializeWithRentTransfer(
             connection,
             payer,
             memberAddress,
             mint.publicKey,
-            memberMintAuthority.publicKey,
+            mintAuthority.publicKey,
             groupAddress,
             updateAuthority.publicKey,
             [mintAuthority],
@@ -114,10 +92,6 @@ describe('tokenGroupMember', async () => {
 
         const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         const member = getTokenGroupMemberState(mintInfo);
-        expect(member).to.deep.equal({
-            mint: mint.publicKey,
-            group: groupAddress,
-            memberNumber: 1,
-        });
+        expect(member).to.deep.equal(tokenGroupMember);
     });
 });

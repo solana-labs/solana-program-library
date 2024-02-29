@@ -14,6 +14,7 @@ import {
     getTokenGroupState,
     getMint,
     getMintLen,
+    tokenGroupInitializeGroupWithRentTransfer,
 } from '../../src';
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
@@ -106,12 +107,32 @@ describe('tokenGroup', async () => {
 
         const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         const group = getTokenGroupState(mintInfo);
-        expect(group).to.deep.equal({
+        expect(group).to.deep.equal(tokenGroup);
+    });
+
+    it('can initialize with rent transfer', async () => {
+        const tokenGroup = {
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
             size: 0,
             maxSize: 10,
-        });
+        };
+
+        await tokenGroupInitializeGroupWithRentTransfer(
+            connection,
+            payer,
+            mint.publicKey,
+            mintAuthority.publicKey,
+            tokenGroup.updateAuthority,
+            tokenGroup.maxSize,
+            [mintAuthority],
+            undefined,
+            TEST_PROGRAM_ID
+        );
+
+        const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
+        const group = getTokenGroupState(mintInfo);
+        expect(group).to.deep.equal(tokenGroup);
     });
 
     it('can update max size', async () => {
