@@ -8,6 +8,6 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-borsh = "0.10"
+borsh = "1.2.1"
 spl-governance-tools = { version = "0.1.4", path = "../tools" }
-solana-program = ">=1.17.17,<=2"
+solana-program = ">=1.18.2,<=2"

@@ -21,7 +21,7 @@ pub struct AccKey {
 }
 
 #[derive(PartialEq, Copy, Clone)]
-#[repr(C)]
+#[repr(u32)]
 pub enum AccountType {
     Unknown,
     Mapping,
@@ -30,7 +30,7 @@ pub enum AccountType {
 }
 
 #[derive(PartialEq, Copy, Clone)]
-#[repr(C)]
+#[repr(u32)]
 pub enum PriceStatus {
     Unknown,
     Trading,
@@ -39,7 +39,7 @@ pub enum PriceStatus {
 }
 
 #[derive(PartialEq, Copy, Clone)]
-#[repr(C)]
+#[repr(u32)]
 pub enum CorpAction {
     NoCorpAct,
 }
@@ -63,7 +63,7 @@ pub struct PriceComp {
 }
 
 #[derive(PartialEq, Copy, Clone)]
-#[repr(C)]
+#[repr(u32)]
 pub enum PriceType {
     Unknown,
     Price,

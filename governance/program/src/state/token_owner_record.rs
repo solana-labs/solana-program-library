@@ -12,7 +12,7 @@ use {
         },
         PROGRAM_AUTHORITY_SEED,
     },
-    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    borsh::{io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         program_error::ProgramError,
@@ -452,7 +452,7 @@ pub fn get_token_owner_record_data_for_proposal_owner(
 mod test {
     use {
         super::*,
-        solana_program::{borsh0_10::get_packed_len, stake_history::Epoch},
+        solana_program::{borsh1::get_packed_len, stake_history::Epoch},
     };
 
     fn create_test_token_owner_record() -> TokenOwnerRecordV2 {
@@ -504,7 +504,7 @@ mod test {
         let governance = create_test_program_v1_token_owner_record();
 
         // Act
-        let size = governance.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&governance).unwrap().len();
 
         // Assert
         assert_eq!(154, size);

@@ -107,7 +107,7 @@ impl Pack for FeatureProposalInstruction {
 
 impl FeatureProposalInstruction {
     fn pack_into_vec(&self) -> Vec<u8> {
-        self.try_to_vec().expect("try_to_vec")
+        borsh::to_vec(self).expect("try_to_vec")
     }
 }
 
@@ -170,26 +170,25 @@ mod tests {
     fn test_get_packed_len() {
         assert_eq!(
             FeatureProposalInstruction::get_packed_len(),
-            solana_program::borsh0_10::get_packed_len::<FeatureProposalInstruction>()
+            solana_program::borsh1::get_packed_len::<FeatureProposalInstruction>()
         )
     }
 
     #[test]
     fn test_serialize_bytes() {
         assert_eq!(
-            FeatureProposalInstruction::Tally.try_to_vec().unwrap(),
+            borsh::to_vec(&FeatureProposalInstruction::Tally).unwrap(),
             vec![1]
         );
 
         assert_eq!(
-            FeatureProposalInstruction::Propose {
+            borsh::to_vec(&FeatureProposalInstruction::Propose {
                 tokens_to_mint: 42,
                 acceptance_criteria: AcceptanceCriteria {
                     tokens_required: 0xdeadbeefdeadbeef,
                     deadline: -1,
                 }
-            }
-            .try_to_vec()
+            })
             .unwrap(),
             vec![
                 0, 42, 0, 0, 0, 0, 0, 0, 0, 239, 190, 173, 222, 239, 190, 173, 222, 255, 255, 255,

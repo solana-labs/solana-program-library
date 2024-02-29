@@ -167,7 +167,7 @@ pub fn process_instruction(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::instruction::MathInstruction, borsh::BorshSerialize};
+    use {super::*, crate::instruction::MathInstruction};
 
     #[test]
     fn test_u64_multiply() {
@@ -245,7 +245,7 @@ mod tests {
             },
             MathInstruction::Noop,
         ] {
-            let input = math_instruction.try_to_vec().unwrap();
+            let input = borsh::to_vec(math_instruction).unwrap();
             process_instruction(&program_id, &[], &input).unwrap();
         }
     }

@@ -5,7 +5,7 @@ version = "0.3.0"
 repository = "https://github.com/solana-labs/solana-program-library"
 authors = [
   "lcchy <lucas@bonfida.com>",
-  "Solana Labs Maintainers <maintainers@solanalabs.com>"
+  "Solana Labs Maintainers <maintainers@solanalabs.com>",
 ]
 license = "Apache-2.0"
 edition = "2021"
@@ -17,15 +17,15 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-solana-program = ">=1.17.17,<=2"
+solana-program = ">=1.18.2,<=2"
 num-traits = "0.2"
-borsh = "0.10"
+borsh = "1.2.1"
 num-derive = "0.4.2"
 thiserror = "1.0.57"
 
 [dev-dependencies]
-solana-program-test = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-program-test = ">=1.18.2,<=2"
+solana-sdk = ">=1.18.2,<=2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

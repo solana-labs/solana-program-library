@@ -92,7 +92,7 @@ mod test {
             reply_to: Some(Pubkey::new_unique()),
             body: MessageBody::Text("message".to_string()),
         };
-        let size = message.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&message).unwrap().len();
 
         assert_eq!(message.get_max_size(), Some(size));
     }

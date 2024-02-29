@@ -5,10 +5,9 @@ mod helpers;
 
 use {
     bincode::deserialize,
-    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
-        borsh0_10::try_from_slice_unchecked,
+        borsh1::try_from_slice_unchecked,
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
@@ -292,13 +291,12 @@ async fn fail_without_signature() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorToPool(
+        data: borsh::to_vec(&instruction::StakePoolInstruction::AddValidatorToPool(
             validator_stake
                 .validator_stake_seed
                 .map(|s| s.get())
                 .unwrap_or(0),
-        )
-        .try_to_vec()
+        ))
         .unwrap(),
     };
 
@@ -348,13 +346,12 @@ async fn fail_with_wrong_stake_program_id() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorToPool(
+        data: borsh::to_vec(&instruction::StakePoolInstruction::AddValidatorToPool(
             validator_stake
                 .validator_stake_seed
                 .map(|s| s.get())
                 .unwrap_or(0),
-        )
-        .try_to_vec()
+        ))
         .unwrap(),
     };
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
@@ -402,13 +399,12 @@ async fn fail_with_wrong_system_program_id() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::AddValidatorToPool(
+        data: borsh::to_vec(&instruction::StakePoolInstruction::AddValidatorToPool(
             validator_stake
                 .validator_stake_seed
                 .map(|s| s.get())
                 .unwrap_or(0),
-        )
-        .try_to_vec()
+        ))
         .unwrap(),
     };
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));

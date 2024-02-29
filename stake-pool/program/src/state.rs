@@ -11,7 +11,7 @@ use {
     num_traits::{FromPrimitive, ToPrimitive},
     solana_program::{
         account_info::AccountInfo,
-        borsh0_10::get_instance_packed_len,
+        borsh1::get_instance_packed_len,
         msg,
         program_error::ProgramError,
         program_memory::sol_memcmp,
@@ -1056,7 +1056,7 @@ mod test {
         super::*,
         proptest::prelude::*,
         solana_program::{
-            borsh0_10::{get_packed_len, try_from_slice_unchecked},
+            borsh1::{get_packed_len, try_from_slice_unchecked},
             clock::{DEFAULT_SLOTS_PER_EPOCH, DEFAULT_S_PER_SLOT, SECONDS_PER_DAY},
             native_token::LAMPORTS_PER_SOL,
         },
@@ -1162,7 +1162,7 @@ mod test {
     fn validator_list_deserialize_mut_slice() {
         let max_validators = 10;
         let stake_list = test_validator_list(max_validators);
-        let mut serialized = stake_list.try_to_vec().unwrap();
+        let mut serialized = borsh::to_vec(&stake_list).unwrap();
         let (header, mut big_vec) = ValidatorListHeader::deserialize_vec(&mut serialized).unwrap();
         let list = ValidatorListHeader::deserialize_mut_slice(
             &mut big_vec,
@@ -1207,7 +1207,7 @@ mod test {
     fn validator_list_iter() {
         let max_validators = 10;
         let stake_list = test_validator_list(max_validators);
-        let mut serialized = stake_list.try_to_vec().unwrap();
+        let mut serialized = borsh::to_vec(&stake_list).unwrap();
         let (_, big_vec) = ValidatorListHeader::deserialize_vec(&mut serialized).unwrap();
         for (a, b) in big_vec
             .deserialize_slice::<ValidatorStakeInfo>(0, big_vec.len() as usize)

@@ -3,7 +3,6 @@
 mod program_test;
 
 use {
-    borsh::BorshSerialize,
     program_test::*,
     solana_program::program_error::ProgramError,
     solana_program_test::tokio,
@@ -453,10 +452,9 @@ pub async fn test_add_non_matching_required_signatory_to_proposal_err() {
         &signatory.pubkey(),
     );
 
-    create_signatory_record_ix.data = GovernanceInstruction::AddSignatory {
+    create_signatory_record_ix.data = borsh::to_vec(&GovernanceInstruction::AddSignatory {
         signatory: Pubkey::new_unique(),
-    }
-    .try_to_vec()
+    })
     .unwrap();
 
     // Act

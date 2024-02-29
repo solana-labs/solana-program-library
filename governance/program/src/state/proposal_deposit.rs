@@ -111,7 +111,7 @@ mod test {
         };
 
         // Act
-        let size = proposal_deposit_data.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&proposal_deposit_data).unwrap().len();
 
         // Assert
         assert_eq!(proposal_deposit_data.get_max_size(), Some(size));

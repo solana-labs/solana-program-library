@@ -17,20 +17,28 @@ walkdir = "2"
 
 [dev-dependencies]
 async-trait = "0.1"
-borsh = "0.10"
+borsh = "1.2.1"
 futures-util = "0.3"
-solana-program = ">=1.17.17,<=2"
-solana-program-test = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-program = ">=1.18.2,<=2"
+solana-program-test = ">=1.18.2,<=2"
+solana-sdk = ">=1.18.2,<=2"
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program" }
-spl-memo = { version = "4.0.1", path = "../../memo/program", features = ["no-entrypoint"] }
+spl-memo = { version = "4.0.1", path = "../../memo/program", features = [
+  "no-entrypoint",
+] }
 spl-pod = { version = "0.1.1", path = "../../libraries/pod" }
-spl-token-2022 = { version = "2.0", path="../program-2022", features = ["no-entrypoint"] }
-spl-instruction-padding = { version = "0.1.1", path="../../instruction-padding/program", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "2.0", path = "../program-2022", features = [
+  "no-entrypoint",
+] }
+spl-instruction-padding = { version = "0.1.1", path = "../../instruction-padding/program", features = [
+  "no-entrypoint",
+] }
 spl-tlv-account-resolution = { version = "0.5.2", path = "../../libraries/tlv-account-resolution" }
 spl-token-client = { version = "0.8", path = "../client" }
 spl-token-group-interface = { version = "0.1", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
-spl-transfer-hook-example = { version = "0.5", path="../transfer-hook/example", features = ["no-entrypoint"] }
-spl-transfer-hook-interface = { version = "0.5", path="../transfer-hook/interface" }
+spl-transfer-hook-example = { version = "0.5", path = "../transfer-hook/example", features = [
+  "no-entrypoint",
+] }
+spl-transfer-hook-interface = { version = "0.5", path = "../transfer-hook/interface" }
 test-case = "3.3"

@@ -4,10 +4,9 @@
 mod helpers;
 
 use {
-    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
-        borsh0_10::try_from_slice_unchecked,
+        borsh1::try_from_slice_unchecked,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
         sysvar,
@@ -291,9 +290,10 @@ async fn fail_with_wrong_stake_program() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::WithdrawStake(tokens_to_burn)
-            .try_to_vec()
-            .unwrap(),
+        data: borsh::to_vec(&instruction::StakePoolInstruction::WithdrawStake(
+            tokens_to_burn,
+        ))
+        .unwrap(),
     };
 
     let transaction = Transaction::new_signed_with_payer(

@@ -38,7 +38,7 @@ pub(crate) mod instruction {
     ) -> Instruction {
         let mut data = vec![33]; // CreateMetadataAccountV3
         data.append(
-            &mut CreateMetadataAccountArgsV3 {
+            &mut borsh::to_vec(&CreateMetadataAccountArgsV3 {
                 data: DataV2 {
                     name,
                     symbol,
@@ -50,8 +50,7 @@ pub(crate) mod instruction {
                 },
                 is_mutable: true,
                 collection_details: None,
-            }
-            .try_to_vec()
+            })
             .unwrap(),
         );
         Instruction {
@@ -86,13 +85,12 @@ pub(crate) mod instruction {
     ) -> Instruction {
         let mut data = vec![15]; // UpdateMetadataAccountV2
         data.append(
-            &mut UpdateMetadataAccountArgsV2 {
+            &mut borsh::to_vec(&UpdateMetadataAccountArgsV2 {
                 data: metadata,
                 update_authority: new_update_authority,
                 primary_sale_happened,
                 is_mutable,
-            }
-            .try_to_vec()
+            })
             .unwrap(),
         );
         Instruction {

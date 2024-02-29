@@ -5,12 +5,10 @@ use {
     program_test::{setup, setup_metadata, setup_mint},
     solana_program_test::tokio,
     solana_sdk::{
-        borsh0_10::try_from_slice_unchecked, program::MAX_RETURN_DATA, pubkey::Pubkey,
+        borsh1::try_from_slice_unchecked, program::MAX_RETURN_DATA, pubkey::Pubkey,
         signature::Signer, signer::keypair::Keypair, transaction::Transaction,
     },
-    spl_token_metadata_interface::{
-        borsh::BorshSerialize, instruction::emit, state::TokenMetadata,
-    },
+    spl_token_metadata_interface::{borsh, instruction::emit, state::TokenMetadata},
     test_case::test_case,
 };
 
@@ -79,7 +77,7 @@ async fn success(start: Option<u64>, end: Option<u64>) {
         .await
         .unwrap();
 
-    let metadata_buffer = token_metadata.try_to_vec().unwrap();
+    let metadata_buffer = borsh::to_vec(&token_metadata).unwrap();
     if let Some(check_buffer) = TokenMetadata::get_slice(&metadata_buffer, start, end) {
         if !check_buffer.is_empty() {
             // pad the data if necessary

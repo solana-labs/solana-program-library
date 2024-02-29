@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use {
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{

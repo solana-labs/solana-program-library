@@ -326,7 +326,7 @@ mod test {
             reserved: Reserved110::default(),
         };
 
-        let size = realm_config.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&realm_config).unwrap().len();
 
         assert_eq!(realm_config.get_max_size(), Some(size));
     }

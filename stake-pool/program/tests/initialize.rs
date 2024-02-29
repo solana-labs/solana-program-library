@@ -5,10 +5,9 @@
 mod helpers;
 
 use {
-    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
-        borsh0_10::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
+        borsh1::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
         instruction::{AccountMeta, Instruction},
         program_pack::Pack,
@@ -1200,7 +1199,7 @@ async fn fail_without_manager_signature() {
         referral_fee: stake_pool_accounts.referral_fee,
         max_validators: stake_pool_accounts.max_validators,
     };
-    let data = init_data.try_to_vec().unwrap();
+    let data = borsh::to_vec(&init_data).unwrap();
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), true),
         AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), false),
