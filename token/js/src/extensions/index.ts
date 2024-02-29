@@ -3,7 +3,6 @@ export * from './cpiGuard/index.js';
 export * from './defaultAccountState/index.js';
 export * from './extensionType.js';
 export * from './group/index.js';
-export * from './groupMember/index.js';
 export * from './groupMemberPointer/index.js';
 export * from './groupPointer/index.js';
 export * from './immutableOwner.js';

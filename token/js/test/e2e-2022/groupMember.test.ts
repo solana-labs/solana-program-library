@@ -21,7 +21,7 @@ import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../commo
 const TEST_TOKEN_DECIMALS = 2;
 const EXTENSIONS = [ExtensionType.GroupMemberPointer, ExtensionType.GroupPointer];
 
-describe.only('tokenGroupMember', async () => {
+describe('tokenGroupMember', async () => {
     let connection: Connection;
     let payer: Signer;
     let mint: Keypair;
@@ -102,8 +102,8 @@ describe.only('tokenGroupMember', async () => {
         await tokenGroupMemberInitialize(
             connection,
             payer,
-            mint.publicKey,
             memberAddress,
+            mint.publicKey,
             memberMintAuthority.publicKey,
             groupAddress,
             updateAuthority.publicKey,

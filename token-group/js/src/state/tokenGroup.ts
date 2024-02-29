@@ -8,6 +8,8 @@ const tokenGroupCodec = getStructCodec([
     ['maxSize', getU32Codec()],
 ]);
 
+export const TOKEN_GROUP_SIZE = tokenGroupCodec.fixedSize;
+
 export interface TokenGroup {
     /** The authority that can sign to update the group */
     updateAuthority?: PublicKey;
