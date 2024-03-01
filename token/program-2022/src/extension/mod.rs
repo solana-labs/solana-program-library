@@ -1396,119 +1396,7 @@ impl Extension for AccountPaddingTest {
 /// NOTE: Since this function deals with fixed-size extensions, it does not
 /// handle _decreasing_ the size of an account's data buffer, like the function
 /// `alloc_and_serialize_variable_len_extension` does.
-pub fn alloc_and_serialize<S: BaseState + Pack, V: Default + Extension + Pod>(
-    account_info: &AccountInfo,
-    new_extension: &V,
-    overwrite: bool,
-) -> Result<(), ProgramError> {
-    let previous_account_len = account_info.try_data_len()?;
-    let new_account_len = {
-        let data = account_info.try_borrow_data()?;
-        let state = StateWithExtensions::<S>::unpack(&data)?;
-        state.try_get_new_account_len::<V>()?
-    };
-
-    // Realloc the account first, if needed
-    if new_account_len > previous_account_len {
-        account_info.realloc(new_account_len, false)?;
-    }
-    let mut buffer = account_info.try_borrow_mut_data()?;
-    if previous_account_len <= BASE_ACCOUNT_LENGTH {
-        set_account_type::<S>(*buffer)?;
-    }
-    let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-
-    // Write the extension
-    let extension = state.init_extension::<V>(overwrite)?;
-    *extension = *new_extension;
-
-    Ok(())
-}
-
-/// Packs a variable-length extension into a TLV space
-///
-/// This function reallocates the account as needed to accommodate for the
-/// change in space, then reallocates in the TLV buffer, and finally writes the
-/// bytes.
-///
-/// NOTE: Unlike the `reallocate` instruction, this function will reduce the
-/// size of an account if it has too many bytes allocated for the given value.
-pub fn alloc_and_serialize_variable_len_extension<
-    S: BaseState + Pack,
-    V: Extension + VariableLenPack,
->(
-    account_info: &AccountInfo,
-    new_extension: &V,
-    overwrite: bool,
-) -> Result<(), ProgramError> {
-    let previous_account_len = account_info.try_data_len()?;
-    let (new_account_len, extension_already_exists) = {
-        let data = account_info.try_borrow_data()?;
-        let state = StateWithExtensions::<S>::unpack(&data)?;
-        let new_account_len =
-            state.try_get_new_account_len_for_variable_len_extension(new_extension)?;
-        let extension_already_exists = state.get_extension_bytes::<V>().is_ok();
-        (new_account_len, extension_already_exists)
-    };
-
-    if extension_already_exists && !overwrite {
-        return Err(TokenError::ExtensionAlreadyInitialized.into());
-    }
-
-    if previous_account_len < new_account_len {
-        // account size increased, so realloc the account, then the TLV entry, then
-        // write data
-        account_info.realloc(new_account_len, false)?;
-        let mut buffer = account_info.try_borrow_mut_data()?;
-        if extension_already_exists {
-            let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-            state.realloc_variable_len_extension(new_extension)?;
-        } else {
-            if previous_account_len <= BASE_ACCOUNT_LENGTH {
-                set_account_type::<S>(*buffer)?;
-            }
-            // now alloc in the TLV buffer and write the data
-            let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-            state.init_variable_len_extension(new_extension, false)?;
-        }
-    } else {
-        // do it backwards otherwise, write the state, realloc TLV, then the account
-        let mut buffer = account_info.try_borrow_mut_data()?;
-        let mut state = StateWithExtensionsMut::<S>::unpack(&mut buffer)?;
-        if extension_already_exists {
-            state.realloc_variable_len_extension(new_extension)?;
-        } else {
-            // this situation can happen if we have an overallocated buffer
-            state.init_variable_len_extension(new_extension, false)?;
-        }
-
-        let removed_bytes = previous_account_len
-            .checked_sub(new_account_len)
-            .ok_or(ProgramError::AccountDataTooSmall)?;
-        if removed_bytes > 0 {
-            // this is probably fine, but be safe and avoid invalidating references
-            drop(buffer);
-            account_info.realloc(new_account_len, false)?;
-        }
-    }
-    Ok(())
-}
-
-/// Packs a fixed-length extension into a TLV space
-///
-/// This function reallocates the account as needed to accommodate for the
-/// change in space.
-///
-/// If the extension already exists, it will overwrite the existing extension
-/// if `overwrite` is `true`, otherwise it will return an error.
-///
-/// If the extension does not exist, it will reallocate the account and write
-/// the extension into the TLV buffer.
-///
-/// NOTE: Since this function deals with fixed-size extensions, it does not
-/// handle _decreasing_ the size of an account's data buffer, like the function
-/// `alloc_and_serialize_variable_len_extension` does.
-pub fn pod_alloc_and_serialize<S: BaseState + Pod, V: Default + Extension + Pod>(
+pub(crate) fn pod_alloc_and_serialize<S: BaseState + Pod, V: Default + Extension + Pod>(
     account_info: &AccountInfo,
     new_extension: &V,
     overwrite: bool,
@@ -1545,7 +1433,7 @@ pub fn pod_alloc_and_serialize<S: BaseState + Pod, V: Default + Extension + Pod>
 ///
 /// NOTE: Unlike the `reallocate` instruction, this function will reduce the
 /// size of an account if it has too many bytes allocated for the given value.
-pub fn pod_alloc_and_serialize_variable_len_extension<
+pub(crate) fn pod_alloc_and_serialize_variable_len_extension<
     S: BaseState + Pod,
     V: Extension + VariableLenPack,
 >(
