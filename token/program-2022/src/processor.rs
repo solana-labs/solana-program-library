@@ -546,8 +546,8 @@ impl Processor {
         let owner_info_data_len = owner_info.data_len();
 
         let mut source_account_data = source_account_info.data.borrow_mut();
-        let mut source_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        let source_account =
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut source_account_data)?;
 
         if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
@@ -559,7 +559,7 @@ impl Processor {
             }
 
             let mint_data = mint_info.data.borrow();
-            let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+            let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
@@ -579,9 +579,8 @@ impl Processor {
             }
         }
 
-        source_account.base.delegate = COption::Some(*delegate_info.key);
-        source_account.base.delegated_amount = amount;
-        source_account.pack_base();
+        source_account.base.delegate = PodCOption::some(*delegate_info.key);
+        source_account.base.delegated_amount = amount.into();
 
         Ok(())
     }
