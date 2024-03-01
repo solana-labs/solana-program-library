@@ -255,10 +255,20 @@ impl From<COption<Pubkey>> for PodCOptionPubkey {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct PodCOptionU64 {
-    option: [u8; 4],
-    value: PodU64,
+    /// field representing the optionality of the type, where all zeroes means
+    /// `None` and `[1, 0, 0, 0]` means `Some(value)`
+    pub option: [u8; 4],
+    /// The underlying number stored in the option
+    pub value: PodU64,
 }
 impl PodCOptionU64 {
+    /// Represents that no value is stored in the value portion, like
+    /// `Option::None`
+    pub const NONE: [u8; 4] = [0, 0, 0, 0];
+    /// Represents that some value is stored in the value portion, like
+    /// `Option::Some(..)`
+    pub const SOME: [u8; 4] = [1, 0, 0, 0];
+
     /// Create an option with a value, corresponds to Option::Some(value)
     pub const fn some(value: u64) -> Self {
         Self {

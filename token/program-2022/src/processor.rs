@@ -1243,23 +1243,26 @@ impl Processor {
 
         check_program_account(native_account_info.owner)?;
         let mut native_account_data = native_account_info.data.borrow_mut();
-        let mut native_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut native_account_data)?;
+        let native_account =
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut native_account_data)?;
 
-        if let COption::Some(rent_exempt_reserve) = native_account.base.is_native {
-            let new_amount = native_account_info
-                .lamports()
-                .checked_sub(rent_exempt_reserve)
-                .ok_or(TokenError::Overflow)?;
-            if new_amount < native_account.base.amount {
-                return Err(TokenError::InvalidState.into());
+        match native_account.base.is_native {
+            PodCOptionU64 {
+                option: PodCOptionU64::SOME,
+                value,
+            } => {
+                let new_amount = native_account_info
+                    .lamports()
+                    .checked_sub(u64::from(value))
+                    .ok_or(TokenError::Overflow)?;
+                if new_amount < u64::from(native_account.base.amount) {
+                    return Err(TokenError::InvalidState.into());
+                }
+                native_account.base.amount = new_amount.into();
             }
-            native_account.base.amount = new_amount;
-        } else {
-            return Err(TokenError::NonNativeNotSupported.into());
+            _ => return Err(TokenError::NonNativeNotSupported.into()),
         }
 
-        native_account.pack_base();
         Ok(())
     }
 
