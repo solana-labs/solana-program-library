@@ -107,6 +107,14 @@ fn get_signer(
         (Arc::from(signer), signer_pubkey)
     })
 }
+
+fn parse_amount_or_all(matches: &ArgMatches<'_>) -> Option<f64> {
+    match matches.value_of("amount").unwrap() {
+        "ALL" => None,
+        amount => Some(amount.parse::<f64>().unwrap()),
+    }
+}
+
 async fn check_wallet_balance(
     config: &Config<'_>,
     wallet: &Pubkey,
@@ -3701,10 +3709,7 @@ pub async fn process_command<'a>(
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = match arg_matches.value_of("amount").unwrap() {
-                "ALL" => None,
-                amount => Some(amount.parse::<f64>().unwrap()),
-            };
+            let amount = parse_amount_or_all(arg_matches);
             let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -4424,10 +4429,7 @@ pub async fn process_command<'a>(
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let amount = match arg_matches.value_of("amount").unwrap() {
-                "ALL" => None,
-                amount => Some(amount.parse::<f64>().unwrap()),
-            };
+            let amount = parse_amount_or_all(arg_matches);
             let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
 
             let (owner_signer, owner) =
