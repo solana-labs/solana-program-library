@@ -199,10 +199,16 @@ pub struct PodCOptionPubkey {
     pub value: Pubkey,
 }
 impl PodCOptionPubkey {
+    /// Represents that no value is stored in the value portion, like
+    /// `Option::None`
+    pub const NONE: [u8; 4] = [0, 0, 0, 0];
+    /// Represents that some value is stored in the value portion, like
+    /// `Option::Some(..)`
+    pub const SOME: [u8; 4] = [1, 0, 0, 0];
     /// Create an option with a value, corresponds to Option::Some(value)
     pub const fn some(value: Pubkey) -> Self {
         Self {
-            option: [1, 0, 0, 0],
+            option: Self::SOME,
             value,
         }
     }
@@ -210,14 +216,14 @@ impl PodCOptionPubkey {
     /// Create an option without a value, corresponds to Option::None
     pub const fn none() -> Self {
         Self {
-            option: [0, 0, 0, 0],
+            option: Self::NONE,
             value: Pubkey::new_from_array([0; 32]),
         }
     }
 
     /// Get the underlying Pubkey or some other provided value if it isn't set
     pub fn unwrap_or(&self, v: Pubkey) -> Pubkey {
-        if self.option == [0, 0, 0, 0] {
+        if self.option == Self::NONE {
             v
         } else {
             self.value
@@ -226,7 +232,7 @@ impl PodCOptionPubkey {
 }
 impl From<PodCOptionPubkey> for COption<Pubkey> {
     fn from(pod: PodCOptionPubkey) -> Self {
-        if pod.option == [0, 0, 0, 0] {
+        if pod.option == PodCOptionPubkey::NONE {
             COption::None
         } else {
             COption::Some(pod.value)
@@ -238,7 +244,7 @@ impl From<COption<Pubkey>> for PodCOptionPubkey {
         match opt {
             COption::None => Self::default(),
             COption::Some(pk) => Self {
-                option: [1, 0, 0, 0],
+                option: Self::SOME,
                 value: pk,
             },
         }

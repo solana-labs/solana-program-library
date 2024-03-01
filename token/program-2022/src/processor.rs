@@ -1205,7 +1205,7 @@ impl Processor {
         let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
         match mint.base.freeze_authority {
             PodCOptionPubkey {
-                option: [1, 0, 0, 0],
+                option: PodCOptionPubkey::SOME,
                 value,
             } => Self::validate_owner(
                 program_id,
