@@ -192,8 +192,11 @@ impl PackedSizeOf for PodMultisig {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct PodCOptionPubkey {
-    option: [u8; 4],
-    value: Pubkey,
+    /// field representing the optionality of the type, where all zeroes means
+    /// `None` and `[1, 0, 0, 0]` means `Some(value)`
+    pub option: [u8; 4],
+    /// The underlying pubkey stored in the option
+    pub value: Pubkey,
 }
 impl PodCOptionPubkey {
     /// Create an option with a value, corresponds to Option::Some(value)
