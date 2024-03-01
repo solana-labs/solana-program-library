@@ -370,10 +370,7 @@ impl Processor {
         }
 
         let self_transfer = cmp_pubkeys(source_account_info.key, destination_account_info.key);
-        match (
-            source_account.base.delegate.into(),
-            maybe_permanent_delegate,
-        ) {
+        match (&source_account.base.delegate, maybe_permanent_delegate) {
             (_, Some(ref delegate)) if cmp_pubkeys(authority_info.key, delegate) => {
                 Self::validate_owner(
                     program_id,
@@ -383,10 +380,16 @@ impl Processor {
                     account_info_iter.as_slice(),
                 )?
             }
-            (COption::Some(ref delegate), _) if cmp_pubkeys(authority_info.key, delegate) => {
+            (
+                PodCOptionPubkey {
+                    option: PodCOptionPubkey::SOME,
+                    value,
+                },
+                _,
+            ) if cmp_pubkeys(authority_info.key, value) => {
                 Self::validate_owner(
                     program_id,
-                    delegate,
+                    value,
                     authority_info,
                     authority_info_data_len,
                     account_info_iter.as_slice(),
@@ -597,10 +600,11 @@ impl Processor {
 
         Self::validate_owner(
             program_id,
-            match source_account.base.delegate.into() {
-                COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
-                    delegate
-                }
+            match &source_account.base.delegate {
+                PodCOptionPubkey {
+                    option: PodCOptionPubkey::SOME,
+                    value,
+                } if cmp_pubkeys(authority_info.key, value) => value,
                 _ => &source_account.base.owner,
             },
             authority_info,
@@ -935,15 +939,18 @@ impl Processor {
             }
         }
 
-        match mint.base.mint_authority.into() {
-            COption::Some(mint_authority) => Self::validate_owner(
+        match &mint.base.mint_authority {
+            PodCOptionPubkey {
+                option: PodCOptionPubkey::SOME,
+                value,
+            } => Self::validate_owner(
                 program_id,
-                &mint_authority,
+                value,
                 owner_info,
                 owner_info_data_len,
                 account_info_iter.as_slice(),
             )?,
-            COption::None => return Err(TokenError::FixedSupply.into()),
+            _ => return Err(TokenError::FixedSupply.into()),
         }
 
         // Revisit this later to see if it's worth adding a check to reduce
@@ -1009,10 +1016,7 @@ impl Processor {
             .base
             .is_owned_by_system_program_or_incinerator()
         {
-            match (
-                source_account.base.delegate.into(),
-                maybe_permanent_delegate,
-            ) {
+            match (&source_account.base.delegate, maybe_permanent_delegate) {
                 (_, Some(ref delegate)) if cmp_pubkeys(authority_info.key, delegate) => {
                     Self::validate_owner(
                         program_id,
@@ -1022,10 +1026,16 @@ impl Processor {
                         account_info_iter.as_slice(),
                     )?
                 }
-                (COption::Some(ref delegate), _) if cmp_pubkeys(authority_info.key, delegate) => {
+                (
+                    PodCOptionPubkey {
+                        option: PodCOptionPubkey::SOME,
+                        value,
+                    },
+                    _,
+                ) if cmp_pubkeys(authority_info.key, value) => {
                     Self::validate_owner(
                         program_id,
-                        delegate,
+                        value,
                         authority_info,
                         authority_info_data_len,
                         account_info_iter.as_slice(),
