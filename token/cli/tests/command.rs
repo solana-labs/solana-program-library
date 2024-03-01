@@ -109,9 +109,9 @@ async fn main() {
         async_trial!(transfer_with_account_delegate, test_validator, payer),
         async_trial!(burn, test_validator, payer),
         async_trial!(burn_with_account_delegate, test_validator, payer),
-        async_trial!(close_mint, test_validator, payer),
         async_trial!(burn_with_permanent_delegate, test_validator, payer),
         async_trial!(transfer_with_permanent_delegate, test_validator, payer),
+        async_trial!(close_mint, test_validator, payer),
         async_trial!(required_transfer_memos, test_validator, payer),
         async_trial!(cpi_guard, test_validator, payer),
         async_trial!(immutable_accounts, test_validator, payer),
@@ -1662,46 +1662,6 @@ async fn burn_with_account_delegate(test_validator: &TestValidator, payer: &Keyp
     }
 }
 
-async fn close_mint(test_validator: &TestValidator, payer: &Keypair) {
-    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
-
-    let token = Keypair::new();
-    let token_pubkey = token.pubkey();
-    let token_keypair_file = NamedTempFile::new().unwrap();
-    write_keypair_file(&token, &token_keypair_file).unwrap();
-    process_test_command(
-        &config,
-        payer,
-        &[
-            "spl-token",
-            CommandName::CreateToken.into(),
-            token_keypair_file.path().to_str().unwrap(),
-            "--enable-close",
-        ],
-    )
-    .await
-    .unwrap();
-
-    let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
-    let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data);
-    assert!(test_mint.is_ok());
-
-    process_test_command(
-        &config,
-        payer,
-        &[
-            "spl-token",
-            CommandName::CloseMint.into(),
-            &token_pubkey.to_string(),
-        ],
-    )
-    .await
-    .unwrap();
-
-    let account = config.rpc_client.get_account(&token_pubkey).await;
-    assert!(account.is_err());
-}
-
 async fn burn_with_permanent_delegate(test_validator: &TestValidator, payer: &Keypair) {
     let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
 
@@ -1857,6 +1817,46 @@ async fn transfer_with_permanent_delegate(test_validator: &TestValidator, payer:
 
     let amount = spl_token::ui_amount_to_amount(50.0, TEST_DECIMALS);
     assert_eq!(ui_account.token_amount.amount, format!("{amount}"));
+}
+
+async fn close_mint(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
+
+    let token = Keypair::new();
+    let token_pubkey = token.pubkey();
+    let token_keypair_file = NamedTempFile::new().unwrap();
+    write_keypair_file(&token, &token_keypair_file).unwrap();
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            token_keypair_file.path().to_str().unwrap(),
+            "--enable-close",
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+    let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data);
+    assert!(test_mint.is_ok());
+
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CloseMint.into(),
+            &token_pubkey.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&token_pubkey).await;
+    assert!(account.is_err());
 }
 
 async fn required_transfer_memos(test_validator: &TestValidator, payer: &Keypair) {
