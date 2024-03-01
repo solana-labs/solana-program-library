@@ -1679,10 +1679,16 @@ async fn command_burn(
 
     let token = token_client_from_config(config, &mint_info.address, decimals)?;
 
-    let balance = token.get_account_info(&account).await?.base.amount;
-    let amount = ui_amount
-        .map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals))
-        .unwrap_or(balance);
+    let amount = if let Some(ui_amount) = ui_amount {
+        spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals)
+    } else {
+        if config.sign_only {
+            return Err("Use of ALL keyword to burn tokens requires online signing"
+                .to_string()
+                .into());
+        }
+        token.get_account_info(&account).await?.base.amount
+    };
 
     println_display(
         config,
