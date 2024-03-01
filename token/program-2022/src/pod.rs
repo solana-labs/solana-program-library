@@ -88,6 +88,12 @@ impl PodAccount {
     pub fn is_native(&self) -> bool {
         self.is_native.is_some()
     }
+    /// Checks if a token Account's owner is the system_program or the
+    /// incinerator
+    pub fn is_owned_by_system_program_or_incinerator(&self) -> bool {
+        solana_program::system_program::check_id(&self.owner)
+            || solana_program::incinerator::check_id(&self.owner)
+    }
 }
 impl IsInitialized for PodAccount {
     fn is_initialized(&self) -> bool {
@@ -176,6 +182,16 @@ impl<T: Pod + Default> PodCOption<T> {
         Self {
             option: Self::SOME,
             value,
+        }
+    }
+
+    /// Get the underlying value or another provided value if it isn't set,
+    /// equivalent of `Option::unwrap_or`
+    pub fn unwrap_or(self, default: T) -> T {
+        if self.option == Self::NONE {
+            default
+        } else {
+            self.value
         }
     }
 
