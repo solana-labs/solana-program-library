@@ -1511,7 +1511,7 @@ async fn transfer_with_account_delegate(test_validator: &TestValidator, payer: &
 
 async fn burn(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
-        let config = test_config_with_default_signer(test_validator, payer, program_id);
+        let mut config = test_config_with_default_signer(test_validator, payer, program_id);
         let token = create_token(&config, payer).await;
         let source = create_associated_account(&config, payer, &token, &payer.pubkey()).await;
         let ui_amount = 100.0;
@@ -1567,6 +1567,21 @@ async fn burn(test_validator: &TestValidator, payer: &Keypair) {
         )
         .await;
         assert!(result.is_err());
+
+        // Use of the ALL keyword not supported with offline signing
+        config.sign_only = true;
+        let result = process_test_command(
+            &config,
+            payer,
+            &[
+                "spl-token",
+                CommandName::Burn.into(),
+                &source.to_string(),
+                "ALL",
+            ],
+        )
+        .await;
+        assert!(result.is_err_and(|err| err.to_string().contains("ALL")));
     }
 }
 
