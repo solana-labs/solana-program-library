@@ -589,15 +589,15 @@ impl Processor {
         let authority_info_data_len = authority_info.data_len();
 
         let mut source_account_data = source_account_info.data.borrow_mut();
-        let mut source_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        let source_account =
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut source_account_data)?;
         if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
         Self::validate_owner(
             program_id,
-            match source_account.base.delegate {
+            match source_account.base.delegate.into() {
                 COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
                     delegate
                 }
@@ -608,9 +608,8 @@ impl Processor {
             account_info_iter.as_slice(),
         )?;
 
-        source_account.base.delegate = COption::None;
-        source_account.base.delegated_amount = 0;
-        source_account.pack_base();
+        source_account.base.delegate = PodCOptionPubkey::none();
+        source_account.base.delegated_amount = 0.into();
 
         Ok(())
     }
