@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 use {
     crate::{
         error::TokenError,
-        extension::{BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsMut},
-        state::Account,
+        extension::{BaseState, BaseStateWithExtensions, Extension, ExtensionType},
     },
     bytemuck::{Pod, Zeroable},
     solana_program::{
@@ -33,7 +32,7 @@ impl Extension for MemoTransfer {
 }
 
 /// Determine if a memo is required for transfers into this account
-pub fn memo_required(account_state: &StateWithExtensionsMut<Account>) -> bool {
+pub fn memo_required<BSE: BaseStateWithExtensions<S>, S: BaseState>(account_state: &BSE) -> bool {
     if let Ok(extension) = account_state.get_extension::<MemoTransfer>() {
         return extension.require_incoming_transfer_memos.into();
     }

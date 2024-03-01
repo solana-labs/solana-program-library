@@ -3,7 +3,10 @@
 #[cfg(test)]
 use crate::state::{Account, Mint};
 use {
-    crate::{instruction::MAX_SIGNERS, state::PackedSizeOf},
+    crate::{
+        instruction::MAX_SIGNERS,
+        state::{AccountState, PackedSizeOf},
+    },
     bytemuck::{Pod, Zeroable},
     solana_program::{program_option::COption, program_pack::IsInitialized, pubkey::Pubkey},
     spl_pod::primitives::{PodBool, PodU64},
@@ -99,6 +102,16 @@ pub struct PodAccount {
     /// Optional authority to close the account.
     pub close_authority: PodCOptionPubkey,
 }
+impl PodAccount {
+    /// Checks if account is frozen
+    pub fn is_frozen(&self) -> bool {
+        self.state == AccountState::Frozen as u8
+    }
+    /// Checks if account is native
+    pub fn is_native(&self) -> bool {
+        self.is_native.is_some()
+    }
+}
 impl IsInitialized for PodAccount {
     fn is_initialized(&self) -> bool {
         self.state != 0
@@ -193,7 +206,6 @@ impl PodCOptionPubkey {
         }
     }
 }
-#[cfg(test)]
 impl From<PodCOptionPubkey> for COption<Pubkey> {
     fn from(pod: PodCOptionPubkey) -> Self {
         if pod.option == [0, 0, 0, 0] {
@@ -236,6 +248,11 @@ impl PodCOptionU64 {
             option: [0, 0, 0, 0],
             value: PodU64::from_primitive(0),
         }
+    }
+    /// Check if some value exists on the option, corresponds to
+    /// Option::is_some()
+    pub fn is_some(&self) -> bool {
+        self.option != [0, 0, 0, 0]
     }
 }
 #[cfg(test)]

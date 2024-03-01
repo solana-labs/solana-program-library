@@ -4,9 +4,9 @@ use {
     crate::{
         extension::{
             BaseState, BaseStateWithExtensions, BaseStateWithExtensionsMut, Extension,
-            ExtensionType, StateWithExtensionsMut,
+            ExtensionType, PodStateWithExtensionsMut,
         },
-        state::Account,
+        pod::PodAccount,
     },
     bytemuck::{Pod, Zeroable},
     solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
@@ -62,7 +62,9 @@ pub fn get_program_id<S: BaseState, BSE: BaseStateWithExtensions<S>>(
 
 /// Helper function to set the transferring flag before calling into transfer
 /// hook
-pub fn set_transferring(account: &mut StateWithExtensionsMut<Account>) -> Result<(), ProgramError> {
+pub fn set_transferring<BSE: BaseStateWithExtensionsMut<S>, S: BaseState>(
+    account: &mut BSE,
+) -> Result<(), ProgramError> {
     let account_extension = account.get_extension_mut::<TransferHookAccount>()?;
     account_extension.transferring = true.into();
     Ok(())
@@ -71,7 +73,7 @@ pub fn set_transferring(account: &mut StateWithExtensionsMut<Account>) -> Result
 /// Helper function to unset the transferring flag after a transfer
 pub fn unset_transferring(account_info: &AccountInfo) -> Result<(), ProgramError> {
     let mut account_data = account_info.data.borrow_mut();
-    let mut account = StateWithExtensionsMut::<Account>::unpack(&mut account_data)?;
+    let mut account = PodStateWithExtensionsMut::<PodAccount>::unpack(&mut account_data)?;
     let account_extension = account.get_extension_mut::<TransferHookAccount>()?;
     account_extension.transferring = false.into();
     Ok(())
