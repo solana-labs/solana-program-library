@@ -149,6 +149,25 @@ impl<T: Pod + Default> PodCOption<T> {
     /// Represents that some value is stored in the option, like
     /// `Option::Some(v)`
     pub const SOME: [u8; 4] = [1, 0, 0, 0];
+
+    /// Create a PodCOption equivalent of `Option::None`
+    ///
+    /// This could be made `const` by using `std::mem::zeroed`, but that would
+    /// require `unsafe` code, which is prohibited at the crate level.
+    pub fn none() -> Self {
+        Self {
+            option: Self::NONE,
+            value: T::default(),
+        }
+    }
+
+    /// Create a PodCOption equivalent of `Option::Some(value)
+    pub const fn some(value: T) -> Self {
+        Self {
+            option: Self::SOME,
+            value,
+        }
+    }
 }
 #[cfg(test)]
 impl<T: Pod + Default> From<COption<T>> for PodCOption<T> {
@@ -167,25 +186,49 @@ impl<T: Pod + Default> From<COption<T>> for PodCOption<T> {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use {
         super::*,
-        crate::state::test::{
-            TEST_ACCOUNT, TEST_ACCOUNT_SLICE, TEST_MINT, TEST_MINT_SLICE, TEST_MULTISIG,
-            TEST_MULTISIG_SLICE,
+        crate::state::{
+            test::{
+                TEST_ACCOUNT, TEST_ACCOUNT_SLICE, TEST_MINT, TEST_MINT_SLICE, TEST_MULTISIG,
+                TEST_MULTISIG_SLICE,
+            },
+            AccountState,
         },
         spl_pod::bytemuck::pod_from_bytes,
     };
+
+    pub const TEST_POD_MINT: PodMint = PodMint {
+        mint_authority: PodCOption::some(Pubkey::new_from_array([1; 32])),
+        supply: PodU64::from_primitive(42),
+        decimals: 7,
+        is_initialized: PodBool::from_bool(true),
+        freeze_authority: PodCOption::some(Pubkey::new_from_array([2; 32])),
+    };
+    pub const TEST_POD_ACCOUNT: PodAccount = PodAccount {
+        mint: Pubkey::new_from_array([1; 32]),
+        owner: Pubkey::new_from_array([2; 32]),
+        amount: PodU64::from_primitive(3),
+        delegate: PodCOption::some(Pubkey::new_from_array([4; 32])),
+        state: AccountState::Frozen as u8,
+        is_native: PodCOption::some(PodU64::from_primitive(5)),
+        delegated_amount: PodU64::from_primitive(6),
+        close_authority: PodCOption::some(Pubkey::new_from_array([7; 32])),
+    };
+
     #[test]
     fn pod_mint_to_mint_equality() {
         let pod_mint = pod_from_bytes::<PodMint>(TEST_MINT_SLICE).unwrap();
         assert_eq!(*pod_mint, PodMint::from(TEST_MINT));
+        assert_eq!(*pod_mint, TEST_POD_MINT);
     }
 
     #[test]
     fn pod_account_to_account_equality() {
         let pod_account = pod_from_bytes::<PodAccount>(TEST_ACCOUNT_SLICE).unwrap();
         assert_eq!(*pod_account, PodAccount::from(TEST_ACCOUNT));
+        assert_eq!(*pod_account, TEST_POD_ACCOUNT);
     }
 
     #[test]
