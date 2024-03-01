@@ -1662,21 +1662,15 @@ async fn command_burn(
     config: &Config<'_>,
     account: Pubkey,
     owner: Pubkey,
-    ui_amount: f64,
+    ui_amount: Option<f64>,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
     memo: Option<String>,
     bulk_signers: BulkSigners,
 ) -> CommandResult {
-    println_display(
-        config,
-        format!("Burn {} tokens\n  Source: {}", ui_amount, account),
-    );
-
     let mint_address = config.check_account(&account, mint_address).await?;
     let mint_info = config.get_mint_info(&mint_address, mint_decimals).await?;
-    let amount = spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals);
     let decimals = if use_unchecked_instruction {
         None
     } else {
@@ -1684,6 +1678,21 @@ async fn command_burn(
     };
 
     let token = token_client_from_config(config, &mint_info.address, decimals)?;
+
+    let balance = token.get_account_info(&account).await?.base.amount;
+    let amount = ui_amount
+        .map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals))
+        .unwrap_or(balance);
+
+    println_display(
+        config,
+        format!(
+            "Burn {} tokens\n  Source: {}",
+            spl_token::amount_to_ui_amount(amount, mint_info.decimals),
+            account
+        ),
+    );
+
     if let Some(text) = memo {
         token.with_memo(text, vec![config.default_signer()?.pubkey()]);
     }
@@ -3797,7 +3806,7 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            let amount = value_t_or_exit!(arg_matches, "amount", f64);
+            let amount = parse_amount_or_all(arg_matches);
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
