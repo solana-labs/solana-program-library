@@ -121,6 +121,38 @@ pub async fn transfer(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
+pub async fn transfer_checked(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: Hash,
+    source: &Pubkey,
+    mint: &Pubkey,
+    destination: &Pubkey,
+    authority: &Keypair,
+    amount: u64,
+    decimals: u8,
+) -> Result<(), TransportError> {
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::transfer_checked(
+            &id(),
+            source,
+            mint,
+            destination,
+            &authority.pubkey(),
+            &[],
+            amount,
+            decimals,
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+        &[payer, authority],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
+}
+
 pub async fn burn(
     banks_client: &mut BanksClient,
     payer: &Keypair,
