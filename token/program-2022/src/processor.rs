@@ -1416,7 +1416,7 @@ impl Processor {
         let mint_account_info = next_account_info(account_info_iter)?;
 
         let mut mint_data = mint_account_info.data.borrow_mut();
-        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack_uninitialized(&mut mint_data)?;
         mint.init_extension::<NonTransferable>(true)?;
 
         Ok(())
