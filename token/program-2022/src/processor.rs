@@ -903,8 +903,8 @@ impl Processor {
         let owner_info_data_len = owner_info.data_len();
 
         let mut destination_account_data = destination_account_info.data.borrow_mut();
-        let mut destination_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
+        let destination_account =
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut destination_account_data)?;
         if destination_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
@@ -917,7 +917,7 @@ impl Processor {
         }
 
         let mut mint_data = mint_info.data.borrow_mut();
-        let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+        let mint = PodStateWithExtensionsMut::<PodMint>::unpack(&mut mint_data)?;
 
         // If the mint if non-transferable, only allow minting to accounts
         // with immutable ownership.
@@ -935,7 +935,7 @@ impl Processor {
             }
         }
 
-        match mint.base.mint_authority {
+        match mint.base.mint_authority.into() {
             COption::Some(mint_authority) => Self::validate_owner(
                 program_id,
                 &mint_authority,
@@ -952,20 +952,15 @@ impl Processor {
         check_program_account(mint_info.owner)?;
         check_program_account(destination_account_info.owner)?;
 
-        destination_account.base.amount = destination_account
-            .base
-            .amount
+        destination_account.base.amount = u64::from(destination_account.base.amount)
             .checked_add(amount)
-            .ok_or(TokenError::Overflow)?;
+            .ok_or(TokenError::Overflow)?
+            .into();
 
-        mint.base.supply = mint
-            .base
-            .supply
+        mint.base.supply = u64::from(mint.base.supply)
             .checked_add(amount)
-            .ok_or(TokenError::Overflow)?;
-
-        mint.pack_base();
-        destination_account.pack_base();
+            .ok_or(TokenError::Overflow)?
+            .into();
 
         Ok(())
     }
