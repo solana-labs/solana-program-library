@@ -5,18 +5,17 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
-            alloc_and_serialize, group_member_pointer::GroupMemberPointer,
-            group_pointer::GroupPointer, BaseStateWithExtensions, BaseStateWithExtensionsMut,
-            StateWithExtensions, StateWithExtensionsMut,
+            group_member_pointer::GroupMemberPointer, group_pointer::GroupPointer,
+            pod_alloc_and_serialize, BaseStateWithExtensions, BaseStateWithExtensionsMut,
+            PodStateWithExtensions, PodStateWithExtensionsMut,
         },
-        state::Mint,
+        pod::{PodCOptionPubkey, PodMint},
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         entrypoint::ProgramResult,
         msg,
         program_error::ProgramError,
-        program_option::COption,
         pubkey::Pubkey,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
@@ -69,13 +68,17 @@ pub fn process_initialize_group(
         // but auditors like it
         check_program_account(mint_info.owner)?;
         let mint_data = mint_info.try_borrow_data()?;
-        let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+        let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
 
         if !mint_authority_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
-        if mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
-            return Err(TokenGroupError::IncorrectMintAuthority.into());
+        match &mint.base.mint_authority {
+            PodCOptionPubkey {
+                option: PodCOptionPubkey::SOME,
+                value,
+            } if value == mint_authority_info.key => {}
+            _ => return Err(TokenGroupError::IncorrectMintAuthority.into()),
         }
 
         if mint.get_extension::<GroupPointer>().is_err() {
@@ -90,7 +93,7 @@ pub fn process_initialize_group(
     // Allocate a TLV entry for the space and write it in
     // Assumes that there's enough SOL for the new rent-exemption
     let group = TokenGroup::new(mint_info.key, data.update_authority, data.max_size.into());
-    alloc_and_serialize::<Mint, TokenGroup>(group_info, &group, false)?;
+    pod_alloc_and_serialize::<PodMint, TokenGroup>(group_info, &group, false)?;
 
     Ok(())
 }
@@ -109,7 +112,7 @@ pub fn process_update_group_max_size(
     let update_authority_info = next_account_info(account_info_iter)?;
 
     let mut buffer = group_info.try_borrow_mut_data()?;
-    let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer)?;
+    let mut state = PodStateWithExtensionsMut::<PodMint>::unpack(&mut buffer)?;
     let group = state.get_extension_mut::<TokenGroup>()?;
 
     check_update_authority(update_authority_info, &group.update_authority)?;
@@ -133,7 +136,7 @@ pub fn process_update_group_authority(
     let update_authority_info = next_account_info(account_info_iter)?;
 
     let mut buffer = group_info.try_borrow_mut_data()?;
-    let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer)?;
+    let mut state = PodStateWithExtensionsMut::<PodMint>::unpack(&mut buffer)?;
     let group = state.get_extension_mut::<TokenGroup>()?;
 
     check_update_authority(update_authority_info, &group.update_authority)?;
@@ -167,14 +170,17 @@ pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo])
         // but auditors like it
         check_program_account(member_mint_info.owner)?;
         let member_mint_data = member_mint_info.try_borrow_data()?;
-        let member_mint = StateWithExtensions::<Mint>::unpack(&member_mint_data)?;
+        let member_mint = PodStateWithExtensions::<PodMint>::unpack(&member_mint_data)?;
 
         if !member_mint_authority_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
-        if member_mint.base.mint_authority.as_ref() != COption::Some(member_mint_authority_info.key)
-        {
-            return Err(TokenGroupError::IncorrectMintAuthority.into());
+        match &member_mint.base.mint_authority {
+            PodCOptionPubkey {
+                option: PodCOptionPubkey::SOME,
+                value,
+            } if value == member_mint_authority_info.key => {}
+            _ => return Err(TokenGroupError::IncorrectMintAuthority.into()),
         }
 
         if member_mint.get_extension::<GroupMemberPointer>().is_err() {
@@ -193,7 +199,7 @@ pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo])
 
     // Increment the size of the group
     let mut buffer = group_info.try_borrow_mut_data()?;
-    let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer)?;
+    let mut state = PodStateWithExtensionsMut::<PodMint>::unpack(&mut buffer)?;
     let group = state.get_extension_mut::<TokenGroup>()?;
 
     check_update_authority(group_update_authority_info, &group.update_authority)?;
@@ -201,7 +207,7 @@ pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo])
 
     // Allocate a TLV entry for the space and write it in
     let member = TokenGroupMember::new(member_mint_info.key, group_info.key, member_number);
-    alloc_and_serialize::<Mint, TokenGroupMember>(member_info, &member, false)?;
+    pod_alloc_and_serialize::<PodMint, TokenGroupMember>(member_info, &member, false)?;
 
     Ok(())
 }
