@@ -3,7 +3,10 @@
 #[cfg(test)]
 use crate::state::{Account, Mint, Multisig};
 use {
-    crate::{instruction::MAX_SIGNERS, state::PackedSizeOf},
+    crate::{
+        instruction::MAX_SIGNERS,
+        state::{AccountState, PackedSizeOf},
+    },
     bytemuck::{Pod, Zeroable},
     solana_program::{program_option::COption, program_pack::IsInitialized, pubkey::Pubkey},
     spl_pod::{
@@ -76,6 +79,16 @@ pub struct PodAccount {
     /// Optional authority to close the account.
     pub close_authority: PodCOption<Pubkey>,
 }
+impl PodAccount {
+    /// Checks if account is frozen
+    pub fn is_frozen(&self) -> bool {
+        self.state == AccountState::Frozen as u8
+    }
+    /// Checks if account is native
+    pub fn is_native(&self) -> bool {
+        self.is_native.is_some()
+    }
+}
 impl IsInitialized for PodAccount {
     fn is_initialized(&self) -> bool {
         self.state != 0
@@ -137,8 +150,8 @@ impl From<Multisig> for PodMultisig {
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct PodCOption<T: Pod + Default> {
-    option: [u8; 4],
-    value: T,
+    pub(crate) option: [u8; 4],
+    pub(crate) value: T,
 }
 impl<T: Pod + Default> PodCOption<T> {
     /// Represents that no value is stored in the option, like `Option::None`
@@ -158,12 +171,17 @@ impl<T: Pod + Default> PodCOption<T> {
         }
     }
 
-    /// Create a PodCOption equivalent of `Option::Some(value)
+    /// Create a PodCOption equivalent of `Option::Some(value)`
     pub const fn some(value: T) -> Self {
         Self {
             option: Self::SOME,
             value,
         }
+    }
+
+    /// Checks to see if a value is set, equivalent of `Option::is_some`
+    pub fn is_some(&self) -> bool {
+        self.option == Self::SOME
     }
 }
 impl<T: Pod + Default> From<COption<T>> for PodCOption<T> {
