@@ -1,14 +1,11 @@
 //! Rewrites of the base state types represented as Pods
 
 #[cfg(test)]
-use {
-    crate::state::{Account, Mint, Multisig},
-    solana_program::program_option::COption,
-};
+use crate::state::{Account, Mint, Multisig};
 use {
     crate::{instruction::MAX_SIGNERS, state::PackedSizeOf},
     bytemuck::{Pod, Zeroable},
-    solana_program::{program_pack::IsInitialized, pubkey::Pubkey},
+    solana_program::{program_option::COption, program_pack::IsInitialized, pubkey::Pubkey},
     spl_pod::{
         bytemuck::pod_get_packed_len,
         primitives::{PodBool, PodU64},
@@ -169,7 +166,6 @@ impl<T: Pod + Default> PodCOption<T> {
         }
     }
 }
-#[cfg(test)]
 impl<T: Pod + Default> From<COption<T>> for PodCOption<T> {
     fn from(opt: COption<T>) -> Self {
         match opt {

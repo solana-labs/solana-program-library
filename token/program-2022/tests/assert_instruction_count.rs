@@ -22,7 +22,7 @@ const TRANSFER_AMOUNT: u64 = 1_000_000_000_000_000;
 #[tokio::test]
 async fn initialize_mint() {
     let mut pt = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-    pt.set_compute_max_units(5_000); // last known 2196
+    pt.set_compute_max_units(5_000); // last known 1742
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
 
     let owner_key = Pubkey::new_unique();
