@@ -24,8 +24,7 @@ use {
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
             AccountType, BaseStateWithExtensions, BaseStateWithExtensionsMut, ExtensionType,
-            PodStateWithExtensions, PodStateWithExtensionsMut, StateWithExtensions,
-            StateWithExtensionsMut,
+            PodStateWithExtensions, PodStateWithExtensionsMut, StateWithExtensionsMut,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
         native_mint,
@@ -1454,7 +1453,7 @@ impl Processor {
 
         let source_data = source_info.data.borrow();
 
-        if let Ok(account) = StateWithExtensions::<Account>::unpack(&source_data) {
+        if let Ok(account) = PodStateWithExtensions::<PodAccount>::unpack(&source_data) {
             if account.base.is_native() {
                 return Err(TokenError::NativeNotSupported.into());
             }
@@ -1465,17 +1464,21 @@ impl Processor {
                 authority_info.data_len(),
                 account_info_iter.as_slice(),
             )?;
-        } else if let Ok(mint) = StateWithExtensions::<Mint>::unpack(&source_data) {
-            if let COption::Some(mint_authority) = mint.base.mint_authority {
-                Self::validate_owner(
-                    program_id,
-                    &mint_authority,
-                    authority_info,
-                    authority_info.data_len(),
-                    account_info_iter.as_slice(),
-                )?;
-            } else {
-                return Err(TokenError::AuthorityTypeNotSupported.into());
+        } else if let Ok(mint) = PodStateWithExtensions::<PodMint>::unpack(&source_data) {
+            match &mint.base.mint_authority {
+                PodCOptionPubkey {
+                    option: PodCOptionPubkey::SOME,
+                    value,
+                } => {
+                    Self::validate_owner(
+                        program_id,
+                        value,
+                        authority_info,
+                        authority_info.data_len(),
+                        account_info_iter.as_slice(),
+                    )?;
+                }
+                _ => return Err(TokenError::AuthorityTypeNotSupported.into()),
             }
         } else if source_data.len() == Multisig::LEN {
             Self::validate_owner(
