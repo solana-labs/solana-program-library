@@ -211,6 +211,15 @@ impl PodCOptionPubkey {
             value: Pubkey::new_from_array([0; 32]),
         }
     }
+
+    /// Get the underlying Pubkey or some other provided value if it isn't set
+    pub fn unwrap_or(&self, v: Pubkey) -> Pubkey {
+        if self.option == [0, 0, 0, 0] {
+            v
+        } else {
+            self.value
+        }
+    }
 }
 impl From<PodCOptionPubkey> for COption<Pubkey> {
     fn from(pod: PodCOptionPubkey) -> Self {

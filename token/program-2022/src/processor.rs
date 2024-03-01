@@ -1092,8 +1092,10 @@ impl Processor {
         }
 
         let source_account_data = source_account_info.data.borrow();
-        if let Ok(source_account) = StateWithExtensions::<Account>::unpack(&source_account_data) {
-            if !source_account.base.is_native() && source_account.base.amount != 0 {
+        if let Ok(source_account) =
+            PodStateWithExtensions::<PodAccount>::unpack(&source_account_data)
+        {
+            if !source_account.base.is_native() && u64::from(source_account.base.amount) != 0 {
                 return Err(TokenError::NonNativeHasBalance.into());
             }
 
@@ -1141,7 +1143,7 @@ impl Processor {
             if let Ok(transfer_fee_state) = source_account.get_extension::<TransferFeeAmount>() {
                 transfer_fee_state.closable()?
             }
-        } else if let Ok(mint) = StateWithExtensions::<Mint>::unpack(&source_account_data) {
+        } else if let Ok(mint) = PodStateWithExtensions::<PodMint>::unpack(&source_account_data) {
             let extension = mint.get_extension::<MintCloseAuthority>()?;
             let maybe_authority: Option<Pubkey> = extension.close_authority.into();
             let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
@@ -1153,7 +1155,7 @@ impl Processor {
                 account_info_iter.as_slice(),
             )?;
 
-            if mint.base.supply != 0 {
+            if u64::from(mint.base.supply) != 0 {
                 return Err(TokenError::MintHasSupply.into());
             }
         } else {
