@@ -988,10 +988,10 @@ impl Processor {
         let authority_info_data_len = authority_info.data_len();
 
         let mut source_account_data = source_account_info.data.borrow_mut();
-        let mut source_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        let source_account =
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut source_account_data)?;
         let mut mint_data = mint_info.data.borrow_mut();
-        let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+        let mint = PodStateWithExtensionsMut::<PodMint>::unpack(&mut mint_data)?;
 
         if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
@@ -999,7 +999,7 @@ impl Processor {
         if source_account.base.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
-        if source_account.base.amount < amount {
+        if u64::from(source_account.base.amount) < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
         if mint_info.key != &source_account.base.mint {
@@ -1017,7 +1017,7 @@ impl Processor {
             .base
             .is_owned_by_system_program_or_incinerator()
         {
-            match (source_account.base.delegate, maybe_permanent_delegate) {
+            match (&source_account.base.delegate, maybe_permanent_delegate) {
                 (_, Some(ref delegate)) if cmp_pubkeys(authority_info.key, delegate) => {
                     Self::validate_owner(
                         program_id,
@@ -1027,7 +1027,13 @@ impl Processor {
                         account_info_iter.as_slice(),
                     )?
                 }
-                (COption::Some(ref delegate), _) if cmp_pubkeys(authority_info.key, delegate) => {
+                (
+                    PodCOption {
+                        option: PodCOption::<Pubkey>::SOME,
+                        value: delegate,
+                    },
+                    _,
+                ) if cmp_pubkeys(authority_info.key, delegate) => {
                     Self::validate_owner(
                         program_id,
                         delegate,
@@ -1036,16 +1042,16 @@ impl Processor {
                         account_info_iter.as_slice(),
                     )?;
 
-                    if source_account.base.delegated_amount < amount {
+                    if u64::from(source_account.base.delegated_amount) < amount {
                         return Err(TokenError::InsufficientFunds.into());
                     }
-                    source_account.base.delegated_amount = source_account
-                        .base
-                        .delegated_amount
-                        .checked_sub(amount)
-                        .ok_or(TokenError::Overflow)?;
-                    if source_account.base.delegated_amount == 0 {
-                        source_account.base.delegate = COption::None;
+                    source_account.base.delegated_amount =
+                        u64::from(source_account.base.delegated_amount)
+                            .checked_sub(amount)
+                            .ok_or(TokenError::Overflow)?
+                            .into();
+                    if u64::from(source_account.base.delegated_amount) == 0 {
+                        source_account.base.delegate = PodCOption::none();
                     }
                 }
                 _ => {
@@ -1072,19 +1078,14 @@ impl Processor {
         check_program_account(source_account_info.owner)?;
         check_program_account(mint_info.owner)?;
 
-        source_account.base.amount = source_account
-            .base
-            .amount
+        source_account.base.amount = u64::from(source_account.base.amount)
             .checked_sub(amount)
-            .ok_or(TokenError::Overflow)?;
-        mint.base.supply = mint
-            .base
-            .supply
+            .ok_or(TokenError::Overflow)?
+            .into();
+        mint.base.supply = u64::from(mint.base.supply)
             .checked_sub(amount)
-            .ok_or(TokenError::Overflow)?;
-
-        source_account.pack_base();
-        mint.pack_base();
+            .ok_or(TokenError::Overflow)?
+            .into();
 
         Ok(())
     }

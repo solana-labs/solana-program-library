@@ -88,6 +88,12 @@ impl PodAccount {
     pub fn is_native(&self) -> bool {
         self.is_native.is_some()
     }
+    /// Checks if a token Account's owner is the system_program or the
+    /// incinerator
+    pub fn is_owned_by_system_program_or_incinerator(&self) -> bool {
+        solana_program::system_program::check_id(&self.owner)
+            || solana_program::incinerator::check_id(&self.owner)
+    }
 }
 impl IsInitialized for PodAccount {
     fn is_initialized(&self) -> bool {
