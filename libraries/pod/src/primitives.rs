@@ -10,11 +10,16 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde-traits", serde(from = "bool", into = "bool"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct PodBool(u8);
+pub struct PodBool(pub u8);
+impl PodBool {
+    pub const fn from_bool(b: bool) -> Self {
+        Self(if b { 1 } else { 0 })
+    }
+}
 
 impl From<bool> for PodBool {
     fn from(b: bool) -> Self {
-        Self(if b { 1 } else { 0 })
+        Self::from_bool(b)
     }
 }
 
@@ -44,9 +49,14 @@ impl From<PodBool> for bool {
 #[macro_export]
 macro_rules! impl_int_conversion {
     ($P:ty, $I:ty) => {
+        impl $P {
+            pub const fn from_primitive(n: $I) -> Self {
+                Self(n.to_le_bytes())
+            }
+        }
         impl From<$I> for $P {
             fn from(n: $I) -> Self {
-                Self(n.to_le_bytes())
+                Self::from_primitive(n)
             }
         }
         impl From<$P> for $I {
@@ -62,7 +72,7 @@ macro_rules! impl_int_conversion {
 #[cfg_attr(feature = "serde-traits", serde(from = "u16", into = "u16"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct PodU16([u8; 2]);
+pub struct PodU16(pub [u8; 2]);
 impl_int_conversion!(PodU16, u16);
 
 /// `i16` type that can be used in Pods
@@ -70,7 +80,7 @@ impl_int_conversion!(PodU16, u16);
 #[cfg_attr(feature = "serde-traits", serde(from = "i16", into = "i16"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct PodI16([u8; 2]);
+pub struct PodI16(pub [u8; 2]);
 impl_int_conversion!(PodI16, i16);
 
 /// `u32` type that can be used in `Pod`s
@@ -82,7 +92,7 @@ impl_int_conversion!(PodI16, i16);
 #[cfg_attr(feature = "serde-traits", serde(from = "u32", into = "u32"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct PodU32([u8; 4]);
+pub struct PodU32(pub [u8; 4]);
 impl_int_conversion!(PodU32, u32);
 
 /// `u64` type that can be used in Pods
@@ -94,7 +104,7 @@ impl_int_conversion!(PodU32, u32);
 #[cfg_attr(feature = "serde-traits", serde(from = "u64", into = "u64"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct PodU64([u8; 8]);
+pub struct PodU64(pub [u8; 8]);
 impl_int_conversion!(PodU64, u64);
 
 /// `i64` type that can be used in Pods
