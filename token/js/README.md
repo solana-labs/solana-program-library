@@ -37,41 +37,48 @@ yarn add @solana/spl-token @solana/web3.js
 0. Prerequisites
 
 * Node 16+
-* NPM 8+
+* PNPM
+
+If you have Node 16+, you can [activate PNPM with Corepack](https://pnpm.io/installation#using-corepack).
 
 1. Clone the project:
 ```shell
 git clone https://github.com/solana-labs/solana-program-library.git
 ```
 
-2. Navigate to the library:
+2. Navigate to the root of the repository:
 ```shell
-cd solana-program-library/token/js
+cd solana-program-library
 ```
 
 3. Install the dependencies:
 ```shell
-npm install
+pnpm install
 ```
 
-4. Build the library:
+4. Build the libraries in the repository:
 ```shell
-npm run build
+pnpm run build
 ```
 
-5. Build the on-chain programs:
+5. Navigate to the SPL Token library:
 ```shell
-npm run test:build-programs
+cd token/js
 ```
 
-6. Run the tests:
+6. Build the on-chain programs:
 ```shell
-npm run test
+pnpm run test:build-programs
 ```
 
-7. Run the example:
+7. Run the tests:
 ```shell
-npm run example
+pnpm run test
+```
+
+8. Run the example:
+```shell
+pnpm run example
 ```
 
 ## Upgrading
