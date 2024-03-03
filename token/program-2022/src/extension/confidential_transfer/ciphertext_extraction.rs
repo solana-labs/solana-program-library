@@ -598,7 +598,7 @@ impl TransferWithFeeProofContextInfo {
 /// of the transfer amount under the source public key of the transfer.
 ///
 /// The `TransferProofContext` contains decryption handles for the low and high
-/// bits of the transfer amount. Howver, these decryption handles were
+/// bits of the transfer amount. However, these decryption handles were
 /// (mistakenly) removed from the split proof contexts as a form of
 /// optimization. These components should be added back into these split proofs
 /// in `zk-token-sdk`. Until this modifications is made, include

@@ -25,7 +25,7 @@ export function getGroupMemberPointerState(mint: Mint): Partial<GroupMemberPoint
     if (extensionData !== null) {
         const { authority, memberAddress } = GroupMemberPointerLayout.decode(extensionData);
 
-        // Explicity set None/Zero keys to null
+        // Explicitly set None/Zero keys to null
         return {
             authority: authority.equals(PublicKey.default) ? null : authority,
             memberAddress: memberAddress.equals(PublicKey.default) ? null : memberAddress,

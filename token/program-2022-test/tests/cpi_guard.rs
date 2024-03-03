@@ -619,7 +619,7 @@ async fn test_cpi_guard_close_account() {
             .unwrap_err();
         assert_eq!(error, client_error(TokenError::CpiGuardCloseAccountBlocked));
 
-        // but close suceeds if lamports are returned to owner
+        // but close succeeds if lamports are returned to owner
         token
             .process_ixs(
                 &[mk_close(account, alice.pubkey(), authority.pubkey())],

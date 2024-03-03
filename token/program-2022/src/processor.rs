@@ -1432,7 +1432,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Withdraw Excess Lamports is used to recover Lamports transfered to any
+    /// Withdraw Excess Lamports is used to recover Lamports transferred to any
     /// TokenProgram owned account by moving them to another account
     /// of the source account.
     pub fn process_withdraw_excess_lamports(

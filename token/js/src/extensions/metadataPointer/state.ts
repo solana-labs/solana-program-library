@@ -25,7 +25,7 @@ export function getMetadataPointerState(mint: Mint): Partial<MetadataPointer> | 
     if (extensionData !== null) {
         const { authority, metadataAddress } = MetadataPointerLayout.decode(extensionData);
 
-        // Explicity set None/Zero keys to null
+        // Explicitly set None/Zero keys to null
         return {
             authority: authority.equals(PublicKey.default) ? null : authority,
             metadataAddress: metadataAddress.equals(PublicKey.default) ? null : metadataAddress,

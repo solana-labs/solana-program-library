@@ -95,7 +95,7 @@ let value2 = state.get_value_with_repetition::<MyOtherPodValue>(2).unwrap();
 
 The Solana blockchain exposes slabs of bytes to on-chain programs, allowing program
 writers to interpret these bytes and change them however they wish. Currently,
-programs interpet account bytes as being only of one type. For example, an token
+programs interpret account bytes as being only of one type. For example, an token
 mint account is only ever a token mint, an AMM pool account is only ever an AMM pool,
 a token metadata account can only hold token metadata, etc.
 
