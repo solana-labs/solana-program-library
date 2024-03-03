@@ -84,7 +84,7 @@ pub struct ExtraAccountMeta {
     /// Whether the account should be writable
     pub is_writable: PodBool,
 }
-/// Helper used to to know when the top bit is set, to interpret the
+/// Helper used to know when the top bit is set, to interpret the
 /// discriminator as an index rather than as a type
 const U8_TOP_BIT: u8 = 1 << 7;
 impl ExtraAccountMeta {

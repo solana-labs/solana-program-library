@@ -65,7 +65,7 @@ pub struct ProposalOption {
     /// The number of transactions included in the option
     pub transactions_count: u16,
 
-    /// The index of the the next transaction to be added
+    /// The index of the next transaction to be added
     pub transactions_next_index: u16,
 }
 

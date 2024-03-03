@@ -136,7 +136,7 @@ instruction for some other program, which may not need them, if that program is
 going to CPI to your transfer hook program, it needs to have the proper
 accounts.
 
-Additionally, in order to perform a succesful dynamic account resolution, the
+Additionally, in order to perform a successful dynamic account resolution, the
 proper instruction needs to be provided to align with the instruction that was
 configured in the validation account - in this case the Transfer Hook
 interface's `ExecuteInstruction`. This is why we first create an

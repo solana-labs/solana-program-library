@@ -927,7 +927,7 @@ pub enum ExtensionType {
     ImmutableOwner,
     /// Require inbound transfers to have memo
     MemoTransfer,
-    /// Indicates that the tokens from this mint can't be transfered
+    /// Indicates that the tokens from this mint can't be transferred
     NonTransferable,
     /// Tokens accrue interest over time,
     InterestBearingConfig,

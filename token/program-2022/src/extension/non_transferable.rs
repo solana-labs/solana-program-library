@@ -5,7 +5,7 @@ use {
     bytemuck::{Pod, Zeroable},
 };
 
-/// Indicates that the tokens from this mint can't be transfered
+/// Indicates that the tokens from this mint can't be transferred
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]

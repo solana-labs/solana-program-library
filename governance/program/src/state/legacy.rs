@@ -212,7 +212,7 @@ pub struct ProposalV1 {
     /// The number of instructions included in the proposal
     pub instructions_count: u16,
 
-    /// The index of the the next instruction to be added
+    /// The index of the next instruction to be added
     pub instructions_next_index: u16,
 
     /// When the Proposal was created and entered Draft state

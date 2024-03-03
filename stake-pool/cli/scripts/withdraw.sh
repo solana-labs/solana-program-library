@@ -68,7 +68,7 @@ create_keypair $authority
 echo "Withdrawing stakes from stake pool"
 withdraw_stakes "$stake_pool_pubkey" "$validator_list" "$withdraw_sol_amount"
 
-echo "Withdrawing stakes from stake pool to recieve it in stake receiver account"
+echo "Withdrawing stakes from stake pool to receive it in stake receiver account"
 withdraw_stakes_to_stake_receiver "$stake_pool_pubkey" "$validator_list" "$withdraw_sol_amount"
 
 echo "Withdrawing SOL from stake pool to authority"

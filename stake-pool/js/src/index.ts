@@ -394,7 +394,7 @@ export async function withdrawStake(
     });
   } else if (stakeReceiverAccount && stakeReceiverAccount?.type == 'delegated') {
     const voteAccount = stakeReceiverAccount.info?.stake?.delegation.voter;
-    if (!voteAccount) throw new Error(`Invalid stake reciever ${stakeReceiver} delegation`);
+    if (!voteAccount) throw new Error(`Invalid stake receiver ${stakeReceiver} delegation`);
     const validatorListAccount = await connection.getAccountInfo(
       stakePool.account.data.validatorList,
     );
