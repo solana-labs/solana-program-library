@@ -24,6 +24,6 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@solana/web3.js": "=2.0.0-experimental.21e994f"
+    "@solana/web3.js": "=1.90.1"
   }
 }
