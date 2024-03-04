@@ -1968,7 +1968,7 @@ pub fn set_token_owner_record_lock(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -2003,7 +2003,7 @@ pub fn relinquish_token_owner_record_locks(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }
 
@@ -2032,6 +2032,6 @@ pub fn set_realm_config_item(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: instruction.try_to_vec().unwrap(),
+        data: borsh::to_vec(&instruction).unwrap(),
     }
 }

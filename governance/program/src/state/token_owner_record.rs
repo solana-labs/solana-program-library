@@ -602,7 +602,7 @@ mod test {
         let token_owner_record = create_test_token_owner_record();
 
         // Act
-        let size = token_owner_record.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&token_owner_record).unwrap().len();
 
         // Assert
         assert_eq!(token_owner_record.get_max_size(), Some(size));
@@ -624,7 +624,7 @@ mod test {
         });
 
         // Act
-        let size = token_owner_record.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&token_owner_record).unwrap().len();
 
         // Assert
         assert_eq!(token_owner_record.get_max_size(), Some(size));
