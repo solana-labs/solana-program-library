@@ -120,8 +120,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.11.24)(typescript@5.3.3)
       typedoc:
-        specifier: ^0.25.9
-        version: 0.25.9(typescript@5.3.3)
+        specifier: ^0.25.10
+        version: 0.25.10(typescript@5.3.3)
       typescript:
         specifier: 5.3.3
         version: 5.3.3
@@ -178,8 +178,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.11.24)(typescript@5.3.3)
       typedoc:
-        specifier: ^0.25.9
-        version: 0.25.9(typescript@5.3.3)
+        specifier: ^0.25.10
+        version: 0.25.10(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -251,8 +251,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.11.24)(typescript@5.3.3)
       typedoc:
-        specifier: ^0.25.9
-        version: 0.25.9(typescript@5.3.3)
+        specifier: ^0.25.10
+        version: 0.25.10(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -318,8 +318,8 @@ importers:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.11.24)(typescript@5.3.3)
       typedoc:
-        specifier: ^0.25.9
-        version: 0.25.9(typescript@5.3.3)
+        specifier: ^0.25.10
+        version: 0.25.10(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -556,8 +556,8 @@ importers:
         specifier: ^2.3.1
         version: 2.6.2
       typedoc:
-        specifier: ^0.25.9
-        version: 0.25.9(typescript@5.3.3)
+        specifier: ^0.25.10
+        version: 0.25.10(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -632,8 +632,8 @@ importers:
         specifier: ^2.3.0
         version: 2.6.2
       typedoc:
-        specifier: ^0.25.9
-        version: 0.25.9(typescript@5.3.3)
+        specifier: ^0.25.10
+        version: 0.25.10(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -711,8 +711,8 @@ importers:
         specifier: ^2.3.1
         version: 2.6.2
       typedoc:
-        specifier: ^0.25.9
-        version: 0.25.9(typescript@5.3.3)
+        specifier: ^0.25.10
+        version: 0.25.10(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -869,8 +869,8 @@ importers:
         specifier: ^2.3.1
         version: 2.6.2
       typedoc:
-        specifier: ^0.25.9
-        version: 0.25.9(typescript@5.3.3)
+        specifier: ^0.25.10
+        version: 0.25.10(typescript@5.3.3)
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -7973,8 +7973,8 @@ packages:
       is-typed-array: 1.1.12
     dev: true
 
-  /typedoc@0.25.9(typescript@5.3.3):
-    resolution: {integrity: sha512-jVoGmfNw848iW0L313+jqHbsknepwDV6F9nzk1H30oWhKXkw65uaENgR6QtTw9a5KqRWEb6nwNd54KxffBJyWw==}
+  /typedoc@0.25.10(typescript@5.3.3):
+    resolution: {integrity: sha512-v10rtOFojrjW9og3T+6wAKeJaGMuojU87DXGZ33sfs+554wgPTRG+s07Ag1BjPZI85Y5QPVouPI63JQ6fcQM5w==}
     engines: {node: '>= 16'}
     hasBin: true
     peerDependencies:
