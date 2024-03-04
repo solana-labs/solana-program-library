@@ -31,7 +31,7 @@ pub fn recompute(mut leaf: Node, proof: &[Node], index: u32) -> Node {
     leaf
 }
 
-// Off-chain implentation to keep track of nodes
+// Off-chain implementation to keep track of nodes
 pub struct MerkleTree {
     pub leaf_nodes: Vec<Rc<RefCell<TreeNode>>>,
     pub root: Node,

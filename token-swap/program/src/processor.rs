@@ -3852,7 +3852,7 @@ mod tests {
             accounts.pool_mint_account = old_pool_account;
         }
 
-        // deposit 1 pool token fails beacuse it equates to 0 swap tokens
+        // deposit 1 pool token fails because it equates to 0 swap tokens
         {
             let (
                 token_a_key,

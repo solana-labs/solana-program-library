@@ -10,11 +10,11 @@
         },
         "clean": {},
         "lint:fix": {
-            "inputs": ["src/**", "test/**"],
+            "inputs": ["tsconfig*.json", "src/**", "test/**"],
             "outputs": []
         },
         "lint": {
-            "inputs": ["src/**", "test/**"],
+            "inputs": ["tsconfig*.json", "src/**", "test/**"],
             "outputs": []
         },
         "test": {

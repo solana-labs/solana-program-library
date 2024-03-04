@@ -45,7 +45,7 @@ impl Pack for FeatureProposal {
     const LEN: usize = 17; // see `test_get_packed_len()` for justification of "18"
 
     fn pack_into_slice(&self, dst: &mut [u8]) {
-        let data = self.try_to_vec().unwrap();
+        let data = borsh::to_vec(self).unwrap();
         dst[..data.len()].copy_from_slice(&data);
     }
 
@@ -69,20 +69,19 @@ mod tests {
     fn test_get_packed_len() {
         assert_eq!(
             FeatureProposal::get_packed_len(),
-            solana_program::borsh0_10::get_packed_len::<FeatureProposal>()
+            solana_program::borsh1::get_packed_len::<FeatureProposal>()
         );
     }
 
     #[test]
     fn test_serialize_bytes() {
-        assert_eq!(FeatureProposal::Expired.try_to_vec().unwrap(), vec![3]);
+        assert_eq!(borsh::to_vec(&FeatureProposal::Expired).unwrap(), vec![3]);
 
         assert_eq!(
-            FeatureProposal::Pending(AcceptanceCriteria {
+            borsh::to_vec(&FeatureProposal::Pending(AcceptanceCriteria {
                 tokens_required: 0xdeadbeefdeadbeef,
                 deadline: -1,
-            })
-            .try_to_vec()
+            }))
             .unwrap(),
             vec![1, 239, 190, 173, 222, 239, 190, 173, 222, 255, 255, 255, 255, 255, 255, 255, 255],
         );

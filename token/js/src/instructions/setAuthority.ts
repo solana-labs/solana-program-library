@@ -28,6 +28,8 @@ export enum AuthorityType {
     TransferHookProgramId = 10,
     ConfidentialTransferFeeConfig = 11,
     MetadataPointer = 12,
+    GroupPointer = 13,
+    GroupMemberPointer = 14,
 }
 
 /** TODO: docs */

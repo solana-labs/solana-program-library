@@ -12,22 +12,22 @@ version = "3.3.0"
 walkdir = "2"
 
 [dependencies]
-base64 = "0.21.7"
+base64 = "0.22.0"
 clap = "2.33.3"
 console = "0.15.8"
 futures = "0.3"
-serde = "1.0.196"
+serde = "1.0.197"
 serde_derive = "1.0.103"
-serde_json = "1.0.113"
-solana-account-decoder = ">=1.17.17,<=2"
-solana-clap-utils = ">=1.17.17,<=2"
-solana-cli-config = ">=1.17.17,<=2"
-solana-cli-output = ">=1.17.17,<=2"
-solana-client = ">=1.17.17,<=2"
-solana-logger = ">=1.17.17,<=2"
-solana-remote-wallet = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
-solana-transaction-status = ">=1.17.17,<=2"
+serde_json = "1.0.114"
+solana-account-decoder = ">=1.18.2,<=2"
+solana-clap-utils = ">=1.18.2,<=2"
+solana-cli-config = ">=1.18.2,<=2"
+solana-cli-output = ">=1.18.2,<=2"
+solana-client = ">=1.18.2,<=2"
+solana-logger = ">=1.18.2,<=2"
+solana-remote-wallet = ">=1.18.2,<=2"
+solana-sdk = ">=1.18.2,<=2"
+solana-transaction-status = ">=1.18.2,<=2"
 spl-token = { version = "4.0", path = "../program", features = [
   "no-entrypoint",
 ] }
@@ -40,19 +40,19 @@ spl-token-group-interface = { version = "0.1", path = "../../token-group/interfa
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
 ] }
-spl-memo = { version = "4.0.0", path = "../../memo/program", features = [
+spl-memo = { version = "4.0.1", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
 strum = "0.26"
 strum_macros = "0.26"
-tokio = "1.35"
+tokio = "1.36"
 
 [dev-dependencies]
-solana-test-validator = ">=1.17.17,<=2"
-assert_cmd = "2.0.13"
+solana-test-validator = ">=1.18.2,<=2"
+assert_cmd = "2.0.14"
 libtest-mimic = "0.7"
 serial_test = "3.0.0"
-tempfile = "3.9.0"
+tempfile = "3.10.1"
 
 [[bin]]
 name = "spl-token"

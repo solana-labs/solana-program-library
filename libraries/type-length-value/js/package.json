@@ -28,37 +28,41 @@
         "import": "./lib/esm/index.js"
     },
     "scripts": {
-        "nuke": "shx rm -rf node_modules package-lock.json || true",
-        "reinstall": "npm run nuke && npm install",
-        "clean": "shx rm -rf lib **/*.tsbuildinfo || true",
         "build": "tsc --build --verbose tsconfig.all.json",
-        "postbuild": "shx echo '{ \"type\": \"commonjs\" }' > lib/cjs/package.json",
-        "watch": "tsc --build --verbose --watch tsconfig.all.json",
-        "release": "npm run clean && npm run build",
+        "clean": "shx rm -rf lib **/*.tsbuildinfo || true",
+        "deploy": "npm run deploy:docs",
+        "deploy:docs": "npm run docs && gh-pages --dest type-length-value/js --dist docs --dotfiles",
+        "docs": "shx rm -rf docs && typedoc && shx cp .nojekyll docs/",
         "fmt": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'",
         "lint": "prettier --check '{*,**/*}.{ts,tsx,js,jsx,json}' && eslint --max-warnings 0 .",
         "lint:fix": "npm run fmt && eslint --fix .",
-        "test": "mocha test"
+        "nuke": "shx rm -rf node_modules package-lock.json || true",
+        "postbuild": "shx echo '{ \"type\": \"commonjs\" }' > lib/cjs/package.json",
+        "reinstall": "npm run nuke && npm install",
+        "release": "npm run clean && npm run build",
+        "test": "mocha test",
+        "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "dependencies": {
         "buffer": "^6.0.3"
     },
     "devDependencies": {
-        "@types/chai": "^4.3.11",
+        "@types/chai": "^4.3.12",
         "@types/mocha": "^10.0.6",
-        "@types/node": "^20.11.13",
-        "@typescript-eslint/eslint-plugin": "^6.20.0",
-        "@typescript-eslint/parser": "^6.20.0",
-        "chai": "^5.0.3",
-        "eslint": "^8.56.0",
+        "@types/node": "^20.11.24",
+        "@typescript-eslint/eslint-plugin": "^7.1.0",
+        "@typescript-eslint/parser": "^7.1.0",
+        "chai": "^5.1.0",
+        "eslint": "^8.57.0",
         "eslint-config-prettier": "^9.1.0",
         "eslint-plugin-prettier": "^5.1.3",
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
-        "mocha": "^10.1.0",
-        "prettier": "^3.2.4",
+        "mocha": "^10.3.0",
+        "prettier": "^3.2.5",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
+        "typedoc": "^0.25.10",
         "typescript": "^5.3.3"
     }
 }

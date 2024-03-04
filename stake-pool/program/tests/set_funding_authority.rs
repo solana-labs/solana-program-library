@@ -4,10 +4,9 @@
 mod helpers;
 
 use {
-    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
-        borsh0_10::try_from_slice_unchecked,
+        borsh1::try_from_slice_unchecked,
         hash::Hash,
         instruction::{AccountMeta, Instruction},
     },
@@ -136,9 +135,10 @@ async fn fail_without_signature() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_authority) =
         setup().await;
 
-    let data = instruction::StakePoolInstruction::SetFundingAuthority(FundingType::StakeDeposit)
-        .try_to_vec()
-        .unwrap();
+    let data = borsh::to_vec(&instruction::StakePoolInstruction::SetFundingAuthority(
+        FundingType::StakeDeposit,
+    ))
+    .unwrap();
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), false),

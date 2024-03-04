@@ -5,7 +5,7 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         account_info::AccountInfo,
-        borsh0_10::try_from_slice_unchecked,
+        borsh1::try_from_slice_unchecked,
         msg,
         program::{invoke, invoke_signed},
         program_error::ProgramError,
@@ -44,7 +44,7 @@ pub fn create_and_serialize_account<'a, T: BorshSerialize + AccountMaxSize>(
     let (serialized_data, account_size) = if let Some(max_size) = account_data.get_max_size() {
         (None, max_size)
     } else {
-        let serialized_data = account_data.try_to_vec()?;
+        let serialized_data = borsh::to_vec(account_data)?;
         let account_size = serialized_data.len();
         (Some(serialized_data), account_size)
     };
@@ -139,7 +139,7 @@ pub fn create_and_serialize_account_with_owner_signed<'a, T: BorshSerialize + Ac
     let (serialized_data, account_size) = if let Some(max_size) = account_data.get_max_size() {
         (None, max_size)
     } else {
-        let serialized_data = account_data.try_to_vec()?;
+        let serialized_data = borsh::to_vec(&account_data)?;
         let account_size = serialized_data.len();
         (Some(serialized_data), account_size)
     };

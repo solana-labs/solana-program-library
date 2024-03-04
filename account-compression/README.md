@@ -4,7 +4,7 @@ This on-chain program provides an interface for composing smart-contracts to cre
 SPL ConcurrentMerkleTrees. The primary application of using SPL ConcurrentMerkleTrees is
 to make edits to off-chain data with on-chain verification. 
 
-This program is targeted towards supporting [Metaplex Compressed NFTs](https://github.com/metaplex-foundation/metaplex-program-library/tree/master/bubblegum) and may be subject to change.
+This program is targeted towards supporting [Metaplex Compressed NFTs](https://github.com/metaplex-foundation/mpl-bubblegum) and may be subject to change.
 
 Note: Using this program requires an indexer to parse transaction information and write relevant information to an off-chain database.
 

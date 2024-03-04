@@ -6,7 +6,7 @@ mod helpers;
 use {
     helpers::*,
     solana_program::{
-        borsh0_10::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey, stake,
+        borsh1::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey, stake,
     },
     solana_program_test::*,
     solana_sdk::{

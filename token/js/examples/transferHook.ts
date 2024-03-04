@@ -16,7 +16,7 @@ import {
     getMintLen,
     TOKEN_2022_PROGRAM_ID,
     updateTransferHook,
-    transferCheckedWithHook,
+    transferCheckedWithTransferHook,
     getAssociatedTokenAddressSync,
     ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '../src';
@@ -82,7 +82,7 @@ import {
         ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
-    await transferCheckedWithHook(
+    await transferCheckedWithTransferHook(
         connection,
         payer,
         senderAta,

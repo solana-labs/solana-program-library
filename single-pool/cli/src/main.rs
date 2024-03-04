@@ -1,7 +1,7 @@
 #![allow(clippy::arithmetic_side_effects)]
+#![allow(deprecated)]
 
 use {
-    borsh::BorshSerialize,
     clap::{CommandFactory, Parser},
     solana_clap_v3_utils::input_parsers::Amount,
     solana_client::{
@@ -9,7 +9,7 @@ use {
         rpc_filter::{Memcmp, RpcFilterType},
     },
     solana_sdk::{
-        borsh0_10::try_from_slice_unchecked,
+        borsh1::try_from_slice_unchecked,
         pubkey::Pubkey,
         signature::{Keypair, Signature, Signer},
         stake,
@@ -133,9 +133,7 @@ async fn command_initialize(config: &Config, command_config: InitializeCli) -> C
     if command_config.skip_metadata {
         assert_eq!(
             instructions.last().unwrap().data,
-            SinglePoolInstruction::CreateTokenMetadata
-                .try_to_vec()
-                .unwrap()
+            borsh::to_vec(&SinglePoolInstruction::CreateTokenMetadata).unwrap()
         );
 
         instructions.pop();

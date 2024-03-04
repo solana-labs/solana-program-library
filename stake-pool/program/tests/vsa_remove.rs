@@ -5,10 +5,9 @@ mod helpers;
 
 use {
     bincode::deserialize,
-    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
-        borsh0_10::try_from_slice_unchecked,
+        borsh1::try_from_slice_unchecked,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
         stake, system_instruction, sysvar,
@@ -139,9 +138,7 @@ async fn fail_with_wrong_stake_program_id() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::RemoveValidatorFromPool
-            .try_to_vec()
-            .unwrap(),
+        data: borsh::to_vec(&instruction::StakePoolInstruction::RemoveValidatorFromPool).unwrap(),
     };
 
     let mut transaction =
@@ -356,9 +353,7 @@ async fn fail_no_signature() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::RemoveValidatorFromPool
-            .try_to_vec()
-            .unwrap(),
+        data: borsh::to_vec(&instruction::StakePoolInstruction::RemoveValidatorFromPool).unwrap(),
     };
 
     let transaction = Transaction::new_signed_with_payer(

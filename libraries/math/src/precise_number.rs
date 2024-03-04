@@ -29,7 +29,7 @@ fn zero() -> InnerUint {
 
 impl PreciseNumber {
     /// Correction to apply to avoid truncation errors on division.  Since
-    /// integer operations will always floor the result, we artifically bump it
+    /// integer operations will always floor the result, we artificially bump it
     /// up by one half to get the expect result.
     fn rounding_correction() -> InnerUint {
         InnerUint::from(ONE / 2)

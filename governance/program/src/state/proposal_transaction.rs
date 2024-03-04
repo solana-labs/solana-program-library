@@ -9,7 +9,7 @@ use {
         },
         PROGRAM_AUTHORITY_SEED,
     },
-    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    borsh::{io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
     core::panic,
     solana_program::{
         account_info::AccountInfo,
@@ -298,7 +298,7 @@ mod test {
     #[test]
     fn test_account_meta_data_size() {
         let account_meta_data = create_test_account_meta_data();
-        let size = account_meta_data.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&account_meta_data).unwrap().len();
 
         assert_eq!(34, size);
     }
@@ -307,7 +307,7 @@ mod test {
     fn test_proposal_transaction_max_size() {
         // Arrange
         let proposal_transaction = create_test_proposal_transaction();
-        let size = proposal_transaction.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&proposal_transaction).unwrap().len();
 
         // Act, Assert
         assert_eq!(proposal_transaction.get_max_size(), Some(size));
@@ -320,7 +320,7 @@ mod test {
         proposal_transaction.instructions[0].data = vec![];
         proposal_transaction.instructions[0].accounts = vec![];
 
-        let size = proposal_transaction.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&proposal_transaction).unwrap().len();
 
         // Act, Assert
         assert_eq!(proposal_transaction.get_max_size(), Some(size));

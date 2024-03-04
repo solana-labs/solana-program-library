@@ -10,7 +10,7 @@ use {
         },
         tools::structs::Reserved119,
     },
-    borsh::{maybestd::io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
+    borsh::{io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
         pubkey::Pubkey, rent::Rent,
@@ -722,7 +722,7 @@ mod test {
         let governance_data = create_test_governance();
 
         // Act
-        let size = governance_data.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&governance_data).unwrap().len();
 
         // Assert
         assert_eq!(governance_data.get_max_size(), Some(size));
@@ -734,7 +734,7 @@ mod test {
         let governance = create_test_v1_governance();
 
         // Act
-        let size = governance.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&governance).unwrap().len();
 
         // Assert
         assert_eq!(108, size);

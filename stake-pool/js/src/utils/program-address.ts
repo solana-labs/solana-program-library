@@ -50,7 +50,7 @@ export async function findTransientStakeProgramAddress(
       TRANSIENT_STAKE_SEED_PREFIX,
       voteAccountAddress.toBuffer(),
       stakePoolAddress.toBuffer(),
-      seed.toBuffer('le', 8),
+      seed.toArrayLike(Buffer, 'le', 8),
     ],
     programId,
   );
@@ -66,7 +66,7 @@ export async function findEphemeralStakeProgramAddress(
   seed: BN,
 ) {
   const [publicKey] = await PublicKey.findProgramAddress(
-    [EPHEMERAL_STAKE_SEED_PREFIX, stakePoolAddress.toBuffer(), seed.toBuffer('le', 8)],
+    [EPHEMERAL_STAKE_SEED_PREFIX, stakePoolAddress.toBuffer(), seed.toArrayLike(Buffer, 'le', 8)],
     programId,
   );
   return publicKey;

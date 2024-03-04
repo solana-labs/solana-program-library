@@ -543,6 +543,94 @@ class UpdateTokenMetadataParams(NamedTuple):
     """URI of the uploaded metadata of the spl-token."""
 
 
+class IncreaseAdditionalValidatorStakeParams(NamedTuple):
+    """(Staker only) Increase stake on a validator from the reserve account."""
+
+    # Accounts
+    program_id: PublicKey
+    """SPL Stake Pool program account."""
+    stake_pool: PublicKey
+    """`[]` Stake pool."""
+    staker: PublicKey
+    """`[s]` Staker."""
+    withdraw_authority: PublicKey
+    """`[]` Stake pool withdraw authority."""
+    validator_list: PublicKey
+    """`[w]` Validator stake list storage account."""
+    reserve_stake: PublicKey
+    """`[w]` Stake pool's reserve."""
+    ephemeral_stake: PublicKey
+    """The ephemeral stake account used during the operation."""
+    transient_stake: PublicKey
+    """`[w]` Transient stake account to receive split."""
+    validator_stake: PublicKey
+    """`[]` Canonical stake account to check."""
+    validator_vote: PublicKey
+    """`[]` Validator vote account to delegate to."""
+    clock_sysvar: PublicKey
+    """`[]` Clock sysvar."""
+    rent_sysvar: PublicKey
+    """`[]` Rent sysvar."""
+    stake_history_sysvar: PublicKey
+    """'[]' Stake history sysvar."""
+    stake_config_sysvar: PublicKey
+    """'[]' Stake config sysvar."""
+    system_program_id: PublicKey
+    """`[]` System program."""
+    stake_program_id: PublicKey
+    """`[]` Stake program."""
+
+    # Params
+    lamports: int
+    """Amount of lamports to increase on the given validator."""
+    transient_stake_seed: int
+    """Seed to used to create the transient stake account."""
+    ephemeral_stake_seed: int
+    """The seed used to generate the ephemeral stake account"""
+
+
+class DecreaseAdditionalValidatorStakeParams(NamedTuple):
+    """(Staker only) Decrease active stake on a validator, eventually moving it to the reserve"""
+
+    # Accounts
+    program_id: PublicKey
+    """SPL Stake Pool program account."""
+    stake_pool: PublicKey
+    """`[]` Stake pool."""
+    staker: PublicKey
+    """`[s]` Staker."""
+    withdraw_authority: PublicKey
+    """`[]` Stake pool withdraw authority."""
+    validator_list: PublicKey
+    """`[w]` Validator stake list storage account."""
+    reserve_stake: PublicKey
+    """The reserve stake account to move the stake to."""
+    validator_stake: PublicKey
+    """`[w]` Canonical stake to split from."""
+    ephemeral_stake: PublicKey
+    """The ephemeral stake account used during the operation."""
+    transient_stake: PublicKey
+    """`[w]` Transient stake account to receive split."""
+    clock_sysvar: PublicKey
+    """`[]` Clock sysvar."""
+    rent_sysvar: PublicKey
+    """`[]` Rent sysvar."""
+    stake_history_sysvar: PublicKey
+    """'[]' Stake history sysvar."""
+    system_program_id: PublicKey
+    """`[]` System program."""
+    stake_program_id: PublicKey
+    """`[]` Stake program."""
+
+    # Params
+    lamports: int
+    """Amount of lamports to split into the transient stake account."""
+    transient_stake_seed: int
+    """Seed to used to create the transient stake account."""
+    ephemeral_stake_seed: int
+    """The seed used to generate the ephemeral stake account"""
+
+
 class InstructionType(IntEnum):
     """Stake Pool Instruction Types."""
 
@@ -1009,6 +1097,42 @@ def increase_validator_stake(params: IncreaseValidatorStakeParams) -> Transactio
     )
 
 
+def increase_additional_validator_stake(
+    params: IncreaseAdditionalValidatorStakeParams,
+  ) -> TransactionInstruction:
+
+    """Creates `IncreaseAdditionalValidatorStake` instruction (rebalance from reserve account to transient account)"""
+    return TransactionInstruction(
+        keys=[
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.ephemeral_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.transient_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.validator_vote, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_history_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_config_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.system_program_id, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
+        ],
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.INCREASE_ADDITIONAL_VALIDATOR_STAKE,
+                args={
+                    'lamports': params.lamports,
+                    'transient_stake_seed': params.transient_stake_seed,
+                    'ephemeral_stake_seed': params.ephemeral_stake_seed
+                }
+            )
+        )
+    )
+
+
 def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> TransactionInstruction:
     """Creates instruction to decrease the stake on a validator."""
     return TransactionInstruction(
@@ -1031,6 +1155,38 @@ def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> Transactio
                 args={
                     'lamports': params.lamports,
                     'transient_stake_seed': params.transient_stake_seed
+                }
+            )
+        )
+    )
+
+
+def decrease_additional_validator_stake(params: DecreaseAdditionalValidatorStakeParams) -> TransactionInstruction:
+    """ Creates `DecreaseAdditionalValidatorStake` instruction (rebalance from validator account to
+    transient account)."""
+    return TransactionInstruction(
+        keys=[
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.ephemeral_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.transient_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_history_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.system_program_id, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
+        ],
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.DECREASE_ADDITIONAL_VALIDATOR_STAKE,
+                args={
+                    'lamports': params.lamports,
+                    'transient_stake_seed': params.transient_stake_seed,
+                    'ephemeral_stake_seed': params.ephemeral_stake_seed
                 }
             )
         )

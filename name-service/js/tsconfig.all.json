@@ -1,11 +1,11 @@
 {
-    "extends": "./tsconfig.root.json",
-    "references": [
-        {
-            "path": "./tsconfig.cjs.json"
-        },
-        {
-            "path": "./tsconfig.esm.json"
-        }
-    ]
+  "extends": "./tsconfig.root.json",
+  "references": [
+    {
+      "path": "./tsconfig.cjs.json"
+    },
+    {
+      "path": "./tsconfig.esm.json"
+    }
+  ]
 }

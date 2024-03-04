@@ -72,7 +72,7 @@ mod test {
             version: "111.122.155".to_string(),
         };
 
-        let size = program_metadata_data.try_to_vec().unwrap().len();
+        let size = borsh::to_vec(&program_metadata_data).unwrap().len();
 
         assert_eq!(program_metadata_data.get_max_size(), Some(size));
     }

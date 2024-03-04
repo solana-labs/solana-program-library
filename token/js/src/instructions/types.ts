@@ -40,4 +40,6 @@ export enum TokenInstruction {
     // ConfidentialTransferFeeExtension = 37,
     // WithdrawalExcessLamports = 38,
     MetadataPointerExtension = 39,
+    GroupPointerExtension = 40,
+    GroupMemberPointerExtension = 41,
 }

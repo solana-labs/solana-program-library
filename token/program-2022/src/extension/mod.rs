@@ -812,6 +812,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             ExtensionType::TransferFeeAmount => {
                 self.init_extension::<TransferFeeAmount>(true).map(|_| ())
             }
+            ExtensionType::ImmutableOwner => {
+                self.init_extension::<ImmutableOwner>(true).map(|_| ())
+            }
             ExtensionType::NonTransferableAccount => self
                 .init_extension::<NonTransferableAccount>(true)
                 .map(|_| ()),
@@ -924,7 +927,7 @@ pub enum ExtensionType {
     ImmutableOwner,
     /// Require inbound transfers to have memo
     MemoTransfer,
-    /// Indicates that the tokens from this mint can't be transfered
+    /// Indicates that the tokens from this mint can't be transferred
     NonTransferable,
     /// Tokens accrue interest over time,
     InterestBearingConfig,
@@ -1133,6 +1136,7 @@ impl ExtensionType {
                 }
                 ExtensionType::NonTransferable => {
                     account_extension_types.push(ExtensionType::NonTransferableAccount);
+                    account_extension_types.push(ExtensionType::ImmutableOwner);
                 }
                 ExtensionType::TransferHook => {
                     account_extension_types.push(ExtensionType::TransferHookAccount);

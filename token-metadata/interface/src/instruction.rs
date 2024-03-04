@@ -201,23 +201,23 @@ impl TokenMetadataInstruction {
         match self {
             Self::Initialize(data) => {
                 buf.extend_from_slice(Initialize::SPL_DISCRIMINATOR_SLICE);
-                buf.append(&mut data.try_to_vec().unwrap());
+                buf.append(&mut borsh::to_vec(data).unwrap());
             }
             Self::UpdateField(data) => {
                 buf.extend_from_slice(UpdateField::SPL_DISCRIMINATOR_SLICE);
-                buf.append(&mut data.try_to_vec().unwrap());
+                buf.append(&mut borsh::to_vec(data).unwrap());
             }
             Self::RemoveKey(data) => {
                 buf.extend_from_slice(RemoveKey::SPL_DISCRIMINATOR_SLICE);
-                buf.append(&mut data.try_to_vec().unwrap());
+                buf.append(&mut borsh::to_vec(data).unwrap());
             }
             Self::UpdateAuthority(data) => {
                 buf.extend_from_slice(UpdateAuthority::SPL_DISCRIMINATOR_SLICE);
-                buf.append(&mut data.try_to_vec().unwrap());
+                buf.append(&mut borsh::to_vec(data).unwrap());
             }
             Self::Emit(data) => {
                 buf.extend_from_slice(Emit::SPL_DISCRIMINATOR_SLICE);
-                buf.append(&mut data.try_to_vec().unwrap());
+                buf.append(&mut borsh::to_vec(data).unwrap());
             }
         };
         buf
@@ -333,7 +333,7 @@ mod test {
     ) {
         let mut expect = vec![];
         expect.extend_from_slice(discriminator.as_ref());
-        expect.append(&mut data.try_to_vec().unwrap());
+        expect.append(&mut borsh::to_vec(&data).unwrap());
         let packed = instruction.pack();
         assert_eq!(packed, expect);
         let unpacked = TokenMetadataInstruction::unpack(&expect).unwrap();

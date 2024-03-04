@@ -1,6 +1,6 @@
 [package]
 name = "spl-tlv-account-resolution"
-version = "0.5.1"
+version = "0.5.2"
 description = "Solana Program Library TLV Account Resolution Interface"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -12,9 +12,9 @@ serde-traits = ["dep:serde"]
 test-sbf = []
 
 [dependencies]
-bytemuck = { version = "1.14.1", features = ["derive"] }
-serde = { version = "1.0.196", optional = true }
-solana-program = ">=1.17.17,<=2"
+bytemuck = { version = "1.14.3", features = ["derive"] }
+serde = { version = "1.0.197", optional = true }
+solana-program = ">=1.18.2,<=2"
 spl-discriminator = { version = "0.1", path = "../discriminator" }
 spl-program-error = { version = "0.3", path = "../program-error" }
 spl-type-length-value = { version = "0.3", path = "../type-length-value" }
@@ -23,9 +23,9 @@ spl-pod = { version = "0.1", path = "../pod" }
 [dev-dependencies]
 futures = "0.3.30"
 futures-util = "0.3"
-solana-client = ">=1.17.17,<=2"
-solana-program-test = ">=1.17.17,<=2"
-solana-sdk = ">=1.17.17,<=2"
+solana-client = ">=1.18.2,<=2"
+solana-program-test = ">=1.18.2,<=2"
+solana-sdk = ">=1.18.2,<=2"
 spl-discriminator = { version = "0.1", path = "../discriminator" }
 
 [lib]

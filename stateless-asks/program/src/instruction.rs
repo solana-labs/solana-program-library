@@ -63,7 +63,7 @@ pub fn accept_offer(
         taker_size,
         bump_seed,
     };
-    let data = init_data.try_to_vec().unwrap();
+    let data = borsh::to_vec(&init_data).unwrap();
     let mut accounts = vec![
         AccountMeta::new_readonly(*maker_wallet, false),
         AccountMeta::new_readonly(*taker_wallet, true),
@@ -113,7 +113,7 @@ pub fn accept_offer_with_metadata(
         taker_size,
         bump_seed,
     };
-    let data = init_data.try_to_vec().unwrap();
+    let data = borsh::to_vec(&init_data).unwrap();
     let mut accounts = vec![
         AccountMeta::new_readonly(*maker_wallet, false),
         AccountMeta::new_readonly(*taker_wallet, true),

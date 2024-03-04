@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 from solana.keypair import Keypair
 from solana.publickey import PublicKey
@@ -22,7 +22,8 @@ from stake_pool.constants import \
     find_stake_program_address, \
     find_transient_stake_program_address, \
     find_withdraw_authority_program_address, \
-    find_metadata_account
+    find_metadata_account, \
+    find_ephemeral_stake_program_address
 from stake_pool.state import STAKE_POOL_LAYOUT, ValidatorList, Fee, StakePool
 import stake_pool.instructions as sp
 
@@ -480,8 +481,13 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
 
 
 async def increase_validator_stake(
-    client: AsyncClient, payer: Keypair, staker: Keypair, stake_pool_address: PublicKey,
-    validator_vote: PublicKey, lamports: int
+    client: AsyncClient,
+    payer: Keypair,
+    staker: Keypair,
+    stake_pool_address: PublicKey,
+    validator_vote: PublicKey,
+    lamports: int,
+    ephemeral_stake_seed: Optional[int] = None
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp['result']['value']['data']
@@ -493,7 +499,13 @@ async def increase_validator_stake(
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
-    transient_stake_seed = validator_info.transient_seed_suffix + 1  # bump up by one to avoid reuse
+
+    if ephemeral_stake_seed is None:
+        transient_stake_seed = validator_info.transient_seed_suffix + 1  # bump up by one to avoid reuse
+    else:
+        # we are updating an existing transient stake account, so we must use the same seed
+        transient_stake_seed = validator_info.transient_seed_suffix
+
     validator_stake_seed = validator_info.validator_seed_suffix or None
     (transient_stake, _) = find_transient_stake_program_address(
         STAKE_POOL_PROGRAM_ID,
@@ -509,29 +521,64 @@ async def increase_validator_stake(
     )
 
     txn = Transaction()
-    txn.add(
-        sp.increase_validator_stake(
-            sp.IncreaseValidatorStakeParams(
-                program_id=STAKE_POOL_PROGRAM_ID,
-                stake_pool=stake_pool_address,
-                staker=staker.public_key,
-                withdraw_authority=withdraw_authority,
-                validator_list=stake_pool.validator_list,
-                reserve_stake=stake_pool.reserve_stake,
-                transient_stake=transient_stake,
-                validator_stake=validator_stake,
-                validator_vote=validator_vote,
-                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                rent_sysvar=SYSVAR_RENT_PUBKEY,
-                stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
-                stake_config_sysvar=SYSVAR_STAKE_CONFIG_ID,
-                system_program_id=sys.SYS_PROGRAM_ID,
-                stake_program_id=STAKE_PROGRAM_ID,
-                lamports=lamports,
-                transient_stake_seed=transient_stake_seed,
+    if ephemeral_stake_seed is not None:
+
+        # We assume there is an existing transient account that we will update
+        (ephemeral_stake, _) = find_ephemeral_stake_program_address(
+            STAKE_POOL_PROGRAM_ID,
+            stake_pool_address,
+            ephemeral_stake_seed)
+
+        txn.add(
+            sp.increase_additional_validator_stake(
+                sp.IncreaseAdditionalValidatorStakeParams(
+                    program_id=STAKE_POOL_PROGRAM_ID,
+                    stake_pool=stake_pool_address,
+                    staker=staker.public_key,
+                    withdraw_authority=withdraw_authority,
+                    validator_list=stake_pool.validator_list,
+                    reserve_stake=stake_pool.reserve_stake,
+                    transient_stake=transient_stake,
+                    validator_stake=validator_stake,
+                    validator_vote=validator_vote,
+                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                    rent_sysvar=SYSVAR_RENT_PUBKEY,
+                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                    stake_config_sysvar=SYSVAR_STAKE_CONFIG_ID,
+                    system_program_id=sys.SYS_PROGRAM_ID,
+                    stake_program_id=STAKE_PROGRAM_ID,
+                    lamports=lamports,
+                    transient_stake_seed=transient_stake_seed,
+                    ephemeral_stake=ephemeral_stake,
+                    ephemeral_stake_seed=ephemeral_stake_seed
+                )
             )
         )
-    )
+
+    else:
+        txn.add(
+            sp.increase_validator_stake(
+                sp.IncreaseValidatorStakeParams(
+                    program_id=STAKE_POOL_PROGRAM_ID,
+                    stake_pool=stake_pool_address,
+                    staker=staker.public_key,
+                    withdraw_authority=withdraw_authority,
+                    validator_list=stake_pool.validator_list,
+                    reserve_stake=stake_pool.reserve_stake,
+                    transient_stake=transient_stake,
+                    validator_stake=validator_stake,
+                    validator_vote=validator_vote,
+                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                    rent_sysvar=SYSVAR_RENT_PUBKEY,
+                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                    stake_config_sysvar=SYSVAR_STAKE_CONFIG_ID,
+                    system_program_id=sys.SYS_PROGRAM_ID,
+                    stake_program_id=STAKE_PROGRAM_ID,
+                    lamports=lamports,
+                    transient_stake_seed=transient_stake_seed,
+                )
+            )
+        )
 
     signers = [payer, staker] if payer != staker else [payer]
     await client.send_transaction(
@@ -539,8 +586,13 @@ async def increase_validator_stake(
 
 
 async def decrease_validator_stake(
-    client: AsyncClient, payer: Keypair, staker: Keypair, stake_pool_address: PublicKey,
-    validator_vote: PublicKey, lamports: int
+    client: AsyncClient,
+    payer: Keypair,
+    staker: Keypair,
+    stake_pool_address: PublicKey,
+    validator_vote: PublicKey,
+    lamports: int,
+    ephemeral_stake_seed: Optional[int] = None
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp['result']['value']['data']
@@ -559,7 +611,13 @@ async def decrease_validator_stake(
         stake_pool_address,
         validator_stake_seed,
     )
-    transient_stake_seed = validator_info.transient_seed_suffix + 1  # bump up by one to avoid reuse
+
+    if ephemeral_stake_seed is None:
+        transient_stake_seed = validator_info.transient_seed_suffix + 1  # bump up by one to avoid reuse
+    else:
+        # we are updating an existing transient stake account, so we must use the same seed
+        transient_stake_seed = validator_info.transient_seed_suffix
+
     (transient_stake, _) = find_transient_stake_program_address(
         STAKE_POOL_PROGRAM_ID,
         validator_info.vote_account_address,
@@ -568,26 +626,61 @@ async def decrease_validator_stake(
     )
 
     txn = Transaction()
-    txn.add(
-        sp.decrease_validator_stake_with_reserve(
-            sp.DecreaseValidatorStakeWithReserveParams(
-                program_id=STAKE_POOL_PROGRAM_ID,
-                stake_pool=stake_pool_address,
-                staker=staker.public_key,
-                withdraw_authority=withdraw_authority,
-                validator_list=stake_pool.validator_list,
-                reserve_stake=stake_pool.reserve_stake,
-                validator_stake=validator_stake,
-                transient_stake=transient_stake,
-                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
-                system_program_id=sys.SYS_PROGRAM_ID,
-                stake_program_id=STAKE_PROGRAM_ID,
-                lamports=lamports,
-                transient_stake_seed=transient_stake_seed,
+
+    if ephemeral_stake_seed is not None:
+
+        # We assume there is an existing transient account that we will update
+        (ephemeral_stake, _) = find_ephemeral_stake_program_address(
+            STAKE_POOL_PROGRAM_ID,
+            stake_pool_address,
+            ephemeral_stake_seed)
+
+        txn.add(
+            sp.decrease_additional_validator_stake(
+                sp.DecreaseAdditionalValidatorStakeParams(
+                    program_id=STAKE_POOL_PROGRAM_ID,
+                    stake_pool=stake_pool_address,
+                    staker=staker.public_key,
+                    withdraw_authority=withdraw_authority,
+                    validator_list=stake_pool.validator_list,
+                    reserve_stake=stake_pool.reserve_stake,
+                    validator_stake=validator_stake,
+                    transient_stake=transient_stake,
+                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                    rent_sysvar=SYSVAR_RENT_PUBKEY,
+                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                    system_program_id=sys.SYS_PROGRAM_ID,
+                    stake_program_id=STAKE_PROGRAM_ID,
+                    lamports=lamports,
+                    transient_stake_seed=transient_stake_seed,
+                    ephemeral_stake=ephemeral_stake,
+                    ephemeral_stake_seed=ephemeral_stake_seed
+                )
             )
         )
-    )
+
+    else:
+
+        txn.add(
+            sp.decrease_validator_stake_with_reserve(
+                sp.DecreaseValidatorStakeWithReserveParams(
+                    program_id=STAKE_POOL_PROGRAM_ID,
+                    stake_pool=stake_pool_address,
+                    staker=staker.public_key,
+                    withdraw_authority=withdraw_authority,
+                    validator_list=stake_pool.validator_list,
+                    reserve_stake=stake_pool.reserve_stake,
+                    validator_stake=validator_stake,
+                    transient_stake=transient_stake,
+                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                    system_program_id=sys.SYS_PROGRAM_ID,
+                    stake_program_id=STAKE_PROGRAM_ID,
+                    lamports=lamports,
+                    transient_stake_seed=transient_stake_seed,
+                )
+            )
+        )
 
     signers = [payer, staker] if payer != staker else [payer]
     await client.send_transaction(
