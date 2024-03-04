@@ -847,14 +847,18 @@ impl<'a, S: BaseState> BaseStateWithExtensionsMut<S> for StateWithExtensionsMut<
     }
 }
 
-fn unpack_type_and_tlv_data<S: BaseState>(
+fn unpack_type_and_tlv_data_with_check<
+    S: BaseState,
+    F: Fn(AccountType) -> Result<(), ProgramError>,
+>(
     rest: &mut [u8],
+    check_fn: F,
 ) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
     if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
         // type_and_tlv_indices() checks that returned indexes are within range
         let account_type = AccountType::try_from(rest[account_type_index])
             .map_err(|_| ProgramError::InvalidAccountData)?;
-        check_account_type::<S>(account_type)?;
+        check_fn(account_type)?;
         let (account_type, tlv_data) = rest.split_at_mut(tlv_start_index);
         Ok((
             &mut account_type[account_type_index..tlv_start_index],
@@ -865,24 +869,24 @@ fn unpack_type_and_tlv_data<S: BaseState>(
     }
 }
 
+fn unpack_type_and_tlv_data<S: BaseState>(
+    rest: &mut [u8],
+) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
+    unpack_type_and_tlv_data_with_check::<S, _>(rest, |account_type| {
+        check_account_type::<S>(account_type)
+    })
+}
+
 fn unpack_uninitialized_type_and_tlv_data<S: BaseState>(
     rest: &mut [u8],
 ) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
-    if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
-        // type_and_tlv_indices() checks that returned indexes are within range
-        let account_type = AccountType::try_from(rest[account_type_index])
-            .map_err(|_| ProgramError::InvalidAccountData)?;
+    unpack_type_and_tlv_data_with_check::<S, _>(rest, |account_type| {
         if account_type != AccountType::Uninitialized {
-            return Err(ProgramError::InvalidAccountData);
+            Err(ProgramError::InvalidAccountData)
+        } else {
+            Ok(())
         }
-        let (account_type, tlv_data) = rest.split_at_mut(tlv_start_index);
-        Ok((
-            &mut account_type[account_type_index..tlv_start_index],
-            tlv_data,
-        ))
-    } else {
-        Ok((&mut [], &mut []))
-    }
+    })
 }
 
 /// If AccountType is uninitialized, set it to the BaseState's ACCOUNT_TYPE;
