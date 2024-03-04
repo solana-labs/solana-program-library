@@ -507,19 +507,47 @@ pub enum GovernanceError {
 
     /// Invalid Governance for RequiredSignatory
     #[error("Invalid Governance for RequiredSignatory")]
-    InvalidGovernanceForRequiredSignatory,
+    InvalidGovernanceForRequiredSignatory, // 621
 
     /// SignatoryRecord already exists
     #[error("Signatory Record has already been created")]
-    SignatoryRecordAlreadyExists,
+    SignatoryRecordAlreadyExists, // 622
 
     /// Instruction has been removed
     #[error("Instruction has been removed")]
-    InstructionDeprecated,
+    InstructionDeprecated, // 623
 
     /// Proposal is missing signatories required by its governance
     #[error("Proposal is missing required signatories")]
-    MissingRequiredSignatories,
+    MissingRequiredSignatories, // 624
+
+    /// TokenOwnerRecordLock authority must sign
+    #[error("TokenOwnerRecordLock authority must sign")]
+    TokenOwnerRecordLockAuthorityMustSign, // 625
+
+    /// TokenOwnerRecordLock is expired
+    #[error("TokenOwnerRecordLock is expired ")]
+    ExpiredTokenOwnerRecordLock, // 626
+
+    /// TokenOwnerRecord locked
+    #[error("TokenOwnerRecord locked")]
+    TokenOwnerRecordLocked, // 627
+
+    /// Invalid TokenOwnerRecordLockAuthority
+    #[error("Invalid TokenOwnerRecordLockAuthority")]
+    InvalidTokenOwnerRecordLockAuthority, // 628
+
+    /// TokenOwnerRecordLock authority already exists
+    #[error("TokenOwnerRecordLock authority already exists")]
+    TokenOwnerRecordLockAuthorityAlreadyExists, // 629
+
+    /// TokenOwnerRecordLock not found
+    #[error("TokenOwnerRecordLock not found")]
+    TokenOwnerRecordLockNotFound, // 630
+
+    /// TokenOwnerRecordLockAuthority not found
+    #[error("TokenOwnerRecordLockAuthority not found")]
+    TokenOwnerRecordLockAuthorityNotFound, // 631
 }
 
 impl PrintProgramError for GovernanceError {

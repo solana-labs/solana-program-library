@@ -7,10 +7,7 @@ use {
             realm::{
                 assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs,
             },
-            realm_config::{
-                get_realm_config_address_seeds, get_realm_config_data_for_realm,
-                resolve_governing_token_config, RealmConfigAccount,
-            },
+            realm_config::{get_realm_config_data_for_realm, resolve_governing_token_config},
         },
     },
     solana_program::{
@@ -20,7 +17,6 @@ use {
         rent::Rent,
         sysvar::Sysvar,
     },
-    spl_governance_tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes SetRealmConfig instruction
@@ -88,42 +84,29 @@ pub fn process_set_realm_config(
     let community_token_config = resolve_governing_token_config(
         account_info_iter,
         &realm_config_args.community_token_config_args,
+        Some(realm_config_data.community_token_config.clone()),
     )?;
 
     // 8, 9
     let council_token_config = resolve_governing_token_config(
         account_info_iter,
         &realm_config_args.council_token_config_args,
+        Some(realm_config_data.council_token_config.clone()),
     )?;
 
     realm_config_data.community_token_config = community_token_config;
     realm_config_data.council_token_config = council_token_config;
 
-    // Update or create RealmConfigAccount
-    if realm_config_info.data_is_empty() {
-        // For older Realm accounts (pre program V3) RealmConfigAccount might not exist
-        // yet and we have to create it
+    let payer_info = next_account_info(account_info_iter)?; // 10
+    let rent = Rent::get()?;
 
-        // We need the payer to pay for the new account if it's created
-        let payer_info = next_account_info(account_info_iter)?; // 10
-        let rent = Rent::get()?;
-
-        create_and_serialize_account_signed::<RealmConfigAccount>(
-            payer_info,
-            realm_config_info,
-            &realm_config_data,
-            &get_realm_config_address_seeds(realm_info.key),
-            program_id,
-            system_info,
-            &rent,
-            0,
-        )?;
-    } else {
-        borsh::to_writer(
-            &mut realm_config_info.data.borrow_mut()[..],
-            &realm_config_data,
-        )?;
-    }
+    realm_config_data.serialize(
+        program_id,
+        realm_config_info,
+        payer_info,
+        system_info,
+        &rent,
+    )?;
 
     // Update RealmConfig (Realm.config field)
     realm_data.config.community_mint_max_voter_weight_source =

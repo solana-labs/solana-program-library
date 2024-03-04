@@ -489,3 +489,39 @@ async fn test_withdraw_dormant_community_tokens() {
 
     assert_eq!(0, token_owner_record.governing_token_deposit_amount);
 }
+
+#[tokio::test]
+async fn test_withdraw_governing_tokens_with_token_owner_record_lock_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_token_owner_record_lock(
+            &token_owner_record_cookie,
+            &token_owner_record_lock_authority_cookie,
+        )
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .withdraw_community_tokens(&realm_cookie, &token_owner_record_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::TokenOwnerRecordLocked.into());
+}

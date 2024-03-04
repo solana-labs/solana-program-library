@@ -19,6 +19,7 @@ mod process_finalize_vote;
 mod process_flag_transaction_error;
 mod process_insert_transaction;
 mod process_refund_proposal_deposit;
+mod process_relinquish_token_owner_record_locks;
 mod process_relinquish_vote;
 mod process_remove_required_signatory;
 mod process_remove_transaction;
@@ -27,6 +28,8 @@ mod process_set_governance_config;
 mod process_set_governance_delegate;
 mod process_set_realm_authority;
 mod process_set_realm_config;
+mod process_set_realm_config_item;
+mod process_set_token_owner_record_lock;
 mod process_sign_off_proposal;
 mod process_update_program_metadata;
 mod process_withdraw_governing_tokens;
@@ -52,6 +55,7 @@ use {
     process_flag_transaction_error::*,
     process_insert_transaction::*,
     process_refund_proposal_deposit::*,
+    process_relinquish_token_owner_record_locks::*,
     process_relinquish_vote::*,
     process_remove_required_signatory::*,
     process_remove_transaction::*,
@@ -60,6 +64,8 @@ use {
     process_set_governance_delegate::*,
     process_set_realm_authority::*,
     process_set_realm_config::*,
+    process_set_realm_config_item::*,
+    process_set_token_owner_record_lock::*,
     process_sign_off_proposal::*,
     process_update_program_metadata::*,
     process_withdraw_governing_tokens::*,
@@ -242,6 +248,18 @@ pub fn process_instruction(
         }
         GovernanceInstruction::RemoveRequiredSignatory => {
             process_remove_required_signatory(program_id, accounts)
+        }
+
+        GovernanceInstruction::SetTokenOwnerRecordLock { lock_id, expiry } => {
+            process_set_token_owner_record_lock(program_id, accounts, lock_id, expiry)
+        }
+
+        GovernanceInstruction::RelinquishTokenOwnerRecordLocks { lock_ids } => {
+            process_relinquish_token_owner_record_locks(program_id, accounts, lock_ids)
+        }
+
+        GovernanceInstruction::SetRealmConfigItem { args } => {
+            process_set_realm_config_item(program_id, accounts, args)
         }
     }
 }

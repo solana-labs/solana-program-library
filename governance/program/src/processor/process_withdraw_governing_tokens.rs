@@ -14,8 +14,10 @@ use {
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
+        clock::Clock,
         entrypoint::ProgramResult,
         pubkey::Pubkey,
+        sysvar::Sysvar,
     },
 };
 
@@ -33,6 +35,7 @@ pub fn process_withdraw_governing_tokens(
     let token_owner_record_info = next_account_info(account_info_iter)?; // 4
     let spl_token_info = next_account_info(account_info_iter)?; // 5
     let realm_config_info = next_account_info(account_info_iter)?; // 6
+    let clock = Clock::get()?;
 
     if !governing_token_owner_info.is_signer {
         return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
@@ -65,7 +68,7 @@ pub fn process_withdraw_governing_tokens(
         &token_owner_record_address_seeds,
     )?;
 
-    token_owner_record_data.assert_can_withdraw_governing_tokens()?;
+    token_owner_record_data.assert_can_withdraw_governing_tokens(clock.unix_timestamp)?;
 
     transfer_spl_tokens_signed(
         governing_token_holding_info,

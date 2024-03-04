@@ -14,8 +14,11 @@ use {
         program_error::ProgramError,
         program_pack::IsInitialized,
         pubkey::Pubkey,
+        rent::Rent,
     },
-    spl_governance_tools::account::{get_account_data, AccountMaxSize},
+    spl_governance_tools::account::{
+        create_and_serialize_account_signed, extend_account_size, get_account_data, AccountMaxSize,
+    },
     std::slice::Iter,
 };
 
@@ -83,7 +86,10 @@ pub struct GoverningTokenConfig {
     pub token_type: GoverningTokenType,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 4],
+
+    /// Lock authorities for TokenOwnerRecords
+    pub lock_authorities: Vec<Pubkey>,
 }
 
 /// RealmConfig account
@@ -108,7 +114,13 @@ pub struct RealmConfigAccount {
 
 impl AccountMaxSize for RealmConfigAccount {
     fn get_max_size(&self) -> Option<usize> {
-        Some(1 + 32 + 75 * 2 + 110)
+        Some(
+            1 + 32
+                + 75 * 2
+                + 110
+                + self.community_token_config.lock_authorities.len() * 32
+                + self.council_token_config.lock_authorities.len() * 32,
+        )
     }
 }
 
@@ -129,6 +141,23 @@ impl RealmConfigAccount {
             &self.community_token_config
         } else if Some(*governing_token_mint) == realm_data.config.council_mint {
             &self.council_token_config
+        } else {
+            return Err(GovernanceError::InvalidGoverningTokenMint.into());
+        };
+
+        Ok(token_config)
+    }
+
+    /// Returns mutable GoverningTokenConfig for the given governing_token_mint
+    pub fn get_token_config_mut(
+        &mut self,
+        realm_data: &RealmV2,
+        governing_token_mint: &Pubkey,
+    ) -> Result<&mut GoverningTokenConfig, ProgramError> {
+        let token_config = if *governing_token_mint == realm_data.community_mint {
+            &mut self.community_token_config
+        } else if Some(*governing_token_mint) == realm_data.config.council_mint {
+            &mut self.council_token_config
         } else {
             return Err(GovernanceError::InvalidGoverningTokenMint.into());
         };
@@ -212,6 +241,49 @@ impl RealmConfigAccount {
 
         Ok(())
     }
+
+    /// Serializes RealmConfigAccount and resizes it if required
+    /// If the account doesn't exist then it's created
+    pub fn serialize<'a>(
+        self,
+        program_id: &Pubkey,
+        realm_config_info: &AccountInfo<'a>,
+        payer_info: &AccountInfo<'a>,
+        system_info: &AccountInfo<'a>,
+        rent: &Rent,
+    ) -> Result<(), ProgramError> {
+        // Update or create RealmConfigAccount
+        if realm_config_info.data_is_empty() {
+            // For older Realm accounts (pre program V3) RealmConfigAccount might not exist
+            // yet and we have to create it
+
+            create_and_serialize_account_signed::<RealmConfigAccount>(
+                payer_info,
+                realm_config_info,
+                &self,
+                &get_realm_config_address_seeds(&self.realm),
+                program_id,
+                system_info,
+                rent,
+                0,
+            )?;
+        } else {
+            let realm_config_max_size = self.get_max_size().unwrap();
+            if realm_config_info.data_len() < realm_config_max_size {
+                extend_account_size(
+                    realm_config_info,
+                    payer_info,
+                    realm_config_max_size,
+                    rent,
+                    system_info,
+                )?;
+            }
+
+            borsh::to_writer(&mut realm_config_info.data.borrow_mut()[..], &self)?;
+        };
+
+        Ok(())
+    }
 }
 
 /// Deserializes RealmConfig account and checks owner program
@@ -276,6 +348,7 @@ pub fn get_realm_config_address(program_id: &Pubkey, realm: &Pubkey) -> Pubkey {
 pub fn resolve_governing_token_config(
     account_info_iter: &mut Iter<AccountInfo>,
     governing_token_config_args: &GoverningTokenConfigArgs,
+    existing_governing_token_config: Option<GoverningTokenConfig>,
 ) -> Result<GoverningTokenConfig, ProgramError> {
     let voter_weight_addin = if governing_token_config_args.use_voter_weight_addin {
         let voter_weight_addin_info = next_account_info(account_info_iter)?;
@@ -291,11 +364,19 @@ pub fn resolve_governing_token_config(
         None
     };
 
+    let lock_authorities =
+        if let Some(existing_governing_token_config) = existing_governing_token_config {
+            existing_governing_token_config.lock_authorities
+        } else {
+            vec![]
+        };
+
     Ok(GoverningTokenConfig {
         voter_weight_addin,
         max_voter_weight_addin,
         token_type: governing_token_config_args.token_type.clone(),
-        reserved: [0; 8],
+        reserved: [0; 4],
+        lock_authorities,
     })
 }
 
@@ -315,13 +396,42 @@ mod test {
                 voter_weight_addin: Some(Pubkey::new_unique()),
                 max_voter_weight_addin: Some(Pubkey::new_unique()),
                 token_type: GoverningTokenType::Liquid,
-                reserved: [0; 8],
+                reserved: [0; 4],
+                lock_authorities: vec![],
             },
             council_token_config: GoverningTokenConfig {
                 voter_weight_addin: Some(Pubkey::new_unique()),
                 max_voter_weight_addin: Some(Pubkey::new_unique()),
                 token_type: GoverningTokenType::Liquid,
-                reserved: [0; 8],
+                reserved: [0; 4],
+                lock_authorities: vec![],
+            },
+            reserved: Reserved110::default(),
+        };
+
+        let size = borsh::to_vec(&realm_config).unwrap().len();
+
+        assert_eq!(realm_config.get_max_size(), Some(size));
+    }
+
+    #[test]
+    fn test_max_size_with_lock_authorities() {
+        let realm_config = RealmConfigAccount {
+            account_type: GovernanceAccountType::RealmV2,
+            realm: Pubkey::new_unique(),
+            community_token_config: GoverningTokenConfig {
+                voter_weight_addin: Some(Pubkey::new_unique()),
+                max_voter_weight_addin: Some(Pubkey::new_unique()),
+                token_type: GoverningTokenType::Liquid,
+                reserved: [0; 4],
+                lock_authorities: vec![Pubkey::new_unique()],
+            },
+            council_token_config: GoverningTokenConfig {
+                voter_weight_addin: Some(Pubkey::new_unique()),
+                max_voter_weight_addin: Some(Pubkey::new_unique()),
+                token_type: GoverningTokenType::Liquid,
+                reserved: [0; 4],
+                lock_authorities: vec![Pubkey::new_unique(), Pubkey::new_unique()],
             },
             reserved: Reserved110::default(),
         };

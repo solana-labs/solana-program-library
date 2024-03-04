@@ -15,14 +15,41 @@ use {
     borsh::{io::Write, BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
+        clock::UnixTimestamp,
         program_error::ProgramError,
         program_pack::IsInitialized,
         pubkey::Pubkey,
+        rent::Rent,
     },
     spl_governance_addin_api::voter_weight::VoterWeightAction,
-    spl_governance_tools::account::{get_account_data, get_account_type, AccountMaxSize},
+    spl_governance_tools::account::{
+        extend_account_size, get_account_data, get_account_type, AccountMaxSize,
+    },
     std::slice::Iter,
 };
+
+/// A lock of TokenOwnerRecord which can be issued by external authorities to
+/// prevent token withdrawals
+#[derive(Clone, Debug, PartialEq, Eq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct TokenOwnerRecordLock {
+    /// Custom lock id which can be used by the authority to issue
+    /// different locks
+    pub lock_id: u8,
+
+    /// The authority issuing the lock
+    pub authority: Pubkey,
+
+    /// The timestamp when the lock expires or None if it never expires
+    pub expiry: Option<UnixTimestamp>,
+}
+
+impl TokenOwnerRecordLock {
+    /// Checks whether the lock is expired
+    pub fn is_expired(&self, current_unix_timestamp: UnixTimestamp) -> bool {
+        // If the expiry is None then the lock never expires
+        self.expiry.is_some() && Some(current_unix_timestamp) > self.expiry
+    }
+}
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
@@ -96,7 +123,11 @@ pub struct TokenOwnerRecordV2 {
 
     /// Reserved space for versions v2 and onwards
     /// Note: V1 accounts must be resized before using this space
-    pub reserved_v2: [u8; 128],
+    pub reserved_v2: [u8; 124],
+
+    /// A list of locks which can be issued by external authorities
+    /// to prevent token withdrawals
+    pub locks: Vec<TokenOwnerRecordLock>,
 }
 
 /// The current version of TokenOwnerRecord account layout
@@ -109,7 +140,7 @@ pub const TOKEN_OWNER_RECORD_LAYOUT_VERSION: u8 = 1;
 
 impl AccountMaxSize for TokenOwnerRecordV2 {
     fn get_max_size(&self) -> Option<usize> {
-        Some(282)
+        Some(282 + self.locks.len() * 42)
     }
 }
 
@@ -207,7 +238,10 @@ impl TokenOwnerRecordV2 {
     }
 
     /// Asserts TokenOwner can withdraw tokens from Realm
-    pub fn assert_can_withdraw_governing_tokens(&self) -> Result<(), ProgramError> {
+    pub fn assert_can_withdraw_governing_tokens(
+        &self,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> Result<(), ProgramError> {
         if self.unrelinquished_votes_count > 0 {
             return Err(
                 GovernanceError::AllVotesMustBeRelinquishedToWithdrawGoverningTokens.into(),
@@ -218,6 +252,14 @@ impl TokenOwnerRecordV2 {
             return Err(
                 GovernanceError::AllProposalsMustBeFinalisedToWithdrawGoverningTokens.into(),
             );
+        }
+
+        if self
+            .locks
+            .iter()
+            .any(|lock| !lock.is_expired(current_unix_timestamp))
+        {
+            return Err(GovernanceError::TokenOwnerRecordLocked.into());
         }
 
         Ok(())
@@ -272,6 +314,72 @@ impl TokenOwnerRecordV2 {
         }
     }
 
+    /// Removes expired locks
+    pub fn remove_expired_locks(&mut self, current_unix_timestamp: UnixTimestamp) {
+        self.locks
+            .retain(|lock| !lock.is_expired(current_unix_timestamp));
+    }
+
+    /// Removes a lock by its id and authority
+    pub fn remove_lock(
+        &mut self,
+        lock_id: u8,
+        lock_authority: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        if let Some(lock_index) = self
+            .locks
+            .iter()
+            .position(|lock| lock.lock_id == lock_id && lock.authority == *lock_authority)
+        {
+            self.locks.remove(lock_index);
+            Ok(())
+        } else {
+            Err(GovernanceError::TokenOwnerRecordLockNotFound.into())
+        }
+    }
+
+    /// Upserts (updates or inserts) a lock by its id and authority
+    pub fn upsert_lock(&mut self, lock: TokenOwnerRecordLock) {
+        if let Some(lock_index) = self.locks.iter().position(|existing_lock| {
+            existing_lock.lock_id == lock.lock_id && existing_lock.authority == lock.authority
+        }) {
+            self.locks[lock_index] = lock;
+        } else {
+            self.locks.push(lock);
+        }
+    }
+
+    /// Serializes TokenOwnerRecord and resizes it if required
+    /// If the account is TokenOwnerRecordV1 and needs to be resized
+    /// then its type is changed to TokenOwnerRecordV2 to preserve the extra
+    /// data
+    pub fn serialize_with_resize<'a>(
+        mut self,
+        token_owner_record_info: &AccountInfo<'a>,
+        payer_info: &AccountInfo<'a>,
+        system_info: &AccountInfo<'a>,
+        rent: &Rent,
+    ) -> Result<(), ProgramError> {
+        let token_owner_record_data_max_size = self.get_max_size().unwrap();
+        if token_owner_record_info.data_len() < token_owner_record_data_max_size {
+            extend_account_size(
+                token_owner_record_info,
+                payer_info,
+                token_owner_record_data_max_size,
+                rent,
+                system_info,
+            )?;
+
+            // When the account is resized we have to change the type to V2 to preserve
+            // the extra data
+            if self.account_type == GovernanceAccountType::TokenOwnerRecordV1 {
+                self.account_type = GovernanceAccountType::TokenOwnerRecordV2;
+            }
+        }
+
+        self.serialize(&mut token_owner_record_info.data.borrow_mut()[..])
+    }
+
     /// Serializes account into the target buffer
     pub fn serialize<W: Write>(self, writer: W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::TokenOwnerRecordV2 {
@@ -282,7 +390,7 @@ impl TokenOwnerRecordV2 {
 
             // If reserved_v2 is used it must be individually asses for v1 backward
             // compatibility impact
-            if self.reserved_v2 != [0; 128] {
+            if self.reserved_v2 != [0; 124] {
                 panic!("Extended data not supported by TokenOwnerRecordV1")
             }
 
@@ -361,7 +469,8 @@ pub fn get_token_owner_record_data(
             governance_delegate: token_owner_record_data_v1.governance_delegate,
 
             // Add the extra reserved_v2 padding
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         }
     } else {
         get_account_data::<TokenOwnerRecordV2>(program_id, token_owner_record_info)?
@@ -450,10 +559,7 @@ pub fn get_token_owner_record_data_for_proposal_owner(
 
 #[cfg(test)]
 mod test {
-    use {
-        super::*,
-        solana_program::{borsh1::get_packed_len, stake_history::Epoch},
-    };
+    use {super::*, solana_program::stake_history::Epoch};
 
     fn create_test_token_owner_record() -> TokenOwnerRecordV2 {
         TokenOwnerRecordV2 {
@@ -467,7 +573,8 @@ mod test {
             outstanding_proposal_count: 1,
             version: 1,
             reserved: [0; 6],
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         }
     }
 
@@ -492,7 +599,29 @@ mod test {
         let token_owner_record = create_test_token_owner_record();
 
         // Act
-        let size = get_packed_len::<TokenOwnerRecordV2>();
+        let size = borsh::to_vec(&token_owner_record).unwrap().len();
+
+        // Assert
+        assert_eq!(token_owner_record.get_max_size(), Some(size));
+    }
+
+    #[test]
+    fn test_max_size_with_locks() {
+        // Arrange
+        let mut token_owner_record = create_test_token_owner_record();
+        token_owner_record.locks.push(TokenOwnerRecordLock {
+            lock_id: 1,
+            authority: Pubkey::new_unique(),
+            expiry: Some(10),
+        });
+        token_owner_record.locks.push(TokenOwnerRecordLock {
+            lock_id: 1,
+            authority: Pubkey::new_unique(),
+            expiry: Some(10),
+        });
+
+        // Act
+        let size = borsh::to_vec(&token_owner_record).unwrap().len();
 
         // Assert
         assert_eq!(token_owner_record.get_max_size(), Some(size));

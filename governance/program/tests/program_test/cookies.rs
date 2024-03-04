@@ -1,5 +1,5 @@
 use {
-    solana_program::{instruction::Instruction, pubkey::Pubkey},
+    solana_program::{clock::UnixTimestamp, instruction::Instruction, pubkey::Pubkey},
     solana_sdk::signature::Keypair,
     spl_governance::state::{
         governance::GovernanceV2, native_treasury::NativeTreasury,
@@ -196,4 +196,16 @@ pub struct ProgramMetadataCookie {
 pub struct NativeTreasuryCookie {
     pub address: Pubkey,
     pub account: NativeTreasury,
+}
+
+#[derive(Debug)]
+pub struct TokenOwnerRecordLockCookie {
+    pub authority: Pubkey,
+    pub lock_id: u8,
+    pub expiry: Option<UnixTimestamp>,
+}
+
+#[derive(Debug)]
+pub struct TokenOwnerRecordLockAuthorityCookie {
+    pub authority: Keypair,
 }

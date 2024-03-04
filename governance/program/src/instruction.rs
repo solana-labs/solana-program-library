@@ -16,7 +16,7 @@ use {
             realm::{
                 get_governing_token_holding_address, get_realm_address,
                 GoverningTokenConfigAccountArgs, GoverningTokenConfigArgs, RealmConfigArgs,
-                SetRealmAuthorityAction,
+                SetRealmAuthorityAction, SetRealmConfigItemArgs,
             },
             realm_config::get_realm_config_address,
             required_signatory::get_required_signatory_address,
@@ -29,6 +29,7 @@ use {
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         bpf_loader_upgradeable,
+        clock::UnixTimestamp,
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
         system_program, sysvar,
@@ -663,6 +664,61 @@ pub enum GovernanceInstruction {
     ///  2. `[writable]` Beneficiary Account which would receive lamports from
     ///     the disposed RequiredSignatory Account
     RemoveRequiredSignatory,
+
+    /// Sets TokenOwnerRecord lock for the given authority and lock id
+    ///
+    ///   0. `[]` Realm
+    ///   1. `[]` RealmConfig
+    ///   2. `[writable]` TokenOwnerRecord the lock is set for
+    ///   3. `[signer]` Lock authority issuing the lock
+    ///   4. `[signer]` Payer
+    ///   5. `[]` System
+    SetTokenOwnerRecordLock {
+        /// Custom lock id which can be used by the authority to issue
+        /// different locks
+        #[allow(dead_code)]
+        lock_id: u8,
+
+        /// The timestamp when the lock expires or None if it never expires
+        #[allow(dead_code)]
+        expiry: Option<UnixTimestamp>,
+    },
+
+    /// Removes all expired TokenOwnerRecord locks and if specified
+    /// the locks identified by the given lock ids and authority
+    ///
+    ///
+    ///   0. `[]` Realm
+    ///   1. `[]` RealmConfig
+    ///   2. `[writable]` TokenOwnerRecord the locks are removed from
+    ///   3. `[signer]` Optional lock authority which issued the locks specified
+    ///      by lock_ids. If the authority is configured in RealmConfig then it
+    ///      must sign the transaction. If the authority is no longer configured
+    ///      then the locks are removed without the authority signature
+    RelinquishTokenOwnerRecordLocks {
+        /// Custom lock ids identifying the lock to remove
+        /// If the lock_id is None then only expired locks are removed
+        #[allow(dead_code)]
+        lock_ids: Option<Vec<u8>>,
+    },
+
+    /// Sets Realm config item
+    /// Note:
+    /// This instruction is used to set a single RealmConfig item at a time
+    /// In the current version it only supports TokenOwnerRecordLockAuthority
+    /// however eventually all Realm configuration items should be set using
+    /// this instruction and SetRealmConfig instruction should be deprecated
+    ///
+    ///   0. `[writable]` Realm account
+    ///   1. `[writable]` RealmConfig account
+    ///   2. `[signer]`  Realm authority
+    ///   3. `[signer]` Payer
+    ///   4. `[]` System
+    SetRealmConfigItem {
+        #[allow(dead_code)]
+        /// Config args
+        args: SetRealmConfigItemArgs,
+    },
 }
 
 /// Creates CreateRealm instruction
@@ -1876,6 +1932,102 @@ pub fn complete_proposal(
     ];
 
     let instruction = GovernanceInstruction::CompleteProposal {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&instruction).unwrap(),
+    }
+}
+
+/// Creates SetTokenOwnerRecordLock instruction to issue TokenOwnerRecord lock
+pub fn set_token_owner_record_lock(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    token_owner_record: &Pubkey,
+    token_owner_record_lock_authority: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    lock_id: u8,
+    expiry: Option<UnixTimestamp>,
+) -> Instruction {
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new_readonly(realm_config_address, false),
+        AccountMeta::new(*token_owner_record, false),
+        AccountMeta::new_readonly(*token_owner_record_lock_authority, true),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::SetTokenOwnerRecordLock { lock_id, expiry };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&instruction).unwrap(),
+    }
+}
+
+/// Creates RelinquishTokenOwnerRecordLocks instruction to remove
+/// TokenOwnerRecord locks
+pub fn relinquish_token_owner_record_locks(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    token_owner_record: &Pubkey,
+    token_owner_record_lock_authority: Option<Pubkey>,
+    // Args
+    lock_ids: Option<Vec<u8>>,
+) -> Instruction {
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
+    let mut accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new_readonly(realm_config_address, false),
+        AccountMeta::new(*token_owner_record, false),
+    ];
+
+    if let Some(token_owner_record_lock_authority) = token_owner_record_lock_authority {
+        accounts.push(AccountMeta::new_readonly(
+            token_owner_record_lock_authority,
+            true,
+        ));
+    }
+
+    let instruction = GovernanceInstruction::RelinquishTokenOwnerRecordLocks { lock_ids };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: borsh::to_vec(&instruction).unwrap(),
+    }
+}
+
+/// Creates SetRealmConfigItem instruction to set realm config
+pub fn set_realm_config_item(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    realm_authority: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    args: SetRealmConfigItemArgs,
+) -> Instruction {
+    let realm_config_address = get_realm_config_address(program_id, realm);
+
+    let accounts = vec![
+        AccountMeta::new(*realm, false),
+        AccountMeta::new(realm_config_address, false),
+        AccountMeta::new_readonly(*realm_authority, true),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::SetRealmConfigItem { args };
 
     Instruction {
         program_id: *program_id,

@@ -1,5 +1,7 @@
 #![allow(clippy::arithmetic_side_effects)]
+
 use {
+    self::cookies::TokenOwnerRecordLockAuthorityCookie,
     borsh::BorshSerialize,
     solana_program::{
         bpf_loader_upgradeable::{self, UpgradeableLoaderState},
@@ -19,9 +21,10 @@ use {
             create_program_governance, create_proposal, create_realm, create_token_governance,
             create_token_owner_record, deposit_governing_tokens, execute_transaction,
             finalize_vote, flag_transaction_error, insert_transaction, refund_proposal_deposit,
-            relinquish_vote, remove_required_signatory, remove_transaction,
-            revoke_governing_tokens, set_governance_config, set_governance_delegate,
-            set_realm_authority, set_realm_config, sign_off_proposal, upgrade_program_metadata,
+            relinquish_token_owner_record_locks, relinquish_vote, remove_required_signatory,
+            remove_transaction, revoke_governing_tokens, set_governance_config,
+            set_governance_delegate, set_realm_authority, set_realm_config, set_realm_config_item,
+            set_token_owner_record_lock, sign_off_proposal, upgrade_program_metadata,
             withdraw_governing_tokens, AddSignatoryAuthority,
         },
         processor::process_instruction,
@@ -47,6 +50,7 @@ use {
             realm::{
                 get_governing_token_holding_address, get_realm_address,
                 GoverningTokenConfigAccountArgs, RealmConfig, RealmV2, SetRealmAuthorityAction,
+                SetRealmConfigItemArgs,
             },
             realm_config::{get_realm_config_address, GoverningTokenConfig, RealmConfigAccount},
             required_signatory::RequiredSignatory,
@@ -59,7 +63,7 @@ use {
         },
         tools::{
             bpf_loader_upgradeable::get_program_data_address,
-            structs::{Reserved110, Reserved119},
+            structs::{Reserved110, Reserved119, SetConfigItemActionType},
         },
     },
     spl_governance_addin_api::{
@@ -77,14 +81,14 @@ pub mod cookies;
 pub mod legacy;
 
 use {
-    self::cookies::ProposalDepositCookie,
     crate::{
         args::{PluginSetupArgs, RealmSetupArgs},
         cookies::{
             GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
             GovernedTokenCookie, MaxVoterWeightRecordCookie, NativeTreasuryCookie,
-            ProgramMetadataCookie, ProposalCookie, ProposalTransactionCookie, RealmCookie,
-            TokenOwnerRecordCookie, VoteRecordCookie,
+            ProgramMetadataCookie, ProposalCookie, ProposalDepositCookie,
+            ProposalTransactionCookie, RealmCookie, TokenOwnerRecordCookie,
+            TokenOwnerRecordLockCookie, VoteRecordCookie,
         },
         program_test::cookies::{
             RealmConfigCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
@@ -382,7 +386,8 @@ impl GovernanceProgramTest {
                         .community_token_config_args
                         .token_type
                         .clone(),
-                    reserved: [0; 8],
+                    reserved: [0; 4],
+                    lock_authorities: vec![],
                 },
                 council_token_config: GoverningTokenConfig {
                     voter_weight_addin: realm_setup_args
@@ -395,7 +400,8 @@ impl GovernanceProgramTest {
                         .council_token_config_args
                         .token_type
                         .clone(),
-                    reserved: [0; 8],
+                    reserved: [0; 4],
+                    lock_authorities: vec![],
                 },
             },
         };
@@ -572,7 +578,8 @@ impl GovernanceProgramTest {
             outstanding_proposal_count: 0,
             version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         };
 
         let token_owner_record_address = get_token_owner_record_address(
@@ -810,7 +817,8 @@ impl GovernanceProgramTest {
             outstanding_proposal_count: 0,
             version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         };
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
@@ -877,7 +885,8 @@ impl GovernanceProgramTest {
             outstanding_proposal_count: 0,
             version: TOKEN_OWNER_RECORD_LAYOUT_VERSION,
             reserved: [0; 6],
-            reserved_v2: [0; 128],
+            reserved_v2: [0; 124],
+            locks: vec![],
         };
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
@@ -1193,7 +1202,8 @@ impl GovernanceProgramTest {
                         .community_token_config_args
                         .token_type
                         .clone(),
-                    reserved: [0; 8],
+                    reserved: [0; 4],
+                    lock_authorities: vec![],
                 },
                 council_token_config: GoverningTokenConfig {
                     voter_weight_addin: realm_setup_args
@@ -1206,7 +1216,8 @@ impl GovernanceProgramTest {
                         .council_token_config_args
                         .token_type
                         .clone(),
-                    reserved: [0; 8],
+                    reserved: [0; 4],
+                    lock_authorities: vec![],
                 },
             },
         };
@@ -3104,6 +3115,11 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub fn remove_realm_config_account(&mut self, realm_config_address: &Pubkey) {
+        self.bench.remove_account(realm_config_address);
+    }
+
+    #[allow(dead_code)]
     pub async fn get_governance_account(&mut self, governance_address: &Pubkey) -> GovernanceV2 {
         self.bench
             .get_borsh_account::<GovernanceV2>(governance_address)
@@ -3367,5 +3383,209 @@ impl GovernanceProgramTest {
             .await?;
 
         Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_token_owner_record_lock(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority_cookie: &TokenOwnerRecordLockAuthorityCookie,
+    ) -> Result<TokenOwnerRecordLockCookie, ProgramError> {
+        let lock_id = 5;
+        let clock = self.bench.get_clock().await;
+        let expiry: Option<UnixTimestamp> = Some(clock.unix_timestamp + 1);
+
+        self.set_token_owner_record_lock(
+            token_owner_record_cookie,
+            token_owner_record_lock_authority_cookie,
+            lock_id,
+            expiry,
+        )
+        .await?;
+
+        Ok(TokenOwnerRecordLockCookie {
+            authority: token_owner_record_lock_authority_cookie.authority.pubkey(),
+            lock_id,
+            expiry,
+        })
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_token_owner_record_lock(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority_cookie: &TokenOwnerRecordLockAuthorityCookie,
+        lock_id: u8,
+        expiry: Option<UnixTimestamp>,
+    ) -> Result<(), ProgramError> {
+        self.set_token_owner_record_lock_using_ix(
+            token_owner_record_cookie,
+            token_owner_record_lock_authority_cookie,
+            lock_id,
+            expiry,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_token_owner_record_lock_using_ix<F: Fn(&mut Instruction)>(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority_cookie: &TokenOwnerRecordLockAuthorityCookie,
+        lock_id: u8,
+        expiry: Option<UnixTimestamp>,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut set_token_owner_record_lock_ix = set_token_owner_record_lock(
+            &self.program_id,
+            &token_owner_record_cookie.account.realm,
+            &token_owner_record_cookie.address,
+            &token_owner_record_lock_authority_cookie.authority.pubkey(),
+            &self.bench.payer.pubkey(),
+            lock_id,
+            expiry,
+        );
+
+        instruction_override(&mut set_token_owner_record_lock_ix);
+
+        let default_signers = &[&token_owner_record_lock_authority_cookie.authority];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        self.bench
+            .process_transaction(&[set_token_owner_record_lock_ix], Some(signers))
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn relinquish_token_owner_record_locks(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority: Option<&Keypair>,
+        lock_ids: Option<Vec<u8>>,
+    ) -> Result<(), ProgramError> {
+        self.relinquish_token_owner_record_locks_using_ix(
+            token_owner_record_cookie,
+            token_owner_record_lock_authority,
+            lock_ids,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn relinquish_token_owner_record_locks_using_ix<F: Fn(&mut Instruction)>(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_lock_authority: Option<&Keypair>,
+        lock_ids: Option<Vec<u8>>,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let token_owner_record_lock_authority_pubkey =
+            token_owner_record_lock_authority.map(|kp| kp.pubkey());
+
+        let mut remove_token_owner_record_lock_ix = relinquish_token_owner_record_locks(
+            &self.program_id,
+            &token_owner_record_cookie.account.realm,
+            &token_owner_record_cookie.address,
+            token_owner_record_lock_authority_pubkey,
+            lock_ids,
+        );
+
+        instruction_override(&mut remove_token_owner_record_lock_ix);
+
+        let default_signers =
+            if let Some(token_owner_record_lock_authority) = token_owner_record_lock_authority {
+                vec![token_owner_record_lock_authority]
+            } else {
+                vec![]
+            };
+        let signers = signers_override.unwrap_or(&default_signers);
+
+        self.bench
+            .process_transaction(&[remove_token_owner_record_lock_ix], Some(signers))
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_config_item(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        args: SetRealmConfigItemArgs,
+    ) -> Result<(), ProgramError> {
+        self.set_realm_config_item_using_ix(realm_cookie, args, NopOverride, None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_config_item_using_ix<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        args: SetRealmConfigItemArgs,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut set_realm_config_item_ix = set_realm_config_item(
+            &self.program_id,
+            &realm_cookie.address,
+            &realm_cookie.account.authority.unwrap(),
+            &self.bench.payer.pubkey(),
+            args,
+        );
+
+        instruction_override(&mut set_realm_config_item_ix);
+
+        let default_signers = &[realm_cookie.realm_authority.as_ref().unwrap()];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        self.bench
+            .process_transaction(&[set_realm_config_item_ix], Some(signers))
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_community_token_owner_record_lock_authority(
+        &mut self,
+        realm_cookie: &RealmCookie,
+    ) -> Result<TokenOwnerRecordLockAuthorityCookie, ProgramError> {
+        let token_owner_record_lock_authority = Keypair::new();
+        let args = SetRealmConfigItemArgs::TokenOwnerRecordLockAuthority {
+            action: SetConfigItemActionType::Add,
+            governing_token_mint: realm_cookie.account.community_mint,
+            authority: token_owner_record_lock_authority.pubkey(),
+        };
+
+        self.set_realm_config_item(realm_cookie, args)
+            .await
+            .unwrap();
+
+        Ok(TokenOwnerRecordLockAuthorityCookie {
+            authority: token_owner_record_lock_authority,
+        })
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_council_token_owner_record_lock_authority(
+        &mut self,
+        realm_cookie: &RealmCookie,
+    ) -> Result<TokenOwnerRecordLockAuthorityCookie, ProgramError> {
+        let token_owner_record_lock_authority = Keypair::new();
+        let args = SetRealmConfigItemArgs::TokenOwnerRecordLockAuthority {
+            action: SetConfigItemActionType::Add,
+            governing_token_mint: realm_cookie.account.config.council_mint.unwrap(),
+            authority: token_owner_record_lock_authority.pubkey(),
+        };
+
+        self.set_realm_config_item(realm_cookie, args)
+            .await
+            .unwrap();
+
+        Ok(TokenOwnerRecordLockAuthorityCookie {
+            authority: token_owner_record_lock_authority,
+        })
     }
 }

@@ -1,6 +1,6 @@
 #![cfg(feature = "test-sbf")]
 
-use {solana_program::pubkey::Pubkey, solana_program_test::*};
+use {solana_program::pubkey::Pubkey, solana_program_test::*, solana_sdk::signer::Signer};
 
 mod program_test;
 
@@ -338,5 +338,77 @@ async fn test_set_realm_config_for_council_token_config() {
         realm_setup_args
             .council_token_config_args
             .max_voter_weight_addin
+    );
+}
+
+#[tokio::test]
+async fn test_set_realm_config_without_existing_realm_config() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+
+    let realm_setup_args = RealmSetupArgs::default();
+
+    governance_test.remove_realm_config_account(&realm_cookie.realm_config.address);
+
+    // Act
+
+    governance_test
+        .set_realm_config(&mut realm_cookie, &realm_setup_args)
+        .await
+        .unwrap();
+
+    // Assert
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(realm_cookie.account, realm_account);
+}
+
+#[tokio::test]
+async fn test_set_realm_config_with_token_owner_record_lock_authorities() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+
+    let community_token_owner_record_lock_authority_cookie = governance_test
+        .with_community_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
+
+    let council_token_owner_record_lock_authority_cookie = governance_test
+        .with_council_token_owner_record_lock_authority(&realm_cookie)
+        .await
+        .unwrap();
+
+    let realm_setup_args = RealmSetupArgs::default();
+
+    // Act
+
+    governance_test
+        .set_realm_config(&mut realm_cookie, &realm_setup_args)
+        .await
+        .unwrap();
+
+    // Assert
+    let realm_config_account = governance_test
+        .get_realm_config_account(&realm_cookie.realm_config.address)
+        .await;
+
+    assert_eq!(
+        vec![community_token_owner_record_lock_authority_cookie
+            .authority
+            .pubkey()],
+        realm_config_account.community_token_config.lock_authorities
+    );
+
+    assert_eq!(
+        vec![council_token_owner_record_lock_authority_cookie
+            .authority
+            .pubkey()],
+        realm_config_account.council_token_config.lock_authorities
     );
 }
