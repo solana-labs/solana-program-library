@@ -1371,12 +1371,12 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount)
+                        .validator(is_amount_or_all)
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
                         .required(true)
-                        .help("Amount to burn, in tokens"),
+                        .help("Amount to burn, in tokens; accepts keyword ALL"),
                 )
                 .arg(owner_keypair_arg_with_value_name("TOKEN_OWNER_KEYPAIR")
                         .help(
