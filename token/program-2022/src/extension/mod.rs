@@ -872,9 +872,7 @@ fn unpack_type_and_tlv_data_with_check<
 fn unpack_type_and_tlv_data<S: BaseState>(
     rest: &mut [u8],
 ) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
-    unpack_type_and_tlv_data_with_check::<S, _>(rest, |account_type| {
-        check_account_type::<S>(account_type)
-    })
+    unpack_type_and_tlv_data_with_check::<S, _>(rest, check_account_type::<S>)
 }
 
 fn unpack_uninitialized_type_and_tlv_data<S: BaseState>(
