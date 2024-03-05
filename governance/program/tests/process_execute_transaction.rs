@@ -230,31 +230,30 @@ async fn test_execute_upgrade_program_transaction() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_program_cookie = governance_test.with_governed_program().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
         .await
         .unwrap();
 
-    let mut program_governance_cookie = governance_test
-        .with_program_governance(
-            &realm_cookie,
-            &governed_program_cookie,
-            &token_owner_record_cookie,
-        )
+    let mut governance_cookie = governance_test
+        .with_governance2(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
+    let governed_program_cookie = governance_test
+        .with_governed_program(&governance_cookie)
+        .await;
+
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut program_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     let signatory_record_cookie = governance_test
         .with_signatory(
             &proposal_cookie,
-            &program_governance_cookie,
+            &governance_cookie,
             &token_owner_record_cookie,
         )
         .await
@@ -262,7 +261,7 @@ async fn test_execute_upgrade_program_transaction() {
 
     let proposal_transaction_cookie = governance_test
         .with_upgrade_program_transaction(
-            &program_governance_cookie,
+            &governance_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
         )

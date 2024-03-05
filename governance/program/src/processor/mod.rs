@@ -7,7 +7,7 @@ mod process_cast_vote;
 mod process_complete_proposal;
 mod process_create_governance;
 mod process_create_native_treasury;
-mod process_create_program_governance;
+
 mod process_create_proposal;
 mod process_create_realm;
 
@@ -42,7 +42,6 @@ use {
     process_complete_proposal::*,
     process_create_governance::*,
     process_create_native_treasury::*,
-    process_create_program_governance::*,
     process_create_proposal::*,
     process_create_realm::*,
     process_create_token_owner_record::*,
@@ -119,16 +118,6 @@ pub fn process_instruction(
             new_governance_delegate,
         } => process_set_governance_delegate(program_id, accounts, &new_governance_delegate),
 
-        GovernanceInstruction::CreateProgramGovernance {
-            config,
-            transfer_upgrade_authority,
-        } => process_create_program_governance(
-            program_id,
-            accounts,
-            config,
-            transfer_upgrade_authority,
-        ),
-
         GovernanceInstruction::CreateGovernance { config } => {
             process_create_governance(program_id, accounts, config)
         }
@@ -155,7 +144,8 @@ pub fn process_instruction(
         }
         GovernanceInstruction::Legacy1
         | GovernanceInstruction::Legacy2
-        | GovernanceInstruction::Legacy3 => {
+        | GovernanceInstruction::Legacy3
+        | GovernanceInstruction::Legacy4 => {
             Err(GovernanceError::InstructionDeprecated.into()) // No-op
         }
         GovernanceInstruction::SignOffProposal {} => {

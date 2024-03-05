@@ -19,7 +19,7 @@ pub enum GovernanceAccountType {
     /// Governance account
     GovernanceV1,
 
-    /// Program Governance account
+    /// Legacy ProgramGovernanceV1 account
     ProgramGovernanceV1,
 
     /// Proposal account for Governance account. A single Governance account can
@@ -81,7 +81,7 @@ pub enum GovernanceAccountType {
     /// V2 adds extra reserved space reserved_v2
     GovernanceV2,
 
-    /// Program Governance account
+    /// Legacy ProgramGovernanceV2 account deprecated in V4
     /// V2 adds extra reserved space reserved_v2
     ProgramGovernanceV2,
 

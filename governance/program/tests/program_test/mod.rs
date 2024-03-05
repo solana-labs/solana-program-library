@@ -17,8 +17,8 @@ use {
     spl_governance::{
         instruction::{
             add_required_signatory, add_signatory, cancel_proposal, cast_vote, complete_proposal,
-            create_governance, create_native_treasury, create_program_governance, create_proposal,
-            create_realm, create_token_owner_record, deposit_governing_tokens, execute_transaction,
+            create_governance, create_native_treasury, create_proposal, create_realm,
+            create_token_owner_record, deposit_governing_tokens, execute_transaction,
             finalize_vote, flag_transaction_error, insert_transaction, refund_proposal_deposit,
             relinquish_token_owner_record_locks, relinquish_vote, remove_required_signatory,
             remove_transaction, revoke_governing_tokens, set_governance_config,
@@ -33,8 +33,8 @@ use {
                 ProposalState, TransactionExecutionStatus, VoteThreshold,
             },
             governance::{
-                get_governance_address, get_program_governance_address, GovernanceConfig,
-                GovernanceV2, DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+                get_governance_address, GovernanceConfig, GovernanceV2,
+                DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
             },
             native_treasury::{get_native_treasury_address, NativeTreasury},
             program_metadata::{get_program_metadata_address, ProgramMetadata},
@@ -1580,7 +1580,10 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_governed_program(&mut self) -> GovernedProgramCookie {
+    pub async fn with_governed_program(
+        &mut self,
+        governance_cookie: &GovernanceCookie,
+    ) -> GovernedProgramCookie {
         let program_keypair = Keypair::new();
         let program_buffer_keypair = Keypair::new();
         let program_upgrade_authority_keypair = Keypair::new();
@@ -1649,94 +1652,26 @@ impl GovernanceProgramTest {
             .await
             .unwrap();
 
+        let set_upgrade_authority_ix = bpf_loader_upgradeable::set_upgrade_authority(
+            &program_keypair.pubkey(),
+            &program_upgrade_authority_keypair.pubkey(),
+            Some(&governance_cookie.address),
+        );
+
+        self.bench
+            .process_transaction(
+                &[set_upgrade_authority_ix],
+                Some(&[&program_upgrade_authority_keypair]),
+            )
+            .await
+            .unwrap();
+
         GovernedProgramCookie {
             address: program_keypair.pubkey(),
             upgrade_authority: program_upgrade_authority_keypair,
             data_address: program_data_address,
             transfer_upgrade_authority: true,
         }
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_program_governance(
-        &mut self,
-        realm_cookie: &RealmCookie,
-        governed_program_cookie: &GovernedProgramCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-    ) -> Result<GovernanceCookie, ProgramError> {
-        self.with_program_governance_using_instruction(
-            realm_cookie,
-            governed_program_cookie,
-            token_owner_record_cookie,
-            NopOverride,
-            None,
-        )
-        .await
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_program_governance_using_instruction<F: Fn(&mut Instruction)>(
-        &mut self,
-        realm_cookie: &RealmCookie,
-        governed_program_cookie: &GovernedProgramCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-        instruction_override: F,
-        signers_override: Option<&[&Keypair]>,
-    ) -> Result<GovernanceCookie, ProgramError> {
-        let config = self.get_default_governance_config();
-
-        let voter_weight_record = token_owner_record_cookie
-            .voter_weight_record
-            .as_ref()
-            .map(|voter_weight_record| voter_weight_record.address);
-
-        let mut create_program_governance_ix = create_program_governance(
-            &self.program_id,
-            &realm_cookie.address,
-            &governed_program_cookie.address,
-            &governed_program_cookie.upgrade_authority.pubkey(),
-            &token_owner_record_cookie.address,
-            &self.bench.payer.pubkey(),
-            &token_owner_record_cookie.token_owner.pubkey(),
-            voter_weight_record,
-            config.clone(),
-            governed_program_cookie.transfer_upgrade_authority,
-        );
-
-        instruction_override(&mut create_program_governance_ix);
-
-        let default_signers = &[
-            &governed_program_cookie.upgrade_authority,
-            &token_owner_record_cookie.token_owner,
-        ];
-        let signers = signers_override.unwrap_or(default_signers);
-
-        self.bench
-            .process_transaction(&[create_program_governance_ix], Some(signers))
-            .await?;
-
-        let account = GovernanceV2 {
-            account_type: GovernanceAccountType::ProgramGovernanceV2,
-            realm: realm_cookie.address,
-            governed_account: governed_program_cookie.address,
-            config,
-            reserved1: 0,
-            reserved_v2: Reserved119::default(),
-            required_signatories_count: 0,
-            active_proposal_count: 0,
-        };
-
-        let program_governance_address = get_program_governance_address(
-            &self.program_id,
-            &realm_cookie.address,
-            &governed_program_cookie.address,
-        );
-
-        Ok(GovernanceCookie {
-            address: program_governance_address,
-            account,
-            next_proposal_index: 0,
-        })
     }
 
     #[allow(dead_code)]

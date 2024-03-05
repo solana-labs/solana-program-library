@@ -1,33 +1,27 @@
 //! Program instructions
 
 use {
-    crate::{
-        state::{
-            enums::MintMaxVoterWeightSource,
-            governance::{
-                get_governance_address, get_program_governance_address, GovernanceConfig,
-            },
-            native_treasury::get_native_treasury_address,
-            program_metadata::get_program_metadata_address,
-            proposal::{get_proposal_address, VoteType},
-            proposal_deposit::get_proposal_deposit_address,
-            proposal_transaction::{get_proposal_transaction_address, InstructionData},
-            realm::{
-                get_governing_token_holding_address, get_realm_address,
-                GoverningTokenConfigAccountArgs, GoverningTokenConfigArgs, RealmConfigArgs,
-                SetRealmAuthorityAction, SetRealmConfigItemArgs,
-            },
-            realm_config::get_realm_config_address,
-            required_signatory::get_required_signatory_address,
-            signatory_record::get_signatory_record_address,
-            token_owner_record::get_token_owner_record_address,
-            vote_record::{get_vote_record_address, Vote},
+    crate::state::{
+        enums::MintMaxVoterWeightSource,
+        governance::{get_governance_address, GovernanceConfig},
+        native_treasury::get_native_treasury_address,
+        program_metadata::get_program_metadata_address,
+        proposal::{get_proposal_address, VoteType},
+        proposal_deposit::get_proposal_deposit_address,
+        proposal_transaction::{get_proposal_transaction_address, InstructionData},
+        realm::{
+            get_governing_token_holding_address, get_realm_address,
+            GoverningTokenConfigAccountArgs, GoverningTokenConfigArgs, RealmConfigArgs,
+            SetRealmAuthorityAction, SetRealmConfigItemArgs,
         },
-        tools::bpf_loader_upgradeable::get_program_data_address,
+        realm_config::get_realm_config_address,
+        required_signatory::get_required_signatory_address,
+        signatory_record::get_signatory_record_address,
+        token_owner_record::get_token_owner_record_address,
+        vote_record::{get_vote_record_address, Vote},
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
-        bpf_loader_upgradeable,
         clock::UnixTimestamp,
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
@@ -164,37 +158,9 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
     },
 
-    /// Creates Program Governance account which governs an upgradable program
-    ///
-    ///   0. `[]` Realm account the created Governance belongs to
-    ///   1. `[writable]` Program Governance account.
-    ///     * PDA seeds: ['program-governance', realm, governed_program]
-    ///   2. `[]` Program governed by this Governance account
-    ///   3. `[writable]` Program Data account of the Program governed by this
-    ///      Governance account
-    ///   4. `[signer]` Current Upgrade Authority account of the Program
-    ///      governed by this Governance account
-    ///   5. `[]` Governing TokenOwnerRecord account (Used only if not signed by
-    ///      RealmAuthority)
-    ///   6. `[signer]` Payer
-    ///   7. `[]` bpf_upgradeable_loader program
-    ///   8. `[]` System program
-    ///   9. `[signer]` Governance authority
-    ///   10. `[]` RealmConfig account.
-    ///     * PDA seeds: ['realm-config', realm]
-    ///   11. `[]` Optional Voter Weight Record
-    CreateProgramGovernance {
-        /// Governance config
-        #[allow(dead_code)]
-        config: GovernanceConfig,
-
-        #[allow(dead_code)]
-        /// Indicates whether Program's upgrade_authority should be transferred
-        /// to the Governance PDA If it's set to false then it can be
-        /// done at a later time However the instruction would validate
-        /// the current upgrade_authority signed the transaction nonetheless
-        transfer_upgrade_authority: bool,
-    },
+    /// Legacy CreateProgramGovernance instruction
+    /// Exists for backwards-compatibility
+    Legacy4,
 
     /// Creates Proposal account for Transactions which will be executed at some
     /// point in the future
@@ -896,53 +862,6 @@ pub fn create_governance(
     with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
 
     let instruction = GovernanceInstruction::CreateGovernance { config };
-
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: borsh::to_vec(&instruction).unwrap(),
-    }
-}
-
-/// Creates CreateProgramGovernance instruction
-#[allow(clippy::too_many_arguments)]
-pub fn create_program_governance(
-    program_id: &Pubkey,
-    // Accounts
-    realm: &Pubkey,
-    governed_program: &Pubkey,
-    governed_program_upgrade_authority: &Pubkey,
-    token_owner_record: &Pubkey,
-    payer: &Pubkey,
-    create_authority: &Pubkey,
-    voter_weight_record: Option<Pubkey>,
-    // Args
-    config: GovernanceConfig,
-    transfer_upgrade_authority: bool,
-) -> Instruction {
-    let program_governance_address =
-        get_program_governance_address(program_id, realm, governed_program);
-    let governed_program_data_address = get_program_data_address(governed_program);
-
-    let mut accounts = vec![
-        AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new(program_governance_address, false),
-        AccountMeta::new_readonly(*governed_program, false),
-        AccountMeta::new(governed_program_data_address, false),
-        AccountMeta::new_readonly(*governed_program_upgrade_authority, true),
-        AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new(*payer, true),
-        AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(*create_authority, true),
-    ];
-
-    with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
-
-    let instruction = GovernanceInstruction::CreateProgramGovernance {
-        config,
-        transfer_upgrade_authority,
-    };
 
     Instruction {
         program_id: *program_id,
