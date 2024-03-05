@@ -37,7 +37,7 @@ pub enum GovernanceAccountType {
     /// Proposal
     ProposalInstructionV1,
 
-    /// Mint Governance account
+    /// Legacy MintGovernanceV1 account
     MintGovernanceV1,
 
     /// Legacy TokenGovernanceV1 account
@@ -85,11 +85,11 @@ pub enum GovernanceAccountType {
     /// V2 adds extra reserved space reserved_v2
     ProgramGovernanceV2,
 
-    /// Mint Governance account
+    /// Legacy MintGovernanceV2 account deprecated in V4
     /// V2 adds extra reserved space reserved_v2
     MintGovernanceV2,
 
-    /// Legacy TokenGovernanceV2 account
+    /// Legacy TokenGovernanceV2 account deprecated in V4
     /// V2 adds extra reserved space reserved_v2
     TokenGovernanceV2,
 

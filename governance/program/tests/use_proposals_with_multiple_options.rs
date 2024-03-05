@@ -626,7 +626,6 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens
     let token_owner_record_cookie1 = governance_test
@@ -651,14 +650,15 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(30);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config2(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
@@ -845,7 +845,6 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens
     let token_owner_record_cookie1 = governance_test
@@ -864,14 +863,15 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(30);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config2(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
@@ -1251,7 +1251,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens each, sum 300 tokens
     let token_owner_record_cookie1 = governance_test
@@ -1272,14 +1271,15 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(20);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config2(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
@@ -1477,7 +1477,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens each, sum 300 tokens
     let token_owner_record_cookie1 = governance_test
@@ -1494,14 +1493,15 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(30);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config2(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
@@ -1660,7 +1660,6 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens
     let token_owner_record_cookie1 = governance_test
@@ -1678,14 +1677,15 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(3);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config2(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(

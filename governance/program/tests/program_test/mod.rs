@@ -17,13 +17,12 @@ use {
     spl_governance::{
         instruction::{
             add_required_signatory, add_signatory, cancel_proposal, cast_vote, complete_proposal,
-            create_governance, create_mint_governance, create_native_treasury,
-            create_program_governance, create_proposal, create_realm, create_token_owner_record,
-            deposit_governing_tokens, execute_transaction, finalize_vote, flag_transaction_error,
-            insert_transaction, refund_proposal_deposit, relinquish_token_owner_record_locks,
-            relinquish_vote, remove_required_signatory, remove_transaction,
-            revoke_governing_tokens, set_governance_config, set_governance_delegate,
-            set_realm_authority, set_realm_config, set_realm_config_item,
+            create_governance, create_native_treasury, create_program_governance, create_proposal,
+            create_realm, create_token_owner_record, deposit_governing_tokens, execute_transaction,
+            finalize_vote, flag_transaction_error, insert_transaction, refund_proposal_deposit,
+            relinquish_token_owner_record_locks, relinquish_vote, remove_required_signatory,
+            remove_transaction, revoke_governing_tokens, set_governance_config,
+            set_governance_delegate, set_realm_authority, set_realm_config, set_realm_config_item,
             set_token_owner_record_lock, sign_off_proposal, upgrade_program_metadata,
             withdraw_governing_tokens, AddSignatoryAuthority,
         },
@@ -34,9 +33,8 @@ use {
                 ProposalState, TransactionExecutionStatus, VoteThreshold,
             },
             governance::{
-                get_governance_address, get_mint_governance_address,
-                get_program_governance_address, GovernanceConfig, GovernanceV2,
-                DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
+                get_governance_address, get_program_governance_address, GovernanceConfig,
+                GovernanceV2, DEFAULT_DEPOSIT_EXEMPT_PROPOSAL_COUNT,
             },
             native_treasury::{get_native_treasury_address, NativeTreasury},
             program_metadata::{get_program_metadata_address, ProgramMetadata},
@@ -1360,36 +1358,19 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_governed_mint(&mut self) -> GovernedMintCookie {
-        let mint_authority = Keypair::new();
-
-        self.with_governed_mint_impl(&mint_authority, None).await
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_freezable_governed_mint(&mut self) -> GovernedMintCookie {
-        let mint_authority = Keypair::new();
-
-        self.with_governed_mint_impl(&mint_authority, Some(&mint_authority.pubkey()))
-            .await
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_governed_mint_impl(
+    pub async fn with_governed_mint(
         &mut self,
-        mint_authority: &Keypair,
-        freeze_authority: Option<&Pubkey>,
+        governance_cookie: &GovernanceCookie,
     ) -> GovernedMintCookie {
         let mint_keypair = Keypair::new();
 
         self.bench
-            .create_mint(&mint_keypair, &mint_authority.pubkey(), freeze_authority)
+            .create_mint(&mint_keypair, &governance_cookie.address, None)
             .await;
 
         GovernedMintCookie {
             address: mint_keypair.pubkey(),
-            mint_authority: clone_keypair(mint_authority),
-            transfer_mint_authority: true,
+            mint_authority: governance_cookie.address,
         }
     }
 
@@ -1503,6 +1484,34 @@ impl GovernanceProgramTest {
         self.with_governance_impl(
             realm_cookie,
             governed_account_cookie,
+            Some(&token_owner_record_cookie.address),
+            &token_owner_record_cookie.token_owner,
+            voter_weight_record,
+            governance_config,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_governance_using_config2(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance_config: &GovernanceConfig,
+    ) -> Result<GovernanceCookie, ProgramError> {
+        let voter_weight_record = token_owner_record_cookie
+            .voter_weight_record
+            .as_ref()
+            .map(|voter_weight_record| voter_weight_record.address);
+
+        let governed_account_cookie = GovernedAccountCookie {
+            address: Pubkey::new_unique(),
+        };
+
+        self.with_governance_impl(
+            realm_cookie,
+            &governed_account_cookie,
             Some(&token_owner_record_cookie.address),
             &token_owner_record_cookie.token_owner,
             voter_weight_record,
@@ -1725,128 +1734,6 @@ impl GovernanceProgramTest {
 
         Ok(GovernanceCookie {
             address: program_governance_address,
-            account,
-            next_proposal_index: 0,
-        })
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_mint_governance(
-        &mut self,
-        realm_cookie: &RealmCookie,
-        governed_mint_cookie: &GovernedMintCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-    ) -> Result<GovernanceCookie, ProgramError> {
-        self.with_mint_governance_using_instruction(
-            realm_cookie,
-            governed_mint_cookie,
-            token_owner_record_cookie,
-            NopOverride,
-            None,
-        )
-        .await
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_mint_governance_using_config(
-        &mut self,
-        realm_cookie: &RealmCookie,
-        governed_mint_cookie: &GovernedMintCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-        governance_config: &GovernanceConfig,
-    ) -> Result<GovernanceCookie, ProgramError> {
-        self.with_mint_governance_using_config_and_instruction(
-            realm_cookie,
-            governed_mint_cookie,
-            token_owner_record_cookie,
-            governance_config,
-            NopOverride,
-            None,
-        )
-        .await
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_mint_governance_using_instruction<F: Fn(&mut Instruction)>(
-        &mut self,
-        realm_cookie: &RealmCookie,
-        governed_mint_cookie: &GovernedMintCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-        instruction_override: F,
-        signers_override: Option<&[&Keypair]>,
-    ) -> Result<GovernanceCookie, ProgramError> {
-        let governance_config = self.get_default_governance_config();
-
-        self.with_mint_governance_using_config_and_instruction(
-            realm_cookie,
-            governed_mint_cookie,
-            token_owner_record_cookie,
-            &governance_config,
-            instruction_override,
-            signers_override,
-        )
-        .await
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_mint_governance_using_config_and_instruction<F: Fn(&mut Instruction)>(
-        &mut self,
-        realm_cookie: &RealmCookie,
-        governed_mint_cookie: &GovernedMintCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-        governance_config: &GovernanceConfig,
-        instruction_override: F,
-        signers_override: Option<&[&Keypair]>,
-    ) -> Result<GovernanceCookie, ProgramError> {
-        let voter_weight_record = token_owner_record_cookie
-            .voter_weight_record
-            .as_ref()
-            .map(|voter_weight_record| voter_weight_record.address);
-
-        let mut create_mint_governance_ix = create_mint_governance(
-            &self.program_id,
-            &realm_cookie.address,
-            &governed_mint_cookie.address,
-            &governed_mint_cookie.mint_authority.pubkey(),
-            &token_owner_record_cookie.address,
-            &self.bench.payer.pubkey(),
-            &token_owner_record_cookie.token_owner.pubkey(),
-            voter_weight_record,
-            governance_config.clone(),
-            governed_mint_cookie.transfer_mint_authority,
-        );
-
-        instruction_override(&mut create_mint_governance_ix);
-
-        let default_signers = &[
-            &governed_mint_cookie.mint_authority,
-            &token_owner_record_cookie.token_owner,
-        ];
-        let signers = signers_override.unwrap_or(default_signers);
-
-        self.bench
-            .process_transaction(&[create_mint_governance_ix], Some(signers))
-            .await?;
-
-        let account = GovernanceV2 {
-            account_type: GovernanceAccountType::MintGovernanceV2,
-            realm: realm_cookie.address,
-            governed_account: governed_mint_cookie.address,
-            config: governance_config.clone(),
-            reserved1: 0,
-            reserved_v2: Reserved119::default(),
-            required_signatories_count: 0,
-            active_proposal_count: 0,
-        };
-
-        let mint_governance_address = get_mint_governance_address(
-            &self.program_id,
-            &realm_cookie.address,
-            &governed_mint_cookie.address,
-        );
-
-        Ok(GovernanceCookie {
-            address: mint_governance_address,
             account,
             next_proposal_index: 0,
         })

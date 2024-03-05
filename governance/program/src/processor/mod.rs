@@ -6,7 +6,6 @@ mod process_cancel_proposal;
 mod process_cast_vote;
 mod process_complete_proposal;
 mod process_create_governance;
-mod process_create_mint_governance;
 mod process_create_native_treasury;
 mod process_create_program_governance;
 mod process_create_proposal;
@@ -42,7 +41,6 @@ use {
     process_cast_vote::*,
     process_complete_proposal::*,
     process_create_governance::*,
-    process_create_mint_governance::*,
     process_create_native_treasury::*,
     process_create_program_governance::*,
     process_create_proposal::*,
@@ -131,13 +129,6 @@ pub fn process_instruction(
             transfer_upgrade_authority,
         ),
 
-        GovernanceInstruction::CreateMintGovernance {
-            config,
-            transfer_mint_authorities,
-        } => {
-            process_create_mint_governance(program_id, accounts, config, transfer_mint_authorities)
-        }
-
         GovernanceInstruction::CreateGovernance { config } => {
             process_create_governance(program_id, accounts, config)
         }
@@ -162,7 +153,9 @@ pub fn process_instruction(
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)
         }
-        GovernanceInstruction::Legacy1 | GovernanceInstruction::Legacy2 => {
+        GovernanceInstruction::Legacy1
+        | GovernanceInstruction::Legacy2
+        | GovernanceInstruction::Legacy3 => {
             Err(GovernanceError::InstructionDeprecated.into()) // No-op
         }
         GovernanceInstruction::SignOffProposal {} => {

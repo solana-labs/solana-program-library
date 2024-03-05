@@ -95,8 +95,7 @@ impl AccountCookie for GovernedProgramCookie {
 #[derive(Debug)]
 pub struct GovernedMintCookie {
     pub address: Pubkey,
-    pub mint_authority: Keypair,
-    pub transfer_mint_authority: bool,
+    pub mint_authority: Pubkey,
 }
 
 impl AccountCookie for GovernedMintCookie {
