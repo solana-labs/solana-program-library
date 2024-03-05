@@ -40,7 +40,7 @@ pub enum GovernanceAccountType {
     /// Mint Governance account
     MintGovernanceV1,
 
-    /// Token Governance account
+    /// Legacy TokenGovernanceV1 account
     TokenGovernanceV1,
 
     /// Realm config account (introduced in V2)
@@ -89,7 +89,7 @@ pub enum GovernanceAccountType {
     /// V2 adds extra reserved space reserved_v2
     MintGovernanceV2,
 
-    /// Token Governance account
+    /// Legacy TokenGovernanceV2 account
     /// V2 adds extra reserved space reserved_v2
     TokenGovernanceV2,
 

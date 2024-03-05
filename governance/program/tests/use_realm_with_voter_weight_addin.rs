@@ -194,7 +194,6 @@ async fn test_cast_vote_with_voter_weight_addin() {
 async fn test_create_token_governance_with_voter_weight_addin() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
-    let governed_token_cookie = governance_test.with_governed_token().await;
 
     let realm_cookie = governance_test
         .with_realm_using_addins(PluginSetupArgs::COMMUNITY_VOTER_WEIGHT)
@@ -210,21 +209,17 @@ async fn test_create_token_governance_with_voter_weight_addin() {
         .unwrap();
 
     // Act
-    let token_governance_cookie = governance_test
-        .with_token_governance(
-            &realm_cookie,
-            &governed_token_cookie,
-            &token_owner_record_cookie,
-        )
+    let governance_cookie = governance_test
+        .with_governance2(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
     // // Assert
     let token_governance_account = governance_test
-        .get_governance_account(&token_governance_cookie.address)
+        .get_governance_account(&governance_cookie.address)
         .await;
 
-    assert_eq!(token_governance_cookie.account, token_governance_account);
+    assert_eq!(governance_cookie.account, token_governance_account);
 }
 
 #[tokio::test]

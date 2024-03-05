@@ -557,7 +557,7 @@ pub fn get_mint_governance_address<'a>(
     .0
 }
 
-/// Returns TokenGovernance PDA seeds
+/// Returns legacy TokenGovernance PDA seeds
 pub fn get_token_governance_address_seeds<'a>(
     realm: &'a Pubkey,
     governed_token: &'a Pubkey,

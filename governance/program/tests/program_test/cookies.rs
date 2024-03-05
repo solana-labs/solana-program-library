@@ -106,14 +106,13 @@ impl AccountCookie for GovernedMintCookie {
 }
 
 #[derive(Debug)]
-pub struct GovernedTokenCookie {
+pub struct GovernedTokenAccountCookie {
     pub address: Pubkey,
-    pub token_owner: Keypair,
-    pub transfer_token_owner: bool,
+    pub token_account_owner: Pubkey,
     pub token_mint: Pubkey,
 }
 
-impl AccountCookie for GovernedTokenCookie {
+impl AccountCookie for GovernedTokenAccountCookie {
     fn get_address(&self) -> Pubkey {
         self.address
     }

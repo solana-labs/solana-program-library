@@ -6,7 +6,7 @@ use {
             enums::MintMaxVoterWeightSource,
             governance::{
                 get_governance_address, get_mint_governance_address,
-                get_program_governance_address, get_token_governance_address, GovernanceConfig,
+                get_program_governance_address, GovernanceConfig,
             },
             native_treasury::get_native_treasury_address,
             program_metadata::get_program_metadata_address,
@@ -462,36 +462,9 @@ pub enum GovernanceInstruction {
         transfer_mint_authorities: bool,
     },
 
-    /// Creates Token Governance account which governs a token account
-    ///
-    ///   0. `[]` Realm account the created Governance belongs to
-    ///   1. `[writable]` Token Governance account.
-    ///     * PDA seeds: ['token-governance', realm, governed_token]
-    ///   2. `[writable]` Token account governed by this Governance account
-    ///   3. `[signer]` Current token account authority (AccountOwner and
-    ///      optionally CloseAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by
-    ///      RealmAuthority)
-    ///   5. `[signer]` Payer
-    ///   6. `[]` SPL Token program
-    ///   7. `[]` System program
-    ///   8. `[signer]` Governance authority
-    ///   9. `[]` RealmConfig account.
-    ///     * PDA seeds: ['realm-config', realm]
-    ///   10. `[]` Optional Voter Weight Record
-    CreateTokenGovernance {
-        #[allow(dead_code)]
-        /// Governance config
-        config: GovernanceConfig,
-
-        #[allow(dead_code)]
-        /// Indicates whether the token account authorities (AccountOwner and
-        /// optionally CloseAccount) should be transferred to the Governance PDA
-        /// If it's set to false then it can be done at a later time
-        /// However the instruction would validate the current token owner
-        /// signed the transaction nonetheless
-        transfer_account_authorities: bool,
-    },
+    /// Legacy CreateTokenGovernance instruction
+    /// Exists for backwards-compatibility
+    Legacy2,
 
     /// Sets GovernanceConfig for a Governance
     ///
@@ -1041,50 +1014,6 @@ pub fn create_mint_governance(
     let instruction = GovernanceInstruction::CreateMintGovernance {
         config,
         transfer_mint_authorities,
-    };
-
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: borsh::to_vec(&instruction).unwrap(),
-    }
-}
-
-/// Creates CreateTokenGovernance instruction
-#[allow(clippy::too_many_arguments)]
-pub fn create_token_governance(
-    program_id: &Pubkey,
-    // Accounts
-    realm: &Pubkey,
-    governed_token: &Pubkey,
-    governed_token_owner: &Pubkey,
-    token_owner_record: &Pubkey,
-    payer: &Pubkey,
-    create_authority: &Pubkey,
-    voter_weight_record: Option<Pubkey>,
-    // Args
-    config: GovernanceConfig,
-    transfer_account_authorities: bool,
-) -> Instruction {
-    let token_governance_address = get_token_governance_address(program_id, realm, governed_token);
-
-    let mut accounts = vec![
-        AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new(token_governance_address, false),
-        AccountMeta::new(*governed_token, false),
-        AccountMeta::new_readonly(*governed_token_owner, true),
-        AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new(*payer, true),
-        AccountMeta::new_readonly(spl_token::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(*create_authority, true),
-    ];
-
-    with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
-
-    let instruction = GovernanceInstruction::CreateTokenGovernance {
-        config,
-        transfer_account_authorities,
     };
 
     Instruction {
