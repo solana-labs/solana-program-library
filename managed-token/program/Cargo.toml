@@ -23,7 +23,7 @@ test = []
 
 [dependencies]
 borsh = "1.2.1"
-shank = "^0.2.1"
+shank = "^0.4.2"
 solana-program = ">=1.18.2,<=2"
 spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
