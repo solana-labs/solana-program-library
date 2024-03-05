@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use {
     crate::{
         extension::{
-            BaseState, BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsMut,
+            BaseState, BaseStateWithExtensions, BaseStateWithExtensionsMut, Extension,
+            ExtensionType, StateWithExtensionsMut,
         },
         state::Account,
     },

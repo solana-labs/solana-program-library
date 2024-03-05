@@ -3,7 +3,7 @@ use {
         check_program_account,
         extension::{
             memo_transfer::{instruction::RequiredMemoTransfersInstruction, MemoTransfer},
-            StateWithExtensionsMut,
+            BaseStateWithExtensionsMut, StateWithExtensionsMut,
         },
         instruction::decode_instruction_type,
         processor::Processor,

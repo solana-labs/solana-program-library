@@ -538,105 +538,28 @@ impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensions<'a, S>
     }
 }
 
-/// Encapsulates mutable base state data (mint or account) with possible
-/// extensions
-#[derive(Debug, PartialEq)]
-pub struct StateWithExtensionsMut<'data, S: BaseState> {
-    /// Unpacked base data
-    pub base: S,
-    /// Raw base data
-    base_data: &'data mut [u8],
-    /// Writable account type
-    account_type: &'data mut [u8],
-    /// Slice of data containing all TLV data, deserialized on demand
-    tlv_data: &'data mut [u8],
-}
-impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
-    /// Unpack base state, leaving the extension data as a mutable slice
-    ///
-    /// Fails if the base state is not initialized.
-    pub fn unpack(input: &'data mut [u8]) -> Result<Self, ProgramError> {
-        check_min_len_and_not_multisig(input, S::LEN)?;
-        let (base_data, rest) = input.split_at_mut(S::LEN);
-        let base = S::unpack(base_data)?;
-        if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
-            // type_and_tlv_indices() checks that returned indexes are within range
-            let account_type = AccountType::try_from(rest[account_type_index])
-                .map_err(|_| ProgramError::InvalidAccountData)?;
-            check_account_type::<S>(account_type)?;
-            let (account_type, tlv_data) = rest.split_at_mut(tlv_start_index);
-            Ok(Self {
-                base,
-                base_data,
-                account_type: &mut account_type[account_type_index..tlv_start_index],
-                tlv_data,
-            })
-        } else {
-            Ok(Self {
-                base,
-                base_data,
-                account_type: &mut [],
-                tlv_data: &mut [],
-            })
-        }
-    }
+/// Trait for mutable base state with extension
+pub trait BaseStateWithExtensionsMut<S: BaseState>: BaseStateWithExtensions<S> {
+    /// Get the underlying TLV data as mutable
+    fn get_tlv_data_mut(&mut self) -> &mut [u8];
 
-    /// Unpack an uninitialized base state, leaving the extension data as a
-    /// mutable slice
-    ///
-    /// Fails if the base state has already been initialized.
-    pub fn unpack_uninitialized(input: &'data mut [u8]) -> Result<Self, ProgramError> {
-        check_min_len_and_not_multisig(input, S::LEN)?;
-        let (base_data, rest) = input.split_at_mut(S::LEN);
-        let base = S::unpack_unchecked(base_data)?;
-        if base.is_initialized() {
-            return Err(TokenError::AlreadyInUse.into());
-        }
-        if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
-            // type_and_tlv_indices() checks that returned indexes are within range
-            let account_type = AccountType::try_from(rest[account_type_index])
-                .map_err(|_| ProgramError::InvalidAccountData)?;
-            if account_type != AccountType::Uninitialized {
-                return Err(ProgramError::InvalidAccountData);
-            }
-            let (account_type, tlv_data) = rest.split_at_mut(tlv_start_index);
-            let state = Self {
-                base,
-                base_data,
-                account_type: &mut account_type[account_type_index..tlv_start_index],
-                tlv_data,
-            };
-            if let Some(extension_type) = state.get_first_extension_type()? {
-                let account_type = extension_type.get_account_type();
-                if account_type != S::ACCOUNT_TYPE {
-                    return Err(TokenError::ExtensionBaseMismatch.into());
-                }
-            }
-            Ok(state)
-        } else {
-            Ok(Self {
-                base,
-                base_data,
-                account_type: &mut [],
-                tlv_data: &mut [],
-            })
-        }
-    }
+    /// Get the underlying account type as mutable
+    fn get_account_type_mut(&mut self) -> &mut [u8];
 
     /// Unpack a portion of the TLV data as the base mutable bytes
-    pub fn get_extension_bytes_mut<V: Extension>(&mut self) -> Result<&mut [u8], ProgramError> {
-        get_extension_bytes_mut::<S, V>(self.tlv_data)
+    fn get_extension_bytes_mut<V: Extension>(&mut self) -> Result<&mut [u8], ProgramError> {
+        get_extension_bytes_mut::<S, V>(self.get_tlv_data_mut())
     }
 
     /// Unpack a portion of the TLV data as the desired type that allows
     /// modifying the type
-    pub fn get_extension_mut<V: Extension + Pod>(&mut self) -> Result<&mut V, ProgramError> {
+    fn get_extension_mut<V: Extension + Pod>(&mut self) -> Result<&mut V, ProgramError> {
         pod_from_bytes_mut::<V>(self.get_extension_bytes_mut::<V>()?)
     }
 
     /// Packs a variable-length extension into its appropriate data segment.
     /// Fails if space hasn't already been allocated for the given extension
-    pub fn pack_variable_len_extension<V: Extension + VariableLenPack>(
+    fn pack_variable_len_extension<V: Extension + VariableLenPack>(
         &mut self,
         extension: &V,
     ) -> Result<(), ProgramError> {
@@ -646,17 +569,12 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         extension.pack_into_slice(data)
     }
 
-    /// Packs base state data into the base data portion
-    pub fn pack_base(&mut self) {
-        S::pack_into_slice(&self.base, self.base_data);
-    }
-
     /// Packs the default extension data into an open slot if not already found
     /// in the data buffer. If extension is already found in the buffer, it
     /// overwrites the existing extension with the default state if
     /// `overwrite` is set. If extension found, but `overwrite` is not set,
     /// it returns error.
-    pub fn init_extension<V: Extension + Pod + Default>(
+    fn init_extension<V: Extension + Pod + Default>(
         &mut self,
         overwrite: bool,
     ) -> Result<&mut V, ProgramError> {
@@ -672,7 +590,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     ///
     /// Returns an error if the extension is not present, or if there is not
     /// enough space in the buffer.
-    pub fn realloc_variable_len_extension<V: Extension + VariableLenPack>(
+    fn realloc_variable_len_extension<V: Extension + VariableLenPack>(
         &mut self,
         new_extension: &V,
     ) -> Result<(), ProgramError> {
@@ -693,16 +611,16 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         &mut self,
         length: usize,
     ) -> Result<&mut [u8], ProgramError> {
+        let tlv_data = self.get_tlv_data_mut();
         let TlvIndices {
             type_start: _,
             length_start,
             value_start,
-        } = get_extension_indices::<V>(self.tlv_data, false)?;
-        let tlv_len = get_tlv_data_info(self.tlv_data).map(|x| x.used_len)?;
-        let data_len = self.tlv_data.len();
+        } = get_extension_indices::<V>(tlv_data, false)?;
+        let tlv_len = get_tlv_data_info(tlv_data).map(|x| x.used_len)?;
+        let data_len = tlv_data.len();
 
-        let length_ref =
-            pod_from_bytes_mut::<Length>(&mut self.tlv_data[length_start..value_start])?;
+        let length_ref = pod_from_bytes_mut::<Length>(&mut tlv_data[length_start..value_start])?;
         let old_length = usize::from(*length_ref);
 
         // Length check to avoid a panic later in `copy_within`
@@ -719,22 +637,21 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
 
         let old_value_end = value_start.saturating_add(old_length);
         let new_value_end = value_start.saturating_add(length);
-        self.tlv_data
-            .copy_within(old_value_end..tlv_len, new_value_end);
+        tlv_data.copy_within(old_value_end..tlv_len, new_value_end);
         match old_length.cmp(&length) {
             Ordering::Greater => {
                 // realloc to smaller, zero out the end
                 let new_tlv_len = tlv_len.saturating_sub(old_length.saturating_sub(length));
-                self.tlv_data[new_tlv_len..tlv_len].fill(0);
+                tlv_data[new_tlv_len..tlv_len].fill(0);
             }
             Ordering::Less => {
                 // realloc to bigger, zero out the new bytes
-                self.tlv_data[old_value_end..new_value_end].fill(0);
+                tlv_data[old_value_end..new_value_end].fill(0);
             }
             Ordering::Equal => {} // nothing needed!
         }
 
-        Ok(&mut self.tlv_data[value_start..new_value_end])
+        Ok(&mut tlv_data[value_start..new_value_end])
     }
 
     /// Allocate the given number of bytes for the given variable-length
@@ -742,7 +659,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     ///
     /// This can only be used for variable-sized types, such as `String` or
     /// `Vec`. `Pod` types must use `init_extension`
-    pub fn init_variable_len_extension<V: Extension + VariableLenPack>(
+    fn init_variable_len_extension<V: Extension + VariableLenPack>(
         &mut self,
         extension: &V,
         overwrite: bool,
@@ -751,6 +668,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         extension.pack_into_slice(data)
     }
 
+    /// Allocate some space for the extension in the TLV data
     fn alloc<V: Extension>(
         &mut self,
         length: usize,
@@ -759,25 +677,26 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
             return Err(ProgramError::InvalidAccountData);
         }
+        let tlv_data = self.get_tlv_data_mut();
         let TlvIndices {
             type_start,
             length_start,
             value_start,
-        } = get_extension_indices::<V>(self.tlv_data, true)?;
+        } = get_extension_indices::<V>(tlv_data, true)?;
 
-        if self.tlv_data[type_start..].len() < add_type_and_length_to_len(length) {
+        if tlv_data[type_start..].len() < add_type_and_length_to_len(length) {
             return Err(ProgramError::InvalidAccountData);
         }
-        let extension_type = ExtensionType::try_from(&self.tlv_data[type_start..length_start])?;
+        let extension_type = ExtensionType::try_from(&tlv_data[type_start..length_start])?;
 
         if extension_type == ExtensionType::Uninitialized || overwrite {
             // write extension type
             let extension_type_array: [u8; 2] = V::TYPE.into();
-            let extension_type_ref = &mut self.tlv_data[type_start..length_start];
+            let extension_type_ref = &mut tlv_data[type_start..length_start];
             extension_type_ref.copy_from_slice(&extension_type_array);
             // write length
             let length_ref =
-                pod_from_bytes_mut::<Length>(&mut self.tlv_data[length_start..value_start])?;
+                pod_from_bytes_mut::<Length>(&mut tlv_data[length_start..value_start])?;
 
             // check that the length is the same if we're doing an alloc
             // with overwrite, otherwise a realloc should be done
@@ -788,7 +707,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             *length_ref = Length::try_from(length)?;
 
             let value_end = value_start.saturating_add(length);
-            Ok(&mut self.tlv_data[value_start..value_end])
+            Ok(&mut tlv_data[value_start..value_end])
         } else {
             // extension is already initialized, but no overwrite permission
             Err(TokenError::ExtensionAlreadyInitialized.into())
@@ -801,7 +720,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// already found in the data buffer, otherwise overwrites the
     /// existing extension with the default state. For all other ExtensionTypes,
     /// this is a no-op.
-    pub fn init_account_extension_from_type(
+    fn init_account_extension_from_type(
         &mut self,
         extension_type: ExtensionType,
     ) -> Result<(), ProgramError> {
@@ -836,23 +755,136 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// state initialization
     /// Noops if there is no room for an extension in the account, needed for
     /// pure base mints / accounts.
-    pub fn init_account_type(&mut self) -> Result<(), ProgramError> {
-        if !self.account_type.is_empty() {
-            if let Some(extension_type) = self.get_first_extension_type()? {
+    fn init_account_type(&mut self) -> Result<(), ProgramError> {
+        let first_extension_type = self.get_first_extension_type()?;
+        let account_type = self.get_account_type_mut();
+        if !account_type.is_empty() {
+            if let Some(extension_type) = first_extension_type {
                 let account_type = extension_type.get_account_type();
                 if account_type != S::ACCOUNT_TYPE {
                     return Err(TokenError::ExtensionBaseMismatch.into());
                 }
             }
-            self.account_type[0] = S::ACCOUNT_TYPE.into();
+            account_type[0] = S::ACCOUNT_TYPE.into();
         }
         Ok(())
+    }
+}
+
+/// Encapsulates mutable base state data (mint or account) with possible
+/// extensions
+#[derive(Debug, PartialEq)]
+pub struct StateWithExtensionsMut<'data, S: BaseState> {
+    /// Unpacked base data
+    pub base: S,
+    /// Raw base data
+    base_data: &'data mut [u8],
+    /// Writable account type
+    account_type: &'data mut [u8],
+    /// Slice of data containing all TLV data, deserialized on demand
+    tlv_data: &'data mut [u8],
+}
+impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
+    /// Unpack base state, leaving the extension data as a mutable slice
+    ///
+    /// Fails if the base state is not initialized.
+    pub fn unpack(input: &'data mut [u8]) -> Result<Self, ProgramError> {
+        check_min_len_and_not_multisig(input, S::LEN)?;
+        let (base_data, rest) = input.split_at_mut(S::LEN);
+        let base = S::unpack(base_data)?;
+        let (account_type, tlv_data) = unpack_type_and_tlv_data::<S>(rest)?;
+        Ok(Self {
+            base,
+            base_data,
+            account_type,
+            tlv_data,
+        })
+    }
+
+    /// Unpack an uninitialized base state, leaving the extension data as a
+    /// mutable slice
+    ///
+    /// Fails if the base state has already been initialized.
+    pub fn unpack_uninitialized(input: &'data mut [u8]) -> Result<Self, ProgramError> {
+        check_min_len_and_not_multisig(input, S::LEN)?;
+        let (base_data, rest) = input.split_at_mut(S::LEN);
+        let base = S::unpack_unchecked(base_data)?;
+        if base.is_initialized() {
+            return Err(TokenError::AlreadyInUse.into());
+        }
+        let (account_type, tlv_data) = unpack_uninitialized_type_and_tlv_data::<S>(rest)?;
+        let state = Self {
+            base,
+            base_data,
+            account_type,
+            tlv_data,
+        };
+        if let Some(extension_type) = state.get_first_extension_type()? {
+            let account_type = extension_type.get_account_type();
+            if account_type != S::ACCOUNT_TYPE {
+                return Err(TokenError::ExtensionBaseMismatch.into());
+            }
+        }
+        Ok(state)
+    }
+
+    /// Packs base state data into the base data portion
+    pub fn pack_base(&mut self) {
+        S::pack_into_slice(&self.base, self.base_data);
     }
 }
 impl<'a, S: BaseState> BaseStateWithExtensions<S> for StateWithExtensionsMut<'a, S> {
     fn get_tlv_data(&self) -> &[u8] {
         self.tlv_data
     }
+}
+impl<'a, S: BaseState> BaseStateWithExtensionsMut<S> for StateWithExtensionsMut<'a, S> {
+    fn get_tlv_data_mut(&mut self) -> &mut [u8] {
+        self.tlv_data
+    }
+    fn get_account_type_mut(&mut self) -> &mut [u8] {
+        self.account_type
+    }
+}
+
+fn unpack_type_and_tlv_data_with_check<
+    S: BaseState,
+    F: Fn(AccountType) -> Result<(), ProgramError>,
+>(
+    rest: &mut [u8],
+    check_fn: F,
+) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
+    if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
+        // type_and_tlv_indices() checks that returned indexes are within range
+        let account_type = AccountType::try_from(rest[account_type_index])
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        check_fn(account_type)?;
+        let (account_type, tlv_data) = rest.split_at_mut(tlv_start_index);
+        Ok((
+            &mut account_type[account_type_index..tlv_start_index],
+            tlv_data,
+        ))
+    } else {
+        Ok((&mut [], &mut []))
+    }
+}
+
+fn unpack_type_and_tlv_data<S: BaseState>(
+    rest: &mut [u8],
+) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
+    unpack_type_and_tlv_data_with_check::<S, _>(rest, check_account_type::<S>)
+}
+
+fn unpack_uninitialized_type_and_tlv_data<S: BaseState>(
+    rest: &mut [u8],
+) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
+    unpack_type_and_tlv_data_with_check::<S, _>(rest, |account_type| {
+        if account_type != AccountType::Uninitialized {
+            Err(ProgramError::InvalidAccountData)
+        } else {
+            Ok(())
+        }
+    })
 }
 
 /// If AccountType is uninitialized, set it to the BaseState's ACCOUNT_TYPE;

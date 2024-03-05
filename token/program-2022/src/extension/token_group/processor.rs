@@ -6,8 +6,8 @@ use {
         error::TokenError,
         extension::{
             alloc_and_serialize, group_member_pointer::GroupMemberPointer,
-            group_pointer::GroupPointer, BaseStateWithExtensions, StateWithExtensions,
-            StateWithExtensionsMut,
+            group_pointer::GroupPointer, BaseStateWithExtensions, BaseStateWithExtensionsMut,
+            StateWithExtensions, StateWithExtensionsMut,
         },
         state::Mint,
     },
