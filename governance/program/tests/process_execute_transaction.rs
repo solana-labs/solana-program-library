@@ -29,7 +29,7 @@ async fn test_execute_mint_transaction() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -131,7 +131,7 @@ async fn test_execute_transfer_transaction() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -237,7 +237,7 @@ async fn test_execute_upgrade_program_transaction() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -366,7 +366,7 @@ async fn test_execute_proposal_transaction_with_invalid_state_errors() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -536,7 +536,7 @@ async fn test_execute_proposal_transaction_for_other_proposal_error() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -623,7 +623,7 @@ async fn test_execute_mint_transaction_twice_error() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -711,7 +711,7 @@ async fn test_execute_transaction_with_create_proposal_and_execute_in_single_slo
     governance_config.min_transaction_hold_up_time = 0;
 
     let mut governance_cookie = governance_test
-        .with_governance_using_config2(
+        .with_governance_using_config(
             &realm_cookie,
             &token_owner_record_cookie,
             &governance_config,

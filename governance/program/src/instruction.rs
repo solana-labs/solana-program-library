@@ -139,7 +139,7 @@ pub enum GovernanceInstruction {
     /// Solana account or asset
     ///
     ///   0. `[]` Realm account the created Governance belongs to
-    ///   1. `[writable]` Account Governance account.
+    ///   1. `[writable]` Governance account
     ///     * PDA seeds: ['account-governance', realm, governed_account]
     ///   2. `[]` Account governed by this Governance Note: The account doesn't
     ///      have to exist and can be only used as a unique identifier for the

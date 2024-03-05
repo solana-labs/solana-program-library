@@ -14,7 +14,6 @@ async fn test_complete_proposal() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -22,11 +21,7 @@ async fn test_complete_proposal() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -76,7 +71,7 @@ async fn test_complete_proposal_with_wrong_state_error() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -114,7 +109,7 @@ async fn test_complete_proposal_with_completed_state_transaction_exists_error() 
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -180,7 +175,6 @@ async fn test_complete_proposal_with_owner_or_delegate_must_sign_error() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -188,11 +182,7 @@ async fn test_complete_proposal_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 

@@ -17,7 +17,6 @@ async fn test_execute_flag_transaction_error() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -25,11 +24,7 @@ async fn test_execute_flag_transaction_error() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -117,7 +112,7 @@ async fn test_execute_proposal_transaction_after_flagged_with_error() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -210,7 +205,7 @@ async fn test_execute_second_transaction_after_first_transaction_flagged_with_er
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -299,7 +294,7 @@ async fn test_flag_transaction_error_with_proposal_transaction_already_executed_
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance2(&realm_cookie, &token_owner_record_cookie)
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -381,7 +376,6 @@ async fn test_flag_transaction_error_with_owner_or_delegate_must_sign_error() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -389,11 +383,7 @@ async fn test_flag_transaction_error_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 

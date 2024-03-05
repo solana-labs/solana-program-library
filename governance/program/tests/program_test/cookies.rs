@@ -118,17 +118,6 @@ impl AccountCookie for GovernedTokenAccountCookie {
 }
 
 #[derive(Debug)]
-pub struct GovernedAccountCookie {
-    pub address: Pubkey,
-}
-
-impl AccountCookie for GovernedAccountCookie {
-    fn get_address(&self) -> Pubkey {
-        self.address
-    }
-}
-
-#[derive(Debug)]
 pub struct GovernanceCookie {
     pub address: Pubkey,
     pub account: GovernanceV2,

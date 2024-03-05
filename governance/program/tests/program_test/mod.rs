@@ -82,7 +82,7 @@ use {
     crate::{
         args::{PluginSetupArgs, RealmSetupArgs},
         cookies::{
-            GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
+            GovernanceCookie, GovernedMintCookie, GovernedProgramCookie,
             GovernedTokenAccountCookie, MaxVoterWeightRecordCookie, NativeTreasuryCookie,
             ProgramMetadataCookie, ProposalCookie, ProposalDepositCookie,
             ProposalTransactionCookie, RealmCookie, TokenOwnerRecordCookie,
@@ -1351,13 +1351,6 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_governed_account(&mut self) -> GovernedAccountCookie {
-        GovernedAccountCookie {
-            address: Pubkey::new_unique(),
-        }
-    }
-
-    #[allow(dead_code)]
     pub async fn with_governed_mint(
         &mut self,
         governance_cookie: &GovernanceCookie,
@@ -1431,48 +1424,20 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_governance2(
-        &mut self,
-        realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-    ) -> Result<GovernanceCookie, ProgramError> {
-        let config = self.get_default_governance_config();
-
-        let governed_account_cookie = GovernedAccountCookie {
-            address: Pubkey::new_unique(),
-        };
-
-        self.with_governance_using_config(
-            realm_cookie,
-            &governed_account_cookie,
-            token_owner_record_cookie,
-            &config,
-        )
-        .await
-    }
-
-    #[allow(dead_code)]
     pub async fn with_governance(
         &mut self,
         realm_cookie: &RealmCookie,
-        governed_account_cookie: &GovernedAccountCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<GovernanceCookie, ProgramError> {
         let config = self.get_default_governance_config();
-        self.with_governance_using_config(
-            realm_cookie,
-            governed_account_cookie,
-            token_owner_record_cookie,
-            &config,
-        )
-        .await
+        self.with_governance_using_config(realm_cookie, token_owner_record_cookie, &config)
+            .await
     }
 
     #[allow(dead_code)]
     pub async fn with_governance_using_config(
         &mut self,
         realm_cookie: &RealmCookie,
-        governed_account_cookie: &GovernedAccountCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_config: &GovernanceConfig,
     ) -> Result<GovernanceCookie, ProgramError> {
@@ -1483,35 +1448,6 @@ impl GovernanceProgramTest {
 
         self.with_governance_impl(
             realm_cookie,
-            governed_account_cookie,
-            Some(&token_owner_record_cookie.address),
-            &token_owner_record_cookie.token_owner,
-            voter_weight_record,
-            governance_config,
-            None,
-        )
-        .await
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_governance_using_config2(
-        &mut self,
-        realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-        governance_config: &GovernanceConfig,
-    ) -> Result<GovernanceCookie, ProgramError> {
-        let voter_weight_record = token_owner_record_cookie
-            .voter_weight_record
-            .as_ref()
-            .map(|voter_weight_record| voter_weight_record.address);
-
-        let governed_account_cookie = GovernedAccountCookie {
-            address: Pubkey::new_unique(),
-        };
-
-        self.with_governance_impl(
-            realm_cookie,
-            &governed_account_cookie,
             Some(&token_owner_record_cookie.address),
             &token_owner_record_cookie.token_owner,
             voter_weight_record,
@@ -1526,17 +1462,18 @@ impl GovernanceProgramTest {
     pub async fn with_governance_impl(
         &mut self,
         realm_cookie: &RealmCookie,
-        governed_account_cookie: &GovernedAccountCookie,
         token_owner_record: Option<&Pubkey>,
         create_authority: &Keypair,
         voter_weight_record: Option<Pubkey>,
         governance_config: &GovernanceConfig,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
+        let governed_account = Pubkey::new_unique();
+
         let mut create_governance_ix = create_governance(
             &self.program_id,
             &realm_cookie.address,
-            Some(&governed_account_cookie.address),
+            Some(&governed_account),
             token_owner_record.unwrap_or(&Pubkey::new_unique()),
             &self.bench.payer.pubkey(),
             &create_authority.pubkey(),
@@ -1547,7 +1484,7 @@ impl GovernanceProgramTest {
         let account = GovernanceV2 {
             account_type: GovernanceAccountType::GovernanceV2,
             realm: realm_cookie.address,
-            governed_account: governed_account_cookie.address,
+            governed_account,
             config: governance_config.clone(),
             reserved1: 0,
             reserved_v2: Reserved119::default(),
@@ -1566,11 +1503,8 @@ impl GovernanceProgramTest {
             .process_transaction(&[create_governance_ix], Some(signers))
             .await?;
 
-        let governance_address = get_governance_address(
-            &self.program_id,
-            &realm_cookie.address,
-            &governed_account_cookie.address,
-        );
+        let governance_address =
+            get_governance_address(&self.program_id, &realm_cookie.address, &governed_account);
 
         Ok(GovernanceCookie {
             address: governance_address,
@@ -2701,7 +2635,6 @@ impl GovernanceProgramTest {
         Keypair,
     ) {
         let realm_cookie = self.with_realm().await;
-        let governed_account_cookie = self.with_governed_account().await;
 
         let signatory = Keypair::new();
 
@@ -2711,11 +2644,7 @@ impl GovernanceProgramTest {
             .unwrap();
 
         let mut governance_cookie = self
-            .with_governance(
-                &realm_cookie,
-                &governed_account_cookie,
-                &token_owner_record_cookie,
-            )
+            .with_governance(&realm_cookie, &token_owner_record_cookie)
             .await
             .unwrap();
 
