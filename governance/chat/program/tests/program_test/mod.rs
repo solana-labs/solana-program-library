@@ -183,7 +183,7 @@ impl GovernanceChatProgramTest {
         }
 
         // Create Governance
-        let governed_account_address = Pubkey::new_unique();
+        let governance_seed = Pubkey::new_unique();
 
         let governance_config = GovernanceConfig {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
@@ -235,7 +235,7 @@ impl GovernanceChatProgramTest {
         let create_governance_ix = create_governance(
             &self.governance_program_id,
             &realm_address,
-            Some(&governed_account_address),
+            &governance_seed,
             &token_owner_record_address,
             &self.bench.payer.pubkey(),
             &token_owner.pubkey(),
@@ -253,7 +253,7 @@ impl GovernanceChatProgramTest {
         let governance_address = get_governance_address(
             &self.governance_program_id,
             &realm_address,
-            &governed_account_address,
+            &governance_seed,
         );
 
         let proposal_name = "Proposal #1".to_string();
