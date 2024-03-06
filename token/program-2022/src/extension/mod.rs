@@ -24,6 +24,7 @@ use {
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{TransferHook, TransferHookAccount},
         },
+        pod::{PodAccount, PodMint},
         state::{Account, Mint, Multisig, PackedSizeOf},
     },
     bytemuck::{Pod, Zeroable},
@@ -1328,6 +1329,12 @@ impl BaseState for Account {
     const ACCOUNT_TYPE: AccountType = AccountType::Account;
 }
 impl BaseState for Mint {
+    const ACCOUNT_TYPE: AccountType = AccountType::Mint;
+}
+impl BaseState for PodAccount {
+    const ACCOUNT_TYPE: AccountType = AccountType::Account;
+}
+impl BaseState for PodMint {
     const ACCOUNT_TYPE: AccountType = AccountType::Mint;
 }
 

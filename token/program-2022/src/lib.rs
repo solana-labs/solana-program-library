@@ -11,6 +11,7 @@ pub mod instruction;
 pub mod native_mint;
 pub mod offchain;
 pub mod onchain;
+pub mod pod;
 pub mod processor;
 pub mod proof;
 #[cfg(feature = "serde-traits")]
