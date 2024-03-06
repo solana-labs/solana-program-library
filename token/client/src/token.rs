@@ -568,14 +568,22 @@ where
             };
 
         let mut transaction = Transaction::new_unsigned(message);
+        let signing_pubkeys = signing_keypairs.pubkeys();
 
-        transaction
-            .try_partial_sign(&vec![self.payer.clone()], blockhash)
-            .map_err(|error| TokenError::Client(error.into()))?;
-        if let Some(nonce_authority) = &self.nonce_authority {
+        if !signing_pubkeys.contains(&self.payer.pubkey()) {
             transaction
-                .try_partial_sign(&vec![nonce_authority.clone()], blockhash)
+                .try_partial_sign(&vec![self.payer.clone()], blockhash)
                 .map_err(|error| TokenError::Client(error.into()))?;
+        }
+        if let Some(nonce_authority) = &self.nonce_authority {
+            let nonce_authority_pubkey = nonce_authority.pubkey();
+            if nonce_authority_pubkey != self.payer.pubkey()
+                && !signing_pubkeys.contains(&nonce_authority_pubkey)
+            {
+                transaction
+                    .try_partial_sign(&vec![nonce_authority.clone()], blockhash)
+                    .map_err(|error| TokenError::Client(error.into()))?;
+            }
         }
         transaction
             .try_partial_sign(signing_keypairs, blockhash)
