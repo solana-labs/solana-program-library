@@ -8,6 +8,7 @@ use {
             alloc_and_serialize_variable_len_extension, metadata_pointer::MetadataPointer,
             BaseStateWithExtensions, StateWithExtensions,
         },
+        pod::PodMint,
         state::Mint,
     },
     solana_program::{
@@ -98,7 +99,11 @@ pub fn process_initialize(
 
     // allocate a TLV entry for the space and write it in, assumes that there's
     // enough SOL for the new rent-exemption
-    alloc_and_serialize_variable_len_extension::<Mint, _>(metadata_info, &token_metadata, false)?;
+    alloc_and_serialize_variable_len_extension::<PodMint, _>(
+        metadata_info,
+        &token_metadata,
+        false,
+    )?;
 
     Ok(())
 }
@@ -127,7 +132,7 @@ pub fn process_update_field(
     token_metadata.update(data.field, data.value);
 
     // Update / realloc the account
-    alloc_and_serialize_variable_len_extension::<Mint, _>(metadata_info, &token_metadata, true)?;
+    alloc_and_serialize_variable_len_extension::<PodMint, _>(metadata_info, &token_metadata, true)?;
 
     Ok(())
 }
@@ -154,7 +159,7 @@ pub fn process_remove_key(
     if !token_metadata.remove_key(&data.key) && !data.idempotent {
         return Err(TokenMetadataError::KeyNotFound.into());
     }
-    alloc_and_serialize_variable_len_extension::<Mint, _>(metadata_info, &token_metadata, true)?;
+    alloc_and_serialize_variable_len_extension::<PodMint, _>(metadata_info, &token_metadata, true)?;
     Ok(())
 }
 
@@ -180,7 +185,7 @@ pub fn process_update_authority(
     check_update_authority(update_authority_info, &token_metadata.update_authority)?;
     token_metadata.update_authority = data.new_authority;
     // Update the account, no realloc needed!
-    alloc_and_serialize_variable_len_extension::<Mint, _>(metadata_info, &token_metadata, true)?;
+    alloc_and_serialize_variable_len_extension::<PodMint, _>(metadata_info, &token_metadata, true)?;
 
     Ok(())
 }
