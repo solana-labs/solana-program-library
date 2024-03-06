@@ -515,24 +515,42 @@ impl<'data, S: BaseState + Pack> StateWithExtensions<'data, S> {
         check_min_len_and_not_multisig(input, S::SIZE_OF)?;
         let (base_data, rest) = input.split_at(S::SIZE_OF);
         let base = S::unpack(base_data)?;
-        if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
-            // type_and_tlv_indices() checks that returned indexes are within range
-            let account_type = AccountType::try_from(rest[account_type_index])
-                .map_err(|_| ProgramError::InvalidAccountData)?;
-            check_account_type::<S>(account_type)?;
-            Ok(Self {
-                base,
-                tlv_data: &rest[tlv_start_index..],
-            })
-        } else {
-            Ok(Self {
-                base,
-                tlv_data: &[],
-            })
-        }
+        let tlv_data = unpack_tlv_data::<S>(rest)?;
+        Ok(Self { base, tlv_data })
     }
 }
 impl<'a, S: BaseState + Pack> BaseStateWithExtensions<S> for StateWithExtensions<'a, S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        self.tlv_data
+    }
+}
+
+/// Encapsulates immutable base state data (mint or account) with possible
+/// extensions, where the base state is Pod for zero-copy serde.
+#[derive(Debug, PartialEq)]
+pub struct PodStateWithExtensions<'data, S: BaseState + Pod> {
+    /// Unpacked base data
+    pub base: &'data S,
+    /// Slice of data containing all TLV data, deserialized on demand
+    tlv_data: &'data [u8],
+}
+impl<'data, S: BaseState + Pod> PodStateWithExtensions<'data, S> {
+    /// Unpack base state, leaving the extension data as a slice
+    ///
+    /// Fails if the base state is not initialized.
+    pub fn unpack(input: &'data [u8]) -> Result<Self, ProgramError> {
+        check_min_len_and_not_multisig(input, S::SIZE_OF)?;
+        let (base_data, rest) = input.split_at(S::SIZE_OF);
+        let base = pod_from_bytes::<S>(base_data)?;
+        if !base.is_initialized() {
+            Err(ProgramError::UninitializedAccount)
+        } else {
+            let tlv_data = unpack_tlv_data::<S>(rest)?;
+            Ok(Self { base, tlv_data })
+        }
+    }
+}
+impl<'a, S: BaseState + Pod> BaseStateWithExtensions<S> for PodStateWithExtensions<'a, S> {
     fn get_tlv_data(&self) -> &[u8] {
         self.tlv_data
     }
@@ -769,6 +787,18 @@ pub trait BaseStateWithExtensionsMut<S: BaseState>: BaseStateWithExtensions<S> {
         }
         Ok(())
     }
+
+    /// Check that the account type on the account (if initialized) matches the
+    /// account type for any extensions initialized on the TLV data
+    fn check_account_type_matches_extension_type(&self) -> Result<(), ProgramError> {
+        if let Some(extension_type) = self.get_first_extension_type()? {
+            let account_type = extension_type.get_account_type();
+            if account_type != S::ACCOUNT_TYPE {
+                return Err(TokenError::ExtensionBaseMismatch.into());
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Encapsulates mutable base state data (mint or account) with possible
@@ -792,7 +822,7 @@ impl<'data, S: BaseState + Pack> StateWithExtensionsMut<'data, S> {
         check_min_len_and_not_multisig(input, S::SIZE_OF)?;
         let (base_data, rest) = input.split_at_mut(S::SIZE_OF);
         let base = S::unpack(base_data)?;
-        let (account_type, tlv_data) = unpack_type_and_tlv_data::<S>(rest)?;
+        let (account_type, tlv_data) = unpack_type_and_tlv_data_mut::<S>(rest)?;
         Ok(Self {
             base,
             base_data,
@@ -812,19 +842,14 @@ impl<'data, S: BaseState + Pack> StateWithExtensionsMut<'data, S> {
         if base.is_initialized() {
             return Err(TokenError::AlreadyInUse.into());
         }
-        let (account_type, tlv_data) = unpack_uninitialized_type_and_tlv_data::<S>(rest)?;
+        let (account_type, tlv_data) = unpack_uninitialized_type_and_tlv_data_mut::<S>(rest)?;
         let state = Self {
             base,
             base_data,
             account_type,
             tlv_data,
         };
-        if let Some(extension_type) = state.get_first_extension_type()? {
-            let account_type = extension_type.get_account_type();
-            if account_type != S::ACCOUNT_TYPE {
-                return Err(TokenError::ExtensionBaseMismatch.into());
-            }
-        }
+        state.check_account_type_matches_extension_type()?;
         Ok(state)
     }
 
@@ -847,7 +872,86 @@ impl<'a, S: BaseState> BaseStateWithExtensionsMut<S> for StateWithExtensionsMut<
     }
 }
 
-fn unpack_type_and_tlv_data_with_check<
+/// Encapsulates mutable base state data (mint or account) with possible
+/// extensions, where the base state is Pod for zero-copy serde.
+#[derive(Debug, PartialEq)]
+pub struct PodStateWithExtensionsMut<'data, S: BaseState> {
+    /// Unpacked base data
+    pub base: &'data mut S,
+    /// Writable account type
+    account_type: &'data mut [u8],
+    /// Slice of data containing all TLV data, deserialized on demand
+    tlv_data: &'data mut [u8],
+}
+impl<'data, S: BaseState + Pod> PodStateWithExtensionsMut<'data, S> {
+    /// Unpack base state, leaving the extension data as a mutable slice
+    ///
+    /// Fails if the base state is not initialized.
+    pub fn unpack(input: &'data mut [u8]) -> Result<Self, ProgramError> {
+        check_min_len_and_not_multisig(input, S::SIZE_OF)?;
+        let (base_data, rest) = input.split_at_mut(S::SIZE_OF);
+        let base = pod_from_bytes_mut::<S>(base_data)?;
+        if !base.is_initialized() {
+            Err(ProgramError::UninitializedAccount)
+        } else {
+            let (account_type, tlv_data) = unpack_type_and_tlv_data_mut::<S>(rest)?;
+            Ok(Self {
+                base,
+                account_type,
+                tlv_data,
+            })
+        }
+    }
+
+    /// Unpack an uninitialized base state, leaving the extension data as a
+    /// mutable slice
+    ///
+    /// Fails if the base state has already been initialized.
+    pub fn unpack_uninitialized(input: &'data mut [u8]) -> Result<Self, ProgramError> {
+        check_min_len_and_not_multisig(input, S::SIZE_OF)?;
+        let (base_data, rest) = input.split_at_mut(S::SIZE_OF);
+        let base = pod_from_bytes_mut::<S>(base_data)?;
+        if base.is_initialized() {
+            return Err(TokenError::AlreadyInUse.into());
+        }
+        let (account_type, tlv_data) = unpack_uninitialized_type_and_tlv_data_mut::<S>(rest)?;
+        let state = Self {
+            base,
+            account_type,
+            tlv_data,
+        };
+        state.check_account_type_matches_extension_type()?;
+        Ok(state)
+    }
+}
+
+impl<'a, S: BaseState> BaseStateWithExtensions<S> for PodStateWithExtensionsMut<'a, S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        self.tlv_data
+    }
+}
+impl<'a, S: BaseState> BaseStateWithExtensionsMut<S> for PodStateWithExtensionsMut<'a, S> {
+    fn get_tlv_data_mut(&mut self) -> &mut [u8] {
+        self.tlv_data
+    }
+    fn get_account_type_mut(&mut self) -> &mut [u8] {
+        self.account_type
+    }
+}
+
+fn unpack_tlv_data<S: BaseState>(rest: &[u8]) -> Result<&[u8], ProgramError> {
+    if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
+        // type_and_tlv_indices() checks that returned indexes are within range
+        let account_type = AccountType::try_from(rest[account_type_index])
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        check_account_type::<S>(account_type)?;
+        Ok(&rest[tlv_start_index..])
+    } else {
+        Ok(&[])
+    }
+}
+
+fn unpack_type_and_tlv_data_with_check_mut<
     S: BaseState,
     F: Fn(AccountType) -> Result<(), ProgramError>,
 >(
@@ -869,16 +973,16 @@ fn unpack_type_and_tlv_data_with_check<
     }
 }
 
-fn unpack_type_and_tlv_data<S: BaseState>(
+fn unpack_type_and_tlv_data_mut<S: BaseState>(
     rest: &mut [u8],
 ) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
-    unpack_type_and_tlv_data_with_check::<S, _>(rest, check_account_type::<S>)
+    unpack_type_and_tlv_data_with_check_mut::<S, _>(rest, check_account_type::<S>)
 }
 
-fn unpack_uninitialized_type_and_tlv_data<S: BaseState>(
+fn unpack_uninitialized_type_and_tlv_data_mut<S: BaseState>(
     rest: &mut [u8],
 ) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
-    unpack_type_and_tlv_data_with_check::<S, _>(rest, |account_type| {
+    unpack_type_and_tlv_data_with_check_mut::<S, _>(rest, |account_type| {
         if account_type != AccountType::Uninitialized {
             Err(ProgramError::InvalidAccountData)
         } else {
