@@ -19,7 +19,6 @@ async fn test_add_required_signatory() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let signatory = Pubkey::new_unique();
 
@@ -29,11 +28,7 @@ async fn test_add_required_signatory() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -154,7 +149,6 @@ pub async fn add_required_signatory_to_governance_without_governance_signer_err(
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let signatory = Pubkey::new_unique();
 
@@ -164,11 +158,7 @@ pub async fn add_required_signatory_to_governance_without_governance_signer_err(
         .unwrap();
 
     let governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 

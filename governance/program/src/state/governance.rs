@@ -505,7 +505,7 @@ pub fn assert_governance_for_realm(
     Ok(())
 }
 
-/// Returns ProgramGovernance PDA seeds
+/// Returns legacy ProgramGovernance PDA seeds
 pub fn get_program_governance_address_seeds<'a>(
     realm: &'a Pubkey,
     governed_program: &'a Pubkey,
@@ -520,7 +520,7 @@ pub fn get_program_governance_address_seeds<'a>(
     ]
 }
 
-/// Returns ProgramGovernance PDA address
+/// Returns legacy ProgramGovernance PDA address
 pub fn get_program_governance_address<'a>(
     program_id: &Pubkey,
     realm: &'a Pubkey,
@@ -533,7 +533,7 @@ pub fn get_program_governance_address<'a>(
     .0
 }
 
-/// Returns MintGovernance PDA seeds
+/// Returns legacy MintGovernance PDA seeds
 pub fn get_mint_governance_address_seeds<'a>(
     realm: &'a Pubkey,
     governed_mint: &'a Pubkey,
@@ -544,7 +544,7 @@ pub fn get_mint_governance_address_seeds<'a>(
     [b"mint-governance", realm.as_ref(), governed_mint.as_ref()]
 }
 
-/// Returns MintGovernance PDA address
+/// Returns legacy MintGovernance PDA address
 pub fn get_mint_governance_address<'a>(
     program_id: &Pubkey,
     realm: &'a Pubkey,
@@ -557,7 +557,7 @@ pub fn get_mint_governance_address<'a>(
     .0
 }
 
-/// Returns TokenGovernance PDA seeds
+/// Returns legacy TokenGovernance PDA seeds
 pub fn get_token_governance_address_seeds<'a>(
     realm: &'a Pubkey,
     governed_token: &'a Pubkey,
@@ -568,7 +568,7 @@ pub fn get_token_governance_address_seeds<'a>(
     [b"token-governance", realm.as_ref(), governed_token.as_ref()]
 }
 
-/// Returns TokenGovernance PDA address
+/// Returns legacy TokenGovernance PDA address
 pub fn get_token_governance_address<'a>(
     program_id: &Pubkey,
     realm: &'a Pubkey,

@@ -16,19 +16,13 @@ async fn test_set_realm_authority() {
 
     let realm_cookie = governance_test.with_realm().await;
 
-    let governed_account_cookie = governance_test.with_governed_account().await;
-
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
         .await
         .unwrap();
 
     let governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -197,19 +191,13 @@ async fn test_set_realm_authority_with_governance_from_other_realm_error() {
     // Setup other realm
     let realm_cookie2 = governance_test.with_realm().await;
 
-    let governed_account_cookie2 = governance_test.with_governed_account().await;
-
     let token_owner_record_cookie2 = governance_test
         .with_community_token_deposit(&realm_cookie2)
         .await
         .unwrap();
 
     let governance_cookie2 = governance_test
-        .with_governance(
-            &realm_cookie2,
-            &governed_account_cookie2,
-            &token_owner_record_cookie2,
-        )
+        .with_governance(&realm_cookie2, &token_owner_record_cookie2)
         .await
         .unwrap();
 

@@ -166,7 +166,6 @@ pub async fn remove_required_signatory_from_governance_without_governance_signer
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let signatory = Pubkey::new_unique();
 
@@ -176,11 +175,7 @@ pub async fn remove_required_signatory_from_governance_without_governance_signer
         .unwrap();
 
     let governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 

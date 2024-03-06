@@ -22,7 +22,6 @@ async fn test_create_proposal_with_single_choice_options_and_deny_option() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -30,11 +29,7 @@ async fn test_create_proposal_with_single_choice_options_and_deny_option() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -68,7 +63,6 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -76,11 +70,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -127,7 +117,6 @@ async fn test_insert_transaction_with_proposal_not_executable_error() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -135,11 +124,7 @@ async fn test_insert_transaction_with_proposal_not_executable_error() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -171,7 +156,6 @@ async fn test_insert_transactions_for_multiple_options() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -179,11 +163,7 @@ async fn test_insert_transactions_for_multiple_options() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -245,7 +225,6 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -253,11 +232,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -343,7 +318,6 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -351,11 +325,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -459,7 +429,6 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     // 100 tokens
     let token_owner_record_cookie1 = governance_test
@@ -486,7 +455,6 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
     let mut governance_cookie = governance_test
         .with_governance_using_config(
             &realm_cookie,
-            &governed_account_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
@@ -626,7 +594,6 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens
     let token_owner_record_cookie1 = governance_test
@@ -651,14 +618,15 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(30);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
@@ -845,7 +813,6 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens
     let token_owner_record_cookie1 = governance_test
@@ -864,14 +831,15 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(30);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
@@ -1023,7 +991,6 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -1031,11 +998,7 @@ async fn test_create_proposal_with_10_options_and_cast_vote() {
         .unwrap();
 
     let mut governance_cookie = governance_test
-        .with_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
+        .with_governance(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
@@ -1122,7 +1085,6 @@ async fn test_vote_multi_weighted_choice_proposal_non_executable() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
@@ -1135,7 +1097,6 @@ async fn test_vote_multi_weighted_choice_proposal_non_executable() {
     let mut governance_cookie = governance_test
         .with_governance_using_config(
             &realm_cookie,
-            &governed_account_cookie,
             &token_owner_record_cookie,
             &governance_config,
         )
@@ -1251,7 +1212,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens each, sum 300 tokens
     let token_owner_record_cookie1 = governance_test
@@ -1272,14 +1232,15 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(20);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
@@ -1477,7 +1438,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens each, sum 300 tokens
     let token_owner_record_cookie1 = governance_test
@@ -1494,14 +1454,15 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(30);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
@@ -1660,7 +1621,6 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // 100 tokens
     let token_owner_record_cookie1 = governance_test
@@ -1678,14 +1638,15 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
     governance_config.community_vote_threshold = VoteThreshold::YesVotePercentage(3);
 
     let mut governance_cookie = governance_test
-        .with_mint_governance_using_config(
+        .with_governance_using_config(
             &realm_cookie,
-            &governed_mint_cookie,
             &token_owner_record_cookie1,
             &governance_config,
         )
         .await
         .unwrap();
+
+    let governed_mint_cookie = governance_test.with_governed_mint(&governance_cookie).await;
 
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
