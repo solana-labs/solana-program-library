@@ -756,6 +756,18 @@ pub trait BaseStateWithExtensionsMut<S: BaseState>: BaseStateWithExtensions<S> {
         }
         Ok(())
     }
+
+    /// Check that the account type on the account (if initialized) matches the
+    /// account type for any extensions initialized on the TLV data
+    fn check_account_type_matches_extension_type(&self) -> Result<(), ProgramError> {
+        if let Some(extension_type) = self.get_first_extension_type()? {
+            let account_type = extension_type.get_account_type();
+            if account_type != S::ACCOUNT_TYPE {
+                return Err(TokenError::ExtensionBaseMismatch.into());
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Encapsulates mutable base state data (mint or account) with possible
@@ -806,12 +818,7 @@ impl<'data, S: BaseState + Pack> StateWithExtensionsMut<'data, S> {
             account_type,
             tlv_data,
         };
-        if let Some(extension_type) = state.get_first_extension_type()? {
-            let account_type = extension_type.get_account_type();
-            if account_type != S::ACCOUNT_TYPE {
-                return Err(TokenError::ExtensionBaseMismatch.into());
-            }
-        }
+        state.check_account_type_matches_extension_type()?;
         Ok(state)
     }
 
