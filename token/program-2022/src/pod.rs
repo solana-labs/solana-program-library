@@ -35,7 +35,7 @@ pub struct PodMint {
 }
 impl IsInitialized for PodMint {
     fn is_initialized(&self) -> bool {
-        self.is_initialized == PodBool::from_bool(true)
+        self.is_initialized.into()
     }
 }
 impl PackedSizeOf for PodMint {
@@ -118,7 +118,7 @@ pub struct PodMultisig {
 }
 impl IsInitialized for PodMultisig {
     fn is_initialized(&self) -> bool {
-        self.is_initialized == PodBool::from_bool(true)
+        self.is_initialized.into()
     }
 }
 impl PackedSizeOf for PodMultisig {
