@@ -1473,7 +1473,7 @@ impl GovernanceProgramTest {
         let mut create_governance_ix = create_governance(
             &self.program_id,
             &realm_cookie.address,
-            Some(&governance_seed),
+            &governance_seed,
             token_owner_record.unwrap_or(&Pubkey::new_unique()),
             &self.bench.payer.pubkey(),
             &create_authority.pubkey(),
