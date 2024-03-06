@@ -272,7 +272,7 @@ impl GovernanceV2 {
             let governance_data_v1 = GovernanceV1 {
                 account_type: self.account_type,
                 realm: self.realm,
-                governed_account: self.governance_seed,
+                governance_seed: self.governance_seed,
                 proposals_count: 0,
                 config: self.config,
             };
@@ -414,7 +414,7 @@ pub fn get_governance_data(
         GovernanceV2 {
             account_type,
             realm: governance_data_v1.realm,
-            governance_seed: governance_data_v1.governed_account,
+            governance_seed: governance_data_v1.governance_seed,
             reserved1: 0,
             config: governance_data_v1.config,
             reserved_v2: Reserved119::default(),
@@ -709,7 +709,7 @@ mod test {
         GovernanceV1 {
             account_type: GovernanceAccountType::GovernanceV1,
             realm: Pubkey::new_unique(),
-            governed_account: Pubkey::new_unique(),
+            governance_seed: Pubkey::new_unique(),
             proposals_count: 10,
             config: create_test_governance_config(),
         }
