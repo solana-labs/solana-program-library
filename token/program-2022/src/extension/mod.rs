@@ -525,6 +525,37 @@ impl<'a, S: BaseState + Pack> BaseStateWithExtensions<S> for StateWithExtensions
     }
 }
 
+/// Encapsulates immutable base state data (mint or account) with possible
+/// extensions, where the base state is Pod for zero-copy serde.
+#[derive(Debug, PartialEq)]
+pub struct PodStateWithExtensions<'data, S: BaseState + Pod> {
+    /// Unpacked base data
+    pub base: &'data S,
+    /// Slice of data containing all TLV data, deserialized on demand
+    tlv_data: &'data [u8],
+}
+impl<'data, S: BaseState + Pod> PodStateWithExtensions<'data, S> {
+    /// Unpack base state, leaving the extension data as a slice
+    ///
+    /// Fails if the base state is not initialized.
+    pub fn unpack(input: &'data [u8]) -> Result<Self, ProgramError> {
+        check_min_len_and_not_multisig(input, S::SIZE_OF)?;
+        let (base_data, rest) = input.split_at(S::SIZE_OF);
+        let base = pod_from_bytes::<S>(base_data)?;
+        if !base.is_initialized() {
+            Err(ProgramError::UninitializedAccount)
+        } else {
+            let tlv_data = unpack_tlv_data::<S>(rest)?;
+            Ok(Self { base, tlv_data })
+        }
+    }
+}
+impl<'a, S: BaseState + Pod> BaseStateWithExtensions<S> for PodStateWithExtensions<'a, S> {
+    fn get_tlv_data(&self) -> &[u8] {
+        self.tlv_data
+    }
+}
+
 /// Trait for mutable base state with extension
 pub trait BaseStateWithExtensionsMut<S: BaseState>: BaseStateWithExtensions<S> {
     /// Get the underlying TLV data as mutable
