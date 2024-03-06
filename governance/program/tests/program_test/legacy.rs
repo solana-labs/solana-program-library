@@ -113,7 +113,7 @@ impl From<GovernanceV2> for LegacyGovernanceV1 {
         LegacyGovernanceV1 {
             account_type,
             realm: governance_v2.realm,
-            governed_account: governance_v2.governed_account,
+            governed_account: governance_v2.governance_seed,
             proposals_count: 0,
             config: LegacyGovernanceConfigV1 {
                 vote_threshold_percentage: VoteThresholdPercentage::YesVote(yes_vote_threshold),

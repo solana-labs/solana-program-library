@@ -140,10 +140,8 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Governance account
-    ///     * PDA seeds: ['account-governance', realm, governed_account]
-    ///   2. `[]` Account governed by this Governance Note: The account doesn't
-    ///      have to exist and can be only used as a unique identifier for the
-    ///      Governance account
+    ///     * PDA seeds: ['account-governance', realm, governance_seed]
+    ///   2. `[]` Governance account PDA seed
     ///   3. `[]` Governing TokenOwnerRecord account (Used only if not signed by
     ///      RealmAuthority)
     ///   4. `[signer]` Payer
@@ -831,7 +829,7 @@ pub fn create_governance(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
-    governed_account: Option<&Pubkey>,
+    governance_seed: Option<&Pubkey>,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
     create_authority: &Pubkey,
@@ -839,8 +837,8 @@ pub fn create_governance(
     // Args
     config: GovernanceConfig,
 ) -> Instruction {
-    let governed_account_address = if let Some(governed_account) = governed_account {
-        *governed_account
+    let governed_account_address = if let Some(governance_seed) = governance_seed {
+        *governance_seed
     } else {
         // If the governed account is not provided then generate a unique identifier for
         // the Governance account

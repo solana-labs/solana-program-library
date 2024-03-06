@@ -32,7 +32,7 @@ pub fn process_create_governance(
 
     let realm_info = next_account_info(account_info_iter)?; // 0
     let governance_info = next_account_info(account_info_iter)?; // 1
-    let governed_account_info = next_account_info(account_info_iter)?; // 2
+    let governance_seed_info = next_account_info(account_info_iter)?; // 2
 
     let token_owner_record_info = next_account_info(account_info_iter)?; // 3
 
@@ -58,7 +58,7 @@ pub fn process_create_governance(
     let governance_data = GovernanceV2 {
         account_type: GovernanceAccountType::GovernanceV2,
         realm: *realm_info.key,
-        governed_account: *governed_account_info.key,
+        governance_seed: *governance_seed_info.key,
         config,
         reserved1: 0,
         reserved_v2: Reserved119::default(),
@@ -70,7 +70,7 @@ pub fn process_create_governance(
         payer_info,
         governance_info,
         &governance_data,
-        &get_governance_address_seeds(realm_info.key, governed_account_info.key),
+        &get_governance_address_seeds(realm_info.key, governance_seed_info.key),
         program_id,
         system_info,
         &rent,
