@@ -515,21 +515,8 @@ impl<'data, S: BaseState + Pack> StateWithExtensions<'data, S> {
         check_min_len_and_not_multisig(input, S::SIZE_OF)?;
         let (base_data, rest) = input.split_at(S::SIZE_OF);
         let base = S::unpack(base_data)?;
-        if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
-            // type_and_tlv_indices() checks that returned indexes are within range
-            let account_type = AccountType::try_from(rest[account_type_index])
-                .map_err(|_| ProgramError::InvalidAccountData)?;
-            check_account_type::<S>(account_type)?;
-            Ok(Self {
-                base,
-                tlv_data: &rest[tlv_start_index..],
-            })
-        } else {
-            Ok(Self {
-                base,
-                tlv_data: &[],
-            })
-        }
+        let tlv_data = unpack_tlv_data::<S>(rest)?;
+        Ok(Self { base, tlv_data })
     }
 }
 impl<'a, S: BaseState + Pack> BaseStateWithExtensions<S> for StateWithExtensions<'a, S> {
@@ -844,6 +831,17 @@ impl<'a, S: BaseState> BaseStateWithExtensionsMut<S> for StateWithExtensionsMut<
     }
     fn get_account_type_mut(&mut self) -> &mut [u8] {
         self.account_type
+    }
+}
+
+fn unpack_tlv_data<S: BaseState>(rest: &[u8]) -> Result<&[u8], ProgramError> {
+    if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
+        let account_type = AccountType::try_from(rest[account_type_index])
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        check_account_type::<S>(account_type)?;
+        Ok(&rest[tlv_start_index..])
+    } else {
+        Ok(&[])
     }
 }
 
