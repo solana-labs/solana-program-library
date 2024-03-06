@@ -792,7 +792,7 @@ impl<'data, S: BaseState + Pack> StateWithExtensionsMut<'data, S> {
         check_min_len_and_not_multisig(input, S::SIZE_OF)?;
         let (base_data, rest) = input.split_at_mut(S::SIZE_OF);
         let base = S::unpack(base_data)?;
-        let (account_type, tlv_data) = unpack_type_and_tlv_data::<S>(rest)?;
+        let (account_type, tlv_data) = unpack_type_and_tlv_data_mut::<S>(rest)?;
         Ok(Self {
             base,
             base_data,
@@ -812,7 +812,7 @@ impl<'data, S: BaseState + Pack> StateWithExtensionsMut<'data, S> {
         if base.is_initialized() {
             return Err(TokenError::AlreadyInUse.into());
         }
-        let (account_type, tlv_data) = unpack_uninitialized_type_and_tlv_data::<S>(rest)?;
+        let (account_type, tlv_data) = unpack_uninitialized_type_and_tlv_data_mut::<S>(rest)?;
         let state = Self {
             base,
             base_data,
@@ -847,7 +847,7 @@ impl<'a, S: BaseState> BaseStateWithExtensionsMut<S> for StateWithExtensionsMut<
     }
 }
 
-fn unpack_type_and_tlv_data_with_check<
+fn unpack_type_and_tlv_data_with_check_mut<
     S: BaseState,
     F: Fn(AccountType) -> Result<(), ProgramError>,
 >(
@@ -869,16 +869,16 @@ fn unpack_type_and_tlv_data_with_check<
     }
 }
 
-fn unpack_type_and_tlv_data<S: BaseState>(
+fn unpack_type_and_tlv_data_mut<S: BaseState>(
     rest: &mut [u8],
 ) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
-    unpack_type_and_tlv_data_with_check::<S, _>(rest, check_account_type::<S>)
+    unpack_type_and_tlv_data_with_check_mut::<S, _>(rest, check_account_type::<S>)
 }
 
-fn unpack_uninitialized_type_and_tlv_data<S: BaseState>(
+fn unpack_uninitialized_type_and_tlv_data_mut<S: BaseState>(
     rest: &mut [u8],
 ) -> Result<(&mut [u8], &mut [u8]), ProgramError> {
-    unpack_type_and_tlv_data_with_check::<S, _>(rest, |account_type| {
+    unpack_type_and_tlv_data_with_check_mut::<S, _>(rest, |account_type| {
         if account_type != AccountType::Uninitialized {
             Err(ProgramError::InvalidAccountData)
         } else {
