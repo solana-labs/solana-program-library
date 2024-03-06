@@ -941,6 +941,7 @@ impl<'a, S: BaseState> BaseStateWithExtensionsMut<S> for PodStateWithExtensionsM
 
 fn unpack_tlv_data<S: BaseState>(rest: &[u8]) -> Result<&[u8], ProgramError> {
     if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
+        // type_and_tlv_indices() checks that returned indexes are within range
         let account_type = AccountType::try_from(rest[account_type_index])
             .map_err(|_| ProgramError::InvalidAccountData)?;
         check_account_type::<S>(account_type)?;
