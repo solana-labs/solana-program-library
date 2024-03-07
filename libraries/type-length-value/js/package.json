@@ -63,6 +63,6 @@
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
         "typedoc": "^0.25.11",
-        "typescript": "^5.3.3"
+        "typescript": "^5.4.2"
     }
 }
