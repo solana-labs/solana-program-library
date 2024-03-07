@@ -13,8 +13,8 @@ pub struct LegacyGovernanceV1 {
     /// Governance Realm
     pub realm: Pubkey,
 
-    /// Account governed by this Governance.
-    pub governed_account: Pubkey,
+    /// Governance seed
+    pub governance_seed: Pubkey,
 
     /// Running count of proposals
     pub proposals_count: u32,
@@ -113,7 +113,7 @@ impl From<GovernanceV2> for LegacyGovernanceV1 {
         LegacyGovernanceV1 {
             account_type,
             realm: governance_v2.realm,
-            governed_account: governance_v2.governed_account,
+            governance_seed: governance_v2.governance_seed,
             proposals_count: 0,
             config: LegacyGovernanceConfigV1 {
                 vote_threshold_percentage: VoteThresholdPercentage::YesVote(yes_vote_threshold),

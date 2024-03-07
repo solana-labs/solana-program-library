@@ -91,19 +91,14 @@ pub struct GovernanceV2 {
     /// Governance Realm
     pub realm: Pubkey,
 
-    /// Account governed by this Governance and/or PDA identity seed
-    /// It can be Program account, Mint account, Token account or any other
-    /// account
+    /// The seed used to create Governance account PDA
     ///
-    /// Note: The account doesn't have to exist. In that case the field is only
-    /// a PDA seed
-    ///
-    /// Note: Setting governed_account doesn't give any authority over the
-    /// governed account The relevant authorities for specific account types
-    /// must still be transferred to the Governance PDA Ex: mint_authority/
-    /// freeze_authority for a Mint account or upgrade_authority for a
-    /// Program account should be transferred to the Governance PDA
-    pub governed_account: Pubkey,
+    /// Note: For the legacy asset specific Governance accounts
+    /// the seed by convention is:
+    /// MintGovernance -> mint address
+    /// TokenAccountGovernance -> token account address
+    /// ProgramGovernance -> program address
+    pub governance_seed: Pubkey,
 
     /// Reserved space for future versions
     pub reserved1: u32,
@@ -221,17 +216,17 @@ impl GovernanceV2 {
     pub fn get_governance_address_seeds(&self) -> Result<[&[u8]; 3], ProgramError> {
         let seeds = match self.account_type {
             GovernanceAccountType::GovernanceV1 | GovernanceAccountType::GovernanceV2 => {
-                get_governance_address_seeds(&self.realm, &self.governed_account)
+                get_governance_address_seeds(&self.realm, &self.governance_seed)
             }
             GovernanceAccountType::ProgramGovernanceV1
             | GovernanceAccountType::ProgramGovernanceV2 => {
-                get_program_governance_address_seeds(&self.realm, &self.governed_account)
+                get_program_governance_address_seeds(&self.realm, &self.governance_seed)
             }
             GovernanceAccountType::MintGovernanceV1 | GovernanceAccountType::MintGovernanceV2 => {
-                get_mint_governance_address_seeds(&self.realm, &self.governed_account)
+                get_mint_governance_address_seeds(&self.realm, &self.governance_seed)
             }
             GovernanceAccountType::TokenGovernanceV1 | GovernanceAccountType::TokenGovernanceV2 => {
-                get_token_governance_address_seeds(&self.realm, &self.governed_account)
+                get_token_governance_address_seeds(&self.realm, &self.governance_seed)
             }
             GovernanceAccountType::Uninitialized
             | GovernanceAccountType::RealmV1
@@ -277,7 +272,7 @@ impl GovernanceV2 {
             let governance_data_v1 = GovernanceV1 {
                 account_type: self.account_type,
                 realm: self.realm,
-                governed_account: self.governed_account,
+                governance_seed: self.governance_seed,
                 proposals_count: 0,
                 config: self.config,
             };
@@ -419,7 +414,7 @@ pub fn get_governance_data(
         GovernanceV2 {
             account_type,
             realm: governance_data_v1.realm,
-            governed_account: governance_data_v1.governed_account,
+            governance_seed: governance_data_v1.governance_seed,
             reserved1: 0,
             config: governance_data_v1.config,
             reserved_v2: Reserved119::default(),
@@ -560,22 +555,26 @@ pub fn get_mint_governance_address<'a>(
 /// Returns legacy TokenGovernance PDA seeds
 pub fn get_token_governance_address_seeds<'a>(
     realm: &'a Pubkey,
-    governed_token: &'a Pubkey,
+    governed_token_account: &'a Pubkey,
 ) -> [&'a [u8]; 3] {
     // 'token-governance' prefix ensures uniqueness of the PDA
     // Note: Only the current token account owner can create an account with this
     // PDA using CreateTokenGovernance instruction
-    [b"token-governance", realm.as_ref(), governed_token.as_ref()]
+    [
+        b"token-governance",
+        realm.as_ref(),
+        governed_token_account.as_ref(),
+    ]
 }
 
 /// Returns legacy TokenGovernance PDA address
 pub fn get_token_governance_address<'a>(
     program_id: &Pubkey,
     realm: &'a Pubkey,
-    governed_token: &'a Pubkey,
+    governed_token_account: &'a Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_token_governance_address_seeds(realm, governed_token),
+        &get_token_governance_address_seeds(realm, governed_token_account),
         program_id,
     )
     .0
@@ -584,12 +583,12 @@ pub fn get_token_governance_address<'a>(
 /// Returns Governance PDA seeds
 pub fn get_governance_address_seeds<'a>(
     realm: &'a Pubkey,
-    governed_account: &'a Pubkey,
+    governance_seed: &'a Pubkey,
 ) -> [&'a [u8]; 3] {
     [
         b"account-governance",
         realm.as_ref(),
-        governed_account.as_ref(),
+        governance_seed.as_ref(),
     ]
 }
 
@@ -597,10 +596,10 @@ pub fn get_governance_address_seeds<'a>(
 pub fn get_governance_address<'a>(
     program_id: &Pubkey,
     realm: &'a Pubkey,
-    governed_account: &'a Pubkey,
+    governance_seed: &'a Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_governance_address_seeds(realm, governed_account),
+        &get_governance_address_seeds(realm, governance_seed),
         program_id,
     )
     .0
@@ -697,7 +696,7 @@ mod test {
         GovernanceV2 {
             account_type: GovernanceAccountType::GovernanceV2,
             realm: Pubkey::new_unique(),
-            governed_account: Pubkey::new_unique(),
+            governance_seed: Pubkey::new_unique(),
             reserved1: 0,
             config: create_test_governance_config(),
             reserved_v2: Reserved119::default(),
@@ -710,7 +709,7 @@ mod test {
         GovernanceV1 {
             account_type: GovernanceAccountType::GovernanceV1,
             realm: Pubkey::new_unique(),
-            governed_account: Pubkey::new_unique(),
+            governance_seed: Pubkey::new_unique(),
             proposals_count: 10,
             config: create_test_governance_config(),
         }

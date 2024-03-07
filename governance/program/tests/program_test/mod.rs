@@ -1468,12 +1468,12 @@ impl GovernanceProgramTest {
         governance_config: &GovernanceConfig,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let governed_account = Pubkey::new_unique();
+        let governance_seed = Pubkey::new_unique();
 
         let mut create_governance_ix = create_governance(
             &self.program_id,
             &realm_cookie.address,
-            Some(&governed_account),
+            &governance_seed,
             token_owner_record.unwrap_or(&Pubkey::new_unique()),
             &self.bench.payer.pubkey(),
             &create_authority.pubkey(),
@@ -1484,7 +1484,7 @@ impl GovernanceProgramTest {
         let account = GovernanceV2 {
             account_type: GovernanceAccountType::GovernanceV2,
             realm: realm_cookie.address,
-            governed_account,
+            governance_seed,
             config: governance_config.clone(),
             reserved1: 0,
             reserved_v2: Reserved119::default(),
@@ -1504,7 +1504,7 @@ impl GovernanceProgramTest {
             .await?;
 
         let governance_address =
-            get_governance_address(&self.program_id, &realm_cookie.address, &governed_account);
+            get_governance_address(&self.program_id, &realm_cookie.address, &governance_seed);
 
         Ok(GovernanceCookie {
             address: governance_address,
@@ -2384,7 +2384,7 @@ impl GovernanceProgramTest {
             .unwrap();
 
         let mut upgrade_ix = bpf_loader_upgradeable::upgrade(
-            &governance_cookie.account.governed_account,
+            &governance_cookie.account.governance_seed,
             &program_buffer_keypair.pubkey(),
             &governance_cookie.address,
             &governance_cookie.address,
