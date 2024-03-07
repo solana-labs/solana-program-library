@@ -22,7 +22,7 @@
     },
     "devDependencies": {
         "@solana/eslint-config-solana": "^3.0.0",
-        "@solana/prettier-config-solana": "^0.0.4",
+        "@solana/prettier-config-solana": "^0.0.5",
         "eslint-config-turbo": "^1.12.5",
         "turbo": "^1.12.5"
     },
