@@ -72,6 +72,6 @@
         "ts-node": "^10.9.2",
         "tslib": "^2.3.1",
         "typedoc": "^0.25.11",
-        "typescript": "^5.3.3"
+        "typescript": "^5.4.2"
     }
 }
