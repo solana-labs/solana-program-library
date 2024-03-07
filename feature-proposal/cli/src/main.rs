@@ -1,6 +1,6 @@
 #![allow(clippy::arithmetic_side_effects)]
 use {
-    chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc},
+    chrono::{DateTime, SecondsFormat, Utc},
     clap::{
         crate_description, crate_name, crate_version, value_t_or_exit, App, AppSettings, Arg,
         SubCommand,
@@ -249,11 +249,9 @@ fn get_feature_proposal(
 fn unix_timestamp_to_string(unix_timestamp: UnixTimestamp) -> String {
     format!(
         "{} (UnixTimestamp: {})",
-        match NaiveDateTime::from_timestamp_opt(unix_timestamp, 0) {
-            Some(ndt) => DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc)
-                .to_rfc3339_opts(SecondsFormat::Secs, true),
-            None => "unknown".to_string(),
-        },
+        DateTime::<Utc>::from_timestamp(unix_timestamp, 0)
+            .map(|x| x.to_rfc3339_opts(SecondsFormat::Secs, true))
+            .unwrap_or("unknown".to_string()),
         unix_timestamp,
     )
 }
