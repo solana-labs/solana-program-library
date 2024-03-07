@@ -67,7 +67,7 @@
     "@metaplex-foundation/rustbin": "^0.3.5",
     "@metaplex-foundation/solita": "0.20.1",
     "@project-serum/anchor": "^0.26.0",
-    "@solana/eslint-config-solana": "^1.0.2",
+    "@solana/eslint-config-solana": "^3.0.0",
     "@solana/prettier-config-solana": "^0.0.4",
     "@types/bn.js": "^5.1.0",
     "@types/jest": "^29.5.12",
