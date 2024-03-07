@@ -55,7 +55,7 @@
         "@solana/web3.js": "^1.90.1",
         "@types/chai": "^4.3.12",
         "@types/jest": "^29.5.12",
-        "@types/node": "^20.11.24",
+        "@types/node": "^20.11.25",
         "@types/node-fetch": "^2.6.11",
         "@typescript-eslint/eslint-plugin": "^7.1.1",
         "@typescript-eslint/parser": "^7.1.1",
