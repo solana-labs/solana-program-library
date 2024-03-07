@@ -35,7 +35,7 @@ when appropriate.
 
 ## Source
 The Feature Proposal Program's source is available on
-[github](https://github.com/solana-labs/solana-program-library)
+[GitHub](https://github.com/solana-labs/solana-program-library)
 
 ## Interface
 The Feature Proposal Program is written in Rust and available on [crates.io](https://crates.io/crates/spl-feature-proposal) and [docs.rs](https://docs.rs/spl-feature-proposal).

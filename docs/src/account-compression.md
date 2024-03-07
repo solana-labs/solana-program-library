@@ -28,7 +28,7 @@ The crux of this is the concurrent merkle tree and we shall learn about it in th
 ## Source
 
 The Account Compression Program's source is available on
-[github](https://github.com/solana-labs/solana-program-library).
+[GitHub](https://github.com/solana-labs/solana-program-library).
 
 
 ## Interface

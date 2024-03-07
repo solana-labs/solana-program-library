@@ -38,7 +38,7 @@ document are available at:
 ## Source
 
 The Associated Token Account Program's source is available on
-[github](https://github.com/solana-labs/solana-program-library).
+[GitHub](https://github.com/solana-labs/solana-program-library).
 
 
 ## Interface
