@@ -49,6 +49,9 @@ All of these scripts can be run against devnet, testnet, or mainnet-beta, but
 to allow for more experimentation, we will setup a local validator with some
 validator vote accounts using `setup-test-validator.sh`.
 
+> Note: When running locally, be sure to build and deploy the spl-stake-pool program
+> to your local validator as part of the setup. Uncomment [this line](https://github.com/solana-labs/solana-program-library/blob/c857fd81a3404d1507f5c408c4208384479f5e49/stake-pool/cli/scripts/setup-test-validator.sh#L21) when running locally. 
+
 The script accepts the number of vote accounts to create and file path to output
 validator vote accounts, e.g.:
 
