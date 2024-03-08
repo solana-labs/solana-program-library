@@ -412,19 +412,9 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
     },
 
-    /// Flags a transaction and its parent Proposal with error status
-    /// It can be used by Proposal owner in case the transaction is permanently
-    /// broken and can't be executed.
-    /// Note: This instruction is a workaround because currently it's not
-    /// possible to catch errors from CPI calls and the Governance program has
-    /// no way to know when instruction failed and flag it automatically.
-    ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[]` TokenOwnerRecord account of the Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance
-    ///      Delegate)
-    ///   3. `[writable]` ProposalTransaction account to flag
-    FlagTransactionError,
+    /// Legacy FlagTransactionError instruction
+    /// Exists for backwards-compatibility
+    Legacy5,
 
     /// Sets new Realm authority
     ///
@@ -1283,31 +1273,6 @@ pub fn set_governance_config(
     let accounts = vec![AccountMeta::new(*governance, true)];
 
     let instruction = GovernanceInstruction::SetGovernanceConfig { config };
-
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: borsh::to_vec(&instruction).unwrap(),
-    }
-}
-
-/// Creates FlagTransactionError instruction
-pub fn flag_transaction_error(
-    program_id: &Pubkey,
-    // Accounts
-    proposal: &Pubkey,
-    token_owner_record: &Pubkey,
-    governance_authority: &Pubkey,
-    proposal_transaction: &Pubkey,
-) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*proposal, false),
-        AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(*proposal_transaction, false),
-    ];
-
-    let instruction = GovernanceInstruction::FlagTransactionError {};
 
     Instruction {
         program_id: *program_id,

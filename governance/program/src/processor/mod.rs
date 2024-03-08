@@ -15,7 +15,7 @@ mod process_create_token_owner_record;
 mod process_deposit_governing_tokens;
 mod process_execute_transaction;
 mod process_finalize_vote;
-mod process_flag_transaction_error;
+
 mod process_insert_transaction;
 mod process_refund_proposal_deposit;
 mod process_relinquish_token_owner_record_locks;
@@ -48,7 +48,6 @@ use {
     process_deposit_governing_tokens::*,
     process_execute_transaction::*,
     process_finalize_vote::*,
-    process_flag_transaction_error::*,
     process_insert_transaction::*,
     process_refund_proposal_deposit::*,
     process_relinquish_token_owner_record_locks::*,
@@ -145,7 +144,8 @@ pub fn process_instruction(
         GovernanceInstruction::Legacy1
         | GovernanceInstruction::Legacy2
         | GovernanceInstruction::Legacy3
-        | GovernanceInstruction::Legacy4 => {
+        | GovernanceInstruction::Legacy4
+        | GovernanceInstruction::Legacy5 => {
             Err(GovernanceError::InstructionDeprecated.into()) // No-op
         }
         GovernanceInstruction::SignOffProposal {} => {
@@ -184,9 +184,6 @@ pub fn process_instruction(
             process_set_governance_config(program_id, accounts, config)
         }
 
-        GovernanceInstruction::FlagTransactionError {} => {
-            process_flag_transaction_error(program_id, accounts)
-        }
         GovernanceInstruction::SetRealmAuthority { action } => {
             process_set_realm_authority(program_id, accounts, action)
         }
