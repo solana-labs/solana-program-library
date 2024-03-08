@@ -297,9 +297,8 @@ pub struct ProposalInstructionV1 {
     /// Unique instruction index within it's parent Proposal
     pub instruction_index: u16,
 
-    /// Minimum waiting time in seconds for the instruction to be executed once
-    /// proposal is voted on
-    pub hold_up_time: u32,
+    /// Previously hold_up_time in versions < V4
+    pub legacy: u32,
 
     /// Instruction to execute
     /// The instruction will be signed by Governance PDA the Proposal belongs to

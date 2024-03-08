@@ -36,9 +36,9 @@ pub struct GovernanceConfig {
     /// able to create a proposal
     pub min_community_weight_to_create_proposal: u64,
 
-    /// Minimum waiting time in seconds for a transaction to be executed after
-    /// proposal is voted on
-    pub min_transaction_hold_up_time: u32,
+    /// The wait time in seconds before transactions can be executed after
+    /// proposal is successfully voted on
+    pub transactions_hold_up_time: u32,
 
     /// The base voting time in seconds for proposal to be open for voting
     /// Voting is unrestricted during the base voting time and any vote types
@@ -679,7 +679,7 @@ mod test {
         GovernanceConfig {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             min_community_weight_to_create_proposal: 5,
-            min_transaction_hold_up_time: 10,
+            transactions_hold_up_time: 10,
             voting_base_time: 5,
             community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),

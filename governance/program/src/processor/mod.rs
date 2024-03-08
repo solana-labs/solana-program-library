@@ -85,16 +85,15 @@ pub fn process_instruction(
     if let GovernanceInstruction::InsertTransaction {
         option_index,
         index,
-        hold_up_time,
+        legacy: _,
         instructions: _,
     } = instruction
     {
         // Do not dump instruction data into logs
         msg!(
-            "GOVERNANCE-INSTRUCTION: InsertInstruction {{option_index: {:?}, index: {:?}, hold_up_time: {:?} }}",
+            "GOVERNANCE-INSTRUCTION: InsertInstruction {{option_index: {:?}, index: {:?}}}",
             option_index,
             index,
-            hold_up_time
         );
     } else {
         msg!("GOVERNANCE-INSTRUCTION: {:?}", instruction);
@@ -162,16 +161,9 @@ pub fn process_instruction(
         GovernanceInstruction::InsertTransaction {
             option_index,
             index,
-            hold_up_time,
+            legacy: _,
             instructions,
-        } => process_insert_transaction(
-            program_id,
-            accounts,
-            option_index,
-            index,
-            hold_up_time,
-            instructions,
-        ),
+        } => process_insert_transaction(program_id, accounts, option_index, index, instructions),
 
         GovernanceInstruction::RemoveTransaction {} => {
             process_remove_transaction(program_id, accounts)

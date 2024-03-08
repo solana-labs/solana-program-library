@@ -128,9 +128,9 @@ pub enum GovernanceError {
     #[error("Invalid Transaction index")]
     InvalidTransactionIndex, // 527
 
-    /// Transaction hold up time is below the min specified by Governance
-    #[error("Transaction hold up time is below the min specified by Governance")]
-    TransactionHoldUpTimeBelowRequiredMin, // 528
+    /// Legacy TransactionHoldUpTimeBelowRequiredMin
+    #[error("Legacy3")]
+    Legacy3, // 528
 
     /// Transaction at the given index for the Proposal already exists
     #[error("Transaction at the given index for the Proposal already exists")]

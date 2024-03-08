@@ -430,7 +430,9 @@ async fn test_sign_off_proposal_with_required_signatory() {
         .unwrap();
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     governance_test
@@ -537,7 +539,9 @@ async fn test_partial_sign_off_proposal_with_two_governance_signatories() {
         .unwrap();
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie_2.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     governance_test
@@ -651,7 +655,9 @@ async fn test_repeat_sign_off_proposal_err() {
         .unwrap();
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     governance_test
@@ -700,7 +706,9 @@ async fn test_repeat_sign_off_proposal_err() {
         .unwrap();
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     governance_test
@@ -817,7 +825,9 @@ async fn test_sign_off_without_all_required_signatories_err() {
         .unwrap();
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     governance_test
@@ -866,7 +876,9 @@ async fn test_sign_off_without_all_required_signatories_err() {
         .unwrap();
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     governance_test

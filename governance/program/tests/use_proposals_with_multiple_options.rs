@@ -655,7 +655,6 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
             &token_owner_record_cookie1,
             0,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -667,7 +666,6 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
             &token_owner_record_cookie1,
             1,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -679,7 +677,6 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
             &token_owner_record_cookie1,
             2,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -761,7 +758,9 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie1.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     let mut proposal_account = governance_test
@@ -868,7 +867,6 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
             &token_owner_record_cookie1,
             0,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -880,7 +878,6 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
             &token_owner_record_cookie1,
             1,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -892,7 +889,6 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
             &token_owner_record_cookie1,
             2,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -933,7 +929,9 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie1.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     let proposal_account = governance_test
@@ -1270,7 +1268,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
             &token_owner_record_cookie1,
             0,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -1281,7 +1278,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
             &token_owner_record_cookie1,
             1,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -1292,7 +1288,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
             &token_owner_record_cookie1,
             2,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -1303,7 +1298,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
             &token_owner_record_cookie1,
             3,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -1384,7 +1378,9 @@ async fn test_vote_multi_weighted_choice_proposal_with_partial_success() {
         .unwrap();
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie1.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     let mut proposal_account = governance_test
@@ -1491,7 +1487,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
             &token_owner_record_cookie1,
             0,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -1502,7 +1497,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
             &token_owner_record_cookie1,
             1,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -1513,7 +1507,6 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
             &token_owner_record_cookie1,
             2,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -1579,7 +1572,9 @@ async fn test_vote_multi_weighted_choice_proposal_with_multi_success() {
         .unwrap();
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie1.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     let mut proposal_account = governance_test
@@ -1671,7 +1666,6 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
             &token_owner_record_cookie1,
             0,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -1683,7 +1677,6 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
             &token_owner_record_cookie1,
             1,
             Some(0),
-            None,
         )
         .await
         .unwrap();
@@ -1717,7 +1710,9 @@ async fn test_vote_multi_weighted_choice_proposal_executable_with_full_deny() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie1.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     let proposal_account = governance_test
