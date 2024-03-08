@@ -51,7 +51,8 @@ pub fn process_insert_transaction(
         return Err(GovernanceError::TransactionAlreadyExists.into());
     }
 
-    // Governance account is no longer used and it's deserialized only to validate the provided account
+    // Governance account is no longer used and it's deserialized only to validate
+    // the provided account
     let _governance_data = get_governance_data(program_id, governance_info)?;
 
     let mut proposal_data =
