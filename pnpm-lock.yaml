@@ -492,8 +492,8 @@ importers:
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939
       '@solana/codecs-numbers':
-        specifier: 2.0.0-experimental.9741939
-        version: 2.0.0-experimental.9741939
+        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/codecs-strings':
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939(fastestsmallesttextencoderdecoder@1.0.22)
@@ -647,8 +647,8 @@ importers:
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939
       '@solana/codecs-numbers':
-        specifier: 2.0.0-experimental.9741939
-        version: 2.0.0-experimental.9741939
+        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/codecs-strings':
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939(fastestsmallesttextencoderdecoder@1.0.22)
@@ -2389,6 +2389,13 @@ packages:
     resolution: {integrity: sha512-VXBvw8LZdGUJGuC33EFzvaUxCvgNtr9y9Td8zjK9wJDqKSzR0+G53CJv5K4AF25LUu8du8XHBK3VEz3YHl44nQ==}
     dependencies:
       '@solana/codecs-core': 2.0.0-experimental.9741939
+
+  /@solana/codecs-numbers@2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb:
+    resolution: {integrity: sha512-rYpFqYNZqWH45N+bJ40O7v5tejtd6eJLK8Z7NKEK3E46p8MXkK3AenCz5pN/c9bwWzdifCt5OIgtnvEVXbMnsg==}
+    dependencies:
+      '@solana/codecs-core': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+      '@solana/errors': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+    dev: false
 
   /@solana/codecs-strings@2.0.0-experimental.8618508(fastestsmallesttextencoderdecoder@1.0.22):
     resolution: {integrity: sha512-b2yhinr1+oe+JDmnnsV0641KQqqDG8AQ16Z/x7GVWO+AWHMpRlHWVXOq8U1yhPMA4VXxl7i+D+C6ql0VGFp0GA==}
