@@ -47,7 +47,7 @@
         "@solana/web3.js": "^1.90.1"
     },
     "dependencies": {
-        "@solana/codecs-core": "2.0.0-experimental.9741939",
+        "@solana/codecs-core": "2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb",
         "@solana/codecs-data-structures": "2.0.0-experimental.9741939",
         "@solana/codecs-numbers": "2.0.0-experimental.9741939",
         "@solana/codecs-strings": "2.0.0-experimental.9741939",

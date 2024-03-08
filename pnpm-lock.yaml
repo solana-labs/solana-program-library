@@ -641,8 +641,8 @@ importers:
   token-metadata/js:
     dependencies:
       '@solana/codecs-core':
-        specifier: 2.0.0-experimental.9741939
-        version: 2.0.0-experimental.9741939
+        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/codecs-data-structures':
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939
@@ -2361,6 +2361,12 @@ packages:
   /@solana/codecs-core@2.0.0-experimental.9741939:
     resolution: {integrity: sha512-7E51aEwLW+1ta6VWbEq0CbvwSUOcIwmaQCLpkOKsF6cwSNqE5GDv/jw9zKuiYOynlBFQO1Ws59a/hlb2wwwWKg==}
 
+  /@solana/codecs-core@2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb:
+    resolution: {integrity: sha512-g4UutMYkgbhA607ED7KXY/wIrkR1cH5Xx+I4x4gUIWHa3F3h2icnj3KszvCOsnpXl821a7LHdtmQWCrgrQIpsQ==}
+    dependencies:
+      '@solana/errors': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+    dev: false
+
   /@solana/codecs-data-structures@2.0.0-experimental.8618508:
     resolution: {integrity: sha512-sLpjL9sqzaDdkloBPV61Rht1tgaKq98BCtIKRuyscIrmVPu3wu0Bavk2n/QekmUzaTsj7K1pVSniM0YqCdnEBw==}
     dependencies:
@@ -2401,6 +2407,14 @@ packages:
       '@solana/codecs-core': 2.0.0-experimental.9741939
       '@solana/codecs-numbers': 2.0.0-experimental.9741939
       fastestsmallesttextencoderdecoder: 1.0.22
+
+  /@solana/errors@2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb:
+    resolution: {integrity: sha512-PqBVMviXnHao5dtpDOAp5HgRhIWFkP4Y5DCXMC2PWAS+ogFo4kDwdMTEl5eCBNL/m7irpgrxDfexMdvK8J4DuA==}
+    hasBin: true
+    dependencies:
+      chalk: 5.3.0
+      commander: 12.0.0
+    dev: false
 
   /@solana/eslint-config-solana@3.0.0(@typescript-eslint/eslint-plugin@6.21.0)(@typescript-eslint/parser@6.21.0)(eslint-plugin-jest@27.9.0)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@10.0.0)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.4.2):
     resolution: {integrity: sha512-K8qBl5LQRET4H0+JHEfawA5qB9bjkkgOUB0fUHJ6B8bPAvMkzfQ5f5U7udyFeDMH0LsJuL9XRUZuXU4h/l6HNw==}
@@ -3802,7 +3816,6 @@ packages:
   /chalk@5.3.0:
     resolution: {integrity: sha512-dLitG79d+GV1Nb/VYcCDFivJeK1hiukt9QjRNVOsUtTy1rR1YJsmpGGTZ3qJos+uw7WmWF4wUwBd9jxjocFC2w==}
     engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
-    dev: true
 
   /char-regex@1.0.2:
     resolution: {integrity: sha512-kWWXztvZ5SBQV+eRgKFeh8q5sLuZY2+8WUIzlxWVTg+oGwY14qylx1KbKzHd8P6ZYkAg0xyIDU9JMHhyJMZ1jw==}
@@ -3946,6 +3959,11 @@ packages:
     resolution: {integrity: sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==}
     engines: {node: '>=16'}
     dev: true
+
+  /commander@12.0.0:
+    resolution: {integrity: sha512-MwVNWlYjDTtOjX5PiD7o5pK0UrFU/OYgcJfjjK4RaHZETNtjJqrZa9Y9ds88+A+f+d5lv+561eZ+yCKoS3gbAA==}
+    engines: {node: '>=18'}
+    dev: false
 
   /commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
