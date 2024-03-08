@@ -214,6 +214,7 @@ pub enum TransactionExecutionStatus {
     Success,
 
     /// Transaction execution failed
+    /// Note: The field is not used any longer
     Error,
 }
 
