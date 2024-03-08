@@ -19,7 +19,7 @@ use {
             add_required_signatory, add_signatory, cancel_proposal, cast_vote, complete_proposal,
             create_governance, create_native_treasury, create_proposal, create_realm,
             create_token_owner_record, deposit_governing_tokens, execute_transaction,
-            finalize_vote, flag_transaction_error, insert_transaction, refund_proposal_deposit,
+            finalize_vote, insert_transaction, refund_proposal_deposit,
             relinquish_token_owner_record_locks, relinquish_vote, remove_required_signatory,
             remove_transaction, revoke_governing_tokens, set_governance_config,
             set_governance_delegate, set_realm_authority, set_realm_config, set_realm_config_item,
@@ -2738,28 +2738,6 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(&[execute_proposal_transaction_ix], None)
-            .await
-    }
-
-    #[allow(dead_code)]
-    pub async fn flag_transaction_error(
-        &mut self,
-        proposal_cookie: &ProposalCookie,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
-        proposal_transaction_cookie: &ProposalTransactionCookie,
-    ) -> Result<(), ProgramError> {
-        let governance_authority = token_owner_record_cookie.get_governance_authority();
-
-        let flag_transaction_error_ix = flag_transaction_error(
-            &self.program_id,
-            &proposal_cookie.address,
-            &proposal_cookie.account.token_owner_record,
-            &governance_authority.pubkey(),
-            &proposal_transaction_cookie.address,
-        );
-
-        self.bench
-            .process_transaction(&[flag_transaction_error_ix], Some(&[governance_authority]))
             .await
     }
 
