@@ -498,8 +498,8 @@ importers:
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939(fastestsmallesttextencoderdecoder@1.0.22)
       '@solana/options':
-        specifier: 2.0.0-experimental.9741939
-        version: 2.0.0-experimental.9741939
+        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/spl-type-length-value':
         specifier: 0.1.0
         version: link:../../libraries/type-length-value/js
@@ -653,8 +653,8 @@ importers:
         specifier: 2.0.0-experimental.9741939
         version: 2.0.0-experimental.9741939(fastestsmallesttextencoderdecoder@1.0.22)
       '@solana/options':
-        specifier: 2.0.0-experimental.9741939
-        version: 2.0.0-experimental.9741939
+        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/spl-type-length-value':
         specifier: 0.1.0
         version: link:../../libraries/type-length-value/js
@@ -2491,11 +2491,11 @@ packages:
       '@solana/codecs-core': 2.0.0-experimental.8618508
       '@solana/codecs-numbers': 2.0.0-experimental.8618508
 
-  /@solana/options@2.0.0-experimental.9741939:
-    resolution: {integrity: sha512-Fj76WDb+SWEEN3i0gEVQHGPHR2v54ECHILluQ5r18deLHjtZpD48a0dZepf0YcyAG7OHofkRdPxInZ3YYDuZeQ==}
+  /@solana/options@2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb:
+    resolution: {integrity: sha512-1DybB48GGbZgx/1NuAYriHKrMysVjbmqmXRdzjIVVQaWlx5ack2YE6qezurG/QS6A51JVZ7fBJdjLoZpUttM5w==}
     dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.9741939
-      '@solana/codecs-numbers': 2.0.0-experimental.9741939
+      '@solana/codecs-core': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+      '@solana/codecs-numbers': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
     dev: false
 
   /@solana/prettier-config-solana@0.0.5(prettier@3.2.5):
