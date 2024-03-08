@@ -9,11 +9,11 @@ import {
     getFieldCodec,
     getFieldConfig,
 } from '../src';
-import type { StructToDecoderTuple } from '@solana/codecs-data-structures';
 import { getBooleanDecoder, getBytesDecoder, getDataEnumCodec, getStructDecoder } from '@solana/codecs-data-structures';
 import { getStringDecoder } from '@solana/codecs-strings';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import { getU64Decoder } from '@solana/codecs-numbers';
+import type { Decoder } from '@solana/codecs-core';
 import type { Option } from '@solana/options';
 import { getOptionDecoder, some } from '@solana/options';
 import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
@@ -21,11 +21,10 @@ import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 function checkPackUnpack<T extends object>(
     instruction: TransactionInstruction,
     discriminator: Uint8Array,
-    layout: StructToDecoderTuple<T>,
+    decoder: Decoder<T>,
     values: T
 ) {
     expect(instruction.data.subarray(0, 8)).to.deep.equal(discriminator);
-    const decoder = getStructDecoder(layout);
     const unpacked = decoder.decode(instruction.data.subarray(8));
     expect(unpacked).to.deep.equal(values);
 }
@@ -53,11 +52,11 @@ describe('Token Metadata Instructions', () => {
                 uri,
             }),
             splDiscriminate('spl_token_metadata_interface:initialize_account'),
-            [
+            getStructDecoder([
                 ['name', getStringDecoder()],
                 ['symbol', getStringDecoder()],
                 ['uri', getStringDecoder()],
-            ],
+            ]),
             { name, symbol, uri }
         );
     });
@@ -74,10 +73,10 @@ describe('Token Metadata Instructions', () => {
                 value,
             }),
             splDiscriminate('spl_token_metadata_interface:updating_field'),
-            [
+            getStructDecoder([
                 ['key', getDataEnumCodec(getFieldCodec())],
                 ['value', getStringDecoder()],
-            ],
+            ]),
             { key: getFieldConfig(field), value }
         );
     });
@@ -94,10 +93,10 @@ describe('Token Metadata Instructions', () => {
                 value,
             }),
             splDiscriminate('spl_token_metadata_interface:updating_field'),
-            [
+            getStructDecoder([
                 ['key', getDataEnumCodec(getFieldCodec())],
                 ['value', getStringDecoder()],
-            ],
+            ]),
             { key: getFieldConfig(field), value }
         );
     });
@@ -112,10 +111,10 @@ describe('Token Metadata Instructions', () => {
                 idempotent: true,
             }),
             splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
-            [
+            getStructDecoder([
                 ['idempotent', getBooleanDecoder()],
                 ['key', getStringDecoder()],
-            ],
+            ]),
             { idempotent: true, key: 'MyTestField' }
         );
     });
@@ -130,7 +129,7 @@ describe('Token Metadata Instructions', () => {
                 newAuthority,
             }),
             splDiscriminate('spl_token_metadata_interface:update_the_authority'),
-            [['newAuthority', getBytesDecoder({ size: 32 })]],
+            getStructDecoder([['newAuthority', getBytesDecoder({ size: 32 })]]),
             { newAuthority: Uint8Array.from(newAuthority.toBuffer()) }
         );
     });
@@ -146,10 +145,10 @@ describe('Token Metadata Instructions', () => {
                 end: 10n,
             }),
             splDiscriminate('spl_token_metadata_interface:emitter'),
-            [
+            getStructDecoder([
                 ['start', getOptionDecoder(getU64Decoder())],
                 ['end', getOptionDecoder(getU64Decoder())],
-            ],
+            ]),
             { start, end }
         );
     });
