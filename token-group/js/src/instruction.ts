@@ -1,16 +1,11 @@
-import type { StructToEncoderTuple } from '@solana/codecs-data-structures';
+import type { Encoder } from '@solana/codecs-core';
 import type { PublicKey } from '@solana/web3.js';
 import { getBytesEncoder, getStructEncoder } from '@solana/codecs-data-structures';
 import { getU32Encoder } from '@solana/codecs-numbers';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import { TransactionInstruction } from '@solana/web3.js';
 
-function packInstruction<T extends object>(
-    layout: StructToEncoderTuple<T>,
-    discriminator: Uint8Array,
-    values: T
-): Buffer {
-    const encoder = getStructEncoder(layout);
+function packInstruction<T extends object>(encoder: Encoder<T>, discriminator: Uint8Array, values: T): Buffer {
     const data = encoder.encode(values);
     return Buffer.concat([discriminator, data]);
 }
@@ -42,10 +37,10 @@ export function createInitializeGroupInstruction(args: InitializeGroupInstructio
             { isSigner: true, isWritable: false, pubkey: mintAuthority },
         ],
         data: packInstruction(
-            [
+            getStructEncoder([
                 ['updateAuthority', getBytesEncoder({ size: 32 })],
                 ['maxSize', getU32Encoder()],
-            ],
+            ]),
             splDiscriminate('spl_token_group_interface:initialize_token_group'),
             { updateAuthority: updateAuthorityBuffer, maxSize }
         ),
@@ -68,7 +63,7 @@ export function createUpdateGroupMaxSizeInstruction(args: UpdateGroupMaxSize): T
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
         data: packInstruction(
-            [['maxSize', getU32Encoder()]],
+            getStructEncoder([['maxSize', getU32Encoder()]]),
             splDiscriminate('spl_token_group_interface:update_group_max_size'),
             { maxSize }
         ),
@@ -99,7 +94,7 @@ export function createUpdateGroupAuthorityInstruction(args: UpdateGroupAuthority
             { isSigner: true, isWritable: false, pubkey: currentAuthority },
         ],
         data: packInstruction(
-            [['newAuthority', getBytesEncoder({ size: 32 })]],
+            getStructEncoder([['newAuthority', getBytesEncoder({ size: 32 })]]),
             splDiscriminate('spl_token_group_interface:update_authority'),
             { newAuthority: newAuthorityBuffer }
         ),
@@ -127,6 +122,6 @@ export function createInitializeMemberInstruction(args: InitializeMember): Trans
             { isSigner: false, isWritable: true, pubkey: group },
             { isSigner: true, isWritable: false, pubkey: groupUpdateAuthority },
         ],
-        data: packInstruction([], splDiscriminate('spl_token_group_interface:initialize_member'), {}),
+        data: packInstruction(getStructEncoder([]), splDiscriminate('spl_token_group_interface:initialize_member'), {}),
     });
 }

@@ -1,4 +1,4 @@
-import type { StructToEncoderTuple } from '@solana/codecs-data-structures';
+import type { Encoder } from '@solana/codecs-core';
 import { getBooleanEncoder, getBytesEncoder, getDataEnumCodec, getStructEncoder } from '@solana/codecs-data-structures';
 import { getU64Encoder } from '@solana/codecs-numbers';
 import { getStringEncoder } from '@solana/codecs-strings';
@@ -10,12 +10,7 @@ import { TransactionInstruction } from '@solana/web3.js';
 import type { Field } from './field.js';
 import { getFieldCodec, getFieldConfig } from './field.js';
 
-function packInstruction<T extends object>(
-    layout: StructToEncoderTuple<T>,
-    discriminator: Uint8Array,
-    values: T
-): Buffer {
-    const encoder = getStructEncoder(layout);
+function packInstruction<T extends object>(encoder: Encoder<T>, discriminator: Uint8Array, values: T): Buffer {
     const data = encoder.encode(values);
     return Buffer.concat([discriminator, data]);
 }
@@ -49,11 +44,11 @@ export function createInitializeInstruction(args: InitializeInstructionArgs): Tr
             { isSigner: true, isWritable: false, pubkey: mintAuthority },
         ],
         data: packInstruction(
-            [
+            getStructEncoder([
                 ['name', getStringEncoder()],
                 ['symbol', getStringEncoder()],
                 ['uri', getStringEncoder()],
-            ],
+            ]),
             splDiscriminate('spl_token_metadata_interface:initialize_account'),
             { name, symbol, uri }
         ),
@@ -81,10 +76,10 @@ export function createUpdateFieldInstruction(args: UpdateFieldInstruction): Tran
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
         data: packInstruction(
-            [
+            getStructEncoder([
                 ['field', getDataEnumCodec(getFieldCodec())],
                 ['value', getStringEncoder()],
-            ],
+            ]),
             splDiscriminate('spl_token_metadata_interface:updating_field'),
             { field: getFieldConfig(field), value }
         ),
@@ -108,10 +103,10 @@ export function createRemoveKeyInstruction(args: RemoveKeyInstructionArgs) {
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
         data: packInstruction(
-            [
+            getStructEncoder([
                 ['idempotent', getBooleanEncoder()],
                 ['key', getStringEncoder()],
-            ],
+            ]),
             splDiscriminate('spl_token_metadata_interface:remove_key_ix'),
             { idempotent, key }
         ),
@@ -142,7 +137,7 @@ export function createUpdateAuthorityInstruction(args: UpdateAuthorityInstructio
             { isSigner: true, isWritable: false, pubkey: oldAuthority },
         ],
         data: packInstruction(
-            [['newAuthority', getBytesEncoder({ size: 32 })]],
+            getStructEncoder([['newAuthority', getBytesEncoder({ size: 32 })]]),
             splDiscriminate('spl_token_metadata_interface:update_the_authority'),
             { newAuthority: newAuthorityBuffer }
         ),
@@ -162,10 +157,10 @@ export function createEmitInstruction(args: EmitInstructionArgs): TransactionIns
         programId,
         keys: [{ isSigner: false, isWritable: false, pubkey: metadata }],
         data: packInstruction(
-            [
+            getStructEncoder([
                 ['start', getOptionEncoder(getU64Encoder())],
                 ['end', getOptionEncoder(getU64Encoder())],
-            ],
+            ]),
             splDiscriminate('spl_token_metadata_interface:emitter'),
             { start: start ?? null, end: end ?? null }
         ),
