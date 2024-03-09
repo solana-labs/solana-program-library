@@ -286,7 +286,7 @@ pub trait MintArgs {
     fn mint_args(self) -> Self;
 }
 
-impl MintArgs for App<'_, '_> {
+impl MintArgs for App<'_> {
     fn mint_args(self) -> Self {
         self.arg(mint_address_arg().requires(MINT_DECIMALS_ARG.name))
             .arg(mint_decimals_arg().requires(MINT_ADDRESS_ARG.name))
@@ -419,7 +419,7 @@ pub(crate) trait BenchSubCommand {
     fn bench_subcommand(self) -> Self;
 }
 
-impl BenchSubCommand for App<'_, '_> {
+impl BenchSubCommand for App<'_> {
     fn bench_subcommand(self) -> Self {
         self.subcommand(
             SubCommand::with_name("bench")
@@ -560,7 +560,7 @@ pub fn app<'a, 'b>(
     default_decimals: &'a str,
     minimum_signers_help: &'b str,
     multisig_member_help: &'b str,
-) -> App<'a, 'b> {
+) -> App<'a> {
     App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
