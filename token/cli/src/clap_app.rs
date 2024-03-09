@@ -238,7 +238,7 @@ impl TryFrom<CliAuthorityType> for AuthorityType {
     }
 }
 
-pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn owner_address_arg<'a, 'b>() -> Arg<'a> {
     Arg::with_name(OWNER_ADDRESS_ARG.name)
         .long(OWNER_ADDRESS_ARG.long)
         .takes_value(true)
@@ -247,7 +247,7 @@ pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help(OWNER_ADDRESS_ARG.help)
 }
 
-pub fn owner_keypair_arg_with_value_name<'a, 'b>(value_name: &'static str) -> Arg<'a, 'b> {
+pub fn owner_keypair_arg_with_value_name<'a, 'b>(value_name: &'static str) -> Arg<'a> {
     Arg::with_name(OWNER_KEYPAIR_ARG.name)
         .long(OWNER_KEYPAIR_ARG.long)
         .takes_value(true)
@@ -256,11 +256,11 @@ pub fn owner_keypair_arg_with_value_name<'a, 'b>(value_name: &'static str) -> Ar
         .help(OWNER_KEYPAIR_ARG.help)
 }
 
-pub fn owner_keypair_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn owner_keypair_arg<'a, 'b>() -> Arg<'a> {
     owner_keypair_arg_with_value_name("OWNER_KEYPAIR")
 }
 
-pub fn mint_address_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn mint_address_arg<'a, 'b>() -> Arg<'a> {
     Arg::with_name(MINT_ADDRESS_ARG.name)
         .long(MINT_ADDRESS_ARG.long)
         .takes_value(true)
@@ -273,7 +273,7 @@ fn is_mint_decimals(string: String) -> Result<(), String> {
     is_parsable::<u8>(string)
 }
 
-pub fn mint_decimals_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn mint_decimals_arg<'a, 'b>() -> Arg<'a> {
     Arg::with_name(MINT_DECIMALS_ARG.name)
         .long(MINT_DECIMALS_ARG.long)
         .takes_value(true)
@@ -293,7 +293,7 @@ impl MintArgs for App<'_, '_> {
     }
 }
 
-pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn delegate_address_arg<'a, 'b>() -> Arg<'a> {
     Arg::with_name(DELEGATE_ADDRESS_ARG.name)
         .long(DELEGATE_ADDRESS_ARG.long)
         .takes_value(true)
@@ -302,7 +302,7 @@ pub fn delegate_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help(DELEGATE_ADDRESS_ARG.help)
 }
 
-pub fn transfer_lamports_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn transfer_lamports_arg<'a, 'b>() -> Arg<'a> {
     Arg::with_name(TRANSFER_LAMPORTS_ARG.name)
         .long(TRANSFER_LAMPORTS_ARG.long)
         .takes_value(true)
@@ -311,7 +311,7 @@ pub fn transfer_lamports_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help(TRANSFER_LAMPORTS_ARG.help)
 }
 
-pub fn multisig_signer_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn multisig_signer_arg<'a, 'b>() -> Arg<'a> {
     Arg::with_name(MULTISIG_SIGNER_ARG.name)
         .long(MULTISIG_SIGNER_ARG.long)
         .validator(is_valid_signer)
@@ -353,50 +353,50 @@ where
 
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
-    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
     }
-    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name, MINT_DECIMALS_ARG.name])
     }
 }
 
 struct SignOnlyNeedsMintDecimals {}
 impl offline::ArgsConfig for SignOnlyNeedsMintDecimals {
-    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_DECIMALS_ARG.name])
     }
-    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_DECIMALS_ARG.name])
     }
 }
 
 struct SignOnlyNeedsMintAddress {}
 impl offline::ArgsConfig for SignOnlyNeedsMintAddress {
-    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name])
     }
-    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[MINT_ADDRESS_ARG.name])
     }
 }
 
 struct SignOnlyNeedsDelegateAddress {}
 impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
-    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
     }
-    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[DELEGATE_ADDRESS_ARG.name])
     }
 }
 
 struct SignOnlyNeedsTransferLamports {}
 impl offline::ArgsConfig for SignOnlyNeedsTransferLamports {
-    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[TRANSFER_LAMPORTS_ARG.name])
     }
-    fn signer_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
+    fn signer_arg<'a, 'b>(&self, arg: Arg<'a>) -> Arg<'a> {
         arg.requires_all(&[TRANSFER_LAMPORTS_ARG.name])
     }
 }
