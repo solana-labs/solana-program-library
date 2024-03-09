@@ -30,7 +30,7 @@ pub(crate) async fn bench_process_command(
     assert!(!config.sign_only);
 
     match matches.subcommand() {
-        ("create-accounts", Some(arg_matches)) => {
+        Some(("create-accounts", arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -42,7 +42,7 @@ pub(crate) async fn bench_process_command(
 
             command_create_accounts(config, signers, &token, n, &owner).await?;
         }
-        ("close-accounts", Some(arg_matches)) => {
+        Some(("close-accounts", arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -53,7 +53,7 @@ pub(crate) async fn bench_process_command(
 
             command_close_accounts(config, signers, &token, n, &owner).await?;
         }
-        ("deposit-into", Some(arg_matches)) => {
+        Some(("deposit-into", arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
@@ -68,7 +68,7 @@ pub(crate) async fn bench_process_command(
             )
             .await?;
         }
-        ("withdraw-from", Some(arg_matches)) => {
+        Some(("withdraw-from", arg_matches)) => {
             let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
                 .unwrap()
                 .unwrap();
