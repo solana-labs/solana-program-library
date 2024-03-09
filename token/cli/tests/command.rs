@@ -3402,9 +3402,9 @@ async fn metadata_pointer(test_validator: &TestValidator, payer: &Keypair) {
     )
     .await;
 
-    let new_account_disbale = config.rpc_client.get_account(&mint).await.unwrap();
+    let new_account_disable = config.rpc_client.get_account(&mint).await.unwrap();
     let new_mint_state_disable =
-        StateWithExtensionsOwned::<Mint>::unpack(new_account_disbale.data).unwrap();
+        StateWithExtensionsOwned::<Mint>::unpack(new_account_disable.data).unwrap();
 
     let new_extension_disable = new_mint_state_disable
         .get_extension::<MetadataPointer>()
@@ -3485,9 +3485,9 @@ async fn group_pointer(test_validator: &TestValidator, payer: &Keypair) {
     .await
     .unwrap();
 
-    let new_account_disbale = config.rpc_client.get_account(&mint).await.unwrap();
+    let new_account_disable = config.rpc_client.get_account(&mint).await.unwrap();
     let new_mint_state_disable =
-        StateWithExtensionsOwned::<Mint>::unpack(new_account_disbale.data).unwrap();
+        StateWithExtensionsOwned::<Mint>::unpack(new_account_disable.data).unwrap();
 
     let new_extension_disable = new_mint_state_disable
         .get_extension::<GroupPointer>()
@@ -3570,9 +3570,9 @@ async fn group_member_pointer(test_validator: &TestValidator, payer: &Keypair) {
     )
     .await;
 
-    let new_account_disbale = config.rpc_client.get_account(&mint).await.unwrap();
+    let new_account_disable = config.rpc_client.get_account(&mint).await.unwrap();
     let new_mint_state_disable =
-        StateWithExtensionsOwned::<Mint>::unpack(new_account_disbale.data).unwrap();
+        StateWithExtensionsOwned::<Mint>::unpack(new_account_disable.data).unwrap();
 
     let new_extension_disable = new_mint_state_disable
         .get_extension::<GroupMemberPointer>()

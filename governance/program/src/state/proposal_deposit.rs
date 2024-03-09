@@ -20,7 +20,7 @@ pub struct ProposalDeposit {
     /// The Proposal the deposit belongs to
     pub proposal: Pubkey,
 
-    /// The account which payed for the deposit
+    /// The account which paid for the deposit
     pub deposit_payer: Pubkey,
 
     /// Reserved

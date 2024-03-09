@@ -380,12 +380,12 @@ impl GovernanceV2 {
     /// Returns the required deposit amount for creating Nth Proposal based on
     /// the number of active proposals where N equals to
     /// active_proposal_count - deposit_exempt_proposal_count The deposit is
-    /// not payed unless there are more active Proposal than the exempt amount
+    /// not paid unless there are more active Proposal than the exempt amount
     ///
-    /// Note: The exact deposit payed for Nth Proposal is
+    /// Note: The exact deposit paid for Nth Proposal is
     /// N*SECURITY_DEPOSIT_BASE_LAMPORTS + min_rent_for(ProposalDeposit)
     ///
-    /// Note: Although the deposit amount payed for Nth proposal is linear the
+    /// Note: Although the deposit amount paid for Nth proposal is linear the
     /// total deposit amount required to create N proposals is sum of arithmetic
     /// series Dn = N*r + d*N*(N+1)/2
     // where:
