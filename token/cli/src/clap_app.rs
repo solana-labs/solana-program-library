@@ -1569,7 +1569,6 @@ pub fn app<'a>(
                 )
                 .arg(
                     Arg::with_name("wallet_keypair")
-                        .alias("owner")
                         .value_name("KEYPAIR")
                         .validator(|s| is_valid_signer(s))
                         .takes_value(true)
@@ -1667,7 +1666,6 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("close_authority")
                         .long("close-authority")
-                        .alias("owner")
                         .value_name("KEYPAIR")
                         .validator(|s| is_valid_signer(s))
                         .takes_value(true)
@@ -2193,7 +2191,6 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("withdraw_withheld_authority")
                         .long("withdraw-withheld-authority")
-                        .alias("owner")
                         .value_name("KEYPAIR")
                         .validator(|s| is_valid_signer(s))
                         .takes_value(true)
