@@ -2408,7 +2408,6 @@ pub fn app<'a>(
                 .about("Configure confidential transfers for token account")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2450,7 +2449,6 @@ pub fn app<'a>(
                 for the first time, use `configure-confidential-transfer-account` instead.")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2479,7 +2477,6 @@ pub fn app<'a>(
                 .about("Disable confidential transfers for token account")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2508,7 +2505,6 @@ pub fn app<'a>(
                 .about("Enable non-confidential transfers for token account.")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2537,7 +2533,6 @@ pub fn app<'a>(
                 .about("Disable non-confidential transfers for token account")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2566,7 +2561,6 @@ pub fn app<'a>(
                 .about("Deposit amounts for confidential transfers")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2604,7 +2598,6 @@ pub fn app<'a>(
                 .about("Withdraw amounts for confidential transfers")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -2642,7 +2635,6 @@ pub fn app<'a>(
                 .about("Collect confidential tokens from pending to available balance")
                 .arg(
                     Arg::with_name("token")
-                        .long("token")
                         .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
