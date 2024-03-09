@@ -15,7 +15,7 @@ use {
         parse_token::{get_token_account_mint, parse_token, TokenAccountType, UiAccountState},
         UiAccountData,
     },
-    solana_clap_utils::{
+    solana_clap_v3_utils::{
         input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, value_of},
         keypair::signer_from_path,
     },

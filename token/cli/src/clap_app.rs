@@ -2,7 +2,7 @@ use {
     clap::{
         crate_description, crate_name, crate_version, App, AppSettings, Arg, ArgGroup, SubCommand,
     },
-    solana_clap_utils::{
+    solana_clap_v3_utils::{
         fee_payer::fee_payer_arg,
         input_validators::{
             is_amount, is_amount_or_all, is_parsable, is_pubkey, is_url_or_moniker,
