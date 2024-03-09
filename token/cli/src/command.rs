@@ -4091,7 +4091,7 @@ pub async fn process_command<'a>(
             match config.output_format {
                 OutputFormat::Json | OutputFormat::JsonCompact => {
                     eprintln!(
-                        "`spl-token gc` does not support the `--ouput` parameter at this time"
+                        "`spl-token gc` does not support the `--output` parameter at this time"
                     );
                     exit(1);
                 }

@@ -36,7 +36,7 @@ pub enum ConcurrentMerkleTreeError {
     #[error("This tree's current leaf value does not match the supplied proof's leaf value")]
     LeafContentsModified,
 
-    /// Tree has at least 1 non-EMTPY leaf
+    /// Tree has at least 1 non-EMPTY leaf
     #[error("Tree is not empty")]
     TreeNonEmpty,
 }
