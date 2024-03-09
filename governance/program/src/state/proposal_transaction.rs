@@ -97,9 +97,8 @@ pub struct ProposalTransactionV2 {
     /// Unique transaction index within it's parent Proposal
     pub transaction_index: u16,
 
-    /// Minimum waiting time in seconds for the  instruction to be executed once
-    /// proposal is voted on
-    pub hold_up_time: u32,
+    /// Previously hold_up_time in versions < V4
+    pub legacy: u32,
 
     /// Instructions to execute
     /// The instructions will be signed by Governance PDA the Proposal belongs
@@ -160,7 +159,7 @@ impl ProposalTransactionV2 {
                 account_type: self.account_type,
                 proposal: self.proposal,
                 instruction_index: self.transaction_index,
-                hold_up_time: self.hold_up_time,
+                legacy: self.legacy,
                 instruction: self.instructions[0].clone(),
                 executed_at: self.executed_at,
                 execution_status: self.execution_status,
@@ -223,7 +222,7 @@ pub fn get_proposal_transaction_data(
             proposal: proposal_transaction_data_v1.proposal,
             option_index: 0, // V1 has a single implied option at index 0
             transaction_index: proposal_transaction_data_v1.instruction_index,
-            hold_up_time: proposal_transaction_data_v1.hold_up_time,
+            legacy: proposal_transaction_data_v1.legacy,
             instructions: vec![proposal_transaction_data_v1.instruction],
             executed_at: proposal_transaction_data_v1.executed_at,
             execution_status: proposal_transaction_data_v1.execution_status,
@@ -287,7 +286,7 @@ mod test {
             proposal: Pubkey::new_unique(),
             option_index: 0,
             transaction_index: 1,
-            hold_up_time: 10,
+            legacy: 0,
             instructions: create_test_instruction_data(),
             executed_at: Some(100),
             execution_status: TransactionExecutionStatus::Success,
@@ -367,7 +366,7 @@ mod test {
             account_type: GovernanceAccountType::ProposalInstructionV1,
             proposal: Pubkey::new_unique(),
             instruction_index: 1,
-            hold_up_time: 120,
+            legacy: 0,
             instruction: create_test_instruction_data()[0].clone(),
             executed_at: Some(155),
             execution_status: TransactionExecutionStatus::Success,

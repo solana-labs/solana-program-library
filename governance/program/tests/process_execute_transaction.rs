@@ -56,7 +56,6 @@ async fn test_execute_mint_transaction() {
             &token_owner_record_cookie,
             0,
             None,
-            None,
         )
         .await
         .unwrap();
@@ -73,7 +72,9 @@ async fn test_execute_mint_transaction() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     let clock = governance_test.bench.get_clock().await;
@@ -175,7 +176,9 @@ async fn test_execute_transfer_transaction() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     let clock = governance_test.bench.get_clock().await;
@@ -280,7 +283,9 @@ async fn test_execute_upgrade_program_transaction() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     // Ensure we can invoke the governed program before upgrade
@@ -402,7 +407,6 @@ async fn test_execute_proposal_transaction_with_invalid_state_errors() {
             &token_owner_record_cookie,
             0,
             None,
-            None,
         )
         .await
         .unwrap();
@@ -488,7 +492,9 @@ async fn test_execute_proposal_transaction_with_invalid_state_errors() {
     // Arrange
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     // Act
@@ -563,7 +569,6 @@ async fn test_execute_proposal_transaction_for_other_proposal_error() {
             &token_owner_record_cookie,
             0,
             None,
-            None,
         )
         .await
         .unwrap();
@@ -581,7 +586,9 @@ async fn test_execute_proposal_transaction_for_other_proposal_error() {
     // Advance clock past hold_up_time
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     let token_owner_record_cookie2 = governance_test
@@ -650,7 +657,6 @@ async fn test_execute_mint_transaction_twice_error() {
             &token_owner_record_cookie,
             0,
             None,
-            None,
         )
         .await
         .unwrap();
@@ -673,7 +679,9 @@ async fn test_execute_mint_transaction_twice_error() {
     // Advance clock past hold_up_time
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     governance_test
@@ -708,7 +716,7 @@ async fn test_execute_transaction_with_create_proposal_and_execute_in_single_slo
         .unwrap();
 
     let mut governance_config = governance_test.get_default_governance_config();
-    governance_config.min_transaction_hold_up_time = 0;
+    governance_config.transactions_hold_up_time = 0;
 
     let mut governance_cookie = governance_test
         .with_governance_using_config(
@@ -742,7 +750,6 @@ async fn test_execute_transaction_with_create_proposal_and_execute_in_single_slo
             &token_owner_record_cookie,
             0,
             None,
-            Some(0),
         )
         .await
         .unwrap();

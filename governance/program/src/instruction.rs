@@ -260,9 +260,8 @@ pub enum GovernanceInstruction {
         /// Transaction index to be inserted at.
         index: u16,
         #[allow(dead_code)]
-        /// Waiting time (in seconds) between vote period ending and this being
-        /// eligible for execution
-        hold_up_time: u32,
+        /// Legacy hold_up_time
+        legacy: u32,
 
         #[allow(dead_code)]
         /// Instructions Data
@@ -1172,7 +1171,6 @@ pub fn insert_transaction(
     // Args
     option_index: u8,
     index: u16,
-    hold_up_time: u32,
     instructions: Vec<InstructionData>,
 ) -> Instruction {
     let proposal_transaction_address = get_proposal_transaction_address(
@@ -1196,7 +1194,7 @@ pub fn insert_transaction(
     let instruction = GovernanceInstruction::InsertTransaction {
         option_index,
         index,
-        hold_up_time,
+        legacy: 0,
         instructions,
     };
 

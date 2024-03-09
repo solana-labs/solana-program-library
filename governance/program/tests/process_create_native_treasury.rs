@@ -98,7 +98,9 @@ async fn test_execute_transfer_from_native_treasury() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     // Act

@@ -70,7 +70,9 @@ async fn test_set_governance_config() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     // Act
@@ -203,7 +205,6 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
             0,
             None,
             &mut set_governance_config_ix,
-            None,
         )
         .await
         .unwrap();
@@ -220,7 +221,9 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     // Act

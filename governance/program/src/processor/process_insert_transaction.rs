@@ -30,7 +30,6 @@ pub fn process_insert_transaction(
     accounts: &[AccountInfo],
     option_index: u8,
     instruction_index: u16,
-    hold_up_time: u32,
     instructions: Vec<InstructionData>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -52,11 +51,9 @@ pub fn process_insert_transaction(
         return Err(GovernanceError::TransactionAlreadyExists.into());
     }
 
-    let governance_data = get_governance_data(program_id, governance_info)?;
-
-    if hold_up_time < governance_data.config.min_transaction_hold_up_time {
-        return Err(GovernanceError::TransactionHoldUpTimeBelowRequiredMin.into());
-    }
+    // Governance account is no longer used and it's deserialized only to validate
+    // the provided account
+    let _governance_data = get_governance_data(program_id, governance_info)?;
 
     let mut proposal_data =
         get_proposal_data_for_governance(program_id, proposal_info, governance_info.key)?;
@@ -90,7 +87,7 @@ pub fn process_insert_transaction(
         account_type: GovernanceAccountType::ProposalTransactionV2,
         option_index,
         transaction_index: instruction_index,
-        hold_up_time,
+        legacy: 0,
         instructions,
         executed_at: None,
         execution_status: TransactionExecutionStatus::None,

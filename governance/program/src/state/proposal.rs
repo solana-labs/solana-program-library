@@ -840,6 +840,7 @@ impl ProposalV2 {
     pub fn assert_can_execute_transaction(
         &self,
         proposal_transaction_data: &ProposalTransactionV2,
+        governance_config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         match self.state {
@@ -866,7 +867,7 @@ impl ProposalV2 {
         if self
             .voting_completed_at
             .unwrap()
-            .checked_add(proposal_transaction_data.hold_up_time as i64)
+            .checked_add(governance_config.transactions_hold_up_time as i64)
             .unwrap()
             >= current_unix_timestamp
         {
@@ -1355,7 +1356,7 @@ mod test {
         GovernanceConfig {
             community_vote_threshold: VoteThreshold::YesVotePercentage(60),
             min_community_weight_to_create_proposal: 5,
-            min_transaction_hold_up_time: 10,
+            transactions_hold_up_time: 10,
             voting_base_time: 5,
             community_vote_tipping: VoteTipping::Strict,
             council_vote_threshold: VoteThreshold::YesVotePercentage(60),

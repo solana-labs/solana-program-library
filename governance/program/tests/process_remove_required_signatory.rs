@@ -65,7 +65,9 @@ async fn test_remove_required_signatory() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     // Act
@@ -146,7 +148,9 @@ async fn test_remove_non_existing_required_signatory_err() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     // Act

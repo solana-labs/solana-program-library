@@ -174,45 +174,6 @@ async fn test_insert_transaction_with_proposal_transaction_already_exists_error(
 }
 
 #[tokio::test]
-async fn test_insert_transaction_with_invalid_hold_up_time_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-
-    let realm_cookie = governance_test.with_realm().await;
-
-    let mut config = governance_test.get_default_governance_config();
-
-    config.min_transaction_hold_up_time = 100;
-
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
-
-    let mut governance_cookie = governance_test
-        .with_governance_using_config(&realm_cookie, &token_owner_record_cookie, &config)
-        .await
-        .unwrap();
-
-    let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
-        .await
-        .unwrap();
-
-    // Act
-    let err = governance_test
-        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
-        .await
-        .err()
-        .unwrap();
-
-    // Assert
-    assert_eq!(
-        err,
-        GovernanceError::TransactionHoldUpTimeBelowRequiredMin.into()
-    );
-}
-#[tokio::test]
 async fn test_insert_transaction_with_not_editable_proposal_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;

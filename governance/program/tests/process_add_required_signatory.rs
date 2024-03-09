@@ -59,7 +59,9 @@ async fn test_add_required_signatory() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     // Act
@@ -126,7 +128,9 @@ pub async fn add_same_required_signatory_to_governance_twice_err() {
         .unwrap();
 
     governance_test
-        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(
+            governance_cookie.account.config.transactions_hold_up_time as u64,
+        )
         .await;
 
     // Act
