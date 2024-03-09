@@ -240,34 +240,34 @@ impl TryFrom<CliAuthorityType> for AuthorityType {
     }
 }
 
-pub fn owner_address_arg<'a, 'b>() -> Arg<'a> {
+pub fn owner_address_arg<'a>() -> Arg<'a> {
     Arg::with_name(OWNER_ADDRESS_ARG.name)
         .long(OWNER_ADDRESS_ARG.long)
         .takes_value(true)
         .value_name("OWNER_ADDRESS")
-        .validator(is_valid_pubkey)
+        .validator(|s| is_valid_pubkey(s))
         .help(OWNER_ADDRESS_ARG.help)
 }
 
-pub fn owner_keypair_arg_with_value_name<'a, 'b>(value_name: &'static str) -> Arg<'a> {
+pub fn owner_keypair_arg_with_value_name<'a>(value_name: &'static str) -> Arg<'a> {
     Arg::with_name(OWNER_KEYPAIR_ARG.name)
         .long(OWNER_KEYPAIR_ARG.long)
         .takes_value(true)
         .value_name(value_name)
-        .validator(is_valid_signer)
+        .validator(|s| is_valid_signer(s))
         .help(OWNER_KEYPAIR_ARG.help)
 }
 
-pub fn owner_keypair_arg<'a, 'b>() -> Arg<'a> {
+pub fn owner_keypair_arg<'a>() -> Arg<'a> {
     owner_keypair_arg_with_value_name("OWNER_KEYPAIR")
 }
 
-pub fn mint_address_arg<'a, 'b>() -> Arg<'a> {
+pub fn mint_address_arg<'a>() -> Arg<'a> {
     Arg::with_name(MINT_ADDRESS_ARG.name)
         .long(MINT_ADDRESS_ARG.long)
         .takes_value(true)
         .value_name("MINT_ADDRESS")
-        .validator(is_valid_pubkey)
+        .validator(|s| is_valid_pubkey(s))
         .help(MINT_ADDRESS_ARG.help)
 }
 
@@ -275,7 +275,7 @@ fn is_mint_decimals(string: &str) -> Result<(), String> {
     is_parsable::<u8>(string)
 }
 
-pub fn mint_decimals_arg<'a, 'b>() -> Arg<'a> {
+pub fn mint_decimals_arg<'a>() -> Arg<'a> {
     Arg::with_name(MINT_DECIMALS_ARG.name)
         .long(MINT_DECIMALS_ARG.long)
         .takes_value(true)
@@ -295,28 +295,28 @@ impl MintArgs for App<'_> {
     }
 }
 
-pub fn delegate_address_arg<'a, 'b>() -> Arg<'a> {
+pub fn delegate_address_arg<'a>() -> Arg<'a> {
     Arg::with_name(DELEGATE_ADDRESS_ARG.name)
         .long(DELEGATE_ADDRESS_ARG.long)
         .takes_value(true)
         .value_name("DELEGATE_ADDRESS")
-        .validator(is_valid_pubkey)
+        .validator(|s| is_valid_pubkey(s))
         .help(DELEGATE_ADDRESS_ARG.help)
 }
 
-pub fn transfer_lamports_arg<'a, 'b>() -> Arg<'a> {
+pub fn transfer_lamports_arg<'a>() -> Arg<'a> {
     Arg::with_name(TRANSFER_LAMPORTS_ARG.name)
         .long(TRANSFER_LAMPORTS_ARG.long)
         .takes_value(true)
         .value_name("LAMPORTS")
-        .validator(is_amount)
+        .validator(|s| is_amount(s))
         .help(TRANSFER_LAMPORTS_ARG.help)
 }
 
-pub fn multisig_signer_arg<'a, 'b>() -> Arg<'a> {
+pub fn multisig_signer_arg<'a>() -> Arg<'a> {
     Arg::with_name(MULTISIG_SIGNER_ARG.name)
         .long(MULTISIG_SIGNER_ARG.long)
-        .validator(is_valid_signer)
+        .validator(|s| is_valid_signer(s))
         .value_name("MULTISIG_SIGNER")
         .takes_value(true)
         .multiple(true)
@@ -326,7 +326,7 @@ pub fn multisig_signer_arg<'a, 'b>() -> Arg<'a> {
 }
 
 fn is_multisig_minimum_signers(string: &str) -> Result<(), String> {
-    let v = u8::from_str(&string).map_err(|e| e.to_string())? as usize;
+    let v = u8::from_str(string).map_err(|e| e.to_string())? as usize;
     if v < MIN_SIGNERS {
         Err(format!("must be at least {}", MIN_SIGNERS))
     } else if v > MAX_SIGNERS {
@@ -433,7 +433,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Create multiple token accounts for benchmarking")
                         .arg(
                             Arg::with_name("token")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -456,7 +456,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Close multiple token accounts used for benchmarking")
                         .arg(
                             Arg::with_name("token")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -479,7 +479,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Deposit tokens into multiple accounts")
                         .arg(
                             Arg::with_name("token")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -497,7 +497,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("amount")
-                                .validator(is_amount)
+                                .validator(|s| is_amount(s))
                                 .value_name("TOKEN_AMOUNT")
                                 .takes_value(true)
                                 .index(3)
@@ -507,7 +507,7 @@ impl BenchSubCommand for App<'_> {
                         .arg(
                             Arg::with_name("from")
                                 .long("from")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("SOURCE_TOKEN_ACCOUNT_ADDRESS")
                                 .takes_value(true)
                                 .help("The source token account address [default: associated token account for --owner]")
@@ -519,7 +519,7 @@ impl BenchSubCommand for App<'_> {
                         .about("Withdraw tokens from multiple accounts")
                         .arg(
                             Arg::with_name("token")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("TOKEN_ADDRESS")
                                 .takes_value(true)
                                 .index(1)
@@ -537,7 +537,7 @@ impl BenchSubCommand for App<'_> {
                         )
                         .arg(
                             Arg::with_name("amount")
-                                .validator(is_amount)
+                                .validator(|s| is_amount(s))
                                 .value_name("TOKEN_AMOUNT")
                                 .takes_value(true)
                                 .index(3)
@@ -547,7 +547,7 @@ impl BenchSubCommand for App<'_> {
                         .arg(
                             Arg::with_name("to")
                                 .long("to")
-                                .validator(is_valid_pubkey)
+                                .validator(|s| is_valid_pubkey(s))
                                 .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                                 .takes_value(true)
                                 .help("The recipient token account address [default: associated token account for --owner]")
@@ -558,10 +558,10 @@ impl BenchSubCommand for App<'_> {
     }
 }
 
-pub fn app<'a, 'b>(
+pub fn app<'a>(
     default_decimals: &'a str,
-    minimum_signers_help: &'b str,
-    multisig_member_help: &'b str,
+    minimum_signers_help: &'a str,
+    multisig_member_help: &'a str,
 ) -> App<'a> {
     App::new(crate_name!())
         .about(crate_description!())
@@ -590,7 +590,7 @@ pub fn app<'a, 'b>(
                 .value_name("FORMAT")
                 .global(true)
                 .takes_value(true)
-                .possible_values(&["json", "json-compact"])
+                .possible_values(["json", "json-compact"])
                 .help("Return information in specified output format"),
         )
         .arg(
@@ -608,8 +608,8 @@ pub fn app<'a, 'b>(
                 .value_name("ADDRESS")
                 .takes_value(true)
                 .global(true)
-                .validator(is_valid_token_program_id)
                 .conflicts_with("program_2022")
+                .validator(|s| is_valid_token_program_id(s))
                 .help("SPL Token program id"),
         )
         .arg(
@@ -619,7 +619,7 @@ pub fn app<'a, 'b>(
                 .value_name("URL_OR_MONIKER")
                 .takes_value(true)
                 .global(true)
-                .validator(is_url_or_moniker)
+                .validator(|s| is_url_or_moniker(s))
                 .help(
                     "URL for Solana's JSON RPC or moniker (or their first letter): \
                        [mainnet-beta, testnet, devnet, localhost] \
@@ -658,7 +658,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token_keypair")
                         .value_name("TOKEN_KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .index(1)
                         .help(
@@ -672,7 +672,7 @@ pub fn app<'a, 'b>(
                         .long("mint-authority")
                         .alias("owner")
                         .value_name("ADDRESS")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .takes_value(true)
                         .help(
                             "Specify the mint authority address. \
@@ -718,7 +718,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("metadata_address")
                         .long("metadata-address")
                         .value_name("ADDRESS")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .takes_value(true)
                         .conflicts_with("enable_metadata")
                         .help(
@@ -729,7 +729,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("group_address")
                         .long("group-address")
                         .value_name("ADDRESS")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .takes_value(true)
                         .conflicts_with("enable_group")
                         .help(
@@ -740,7 +740,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("member_address")
                         .long("member-address")
                         .value_name("ADDRESS")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .takes_value(true)
                         .conflicts_with("enable_member")
                         .help(
@@ -761,7 +761,7 @@ pub fn app<'a, 'b>(
                         .long("default-account-state")
                         .requires("enable_freeze")
                         .takes_value(true)
-                        .possible_values(&["initialized", "frozen"])
+                        .possible_values(["initialized", "frozen"])
                         .help("Specify that accounts have a default state. \
                             Note: specifying \"initialized\" adds an extension, which gives \
                             the option of specifying default frozen accounts in the future. \
@@ -823,7 +823,7 @@ pub fn app<'a, 'b>(
                         .long("enable-confidential-transfers")
                         .value_names(&["APPROVE-POLICY"])
                         .takes_value(true)
-                        .possible_values(&["auto", "manual"])
+                        .possible_values(["auto", "manual"])
                         .help(
                             "Enable accounts to make confidential transfers. If \"auto\" \
                             is selected, then accounts are automatically approved to make \
@@ -836,7 +836,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("transfer_hook")
                         .long("transfer-hook")
                         .value_name("TRANSFER_HOOK_PROGRAM_ID")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .takes_value(true)
                         .help("Enable the mint authority to set the transfer hook program for this mint"),
                 )
@@ -869,7 +869,7 @@ pub fn app<'a, 'b>(
                 .about("Set the interest rate for an interest-bearing token")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -885,7 +885,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("rate_authority")
                     .long("rate-authority")
-                    .validator(is_valid_signer)
+                    .validator(|s| is_valid_signer(s))
                     .value_name("SIGNER")
                     .takes_value(true)
                     .help(
@@ -899,7 +899,7 @@ pub fn app<'a, 'b>(
                 .about("Set the transfer hook program id for a token")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -908,7 +908,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("new_program_id")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("NEW_PROGRAM_ID")
                         .takes_value(true)
                         .required_unless("disable")
@@ -926,7 +926,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("authority")
                         .long("authority")
                         .alias("owner")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .value_name("SIGNER")
                         .takes_value(true)
                         .help("Specify the authority keypair. Defaults to the client keypair address.")
@@ -937,7 +937,7 @@ pub fn app<'a, 'b>(
                 .about("Initialize metadata extension on a token mint")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -973,7 +973,7 @@ pub fn app<'a, 'b>(
                         .long("mint-authority")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the mint authority keypair. \
@@ -985,7 +985,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("update_authority")
                         .long("update-authority")
                         .value_name("ADDRESS")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .takes_value(true)
                         .help(
                             "Specify the update authority address. \
@@ -998,7 +998,7 @@ pub fn app<'a, 'b>(
                 .about("Update metadata on a token mint that has the extension")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1031,7 +1031,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("authority")
                     .long("authority")
-                    .validator(is_valid_signer)
+                    .validator(|s| is_valid_signer(s))
                     .value_name("SIGNER")
                     .takes_value(true)
                     .help("Specify the metadata update authority keypair. Defaults to the client keypair.")
@@ -1045,7 +1045,7 @@ pub fn app<'a, 'b>(
                 .about("Initialize group extension on a token mint")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1054,7 +1054,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                         Arg::with_name("max_size")
-                        .validator(is_amount)
+                        .validator(|s| is_amount(s))
                         .value_name("MAX_SIZE")
                         .takes_value(true)
                         .required(true)
@@ -1066,7 +1066,7 @@ pub fn app<'a, 'b>(
                         .long("mint-authority")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the mint authority keypair. \
@@ -1078,7 +1078,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("update_authority")
                         .long("update-authority")
                         .value_name("ADDRESS")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .takes_value(true)
                         .help(
                             "Specify the update authority address. \
@@ -1091,7 +1091,7 @@ pub fn app<'a, 'b>(
                 .about("Updates the maximum number of members for a group.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1100,7 +1100,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                         Arg::with_name("new_max_size")
-                        .validator(is_amount)
+                        .validator(|s| is_amount(s))
                         .value_name("NEW_MAX_SIZE")
                         .takes_value(true)
                         .required(true)
@@ -1111,7 +1111,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("update_authority")
                         .long("update-authority")
                         .value_name("SIGNER")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the update authority address. \
@@ -1124,7 +1124,7 @@ pub fn app<'a, 'b>(
                 .about("Initialize group member extension on a token mint")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1133,7 +1133,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("group_token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("GROUP_TOKEN_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -1145,7 +1145,7 @@ pub fn app<'a, 'b>(
                         .long("mint-authority")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the mint authority keypair. \
@@ -1157,7 +1157,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("group_update_authority")
                         .long("group-update-authority")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the update authority keypair. \
@@ -1171,7 +1171,7 @@ pub fn app<'a, 'b>(
                 .about("Create a new token account")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1181,7 +1181,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("account_keypair")
                         .value_name("ACCOUNT_KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .index(2)
                         .help(
@@ -1216,7 +1216,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("multisig_member")
                         .value_name("MULTISIG_MEMBER_PUBKEY")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .takes_value(true)
                         .index(2)
                         .required(true)
@@ -1228,7 +1228,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("address_keypair")
                         .long("address-keypair")
                         .value_name("ADDRESS_KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the address keypair. \
@@ -1243,7 +1243,7 @@ pub fn app<'a, 'b>(
                 .about("Authorize a new signing keypair to a token or token account")
                 .arg(
                     Arg::with_name("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1254,7 +1254,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("authority_type")
                         .value_name("AUTHORITY_TYPE")
                         .takes_value(true)
-                        .possible_values(&CliAuthorityType::iter().map(Into::<&str>::into).collect::<Vec<_>>())
+                        .possible_values(CliAuthorityType::iter().map(Into::<&str>::into).collect::<Vec<_>>())
                         .index(2)
                         .required(true)
                         .help("The new authority type. \
@@ -1264,7 +1264,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("new_authority")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("AUTHORITY_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -1276,7 +1276,7 @@ pub fn app<'a, 'b>(
                         .long("authority")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the current authority keypair. \
@@ -1305,7 +1305,7 @@ pub fn app<'a, 'b>(
                 .about("Transfer tokens between accounts")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1314,7 +1314,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount_or_all)
+                        .validator(|s| is_amount_or_all(s))
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -1323,7 +1323,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("recipient")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("RECIPIENT_WALLET_ADDRESS or RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -1334,7 +1334,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("from")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("SENDER_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("from")
@@ -1398,7 +1398,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("expected_fee")
                         .long("expected-fee")
-                        .validator(is_amount)
+                        .validator(|s| is_amount(s))
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .help("Expected fee amount collected during the transfer"),
@@ -1406,7 +1406,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("transfer_hook_account")
                         .long("transfer-hook-account")
-                        .validator(validate_transfer_hook_account)
+                        .validator(|s| validate_transfer_hook_account(s))
                         .value_name("PUBKEY:ROLE")
                         .takes_value(true)
                         .multiple(true)
@@ -1435,7 +1435,7 @@ pub fn app<'a, 'b>(
                 .about("Burn tokens from an account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1444,7 +1444,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount_or_all)
+                        .validator(|s| is_amount_or_all(s))
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -1469,7 +1469,7 @@ pub fn app<'a, 'b>(
                 .about("Mint new tokens")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1478,7 +1478,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount)
+                        .validator(|s| is_amount(s))
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -1487,7 +1487,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("recipient")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("recipient_owner")
@@ -1498,7 +1498,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("recipient_owner")
                         .long("recipient-owner")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("RECIPIENT_WALLET_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("recipient")
@@ -1509,7 +1509,7 @@ pub fn app<'a, 'b>(
                         .long("mint-authority")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the mint authority keypair. \
@@ -1528,7 +1528,7 @@ pub fn app<'a, 'b>(
                 .about("Freeze a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1540,7 +1540,7 @@ pub fn app<'a, 'b>(
                         .long("freeze-authority")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the freeze authority keypair. \
@@ -1558,7 +1558,7 @@ pub fn app<'a, 'b>(
                 .about("Thaw a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1570,7 +1570,7 @@ pub fn app<'a, 'b>(
                         .long("freeze-authority")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the freeze authority keypair. \
@@ -1588,7 +1588,7 @@ pub fn app<'a, 'b>(
                 .about("Wrap native SOL in a SOL token account")
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount)
+                        .validator(|s| is_amount(s))
                         .value_name("AMOUNT")
                         .takes_value(true)
                         .index(1)
@@ -1599,7 +1599,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("wallet_keypair")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the keypair for the wallet which will have its native SOL wrapped. \
@@ -1630,7 +1630,7 @@ pub fn app<'a, 'b>(
                 .about("Unwrap a SOL token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1641,7 +1641,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("wallet_keypair")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the keypair for the wallet which owns the wrapped SOL. \
@@ -1660,7 +1660,7 @@ pub fn app<'a, 'b>(
                 .about("Approve a delegate for a token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1669,7 +1669,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount)
+                        .validator(|s| is_amount(s))
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -1678,7 +1678,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("delegate")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("DELEGATE_TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(3)
@@ -1698,7 +1698,7 @@ pub fn app<'a, 'b>(
                 .about("Revoke a delegate's authority")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1717,7 +1717,7 @@ pub fn app<'a, 'b>(
                 .about("Close a token account")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1728,7 +1728,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the account to receive remaining SOL [default: --owner]"),
@@ -1738,7 +1738,7 @@ pub fn app<'a, 'b>(
                         .long("close-authority")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the token's close authority if it has one, \
@@ -1750,7 +1750,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -1766,7 +1766,7 @@ pub fn app<'a, 'b>(
                 .about("Close a token mint")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1776,7 +1776,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("recipient")
                         .long("recipient")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the account to receive remaining SOL [default: --owner]"),
@@ -1785,7 +1785,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("close_authority")
                         .long("close-authority")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the token's close authority. \
@@ -1803,7 +1803,7 @@ pub fn app<'a, 'b>(
                 .about("Get token account balance")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1813,7 +1813,7 @@ pub fn app<'a, 'b>(
                 .arg(owner_address_arg().conflicts_with("address"))
                 .arg(
                     Arg::with_name("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("address")
@@ -1827,7 +1827,7 @@ pub fn app<'a, 'b>(
                 .about("Get token supply")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1840,7 +1840,7 @@ pub fn app<'a, 'b>(
                 .about("List all token accounts by owner")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1881,7 +1881,7 @@ pub fn app<'a, 'b>(
                 .about("Get wallet address")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .long("token")
@@ -1902,7 +1902,7 @@ pub fn app<'a, 'b>(
                 .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -1915,7 +1915,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name(OWNER_ADDRESS_ARG.name)
                         .takes_value(true)
                         .value_name("OWNER_ADDRESS")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .help(OWNER_ADDRESS_ARG.help)
                         .index(2)
                         .conflicts_with("address")
@@ -1925,7 +1925,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("address")
@@ -1939,7 +1939,7 @@ pub fn app<'a, 'b>(
                 .setting(AppSettings::Hidden)
                 .arg(
                     Arg::with_name("address")
-                    .validator(is_valid_pubkey)
+                    .validator(|s| is_valid_pubkey(s))
                     .value_name("MULTISIG_ACCOUNT_ADDRESS")
                     .takes_value(true)
                     .index(1)
@@ -1952,7 +1952,7 @@ pub fn app<'a, 'b>(
                 .about("Query details of an SPL Token mint, account, or multisig by address")
                 .arg(
                     Arg::with_name("address")
-                    .validator(is_valid_pubkey)
+                    .validator(|s| is_valid_pubkey(s))
                     .value_name("TOKEN_ADDRESS")
                     .takes_value(true)
                     .index(1)
@@ -1984,7 +1984,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .long("address")
@@ -1997,7 +1997,7 @@ pub fn app<'a, 'b>(
                 .about("Enable required transfer memos for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2015,7 +2015,7 @@ pub fn app<'a, 'b>(
                 .about("Disable required transfer memos for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2033,7 +2033,7 @@ pub fn app<'a, 'b>(
                 .about("Enable CPI Guard for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2051,7 +2051,7 @@ pub fn app<'a, 'b>(
                 .about("Disable CPI Guard for token account")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2069,7 +2069,7 @@ pub fn app<'a, 'b>(
                 .about("Updates default account state for the mint. Requires the default account state extension.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2080,7 +2080,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("state")
                         .value_name("STATE")
                         .takes_value(true)
-                        .possible_values(&["initialized", "frozen"])
+                        .possible_values(["initialized", "frozen"])
                         .index(2)
                         .required(true)
                         .help("The new default account state."),
@@ -2089,7 +2089,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("freeze_authority")
                         .long("freeze-authority")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the token's freeze authority. \
@@ -2107,7 +2107,7 @@ pub fn app<'a, 'b>(
                 .about("Updates metadata pointer address for the mint. Requires the metadata pointer extension.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2117,7 +2117,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("metadata_address")
                         .index(2)
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("METADATA_ADDRESS")
                         .takes_value(true)
                         .required_unless("disable")
@@ -2134,7 +2134,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("authority")
                         .long("authority")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the token's metadata-pointer authority. \
@@ -2150,7 +2150,7 @@ pub fn app<'a, 'b>(
                 .about("Updates group pointer address for the mint. Requires the group pointer extension.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2160,7 +2160,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("group_address")
                         .index(2)
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("GROUP_ADDRESS")
                         .takes_value(true)
                         .required_unless("disable")
@@ -2177,7 +2177,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("authority")
                         .long("authority")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the token's group-pointer authority. \
@@ -2193,7 +2193,7 @@ pub fn app<'a, 'b>(
                 .about("Updates group member pointer address for the mint. Requires the group member pointer extension.")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2203,7 +2203,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("member_address")
                         .index(2)
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("MEMBER_ADDRESS")
                         .takes_value(true)
                         .required_unless("disable")
@@ -2220,7 +2220,7 @@ pub fn app<'a, 'b>(
                     Arg::with_name("authority")
                         .long("authority")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the token's group-member-pointer authority. \
@@ -2236,7 +2236,7 @@ pub fn app<'a, 'b>(
                 .about("Withdraw withheld transfer fee tokens from mint and / or account(s)")
                 .arg(
                     Arg::with_name("account")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2245,7 +2245,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("source")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .multiple(true)
@@ -2263,7 +2263,7 @@ pub fn app<'a, 'b>(
                         .long("withdraw-withheld-authority")
                         .alias("owner")
                         .value_name("KEYPAIR")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .takes_value(true)
                         .help(
                             "Specify the withdraw withheld authority keypair. \
@@ -2286,7 +2286,7 @@ pub fn app<'a, 'b>(
                 .about("Set the transfer fee for a token with a configured transfer fee")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -2302,7 +2302,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("maximum_fee")
                         .value_name("TOKEN_AMOUNT")
-                        .validator(is_amount)
+                        .validator(|s| is_amount(s))
                         .takes_value(true)
                         .required(true)
                         .help("The new maximum transfer fee in UI amount"),
@@ -2310,7 +2310,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("transfer_fee_authority")
                     .long("transfer-fee-authority")
-                    .validator(is_valid_signer)
+                    .validator(|s| is_valid_signer(s))
                     .value_name("SIGNER")
                     .takes_value(true)
                     .help(
@@ -2326,7 +2326,7 @@ pub fn app<'a, 'b>(
                 .about("Withdraw lamports from a Token Program owned account")
                 .arg(
                     Arg::with_name("from")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("SOURCE_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -2334,7 +2334,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("recipient")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("REFUND_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .required(true)
@@ -2348,7 +2348,7 @@ pub fn app<'a, 'b>(
                 .about("Update confidential transfer configuration for a token")
                 .arg(
                     Arg::with_name("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2360,7 +2360,7 @@ pub fn app<'a, 'b>(
                         .long("approve-policy")
                         .value_name("APPROVE_POLICY")
                         .takes_value(true)
-                        .possible_values(&["auto", "manual"])
+                        .possible_values(["auto", "manual"])
                         .help(
                             "Policy for enabling accounts to make confidential transfers. If \"auto\" \
                             is selected, then accounts are automatically approved to make \
@@ -2392,7 +2392,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("confidential_transfer_authority")
                         .long("confidential-transfer-authority")
-                        .validator(is_valid_signer)
+                        .validator(|s| is_valid_signer(s))
                         .value_name("SIGNER")
                         .takes_value(true)
                         .help(
@@ -2409,7 +2409,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .long("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2419,7 +2419,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2451,7 +2451,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .long("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2461,7 +2461,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2480,7 +2480,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .long("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2490,7 +2490,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2509,7 +2509,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .long("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2519,7 +2519,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2538,7 +2538,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .long("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2548,7 +2548,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .conflicts_with("token")
@@ -2567,7 +2567,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .long("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2576,7 +2576,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount_or_all)
+                        .validator(|s| is_amount_or_all(s))
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -2586,7 +2586,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the token account to configure confidential transfers for \
@@ -2605,7 +2605,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .long("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2614,7 +2614,7 @@ pub fn app<'a, 'b>(
                 )
                 .arg(
                     Arg::with_name("amount")
-                        .validator(is_amount_or_all)
+                        .validator(|s| is_amount_or_all(s))
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .index(2)
@@ -2624,7 +2624,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the token account to configure confidential transfers for \
@@ -2643,7 +2643,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("token")
                         .long("token")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(1)
@@ -2653,7 +2653,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("address")
                         .long("address")
-                        .validator(is_valid_pubkey)
+                        .validator(|s| is_valid_pubkey(s))
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
                         .help("The address of the token account to configure confidential transfers for \
