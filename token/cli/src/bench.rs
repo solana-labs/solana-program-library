@@ -22,7 +22,7 @@ use {
 };
 
 pub(crate) async fn bench_process_command(
-    matches: &ArgMatches<'_>,
+    matches: &ArgMatches,
     config: &Config<'_>,
     mut signers: Vec<Arc<dyn Signer>>,
     wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
