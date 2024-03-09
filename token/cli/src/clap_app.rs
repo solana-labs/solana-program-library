@@ -1561,6 +1561,7 @@ pub fn app<'a>(
                         .value_name("KEYPAIR")
                         .validator(|s| is_valid_signer(s))
                         .takes_value(true)
+                        .index(2)
                         .help(
                             "Specify the keypair for the wallet which will have its native SOL wrapped. \
                              This wallet will be assigned as the owner of the wrapped SOL token account. \
@@ -1603,6 +1604,7 @@ pub fn app<'a>(
                         .value_name("KEYPAIR")
                         .validator(|s| is_valid_signer(s))
                         .takes_value(true)
+                        .index(2)
                         .help(
                             "Specify the keypair for the wallet which owns the wrapped SOL. \
                              This wallet will receive the unwrapped SOL. \
@@ -2210,6 +2212,7 @@ pub fn app<'a>(
                         .takes_value(true)
                         .multiple(true)
                         .min_values(0_usize)
+                        .index(2)
                         .help("The token accounts to withdraw from")
                 )
                 .arg(
