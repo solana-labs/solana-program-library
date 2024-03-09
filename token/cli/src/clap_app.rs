@@ -269,7 +269,7 @@ pub fn mint_address_arg<'a, 'b>() -> Arg<'a> {
         .help(MINT_ADDRESS_ARG.help)
 }
 
-fn is_mint_decimals(string: String) -> Result<(), String> {
+fn is_mint_decimals(string: &str) -> Result<(), String> {
     is_parsable::<u8>(string)
 }
 
@@ -323,7 +323,7 @@ pub fn multisig_signer_arg<'a, 'b>() -> Arg<'a> {
         .help(MULTISIG_SIGNER_ARG.help)
 }
 
-fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
+fn is_multisig_minimum_signers(string: &str) -> Result<(), String> {
     let v = u8::from_str(&string).map_err(|e| e.to_string())? as usize;
     if v < MIN_SIGNERS {
         Err(format!("must be at least {}", MIN_SIGNERS))
