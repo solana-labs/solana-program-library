@@ -384,13 +384,13 @@ impl Processor {
             (
                 PodCOption {
                     option: PodCOption::<Pubkey>::SOME,
-                    value,
+                    value: delegate,
                 },
                 _,
-            ) if cmp_pubkeys(authority_info.key, &value) => {
+            ) if cmp_pubkeys(authority_info.key, &delegate) => {
                 Self::validate_owner(
                     program_id,
-                    &value,
+                    &delegate,
                     authority_info,
                     authority_info_data_len,
                     account_info_iter.as_slice(),
