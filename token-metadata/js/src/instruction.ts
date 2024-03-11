@@ -3,13 +3,13 @@ import {
     getBooleanEncoder,
     getBytesEncoder,
     getDataEnumCodec,
+    getOptionEncoder,
     getStringEncoder,
     getStructEncoder,
     getTupleEncoder,
     getU64Encoder,
     mapEncoder,
 } from '@solana/codecs';
-import { getOptionEncoder } from '@solana/options';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import type { PublicKey } from '@solana/web3.js';
 import { SystemProgram, TransactionInstruction } from '@solana/web3.js';

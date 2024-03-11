@@ -48,7 +48,6 @@
     },
     "dependencies": {
         "@solana/codecs": "2.0.0-preview.1",
-        "@solana/options": "2.0.0-preview.1",
         "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
