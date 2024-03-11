@@ -24,10 +24,11 @@ use {
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
             AccountType, BaseStateWithExtensions, BaseStateWithExtensionsMut, ExtensionType,
-            StateWithExtensions, StateWithExtensionsMut,
+            PodStateWithExtensionsMut, StateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
         native_mint,
+        pod::{PodCOption, PodMint},
         state::{Account, AccountState, Mint, Multisig},
     },
     solana_program::{
@@ -43,6 +44,7 @@ use {
         system_instruction, system_program,
         sysvar::{rent::Rent, Sysvar},
     },
+    spl_pod::primitives::PodBool,
     spl_token_group_interface::instruction::TokenGroupInstruction,
     spl_token_metadata_interface::instruction::TokenMetadataInstruction,
     std::convert::{TryFrom, TryInto},
@@ -72,7 +74,7 @@ impl Processor {
             return Err(TokenError::NotRentExempt.into());
         }
 
-        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack_uninitialized(&mut mint_data)?;
         let extension_types = mint.get_extension_types()?;
         if ExtensionType::try_calculate_account_len::<Mint>(&extension_types)? != mint_data_len {
             return Err(ProgramError::InvalidAccountData);
@@ -87,11 +89,10 @@ impl Processor {
             }
         }
 
-        mint.base.mint_authority = COption::Some(mint_authority);
+        mint.base.mint_authority = PodCOption::some(mint_authority);
         mint.base.decimals = decimals;
-        mint.base.is_initialized = true;
-        mint.base.freeze_authority = freeze_authority;
-        mint.pack_base();
+        mint.base.is_initialized = PodBool::from_bool(true);
+        mint.base.freeze_authority = freeze_authority.into();
         mint.init_account_type()?;
 
         Ok(())
