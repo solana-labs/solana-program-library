@@ -45,8 +45,8 @@ with a fee. We plan to include that capability with Solana 1.18.
 
 ### Wallets
 
-To start, wallets need to properly handle the token-2022 program and its accounts,
-by fetching token-2022 accounts and sending instructions to the proper program.
+To start, wallets need to properly handle the Token-2022 program and its accounts,
+by fetching Token-2022 accounts and sending instructions to the proper program.
 
 Next, to use confidential tokens, wallets need to create zero-knowledge proofs,
 which entails a new transaction flow.
