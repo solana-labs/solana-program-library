@@ -1,8 +1,7 @@
 import { expect } from 'chai';
-import type { Decoder } from '@solana/codecs-core';
-import { getBytesDecoder, getStructDecoder } from '@solana/codecs-data-structures';
+import type { Decoder } from '@solana/codecs';
+import { getBytesDecoder, getStructDecoder, getU32Decoder } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
-import { getU32Decoder } from '@solana/codecs-numbers';
 import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 
 import {

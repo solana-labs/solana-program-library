@@ -1,7 +1,12 @@
-import type { Encoder } from '@solana/codecs-core';
-import { getBooleanEncoder, getBytesEncoder, getDataEnumCodec, getStructEncoder } from '@solana/codecs-data-structures';
-import { getU64Encoder } from '@solana/codecs-numbers';
-import { getStringEncoder } from '@solana/codecs-strings';
+import type { Encoder } from '@solana/codecs';
+import {
+    getBooleanEncoder,
+    getBytesEncoder,
+    getDataEnumCodec,
+    getStructEncoder,
+    getU64Encoder,
+    getStringEncoder,
+} from '@solana/codecs';
 import { getOptionEncoder } from '@solana/options';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import type { PublicKey } from '@solana/web3.js';

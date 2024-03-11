@@ -1,7 +1,6 @@
-import type { Encoder } from '@solana/codecs-core';
+import type { Encoder } from '@solana/codecs';
 import type { PublicKey } from '@solana/web3.js';
-import { getBytesEncoder, getStructEncoder } from '@solana/codecs-data-structures';
-import { getU32Encoder } from '@solana/codecs-numbers';
+import { getBytesEncoder, getStructEncoder, getU32Encoder } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import { TransactionInstruction } from '@solana/web3.js';
 
