@@ -4,16 +4,16 @@ use {
     solana_clap_v3_utils::{
         input_parsers::{pubkey_of_signer, value_of},
         input_validators::normalize_to_url_if_moniker,
-        keypair::{signer_from_path, signer_from_path_with_config, SignerFromPathConfig},
+        keypair::SignerFromPathConfig,
         nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
-        offline::{BLOCKHASH_ARG, DUMP_TRANSACTION_MESSAGE, SIGN_ONLY_ARG},
+        offline::{BLOCKHASH_ARG, DUMP_TRANSACTION_MESSAGE, SIGNER_ARG, SIGN_ONLY_ARG},
     },
     solana_cli_output::OutputFormat,
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         account::Account as RawAccount, commitment_config::CommitmentConfig, hash::Hash,
-        pubkey::Pubkey, signature::Signer,
+        pubkey::Pubkey, signature::Signer, signer::null_signer::NullSigner,
     },
     spl_associated_token_account_client::address::get_associated_token_address_with_program_id,
     spl_token_2022::{
@@ -559,4 +559,44 @@ impl<'a> Config<'a> {
             Ok(mint_address.unwrap_or_default())
         }
     }
+}
+
+// In clap v2, `value_of` returns `None` if the argument id is not previously specified in
+// `Arg`. In contrast, in clap v3, `value_of` panics in this case. Therefore, compared
+// to the same function in solana-clap-utils, `signer_from_path` in solana-clap-v3-utils errors
+// early when `path` is a valid pubkey, but `SIGNER_ARG.name` is not specified in the args.
+// This function behaves exactly as `signer_from_path` from solana-clap-utils by catching
+// this special case.
+fn signer_from_path(
+    matches: &ArgMatches,
+    path: &str,
+    keypair_name: &str,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
+) -> Result<Box<dyn Signer>, Box<dyn std::error::Error>> {
+    let config = SignerFromPathConfig::default();
+    signer_from_path_with_config(matches, path, keypair_name, wallet_manager, &config)
+}
+
+fn signer_from_path_with_config(
+    matches: &ArgMatches,
+    path: &str,
+    keypair_name: &str,
+    wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
+    config: &SignerFromPathConfig,
+) -> Result<Box<dyn Signer>, Box<dyn std::error::Error>> {
+    if let Ok(pubkey) = Pubkey::from_str(path) {
+        if matches.try_contains_id(SIGNER_ARG.name).is_err()
+            && (config.allow_null_signer || matches.try_contains_id(SIGN_ONLY_ARG.name)?)
+        {
+            return Ok(Box::new(NullSigner::new(&pubkey)));
+        }
+    }
+
+    solana_clap_v3_utils::keypair::signer_from_path_with_config(
+        matches,
+        path,
+        keypair_name,
+        wallet_manager,
+        config,
+    )
 }
