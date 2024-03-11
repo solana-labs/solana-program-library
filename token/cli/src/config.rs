@@ -561,12 +561,13 @@ impl<'a> Config<'a> {
     }
 }
 
-// In clap v2, `value_of` returns `None` if the argument id is not previously specified in
-// `Arg`. In contrast, in clap v3, `value_of` panics in this case. Therefore, compared
-// to the same function in solana-clap-utils, `signer_from_path` in solana-clap-v3-utils errors
-// early when `path` is a valid pubkey, but `SIGNER_ARG.name` is not specified in the args.
-// This function behaves exactly as `signer_from_path` from solana-clap-utils by catching
-// this special case.
+// In clap v2, `value_of` returns `None` if the argument id is not previously
+// specified in `Arg`. In contrast, in clap v3, `value_of` panics in this case.
+// Therefore, compared to the same function in solana-clap-utils,
+// `signer_from_path` in solana-clap-v3-utils errors early when `path` is a
+// valid pubkey, but `SIGNER_ARG.name` is not specified in the args.
+// This function behaves exactly as `signer_from_path` from solana-clap-utils by
+// catching this special case.
 fn signer_from_path(
     matches: &ArgMatches,
     path: &str,
