@@ -488,9 +488,12 @@ importers:
 
   token-group/js:
     dependencies:
+      '@solana/codecs-core':
+        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/codecs-data-structures':
-        specifier: 2.0.0-experimental.9741939
-        version: 2.0.0-experimental.9741939
+        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/codecs-numbers':
         specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
         version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
@@ -644,8 +647,8 @@ importers:
         specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
         version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/codecs-data-structures':
-        specifier: 2.0.0-experimental.9741939
-        version: 2.0.0-experimental.9741939
+        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/codecs-numbers':
         specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
         version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
@@ -2358,10 +2361,6 @@ packages:
   /@solana/codecs-core@2.0.0-experimental.8618508:
     resolution: {integrity: sha512-JCz7mKjVKtfZxkuDtwMAUgA7YvJcA2BwpZaA1NOLcted4OMC4Prwa3DUe3f3181ixPYaRyptbF0Ikq2MbDkYEA==}
 
-  /@solana/codecs-core@2.0.0-experimental.9741939:
-    resolution: {integrity: sha512-7E51aEwLW+1ta6VWbEq0CbvwSUOcIwmaQCLpkOKsF6cwSNqE5GDv/jw9zKuiYOynlBFQO1Ws59a/hlb2wwwWKg==}
-    dev: false
-
   /@solana/codecs-core@2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb:
     resolution: {integrity: sha512-g4UutMYkgbhA607ED7KXY/wIrkR1cH5Xx+I4x4gUIWHa3F3h2icnj3KszvCOsnpXl821a7LHdtmQWCrgrQIpsQ==}
     dependencies:
@@ -2373,23 +2372,18 @@ packages:
       '@solana/codecs-core': 2.0.0-experimental.8618508
       '@solana/codecs-numbers': 2.0.0-experimental.8618508
 
-  /@solana/codecs-data-structures@2.0.0-experimental.9741939:
-    resolution: {integrity: sha512-Ghjx0pFEA22T/cpqg3zXHYlnxqKytjTr1QjgfhWvBrlVFkqr3ZQL4av9/V6sHKvpoi+JNkEwM1wE+tlpt/54CA==}
+  /@solana/codecs-data-structures@2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb:
+    resolution: {integrity: sha512-XI8QO48HZh8ah6/t4QRCCOzD5OHe1obNnc9LmEyaJwBe5gmzH4DEUgqAol21UqJtoYvYpK855sP7Kv/2/rGRxA==}
     dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.9741939
-      '@solana/codecs-numbers': 2.0.0-experimental.9741939
+      '@solana/codecs-core': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+      '@solana/codecs-numbers': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+      '@solana/errors': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
     dev: false
 
   /@solana/codecs-numbers@2.0.0-experimental.8618508:
     resolution: {integrity: sha512-EXQKfzFr3CkKKNzKSZPOOOzchXsFe90TVONWsSnVkonO9z+nGKALE0/L9uBmIFGgdzhhU9QQVFvxBMclIDJo2Q==}
     dependencies:
       '@solana/codecs-core': 2.0.0-experimental.8618508
-
-  /@solana/codecs-numbers@2.0.0-experimental.9741939:
-    resolution: {integrity: sha512-VXBvw8LZdGUJGuC33EFzvaUxCvgNtr9y9Td8zjK9wJDqKSzR0+G53CJv5K4AF25LUu8du8XHBK3VEz3YHl44nQ==}
-    dependencies:
-      '@solana/codecs-core': 2.0.0-experimental.9741939
-    dev: false
 
   /@solana/codecs-numbers@2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb:
     resolution: {integrity: sha512-rYpFqYNZqWH45N+bJ40O7v5tejtd6eJLK8Z7NKEK3E46p8MXkK3AenCz5pN/c9bwWzdifCt5OIgtnvEVXbMnsg==}
