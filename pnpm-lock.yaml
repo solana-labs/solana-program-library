@@ -495,8 +495,8 @@ importers:
         specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
         version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/codecs-numbers':
-        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
-        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        specifier: 2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487
+        version: 2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487
       '@solana/codecs-strings':
         specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
         version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb(fastestsmallesttextencoderdecoder@1.0.22)
@@ -650,8 +650,8 @@ importers:
         specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
         version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/codecs-numbers':
-        specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
-        version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+        specifier: 2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487
+        version: 2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487
       '@solana/codecs-strings':
         specifier: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
         version: 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb(fastestsmallesttextencoderdecoder@1.0.22)
@@ -2366,6 +2366,12 @@ packages:
     dependencies:
       '@solana/errors': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
 
+  /@solana/codecs-core@2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487:
+    resolution: {integrity: sha512-7rRk12B7ii62g9iHUHL9ZPI6uriMomjJGxiNYN6BkjYJg7kpPAdx30i/VNhR481nhGRoIvvRtyZGJ+UyGghPhQ==}
+    dependencies:
+      '@solana/errors': 2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487
+    dev: false
+
   /@solana/codecs-data-structures@2.0.0-experimental.8618508:
     resolution: {integrity: sha512-sLpjL9sqzaDdkloBPV61Rht1tgaKq98BCtIKRuyscIrmVPu3wu0Bavk2n/QekmUzaTsj7K1pVSniM0YqCdnEBw==}
     dependencies:
@@ -2390,6 +2396,13 @@ packages:
     dependencies:
       '@solana/codecs-core': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
       '@solana/errors': 2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb
+
+  /@solana/codecs-numbers@2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487:
+    resolution: {integrity: sha512-wZeZ3XfufVsbgGO8FG6xvwI5mY8I4c+lhmNZeCo8C1GUJaSWsqljxA7ssTRr22PyjD8gwr6hFWqbyfws8S6jIg==}
+    dependencies:
+      '@solana/codecs-core': 2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487
+      '@solana/errors': 2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487
+    dev: false
 
   /@solana/codecs-strings@2.0.0-experimental.8618508(fastestsmallesttextencoderdecoder@1.0.22):
     resolution: {integrity: sha512-b2yhinr1+oe+JDmnnsV0641KQqqDG8AQ16Z/x7GVWO+AWHMpRlHWVXOq8U1yhPMA4VXxl7i+D+C6ql0VGFp0GA==}
@@ -2416,6 +2429,14 @@ packages:
     dependencies:
       chalk: 5.3.0
       commander: 12.0.0
+
+  /@solana/errors@2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487:
+    resolution: {integrity: sha512-yTCpyvfRrt6+SjB9CQLf9iAo2CH17FMnmMT9MeYTi4cqDQlzZch0AWNkFui4YoT6jC4MZJZ4D5eOOYwLD4G2dQ==}
+    hasBin: true
+    dependencies:
+      chalk: 5.3.0
+      commander: 12.0.0
+    dev: false
 
   /@solana/eslint-config-solana@3.0.0(@typescript-eslint/eslint-plugin@6.21.0)(@typescript-eslint/parser@6.21.0)(eslint-plugin-jest@27.9.0)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@10.0.0)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.4.2):
     resolution: {integrity: sha512-K8qBl5LQRET4H0+JHEfawA5qB9bjkkgOUB0fUHJ6B8bPAvMkzfQ5f5U7udyFeDMH0LsJuL9XRUZuXU4h/l6HNw==}
