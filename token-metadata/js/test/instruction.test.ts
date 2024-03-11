@@ -9,11 +9,16 @@ import {
     getFieldCodec,
     getFieldConfig,
 } from '../src';
-import { getBooleanDecoder, getBytesDecoder, getDataEnumCodec, getStructDecoder } from '@solana/codecs-data-structures';
-import { getStringDecoder } from '@solana/codecs-strings';
+import {
+    getBooleanDecoder,
+    getBytesDecoder,
+    getDataEnumCodec,
+    getStringDecoder,
+    getU64Decoder,
+    getStructDecoder,
+} from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
-import { getU64Decoder } from '@solana/codecs-numbers';
-import type { Decoder } from '@solana/codecs-core';
+import type { Decoder } from '@solana/codecs';
 import type { Option } from '@solana/options';
 import { getOptionDecoder, some } from '@solana/options';
 import { PublicKey, type TransactionInstruction } from '@solana/web3.js';

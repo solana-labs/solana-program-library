@@ -1,6 +1,5 @@
-import type { Codec } from '@solana/codecs-core';
-import { getStructCodec, getTupleCodec, getUnitCodec } from '@solana/codecs-data-structures';
-import { getStringCodec } from '@solana/codecs-strings';
+import type { Codec } from '@solana/codecs';
+import { getStringCodec, getStructCodec, getTupleCodec, getUnitCodec } from '@solana/codecs';
 
 export enum Field {
     Name,
