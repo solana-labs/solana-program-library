@@ -47,7 +47,7 @@
         "@solana/web3.js": "^1.91.0"
     },
     "dependencies": {
-        "@solana/codecs-core": "2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb",
+        "@solana/codecs-core": "2.0.0-preview.1.20240309110023.71d404f228034d8ffbeecaabbc1b43722af03487",
         "@solana/codecs-data-structures": "2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb",
         "@solana/codecs-numbers": "2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb",
         "@solana/codecs-strings": "2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb",
