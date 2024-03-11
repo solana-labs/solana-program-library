@@ -23,7 +23,7 @@ use {
     spl_token_client::client::{
         ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
     },
-    std::{process::exit, rc::Rc, sync::Arc},
+    std::{process::exit, rc::Rc, str::FromStr, sync::Arc},
 };
 
 type SignersOf = Vec<(Arc<dyn Signer>, Pubkey)>;
@@ -222,11 +222,17 @@ impl<'a> Config<'a> {
                 OutputFormat::Display
             });
 
-        let nonce_account = pubkey_of_signer(matches, NONCE_ARG.name, wallet_manager)
-            .unwrap_or_else(|e| {
-                eprintln!("error: {}", e);
-                exit(1);
-            });
+        let nonce_account = match pubkey_of_signer(matches, NONCE_ARG.name, wallet_manager) {
+            Ok(account) => account,
+            Err(e) => {
+                if e.is::<clap::parser::MatchesError>() {
+                    None
+                } else {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                }
+            }
+        };
         let nonce_authority = if nonce_account.is_some() {
             let (nonce_authority, _) = signer_from_path(
                 matches,
@@ -251,17 +257,27 @@ impl<'a> Config<'a> {
             None
         };
 
-        let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
-        let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
+        let sign_only = matches.try_contains_id(SIGN_ONLY_ARG.name).unwrap_or(false);
+        let dump_transaction_message = matches
+            .try_contains_id(DUMP_TRANSACTION_MESSAGE.name)
+            .unwrap_or(false);
+
+        let pubkey_from_matches = |name| {
+            matches
+                .try_get_one::<String>(name)
+                .ok()
+                .flatten()
+                .and_then(|pubkey| Pubkey::from_str(pubkey).ok())
+        };
 
         let default_program_id = spl_token::id();
         let (program_id, restrict_to_program_id) =
-            if let Some(program_id) = value_of(matches, "program_id") {
+            if let Some(program_id) = pubkey_from_matches("program_id") {
                 (program_id, true)
             } else if !sign_only {
-                if let Some(address) = value_of(matches, "token")
-                    .or_else(|| value_of(matches, "account"))
-                    .or_else(|| value_of(matches, "address"))
+                if let Some(address) = pubkey_from_matches("token")
+                    .or_else(|| pubkey_from_matches("account"))
+                    .or_else(|| pubkey_from_matches("address"))
                 {
                     (
                         rpc_client
@@ -278,7 +294,12 @@ impl<'a> Config<'a> {
                 (default_program_id, false)
             };
 
-        let nonce_blockhash = value_of(matches, BLOCKHASH_ARG.name);
+        let nonce_blockhash = matches
+            .try_get_one::<Hash>(BLOCKHASH_ARG.name)
+            .ok()
+            .flatten()
+            .copied();
+
         Self {
             default_signer,
             rpc_client,
