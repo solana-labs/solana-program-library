@@ -1,12 +1,19 @@
 import type { Encoder } from '@solana/codecs';
 import type { PublicKey } from '@solana/web3.js';
-import { getBytesEncoder, getStructEncoder, getU32Encoder } from '@solana/codecs';
+import { getBytesEncoder, getStructEncoder, getTupleEncoder, getU32Encoder, mapEncoder } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import { TransactionInstruction } from '@solana/web3.js';
 
 function packInstruction<T extends object>(encoder: Encoder<T>, discriminator: Uint8Array, values: T): Buffer {
     const data = encoder.encode(values);
     return Buffer.concat([discriminator, data]);
+}
+
+function getInstructionEncoder<T extends object>(discriminator: Uint8Array, dataEncoder: Encoder<T>): Encoder<T> {
+    return mapEncoder(getTupleEncoder([getBytesEncoder(), dataEncoder]), (data: T): [Uint8Array, T] => [
+        discriminator,
+        data,
+    ]);
 }
 
 export interface InitializeGroupInstruction {
@@ -35,13 +42,14 @@ export function createInitializeGroupInstruction(args: InitializeGroupInstructio
             { isSigner: false, isWritable: false, pubkey: mint },
             { isSigner: true, isWritable: false, pubkey: mintAuthority },
         ],
-        data: packInstruction(
-            getStructEncoder([
-                ['updateAuthority', getBytesEncoder({ size: 32 })],
-                ['maxSize', getU32Encoder()],
-            ]),
-            splDiscriminate('spl_token_group_interface:initialize_token_group'),
-            { updateAuthority: updateAuthorityBuffer, maxSize }
+        data: Buffer.from(
+            getInstructionEncoder(
+                splDiscriminate('spl_token_group_interface:initialize_token_group'),
+                getStructEncoder([
+                    ['updateAuthority', getBytesEncoder({ size: 32 })],
+                    ['maxSize', getU32Encoder()],
+                ])
+            ).encode({ updateAuthority: updateAuthorityBuffer, maxSize })
         ),
     });
 }
@@ -61,10 +69,11 @@ export function createUpdateGroupMaxSizeInstruction(args: UpdateGroupMaxSize): T
             { isSigner: false, isWritable: true, pubkey: group },
             { isSigner: true, isWritable: false, pubkey: updateAuthority },
         ],
-        data: packInstruction(
-            getStructEncoder([['maxSize', getU32Encoder()]]),
-            splDiscriminate('spl_token_group_interface:update_group_max_size'),
-            { maxSize }
+        data: Buffer.from(
+            getInstructionEncoder(
+                splDiscriminate('spl_token_group_interface:update_group_max_size'),
+                getStructEncoder([['maxSize', getU32Encoder()]])
+            ).encode({ maxSize })
         ),
     });
 }
@@ -92,10 +101,11 @@ export function createUpdateGroupAuthorityInstruction(args: UpdateGroupAuthority
             { isSigner: false, isWritable: true, pubkey: group },
             { isSigner: true, isWritable: false, pubkey: currentAuthority },
         ],
-        data: packInstruction(
-            getStructEncoder([['newAuthority', getBytesEncoder({ size: 32 })]]),
-            splDiscriminate('spl_token_group_interface:update_authority'),
-            { newAuthority: newAuthorityBuffer }
+        data: Buffer.from(
+            getInstructionEncoder(
+                splDiscriminate('spl_token_group_interface:update_authority'),
+                getStructEncoder([['newAuthority', getBytesEncoder({ size: 32 })]])
+            ).encode({ newAuthority: newAuthorityBuffer })
         ),
     });
 }
@@ -121,6 +131,11 @@ export function createInitializeMemberInstruction(args: InitializeMember): Trans
             { isSigner: false, isWritable: true, pubkey: group },
             { isSigner: true, isWritable: false, pubkey: groupUpdateAuthority },
         ],
-        data: packInstruction(getStructEncoder([]), splDiscriminate('spl_token_group_interface:initialize_member'), {}),
+        data: Buffer.from(
+            getInstructionEncoder(
+                splDiscriminate('spl_token_group_interface:initialize_member'),
+                getStructEncoder([])
+            ).encode({})
+        ),
     });
 }
