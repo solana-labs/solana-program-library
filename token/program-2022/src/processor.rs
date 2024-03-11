@@ -24,11 +24,12 @@ use {
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
             AccountType, BaseStateWithExtensions, BaseStateWithExtensionsMut, ExtensionType,
-            PodStateWithExtensionsMut, StateWithExtensions, StateWithExtensionsMut,
+            PodStateWithExtensions, PodStateWithExtensionsMut, StateWithExtensions,
+            StateWithExtensionsMut,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
         native_mint,
-        pod::{PodCOption, PodMint},
+        pod::{PodAccount, PodCOption, PodMint},
         state::{Account, AccountState, Mint, Multisig},
     },
     solana_program::{
@@ -297,11 +298,12 @@ impl Processor {
 
         let mut source_account_data = source_account_info.data.borrow_mut();
         let mut source_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut source_account_data)?;
         if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
-        if source_account.base.amount < amount {
+        let source_amount = u64::from(source_account.base.amount);
+        if source_amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
         if source_account
@@ -317,7 +319,7 @@ impl Processor {
                 }
 
                 let mint_data = mint_info.try_borrow_data()?;
-                let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+                let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
 
                 if expected_decimals != mint.base.decimals {
                     return Err(TokenError::MintDecimalsMismatch.into());
@@ -379,25 +381,31 @@ impl Processor {
                     account_info_iter.as_slice(),
                 )?
             }
-            (COption::Some(ref delegate), _) if cmp_pubkeys(authority_info.key, delegate) => {
+            (
+                PodCOption {
+                    option: PodCOption::<Pubkey>::SOME,
+                    value: delegate,
+                },
+                _,
+            ) if cmp_pubkeys(authority_info.key, &delegate) => {
                 Self::validate_owner(
                     program_id,
-                    delegate,
+                    &delegate,
                     authority_info,
                     authority_info_data_len,
                     account_info_iter.as_slice(),
                 )?;
-                if source_account.base.delegated_amount < amount {
+                let delegated_amount = u64::from(source_account.base.delegated_amount);
+                if delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
                 if !self_transfer {
-                    source_account.base.delegated_amount = source_account
-                        .base
-                        .delegated_amount
+                    source_account.base.delegated_amount = delegated_amount
                         .checked_sub(amount)
-                        .ok_or(TokenError::Overflow)?;
-                    if source_account.base.delegated_amount == 0 {
-                        source_account.base.delegate = COption::None;
+                        .ok_or(TokenError::Overflow)?
+                        .into();
+                    if u64::from(source_account.base.delegated_amount) == 0 {
+                        source_account.base.delegate = PodCOption::none();
                     }
                 }
             }
@@ -433,7 +441,7 @@ impl Processor {
         // self-transfer was dealt with earlier, so this *should* be safe
         let mut destination_account_data = destination_account_info.data.borrow_mut();
         let mut destination_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut destination_account_data)?;
 
         if destination_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
@@ -452,17 +460,15 @@ impl Processor {
             confidential_transfer_state.non_confidential_transfer_allowed()?
         }
 
-        source_account.base.amount = source_account
-            .base
-            .amount
+        source_account.base.amount = source_amount
             .checked_sub(amount)
-            .ok_or(TokenError::Overflow)?;
+            .ok_or(TokenError::Overflow)?
+            .into();
         let credited_amount = amount.checked_sub(fee).ok_or(TokenError::Overflow)?;
-        destination_account.base.amount = destination_account
-            .base
-            .amount
+        destination_account.base.amount = u64::from(destination_account.base.amount)
             .checked_add(credited_amount)
-            .ok_or(TokenError::Overflow)?;
+            .ok_or(TokenError::Overflow)?
+            .into();
         if fee > 0 {
             if let Ok(extension) = destination_account.get_extension_mut::<TransferFeeAmount>() {
                 let new_withheld_amount = u64::from(extension.withheld_amount)
@@ -488,9 +494,6 @@ impl Processor {
                 .checked_add(amount)
                 .ok_or(TokenError::Overflow)?;
         }
-
-        source_account.pack_base();
-        destination_account.pack_base();
 
         if let Some(program_id) = maybe_transfer_hook_program_id {
             if let Some((mint_info, _)) = expected_mint_info {
