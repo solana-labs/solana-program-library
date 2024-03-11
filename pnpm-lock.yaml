@@ -491,9 +491,6 @@ importers:
       '@solana/codecs':
         specifier: 2.0.0-preview.1
         version: 2.0.0-preview.1(fastestsmallesttextencoderdecoder@1.0.22)
-      '@solana/options':
-        specifier: 2.0.0-preview.1
-        version: 2.0.0-preview.1
       '@solana/spl-type-length-value':
         specifier: 0.1.0
         version: link:../../libraries/type-length-value/js
@@ -637,9 +634,6 @@ importers:
       '@solana/codecs':
         specifier: 2.0.0-preview.1
         version: 2.0.0-preview.1(fastestsmallesttextencoderdecoder@1.0.22)
-      '@solana/options':
-        specifier: 2.0.0-preview.1
-        version: 2.0.0-preview.1
       '@solana/spl-type-length-value':
         specifier: 0.1.0
         version: link:../../libraries/type-length-value/js

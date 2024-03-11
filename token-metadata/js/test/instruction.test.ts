@@ -13,14 +13,14 @@ import {
     getBooleanDecoder,
     getBytesDecoder,
     getDataEnumCodec,
+    getOptionDecoder,
     getStringDecoder,
     getU64Decoder,
     getStructDecoder,
+    some,
 } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
-import type { Decoder } from '@solana/codecs';
-import type { Option } from '@solana/options';
-import { getOptionDecoder, some } from '@solana/options';
+import type { Decoder, Option } from '@solana/codecs';
 import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 
 function checkPackUnpack<T extends object>(
