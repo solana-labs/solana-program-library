@@ -12,7 +12,7 @@ import {
 import { getOptionEncoder } from '@solana/options';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import type { PublicKey } from '@solana/web3.js';
-import { TransactionInstruction } from '@solana/web3.js';
+import { SystemProgram, TransactionInstruction } from '@solana/web3.js';
 
 import type { Field } from './field.js';
 import { getFieldCodec, getFieldConfig } from './field.js';
@@ -22,6 +22,10 @@ function getInstructionEncoder<T extends object>(discriminator: Uint8Array, data
         discriminator,
         data,
     ]);
+}
+
+function getPublicKeyEncoder(): Encoder<PublicKey> {
+    return mapEncoder(getBytesEncoder({ size: 32 }), (publicKey: PublicKey) => publicKey.toBytes());
 }
 
 /**
@@ -135,13 +139,6 @@ export interface UpdateAuthorityInstructionArgs {
 export function createUpdateAuthorityInstruction(args: UpdateAuthorityInstructionArgs): TransactionInstruction {
     const { programId, metadata, oldAuthority, newAuthority } = args;
 
-    const newAuthorityBuffer = Buffer.alloc(32);
-    if (newAuthority) {
-        newAuthorityBuffer.set(newAuthority.toBuffer());
-    } else {
-        newAuthorityBuffer.fill(0);
-    }
-
     return new TransactionInstruction({
         programId,
         keys: [
@@ -151,8 +148,8 @@ export function createUpdateAuthorityInstruction(args: UpdateAuthorityInstructio
         data: Buffer.from(
             getInstructionEncoder(
                 splDiscriminate('spl_token_metadata_interface:update_the_authority'),
-                getStructEncoder([['newAuthority', getBytesEncoder({ size: 32 })]])
-            ).encode({ newAuthority: newAuthorityBuffer })
+                getStructEncoder([['newAuthority', getPublicKeyEncoder()]])
+            ).encode({ newAuthority: newAuthority ?? SystemProgram.programId })
         ),
     });
 }

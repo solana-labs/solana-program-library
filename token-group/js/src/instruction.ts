@@ -2,18 +2,17 @@ import type { Encoder } from '@solana/codecs';
 import type { PublicKey } from '@solana/web3.js';
 import { getBytesEncoder, getStructEncoder, getTupleEncoder, getU32Encoder, mapEncoder } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
-import { TransactionInstruction } from '@solana/web3.js';
-
-function packInstruction<T extends object>(encoder: Encoder<T>, discriminator: Uint8Array, values: T): Buffer {
-    const data = encoder.encode(values);
-    return Buffer.concat([discriminator, data]);
-}
+import { SystemProgram, TransactionInstruction } from '@solana/web3.js';
 
 function getInstructionEncoder<T extends object>(discriminator: Uint8Array, dataEncoder: Encoder<T>): Encoder<T> {
     return mapEncoder(getTupleEncoder([getBytesEncoder(), dataEncoder]), (data: T): [Uint8Array, T] => [
         discriminator,
         data,
     ]);
+}
+
+function getPublicKeyEncoder(): Encoder<PublicKey> {
+    return mapEncoder(getBytesEncoder({ size: 32 }), (publicKey: PublicKey) => publicKey.toBytes());
 }
 
 export interface InitializeGroupInstruction {
@@ -28,13 +27,6 @@ export interface InitializeGroupInstruction {
 export function createInitializeGroupInstruction(args: InitializeGroupInstruction): TransactionInstruction {
     const { programId, group, mint, mintAuthority, updateAuthority, maxSize } = args;
 
-    const updateAuthorityBuffer = Buffer.alloc(32);
-    if (updateAuthority) {
-        updateAuthorityBuffer.set(updateAuthority.toBuffer());
-    } else {
-        updateAuthorityBuffer.fill(0);
-    }
-
     return new TransactionInstruction({
         programId,
         keys: [
@@ -46,10 +38,10 @@ export function createInitializeGroupInstruction(args: InitializeGroupInstructio
             getInstructionEncoder(
                 splDiscriminate('spl_token_group_interface:initialize_token_group'),
                 getStructEncoder([
-                    ['updateAuthority', getBytesEncoder({ size: 32 })],
+                    ['updateAuthority', getPublicKeyEncoder()],
                     ['maxSize', getU32Encoder()],
                 ])
-            ).encode({ updateAuthority: updateAuthorityBuffer, maxSize })
+            ).encode({ updateAuthority: updateAuthority ?? SystemProgram.programId, maxSize })
         ),
     });
 }
@@ -88,13 +80,6 @@ export interface UpdateGroupAuthority {
 export function createUpdateGroupAuthorityInstruction(args: UpdateGroupAuthority): TransactionInstruction {
     const { programId, group, currentAuthority, newAuthority } = args;
 
-    const newAuthorityBuffer = Buffer.alloc(32);
-    if (newAuthority) {
-        newAuthorityBuffer.set(newAuthority.toBuffer());
-    } else {
-        newAuthorityBuffer.fill(0);
-    }
-
     return new TransactionInstruction({
         programId,
         keys: [
@@ -104,8 +89,8 @@ export function createUpdateGroupAuthorityInstruction(args: UpdateGroupAuthority
         data: Buffer.from(
             getInstructionEncoder(
                 splDiscriminate('spl_token_group_interface:update_authority'),
-                getStructEncoder([['newAuthority', getBytesEncoder({ size: 32 })]])
-            ).encode({ newAuthority: newAuthorityBuffer })
+                getStructEncoder([['newAuthority', getPublicKeyEncoder()]])
+            ).encode({ newAuthority: newAuthority ?? SystemProgram.programId })
         ),
     });
 }
