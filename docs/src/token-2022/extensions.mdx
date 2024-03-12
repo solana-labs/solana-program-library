@@ -1861,7 +1861,22 @@ Signature: 52s1mxRqnr2jcZNvcmcgsQuXfVyT2w1TuRsEE3J6YwEZBu74BbFcHh2DvwnJG7qC7Cy6C
   </TabItem>
   <TabItem value="jsx" label="JS">
 
-Coming soon!
+```js
+import { createRemoveKeyInstruction } from "@solana/spl-token-metadata";
+
+(async () => {
+  const tx = new Transaction().add(
+    createRemoveKeyInstruction({
+      programId: TOKEN_2022_PROGRAM_ID,
+      metadata: mint.publicKey,
+      updateAuthority: payer.publicKey,
+      key: 'new-field',
+      idempotent: true, // If false the operation will fail if the field does not exist in the metadata
+    }),
+  );
+  await sendAndConfirmTransaction(connection, tx, [ payer, mint ]);
+})();
+```
 
   </TabItem>
 </Tabs>
