@@ -1797,7 +1797,22 @@ Signature: 2H16XtBqdwSbvvq8g5o2jhy4TknP6zgt71KHawEdyPvNuvusQrV4dPccUrMqjFeNTbk75
   </TabItem>
   <TabItem value="jsx" label="JS">
 
-Coming soon!
+```js
+import { createUpdateFieldInstruction } from "@solana/spl-token-metadata";
+
+(async () => {
+  const tx = new Transaction().add(
+    createUpdateFieldInstruction({
+      metadata: mint.publicKey,
+      updateAuthority: payer.publicKey,
+      programId: TOKEN_2022_PROGRAM_ID,
+      field: 'name',
+      value: 'YourToken',
+    }),
+  );
+  await sendAndConfirmTransaction(connection, tx, [ payer, mint ]);
+})();
+```
 
   </TabItem>
 </Tabs>
