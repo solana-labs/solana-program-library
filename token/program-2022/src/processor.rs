@@ -142,7 +142,7 @@ impl Processor {
         let mut account_data = new_account_info.data.borrow_mut();
         // unpack_uninitialized checks account.base.is_initialized() under the hood
         let mut account =
-            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut account_data)?;
+            PodStateWithExtensionsMut::<PodAccount>::unpack_uninitialized(&mut account_data)?;
 
         if !rent.is_exempt(new_account_info.lamports(), new_account_info_data_len) {
             return Err(TokenError::NotRentExempt.into());
@@ -150,7 +150,7 @@ impl Processor {
 
         // get_required_account_extensions checks mint validity
         let mint_data = mint_info.data.borrow();
-        let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
+        let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         if mint
             .get_extension::<PermanentDelegate>()
@@ -180,23 +180,23 @@ impl Processor {
 
         account.base.mint = *mint_info.key;
         account.base.owner = *owner;
-        account.base.close_authority = COption::None;
-        account.base.delegate = COption::None;
-        account.base.delegated_amount = 0;
-        account.base.state = starting_state;
+        account.base.close_authority = PodCOption::none();
+        account.base.delegate = PodCOption::none();
+        account.base.delegated_amount = 0.into();
+        account.base.state = starting_state.into();
         if cmp_pubkeys(mint_info.key, &native_mint::id()) {
             let rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
-            account.base.is_native = COption::Some(rent_exempt_reserve);
+            account.base.is_native = PodCOption::some(rent_exempt_reserve.into());
             account.base.amount = new_account_info
                 .lamports()
                 .checked_sub(rent_exempt_reserve)
-                .ok_or(TokenError::Overflow)?;
+                .ok_or(TokenError::Overflow)?
+                .into();
         } else {
-            account.base.is_native = COption::None;
-            account.base.amount = 0;
+            account.base.is_native = PodCOption::none();
+            account.base.amount = 0.into();
         };
 
-        account.pack_base();
         account.init_account_type()?;
 
         Ok(())
@@ -1766,17 +1766,17 @@ impl Processor {
         mint_account_info: &AccountInfo,
     ) -> Result<Vec<ExtensionType>, ProgramError> {
         let mint_data = mint_account_info.data.borrow();
-        let state = StateWithExtensions::<Mint>::unpack(&mint_data)
+        let state = PodStateWithExtensions::<PodMint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         Self::get_required_account_extensions_from_unpacked_mint(mint_account_info.owner, &state)
     }
 
     fn get_required_account_extensions_from_unpacked_mint(
         token_program_id: &Pubkey,
-        state: &StateWithExtensions<Mint>,
+        state: &PodStateWithExtensions<PodMint>,
     ) -> Result<Vec<ExtensionType>, ProgramError> {
         check_program_account(token_program_id)?;
-        let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
+        let mint_extensions = state.get_extension_types()?;
         Ok(ExtensionType::get_required_init_account_extensions(
             &mint_extensions,
         ))
