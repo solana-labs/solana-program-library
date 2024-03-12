@@ -1709,7 +1709,78 @@ Signature: 2H16XtBqdwSbvvq8g5o2jhy4TknP6zgt71KHawEdyPvNuvusQrV4dPccUrMqjFeNTbk75
   </TabItem>
   <TabItem value="jsx" label="JS">
 
-Coming soon!
+```js
+import {
+  clusterApiUrl,
+  Connection,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  sendAndConfirmTransaction,
+  SystemProgram,
+  Transaction,
+} from '@solana/web3.js';
+import {
+  createInitializeMetadataPointerInstruction,
+  createInitializeMintInstruction,
+  ExtensionType,
+  getMintLen,
+  LENGTH_SIZE,
+  TOKEN_2022_PROGRAM_ID,
+  TYPE_SIZE,
+} from '@solana/spl-token';
+import { createInitializeInstruction, pack, TokenMetadata } from '@solana/spl-token-metadata';
+
+(async () => {
+  const payer = Keypair.generate();
+
+  const mint = Keypair.generate();
+  const decimals = 9;
+
+  const metadata: TokenMetadata = {
+    mint: mint.publicKey,
+    name: 'TOKEN_NAME',
+    symbol: 'SMBL',
+    uri: 'URI',
+    additionalMetadata: [['new-field', 'new-value']],
+  };
+
+  const mintLen = getMintLen([ExtensionType.MetadataPointer]);
+
+  const metadataLen = TYPE_SIZE + LENGTH_SIZE + pack(metadata).length;
+
+  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+  const airdropSignature = await connection.requestAirdrop(payer.publicKey, 2 * LAMPORTS_PER_SOL);
+  await connection.confirmTransaction({
+    signature: airdropSignature,
+    ...(await connection.getLatestBlockhash()),
+  });
+
+  const mintLamports = await connection.getMinimumBalanceForRentExemption(mintLen + metadataLen);
+  const mintTransaction = new Transaction().add(
+    SystemProgram.createAccount({
+      fromPubkey: payer.publicKey,
+      newAccountPubkey: mint.publicKey,
+      space: mintLen,
+      lamports: mintLamports,
+      programId: TOKEN_2022_PROGRAM_ID,
+    }),
+    createInitializeMetadataPointerInstruction(mint.publicKey, payer.publicKey, mint.publicKey, TOKEN_2022_PROGRAM_ID),
+    createInitializeMintInstruction(mint.publicKey, decimals, payer.publicKey, null, TOKEN_2022_PROGRAM_ID),
+    createInitializeInstruction({
+      programId: TOKEN_2022_PROGRAM_ID,
+      mint: mint.publicKey,
+      metadata: mint.publicKey,
+      name: metadata.name,
+      symbol: metadata.symbol,
+      uri: metadata.uri,
+      mintAuthority: payer.publicKey,
+      updateAuthority: payer.publicKey,
+    }),
+  );
+  await sendAndConfirmTransaction(connection, mintTransaction, [payer, mint]);
+})();
+```
 
   </TabItem>
 </Tabs>
@@ -1726,7 +1797,22 @@ Signature: 2H16XtBqdwSbvvq8g5o2jhy4TknP6zgt71KHawEdyPvNuvusQrV4dPccUrMqjFeNTbk75
   </TabItem>
   <TabItem value="jsx" label="JS">
 
-Coming soon!
+```js
+import { createUpdateFieldInstruction } from "@solana/spl-token-metadata";
+
+(async () => {
+  const tx = new Transaction().add(
+    createUpdateFieldInstruction({
+      metadata: mint.publicKey,
+      updateAuthority: payer.publicKey,
+      programId: TOKEN_2022_PROGRAM_ID,
+      field: 'name',
+      value: 'YourToken',
+    }),
+  );
+  await sendAndConfirmTransaction(connection, tx, [ payer, mint ]);
+})();
+```
 
   </TabItem>
 </Tabs>
@@ -1743,7 +1829,22 @@ Signature: 31uerYNa6yhb21k5CCX69k7RLUKEhJEV99UadEpPnZtWWpykwr7vkTFkuFeJ7AaEyQPre
   </TabItem>
   <TabItem value="jsx" label="JS">
 
-Coming soon!
+```js
+import { createUpdateFieldInstruction } from "@solana/spl-token-metadata";
+
+(async () => {
+  const tx = new Transaction().add(
+    createUpdateFieldInstruction({
+      metadata: mint.publicKey,
+      updateAuthority: payer.publicKey,
+      programId: TOKEN_2022_PROGRAM_ID,
+      field: 'new-field',
+      value: 'new-value',
+    }),
+  );
+  await sendAndConfirmTransaction(connection, tx, [ payer, mint ]);
+})();
+```
 
   </TabItem>
 </Tabs>
@@ -1760,7 +1861,22 @@ Signature: 52s1mxRqnr2jcZNvcmcgsQuXfVyT2w1TuRsEE3J6YwEZBu74BbFcHh2DvwnJG7qC7Cy6C
   </TabItem>
   <TabItem value="jsx" label="JS">
 
-Coming soon!
+```js
+import { createRemoveKeyInstruction } from "@solana/spl-token-metadata";
+
+(async () => {
+  const tx = new Transaction().add(
+    createRemoveKeyInstruction({
+      programId: TOKEN_2022_PROGRAM_ID,
+      metadata: mint.publicKey,
+      updateAuthority: payer.publicKey,
+      key: 'new-field',
+      idempotent: true, // If false the operation will fail if the field does not exist in the metadata
+    }),
+  );
+  await sendAndConfirmTransaction(connection, tx, [ payer, mint ]);
+})();
+```
 
   </TabItem>
 </Tabs>
