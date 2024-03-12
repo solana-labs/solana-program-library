@@ -16,10 +16,10 @@ import {
     TOKEN_2022_PROGRAM_ID,
     TYPE_SIZE,
 } from '@solana/spl-token';
+import type { TokenMetadata } from '@solana/spl-token-metadata';
 import {
     createInitializeInstruction,
     pack,
-    TokenMetadata,
     createUpdateFieldInstruction,
     createRemoveKeyInstruction,
 } from '@solana/spl-token-metadata';
@@ -59,7 +59,12 @@ import {
             lamports: mintLamports,
             programId: TOKEN_2022_PROGRAM_ID,
         }),
-        createInitializeMetadataPointerInstruction(mint.publicKey, payer.publicKey, mint.publicKey, TOKEN_2022_PROGRAM_ID),
+        createInitializeMetadataPointerInstruction(
+            mint.publicKey,
+            payer.publicKey,
+            mint.publicKey,
+            TOKEN_2022_PROGRAM_ID
+        ),
         createInitializeMintInstruction(mint.publicKey, decimals, payer.publicKey, null, TOKEN_2022_PROGRAM_ID),
         createInitializeInstruction({
             programId: TOKEN_2022_PROGRAM_ID,
@@ -97,7 +102,7 @@ import {
             updateAuthority: payer.publicKey,
             key: 'new-field',
             idempotent: true, // If false the operation will fail if the field does not exist in the metadata
-        }),
+        })
     );
     const sig = await sendAndConfirmTransaction(connection, mintTransaction, [payer, mint]);
     console.log('Signature:', sig);
