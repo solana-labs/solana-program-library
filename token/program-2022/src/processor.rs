@@ -1352,7 +1352,7 @@ impl Processor {
         check_program_account(mint_info.owner)?;
 
         let mint_data = mint_info.data.borrow();
-        let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
+        let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         let amount = if let Ok(extension) = mint.get_extension::<InterestBearingConfig>() {
             let unix_timestamp = Clock::get()?.unix_timestamp;
