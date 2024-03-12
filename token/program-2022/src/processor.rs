@@ -1316,7 +1316,7 @@ impl Processor {
         let token_account_info = next_account_info(account_info_iter)?;
         let token_account_data = &mut token_account_info.data.borrow_mut();
         let mut token_account =
-            StateWithExtensionsMut::<Account>::unpack_uninitialized(token_account_data)?;
+            PodStateWithExtensionsMut::<PodAccount>::unpack_uninitialized(token_account_data)?;
         token_account
             .init_extension::<ImmutableOwner>(true)
             .map(|_| ())
