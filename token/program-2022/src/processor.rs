@@ -1198,8 +1198,8 @@ impl Processor {
         let authority_info_data_len = authority_info.data_len();
 
         let mut source_account_data = source_account_info.data.borrow_mut();
-        let mut source_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        let source_account =
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut source_account_data)?;
         if freeze && source_account.base.is_frozen() || !freeze && !source_account.base.is_frozen()
         {
             return Err(TokenError::InvalidState.into());
@@ -1212,25 +1212,26 @@ impl Processor {
         }
 
         let mint_data = mint_info.data.borrow();
-        let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
-        match mint.base.freeze_authority {
-            COption::Some(authority) => Self::validate_owner(
+        let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
+        match &mint.base.freeze_authority {
+            PodCOption {
+                option: PodCOption::<Pubkey>::SOME,
+                value: authority,
+            } => Self::validate_owner(
                 program_id,
-                &authority,
+                authority,
                 authority_info,
                 authority_info_data_len,
                 account_info_iter.as_slice(),
             ),
-            COption::None => Err(TokenError::MintCannotFreeze.into()),
+            _ => Err(TokenError::MintCannotFreeze.into()),
         }?;
 
         source_account.base.state = if freeze {
-            AccountState::Frozen
+            AccountState::Frozen.into()
         } else {
-            AccountState::Initialized
+            AccountState::Initialized.into()
         };
-
-        source_account.pack_base();
 
         Ok(())
     }
