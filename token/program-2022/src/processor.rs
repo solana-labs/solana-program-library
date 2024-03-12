@@ -45,7 +45,7 @@ use {
         system_instruction, system_program,
         sysvar::{rent::Rent, Sysvar},
     },
-    spl_pod::primitives::PodBool,
+    spl_pod::primitives::{PodBool, PodU64},
     spl_token_group_interface::instruction::TokenGroupInstruction,
     spl_token_metadata_interface::instruction::TokenMetadataInstruction,
     std::convert::{TryFrom, TryInto},
@@ -1243,23 +1243,26 @@ impl Processor {
 
         check_program_account(native_account_info.owner)?;
         let mut native_account_data = native_account_info.data.borrow_mut();
-        let mut native_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut native_account_data)?;
+        let native_account =
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut native_account_data)?;
 
-        if let COption::Some(rent_exempt_reserve) = native_account.base.is_native {
-            let new_amount = native_account_info
-                .lamports()
-                .checked_sub(rent_exempt_reserve)
-                .ok_or(TokenError::Overflow)?;
-            if new_amount < native_account.base.amount {
-                return Err(TokenError::InvalidState.into());
+        match native_account.base.is_native {
+            PodCOption {
+                option: PodCOption::<PodU64>::SOME,
+                value: amount,
+            } => {
+                let new_amount = native_account_info
+                    .lamports()
+                    .checked_sub(u64::from(amount))
+                    .ok_or(TokenError::Overflow)?;
+                if new_amount < u64::from(native_account.base.amount) {
+                    return Err(TokenError::InvalidState.into());
+                }
+                native_account.base.amount = new_amount.into();
             }
-            native_account.base.amount = new_amount;
-        } else {
-            return Err(TokenError::NonNativeNotSupported.into());
+            _ => return Err(TokenError::NonNativeNotSupported.into()),
         }
 
-        native_account.pack_base();
         Ok(())
     }
 
