@@ -215,8 +215,7 @@ impl TryFrom<&ExtraAccountMeta> for AccountMeta {
     fn try_from(pod: &ExtraAccountMeta) -> Result<Self, Self::Error> {
         if pod.discriminator == 0 {
             Ok(AccountMeta {
-                pubkey: Pubkey::try_from(pod.address_config)
-                    .map_err(|_| ProgramError::from(AccountResolutionError::InvalidPubkey))?,
+                pubkey: Pubkey::from(pod.address_config),
                 is_signer: pod.is_signer.into(),
                 is_writable: pod.is_writable.into(),
             })

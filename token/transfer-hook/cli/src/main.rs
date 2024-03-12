@@ -51,7 +51,7 @@ async fn build_transaction_with_rent_transfer(
     rpc_client: &RpcClient,
     payer: &dyn Signer,
     extra_account_metas_address: &Pubkey,
-    extra_account_metas: &Vec<ExtraAccountMeta>,
+    extra_account_metas: &[ExtraAccountMeta],
     instruction: Instruction,
 ) -> Result<Transaction, Box<dyn std::error::Error>> {
     let account_size = ExtraAccountMetaList::size_of(extra_account_metas.len())?;
