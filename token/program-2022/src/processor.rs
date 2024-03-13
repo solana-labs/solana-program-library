@@ -28,8 +28,8 @@ use {
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
         native_mint,
-        pod::{PodAccount, PodCOption, PodMint},
-        state::{Account, AccountState, Mint, Multisig},
+        pod::{PodAccount, PodCOption, PodMint, PodMultisig},
+        state::{Account, AccountState, Mint, PackedSizeOf},
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -44,7 +44,10 @@ use {
         system_instruction, system_program,
         sysvar::{rent::Rent, Sysvar},
     },
-    spl_pod::primitives::{PodBool, PodU64},
+    spl_pod::{
+        bytemuck::{pod_from_bytes, pod_from_bytes_mut},
+        primitives::{PodBool, PodU64},
+    },
     spl_token_group_interface::instruction::TokenGroupInstruction,
     spl_token_metadata_interface::instruction::TokenMetadataInstruction,
     std::convert::{TryFrom, TryInto},
@@ -233,8 +236,9 @@ impl Processor {
             Rent::get()?
         };
 
-        let mut multisig = Multisig::unpack_unchecked(&multisig_info.data.borrow())?;
-        if multisig.is_initialized {
+        let mut multisig_data = multisig_info.data.borrow_mut();
+        let multisig = pod_from_bytes_mut::<PodMultisig>(&mut multisig_data)?;
+        if bool::from(multisig.is_initialized) {
             return Err(TokenError::AlreadyInUse.into());
         }
 
@@ -254,9 +258,7 @@ impl Processor {
         for (i, signer_info) in signer_infos.iter().enumerate() {
             multisig.signers[i] = *signer_info.key;
         }
-        multisig.is_initialized = true;
-
-        Multisig::pack(multisig, &mut multisig_info.data.borrow_mut())?;
+        multisig.is_initialized = true.into();
 
         Ok(())
     }
@@ -1481,7 +1483,7 @@ impl Processor {
                 }
                 _ => return Err(TokenError::AuthorityTypeNotSupported.into()),
             }
-        } else if source_data.len() == Multisig::LEN {
+        } else if source_data.len() == PodMultisig::SIZE_OF {
             Self::validate_owner(
                 program_id,
                 source_info.key,
@@ -1743,9 +1745,10 @@ impl Processor {
         }
 
         if cmp_pubkeys(program_id, owner_account_info.owner)
-            && owner_account_data_len == Multisig::get_packed_len()
+            && owner_account_data_len == PodMultisig::SIZE_OF
         {
-            let multisig = Multisig::unpack(&owner_account_info.data.borrow())?;
+            let multisig_data = &owner_account_info.data.borrow();
+            let multisig = pod_from_bytes::<PodMultisig>(multisig_data)?;
             let mut num_signers = 0;
             let mut matched = [false; MAX_SIGNERS];
             for signer in signers.iter() {
@@ -1815,6 +1818,7 @@ mod tests {
         super::*,
         crate::{
             extension::transfer_fee::instruction::initialize_transfer_fee_config, instruction::*,
+            state::Multisig,
         },
         serial_test::serial,
         solana_program::{
