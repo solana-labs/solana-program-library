@@ -6,10 +6,9 @@ use {
         error::TokenError,
         extension::{
             alloc_and_serialize_variable_len_extension, metadata_pointer::MetadataPointer,
-            BaseStateWithExtensions, StateWithExtensions,
+            BaseStateWithExtensions, PodStateWithExtensions,
         },
-        pod::PodMint,
-        state::Mint,
+        pod::{PodCOption, PodMint},
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -17,7 +16,6 @@ use {
         msg,
         program::set_return_data,
         program_error::ProgramError,
-        program_option::COption,
         pubkey::Pubkey,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
@@ -71,12 +69,12 @@ pub fn process_initialize(
         // but auditors like it
         check_program_account(mint_info.owner)?;
         let mint_data = mint_info.try_borrow_data()?;
-        let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+        let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
 
         if !mint_authority_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
-        if mint.base.mint_authority.as_ref() != COption::Some(mint_authority_info.key) {
+        if mint.base.mint_authority != PodCOption::some(*mint_authority_info.key) {
             return Err(TokenMetadataError::IncorrectMintAuthority.into());
         }
 
@@ -122,7 +120,7 @@ pub fn process_update_field(
     // realloc the account
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
-        let mint = StateWithExtensions::<Mint>::unpack(&buffer)?;
+        let mint = PodStateWithExtensions::<PodMint>::unpack(&buffer)?;
         mint.get_variable_len_extension::<TokenMetadata>()?
     };
 
@@ -151,7 +149,7 @@ pub fn process_remove_key(
     // realloc the account
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
-        let mint = StateWithExtensions::<Mint>::unpack(&buffer)?;
+        let mint = PodStateWithExtensions::<PodMint>::unpack(&buffer)?;
         mint.get_variable_len_extension::<TokenMetadata>()?
     };
 
@@ -178,7 +176,7 @@ pub fn process_update_authority(
     // to the account later
     let mut token_metadata = {
         let buffer = metadata_info.try_borrow_data()?;
-        let mint = StateWithExtensions::<Mint>::unpack(&buffer)?;
+        let mint = PodStateWithExtensions::<PodMint>::unpack(&buffer)?;
         mint.get_variable_len_extension::<TokenMetadata>()?
     };
 
@@ -200,7 +198,7 @@ pub fn process_emit(program_id: &Pubkey, accounts: &[AccountInfo], data: Emit) -
     }
 
     let buffer = metadata_info.try_borrow_data()?;
-    let state = StateWithExtensions::<Mint>::unpack(&buffer)?;
+    let state = PodStateWithExtensions::<PodMint>::unpack(&buffer)?;
     let metadata_bytes = state.get_extension_bytes::<TokenMetadata>()?;
 
     if let Some(range) = TokenMetadata::get_slice(metadata_bytes, data.start, data.end) {
