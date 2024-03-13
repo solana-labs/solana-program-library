@@ -9,11 +9,11 @@ use {
                 },
                 TransferHook,
             },
-            BaseStateWithExtensionsMut, StateWithExtensionsMut,
+            BaseStateWithExtensionsMut, PodStateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
+        pod::PodMint,
         processor::Processor,
-        state::Mint,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -34,7 +34,7 @@ fn process_initialize(
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
     let mut mint_data = mint_account_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack_uninitialized(&mut mint_data)?;
 
     let extension = mint.init_extension::<TransferHook>(true)?;
     extension.authority = *authority;
@@ -62,7 +62,7 @@ fn process_update(
     let owner_info_data_len = owner_info.data_len();
 
     let mut mint_data = mint_account_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(&mut mint_data)?;
     let extension = mint.get_extension_mut::<TransferHook>()?;
     let authority =
         Option::<Pubkey>::from(extension.authority).ok_or(TokenError::NoAuthorityExists)?;
