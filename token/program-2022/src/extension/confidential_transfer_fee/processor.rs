@@ -24,13 +24,13 @@ use {
                 EncryptedWithheldAmount,
             },
             transfer_fee::TransferFeeConfig,
-            BaseStateWithExtensions, BaseStateWithExtensionsMut, StateWithExtensionsMut,
+            BaseStateWithExtensions, BaseStateWithExtensionsMut, PodStateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
+        pod::{PodAccount, PodMint},
         processor::Processor,
         proof::decode_proof_instruction_context,
         solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
-        state::{Account, Mint},
     },
     bytemuck::Zeroable,
     solana_program::{
@@ -54,7 +54,7 @@ fn process_initialize_confidential_transfer_fee_config(
     let mint_account_info = next_account_info(account_info_iter)?;
 
     let mut mint_data = mint_account_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack_uninitialized(&mut mint_data)?;
     let extension = mint.init_extension::<ConfidentialTransferFeeConfig>(true)?;
     extension.authority = *authority;
     extension.withdraw_withheld_authority_elgamal_pubkey =
@@ -90,7 +90,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     // unnecessary check, but helps for clarity
     check_program_account(mint_account_info.owner)?;
     let mut mint_data = mint_account_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(&mut mint_data)?;
 
     // mint must be extended for fees
     {
@@ -119,7 +119,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     // transfers
     let mut destination_account_data = destination_account_info.data.borrow_mut();
     let mut destination_account =
-        StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
+        PodStateWithExtensionsMut::<PodAccount>::unpack(&mut destination_account_data)?;
 
     if destination_account.base.mint != *mint_account_info.key {
         return Err(TokenError::MintMismatch.into());
@@ -234,7 +234,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
     // unnecessary check, but helps for clarity
     check_program_account(mint_account_info.owner)?;
     let mut mint_data = mint_account_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(&mut mint_data)?;
 
     // mint must be extended for fees
     let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
@@ -251,7 +251,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     let mut destination_account_data = destination_account_info.data.borrow_mut();
     let mut destination_account =
-        StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
+        PodStateWithExtensionsMut::<PodAccount>::unpack(&mut destination_account_data)?;
     if destination_account.base.mint != *mint_account_info.key {
         return Err(TokenError::MintMismatch.into());
     }
@@ -340,8 +340,9 @@ fn harvest_from_account<'b>(
     token_account_info: &'b AccountInfo<'_>,
 ) -> Result<EncryptedWithheldAmount, TokenError> {
     let mut token_account_data = token_account_info.data.borrow_mut();
-    let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)
-        .map_err(|_| TokenError::InvalidState)?;
+    let mut token_account =
+        PodStateWithExtensionsMut::<PodAccount>::unpack(&mut token_account_data)
+            .map_err(|_| TokenError::InvalidState)?;
     if token_account.base.mint != *mint_key {
         return Err(TokenError::MintMismatch);
     }
@@ -365,7 +366,7 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
     let token_account_infos = account_info_iter.as_slice();
 
     let mut mint_data = mint_account_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(&mut mint_data)?;
     mint.get_extension::<TransferFeeConfig>()?;
     let confidential_transfer_fee_mint =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
@@ -405,7 +406,7 @@ fn process_enable_harvest_to_mint(program_id: &Pubkey, accounts: &[AccountInfo])
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
+    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
     let confidential_transfer_fee_mint =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
 
@@ -435,7 +436,7 @@ fn process_disable_harvest_to_mint(program_id: &Pubkey, accounts: &[AccountInfo]
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
+    let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
     let confidential_transfer_fee_mint =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
 
