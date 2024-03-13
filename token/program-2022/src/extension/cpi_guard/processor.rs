@@ -4,11 +4,11 @@ use {
         error::TokenError,
         extension::{
             cpi_guard::{in_cpi, instruction::CpiGuardInstruction, CpiGuard},
-            BaseStateWithExtensionsMut, StateWithExtensionsMut,
+            BaseStateWithExtensionsMut, PodStateWithExtensionsMut,
         },
         instruction::decode_instruction_type,
+        pod::PodAccount,
         processor::Processor,
-        state::Account,
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -31,7 +31,7 @@ fn process_toggle_cpi_guard(
     let owner_info_data_len = owner_info.data_len();
 
     let mut account_data = token_account_info.data.borrow_mut();
-    let mut account = StateWithExtensionsMut::<Account>::unpack(&mut account_data)?;
+    let mut account = PodStateWithExtensionsMut::<PodAccount>::unpack(&mut account_data)?;
 
     Processor::validate_owner(
         program_id,
