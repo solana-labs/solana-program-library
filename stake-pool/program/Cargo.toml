@@ -14,7 +14,7 @@ test-sbf = []
 [dependencies]
 arrayref = "0.3.7"
 borsh = "1.2.1"
-bytemuck = "1.14"
+bytemuck = "1.15"
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.2"
