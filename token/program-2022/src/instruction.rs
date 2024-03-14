@@ -1129,7 +1129,7 @@ impl AuthorityType {
         }
     }
 
-    fn from(index: u8) -> Result<Self, ProgramError> {
+    pub(crate) fn from(index: u8) -> Result<Self, ProgramError> {
         match index {
             0 => Ok(AuthorityType::MintTokens),
             1 => Ok(AuthorityType::FreezeAccount),
