@@ -10,81 +10,84 @@ import * as web3 from '@solana/web3.js'
 
 /**
  * @category Instructions
- * @category Append
+ * @category FillProofBuffer
  * @category generated
  */
-export type AppendInstructionArgs = {
-  leaf: number[] /* size: 32 */
+export type FillProofBufferInstructionArgs = {
+  maxDepth: number
+  partialProof: number[] /* size: 32 */[]
+  index: number
 }
 /**
  * @category Instructions
- * @category Append
+ * @category FillProofBuffer
  * @category generated
  */
-export const appendStruct = new beet.BeetArgsStruct<
-  AppendInstructionArgs & {
+export const fillProofBufferStruct = new beet.FixableBeetArgsStruct<
+  FillProofBufferInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+    ['maxDepth', beet.u32],
+    ['partialProof', beet.array(beet.uniformFixedSizeArray(beet.u8, 32))],
+    ['index', beet.u32],
   ],
-  'AppendInstructionArgs'
+  'FillProofBufferInstructionArgs'
 )
 /**
- * Accounts required by the _append_ instruction
+ * Accounts required by the _fillProofBuffer_ instruction
  *
- * @property [_writable_] merkleTree
- * @property [**signer**] authority
- * @property [] noop
+ * @property [**signer**] payer
+ * @property [**signer**] proofBuffer
  * @category Instructions
- * @category Append
+ * @category FillProofBuffer
  * @category generated
  */
-export type AppendInstructionAccounts = {
-  merkleTree: web3.PublicKey
-  authority: web3.PublicKey
-  noop: web3.PublicKey
+export type FillProofBufferInstructionAccounts = {
+  payer: web3.PublicKey
+  proofBuffer: web3.PublicKey
+  systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const appendInstructionDiscriminator = [
-  149, 120, 18, 222, 236, 225, 88, 203,
+export const fillProofBufferInstructionDiscriminator = [
+  242, 1, 180, 207, 192, 129, 104, 160,
 ]
 
 /**
- * Creates a _Append_ instruction.
+ * Creates a _FillProofBuffer_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category Append
+ * @category FillProofBuffer
  * @category generated
  */
-export function createAppendInstruction(
-  accounts: AppendInstructionAccounts,
-  args: AppendInstructionArgs,
+export function createFillProofBufferInstruction(
+  accounts: FillProofBufferInstructionAccounts,
+  args: FillProofBufferInstructionArgs,
   programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
-  const [data] = appendStruct.serialize({
-    instructionDiscriminator: appendInstructionDiscriminator,
+  const [data] = fillProofBufferStruct.serialize({
+    instructionDiscriminator: fillProofBufferInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.merkleTree,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.authority,
+      pubkey: accounts.payer,
       isWritable: false,
       isSigner: true,
     },
     {
-      pubkey: accounts.noop,
+      pubkey: accounts.proofBuffer,
+      isWritable: false,
+      isSigner: true,
+    },
+    {
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },

@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet';
-import * as web3 from '@solana/web3.js';
+import * as beet from '@metaplex-foundation/beet'
+import * as web3 from '@solana/web3.js'
 
 /**
  * @category Instructions
@@ -14,26 +14,26 @@ import * as web3 from '@solana/web3.js';
  * @category generated
  */
 export type InitEmptyMerkleTreeInstructionArgs = {
-    maxDepth: number;
-    maxBufferSize: number;
-};
+  maxDepth: number
+  maxBufferSize: number
+}
 /**
  * @category Instructions
  * @category InitEmptyMerkleTree
  * @category generated
  */
 export const initEmptyMerkleTreeStruct = new beet.BeetArgsStruct<
-    InitEmptyMerkleTreeInstructionArgs & {
-        instructionDiscriminator: number[] /* size: 8 */;
-    }
+  InitEmptyMerkleTreeInstructionArgs & {
+    instructionDiscriminator: number[] /* size: 8 */
+  }
 >(
-    [
-        ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-        ['maxDepth', beet.u32],
-        ['maxBufferSize', beet.u32],
-    ],
-    'InitEmptyMerkleTreeInstructionArgs',
-);
+  [
+    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['maxDepth', beet.u32],
+    ['maxBufferSize', beet.u32],
+  ],
+  'InitEmptyMerkleTreeInstructionArgs'
+)
 /**
  * Accounts required by the _initEmptyMerkleTree_ instruction
  *
@@ -45,13 +45,15 @@ export const initEmptyMerkleTreeStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type InitEmptyMerkleTreeInstructionAccounts = {
-    merkleTree: web3.PublicKey;
-    authority: web3.PublicKey;
-    noop: web3.PublicKey;
-    anchorRemainingAccounts?: web3.AccountMeta[];
-};
+  merkleTree: web3.PublicKey
+  authority: web3.PublicKey
+  noop: web3.PublicKey
+  anchorRemainingAccounts?: web3.AccountMeta[]
+}
 
-export const initEmptyMerkleTreeInstructionDiscriminator = [191, 11, 119, 7, 180, 107, 220, 110];
+export const initEmptyMerkleTreeInstructionDiscriminator = [
+  191, 11, 119, 7, 180, 107, 220, 110,
+]
 
 /**
  * Creates a _InitEmptyMerkleTree_ instruction.
@@ -64,42 +66,42 @@ export const initEmptyMerkleTreeInstructionDiscriminator = [191, 11, 119, 7, 180
  * @category generated
  */
 export function createInitEmptyMerkleTreeInstruction(
-    accounts: InitEmptyMerkleTreeInstructionAccounts,
-    args: InitEmptyMerkleTreeInstructionArgs,
-    programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
+  accounts: InitEmptyMerkleTreeInstructionAccounts,
+  args: InitEmptyMerkleTreeInstructionArgs,
+  programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
-    const [data] = initEmptyMerkleTreeStruct.serialize({
-        instructionDiscriminator: initEmptyMerkleTreeInstructionDiscriminator,
-        ...args,
-    });
-    const keys: web3.AccountMeta[] = [
-        {
-            isSigner: false,
-            isWritable: true,
-            pubkey: accounts.merkleTree,
-        },
-        {
-            isSigner: true,
-            isWritable: false,
-            pubkey: accounts.authority,
-        },
-        {
-            isSigner: false,
-            isWritable: false,
-            pubkey: accounts.noop,
-        },
-    ];
+  const [data] = initEmptyMerkleTreeStruct.serialize({
+    instructionDiscriminator: initEmptyMerkleTreeInstructionDiscriminator,
+    ...args,
+  })
+  const keys: web3.AccountMeta[] = [
+    {
+      pubkey: accounts.merkleTree,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.authority,
+      isWritable: false,
+      isSigner: true,
+    },
+    {
+      pubkey: accounts.noop,
+      isWritable: false,
+      isSigner: false,
+    },
+  ]
 
-    if (accounts.anchorRemainingAccounts != null) {
-        for (const acc of accounts.anchorRemainingAccounts) {
-            keys.push(acc);
-        }
+  if (accounts.anchorRemainingAccounts != null) {
+    for (const acc of accounts.anchorRemainingAccounts) {
+      keys.push(acc)
     }
+  }
 
-    const ix = new web3.TransactionInstruction({
-        data,
-        keys,
-        programId,
-    });
-    return ix;
+  const ix = new web3.TransactionInstruction({
+    programId,
+    keys,
+    data,
+  })
+  return ix
 }

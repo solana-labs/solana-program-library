@@ -5,10 +5,12 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet';
-
-import { ApplicationDataEvent, applicationDataEventBeet } from './ApplicationDataEvent';
-import { ChangeLogEvent, changeLogEventBeet } from './ChangeLogEvent';
+import * as beet from '@metaplex-foundation/beet'
+import { ChangeLogEvent, changeLogEventBeet } from './ChangeLogEvent'
+import {
+  ApplicationDataEvent,
+  applicationDataEventBeet,
+} from './ApplicationDataEvent'
 /**
  * This type is used to derive the {@link AccountCompressionEvent} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link AccountCompressionEvent} type instead.
@@ -19,9 +21,10 @@ import { ChangeLogEvent, changeLogEventBeet } from './ChangeLogEvent';
  * @private
  */
 export type AccountCompressionEventRecord = {
-    ChangeLog: { fields: [ChangeLogEvent] };
-    ApplicationData: { fields: [ApplicationDataEvent] };
-};
+  ChangeLog: { fields: [ChangeLogEvent] }
+  ApplicationData: { fields: [ApplicationDataEvent] }
+  InitWithRoot: { fields: [ChangeLogEvent, string] }
+}
 
 /**
  * Union type respresenting the AccountCompressionEvent data enum defined in Rust.
@@ -34,32 +37,53 @@ export type AccountCompressionEventRecord = {
  * @category enums
  * @category generated
  */
-export type AccountCompressionEvent = beet.DataEnumKeyAsKind<AccountCompressionEventRecord>;
+export type AccountCompressionEvent =
+  beet.DataEnumKeyAsKind<AccountCompressionEventRecord>
 
 export const isAccountCompressionEventChangeLog = (
-    x: AccountCompressionEvent,
-): x is AccountCompressionEvent & { __kind: 'ChangeLog' } => x.__kind === 'ChangeLog';
+  x: AccountCompressionEvent
+): x is AccountCompressionEvent & { __kind: 'ChangeLog' } =>
+  x.__kind === 'ChangeLog'
 export const isAccountCompressionEventApplicationData = (
-    x: AccountCompressionEvent,
-): x is AccountCompressionEvent & { __kind: 'ApplicationData' } => x.__kind === 'ApplicationData';
+  x: AccountCompressionEvent
+): x is AccountCompressionEvent & { __kind: 'ApplicationData' } =>
+  x.__kind === 'ApplicationData'
+export const isAccountCompressionEventInitWithRoot = (
+  x: AccountCompressionEvent
+): x is AccountCompressionEvent & { __kind: 'InitWithRoot' } =>
+  x.__kind === 'InitWithRoot'
 
 /**
  * @category userTypes
  * @category generated
  */
-export const accountCompressionEventBeet = beet.dataEnum<AccountCompressionEventRecord>([
+export const accountCompressionEventBeet =
+  beet.dataEnum<AccountCompressionEventRecord>([
     [
-        'ChangeLog',
-        new beet.FixableBeetArgsStruct<AccountCompressionEventRecord['ChangeLog']>(
-            [['fields', beet.tuple([changeLogEventBeet])]],
-            'AccountCompressionEventRecord["ChangeLog"]',
-        ),
+      'ChangeLog',
+      new beet.FixableBeetArgsStruct<
+        AccountCompressionEventRecord['ChangeLog']
+      >(
+        [['fields', beet.tuple([changeLogEventBeet])]],
+        'AccountCompressionEventRecord["ChangeLog"]'
+      ),
     ],
     [
-        'ApplicationData',
-        new beet.FixableBeetArgsStruct<AccountCompressionEventRecord['ApplicationData']>(
-            [['fields', beet.tuple([applicationDataEventBeet])]],
-            'AccountCompressionEventRecord["ApplicationData"]',
-        ),
+      'ApplicationData',
+      new beet.FixableBeetArgsStruct<
+        AccountCompressionEventRecord['ApplicationData']
+      >(
+        [['fields', beet.tuple([applicationDataEventBeet])]],
+        'AccountCompressionEventRecord["ApplicationData"]'
+      ),
     ],
-]) as beet.FixableBeet<AccountCompressionEvent>;
+    [
+      'InitWithRoot',
+      new beet.FixableBeetArgsStruct<
+        AccountCompressionEventRecord['InitWithRoot']
+      >(
+        [['fields', beet.tuple([changeLogEventBeet, beet.utf8String])]],
+        'AccountCompressionEventRecord["InitWithRoot"]'
+      ),
+    ],
+  ]) as beet.FixableBeet<AccountCompressionEvent, AccountCompressionEvent>

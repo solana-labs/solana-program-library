@@ -1,8 +1,8 @@
 import { AnchorProvider } from '@project-serum/anchor';
-import { Keypair, SendTransactionError, Signer, Transaction, TransactionInstruction } from '@solana/web3.js';
+import { Keypair, PublicKey, SendTransactionError, Signer, Transaction, TransactionInstruction } from '@solana/web3.js';
 import * as crypto from 'crypto';
 
-import { createAllocTreeIx, createAppendIx, createInitEmptyMerkleTreeIx, ValidDepthSizePair } from '../src';
+import { createAllocTreeIx, createAppendIx, createInitEmptyMerkleTreeIx, createInitMerkleTreeWithRootInstruction, createInitMerkleTreeWithRootIx, ValidDepthSizePair } from '../src';
 import { MerkleTree } from '../src/merkle-tree';
 
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
@@ -38,7 +38,7 @@ export async function execute(
     } catch (e) {
         if (e instanceof SendTransactionError) {
             console.log('Tx error!', e.logs);
-	}
+        }
         throw e;
     }
 
@@ -113,5 +113,62 @@ export async function createEmptyTreeOnChain(
     const txId = await execute(provider, ixs, [payer, cmtKeypair]);
     await confirmAndLogTx(provider, txId as string);
 
+    return cmtKeypair;
+}
+
+export type CreateTreeWithRootArgs = {
+    provider: AnchorProvider,
+    payer: Keypair,
+    depthSizePair: ValidDepthSizePair,
+    canopyDepth: number,
+    root: Buffer,
+    firstLeaf: Buffer,
+    manifestUrl: string,
+    proofBuffer?: PublicKey,
+    proofs?: Buffer[]
+};
+export async function createTreeWithRoot(
+    args: CreateTreeWithRootArgs
+): Promise<Keypair> {
+    let { provider, 
+        payer, 
+        depthSizePair,
+        canopyDepth,
+        root,
+        firstLeaf,
+        manifestUrl, 
+        proofBuffer, 
+        proofs 
+    } = args;
+    if (proofBuffer === null && proofs === null) {
+        throw new Error("Either proofBuffer or proofs must be provided");
+    }
+    if (!!proofBuffer && !!proofs) {
+        throw new Error("Either proofBuffer or proofs must be provided, not both");
+    }
+
+    const cmtKeypair = Keypair.generate();
+    const allocAccountIx = await createAllocTreeIx(
+        provider.connection,
+        cmtKeypair.publicKey,
+        payer.publicKey,
+        depthSizePair,
+        canopyDepth
+    );
+
+    const ixs = [allocAccountIx, createInitMerkleTreeWithRootIx(
+        cmtKeypair.publicKey,
+        payer.publicKey,
+        depthSizePair,
+        root,
+        firstLeaf,
+        manifestUrl,
+        proofs,
+        proofBuffer,
+    )
+    ];
+
+    const txId = await execute(provider, ixs, [payer, cmtKeypair]);
+    await confirmAndLogTx(provider, txId as string);
     return cmtKeypair;
 }

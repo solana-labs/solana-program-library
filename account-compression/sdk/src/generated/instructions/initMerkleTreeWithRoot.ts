@@ -10,66 +10,79 @@ import * as web3 from '@solana/web3.js'
 
 /**
  * @category Instructions
- * @category Append
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export type AppendInstructionArgs = {
+export type InitMerkleTreeWithRootInstructionArgs = {
+  maxDepth: number
+  maxBufferSize: number
+  root: number[] /* size: 32 */
   leaf: number[] /* size: 32 */
+  manifestUrl: string
 }
 /**
  * @category Instructions
- * @category Append
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export const appendStruct = new beet.BeetArgsStruct<
-  AppendInstructionArgs & {
+export const initMerkleTreeWithRootStruct = new beet.FixableBeetArgsStruct<
+  InitMerkleTreeWithRootInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['maxDepth', beet.u32],
+    ['maxBufferSize', beet.u32],
+    ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
     ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+    ['manifestUrl', beet.utf8String],
   ],
-  'AppendInstructionArgs'
+  'InitMerkleTreeWithRootInstructionArgs'
 )
 /**
- * Accounts required by the _append_ instruction
+ * Accounts required by the _initMerkleTreeWithRoot_ instruction
  *
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
  * @property [] noop
+ * @property [] proofBuffer (optional)
  * @category Instructions
- * @category Append
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export type AppendInstructionAccounts = {
+export type InitMerkleTreeWithRootInstructionAccounts = {
   merkleTree: web3.PublicKey
   authority: web3.PublicKey
   noop: web3.PublicKey
+  proofBuffer?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const appendInstructionDiscriminator = [
-  149, 120, 18, 222, 236, 225, 88, 203,
+export const initMerkleTreeWithRootInstructionDiscriminator = [
+  67, 221, 160, 236, 108, 179, 112, 198,
 ]
 
 /**
- * Creates a _Append_ instruction.
+ * Creates a _InitMerkleTreeWithRoot_ instruction.
+ *
+ * Optional accounts that are not provided default to the program ID since
+ * this was indicated in the IDL from which this instruction was generated.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category Append
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export function createAppendInstruction(
-  accounts: AppendInstructionAccounts,
-  args: AppendInstructionArgs,
+export function createInitMerkleTreeWithRootInstruction(
+  accounts: InitMerkleTreeWithRootInstructionAccounts,
+  args: InitMerkleTreeWithRootInstructionArgs,
   programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK')
 ) {
-  const [data] = appendStruct.serialize({
-    instructionDiscriminator: appendInstructionDiscriminator,
+  const [data] = initMerkleTreeWithRootStruct.serialize({
+    instructionDiscriminator: initMerkleTreeWithRootInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -85,6 +98,11 @@ export function createAppendInstruction(
     },
     {
       pubkey: accounts.noop,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.proofBuffer ?? programId,
       isWritable: false,
       isSigner: false,
     },

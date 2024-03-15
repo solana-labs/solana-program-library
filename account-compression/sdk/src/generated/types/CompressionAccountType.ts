@@ -5,21 +5,20 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet';
+import * as beet from '@metaplex-foundation/beet'
 /**
  * @category enums
  * @category generated
  */
 export enum CompressionAccountType {
-    Uninitialized,
-    ConcurrentMerkleTree,
+  Uninitialized,
+  ConcurrentMerkleTree,
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const compressionAccountTypeBeet = beet.fixedScalarEnum(CompressionAccountType) as beet.FixedSizeBeet<
-    CompressionAccountType,
-    CompressionAccountType
->;
+export const compressionAccountTypeBeet = beet.fixedScalarEnum(
+  CompressionAccountType
+) as beet.FixedSizeBeet<CompressionAccountType, CompressionAccountType>

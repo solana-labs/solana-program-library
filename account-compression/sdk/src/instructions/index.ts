@@ -6,6 +6,7 @@ import {
     createAppendInstruction,
     createCloseEmptyTreeInstruction,
     createInitEmptyMerkleTreeInstruction,
+    createInitMerkleTreeWithRootInstruction,
     createReplaceLeafInstruction,
     createTransferAuthorityInstruction,
     createVerifyLeafInstruction,
@@ -50,6 +51,59 @@ export function createInitEmptyMerkleTreeIx(
             noop: SPL_NOOP_PROGRAM_ID,
         },
         depthSizePair,
+    );
+}
+
+/**
+ * Helper function for {@link fillProofBufferInstruction}
+ * @param proofBuffer
+ * @param proof
+ * @returns
+ * /
+
+/**
+ * Helper function for {@link createInitMerkleTreeWithRootInstruction}
+ * @param merkleTree
+ * @param authority
+ * @param root
+ * @returns
+ */
+export function createInitMerkleTreeWithRootIx(
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    depthSizePair: ValidDepthSizePair,
+    firstLeaf: Buffer | ArrayLike<number>,
+    root: Buffer | ArrayLike<number>,
+    manifestUrl: string,
+    initialProof?: Buffer[],
+    proofBuffer?: PublicKey,
+    
+): TransactionInstruction {
+    if(!initialProof && !proofBuffer) {
+        throw new Error("Either initialProof or proofBuffer must be provided");
+    } 
+
+    return createInitMerkleTreeWithRootInstruction(
+        {
+            authority: authority,
+            merkleTree,
+            noop: SPL_NOOP_PROGRAM_ID,
+            proofBuffer,
+            anchorRemainingAccounts: initialProof?.map(node => {
+                return {
+                    pubkey: new PublicKey(node),
+                    isSigner: false,
+                    isWritable: false,
+                };
+            })
+        },
+        {
+            root: Array.from(root),
+            maxBufferSize: depthSizePair.maxBufferSize,
+            maxDepth: depthSizePair.maxDepth,
+            manifestUrl,
+            leaf: Array.from(firstLeaf),
+        },
     );
 }
 

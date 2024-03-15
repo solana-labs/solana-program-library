@@ -5,20 +5,20 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet';
+import * as beet from '@metaplex-foundation/beet'
 export type PathNode = {
-    node: number[] /* size: 32 */;
-    index: number;
-};
+  node: number[] /* size: 32 */
+  index: number
+}
 
 /**
  * @category userTypes
  * @category generated
  */
 export const pathNodeBeet = new beet.BeetArgsStruct<PathNode>(
-    [
-        ['node', beet.uniformFixedSizeArray(beet.u8, 32)],
-        ['index', beet.u32],
-    ],
-    'PathNode',
-);
+  [
+    ['node', beet.uniformFixedSizeArray(beet.u8, 32)],
+    ['index', beet.u32],
+  ],
+  'PathNode'
+)
