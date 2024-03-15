@@ -199,6 +199,17 @@ impl<T: Pod + Default> PodCOption<T> {
     pub fn is_some(&self) -> bool {
         self.option == Self::SOME
     }
+
+    /// Converts the option into a Result, similar to `Option::ok_or`
+    pub fn ok_or<E>(self, error: E) -> Result<T, E> {
+        match self {
+            Self {
+                option: Self::SOME,
+                value,
+            } => Ok(value),
+            _ => Err(error),
+        }
+    }
 }
 impl<T: Pod + Default> From<COption<T>> for PodCOption<T> {
     fn from(opt: COption<T>) -> Self {

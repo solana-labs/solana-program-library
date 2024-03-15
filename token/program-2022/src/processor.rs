@@ -24,7 +24,7 @@ use {
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{self, TransferHook, TransferHookAccount},
             AccountType, BaseStateWithExtensions, BaseStateWithExtensionsMut, ExtensionType,
-            PodStateWithExtensions, PodStateWithExtensionsMut, StateWithExtensionsMut,
+            PodStateWithExtensions, PodStateWithExtensionsMut,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
         native_mint,
@@ -633,7 +633,8 @@ impl Processor {
         let authority_info_data_len = authority_info.data_len();
 
         let mut account_data = account_info.data.borrow_mut();
-        if let Ok(mut account) = StateWithExtensionsMut::<Account>::unpack(&mut account_data) {
+        if let Ok(mut account) = PodStateWithExtensionsMut::<PodAccount>::unpack(&mut account_data)
+        {
             if account.base.is_frozen() {
                 return Err(TokenError::AccountFrozen.into());
             }
@@ -666,11 +667,11 @@ impl Processor {
                         return Err(TokenError::InvalidInstruction.into());
                     }
 
-                    account.base.delegate = COption::None;
-                    account.base.delegated_amount = 0;
+                    account.base.delegate = PodCOption::none();
+                    account.base.delegated_amount = 0.into();
 
                     if account.base.is_native() {
-                        account.base.close_authority = COption::None;
+                        account.base.close_authority = PodCOption::none();
                     }
                 }
                 AuthorityType::CloseAccount => {
@@ -689,14 +690,14 @@ impl Processor {
                         }
                     }
 
-                    account.base.close_authority = new_authority;
+                    account.base.close_authority = new_authority.into();
                 }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
             }
-            account.pack_base();
-        } else if let Ok(mut mint) = StateWithExtensionsMut::<Mint>::unpack(&mut account_data) {
+        } else if let Ok(mut mint) = PodStateWithExtensionsMut::<PodMint>::unpack(&mut account_data)
+        {
             match authority_type {
                 AuthorityType::MintTokens => {
                     // Once a mint's supply is fixed, it cannot be undone by setting a new
@@ -712,8 +713,7 @@ impl Processor {
                         authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
-                    mint.base.mint_authority = new_authority;
-                    mint.pack_base();
+                    mint.base.mint_authority = new_authority.into();
                 }
                 AuthorityType::FreezeAccount => {
                     // Once a mint's freeze authority is disabled, it cannot be re-enabled by
@@ -729,8 +729,7 @@ impl Processor {
                         authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
-                    mint.base.freeze_authority = new_authority;
-                    mint.pack_base();
+                    mint.base.freeze_authority = new_authority.into();
                 }
                 AuthorityType::CloseMint => {
                     let extension = mint.get_extension_mut::<MintCloseAuthority>()?;
