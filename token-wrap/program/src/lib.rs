@@ -64,7 +64,7 @@ pub(crate) fn get_wrapped_mint_authority_seeds(wrapped_mint: &Pubkey) -> [&[u8];
     [WRAPPED_MINT_AUTHORITY_SEED, wrapped_mint.as_ref()]
 }
 
-pub(crate) fn _get_wrapped_mint_authority_signer_seeds<'a>(
+pub(crate) fn get_wrapped_mint_authority_signer_seeds<'a>(
     wrapped_mint: &'a Pubkey,
     bump_seed: &'a [u8],
 ) -> [&'a [u8]; 3] {
