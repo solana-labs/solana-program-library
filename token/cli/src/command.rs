@@ -1210,6 +1210,11 @@ async fn command_transfer(
     let token = if let Some(transfer_hook_accounts) = transfer_hook_accounts {
         token_client_from_config(config, &token_pubkey, decimals)?
             .with_transfer_hook_accounts(transfer_hook_accounts)
+    } else if config.sign_only {
+        // we need to pass in empty transfer hook accounts on sign-only,
+        // otherwise the token client will try to fetch the mint account and fail
+        token_client_from_config(config, &token_pubkey, decimals)?
+            .with_transfer_hook_accounts(vec![])
     } else {
         token_client_from_config(config, &token_pubkey, decimals)?
     };
