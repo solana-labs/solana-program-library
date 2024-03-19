@@ -25,6 +25,7 @@ export async function getValidatorListAccount(connection: Connection, pubkey: Pu
   if (!account) {
     throw new Error('Invalid validator list account');
   }
+
   return {
     pubkey,
     account: {

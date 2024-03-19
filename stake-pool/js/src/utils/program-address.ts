@@ -28,9 +28,14 @@ export async function findStakeProgramAddress(
   programId: PublicKey,
   voteAccountAddress: PublicKey,
   stakePoolAddress: PublicKey,
+  seed?: number,
 ) {
   const [publicKey] = await PublicKey.findProgramAddress(
-    [voteAccountAddress.toBuffer(), stakePoolAddress.toBuffer()],
+    [
+      voteAccountAddress.toBuffer(),
+      stakePoolAddress.toBuffer(),
+      seed ? new BN(seed).toArrayLike(Buffer, 'le', 4) : Buffer.alloc(0),
+    ],
     programId,
   );
   return publicKey;
