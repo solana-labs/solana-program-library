@@ -649,6 +649,55 @@ export async function withdrawSol(
   };
 }
 
+export async function addValidatorToPool(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  validatorVote: PublicKey,
+  seed?: number,
+) {
+  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress);
+  const stakePool = stakePoolAccount.account.data;
+  const { reserveStake, staker, validatorList } = stakePool;
+
+  const validatorListAccount = await getValidatorListAccount(connection, validatorList);
+
+  const validatorInfo = validatorListAccount.account.data.validators.find(
+    (v) => v.voteAccountAddress.toBase58() == validatorVote.toBase58(),
+  );
+
+  if (validatorInfo) {
+    throw new Error('Vote account is already in validator list');
+  }
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    stakePoolAddress,
+  );
+
+  const validatorStake = await findStakeProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    validatorVote,
+    stakePoolAddress,
+    seed,
+  );
+
+  const instructions: TransactionInstruction[] = [
+    StakePoolInstruction.addValidatorToPool({
+      stakePool: stakePoolAddress,
+      staker: staker,
+      reserveStake: reserveStake,
+      withdrawAuthority: withdrawAuthority,
+      validatorList: validatorList,
+      validatorStake: validatorStake,
+      validatorVote: validatorVote,
+    }),
+  ];
+
+  return {
+    instructions,
+  };
+}
+
 /**
  * Creates instructions required to increase validator stake.
  */
