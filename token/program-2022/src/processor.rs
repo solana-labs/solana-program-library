@@ -1641,8 +1641,8 @@ impl Processor {
                     msg!("Instruction: InitializeMintCloseAuthority");
                     Self::process_initialize_mint_close_authority(accounts, close_authority)
                 }
-                TokenInstruction::TransferFeeExtension(instruction) => {
-                    transfer_fee::processor::process_instruction(program_id, accounts, instruction)
+                TokenInstruction::TransferFeeExtension => {
+                    transfer_fee::processor::process_instruction(program_id, accounts, &input[1..])
                 }
                 TokenInstruction::ConfidentialTransferExtension => {
                     confidential_transfer::processor::process_instruction(
