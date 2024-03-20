@@ -154,11 +154,11 @@ pub enum TransferFeeInstruction {
 }
 impl TransferFeeInstruction {
     /// Unpacks a byte buffer into a TransferFeeInstruction
-    pub fn unpack(input: &[u8]) -> Result<(Self, &[u8]), ProgramError> {
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         use TokenError::InvalidInstruction;
 
         let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
-        Ok(match tag {
+        let (instruction, rest) = match tag {
             0 => {
                 let (transfer_fee_config_authority, rest) =
                     TokenInstruction::unpack_pubkey_option(rest)?;
@@ -201,7 +201,11 @@ impl TransferFeeInstruction {
                 (instruction, rest)
             }
             _ => return Err(TokenError::InvalidInstruction.into()),
-        })
+        };
+        if !rest.is_empty() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+        Ok(instruction)
     }
 
     /// Packs a TransferFeeInstruction into a byte buffer.
@@ -441,7 +445,7 @@ mod test {
         expect.extend_from_slice(&111u16.to_le_bytes());
         expect.extend_from_slice(&u64::MAX.to_le_bytes());
         assert_eq!(packed, expect);
-        let (unpacked, _) = TransferFeeInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TransferFeeInstruction::TransferCheckedWithFee {
@@ -456,7 +460,7 @@ mod test {
         expect.extend_from_slice(&[24u8]);
         expect.extend_from_slice(&23u64.to_le_bytes());
         assert_eq!(packed, expect);
-        let (unpacked, _) = TransferFeeInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TransferFeeInstruction::WithdrawWithheldTokensFromMint;
@@ -464,7 +468,7 @@ mod test {
         check.pack(&mut packed);
         let expect = [2];
         assert_eq!(packed, expect);
-        let (unpacked, _) = TransferFeeInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let num_token_accounts = 255;
@@ -474,7 +478,7 @@ mod test {
         check.pack(&mut packed);
         let expect = [3, num_token_accounts];
         assert_eq!(packed, expect);
-        let (unpacked, _) = TransferFeeInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TransferFeeInstruction::HarvestWithheldTokensToMint;
@@ -482,7 +486,7 @@ mod test {
         check.pack(&mut packed);
         let expect = [4];
         assert_eq!(packed, expect);
-        let (unpacked, _) = TransferFeeInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let check = TransferFeeInstruction::SetTransferFee {
@@ -495,7 +499,7 @@ mod test {
         expect.extend_from_slice(&u16::MAX.to_le_bytes());
         expect.extend_from_slice(&u64::MAX.to_le_bytes());
         assert_eq!(packed, expect);
-        let (unpacked, _) = TransferFeeInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
     }
 }

@@ -279,7 +279,7 @@ pub(crate) fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let (instruction, _rest) = TransferFeeInstruction::unpack(input)?;
+    let instruction = TransferFeeInstruction::unpack(input)?;
     check_program_account(program_id)?;
 
     match instruction {
