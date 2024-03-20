@@ -245,8 +245,12 @@ impl TryFrom<PodCOption<Pubkey>> for OptionalNonZeroPubkey {
             PodCOption {
                 option: PodCOption::<Pubkey>::SOME,
                 value,
-            } => Ok(Self::from(value)),
-            _ => Ok(Self::from(Pubkey::default())),
+            } => Ok(Self(value)),
+            PodCOption {
+                option: PodCOption::<Pubkey>::NONE,
+                value: _,
+            } => Ok(Self(Pubkey::default())),
+            _ => unreachable!(),
         }
     }
 }
