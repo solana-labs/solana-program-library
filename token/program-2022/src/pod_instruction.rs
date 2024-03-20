@@ -60,7 +60,7 @@ pub(crate) struct SetAuthorityData {
 /// All instructions that expect data afterwards include a comment with the data
 /// type expected. For example, `PodTokenInstruction::InitializeMint` expects
 /// `InitializeMintData`.
-#[derive(Clone, Copy, Debug, TryFromPrimitive, IntoPrimitive)]
+#[derive(Clone, Copy, Debug, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub(crate) enum PodTokenInstruction {
     InitializeMint, // InitializeMintData
