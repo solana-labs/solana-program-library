@@ -22,7 +22,7 @@ use {
 )]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct OptionalNonZeroPubkey(Pubkey);
+pub struct OptionalNonZeroPubkey(pub Pubkey);
 impl TryFrom<Option<Pubkey>> for OptionalNonZeroPubkey {
     type Error = ProgramError;
     fn try_from(p: Option<Pubkey>) -> Result<Self, Self::Error> {

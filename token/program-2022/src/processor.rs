@@ -59,8 +59,8 @@ impl Processor {
     fn _process_initialize_mint(
         accounts: &[AccountInfo],
         decimals: u8,
-        mint_authority: Pubkey,
-        freeze_authority: COption<Pubkey>,
+        mint_authority: &Pubkey,
+        freeze_authority: PodCOption<Pubkey>,
         rent_sysvar_account: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -92,10 +92,10 @@ impl Processor {
             }
         }
 
-        mint.base.mint_authority = PodCOption::some(mint_authority);
+        mint.base.mint_authority = PodCOption::some(*mint_authority);
         mint.base.decimals = decimals;
         mint.base.is_initialized = PodBool::from_bool(true);
-        mint.base.freeze_authority = freeze_authority.into();
+        mint.base.freeze_authority = freeze_authority;
         mint.init_account_type()?;
 
         Ok(())
@@ -105,8 +105,8 @@ impl Processor {
     pub fn process_initialize_mint(
         accounts: &[AccountInfo],
         decimals: u8,
-        mint_authority: Pubkey,
-        freeze_authority: COption<Pubkey>,
+        mint_authority: &Pubkey,
+        freeze_authority: PodCOption<Pubkey>,
     ) -> ProgramResult {
         Self::_process_initialize_mint(accounts, decimals, mint_authority, freeze_authority, true)
     }
@@ -115,8 +115,8 @@ impl Processor {
     pub fn process_initialize_mint2(
         accounts: &[AccountInfo],
         decimals: u8,
-        mint_authority: Pubkey,
-        freeze_authority: COption<Pubkey>,
+        mint_authority: &Pubkey,
+        freeze_authority: PodCOption<Pubkey>,
     ) -> ProgramResult {
         Self::_process_initialize_mint(accounts, decimals, mint_authority, freeze_authority, false)
     }
@@ -212,14 +212,14 @@ impl Processor {
 
     /// Processes an [InitializeAccount2](enum.TokenInstruction.html)
     /// instruction.
-    pub fn process_initialize_account2(accounts: &[AccountInfo], owner: Pubkey) -> ProgramResult {
-        Self::_process_initialize_account(accounts, Some(&owner), true)
+    pub fn process_initialize_account2(accounts: &[AccountInfo], owner: &Pubkey) -> ProgramResult {
+        Self::_process_initialize_account(accounts, Some(owner), true)
     }
 
     /// Processes an [InitializeAccount3](enum.TokenInstruction.html)
     /// instruction.
-    pub fn process_initialize_account3(accounts: &[AccountInfo], owner: Pubkey) -> ProgramResult {
-        Self::_process_initialize_account(accounts, Some(&owner), false)
+    pub fn process_initialize_account3(accounts: &[AccountInfo], owner: &Pubkey) -> ProgramResult {
+        Self::_process_initialize_account(accounts, Some(owner), false)
     }
 
     fn _process_initialize_multisig(
@@ -625,7 +625,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         authority_type: AuthorityType,
-        new_authority: COption<Pubkey>,
+        new_authority: PodCOption<Pubkey>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let account_info = next_account_info(account_info_iter)?;
@@ -661,7 +661,11 @@ impl Processor {
                         }
                     }
 
-                    if let COption::Some(authority) = new_authority {
+                    if let PodCOption {
+                        option: PodCOption::<Pubkey>::SOME,
+                        value: authority,
+                    } = new_authority
+                    {
                         account.base.owner = authority;
                     } else {
                         return Err(TokenError::InvalidInstruction.into());
@@ -685,12 +689,12 @@ impl Processor {
                     )?;
 
                     if let Ok(cpi_guard) = account.get_extension::<CpiGuard>() {
-                        if cpi_guard.lock_cpi.into() && in_cpi() && new_authority != COption::None {
+                        if cpi_guard.lock_cpi.into() && in_cpi() && new_authority.is_some() {
                             return Err(TokenError::CpiGuardSetAuthorityBlocked.into());
                         }
                     }
 
-                    account.base.close_authority = new_authority.into();
+                    account.base.close_authority = new_authority;
                 }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
@@ -713,7 +717,7 @@ impl Processor {
                         authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
-                    mint.base.mint_authority = new_authority.into();
+                    mint.base.mint_authority = new_authority;
                 }
                 AuthorityType::FreezeAccount => {
                     // Once a mint's freeze authority is disabled, it cannot be re-enabled by
@@ -729,7 +733,7 @@ impl Processor {
                         authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
-                    mint.base.freeze_authority = new_authority.into();
+                    mint.base.freeze_authority = new_authority;
                 }
                 AuthorityType::CloseMint => {
                     let extension = mint.get_extension_mut::<MintCloseAuthority>()?;
@@ -1287,7 +1291,7 @@ impl Processor {
     /// Processes a [GetAccountDataSize](enum.TokenInstruction.html) instruction
     pub fn process_get_account_data_size(
         accounts: &[AccountInfo],
-        new_extension_types: Vec<ExtensionType>,
+        new_extension_types: &[ExtensionType],
     ) -> ProgramResult {
         if new_extension_types
             .iter()
@@ -1302,7 +1306,7 @@ impl Processor {
         let mut account_extensions = Self::get_required_account_extensions(mint_account_info)?;
         // ExtensionType::try_calculate_account_len() dedupes types, so just a dumb
         // concatenation is fine here
-        account_extensions.extend_from_slice(&new_extension_types);
+        account_extensions.extend_from_slice(new_extension_types);
 
         let account_len = ExtensionType::try_calculate_account_len::<Account>(&account_extensions)?;
         set_return_data(&account_len.to_le_bytes());
@@ -1427,7 +1431,7 @@ impl Processor {
     /// instruction
     pub fn process_initialize_permanent_delegate(
         accounts: &[AccountInfo],
-        delegate: Pubkey,
+        delegate: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_account_info = next_account_info(account_info_iter)?;
@@ -1435,7 +1439,7 @@ impl Processor {
         let mut mint_data = mint_account_info.data.borrow_mut();
         let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack_uninitialized(&mut mint_data)?;
         let extension = mint.init_extension::<PermanentDelegate>(true)?;
-        extension.delegate = Some(delegate).try_into()?;
+        extension.delegate = Some(*delegate).try_into()?;
 
         Ok(())
     }
@@ -1527,8 +1531,8 @@ impl Processor {
                     Self::process_initialize_mint(
                         accounts,
                         decimals,
-                        mint_authority,
-                        freeze_authority,
+                        &mint_authority,
+                        freeze_authority.into(),
                     )
                 }
                 TokenInstruction::InitializeMint2 {
@@ -1540,8 +1544,8 @@ impl Processor {
                     Self::process_initialize_mint2(
                         accounts,
                         decimals,
-                        mint_authority,
-                        freeze_authority,
+                        &mint_authority,
+                        freeze_authority.into(),
                     )
                 }
                 TokenInstruction::InitializeAccount => {
@@ -1550,11 +1554,11 @@ impl Processor {
                 }
                 TokenInstruction::InitializeAccount2 { owner } => {
                     msg!("Instruction: InitializeAccount2");
-                    Self::process_initialize_account2(accounts, owner)
+                    Self::process_initialize_account2(accounts, &owner)
                 }
                 TokenInstruction::InitializeAccount3 { owner } => {
                     msg!("Instruction: InitializeAccount3");
-                    Self::process_initialize_account3(accounts, owner)
+                    Self::process_initialize_account3(accounts, &owner)
                 }
                 TokenInstruction::InitializeMultisig { m } => {
                     msg!("Instruction: InitializeMultisig");
@@ -1582,7 +1586,12 @@ impl Processor {
                     new_authority,
                 } => {
                     msg!("Instruction: SetAuthority");
-                    Self::process_set_authority(program_id, accounts, authority_type, new_authority)
+                    Self::process_set_authority(
+                        program_id,
+                        accounts,
+                        authority_type,
+                        new_authority.into(),
+                    )
                 }
                 TokenInstruction::MintTo { amount } => {
                     msg!("Instruction: MintTo");
@@ -1626,7 +1635,7 @@ impl Processor {
                 }
                 TokenInstruction::GetAccountDataSize { extension_types } => {
                     msg!("Instruction: GetAccountDataSize");
-                    Self::process_get_account_data_size(accounts, extension_types)
+                    Self::process_get_account_data_size(accounts, &extension_types)
                 }
                 TokenInstruction::InitializeMintCloseAuthority { close_authority } => {
                     msg!("Instruction: InitializeMintCloseAuthority");
@@ -1688,7 +1697,7 @@ impl Processor {
                 }
                 TokenInstruction::InitializePermanentDelegate { delegate } => {
                     msg!("Instruction: InitializePermanentDelegate");
-                    Self::process_initialize_permanent_delegate(accounts, delegate)
+                    Self::process_initialize_permanent_delegate(accounts, &delegate)
                 }
                 TokenInstruction::TransferHookExtension => {
                     transfer_hook::processor::process_instruction(program_id, accounts, &input[1..])
