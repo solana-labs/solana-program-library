@@ -63,46 +63,55 @@ pub(crate) struct SetAuthorityData {
 #[derive(Clone, Copy, Debug, PartialEq, TryFromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub(crate) enum PodTokenInstruction {
+    // 0
     InitializeMint, // InitializeMintData
     InitializeAccount,
     InitializeMultisig, // InitializeMultisigData
     Transfer,           // AmountData
     Approve,            // AmountData
+    // 5
     Revoke,
     SetAuthority, // SetAuthorityData
     MintTo,       // AmountData
     Burn,         // AmountData
     CloseAccount,
+    // 10
     FreezeAccount,
     ThawAccount,
-    TransferChecked,    // AmountCheckedData
-    ApproveChecked,     // AmountCheckedData
-    MintToChecked,      // AmountCheckedData
+    TransferChecked, // AmountCheckedData
+    ApproveChecked,  // AmountCheckedData
+    MintToChecked,   // AmountCheckedData
+    // 15
     BurnChecked,        // AmountCheckedData
     InitializeAccount2, // Pubkey
     SyncNative,
     InitializeAccount3,  // Pubkey
     InitializeMultisig2, // InitializeMultisigData
-    InitializeMint2,     // InitializeMintData
-    GetAccountDataSize,  // &[ExtensionType]
+    // 20
+    InitializeMint2,    // InitializeMintData
+    GetAccountDataSize, // &[ExtensionType]
     InitializeImmutableOwner,
-    AmountToUiAmount,             // AmountData
-    UiAmountToAmount,             // &str
+    AmountToUiAmount, // AmountData
+    UiAmountToAmount, // &str
+    // 25
     InitializeMintCloseAuthority, // COption<Pubkey>
     TransferFeeExtension,
     ConfidentialTransferExtension,
     DefaultAccountStateExtension,
     Reallocate, // &[ExtensionType]
+    // 30
     MemoTransferExtension,
     CreateNativeMint,
     InitializeNonTransferableMint,
     InterestBearingMintExtension,
     CpiGuardExtension,
+    // 35
     InitializePermanentDelegate, // Pubkey
     TransferHookExtension,
     ConfidentialTransferFeeExtension,
     WithdrawExcessLamports,
     MetadataPointerExtension,
+    // 40
     GroupPointerExtension,
     GroupMemberPointerExtension,
 }
