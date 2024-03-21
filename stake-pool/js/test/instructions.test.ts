@@ -230,9 +230,18 @@ describe('StakePoolProgram', () => {
     });
 
     it('should successfully remove a validator', async () => {
+      const validatorStake = await findStakeProgramAddress(
+        STAKE_POOL_PROGRAM_ID,
+        validatorListMock.validators[0].voteAccountAddress,
+        stakePoolAddress,
+        0,
+      );
       connection.getAccountInfo = jest.fn(async (pubKey) => {
         if (pubKey === stakePoolAddress) {
           return stakePoolAccount;
+        }
+        if (pubKey.equals(validatorStake)) {
+          return mockValidatorsStakeAccount();
         }
         return <AccountInfo<any>>{
           executable: true,
@@ -249,12 +258,6 @@ describe('StakePoolProgram', () => {
       expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(2);
       expect(res.instructions).toHaveLength(1);
       // Make sure that the validator stake account being added is the one we passed
-      const validatorStake = await findStakeProgramAddress(
-        STAKE_POOL_PROGRAM_ID,
-        validatorListMock.validators[0].voteAccountAddress,
-        stakePoolAddress,
-        0,
-      );
       expect(res.instructions[0].keys[4].pubkey).toEqual(validatorStake);
     });
   });
