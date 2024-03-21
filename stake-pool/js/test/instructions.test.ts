@@ -22,6 +22,7 @@ import {
   STAKE_POOL_INSTRUCTION_LAYOUTS,
   DepositSolParams,
   AddValidatorToPoolParams,
+  RemoveValidatorFromPoolParams,
   StakePoolInstruction,
   depositSol,
   withdrawSol,
@@ -32,10 +33,11 @@ import {
   updatePoolTokenMetadata,
   tokenMetadataLayout,
   addValidatorToPool,
+  removeValidatorFromPool,
 } from '../src';
-import { STAKE_POOL_PROGRAM_ID } from '../constants';
+import { STAKE_POOL_PROGRAM_ID } from '../src/constants';
 
-import { decodeData } from '../src/utils';
+import { decodeData, findStakeProgramAddress } from '../src/utils';
 
 import {
   mockRpc,
