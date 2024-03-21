@@ -454,14 +454,8 @@ export class StakePoolInstruction {
    * Creates instruction to remove a validator from the stake pool.
    */
   static removeValidatorFromPool(params: RemoveValidatorFromPoolParams): TransactionInstruction {
-    const {
-      stakePool,
-      staker,
-      withdrawAuthority,
-      validatorList,
-      validatorStake,
-      transientStake,
-    } = params;
+    const { stakePool, staker, withdrawAuthority, validatorList, validatorStake, transientStake } =
+      params;
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.RemoveValidatorFromPool;
     const data = encodeData(type);
 

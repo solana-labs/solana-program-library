@@ -213,8 +213,6 @@ describe('StakePoolProgram', () => {
   });
 
   describe('removeValidatorFromPool', () => {
-    const validatorList = mockValidatorList();
-    const decodedValidatorList = ValidatorListLayout.decode(validatorList.data);
     const voteAccount = Keypair.generate().publicKey;
 
     it('should throw an error when trying to remove a non-existing validator', async () => {
@@ -222,11 +220,19 @@ describe('StakePoolProgram', () => {
         if (pubKey === stakePoolAddress) {
           return stakePoolAccount;
         }
-        return mockValidatorList();
+        if (pubKey.equals(stakePoolMock.validatorList)) {
+          return mockValidatorList();
+        }
+        return <AccountInfo<any>>{
+          executable: true,
+          owner: new PublicKey(0),
+          lamports: 0,
+          data,
+        };
       });
-      await expect(removeValidatorFromPool(connection, stakePoolAddress, voteAccount)).rejects.toThrow(
-        Error('Vote account is not already in validator list'),
-      );
+      await expect(
+        removeValidatorFromPool(connection, stakePoolAddress, voteAccount),
+      ).rejects.toThrow(Error('Vote account is not already in validator list'));
     });
 
     it('should successfully remove a validator', async () => {
