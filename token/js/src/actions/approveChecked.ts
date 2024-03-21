@@ -10,6 +10,7 @@ import { getSigners } from './internal.js';
  *
  * @param connection     Connection to use
  * @param payer          Payer of the transaction fees
+ * @param mint           Address of the mint
  * @param account        Address of the account
  * @param delegate       Account authorized to perform a transfer tokens from the source account
  * @param owner          Owner of the source account
