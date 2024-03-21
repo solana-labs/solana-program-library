@@ -12,9 +12,8 @@ use {
 };
 use {
     crate::{
-        check_program_account, check_spl_token_program_account,
-        error::TokenError,
-        extension::{transfer_fee::instruction::TransferFeeInstruction, ExtensionType},
+        check_program_account, check_spl_token_program_account, error::TokenError,
+        extension::ExtensionType,
     },
     bytemuck::Pod,
     solana_program::{
@@ -556,7 +555,7 @@ pub enum TokenInstruction<'a> {
     /// See `extension::transfer_fee::instruction::TransferFeeInstruction` for
     /// further details about the extended instructions that share this
     /// instruction prefix
-    TransferFeeExtension(TransferFeeInstruction),
+    TransferFeeExtension,
     /// The common instruction prefix for Confidential Transfer extension
     /// instructions.
     ///
@@ -814,10 +813,7 @@ impl<'a> TokenInstruction<'a> {
                 let (close_authority, _rest) = Self::unpack_pubkey_option(rest)?;
                 Self::InitializeMintCloseAuthority { close_authority }
             }
-            26 => {
-                let (instruction, _rest) = TransferFeeInstruction::unpack(rest)?;
-                Self::TransferFeeExtension(instruction)
-            }
+            26 => Self::TransferFeeExtension,
             27 => Self::ConfidentialTransferExtension,
             28 => Self::DefaultAccountStateExtension,
             29 => {
@@ -961,9 +957,8 @@ impl<'a> TokenInstruction<'a> {
                 buf.push(25);
                 Self::pack_pubkey_option(close_authority, &mut buf);
             }
-            Self::TransferFeeExtension(instruction) => {
+            Self::TransferFeeExtension => {
                 buf.push(26);
-                TransferFeeInstruction::pack(instruction, &mut buf);
             }
             &Self::ConfidentialTransferExtension => {
                 buf.push(27);

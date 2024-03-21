@@ -154,7 +154,7 @@ pub enum TransferFeeInstruction {
 }
 impl TransferFeeInstruction {
     /// Unpacks a byte buffer into a TransferFeeInstruction
-    pub fn unpack(input: &[u8]) -> Result<(Self, &[u8]), ProgramError> {
+    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
         use TokenError::InvalidInstruction;
 
         let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -165,40 +165,36 @@ impl TransferFeeInstruction {
                 let (withdraw_withheld_authority, rest) =
                     TokenInstruction::unpack_pubkey_option(rest)?;
                 let (transfer_fee_basis_points, rest) = TokenInstruction::unpack_u16(rest)?;
-                let (maximum_fee, rest) = TokenInstruction::unpack_u64(rest)?;
-                let instruction = Self::InitializeTransferFeeConfig {
+                let (maximum_fee, _) = TokenInstruction::unpack_u64(rest)?;
+                Self::InitializeTransferFeeConfig {
                     transfer_fee_config_authority,
                     withdraw_withheld_authority,
                     transfer_fee_basis_points,
                     maximum_fee,
-                };
-                (instruction, rest)
+                }
             }
             1 => {
                 let (amount, decimals, rest) = TokenInstruction::unpack_amount_decimals(rest)?;
-                let (fee, rest) = TokenInstruction::unpack_u64(rest)?;
-                let instruction = Self::TransferCheckedWithFee {
+                let (fee, _) = TokenInstruction::unpack_u64(rest)?;
+                Self::TransferCheckedWithFee {
                     amount,
                     decimals,
                     fee,
-                };
-                (instruction, rest)
+                }
             }
-            2 => (Self::WithdrawWithheldTokensFromMint, rest),
+            2 => Self::WithdrawWithheldTokensFromMint,
             3 => {
-                let (&num_token_accounts, rest) = rest.split_first().ok_or(InvalidInstruction)?;
-                let instruction = Self::WithdrawWithheldTokensFromAccounts { num_token_accounts };
-                (instruction, rest)
+                let (&num_token_accounts, _) = rest.split_first().ok_or(InvalidInstruction)?;
+                Self::WithdrawWithheldTokensFromAccounts { num_token_accounts }
             }
-            4 => (Self::HarvestWithheldTokensToMint, rest),
+            4 => Self::HarvestWithheldTokensToMint,
             5 => {
                 let (transfer_fee_basis_points, rest) = TokenInstruction::unpack_u16(rest)?;
-                let (maximum_fee, rest) = TokenInstruction::unpack_u64(rest)?;
-                let instruction = Self::SetTransferFee {
+                let (maximum_fee, _) = TokenInstruction::unpack_u64(rest)?;
+                Self::SetTransferFee {
                     transfer_fee_basis_points,
                     maximum_fee,
-                };
-                (instruction, rest)
+                }
             }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
@@ -251,6 +247,12 @@ impl TransferFeeInstruction {
     }
 }
 
+fn encode_instruction_data(transfer_fee_instruction: TransferFeeInstruction) -> Vec<u8> {
+    let mut data = TokenInstruction::TransferFeeExtension.pack();
+    transfer_fee_instruction.pack(&mut data);
+    data
+}
+
 /// Create a `InitializeTransferFeeConfig` instruction
 pub fn initialize_transfer_fee_config(
     token_program_id: &Pubkey,
@@ -263,15 +265,12 @@ pub fn initialize_transfer_fee_config(
     check_program_account(token_program_id)?;
     let transfer_fee_config_authority = transfer_fee_config_authority.cloned().into();
     let withdraw_withheld_authority = withdraw_withheld_authority.cloned().into();
-    let data = TokenInstruction::TransferFeeExtension(
-        TransferFeeInstruction::InitializeTransferFeeConfig {
-            transfer_fee_config_authority,
-            withdraw_withheld_authority,
-            transfer_fee_basis_points,
-            maximum_fee,
-        },
-    )
-    .pack();
+    let data = encode_instruction_data(TransferFeeInstruction::InitializeTransferFeeConfig {
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        transfer_fee_basis_points,
+        maximum_fee,
+    });
 
     Ok(Instruction {
         program_id: *token_program_id,
@@ -294,13 +293,11 @@ pub fn transfer_checked_with_fee(
     fee: u64,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let data =
-        TokenInstruction::TransferFeeExtension(TransferFeeInstruction::TransferCheckedWithFee {
-            amount,
-            decimals,
-            fee,
-        })
-        .pack();
+    let data = encode_instruction_data(TransferFeeInstruction::TransferCheckedWithFee {
+        amount,
+        decimals,
+        fee,
+    });
 
     let mut accounts = Vec::with_capacity(4 + signers.len());
     accounts.push(AccountMeta::new(*source, false));
@@ -338,10 +335,7 @@ pub fn withdraw_withheld_tokens_from_mint(
     Ok(Instruction {
         program_id: *token_program_id,
         accounts,
-        data: TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::WithdrawWithheldTokensFromMint,
-        )
-        .pack(),
+        data: encode_instruction_data(TransferFeeInstruction::WithdrawWithheldTokensFromMint),
     })
 }
 
@@ -371,10 +365,9 @@ pub fn withdraw_withheld_tokens_from_accounts(
     Ok(Instruction {
         program_id: *token_program_id,
         accounts,
-        data: TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::WithdrawWithheldTokensFromAccounts { num_token_accounts },
-        )
-        .pack(),
+        data: encode_instruction_data(TransferFeeInstruction::WithdrawWithheldTokensFromAccounts {
+            num_token_accounts,
+        }),
     })
 }
 
@@ -393,10 +386,7 @@ pub fn harvest_withheld_tokens_to_mint(
     Ok(Instruction {
         program_id: *token_program_id,
         accounts,
-        data: TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::HarvestWithheldTokensToMint,
-        )
-        .pack(),
+        data: encode_instruction_data(TransferFeeInstruction::HarvestWithheldTokensToMint),
     })
 }
 
@@ -420,11 +410,10 @@ pub fn set_transfer_fee(
     Ok(Instruction {
         program_id: *token_program_id,
         accounts,
-        data: TokenInstruction::TransferFeeExtension(TransferFeeInstruction::SetTransferFee {
+        data: encode_instruction_data(TransferFeeInstruction::SetTransferFee {
             transfer_fee_basis_points,
             maximum_fee,
-        })
-        .pack(),
+        }),
     })
 }
 
@@ -432,83 +421,77 @@ pub fn set_transfer_fee(
 mod test {
     use super::*;
 
-    const TRANSFER_FEE_PREFIX: u8 = 26;
-
     #[test]
     fn test_instruction_packing() {
-        let check = TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::InitializeTransferFeeConfig {
-                transfer_fee_config_authority: COption::Some(Pubkey::new_from_array([11u8; 32])),
-                withdraw_withheld_authority: COption::None,
-                transfer_fee_basis_points: 111,
-                maximum_fee: u64::MAX,
-            },
-        );
-        let packed = check.pack();
-        let mut expect = vec![TRANSFER_FEE_PREFIX, 0, 1];
+        let check = TransferFeeInstruction::InitializeTransferFeeConfig {
+            transfer_fee_config_authority: COption::Some(Pubkey::new_from_array([11u8; 32])),
+            withdraw_withheld_authority: COption::None,
+            transfer_fee_basis_points: 111,
+            maximum_fee: u64::MAX,
+        };
+        let mut packed = vec![];
+        check.pack(&mut packed);
+        let mut expect = vec![0, 1];
         expect.extend_from_slice(&[11u8; 32]);
         expect.extend_from_slice(&[0]);
         expect.extend_from_slice(&111u16.to_le_bytes());
         expect.extend_from_slice(&u64::MAX.to_le_bytes());
         assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::TransferCheckedWithFee {
-                amount: 24,
-                decimals: 24,
-                fee: 23,
-            },
-        );
-        let packed = check.pack();
-        let mut expect = vec![TRANSFER_FEE_PREFIX, 1];
+        let check = TransferFeeInstruction::TransferCheckedWithFee {
+            amount: 24,
+            decimals: 24,
+            fee: 23,
+        };
+        let mut packed = vec![];
+        check.pack(&mut packed);
+        let mut expect = vec![1];
         expect.extend_from_slice(&24u64.to_le_bytes());
         expect.extend_from_slice(&[24u8]);
         expect.extend_from_slice(&23u64.to_le_bytes());
         assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::WithdrawWithheldTokensFromMint,
-        );
-        let packed = check.pack();
-        let expect = [TRANSFER_FEE_PREFIX, 2];
+        let check = TransferFeeInstruction::WithdrawWithheldTokensFromMint;
+        let mut packed = vec![];
+        check.pack(&mut packed);
+        let expect = [2];
         assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
         let num_token_accounts = 255;
-        let check = TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::WithdrawWithheldTokensFromAccounts { num_token_accounts },
-        );
-        let packed = check.pack();
-        let expect = [TRANSFER_FEE_PREFIX, 3, num_token_accounts];
-        assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
-        assert_eq!(unpacked, check);
-
-        let check = TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::HarvestWithheldTokensToMint,
-        );
-        let packed = check.pack();
-        let expect = [TRANSFER_FEE_PREFIX, 4];
-        assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
-        assert_eq!(unpacked, check);
-
         let check =
-            TokenInstruction::TransferFeeExtension(TransferFeeInstruction::SetTransferFee {
-                transfer_fee_basis_points: u16::MAX,
-                maximum_fee: u64::MAX,
-            });
-        let packed = check.pack();
-        let mut expect = vec![TRANSFER_FEE_PREFIX, 5];
+            TransferFeeInstruction::WithdrawWithheldTokensFromAccounts { num_token_accounts };
+        let mut packed = vec![];
+        check.pack(&mut packed);
+        let expect = [3, num_token_accounts];
+        assert_eq!(packed, expect);
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TransferFeeInstruction::HarvestWithheldTokensToMint;
+        let mut packed = vec![];
+        check.pack(&mut packed);
+        let expect = [4];
+        assert_eq!(packed, expect);
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TransferFeeInstruction::SetTransferFee {
+            transfer_fee_basis_points: u16::MAX,
+            maximum_fee: u64::MAX,
+        };
+        let mut packed = vec![];
+        check.pack(&mut packed);
+        let mut expect = vec![5];
         expect.extend_from_slice(&u16::MAX.to_le_bytes());
         expect.extend_from_slice(&u64::MAX.to_le_bytes());
         assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        let unpacked = TransferFeeInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
     }
 }
