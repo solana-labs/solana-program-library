@@ -698,6 +698,63 @@ export async function addValidatorToPool(
   };
 }
 
+export async function removeValidatorFromPool(
+  connection: Connection,
+  stakePoolAddress: PublicKey,
+  validatorVote: PublicKey,
+  seed?: number,
+) {
+  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress);
+  const stakePool = stakePoolAccount.account.data;
+  const { staker, validatorList } = stakePool;
+
+  const validatorListAccount = await getValidatorListAccount(connection, validatorList);
+
+  const validatorInfo = validatorListAccount.account.data.validators.find(
+    (v) => v.voteAccountAddress.toBase58() == validatorVote.toBase58(),
+  );
+
+  if (!validatorInfo) {
+    throw new Error('Vote account is not already in validator list');
+  }
+
+  const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    stakePoolAddress,
+  );
+
+  const validatorStake = await findStakeProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    validatorVote,
+    stakePoolAddress,
+    seed,
+  );
+
+  const transientStakeSeed = validatorInfo.transientSeedSuffixStart;
+
+  const transientStake = await findTransientStakeProgramAddress(
+    STAKE_POOL_PROGRAM_ID,
+    validatorInfo.voteAccountAddress,
+    stakePoolAddress,
+    transientStakeSeed,
+  );
+
+  const instructions: TransactionInstruction[] = [
+    StakePoolInstruction.removeValidatorFromPool({
+      stakePool: stakePoolAddress,
+      staker: staker,
+      withdrawAuthority,
+      validatorList,
+      validatorStake,
+      transientStake,
+    }),
+  ];
+
+  return {
+    instructions,
+  };
+}
+
 /**
  * Creates instructions required to increase validator stake.
  */

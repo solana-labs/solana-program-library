@@ -37,7 +37,8 @@ export type StakePoolInstructionType =
   | 'DecreaseAdditionalValidatorStake'
   | 'DecreaseValidatorStakeWithReserve'
   | 'Redelegate'
-  | 'AddValidatorToPool';
+  | 'AddValidatorToPool'
+  | 'RemoveValidatorFromPool';
 
 // 'UpdateTokenMetadata' and 'CreateTokenMetadata' have dynamic layouts
 
@@ -95,6 +96,10 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   AddValidatorToPool: {
     index: 1,
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.u32('seed')]),
+  },
+  RemoveValidatorFromPool: {
+    index: 2,
+    layout: BufferLayout.struct<any>([BufferLayout.u8('instruction')]),
   },
   DecreaseValidatorStake: {
     index: 3,
@@ -392,6 +397,15 @@ export type AddValidatorToPoolParams = {
   seed?: number;
 };
 
+export type RemoveValidatorFromPoolParams = {
+  stakePool: PublicKey;
+  staker: PublicKey;
+  withdrawAuthority: PublicKey;
+  validatorList: PublicKey;
+  validatorStake: PublicKey;
+  transientStake: PublicKey;
+};
+
 /**
  * Stake Pool Instruction class
  */
@@ -426,6 +440,33 @@ export class StakePoolInstruction {
       { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
       { pubkey: STAKE_CONFIG_ID, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+    ];
+
+    return new TransactionInstruction({
+      programId: STAKE_POOL_PROGRAM_ID,
+      keys,
+      data,
+    });
+  }
+
+  /**
+   * Creates instruction to remove a validator from the stake pool.
+   */
+  static removeValidatorFromPool(params: RemoveValidatorFromPoolParams): TransactionInstruction {
+    const { stakePool, staker, withdrawAuthority, validatorList, validatorStake, transientStake } =
+      params;
+    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.RemoveValidatorFromPool;
+    const data = encodeData(type);
+
+    const keys = [
+      { pubkey: stakePool, isSigner: false, isWritable: true },
+      { pubkey: staker, isSigner: true, isWritable: false },
+      { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: validatorStake, isSigner: false, isWritable: true },
+      { pubkey: transientStake, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
       { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
     ];
 
