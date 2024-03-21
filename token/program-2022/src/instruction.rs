@@ -1996,7 +1996,7 @@ mod test {
     use {super::*, proptest::prelude::*};
 
     #[test]
-    fn test_instruction_packing() {
+    fn test_initialize_mint_packing() {
         let check = TokenInstruction::InitializeMint {
             decimals: 2,
             mint_authority: Pubkey::new_from_array([1u8; 32]),
@@ -2023,21 +2023,30 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_initialize_account_packing() {
         let check = TokenInstruction::InitializeAccount;
         let packed = check.pack();
         let expect = Vec::from([1u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_initialize_multisig_packing() {
         let check = TokenInstruction::InitializeMultisig { m: 1 };
         let packed = check.pack();
         let expect = Vec::from([2u8, 1]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_transfer_packing() {
         #[allow(deprecated)]
         let check = TokenInstruction::Transfer { amount: 1 };
         let packed = check.pack();
@@ -2045,21 +2054,30 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_approve_packing() {
         let check = TokenInstruction::Approve { amount: 1 };
         let packed = check.pack();
         let expect = Vec::from([4u8, 1, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_revoke_packing() {
         let check = TokenInstruction::Revoke;
         let packed = check.pack();
         let expect = Vec::from([5u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_set_authority_packing() {
         let check = TokenInstruction::SetAuthority {
             authority_type: AuthorityType::FreezeAccount,
             new_authority: COption::Some(Pubkey::new_from_array([4u8; 32])),
@@ -2071,42 +2089,60 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_mint_to_packing() {
         let check = TokenInstruction::MintTo { amount: 1 };
         let packed = check.pack();
         let expect = Vec::from([7u8, 1, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_burn_packing() {
         let check = TokenInstruction::Burn { amount: 1 };
         let packed = check.pack();
         let expect = Vec::from([8u8, 1, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_close_account_packing() {
         let check = TokenInstruction::CloseAccount;
         let packed = check.pack();
         let expect = Vec::from([9u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_freeze_account_packing() {
         let check = TokenInstruction::FreezeAccount;
         let packed = check.pack();
         let expect = Vec::from([10u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_thaw_account_packing() {
         let check = TokenInstruction::ThawAccount;
         let packed = check.pack();
         let expect = Vec::from([11u8]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_transfer_checked_packing() {
         let check = TokenInstruction::TransferChecked {
             amount: 1,
             decimals: 2,
@@ -2116,7 +2152,10 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_approve_checked_packing() {
         let check = TokenInstruction::ApproveChecked {
             amount: 1,
             decimals: 2,
@@ -2126,7 +2165,10 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_mint_to_checked_packing() {
         let check = TokenInstruction::MintToChecked {
             amount: 1,
             decimals: 2,
@@ -2136,7 +2178,10 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_burn_checked_packing() {
         let check = TokenInstruction::BurnChecked {
             amount: 1,
             decimals: 2,
@@ -2146,7 +2191,10 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_initialize_account2_packing() {
         let check = TokenInstruction::InitializeAccount2 {
             owner: Pubkey::new_from_array([2u8; 32]),
         };
@@ -2156,14 +2204,20 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_sync_native_packing() {
         let check = TokenInstruction::SyncNative;
         let packed = check.pack();
         let expect = vec![17u8];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_initialize_account3_packing() {
         let check = TokenInstruction::InitializeAccount3 {
             owner: Pubkey::new_from_array([2u8; 32]),
         };
@@ -2173,14 +2227,20 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_initialize_multisig2_packing() {
         let check = TokenInstruction::InitializeMultisig2 { m: 1 };
         let packed = check.pack();
         let expect = Vec::from([19u8, 1]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_initialize_mint2_packing() {
         let check = TokenInstruction::InitializeMint2 {
             decimals: 2,
             mint_authority: Pubkey::new_from_array([1u8; 32]),
@@ -2207,7 +2267,10 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_get_account_data_size_packing() {
         let check = TokenInstruction::GetAccountDataSize {
             extension_types: vec![],
         };
@@ -2228,21 +2291,30 @@ mod test {
         assert_eq!(packed, &[21u8, 1, 0, 2, 0]);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_amount_to_ui_amount_packing() {
         let check = TokenInstruction::AmountToUiAmount { amount: 42 };
         let packed = check.pack();
         let expect = vec![23u8, 42, 0, 0, 0, 0, 0, 0, 0];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_ui_amount_to_amount_packing() {
         let check = TokenInstruction::UiAmountToAmount { ui_amount: "0.42" };
         let packed = check.pack();
         let expect = vec![24u8, 48, 46, 52, 50];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_initialize_mint_close_authority_packing() {
         let check = TokenInstruction::InitializeMintCloseAuthority {
             close_authority: COption::Some(Pubkey::new_from_array([10u8; 32])),
         };
@@ -2252,14 +2324,20 @@ mod test {
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_create_native_mint_packing() {
         let check = TokenInstruction::CreateNativeMint;
         let packed = check.pack();
         let expect = vec![31u8];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
+    }
 
+    #[test]
+    fn test_initialize_permanent_delegate_packing() {
         let check = TokenInstruction::InitializePermanentDelegate {
             delegate: Pubkey::new_from_array([11u8; 32]),
         };
