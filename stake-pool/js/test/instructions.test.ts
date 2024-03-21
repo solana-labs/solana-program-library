@@ -251,7 +251,7 @@ describe('StakePoolProgram', () => {
       );
       expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(2);
       expect(res.instructions).toHaveLength(1);
-      // Make sure that the validator stake account being added is the one we passed
+      // Make sure that the validator stake account being removed is the one we passed
       const validatorStake = await findStakeProgramAddress(
         STAKE_POOL_PROGRAM_ID,
         validatorListMock.validators[0].voteAccountAddress,
