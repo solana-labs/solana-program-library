@@ -98,7 +98,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.u32('seed')]),
   },
   RemoveValidatorFromPool: {
-    index: 1,
+    index: 2,
     layout: BufferLayout.struct<any>([BufferLayout.u8('instruction')]),
   },
   DecreaseValidatorStake: {
