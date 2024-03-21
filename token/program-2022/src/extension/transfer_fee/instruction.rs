@@ -158,54 +158,46 @@ impl TransferFeeInstruction {
         use TokenError::InvalidInstruction;
 
         let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
-        let (instruction, rest) = match tag {
+        Ok(match tag {
             0 => {
                 let (transfer_fee_config_authority, rest) =
                     TokenInstruction::unpack_pubkey_option(rest)?;
                 let (withdraw_withheld_authority, rest) =
                     TokenInstruction::unpack_pubkey_option(rest)?;
                 let (transfer_fee_basis_points, rest) = TokenInstruction::unpack_u16(rest)?;
-                let (maximum_fee, rest) = TokenInstruction::unpack_u64(rest)?;
-                let instruction = Self::InitializeTransferFeeConfig {
+                let (maximum_fee, _) = TokenInstruction::unpack_u64(rest)?;
+                Self::InitializeTransferFeeConfig {
                     transfer_fee_config_authority,
                     withdraw_withheld_authority,
                     transfer_fee_basis_points,
                     maximum_fee,
-                };
-                (instruction, rest)
+                }
             }
             1 => {
                 let (amount, decimals, rest) = TokenInstruction::unpack_amount_decimals(rest)?;
-                let (fee, rest) = TokenInstruction::unpack_u64(rest)?;
-                let instruction = Self::TransferCheckedWithFee {
+                let (fee, _) = TokenInstruction::unpack_u64(rest)?;
+                Self::TransferCheckedWithFee {
                     amount,
                     decimals,
                     fee,
-                };
-                (instruction, rest)
+                }
             }
-            2 => (Self::WithdrawWithheldTokensFromMint, rest),
+            2 => Self::WithdrawWithheldTokensFromMint,
             3 => {
-                let (&num_token_accounts, rest) = rest.split_first().ok_or(InvalidInstruction)?;
-                let instruction = Self::WithdrawWithheldTokensFromAccounts { num_token_accounts };
-                (instruction, rest)
+                let (&num_token_accounts, _) = rest.split_first().ok_or(InvalidInstruction)?;
+                Self::WithdrawWithheldTokensFromAccounts { num_token_accounts }
             }
-            4 => (Self::HarvestWithheldTokensToMint, rest),
+            4 => Self::HarvestWithheldTokensToMint,
             5 => {
                 let (transfer_fee_basis_points, rest) = TokenInstruction::unpack_u16(rest)?;
-                let (maximum_fee, rest) = TokenInstruction::unpack_u64(rest)?;
-                let instruction = Self::SetTransferFee {
+                let (maximum_fee, _) = TokenInstruction::unpack_u64(rest)?;
+                Self::SetTransferFee {
                     transfer_fee_basis_points,
                     maximum_fee,
-                };
-                (instruction, rest)
+                }
             }
             _ => return Err(TokenError::InvalidInstruction.into()),
-        };
-        if !rest.is_empty() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-        Ok(instruction)
+        })
     }
 
     /// Packs a TransferFeeInstruction into a byte buffer.
