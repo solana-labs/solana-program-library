@@ -48,6 +48,7 @@ const U64_BYTES: usize = 8;
 )]
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenInstruction<'a> {
+    // 0
     /// Initializes a new mint and optionally deposits all the newly minted
     /// tokens in an account.
     ///
@@ -167,6 +168,7 @@ pub enum TokenInstruction<'a> {
         /// The amount of tokens the delegate is approved for.
         amount: u64,
     },
+    // 5
     /// Revokes the delegate's authority.
     ///
     /// Accounts expected by this instruction:
@@ -272,6 +274,7 @@ pub enum TokenInstruction<'a> {
     ///   2. `[]` The account's multisignature owner.
     ///   3. ..3+M `[signer]` M signer accounts.
     CloseAccount,
+    // 10
     /// Freeze an Initialized account using the Mint's freeze_authority (if
     /// set).
     ///
@@ -388,6 +391,7 @@ pub enum TokenInstruction<'a> {
         /// Expected number of base 10 digits to the right of the decimal place.
         decimals: u8,
     },
+    // 15
     /// Burns tokens by removing them from an account.  `BurnChecked` does not
     /// support accounts associated with the native mint, use `CloseAccount`
     /// instead.
@@ -465,6 +469,7 @@ pub enum TokenInstruction<'a> {
         /// account.
         m: u8,
     },
+    // 20
     /// Like InitializeMint, but does not require the Rent sysvar to be provided
     ///
     /// Accounts expected by this instruction:
@@ -533,6 +538,7 @@ pub enum TokenInstruction<'a> {
         /// The ui_amount of tokens to convert.
         ui_amount: &'a str,
     },
+    // 25
     /// Initialize the close account authority on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
@@ -592,6 +598,7 @@ pub enum TokenInstruction<'a> {
         /// New extension types to include in the reallocated account
         extension_types: Vec<ExtensionType>,
     },
+    // 30
     /// The common instruction prefix for Memo Transfer account extension
     /// instructions.
     ///
@@ -637,6 +644,7 @@ pub enum TokenInstruction<'a> {
     /// further details about the extended instructions that share this
     /// instruction prefix
     CpiGuardExtension,
+    // 35
     /// Initialize the permanent delegate on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
@@ -686,6 +694,7 @@ pub enum TokenInstruction<'a> {
     /// for further details about the extended instructions that share this
     /// instruction prefix
     MetadataPointerExtension,
+    // 40
     /// The common instruction prefix for group pointer extension instructions.
     ///
     /// See `extension::group_pointer::instruction::GroupPointerInstruction`
