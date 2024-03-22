@@ -18,10 +18,10 @@ import { getSigners } from '../../actions/internal.js';
  * Assumes one has already initialized a mint for the group.
  *
  * @param connection       Connection to use
- * @param payer            Payer of the transaction fees
- * @param mint             Mint Account
- * @param mintAuthority    Mint Authority
- * @param updateAuthority  Update Authority
+ * @param payer            Payer of the transaction fee
+ * @param mint             Group mint
+ * @param mintAuthority    Group mint authority
+ * @param updateAuthority  Group update authority
  * @param maxSize          Maximum number of members in the group
  * @param multiSigners     Signing accounts if `authority` is a multisig
  * @param confirmOptions   Options for confirming the transaction
@@ -33,7 +33,7 @@ export async function tokenGroupInitializeGroup(
     connection: Connection,
     payer: Signer,
     mint: PublicKey,
-    mintAuthority: PublicKey,
+    mintAuthority: PublicKey | Signer,
     updateAuthority: PublicKey | null,
     maxSize: number,
     multiSigners: Signer[] = [],
@@ -62,10 +62,10 @@ export async function tokenGroupInitializeGroup(
  * Assumes one has already initialized a mint for the group.
  *
  * @param connection       Connection to use
- * @param payer            Payer of the transaction fees
- * @param mint             Mint Account
- * @param mintAuthority    Mint Authority
- * @param updateAuthority  Update Authority
+ * @param payer            Payer of the transaction fee
+ * @param mint             Group mint
+ * @param mintAuthority    Group mint authority
+ * @param updateAuthority  Group update authority
  * @param maxSize          Maximum number of members in the group
  * @param multiSigners     Signing accounts if `authority` is a multisig
  * @param confirmOptions   Options for confirming the transaction
@@ -77,7 +77,7 @@ export async function tokenGroupInitializeGroupWithRentTransfer(
     connection: Connection,
     payer: Signer,
     mint: PublicKey,
-    mintAuthority: PublicKey,
+    mintAuthority: PublicKey | Signer,
     updateAuthority: PublicKey | null,
     maxSize: number,
     multiSigners: Signer[] = [],
@@ -111,9 +111,9 @@ export async function tokenGroupInitializeGroupWithRentTransfer(
  * Update the max size of a `Group`
  *
  * @param connection       Connection to use
- * @param payer            Payer of the transaction fees
- * @param mint             Mint Account
- * @param updateAuthority  Update Authority
+ * @param payer            Payer of the transaction fee
+ * @param mint             Group mint
+ * @param updateAuthority  Group update authority
  * @param maxSize          Maximum number of members in the group
  * @param multiSigners     Signing accounts if `authority` is a multisig
  * @param confirmOptions   Options for confirming the transaction
@@ -125,7 +125,7 @@ export async function tokenGroupUpdateGroupMaxSize(
     connection: Connection,
     payer: Signer,
     mint: PublicKey,
-    updateAuthority: PublicKey,
+    updateAuthority: PublicKey | Signer,
     maxSize: number,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
@@ -149,9 +149,9 @@ export async function tokenGroupUpdateGroupMaxSize(
  * Update the authority of a `Group`
  *
  * @param connection       Connection to use
- * @param payer            Payer of the transaction fees
- * @param mint             Mint Account
- * @param updateAuthority  Update Authority
+ * @param payer            Payer of the transaction fee
+ * @param mint             Group mint
+ * @param updateAuthority  Group update authority
  * @param newAuthority     New authority for the token group, or unset
  * @param multiSigners     Signing accounts if `authority` is a multisig
  * @param confirmOptions   Options for confirming the transaction
@@ -190,12 +190,11 @@ export async function tokenGroupUpdateGroupAuthority(
  * as well as the mint for the member.
  *
  * @param connection             Connection to use
- * @param payer                  Payer of the transaction fees
- * @param member                 Member Account
- * @param memberMint             Mint Account for the member
- * @param memberMintAuthority    Mint Authority for the member
- * @param group                  Group Account
- * @param groupUpdateAuthority   Update Authority for the group
+ * @param payer                  Payer of the transaction fee
+ * @param mint                   Member mint
+ * @param mintAuthority          Member mint authority
+ * @param group                  Group mint
+ * @param groupUpdateAuthority   Group update authority
  * @param multiSigners           Signing accounts if `authority` is a multisig
  * @param confirmOptions         Options for confirming the transaction
  * @param programId              SPL Token program account
@@ -205,23 +204,22 @@ export async function tokenGroupUpdateGroupAuthority(
 export async function tokenGroupMemberInitialize(
     connection: Connection,
     payer: Signer,
-    member: PublicKey,
-    memberMint: PublicKey,
-    memberMintAuthority: PublicKey,
+    mint: PublicKey,
+    mintAuthority: PublicKey | Signer,
     group: PublicKey,
     groupUpdateAuthority: PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<TransactionSignature> {
-    const [memberMintAuthorityPublicKey, signers] = getSigners(memberMintAuthority, multiSigners);
+    const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
 
     const transaction = new Transaction().add(
         createInitializeMemberInstruction({
             programId,
-            member,
-            memberMint,
-            memberMintAuthority: memberMintAuthorityPublicKey,
+            member: mint,
+            memberMint: mint,
+            memberMintAuthority: mintAuthorityPublicKey,
             group,
             groupUpdateAuthority,
         })
@@ -237,12 +235,11 @@ export async function tokenGroupMemberInitialize(
  * as well as the mint for the member.
  *
  * @param connection             Connection to use
- * @param payer                  Payer of the transaction fees
- * @param member                 Member Account
- * @param memberMint             Mint Account for the member
- * @param memberMintAuthority    Mint Authority for the member
- * @param group                  Group Account
- * @param groupUpdateAuthority   Update Authority for the group
+ * @param payer                  Payer of the transaction fee
+ * @param mint                   Member mint
+ * @param mintAuthority          Member mint authority
+ * @param group                  Group mint
+ * @param groupUpdateAuthority   Group update authority
  * @param multiSigners           Signing accounts if `authority` is a multisig
  * @param confirmOptions         Options for confirming the transaction
  * @param programId              SPL Token program account
@@ -252,30 +249,29 @@ export async function tokenGroupMemberInitialize(
 export async function tokenGroupMemberInitializeWithRentTransfer(
     connection: Connection,
     payer: Signer,
-    member: PublicKey,
-    memberMint: PublicKey,
-    memberMintAuthority: PublicKey,
+    mint: PublicKey,
+    mintAuthority: PublicKey | Signer,
     group: PublicKey,
     groupUpdateAuthority: PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_2022_PROGRAM_ID
 ): Promise<TransactionSignature> {
-    const [memberMintAuthorityPublicKey, signers] = getSigners(memberMintAuthority, multiSigners);
+    const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
 
     const lamports = await connection.getMinimumBalanceForRentExemption(TOKEN_GROUP_MEMBER_SIZE);
 
     const transaction = new Transaction().add(
         SystemProgram.transfer({
             fromPubkey: payer.publicKey,
-            toPubkey: memberMint,
+            toPubkey: mint,
             lamports,
         }),
         createInitializeMemberInstruction({
             programId,
-            member,
-            memberMint,
-            memberMintAuthority: memberMintAuthorityPublicKey,
+            member: mint,
+            memberMint: mint,
+            memberMintAuthority: mintAuthorityPublicKey,
             group,
             groupUpdateAuthority,
         })
