@@ -450,9 +450,15 @@ export async function withdrawStake(
       throw new Error('Invalid Stake Account');
     }
 
+    const availableLamports = new BN(
+      stakeAccount.lamports - MINIMUM_ACTIVE_STAKE - stakeAccountRentExemption,
+    );
+    if (availableLamports.lt(new BN(0))) {
+      throw new Error('Invalid Stake Account');
+    }
     const availableForWithdrawal = calcLamportsWithdrawAmount(
       stakePool.account.data,
-      new BN(stakeAccount.lamports - MINIMUM_ACTIVE_STAKE - stakeAccountRentExemption),
+      availableLamports,
     );
 
     if (availableForWithdrawal.lt(poolAmount)) {
