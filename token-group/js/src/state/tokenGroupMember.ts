@@ -7,6 +7,8 @@ const tokenGroupMemberCodec = getStructCodec([
     ['memberNumber', getU32Codec()],
 ]);
 
+export const TOKEN_GROUP_MEMBER_SIZE = tokenGroupMemberCodec.fixedSize;
+
 export interface TokenGroupMember {
     /** The associated mint, used to counter spoofing to be sure that member belongs to a particular mint */
     mint: PublicKey;
