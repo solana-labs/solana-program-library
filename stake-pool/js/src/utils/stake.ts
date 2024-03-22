@@ -202,8 +202,7 @@ export function calcLamportsWithdrawAmount(stakePool: StakePool, poolTokens: BN)
   if (numerator.lt(denominator)) {
     return new BN(0);
   }
-  // ceiling the calculation by adding denominator - 1 to the numerator
-  return numerator.add(denominator).sub(new BN(1)).div(denominator);
+  return numerator.div(denominator);
 }
 
 export function newStakeAccount(
