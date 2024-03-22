@@ -27,7 +27,6 @@ describe('tokenGroup', async () => {
     let mint: Keypair;
     let mintAuthority: Keypair;
     let updateAuthority: Keypair;
-    let groupAddress: PublicKey;
 
     before(async () => {
         connection = await getConnection();
@@ -38,7 +37,6 @@ describe('tokenGroup', async () => {
 
     beforeEach(async () => {
         mint = Keypair.generate();
-        groupAddress = PublicKey.unique();
 
         const mintLen = getMintLen(EXTENSIONS);
         const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
@@ -54,7 +52,7 @@ describe('tokenGroup', async () => {
             createInitializeGroupPointerInstruction(
                 mint.publicKey,
                 mintAuthority.publicKey,
-                groupAddress,
+                mint.publicKey,
                 TEST_PROGRAM_ID
             ),
             createInitializeMintInstruction(
