@@ -1,5 +1,5 @@
 import { publicKey, struct, u32, u64, u8, option, vec } from '@coral-xyz/borsh';
-import { Lockup, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import {
   Infer,
@@ -76,6 +76,11 @@ export const StakeAccount = type({
   type: StakeAccountType,
   info: optional(StakeAccountInfo),
 });
+export interface Lockup {
+  unixTimestamp: BN;
+  epoch: BN;
+  custodian: PublicKey;
+}
 
 export interface StakePool {
   accountType: AccountType;
