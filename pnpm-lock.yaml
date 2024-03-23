@@ -772,7 +772,7 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       '@solana/spl-token-group':
-        specifier: ^0.0.1
+        specifier: ^0.0.2
         version: link:../../token-group/js
       '@solana/spl-token-metadata':
         specifier: ^0.1.2
