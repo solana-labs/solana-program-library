@@ -17,7 +17,7 @@ export function getTokenGroupState(mint: Mint): Partial<TokenGroup> | null {
     if (extensionData !== null) {
         const { updateAuthority, mint, size, maxSize } = unpackTokenGroup(extensionData);
 
-        // Explicity set None/Zero keys to null
+        // Explicitly set None/Zero keys to null
         return {
             updateAuthority: updateAuthority?.equals(PublicKey.default) ? undefined : updateAuthority,
             mint,
