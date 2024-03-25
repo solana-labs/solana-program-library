@@ -60,7 +60,7 @@ export interface StakePoolAccount {
 export interface WithdrawAccount {
   stakeAddress: PublicKey;
   voteAddress?: PublicKey;
-  poolAmount: number;
+  poolAmount: BN;
 }
 
 /**
@@ -354,7 +354,7 @@ export async function withdrawStake(
   validatorComparator?: (_a: ValidatorAccount, _b: ValidatorAccount) => number,
 ) {
   const stakePool = await getStakePoolAccount(connection, stakePoolAddress);
-  const poolAmount = solToLamports(amount);
+  const poolAmount = new BN(solToLamports(amount));
 
   if (!poolTokenAccount) {
     poolTokenAccount = getAssociatedTokenAddressSync(stakePool.account.data.poolMint, tokenOwner);
@@ -363,7 +363,7 @@ export async function withdrawStake(
   const tokenAccount = await getAccount(connection, poolTokenAccount);
 
   // Check withdrawFrom balance
-  if (tokenAccount.amount < poolAmount) {
+  if (tokenAccount.amount < poolAmount.toNumber()) {
     throw new Error(
       `Not enough token balance to withdraw ${lamportsToSol(poolAmount)} pool tokens.
         Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount)} pool tokens.`,
@@ -420,10 +420,10 @@ export async function withdrawStake(
 
       const availableForWithdrawal = calcLamportsWithdrawAmount(
         stakePool.account.data,
-        stakeAccount.lamports - MINIMUM_ACTIVE_STAKE - stakeAccountRentExemption,
+        new BN(stakeAccount.lamports - MINIMUM_ACTIVE_STAKE - stakeAccountRentExemption),
       );
 
-      if (availableForWithdrawal < poolAmount) {
+      if (availableForWithdrawal.lt(poolAmount)) {
         throw new Error(
           `Not enough lamports available for withdrawal from ${stakeAccountAddress},
             ${poolAmount} asked, ${availableForWithdrawal} available.`,
@@ -450,12 +450,18 @@ export async function withdrawStake(
       throw new Error('Invalid Stake Account');
     }
 
-    const availableForWithdrawal = calcLamportsWithdrawAmount(
-      stakePool.account.data,
+    const availableLamports = new BN(
       stakeAccount.lamports - MINIMUM_ACTIVE_STAKE - stakeAccountRentExemption,
     );
+    if (availableLamports.lt(new BN(0))) {
+      throw new Error('Invalid Stake Account');
+    }
+    const availableForWithdrawal = calcLamportsWithdrawAmount(
+      stakePool.account.data,
+      availableLamports,
+    );
 
-    if (availableForWithdrawal < poolAmount) {
+    if (availableForWithdrawal.lt(poolAmount)) {
       // noinspection ExceptionCaughtLocallyJS
       throw new Error(
         `Not enough lamports available for withdrawal from ${stakeAccountAddress},
@@ -492,7 +498,7 @@ export async function withdrawStake(
       poolTokenAccount,
       userTransferAuthority.publicKey,
       tokenOwner,
-      poolAmount,
+      poolAmount.toNumber(),
     ),
   );
 
@@ -508,8 +514,9 @@ export async function withdrawStake(
       break;
     }
     // Convert pool tokens amount to lamports
-    const solWithdrawAmount = Math.ceil(
-      calcLamportsWithdrawAmount(stakePool.account.data, withdrawAccount.poolAmount),
+    const solWithdrawAmount = calcLamportsWithdrawAmount(
+      stakePool.account.data,
+      withdrawAccount.poolAmount,
     );
 
     let infoMsg = `Withdrawing ◎${solWithdrawAmount},
@@ -542,7 +549,7 @@ export async function withdrawStake(
         sourcePoolAccount: poolTokenAccount,
         managerFeeAccount: stakePool.account.data.managerFeeAccount,
         poolMint: stakePool.account.data.poolMint,
-        poolTokens: withdrawAccount.poolAmount,
+        poolTokens: withdrawAccount.poolAmount.toNumber(),
         withdrawAuthority,
       }),
     );
