@@ -78,9 +78,9 @@ export function getTypeLen(e: ExtensionType): number {
         case ExtensionType.MintCloseAuthority:
             return MINT_CLOSE_AUTHORITY_SIZE;
         case ExtensionType.ConfidentialTransferMint:
-            return 97;
+            return 65;
         case ExtensionType.ConfidentialTransferAccount:
-            return 286;
+            return 295;
         case ExtensionType.CpiGuard:
             return CPI_GUARD_SIZE;
         case ExtensionType.DefaultAccountState:
