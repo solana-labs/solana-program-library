@@ -2136,12 +2136,26 @@ where
         )
         .await?;
 
-        self.process_ixs(
+        // This instruction is right at the transaction size limit, so we cannot
+        // add any other instructions to it
+        let blockhash = self
+            .client
+            .get_latest_blockhash()
+            .await
+            .map_err(TokenError::Client)?;
+
+        let transaction = Transaction::new_signed_with_payer(
             &[instruction_type
                 .encode_verify_proof(Some(withdraw_proof_context_state_info), withdraw_proof_data)],
-            &[] as &[&dyn Signer; 0],
-        )
-        .await
+            Some(&self.payer.pubkey()),
+            &[self.payer.as_ref()],
+            blockhash,
+        );
+
+        self.client
+            .send_transaction(&transaction)
+            .await
+            .map_err(TokenError::Client)
     }
 
     /// Transfer tokens confidentially
@@ -2620,12 +2634,24 @@ where
 
         // This instruction is right at the transaction size limit, but in the
         // future it might be able to support the transfer too
-        self.process_ixs(
+        let blockhash = self
+            .client
+            .get_latest_blockhash()
+            .await
+            .map_err(TokenError::Client)?;
+
+        let transaction = Transaction::new_signed_with_payer(
             &[instruction_type
                 .encode_verify_proof(Some(range_proof_context_state_info), range_proof_data)],
-            &[] as &[&dyn Signer; 0],
-        )
-        .await
+            Some(&self.payer.pubkey()),
+            &[self.payer.as_ref()],
+            blockhash,
+        );
+
+        self.client
+            .send_transaction(&transaction)
+            .await
+            .map_err(TokenError::Client)
     }
 
     /// Create a range proof context state account with a confidential transfer
