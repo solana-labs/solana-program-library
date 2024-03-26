@@ -513,7 +513,6 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
     };
 
     // Test fee is 2.5% so the withheld fees should be 3
-    let token = token.with_compute_unit_limit(500_000);
     token
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
@@ -672,7 +671,6 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts() {
     };
 
     // Test fee is 2.5% so the withheld fees should be 3
-    let token = token.with_compute_unit_limit(500_000);
     token
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
@@ -803,7 +801,6 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_proof_con
     };
 
     // Test fee is 2.5% so the withheld fees should be 3
-    let token = token.with_compute_unit_limit(500_000);
     token
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
@@ -972,7 +969,6 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_proof
     };
 
     // Test fee is 2.5% so the withheld fees should be 3
-    let token = token.with_compute_unit_limit(500_000);
     token
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,
@@ -1163,7 +1159,6 @@ async fn confidential_transfer_harvest_withheld_tokens_to_mint() {
         .unwrap();
 
     // Test fee is 2.5% so the withheld fees should be 3
-    let token = token.with_compute_unit_limit(500_000);
     token
         .confidential_transfer_transfer_with_fee(
             &alice_meta.token_account,

@@ -1,6 +1,9 @@
 use {
     crate::{
-        client::{ProgramClient, ProgramClientError, SendTransaction, SimulateTransaction},
+        client::{
+            ProgramClient, ProgramClientError, SendTransaction, SimulateTransaction,
+            SimulationResult,
+        },
         proof_generation::transfer_with_fee_split_proof_data,
     },
     futures::{future::join_all, try_join},
@@ -522,6 +525,45 @@ where
         }
     }
 
+    /// Helper function to add a compute unit limit instruction to a given set
+    /// of instructions
+    async fn add_compute_unit_limit_from_simulation(
+        &self,
+        instructions: &mut Vec<Instruction>,
+        blockhash: &Hash,
+    ) -> TokenResult<()> {
+        // add a max compute unit limit instruction for the simulation
+        const MAX_COMPUTE_UNIT_LIMIT: u32 = 1_400_000;
+        instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
+            MAX_COMPUTE_UNIT_LIMIT,
+        ));
+
+        let transaction = Transaction::new_unsigned(Message::new_with_blockhash(
+            instructions,
+            Some(&self.payer.pubkey()),
+            blockhash,
+        ));
+        let simulation_result = self
+            .client
+            .simulate_transaction(&transaction)
+            .await
+            .map_err(TokenError::Client)?;
+        if let Ok(units_consumed) = simulation_result.get_compute_units_consumed() {
+            // Overwrite the compute unit limit instruction with the actual units consumed
+            let compute_unit_limit =
+                u32::try_from(units_consumed).map_err(|x| TokenError::Client(x.into()))?;
+            instructions
+                .last_mut()
+                .expect("Compute budget instruction was added earlier")
+                .data = ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit).data;
+        } else {
+            // `get_compute_units_consumed()` fails for offline signing, so we
+            // catch that error and remove the instruction that was added
+            instructions.pop();
+        }
+        Ok(())
+    }
+
     async fn construct_tx<S: Signers>(
         &self,
         token_instructions: &[Instruction],
@@ -549,18 +591,6 @@ where
 
         instructions.extend_from_slice(token_instructions);
 
-        if let Some(compute_unit_limit) = self.compute_unit_limit {
-            instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
-                compute_unit_limit,
-            ));
-        }
-
-        if let Some(compute_unit_price) = self.compute_unit_price {
-            instructions.push(ComputeBudgetInstruction::set_compute_unit_price(
-                compute_unit_price,
-            ));
-        }
-
         let blockhash = if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
             self.nonce_account,
             &self.nonce_authority,
@@ -578,6 +608,25 @@ where
                 .await
                 .map_err(TokenError::Client)?
         };
+
+        if let Some(compute_unit_price) = self.compute_unit_price {
+            instructions.push(ComputeBudgetInstruction::set_compute_unit_price(
+                compute_unit_price,
+            ));
+        }
+
+        // The simulation to find out the compute unit usage must be run after
+        // all instructions have been added to the transaction, so be sure to
+        // keep this instruction as the last one before creating and sending the
+        // transaction.
+        if let Some(compute_unit_limit) = self.compute_unit_limit {
+            instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
+                compute_unit_limit,
+            ));
+        } else {
+            self.add_compute_unit_limit_from_simulation(&mut instructions, &blockhash)
+                .await?;
+        }
 
         let message = Message::new_with_blockhash(&instructions, fee_payer, &blockhash);
         let mut transaction = Transaction::new_unsigned(message);
