@@ -186,10 +186,11 @@ fn send_transaction(
     Ok(())
 }
 
-fn checked_transaction_with_signers<T: Signers>(
+fn checked_transaction_with_signers_and_additional_fee<T: Signers>(
     config: &Config,
     instructions: &[Instruction],
     signers: &T,
+    additional_fee: u64,
 ) -> Result<Transaction, Error> {
     let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
     let message = Message::new_with_blockhash(
@@ -197,9 +198,20 @@ fn checked_transaction_with_signers<T: Signers>(
         Some(&config.fee_payer.pubkey()),
         &recent_blockhash,
     );
-    check_fee_payer_balance(config, config.rpc_client.get_fee_for_message(&message)?)?;
+    check_fee_payer_balance(
+        config,
+        additional_fee.saturating_add(config.rpc_client.get_fee_for_message(&message)?),
+    )?;
     let transaction = Transaction::new(signers, message, recent_blockhash);
     Ok(transaction)
+}
+
+fn checked_transaction_with_signers<T: Signers>(
+    config: &Config,
+    instructions: &[Instruction],
+    signers: &T,
+) -> Result<Transaction, Error> {
+    checked_transaction_with_signers_and_additional_fee(config, instructions, signers, 0)
 }
 
 fn new_stake_account(
@@ -293,7 +305,7 @@ fn command_create_pool(
         println!("Stake pool withdraw authority {}", withdraw_authority);
     }
 
-    let mut instructions = vec![
+    let mut setup_instructions = vec![
         // Account for the stake pool reserve
         system_instruction::create_account(
             &config.fee_payer.pubkey(),
@@ -332,67 +344,52 @@ fn command_create_pool(
         config,
         &mint_keypair.pubkey(),
         &config.manager.pubkey(),
-        &mut instructions,
+        &mut setup_instructions,
         &mut total_rent_free_balances,
     );
     println!("Creating pool fee collection account {}", pool_fee_account);
 
-    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
-    let setup_message = Message::new_with_blockhash(
-        &instructions,
-        Some(&config.fee_payer.pubkey()),
-        &recent_blockhash,
-    );
-    let initialize_message = Message::new_with_blockhash(
-        &[
-            // Validator stake account list storage
-            system_instruction::create_account(
-                &config.fee_payer.pubkey(),
-                &validator_list_keypair.pubkey(),
-                validator_list_balance,
-                validator_list_size as u64,
-                &spl_stake_pool::id(),
-            ),
-            // Account for the stake pool
-            system_instruction::create_account(
-                &config.fee_payer.pubkey(),
-                &stake_pool_keypair.pubkey(),
-                stake_pool_account_lamports,
-                get_packed_len::<StakePool>() as u64,
-                &spl_stake_pool::id(),
-            ),
-            // Initialize stake pool
-            spl_stake_pool::instruction::initialize(
-                &spl_stake_pool::id(),
-                &stake_pool_keypair.pubkey(),
-                &config.manager.pubkey(),
-                &config.staker.pubkey(),
-                &withdraw_authority,
-                &validator_list_keypair.pubkey(),
-                &reserve_keypair.pubkey(),
-                &mint_keypair.pubkey(),
-                &pool_fee_account,
-                &spl_token::id(),
-                deposit_authority.as_ref().map(|x| x.pubkey()),
-                epoch_fee,
-                withdrawal_fee,
-                deposit_fee,
-                referral_fee,
-                max_validators,
-            ),
-        ],
-        Some(&config.fee_payer.pubkey()),
-        &recent_blockhash,
-    );
-    check_fee_payer_balance(
-        config,
-        total_rent_free_balances
-            + config.rpc_client.get_fee_for_message(&setup_message)?
-            + config.rpc_client.get_fee_for_message(&initialize_message)?,
-    )?;
+    let initialize_instructions = &[
+        // Validator stake account list storage
+        system_instruction::create_account(
+            &config.fee_payer.pubkey(),
+            &validator_list_keypair.pubkey(),
+            validator_list_balance,
+            validator_list_size as u64,
+            &spl_stake_pool::id(),
+        ),
+        // Account for the stake pool
+        system_instruction::create_account(
+            &config.fee_payer.pubkey(),
+            &stake_pool_keypair.pubkey(),
+            stake_pool_account_lamports,
+            get_packed_len::<StakePool>() as u64,
+            &spl_stake_pool::id(),
+        ),
+        // Initialize stake pool
+        spl_stake_pool::instruction::initialize(
+            &spl_stake_pool::id(),
+            &stake_pool_keypair.pubkey(),
+            &config.manager.pubkey(),
+            &config.staker.pubkey(),
+            &withdraw_authority,
+            &validator_list_keypair.pubkey(),
+            &reserve_keypair.pubkey(),
+            &mint_keypair.pubkey(),
+            &pool_fee_account,
+            &spl_token::id(),
+            deposit_authority.as_ref().map(|x| x.pubkey()),
+            epoch_fee,
+            withdrawal_fee,
+            deposit_fee,
+            referral_fee,
+            max_validators,
+        ),
+    ];
     let mut setup_signers = vec![config.fee_payer.as_ref(), &mint_keypair, &reserve_keypair];
     unique_signers!(setup_signers);
-    let setup_transaction = Transaction::new(&setup_signers, setup_message, recent_blockhash);
+    let setup_transaction =
+        checked_transaction_with_signers(config, &setup_instructions, &setup_signers)?;
     let mut initialize_signers = vec![
         config.fee_payer.as_ref(),
         &stake_pool_keypair,
@@ -407,11 +404,30 @@ fn command_create_pool(
         let mut initialize_signers = initialize_signers.clone();
         initialize_signers.push(&deposit_authority);
         unique_signers!(initialize_signers);
-        Transaction::new(&initialize_signers, initialize_message, recent_blockhash)
+        checked_transaction_with_signers(config, initialize_instructions, &initialize_signers)?
     } else {
         unique_signers!(initialize_signers);
-        Transaction::new(&initialize_signers, initialize_message, recent_blockhash)
+        checked_transaction_with_signers(config, initialize_instructions, &initialize_signers)?
     };
+
+    // Fee checks were done on the individual transactions, but this is to make
+    // sure the wallet can cover both in sequence
+    check_fee_payer_balance(
+        config,
+        total_rent_free_balances
+            + config
+                .rpc_client
+                .get_fee_for_message(&setup_transaction.message)?
+            + config
+                .rpc_client
+                .get_fee_for_message(&initialize_transaction.message)?,
+    )?;
+
+    println!(
+        "Setting up required accounts for stake pool: reserve stake {} and mint {}",
+        reserve_keypair.pubkey(),
+        mint_keypair.pubkey()
+    );
     send_transaction(config, setup_transaction)?;
 
     println!(
@@ -786,18 +802,13 @@ fn command_deposit_stake(
 
     instructions.append(&mut deposit_instructions);
 
-    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
-    let message = Message::new_with_blockhash(
-        &instructions,
-        Some(&config.fee_payer.pubkey()),
-        &recent_blockhash,
-    );
-    check_fee_payer_balance(
-        config,
-        total_rent_free_balances + config.rpc_client.get_fee_for_message(&message)?,
-    )?;
     unique_signers!(signers);
-    let transaction = Transaction::new(&signers, message, recent_blockhash);
+    let transaction = checked_transaction_with_signers_and_additional_fee(
+        config,
+        &instructions,
+        &signers,
+        total_rent_free_balances,
+    )?;
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -829,17 +840,12 @@ fn command_deposit_all_stake(
             &mut total_rent_free_balances,
         ));
     if !create_token_account_instructions.is_empty() {
-        let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
-        let message = Message::new_with_blockhash(
-            &create_token_account_instructions,
-            Some(&config.fee_payer.pubkey()),
-            &recent_blockhash,
-        );
-        check_fee_payer_balance(
+        let transaction = checked_transaction_with_signers_and_additional_fee(
             config,
-            total_rent_free_balances + config.rpc_client.get_fee_for_message(&message)?,
+            &create_token_account_instructions,
+            &[config.fee_payer.as_ref()],
+            total_rent_free_balances,
         )?;
-        let transaction = Transaction::new(&[config.fee_payer.as_ref()], message, recent_blockhash);
         send_transaction(config, transaction)?;
     }
 
@@ -932,14 +938,7 @@ fn command_deposit_all_stake(
             )
         };
 
-        let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
-        let message = Message::new_with_blockhash(
-            &instructions,
-            Some(&config.fee_payer.pubkey()),
-            &recent_blockhash,
-        );
-        check_fee_payer_balance(config, config.rpc_client.get_fee_for_message(&message)?)?;
-        let transaction = Transaction::new(&signers, message, recent_blockhash);
+        let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
         send_transaction(config, transaction)?;
     }
     Ok(())
@@ -1054,18 +1053,13 @@ fn command_deposit_sol(
 
     instructions.push(deposit_instruction);
 
-    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
-    let message = Message::new_with_blockhash(
-        &instructions,
-        Some(&config.fee_payer.pubkey()),
-        &recent_blockhash,
-    );
-    check_fee_payer_balance(
-        config,
-        total_rent_free_balances + config.rpc_client.get_fee_for_message(&message)?,
-    )?;
     unique_signers!(signers);
-    let transaction = Transaction::new(&signers, message, recent_blockhash);
+    let transaction = checked_transaction_with_signers_and_additional_fee(
+        config,
+        &instructions,
+        &signers,
+        total_rent_free_balances,
+    )?;
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -1624,21 +1618,16 @@ fn command_withdraw_stake(
         }
     }
 
-    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
-    let message = Message::new_with_blockhash(
-        &instructions,
-        Some(&config.fee_payer.pubkey()),
-        &recent_blockhash,
-    );
     for new_stake_keypair in &new_stake_keypairs {
         signers.push(new_stake_keypair);
     }
-    check_fee_payer_balance(
-        config,
-        total_rent_free_balances + config.rpc_client.get_fee_for_message(&message)?,
-    )?;
     unique_signers!(signers);
-    let transaction = Transaction::new(&signers, message, recent_blockhash);
+    let transaction = checked_transaction_with_signers_and_additional_fee(
+        config,
+        &instructions,
+        &signers,
+        total_rent_free_balances,
+    )?;
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -1748,15 +1737,8 @@ fn command_withdraw_sol(
 
     instructions.push(withdraw_instruction);
 
-    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
-    let message = Message::new_with_blockhash(
-        &instructions,
-        Some(&config.fee_payer.pubkey()),
-        &recent_blockhash,
-    );
-    check_fee_payer_balance(config, config.rpc_client.get_fee_for_message(&message)?)?;
     unique_signers!(signers);
-    let transaction = Transaction::new(&signers, message, recent_blockhash);
+    let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
     Ok(())
 }
