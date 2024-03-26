@@ -147,6 +147,18 @@ fn token_client_from_config(
         config.fee_payer()?.clone(),
     );
 
+    let token = if let Some(compute_unit_limit) = config.compute_unit_limit {
+        token.with_compute_unit_limit(compute_unit_limit)
+    } else {
+        token
+    };
+
+    let token = if let Some(compute_unit_price) = config.compute_unit_price {
+        token.with_compute_unit_price(compute_unit_price)
+    } else {
+        token
+    };
+
     if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
         config.nonce_account,
         &config.nonce_authority,
