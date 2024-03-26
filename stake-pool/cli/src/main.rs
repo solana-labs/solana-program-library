@@ -16,12 +16,14 @@ use {
         Arg, ArgGroup, ArgMatches, SubCommand,
     },
     solana_clap_utils::{
+        compute_unit_price::{compute_unit_price_arg, COMPUTE_UNIT_PRICE_ARG},
         input_parsers::{keypair_of, pubkey_of},
         input_validators::{
             is_amount, is_keypair_or_ask_keyword, is_parsable, is_pubkey, is_url,
             is_valid_percentage, is_valid_pubkey, is_valid_signer,
         },
         keypair::{signer_from_path_with_config, SignerFromPathConfig},
+        ArgConstant,
     },
     solana_cli_output::OutputFormat,
     solana_client::rpc_client::RpcClient,
@@ -66,6 +68,8 @@ pub(crate) struct Config {
     fee_payer: Box<dyn Signer>,
     dry_run: bool,
     no_update: bool,
+    compute_unit_price: Option<u64>,
+    compute_unit_limit: Option<u32>,
 }
 
 type CommandResult = Result<(), Error>;
@@ -99,6 +103,12 @@ const FEES_REFERENCE: &str = "Consider setting a minimal fee. \
                               information about fees and best practices. If you are \
                               aware of the possible risks of a stake pool with no fees, \
                               you may force pool creation with the --unsafe-fees flag.";
+
+pub const COMPUTE_UNIT_LIMIT_ARG: ArgConstant<'static> = ArgConstant {
+    name: "compute_unit_limit",
+    long: "--with-compute-unit-limit",
+    help: "Set compute unit limit for transaction, in compute units.",
+};
 
 fn check_stake_pool_fees(
     epoch_fee: &Fee,
@@ -1998,6 +2008,15 @@ fn main() {
                 .global(true)
                 .help("Transaction fee payer account [default: cli config keypair]"),
         )
+        .arg(compute_unit_price_arg().validator(is_parsable::<u64>))
+        .arg(
+            Arg::with_name(COMPUTE_UNIT_LIMIT_ARG.name)
+                .long(COMPUTE_UNIT_LIMIT_ARG.long)
+                .takes_value(true)
+                .value_name("COMPUTE-UNIT-LIMIT")
+                .help(COMPUTE_UNIT_LIMIT_ARG.help)
+                .validator(is_parsable::<u32>)
+        )
         .subcommand(SubCommand::with_name("create-pool")
             .about("Create a new stake pool")
             .arg(
@@ -2778,6 +2797,8 @@ fn main() {
             });
         let dry_run = matches.is_present("dry_run");
         let no_update = matches.is_present("no_update");
+        let compute_unit_price = value_t!(matches, COMPUTE_UNIT_PRICE_ARG.name, u64).ok();
+        let compute_unit_limit = value_t!(matches, COMPUTE_UNIT_LIMIT_ARG.name, u32).ok();
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
@@ -2790,6 +2811,8 @@ fn main() {
             fee_payer,
             dry_run,
             no_update,
+            compute_unit_price,
+            compute_unit_limit,
         }
     };
 
