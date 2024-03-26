@@ -561,32 +561,25 @@ where
             ));
         }
 
-        let (message, blockhash) =
-            if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
-                self.nonce_account,
-                &self.nonce_authority,
-                self.nonce_blockhash,
-            ) {
-                let mut message = Message::new_with_nonce(
-                    token_instructions.to_vec(),
-                    fee_payer,
-                    &nonce_account,
-                    &nonce_authority.pubkey(),
-                );
-                message.recent_blockhash = nonce_blockhash;
-                (message, nonce_blockhash)
-            } else {
-                let latest_blockhash = self
-                    .client
-                    .get_latest_blockhash()
-                    .await
-                    .map_err(TokenError::Client)?;
-                (
-                    Message::new_with_blockhash(&instructions, fee_payer, &latest_blockhash),
-                    latest_blockhash,
-                )
-            };
+        let blockhash = if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
+            self.nonce_account,
+            &self.nonce_authority,
+            self.nonce_blockhash,
+        ) {
+            let nonce_instruction = system_instruction::advance_nonce_account(
+                &nonce_account,
+                &nonce_authority.pubkey(),
+            );
+            instructions.insert(0, nonce_instruction);
+            nonce_blockhash
+        } else {
+            self.client
+                .get_latest_blockhash()
+                .await
+                .map_err(TokenError::Client)?
+        };
 
+        let message = Message::new_with_blockhash(&instructions, fee_payer, &blockhash);
         let mut transaction = Transaction::new_unsigned(message);
         let signing_pubkeys = signing_keypairs.pubkeys();
 
