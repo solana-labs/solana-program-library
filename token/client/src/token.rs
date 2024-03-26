@@ -8,6 +8,7 @@ use {
     solana_program_test::tokio::time,
     solana_sdk::{
         account::Account as BaseAccount,
+        compute_budget::ComputeBudgetInstruction,
         hash::Hash,
         instruction::{AccountMeta, Instruction},
         message::Message,
@@ -339,6 +340,8 @@ pub struct Token<T> {
     nonce_blockhash: Option<Hash>,
     memo: Arc<RwLock<Option<TokenMemo>>>,
     transfer_hook_accounts: Option<Vec<AccountMeta>>,
+    compute_unit_price: Option<u64>,
+    compute_unit_limit: Option<u32>,
 }
 
 impl<T> fmt::Debug for Token<T> {
@@ -356,6 +359,8 @@ impl<T> fmt::Debug for Token<T> {
             .field("nonce_blockhash", &self.nonce_blockhash)
             .field("memo", &self.memo.read().unwrap())
             .field("transfer_hook_accounts", &self.transfer_hook_accounts)
+            .field("compute_unit_price", &self.compute_unit_price)
+            .field("compute_unit_limit", &self.compute_unit_limit)
             .finish()
     }
 }
@@ -402,6 +407,8 @@ where
             nonce_blockhash: None,
             memo: Arc::new(RwLock::new(None)),
             transfer_hook_accounts: None,
+            compute_unit_price: None,
+            compute_unit_limit: None,
         }
     }
 
@@ -448,6 +455,16 @@ where
 
     pub fn with_transfer_hook_accounts(mut self, transfer_hook_accounts: Vec<AccountMeta>) -> Self {
         self.transfer_hook_accounts = Some(transfer_hook_accounts);
+        self
+    }
+
+    pub fn with_compute_unit_price(mut self, compute_unit_price: u64) -> Self {
+        self.compute_unit_price = Some(compute_unit_price);
+        self
+    }
+
+    pub fn with_compute_unit_limit(mut self, compute_unit_limit: u32) -> Self {
+        self.compute_unit_limit = Some(compute_unit_limit);
         self
     }
 
@@ -508,7 +525,6 @@ where
     async fn construct_tx<S: Signers>(
         &self,
         token_instructions: &[Instruction],
-        additional_compute_budget: Option<u32>,
         signing_keypairs: &S,
     ) -> TokenResult<Transaction> {
         let mut instructions = vec![];
@@ -533,12 +549,16 @@ where
 
         instructions.extend_from_slice(token_instructions);
 
-        if let Some(additional_compute_budget) = additional_compute_budget {
-            instructions.push(
-                solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(
-                    additional_compute_budget,
-                ),
-            );
+        if let Some(compute_unit_limit) = self.compute_unit_limit {
+            instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
+                compute_unit_limit,
+            ));
+        }
+
+        if let Some(compute_unit_price) = self.compute_unit_price {
+            instructions.push(ComputeBudgetInstruction::set_compute_unit_price(
+                compute_unit_price,
+            ));
         }
 
         let (message, blockhash) =
@@ -598,7 +618,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::SimulationOutput> {
         let transaction = self
-            .construct_tx(token_instructions, None, signing_keypairs)
+            .construct_tx(token_instructions, signing_keypairs)
             .await?;
 
         self.client
@@ -613,27 +633,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let transaction = self
-            .construct_tx(token_instructions, None, signing_keypairs)
-            .await?;
-
-        self.client
-            .send_transaction(&transaction)
-            .await
-            .map_err(TokenError::Client)
-    }
-
-    pub async fn process_ixs_with_additional_compute_budget<S: Signers>(
-        &self,
-        token_instructions: &[Instruction],
-        additional_compute_budget: u32,
-        signing_keypairs: &S,
-    ) -> TokenResult<T::Output> {
-        let transaction = self
-            .construct_tx(
-                token_instructions,
-                Some(additional_compute_budget),
-                signing_keypairs,
-            )
+            .construct_tx(token_instructions, signing_keypairs)
             .await?;
 
         self.client
@@ -2728,9 +2728,6 @@ where
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
-        // additional compute budget required for `VerifyTransferWithFee`
-        const TRANSFER_WITH_FEE_COMPUTE_BUDGET: u32 = 500_000;
-
         let mut instructions = confidential_transfer::instruction::transfer_with_fee(
             &self.program_id,
             source_account,
@@ -2756,12 +2753,7 @@ where
         )
         .await
         .map_err(|_| TokenError::AccountNotFound)?;
-        self.process_ixs_with_additional_compute_budget(
-            &instructions,
-            TRANSFER_WITH_FEE_COMPUTE_BUDGET,
-            signing_keypairs,
-        )
-        .await
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Transfer tokens confidentially with fee using split proofs.
