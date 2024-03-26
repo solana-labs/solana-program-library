@@ -68,7 +68,6 @@ pub(crate) struct Config {
     no_update: bool,
 }
 
-type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<(), Error>;
 
 const STAKE_STATE_LEN: usize = 200;
