@@ -37,6 +37,7 @@ use {
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         commitment_config::CommitmentConfig,
+        compute_budget::ComputeBudgetInstruction,
         hash::Hash,
         message::Message,
         native_token::{self, Sol},
@@ -193,8 +194,26 @@ fn checked_transaction_with_signers_and_additional_fee<T: Signers>(
     additional_fee: u64,
 ) -> Result<Transaction, Error> {
     let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
+    let mut instructions = instructions.to_vec();
+    if let Some(compute_unit_price) = config.compute_unit_price {
+        instructions.push(ComputeBudgetInstruction::set_compute_unit_price(
+            compute_unit_price,
+        ));
+    }
+    if let Some(compute_unit_limit) = config.compute_unit_limit {
+        instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
+            compute_unit_limit,
+        ));
+    } else {
+        add_compute_unit_limit_from_simulation(
+            &config.rpc_client,
+            &mut instructions,
+            &config.fee_payer.pubkey(),
+            &recent_blockhash,
+        )?;
+    }
     let message = Message::new_with_blockhash(
-        instructions,
+        &instructions,
         Some(&config.fee_payer.pubkey()),
         &recent_blockhash,
     );
