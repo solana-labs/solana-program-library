@@ -405,56 +405,51 @@ fn command_create_pool(
             max_validators,
         ),
     ];
-    let mut setup_signers = vec![config.fee_payer.as_ref(), &mint_keypair, &reserve_keypair];
-    unique_signers!(setup_signers);
-    let setup_transaction =
-        checked_transaction_with_signers(config, &setup_instructions, &setup_signers)?;
-    let mut initialize_signers = vec![
-        config.fee_payer.as_ref(),
-        &stake_pool_keypair,
-        &validator_list_keypair,
-        config.manager.as_ref(),
-    ];
-    let initialize_transaction = if let Some(deposit_authority) = deposit_authority {
+
+    {
+        let mut setup_signers = vec![config.fee_payer.as_ref(), &mint_keypair, &reserve_keypair];
+        unique_signers!(setup_signers);
+
+        let setup_transaction =
+            checked_transaction_with_signers(config, &setup_instructions, &setup_signers)?;
+
         println!(
-            "Deposits will be restricted to {} only, this can be changed using the set-funding-authority command.",
-            deposit_authority.pubkey()
+            "Setting up required accounts for stake pool: reserve stake {} and mint {}",
+            reserve_keypair.pubkey(),
+            mint_keypair.pubkey()
         );
-        let mut initialize_signers = initialize_signers.clone();
-        initialize_signers.push(&deposit_authority);
-        unique_signers!(initialize_signers);
-        checked_transaction_with_signers(config, initialize_instructions, &initialize_signers)?
-    } else {
-        unique_signers!(initialize_signers);
-        checked_transaction_with_signers(config, initialize_instructions, &initialize_signers)?
-    };
+        send_transaction(config, setup_transaction)?;
+    }
 
-    // Fee checks were done on the individual transactions, but this is to make
-    // sure the wallet can cover both in sequence
-    check_fee_payer_balance(
-        config,
-        total_rent_free_balances
-            + config
-                .rpc_client
-                .get_fee_for_message(&setup_transaction.message)?
-            + config
-                .rpc_client
-                .get_fee_for_message(&initialize_transaction.message)?,
-    )?;
+    {
+        let mut initialize_signers = vec![
+            config.fee_payer.as_ref(),
+            &stake_pool_keypair,
+            &validator_list_keypair,
+            config.manager.as_ref(),
+        ];
+        let initialize_transaction = if let Some(deposit_authority) = deposit_authority {
+            println!(
+                "Deposits will be restricted to {} only, this can be changed using the set-funding-authority command.",
+                deposit_authority.pubkey()
+            );
+            let mut initialize_signers = initialize_signers.clone();
+            initialize_signers.push(&deposit_authority);
+            unique_signers!(initialize_signers);
+            checked_transaction_with_signers(config, initialize_instructions, &initialize_signers)?
+        } else {
+            unique_signers!(initialize_signers);
+            checked_transaction_with_signers(config, initialize_instructions, &initialize_signers)?
+        };
 
-    println!(
-        "Setting up required accounts for stake pool: reserve stake {} and mint {}",
-        reserve_keypair.pubkey(),
-        mint_keypair.pubkey()
-    );
-    send_transaction(config, setup_transaction)?;
+        println!(
+            "Creating stake pool {} with validator list {}",
+            stake_pool_keypair.pubkey(),
+            validator_list_keypair.pubkey()
+        );
+        send_transaction(config, initialize_transaction)?;
+    }
 
-    println!(
-        "Creating stake pool {} with validator list {}",
-        stake_pool_keypair.pubkey(),
-        validator_list_keypair.pubkey()
-    );
-    send_transaction(config, initialize_transaction)?;
     Ok(())
 }
 
