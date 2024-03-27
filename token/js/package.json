@@ -51,7 +51,7 @@
         "deploy:docs": "npm run docs && gh-pages --dest token/js --dist docs --dotfiles"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.91.1"
+        "@solana/web3.js": "^1.91.2"
     },
     "dependencies": {
         "@solana/buffer-layout": "^4.0.0",
@@ -63,7 +63,7 @@
     "devDependencies": {
         "@solana/codecs-strings": "2.0.0-preview.2",
         "@solana/spl-memo": "0.2.3",
-        "@solana/web3.js": "^1.91.1",
+        "@solana/web3.js": "^1.91.2",
         "@types/chai-as-promised": "^7.1.4",
         "@types/chai": "^4.3.14",
         "@types/mocha": "^10.0.6",
