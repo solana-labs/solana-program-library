@@ -64,6 +64,18 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     help: "Member signer of a multisig account",
 };
 
+pub const COMPUTE_UNIT_PRICE_ARG: ArgConstant<'static> = ArgConstant {
+    name: "compute_unit_price",
+    long: "--with-compute-unit-price",
+    help: "Set compute unit price for transaction, in increments of 0.000001 lamports per compute unit.",
+};
+
+pub const COMPUTE_UNIT_LIMIT_ARG: ArgConstant<'static> = ArgConstant {
+    name: "compute_unit_limit",
+    long: "--with-compute-unit-limit",
+    help: "Set compute unit limit for transaction, in compute units.",
+};
+
 pub static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
 
 #[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
@@ -610,6 +622,22 @@ pub fn app<'a, 'b>(
                 .global(true)
                 .hidden(true)
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
+        )
+        .arg(
+            Arg::with_name(COMPUTE_UNIT_LIMIT_ARG.name)
+                .long(COMPUTE_UNIT_LIMIT_ARG.long)
+                .takes_value(true)
+                .value_name("COMPUTE-UNIT-LIMIT")
+                .validator(is_parsable::<u32>)
+                .help(COMPUTE_UNIT_LIMIT_ARG.help)
+        )
+        .arg(
+            Arg::with_name(COMPUTE_UNIT_PRICE_ARG.name)
+                .long(COMPUTE_UNIT_PRICE_ARG.long)
+                .takes_value(true)
+                .value_name("COMPUTE-UNIT-PRICE")
+                .validator(is_parsable::<u64>)
+                .help(COMPUTE_UNIT_PRICE_ARG.help)
         )
         .bench_subcommand()
         .subcommand(SubCommand::with_name(CommandName::CreateToken.into()).about("Create a new token")
