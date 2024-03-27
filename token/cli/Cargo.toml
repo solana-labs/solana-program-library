@@ -6,7 +6,7 @@ homepage = "https://spl.solana.com/token"
 license = "Apache-2.0"
 name = "spl-token-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "3.3.0"
+version = "3.4.0"
 
 [build-dependencies]
 walkdir = "2"
@@ -31,13 +31,13 @@ solana-transaction-status = ">=1.18.2,<=2"
 spl-token = { version = "4.0", path = "../program", features = [
   "no-entrypoint",
 ] }
-spl-token-2022 = { version = "2.0", path = "../program-2022", features = [
+spl-token-2022 = { version = "3.0", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
 spl-token-client = { version = "0.8", path = "../client" }
 spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
 spl-token-group-interface = { version = "0.1", path = "../../token-group/interface" }
-spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [
+spl-associated-token-account = { version = "3.0", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
 ] }
 spl-memo = { version = "4.0.1", path = "../../memo/program", features = [
