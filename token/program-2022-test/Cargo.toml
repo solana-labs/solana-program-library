@@ -33,7 +33,7 @@ spl-token-2022 = { version = "3.0", path = "../program-2022", features = [
 spl-instruction-padding = { version = "0.1.1", path = "../../instruction-padding/program", features = [
   "no-entrypoint",
 ] }
-spl-tlv-account-resolution = { version = "0.5.2", path = "../../libraries/tlv-account-resolution" }
+spl-tlv-account-resolution = { version = "0.6", path = "../../libraries/tlv-account-resolution" }
 spl-token-client = { version = "0.8", path = "../client" }
 spl-token-group-interface = { version = "0.1", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
