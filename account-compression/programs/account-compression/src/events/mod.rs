@@ -14,4 +14,5 @@ pub use changelog_event::{ChangeLogEvent, ChangeLogEventV1};
 pub enum AccountCompressionEvent {
     ChangeLog(ChangeLogEvent),
     ApplicationData(ApplicationDataEvent),
+    InitWithRoot(ChangeLogEvent, String),
 }

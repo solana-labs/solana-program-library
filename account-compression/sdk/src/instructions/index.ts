@@ -6,6 +6,7 @@ import {
     createAppendInstruction,
     createCloseEmptyTreeInstruction,
     createInitEmptyMerkleTreeInstruction,
+    createInitMerkleTreeWithRootInstruction,
     createReplaceLeafInstruction,
     createTransferAuthorityInstruction,
     createVerifyLeafInstruction,
@@ -54,6 +55,51 @@ export function createInitEmptyMerkleTreeIx(
 }
 
 /**
+ * Helper function for {@link createInitMerkleTreeWithRootInstruction}
+ * @param merkleTree
+ * @param authority
+ * @param root
+ * @returns
+ */
+export function createInitMerkleTreeWithRootIx(
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    depthSizePair: ValidDepthSizePair,
+    firstLeaf: ArrayLike<number> | Buffer,
+    root: ArrayLike<number> | Buffer,
+    manifestUrl: string,
+    initialProof?: Buffer[],
+    proofBuffer?: PublicKey,
+): TransactionInstruction {
+    if (!initialProof && !proofBuffer) {
+        throw new Error('Either initialProof or proofBuffer must be provided');
+    }
+
+    return createInitMerkleTreeWithRootInstruction(
+        {
+            anchorRemainingAccounts: initialProof?.map(node => {
+                return {
+                    isSigner: false,
+                    isWritable: false,
+                    pubkey: new PublicKey(node),
+                };
+            }),
+            authority: authority,
+            merkleTree,
+            noop: SPL_NOOP_PROGRAM_ID,
+            proofBuffer,
+        },
+        {
+            leaf: Array.from(firstLeaf),
+            manifestUrl,
+            maxBufferSize: depthSizePair.maxBufferSize,
+            maxDepth: depthSizePair.maxDepth,
+            root: Array.from(root),
+        },
+    );
+}
+
+/**
  * Helper function for {@link createReplaceLeafInstruction}
  * @param merkleTree
  * @param authority
@@ -95,7 +141,7 @@ export function createReplaceIx(
 export function createAppendIx(
     merkleTree: PublicKey,
     authority: PublicKey,
-    newLeaf: Buffer | ArrayLike<number>,
+    newLeaf: ArrayLike<number> | Buffer,
 ): TransactionInstruction {
     return createAppendInstruction(
         {

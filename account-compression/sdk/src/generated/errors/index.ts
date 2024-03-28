@@ -195,6 +195,46 @@ createErrorFromCodeLookup.set(0x1778, () => new LeafIndexOutOfBoundsError());
 createErrorFromNameLookup.set('LeafIndexOutOfBounds', () => new LeafIndexOutOfBoundsError());
 
 /**
+ * ProofIndexOutOfBounds: 'Proof index of is out of bounds'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProofIndexOutOfBoundsError extends Error {
+    readonly code: number = 0x1779;
+    readonly name: string = 'ProofIndexOutOfBounds';
+    constructor() {
+        super('Proof index of is out of bounds');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, ProofIndexOutOfBoundsError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x1779, () => new ProofIndexOutOfBoundsError());
+createErrorFromNameLookup.set('ProofIndexOutOfBounds', () => new ProofIndexOutOfBoundsError());
+
+/**
+ * InvalidProofBuffer: 'Invalid proof buffer'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidProofBufferError extends Error {
+    readonly code: number = 0x177a;
+    readonly name: string = 'InvalidProofBuffer';
+    constructor() {
+        super('Invalid proof buffer');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, InvalidProofBufferError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x177a, () => new InvalidProofBufferError());
+createErrorFromNameLookup.set('InvalidProofBuffer', () => new InvalidProofBufferError());
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

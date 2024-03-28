@@ -14,9 +14,9 @@ import * as web3 from '@solana/web3.js';
  * @category generated
  */
 export type InsertOrAppendInstructionArgs = {
-    root: number[] /* size: 32 */;
-    leaf: number[] /* size: 32 */;
     index: number;
+    leaf: number[] /* size: 32 */;
+    root: number[] /* size: 32 */;
 };
 /**
  * @category Instructions
@@ -47,10 +47,10 @@ export const insertOrAppendStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type InsertOrAppendInstructionAccounts = {
-    merkleTree: web3.PublicKey;
-    authority: web3.PublicKey;
-    noop: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
+    authority: web3.PublicKey;
+    merkleTree: web3.PublicKey;
+    noop: web3.PublicKey;
 };
 
 export const insertOrAppendInstructionDiscriminator = [6, 42, 50, 190, 51, 109, 178, 168];

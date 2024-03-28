@@ -7,8 +7,8 @@
 
 import * as beet from '@metaplex-foundation/beet';
 export type PathNode = {
-    node: number[] /* size: 32 */;
     index: number;
+    node: number[] /* size: 32 */;
 };
 
 /**

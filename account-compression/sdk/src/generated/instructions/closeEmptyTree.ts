@@ -27,10 +27,10 @@ export const closeEmptyTreeStruct = new beet.BeetArgsStruct<{
  * @category generated
  */
 export type CloseEmptyTreeInstructionAccounts = {
-    merkleTree: web3.PublicKey;
-    authority: web3.PublicKey;
-    recipient: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
+    authority: web3.PublicKey;
+    merkleTree: web3.PublicKey;
+    recipient: web3.PublicKey;
 };
 
 export const closeEmptyTreeInstructionDiscriminator = [50, 14, 219, 107, 78, 103, 16, 103];

@@ -7,10 +7,11 @@ import { PublicKey } from '@solana/web3.js';
  * used in an {@link ConcurrentMerkleTree}
  */
 export type Path = {
-    proof: PublicKey[];
+    // u32
+    _padding: number;
+    index: number;
     leaf: PublicKey;
-    index: number; // u32
-    _padding: number; // u32
+    proof: PublicKey[]; // u32
 };
 
 /**

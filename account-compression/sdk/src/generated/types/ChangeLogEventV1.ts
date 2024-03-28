@@ -12,9 +12,9 @@ import * as web3 from '@solana/web3.js';
 import { PathNode, pathNodeBeet } from './PathNode';
 export type ChangeLogEventV1 = {
     id: web3.PublicKey;
+    index: number;
     path: PathNode[];
     seq: beet.bignum;
-    index: number;
 };
 
 /**

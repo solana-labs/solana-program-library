@@ -10,70 +10,77 @@ import * as web3 from '@solana/web3.js';
 
 /**
  * @category Instructions
- * @category ReplaceLeaf
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export type ReplaceLeafInstructionArgs = {
-    index: number;
-    newLeaf: number[] /* size: 32 */;
-    previousLeaf: number[] /* size: 32 */;
+export type InitMerkleTreeWithRootInstructionArgs = {
+    leaf: number[] /* size: 32 */;
+    manifestUrl: string;
+    maxBufferSize: number;
+    maxDepth: number;
     root: number[] /* size: 32 */;
 };
 /**
  * @category Instructions
- * @category ReplaceLeaf
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export const replaceLeafStruct = new beet.BeetArgsStruct<
-    ReplaceLeafInstructionArgs & {
+export const initMerkleTreeWithRootStruct = new beet.FixableBeetArgsStruct<
+    InitMerkleTreeWithRootInstructionArgs & {
         instructionDiscriminator: number[] /* size: 8 */;
     }
 >(
     [
         ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+        ['maxDepth', beet.u32],
+        ['maxBufferSize', beet.u32],
         ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
-        ['previousLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
-        ['newLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
-        ['index', beet.u32],
+        ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['manifestUrl', beet.utf8String],
     ],
-    'ReplaceLeafInstructionArgs',
+    'InitMerkleTreeWithRootInstructionArgs',
 );
 /**
- * Accounts required by the _replaceLeaf_ instruction
+ * Accounts required by the _initMerkleTreeWithRoot_ instruction
  *
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
  * @property [] noop
+ * @property [] proofBuffer (optional)
  * @category Instructions
- * @category ReplaceLeaf
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export type ReplaceLeafInstructionAccounts = {
+export type InitMerkleTreeWithRootInstructionAccounts = {
     anchorRemainingAccounts?: web3.AccountMeta[];
     authority: web3.PublicKey;
     merkleTree: web3.PublicKey;
     noop: web3.PublicKey;
+    proofBuffer?: web3.PublicKey;
 };
 
-export const replaceLeafInstructionDiscriminator = [204, 165, 76, 100, 73, 147, 0, 128];
+export const initMerkleTreeWithRootInstructionDiscriminator = [67, 221, 160, 236, 108, 179, 112, 198];
 
 /**
- * Creates a _ReplaceLeaf_ instruction.
+ * Creates a _InitMerkleTreeWithRoot_ instruction.
+ *
+ * Optional accounts that are not provided default to the program ID since
+ * this was indicated in the IDL from which this instruction was generated.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category ReplaceLeaf
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export function createReplaceLeafInstruction(
-    accounts: ReplaceLeafInstructionAccounts,
-    args: ReplaceLeafInstructionArgs,
+export function createInitMerkleTreeWithRootInstruction(
+    accounts: InitMerkleTreeWithRootInstructionAccounts,
+    args: InitMerkleTreeWithRootInstructionArgs,
     programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
 ) {
-    const [data] = replaceLeafStruct.serialize({
-        instructionDiscriminator: replaceLeafInstructionDiscriminator,
+    const [data] = initMerkleTreeWithRootStruct.serialize({
+        instructionDiscriminator: initMerkleTreeWithRootInstructionDiscriminator,
         ...args,
     });
     const keys: web3.AccountMeta[] = [
@@ -91,6 +98,11 @@ export function createReplaceLeafInstruction(
             isSigner: false,
             isWritable: false,
             pubkey: accounts.noop,
+        },
+        {
+            isSigner: false,
+            isWritable: false,
+            pubkey: accounts.proofBuffer ?? programId,
         },
     ];
 

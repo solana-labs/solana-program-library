@@ -10,87 +10,84 @@ import * as web3 from '@solana/web3.js';
 
 /**
  * @category Instructions
- * @category ReplaceLeaf
+ * @category FillProofBuffer
  * @category generated
  */
-export type ReplaceLeafInstructionArgs = {
+export type FillProofBufferInstructionArgs = {
     index: number;
-    newLeaf: number[] /* size: 32 */;
-    previousLeaf: number[] /* size: 32 */;
-    root: number[] /* size: 32 */;
+    maxDepth: number;
+    partialProof: number[] /* size: 32 */[];
 };
 /**
  * @category Instructions
- * @category ReplaceLeaf
+ * @category FillProofBuffer
  * @category generated
  */
-export const replaceLeafStruct = new beet.BeetArgsStruct<
-    ReplaceLeafInstructionArgs & {
+export const fillProofBufferStruct = new beet.FixableBeetArgsStruct<
+    FillProofBufferInstructionArgs & {
         instructionDiscriminator: number[] /* size: 8 */;
     }
 >(
     [
         ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-        ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
-        ['previousLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
-        ['newLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['maxDepth', beet.u32],
+        ['partialProof', beet.array(beet.uniformFixedSizeArray(beet.u8, 32))],
         ['index', beet.u32],
     ],
-    'ReplaceLeafInstructionArgs',
+    'FillProofBufferInstructionArgs',
 );
 /**
- * Accounts required by the _replaceLeaf_ instruction
+ * Accounts required by the _fillProofBuffer_ instruction
  *
- * @property [_writable_] merkleTree
- * @property [**signer**] authority
- * @property [] noop
+ * @property [**signer**] payer
+ * @property [**signer**] proofBuffer
  * @category Instructions
- * @category ReplaceLeaf
+ * @category FillProofBuffer
  * @category generated
  */
-export type ReplaceLeafInstructionAccounts = {
+export type FillProofBufferInstructionAccounts = {
     anchorRemainingAccounts?: web3.AccountMeta[];
-    authority: web3.PublicKey;
-    merkleTree: web3.PublicKey;
-    noop: web3.PublicKey;
+    payer: web3.PublicKey;
+    proofBuffer: web3.PublicKey;
+    systemProgram?: web3.PublicKey;
 };
 
-export const replaceLeafInstructionDiscriminator = [204, 165, 76, 100, 73, 147, 0, 128];
+export const fillProofBufferInstructionDiscriminator = [242, 1, 180, 207, 192, 129, 104, 160];
 
 /**
- * Creates a _ReplaceLeaf_ instruction.
+ * Creates a _FillProofBuffer_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category ReplaceLeaf
+ * @category FillProofBuffer
  * @category generated
  */
-export function createReplaceLeafInstruction(
-    accounts: ReplaceLeafInstructionAccounts,
-    args: ReplaceLeafInstructionArgs,
+export function createFillProofBufferInstruction(
+    accounts: FillProofBufferInstructionAccounts,
+    args: FillProofBufferInstructionArgs,
     programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
 ) {
-    const [data] = replaceLeafStruct.serialize({
-        instructionDiscriminator: replaceLeafInstructionDiscriminator,
+    const [data] = fillProofBufferStruct.serialize({
+        instructionDiscriminator: fillProofBufferInstructionDiscriminator,
         ...args,
     });
     const keys: web3.AccountMeta[] = [
         {
-            isSigner: false,
-            isWritable: true,
-            pubkey: accounts.merkleTree,
+            isSigner: true,
+            isWritable: false,
+            pubkey: accounts.payer,
         },
         {
             isSigner: true,
             isWritable: false,
-            pubkey: accounts.authority,
+            pubkey: accounts.proofBuffer,
         },
         {
             isSigner: false,
             isWritable: false,
-            pubkey: accounts.noop,
+            pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
         },
     ];
 
