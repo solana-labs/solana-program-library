@@ -6902,7 +6902,7 @@ dependencies = [
 name = "spl-discriminator"
 version = "0.1.1"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "bytemuck",
  "solana-program",
  "spl-discriminator-derive 0.1.2",
