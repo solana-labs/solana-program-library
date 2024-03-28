@@ -4,7 +4,7 @@ target
 bin
 config.json
 node_modules
-./package-lock.json
+**/package-lock.json
 hfuzz_target
 hfuzz_workspace
 **/*.so
@@ -14,3 +14,4 @@ docker-target
 .idea
 .coderrect
 .turbo
+./yarn.lock
