@@ -7750,7 +7750,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-metadata-example"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "solana-program",
  "solana-program-test",
