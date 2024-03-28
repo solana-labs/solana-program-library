@@ -35,7 +35,7 @@ spl-token-2022 = { version = "3.0", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
 spl-token-client = { version = "0.8", path = "../client" }
-spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
+spl-token-metadata-interface = { version = "0.3", path = "../../token-metadata/interface" }
 spl-token-group-interface = { version = "0.2", path = "../../token-group/interface" }
 spl-associated-token-account = { version = "3.0", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
