@@ -17,7 +17,7 @@ solana-client = ">=1.18.2,<=2"
 solana-logger = ">=1.18.2,<=2"
 solana-remote-wallet = ">=1.18.2,<=2"
 solana-sdk = ">=1.18.2,<=2"
-spl-transfer-hook-interface = { version = "0.5", path = "../interface" }
+spl-transfer-hook-interface = { version = "0.6", path = "../interface" }
 spl-tlv-account-resolution = { version = "0.6" , path = "../../../libraries/tlv-account-resolution", features = ["serde-traits"] }
 strum = "0.26"
 strum_macros = "0.26"
