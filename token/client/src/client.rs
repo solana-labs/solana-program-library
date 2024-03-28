@@ -192,7 +192,7 @@ pub type ProgramClientResult<T> = Result<T, ProgramClientError>;
 
 /// Generic client interface for programs.
 #[async_trait]
-pub trait ProgramClient<ST>
+pub trait ProgramClient<ST>: Send + Sync
 where
     ST: SendTransaction + SimulateTransaction,
 {
