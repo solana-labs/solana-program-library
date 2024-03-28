@@ -6835,7 +6835,7 @@ dependencies = [
 
 [[package]]
 name = "spl-associated-token-account"
-version = "3.0.0"
+version = "3.0.2"
 dependencies = [
  "assert_matches",
  "borsh 1.2.1",
@@ -6854,7 +6854,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-token 4.0.1",
  "spl-token-2022 3.0.2",
 ]
@@ -7179,7 +7179,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-token 4.0.1",
  "thiserror",
 ]
@@ -7356,7 +7356,7 @@ dependencies = [
  "solana-sdk",
  "solana-security-txt",
  "solana-vote-program",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-token 4.0.1",
  "test-case",
  "thiserror",
@@ -7386,7 +7386,7 @@ dependencies = [
  "solana-test-validator",
  "solana-transaction-status",
  "solana-vote-program",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-single-pool",
  "spl-token 4.0.1",
  "spl-token-client",
@@ -7443,7 +7443,7 @@ dependencies = [
  "solana-program",
  "solana-remote-wallet",
  "solana-sdk",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-stake-pool",
  "spl-token 4.0.1",
 ]
@@ -7579,7 +7579,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-instruction-padding",
  "spl-memo 4.0.1",
  "spl-pod 0.2.2",
@@ -7618,7 +7618,7 @@ dependencies = [
  "solana-sdk",
  "solana-test-validator",
  "solana-transaction-status",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-memo 4.0.1",
  "spl-token 4.0.1",
  "spl-token-2022 3.0.2",
@@ -7646,7 +7646,7 @@ dependencies = [
  "solana-rpc-client",
  "solana-rpc-client-api",
  "solana-sdk",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-memo 4.0.1",
  "spl-token 4.0.1",
  "spl-token-2022 3.0.2",
@@ -7853,7 +7853,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-token 4.0.1",
  "spl-token-2022 3.0.2",
  "spl-token-client",
@@ -7869,7 +7869,7 @@ dependencies = [
  "bytemuck",
  "num_enum 0.7.2",
  "solana-program",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-token 4.0.1",
  "spl-token-2022 3.0.2",
  "thiserror",
@@ -7997,7 +7997,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 3.0.0",
+ "spl-associated-token-account 3.0.2",
  "spl-token 4.0.1",
  "thiserror",
 ]
