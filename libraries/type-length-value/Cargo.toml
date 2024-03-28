@@ -15,7 +15,7 @@ derive = ["dep:spl-type-length-value-derive"]
 bytemuck = { version = "1.15.0", features = ["derive"] }
 solana-program = ">=1.18.2,<=2"
 spl-discriminator = { version = "0.2.1", path = "../discriminator" }
-spl-program-error = { version = "0.3.0", path = "../program-error" }
+spl-program-error = { version = "0.3.1", path = "../program-error" }
 spl-type-length-value-derive = { version = "0.1.0", path = "./derive", optional = true }
 spl-pod = { version = "0.2.1", path = "../pod" }
 
