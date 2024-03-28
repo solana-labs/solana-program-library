@@ -15,7 +15,7 @@ test-sbf = []
 bytemuck = { version = "1.15.0", features = ["derive"] }
 serde = { version = "1.0.197", optional = true }
 solana-program = ">=1.18.2,<=2"
-spl-discriminator = { version = "0.2", path = "../discriminator" }
+spl-discriminator = { version = "0.2.2", path = "../discriminator" }
 spl-program-error = { version = "0.4.0", path = "../program-error" }
 spl-type-length-value = { version = "0.4.3", path = "../type-length-value" }
 spl-pod = { version = "0.2.2", path = "../pod" }
