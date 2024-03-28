@@ -1,6 +1,6 @@
 [package]
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
-description = "SPL-Token Command-line Utility"
+description = "SPL Transfer Hook Command-line Utility"
 edition = "2021"
 homepage = "https://spl.solana.com/token"
 license = "Apache-2.0"
@@ -28,7 +28,7 @@ serde_yaml = "0.9.34"
 
 [dev-dependencies]
 solana-test-validator = ">=1.18.2,<=2"
-spl-token-2022 = { version = "2.0", path = "../../program-2022", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "3.0", path = "../../program-2022", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.8", path = "../../client" }
 
 [[bin]]
