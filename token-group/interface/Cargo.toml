@@ -11,7 +11,7 @@ edition = "2021"
 bytemuck = "1.15.0"
 solana-program = ">=1.18.2,<=2"
 spl-discriminator = { version = "0.1.1" , path = "../../libraries/discriminator" }
-spl-pod = { version = "0.1.1" , path = "../../libraries/pod", features = ["borsh"] }
+spl-pod = { version = "0.2" , path = "../../libraries/pod", features = ["borsh"] }
 spl-program-error = { version = "0.3.1" , path = "../../libraries/program-error" }
 
 [dev-dependencies]
