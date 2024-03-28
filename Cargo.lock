@@ -6900,9 +6900,9 @@ dependencies = [
 
 [[package]]
 name = "spl-discriminator"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
- "borsh 0.10.3",
+ "borsh 1.2.1",
  "bytemuck",
  "solana-program",
  "spl-discriminator-derive 0.1.2",
@@ -7464,7 +7464,7 @@ dependencies = [
 
 [[package]]
 name = "spl-tlv-account-resolution"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "bytemuck",
  "futures 0.3.30",
@@ -7474,10 +7474,10 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-discriminator 0.1.1",
+ "spl-discriminator 0.2.0",
  "spl-pod 0.2.0",
  "spl-program-error 0.3.1",
- "spl-type-length-value 0.4.0",
+ "spl-type-length-value 0.4.1",
 ]
 
 [[package]]
@@ -7560,12 +7560,12 @@ dependencies = [
  "solana-zk-token-sdk",
  "spl-memo 4.0.1",
  "spl-pod 0.2.0",
- "spl-tlv-account-resolution 0.6.0",
+ "spl-tlv-account-resolution 0.6.1",
  "spl-token 4.0.1",
- "spl-token-group-interface 0.2.0",
- "spl-token-metadata-interface 0.3.0",
- "spl-transfer-hook-interface 0.6.0",
- "spl-type-length-value 0.4.0",
+ "spl-token-group-interface 0.2.1",
+ "spl-token-metadata-interface 0.3.1",
+ "spl-transfer-hook-interface 0.6.1",
+ "spl-type-length-value 0.4.1",
  "thiserror",
 ]
 
@@ -7583,13 +7583,13 @@ dependencies = [
  "spl-instruction-padding",
  "spl-memo 4.0.1",
  "spl-pod 0.2.0",
- "spl-tlv-account-resolution 0.6.0",
+ "spl-tlv-account-resolution 0.6.1",
  "spl-token-2022 3.0.0",
  "spl-token-client",
- "spl-token-group-interface 0.2.0",
- "spl-token-metadata-interface 0.3.0",
+ "spl-token-group-interface 0.2.1",
+ "spl-token-metadata-interface 0.3.1",
  "spl-transfer-hook-example",
- "spl-transfer-hook-interface 0.6.0",
+ "spl-transfer-hook-interface 0.6.1",
  "test-case",
  "walkdir",
 ]
@@ -7623,8 +7623,8 @@ dependencies = [
  "spl-token 4.0.1",
  "spl-token-2022 3.0.0",
  "spl-token-client",
- "spl-token-group-interface 0.2.0",
- "spl-token-metadata-interface 0.3.0",
+ "spl-token-group-interface 0.2.1",
+ "spl-token-metadata-interface 0.3.1",
  "strum 0.26.2",
  "strum_macros 0.26.2",
  "tempfile",
@@ -7650,9 +7650,9 @@ dependencies = [
  "spl-memo 4.0.1",
  "spl-token 4.0.1",
  "spl-token-2022 3.0.0",
- "spl-token-group-interface 0.2.0",
- "spl-token-metadata-interface 0.3.0",
- "spl-transfer-hook-interface 0.6.0",
+ "spl-token-group-interface 0.2.1",
+ "spl-token-metadata-interface 0.3.1",
+ "spl-transfer-hook-interface 0.6.1",
  "thiserror",
 ]
 
@@ -7663,31 +7663,31 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-discriminator 0.1.1",
+ "spl-discriminator 0.2.0",
  "spl-pod 0.2.0",
  "spl-program-error 0.3.1",
  "spl-token-2022 3.0.0",
  "spl-token-client",
  "spl-token-group-example",
- "spl-token-group-interface 0.2.0",
- "spl-token-metadata-interface 0.3.0",
- "spl-type-length-value 0.4.0",
+ "spl-token-group-interface 0.2.1",
+ "spl-token-metadata-interface 0.3.1",
+ "spl-type-length-value 0.4.1",
 ]
 
 [[package]]
 name = "spl-token-group-example"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-discriminator 0.1.1",
+ "spl-discriminator 0.2.0",
  "spl-pod 0.2.0",
  "spl-token-2022 3.0.0",
  "spl-token-client",
- "spl-token-group-interface 0.2.0",
- "spl-token-metadata-interface 0.3.0",
- "spl-type-length-value 0.4.0",
+ "spl-token-group-interface 0.2.1",
+ "spl-token-metadata-interface 0.3.1",
+ "spl-type-length-value 0.4.1",
 ]
 
 [[package]]
@@ -7705,14 +7705,14 @@ dependencies = [
 
 [[package]]
 name = "spl-token-group-interface"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.1.1",
+ "spl-discriminator 0.2.0",
  "spl-pod 0.2.0",
  "spl-program-error 0.3.1",
- "spl-type-length-value 0.4.0",
+ "spl-type-length-value 0.4.1",
 ]
 
 [[package]]
@@ -7758,8 +7758,8 @@ dependencies = [
  "spl-pod 0.2.0",
  "spl-token-2022 3.0.0",
  "spl-token-client",
- "spl-token-metadata-interface 0.3.0",
- "spl-type-length-value 0.4.0",
+ "spl-token-metadata-interface 0.3.1",
+ "spl-type-length-value 0.4.1",
  "test-case",
 ]
 
@@ -7779,16 +7779,16 @@ dependencies = [
 
 [[package]]
 name = "spl-token-metadata-interface"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "borsh 1.2.1",
  "serde",
  "serde_json",
  "solana-program",
- "spl-discriminator 0.1.1",
+ "spl-discriminator 0.2.0",
  "spl-pod 0.2.0",
  "spl-program-error 0.3.1",
- "spl-type-length-value 0.4.0",
+ "spl-type-length-value 0.4.1",
 ]
 
 [[package]]
@@ -7891,10 +7891,10 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-tlv-account-resolution 0.6.0",
+ "spl-tlv-account-resolution 0.6.1",
  "spl-token-2022 3.0.0",
  "spl-token-client",
- "spl-transfer-hook-interface 0.6.0",
+ "spl-transfer-hook-interface 0.6.1",
  "strum 0.26.2",
  "strum_macros 0.26.2",
  "tokio",
@@ -7908,10 +7908,10 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-tlv-account-resolution 0.6.0",
+ "spl-tlv-account-resolution 0.6.1",
  "spl-token-2022 3.0.0",
- "spl-transfer-hook-interface 0.6.0",
- "spl-type-length-value 0.4.0",
+ "spl-transfer-hook-interface 0.6.1",
+ "spl-type-length-value 0.4.1",
 ]
 
 [[package]]
@@ -7932,16 +7932,16 @@ dependencies = [
 
 [[package]]
 name = "spl-transfer-hook-interface"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "arrayref",
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.1.1",
+ "spl-discriminator 0.2.0",
  "spl-pod 0.2.0",
  "spl-program-error 0.3.1",
- "spl-tlv-account-resolution 0.6.0",
- "spl-type-length-value 0.4.0",
+ "spl-tlv-account-resolution 0.6.1",
+ "spl-type-length-value 0.4.1",
  "tokio",
 ]
 
@@ -7960,11 +7960,11 @@ dependencies = [
 
 [[package]]
 name = "spl-type-length-value"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "bytemuck",
  "solana-program",
- "spl-discriminator 0.1.1",
+ "spl-discriminator 0.2.0",
  "spl-pod 0.2.0",
  "spl-program-error 0.3.1",
  "spl-type-length-value-derive",
@@ -7985,8 +7985,8 @@ version = "0.1.0"
 dependencies = [
  "borsh 1.2.1",
  "solana-program",
- "spl-discriminator 0.1.1",
- "spl-type-length-value 0.4.0",
+ "spl-discriminator 0.2.0",
+ "spl-type-length-value 0.4.1",
 ]
 
 [[package]]
