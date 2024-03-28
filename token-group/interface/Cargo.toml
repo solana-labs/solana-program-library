@@ -15,7 +15,7 @@ spl-pod = { version = "0.2" , path = "../../libraries/pod", features = ["borsh"]
 spl-program-error = { version = "0.3.1" , path = "../../libraries/program-error" }
 
 [dev-dependencies]
-spl-type-length-value = { version = "0.3.1", path = "../../libraries/type-length-value", features = ["derive"] }
+spl-type-length-value = { version = "0.4", path = "../../libraries/type-length-value", features = ["derive"] }
 
 [lib]
 crate-type = ["cdylib", "lib"]
