@@ -134,19 +134,24 @@ async fn check_wallet_balance(
     }
 }
 
-fn token_client_from_config(
+fn base_token_client(
     config: &Config<'_>,
     token_pubkey: &Pubkey,
     decimals: Option<u8>,
 ) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
-    let token = Token::new(
+    Ok(Token::new(
         config.program_client.clone(),
         &config.program_id,
         token_pubkey,
         decimals,
         config.fee_payer()?.clone(),
-    );
+    ))
+}
 
+fn config_token_client(
+    token: Token<ProgramRpcClientSendTransaction>,
+    config: &Config<'_>,
+) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
     let token = if let Some(compute_unit_limit) = config.compute_unit_limit {
         token.with_compute_unit_limit(compute_unit_limit)
     } else {
@@ -172,6 +177,15 @@ fn token_client_from_config(
     } else {
         Ok(token)
     }
+}
+
+fn token_client_from_config(
+    config: &Config<'_>,
+    token_pubkey: &Pubkey,
+    decimals: Option<u8>,
+) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
+    let token = base_token_client(config, token_pubkey, decimals)?;
+    config_token_client(token, config)
 }
 
 fn native_token_client_from_config(
@@ -418,7 +432,10 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &token_pubkey, None)?;
+    // Because set_interest_rate depends on the time, it can cost more between
+    // simulation and execution. To help that, just set a static compute limit
+    let token = base_token_client(config, &token_pubkey, None)?.with_compute_unit_limit(2_500);
+    let token = config_token_client(token, config)?;
 
     if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;
