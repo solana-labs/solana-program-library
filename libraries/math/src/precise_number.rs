@@ -37,7 +37,7 @@ impl PreciseNumber {
 
     /// Desired precision for the correction factor applied during each
     /// iteration of checked_pow_approximation.  Once the correction factor is
-    /// smaller than this number, or we reach the maxmium number of iterations,
+    /// smaller than this number, or we reach the maximum number of iterations,
     /// the calculation ends.
     fn precision() -> InnerUint {
         InnerUint::from(100)
@@ -62,7 +62,7 @@ impl PreciseNumber {
 
     /// Maximum base allowed when calculating exponents in checked_pow_fraction
     /// and checked_pow_approximation.  The calculation use a Taylor Series
-    /// approxmation around 1, which converges for bases between 0 and 2.  See
+    /// approximation around 1, which converges for bases between 0 and 2.  See
     /// https://en.wikipedia.org/wiki/Binomial_series#Conditions_for_convergence
     /// for more information.
     fn max_pow_base() -> InnerUint {
