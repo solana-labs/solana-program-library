@@ -215,7 +215,7 @@ async fn fail_authority_checks() {
             &payer_pubkey,
             key,
             true, // idempotent
-            &[] as &[&dyn Signer; 0],
+            &[] as &[&Keypair; 0],
         )
         .await
         .unwrap_err();

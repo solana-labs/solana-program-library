@@ -323,3 +323,39 @@ async fn transfer() {
         transfer_amount
     );
 }
+
+#[tokio::test]
+async fn token_is_send_and_sync() {
+    tokio::spawn(async {
+        let program_test = ProgramTest::default();
+        let ctx = program_test.start_with_context().await;
+        let ctx = Arc::new(Mutex::new(ctx));
+
+        let payer = keypair_clone(&ctx.lock().await.payer);
+
+        let client: Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>> =
+            Arc::new(ProgramBanksClient::new_from_context(
+                Arc::clone(&ctx),
+                ProgramBanksClientProcessTransaction,
+            ));
+
+        let decimals: u8 = 6;
+
+        let mint_account = Keypair::new();
+        let mint_authority = Keypair::new();
+        let mint_authority_pubkey = mint_authority.pubkey();
+
+        let token = Token::new(
+            Arc::clone(&client),
+            &spl_token_2022::id(),
+            &mint_account.pubkey(),
+            Some(decimals),
+            Arc::new(keypair_clone(&payer)),
+        );
+
+        token
+            .create_mint(&mint_authority_pubkey, None, vec![], &[&mint_account])
+            .await
+            .expect("failed to create mint");
+    });
+}

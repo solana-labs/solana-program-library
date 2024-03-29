@@ -172,7 +172,7 @@ async fn fail_authority_checks() {
 
     let error = token_context
         .token
-        .process_ixs(&[instruction], &[] as &[&dyn Signer; 0]) // yuck, but the compiler needs it
+        .process_ixs(&[instruction], &[] as &[&Keypair; 0]) // yuck, but the compiler needs it
         .await
         .unwrap_err();
     assert_eq!(

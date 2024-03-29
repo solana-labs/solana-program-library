@@ -258,7 +258,7 @@ async fn fail_without_signature() {
     instruction.accounts[2].is_signer = false;
     let error = token_context
         .token
-        .process_ixs(&[instruction], &[] as &[&dyn Signer; 0]) // yuck, but the compiler needs it
+        .process_ixs(&[instruction], &[] as &[&Keypair; 0]) // yuck, but the compiler needs it
         .await
         .unwrap_err();
 

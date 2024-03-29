@@ -187,7 +187,7 @@ async fn fail_authority_checks() {
     // wrong authority
     let error = token_context
         .token
-        .token_metadata_update_authority(&payer_pubkey, None, &[] as &[&dyn Signer; 0])
+        .token_metadata_update_authority(&payer_pubkey, None, &[] as &[&Keypair; 0])
         .await
         .unwrap_err();
     assert_eq!(

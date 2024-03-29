@@ -531,7 +531,7 @@ async fn test_cpi_guard_approve() {
     }
 }
 
-async fn make_close_test_account<S: Signer>(
+async fn make_close_test_account<S: Signer + Send + Sync>(
     token: &Token<ProgramBanksClientProcessTransaction>,
     owner: &S,
     authority: Option<Pubkey>,

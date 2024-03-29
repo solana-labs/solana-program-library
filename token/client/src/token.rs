@@ -18,7 +18,7 @@ use {
         program_error::ProgramError,
         program_pack::Pack,
         pubkey::Pubkey,
-        signer::{signers::Signers, Signer, SignerError},
+        signer::{null_signer::NullSigner, signers::Signers, Signer, SignerError},
         system_instruction,
         transaction::Transaction,
     },
@@ -336,10 +336,10 @@ pub struct Token<T> {
     client: Arc<dyn ProgramClient<T>>,
     pubkey: Pubkey, /* token mint */
     decimals: Option<u8>,
-    payer: Arc<dyn Signer>,
+    payer: Arc<dyn Signer + Send + Sync>,
     program_id: Pubkey,
     nonce_account: Option<Pubkey>,
-    nonce_authority: Option<Arc<dyn Signer>>,
+    nonce_authority: Option<Arc<dyn Signer + Send + Sync>>,
     nonce_blockhash: Option<Hash>,
     memo: Arc<RwLock<Option<TokenMemo>>>,
     transfer_hook_accounts: Option<Vec<AccountMeta>>,
@@ -397,7 +397,7 @@ where
         program_id: &Pubkey,
         address: &Pubkey,
         decimals: Option<u8>,
-        payer: Arc<dyn Signer>,
+        payer: Arc<dyn Signer + Send + Sync>,
     ) -> Self {
         Token {
             client,
@@ -418,7 +418,7 @@ where
     pub fn new_native(
         client: Arc<dyn ProgramClient<T>>,
         program_id: &Pubkey,
-        payer: Arc<dyn Signer>,
+        payer: Arc<dyn Signer + Send + Sync>,
     ) -> Self {
         Self::new(
             client,
@@ -438,7 +438,7 @@ where
         &self.pubkey
     }
 
-    pub fn with_payer(mut self, payer: Arc<dyn Signer>) -> Self {
+    pub fn with_payer(mut self, payer: Arc<dyn Signer + Send + Sync>) -> Self {
         self.payer = payer;
         self
     }
@@ -446,7 +446,7 @@ where
     pub fn with_nonce(
         mut self,
         nonce_account: &Pubkey,
-        nonce_authority: Arc<dyn Signer>,
+        nonce_authority: Arc<dyn Signer + Send + Sync>,
         nonce_blockhash: &Hash,
     ) -> Self {
         self.nonce_account = Some(*nonce_account);
@@ -564,7 +564,7 @@ where
         Ok(())
     }
 
-    async fn construct_tx<S: Signers>(
+    async fn construct_tx<S: Signers + Send + Sync>(
         &self,
         token_instructions: &[Instruction],
         signing_keypairs: &S,
@@ -634,7 +634,7 @@ where
 
         if !signing_pubkeys.contains(&self.payer.pubkey()) {
             transaction
-                .try_partial_sign(&vec![self.payer.clone()], blockhash)
+                .try_partial_sign(&[self.payer.as_ref() as &dyn Signer], blockhash)
                 .map_err(|error| TokenError::Client(error.into()))?;
         }
         if let Some(nonce_authority) = &self.nonce_authority {
@@ -643,7 +643,7 @@ where
                 && !signing_pubkeys.contains(&nonce_authority_pubkey)
             {
                 transaction
-                    .try_partial_sign(&vec![nonce_authority.clone()], blockhash)
+                    .try_partial_sign(&[nonce_authority.as_ref() as &dyn Signer], blockhash)
                     .map_err(|error| TokenError::Client(error.into()))?;
             }
         }
@@ -654,7 +654,7 @@ where
         Ok(transaction)
     }
 
-    pub async fn simulate_ixs<S: Signers>(
+    pub async fn simulate_ixs<S: Signers + Send + Sync>(
         &self,
         token_instructions: &[Instruction],
         signing_keypairs: &S,
@@ -669,7 +669,7 @@ where
             .map_err(TokenError::Client)
     }
 
-    pub async fn process_ixs<S: Signers>(
+    pub async fn process_ixs<S: Signers + Send + Sync>(
         &self,
         token_instructions: &[Instruction],
         signing_keypairs: &S,
@@ -685,7 +685,7 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn create_mint<'a, S: Signers>(
+    pub async fn create_mint<'a, S: Signers + Send + Sync>(
         &self,
         mint_authority: &'a Pubkey,
         freeze_authority: Option<&'a Pubkey>,
@@ -730,11 +730,11 @@ where
     pub async fn create_native_mint(
         client: Arc<dyn ProgramClient<T>>,
         program_id: &Pubkey,
-        payer: Arc<dyn Signer>,
+        payer: Arc<dyn Signer + Send + Sync>,
     ) -> TokenResult<Self> {
         let token = Self::new_native(client, program_id, payer);
         token
-            .process_ixs::<[&dyn Signer; 0]>(
+            .process_ixs::<[&NullSigner; 0]>(
                 &[instruction::create_native_mint(
                     program_id,
                     &token.payer.pubkey(),
@@ -747,9 +747,9 @@ where
     }
 
     /// Create multisig
-    pub async fn create_multisig(
+    pub async fn create_multisig<S: Signer + Send + Sync>(
         &self,
-        account: &dyn Signer,
+        account: &S,
         multisig_members: &[&Pubkey],
         minimum_signers: u8,
     ) -> TokenResult<T::Output> {
@@ -782,7 +782,7 @@ where
 
     /// Create and initialize the associated account.
     pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<T::Output> {
-        self.process_ixs::<[&dyn Signer; 0]>(
+        self.process_ixs::<[&NullSigner; 0]>(
             &[create_associated_token_account(
                 &self.payer.pubkey(),
                 owner,
@@ -795,9 +795,9 @@ where
     }
 
     /// Create and initialize a new token account.
-    pub async fn create_auxiliary_token_account(
+    pub async fn create_auxiliary_token_account<S: Signer + Send + Sync>(
         &self,
-        account: &dyn Signer,
+        account: &S,
         owner: &Pubkey,
     ) -> TokenResult<T::Output> {
         self.create_auxiliary_token_account_with_extension_space(account, owner, vec![])
@@ -805,9 +805,9 @@ where
     }
 
     /// Create and initialize a new token account.
-    pub async fn create_auxiliary_token_account_with_extension_space(
+    pub async fn create_auxiliary_token_account_with_extension_space<S: Signer + Send + Sync>(
         &self,
-        account: &dyn Signer,
+        account: &S,
         owner: &Pubkey,
         extensions: Vec<ExtensionType>,
     ) -> TokenResult<T::Output> {
@@ -919,7 +919,7 @@ where
     }
 
     /// Assign a new authority to the account.
-    pub async fn set_authority<S: Signers>(
+    pub async fn set_authority<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -945,7 +945,7 @@ where
     }
 
     /// Mint new tokens
-    pub async fn mint_to<S: Signers>(
+    pub async fn mint_to<S: Signers + Send + Sync>(
         &self,
         destination: &Pubkey,
         authority: &Pubkey,
@@ -981,7 +981,7 @@ where
 
     /// Transfer tokens to another account
     #[allow(clippy::too_many_arguments)]
-    pub async fn transfer<S: Signers>(
+    pub async fn transfer<S: Signers + Send + Sync>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
@@ -1045,7 +1045,7 @@ where
     /// Transfer tokens to an associated account, creating it if it does not
     /// exist
     #[allow(clippy::too_many_arguments)]
-    pub async fn create_recipient_associated_account_and_transfer<S: Signers>(
+    pub async fn create_recipient_associated_account_and_transfer<S: Signers + Send + Sync>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
@@ -1138,7 +1138,7 @@ where
 
     /// Transfer tokens to another account, given an expected fee
     #[allow(clippy::too_many_arguments)]
-    pub async fn transfer_with_fee<S: Signers>(
+    pub async fn transfer_with_fee<S: Signers + Send + Sync>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
@@ -1169,7 +1169,7 @@ where
     }
 
     /// Burn tokens from account
-    pub async fn burn<S: Signers>(
+    pub async fn burn<S: Signers + Send + Sync>(
         &self,
         source: &Pubkey,
         authority: &Pubkey,
@@ -1204,7 +1204,7 @@ where
     }
 
     /// Approve a delegate to spend tokens
-    pub async fn approve<S: Signers>(
+    pub async fn approve<S: Signers + Send + Sync>(
         &self,
         source: &Pubkey,
         delegate: &Pubkey,
@@ -1241,7 +1241,7 @@ where
     }
 
     /// Revoke a delegate
-    pub async fn revoke<S: Signers>(
+    pub async fn revoke<S: Signers + Send + Sync>(
         &self,
         source: &Pubkey,
         authority: &Pubkey,
@@ -1263,7 +1263,7 @@ where
     }
 
     /// Close an empty account and reclaim its lamports
-    pub async fn close_account<S: Signers>(
+    pub async fn close_account<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         lamports_destination: &Pubkey,
@@ -1299,7 +1299,7 @@ where
     }
 
     /// Close an account, reclaiming its lamports and tokens
-    pub async fn empty_and_close_account<S: Signers>(
+    pub async fn empty_and_close_account<S: Signers + Send + Sync>(
         &self,
         account_to_close: &Pubkey,
         lamports_destination: &Pubkey,
@@ -1367,7 +1367,7 @@ where
     }
 
     /// Freeze a token account
-    pub async fn freeze<S: Signers>(
+    pub async fn freeze<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -1390,7 +1390,7 @@ where
     }
 
     /// Thaw / unfreeze a token account
-    pub async fn thaw<S: Signers>(
+    pub async fn thaw<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -1413,7 +1413,7 @@ where
     }
 
     /// Wrap lamports into native account
-    pub async fn wrap<S: Signers>(
+    pub async fn wrap<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         owner: &Pubkey,
@@ -1429,7 +1429,7 @@ where
 
     /// Wrap lamports into a native account that can always have its ownership
     /// changed
-    pub async fn wrap_with_mutable_ownership<S: Signers>(
+    pub async fn wrap_with_mutable_ownership<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         owner: &Pubkey,
@@ -1497,7 +1497,7 @@ where
 
     /// Sync native account lamports
     pub async fn sync_native(&self, account: &Pubkey) -> TokenResult<T::Output> {
-        self.process_ixs::<[&dyn Signer; 0]>(
+        self.process_ixs::<[&NullSigner; 0]>(
             &[instruction::sync_native(&self.program_id, account)?],
             &[],
         )
@@ -1505,7 +1505,7 @@ where
     }
 
     /// Set transfer fee
-    pub async fn set_transfer_fee<S: Signers>(
+    pub async fn set_transfer_fee<S: Signers + Send + Sync>(
         &self,
         authority: &Pubkey,
         transfer_fee_basis_points: u16,
@@ -1530,7 +1530,7 @@ where
     }
 
     /// Set default account state on mint
-    pub async fn set_default_account_state<S: Signers>(
+    pub async fn set_default_account_state<S: Signers + Send + Sync>(
         &self,
         authority: &Pubkey,
         state: &AccountState,
@@ -1559,7 +1559,7 @@ where
         &self,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
-        self.process_ixs::<[&dyn Signer; 0]>(
+        self.process_ixs::<[&NullSigner; 0]>(
             &[transfer_fee::instruction::harvest_withheld_tokens_to_mint(
                 &self.program_id,
                 &self.pubkey,
@@ -1571,7 +1571,7 @@ where
     }
 
     /// Withdraw withheld tokens from mint
-    pub async fn withdraw_withheld_tokens_from_mint<S: Signers>(
+    pub async fn withdraw_withheld_tokens_from_mint<S: Signers + Send + Sync>(
         &self,
         destination: &Pubkey,
         authority: &Pubkey,
@@ -1596,7 +1596,7 @@ where
     }
 
     /// Withdraw withheld tokens from accounts
-    pub async fn withdraw_withheld_tokens_from_accounts<S: Signers>(
+    pub async fn withdraw_withheld_tokens_from_accounts<S: Signers + Send + Sync>(
         &self,
         destination: &Pubkey,
         authority: &Pubkey,
@@ -1624,7 +1624,7 @@ where
 
     /// Reallocate a token account to be large enough for a set of
     /// ExtensionTypes
-    pub async fn reallocate<S: Signers>(
+    pub async fn reallocate<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -1649,7 +1649,7 @@ where
     }
 
     /// Require memos on transfers into this account
-    pub async fn enable_required_transfer_memos<S: Signers>(
+    pub async fn enable_required_transfer_memos<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -1671,7 +1671,7 @@ where
     }
 
     /// Stop requiring memos on transfers into this account
-    pub async fn disable_required_transfer_memos<S: Signers>(
+    pub async fn disable_required_transfer_memos<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -1693,7 +1693,7 @@ where
     }
 
     /// Prevent unsafe usage of token account through CPI
-    pub async fn enable_cpi_guard<S: Signers>(
+    pub async fn enable_cpi_guard<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -1715,7 +1715,7 @@ where
     }
 
     /// Stop preventing unsafe usage of token account through CPI
-    pub async fn disable_cpi_guard<S: Signers>(
+    pub async fn disable_cpi_guard<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -1737,7 +1737,7 @@ where
     }
 
     /// Update interest rate
-    pub async fn update_interest_rate<S: Signers>(
+    pub async fn update_interest_rate<S: Signers + Send + Sync>(
         &self,
         authority: &Pubkey,
         new_rate: i16,
@@ -1760,7 +1760,7 @@ where
     }
 
     /// Update transfer hook program id
-    pub async fn update_transfer_hook_program_id<S: Signers>(
+    pub async fn update_transfer_hook_program_id<S: Signers + Send + Sync>(
         &self,
         authority: &Pubkey,
         new_program_id: Option<Pubkey>,
@@ -1783,7 +1783,7 @@ where
     }
 
     /// Update metadata pointer address
-    pub async fn update_metadata_address<S: Signers>(
+    pub async fn update_metadata_address<S: Signers + Send + Sync>(
         &self,
         authority: &Pubkey,
         new_metadata_address: Option<Pubkey>,
@@ -1806,7 +1806,7 @@ where
     }
 
     /// Update group pointer address
-    pub async fn update_group_address<S: Signers>(
+    pub async fn update_group_address<S: Signers + Send + Sync>(
         &self,
         authority: &Pubkey,
         new_group_address: Option<Pubkey>,
@@ -1829,7 +1829,7 @@ where
     }
 
     /// Update group member pointer address
-    pub async fn update_group_member_address<S: Signers>(
+    pub async fn update_group_member_address<S: Signers + Send + Sync>(
         &self,
         authority: &Pubkey,
         new_member_address: Option<Pubkey>,
@@ -1852,7 +1852,7 @@ where
     }
 
     /// Update confidential transfer mint
-    pub async fn confidential_transfer_update_mint<S: Signers>(
+    pub async fn confidential_transfer_update_mint<S: Signers + Send + Sync>(
         &self,
         authority: &Pubkey,
         auto_approve_new_account: bool,
@@ -1880,7 +1880,7 @@ where
     /// pending balance credit counter for the extension is not provided,
     /// then it is set to be a default value of `2^16`.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_configure_token_account<S: Signers>(
+    pub async fn confidential_transfer_configure_token_account<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -1933,7 +1933,7 @@ where
     }
 
     /// Approves a token account for confidential transfers
-    pub async fn confidential_transfer_approve_account<S: Signers>(
+    pub async fn confidential_transfer_approve_account<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -1957,7 +1957,7 @@ where
 
     /// Prepare a token account with the confidential transfer extension for
     /// closing
-    pub async fn confidential_transfer_empty_account<S: Signers>(
+    pub async fn confidential_transfer_empty_account<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -2010,7 +2010,7 @@ where
 
     /// Deposit SPL Tokens into the pending balance of a confidential token
     /// account
-    pub async fn confidential_transfer_deposit<S: Signers>(
+    pub async fn confidential_transfer_deposit<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -2039,7 +2039,7 @@ where
     /// Withdraw SPL Tokens from the available balance of a confidential token
     /// account
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_withdraw<S: Signers>(
+    pub async fn confidential_transfer_withdraw<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -2103,7 +2103,7 @@ where
 
     /// Create withdraw proof context state account for a confidential transfer
     /// withdraw instruction.
-    pub async fn create_withdraw_proof_context_state<S: Signer>(
+    pub async fn create_withdraw_proof_context_state<S: Signer + Send + Sync>(
         &self,
         context_state_account: &Pubkey,
         context_state_authority: &Pubkey,
@@ -2148,7 +2148,7 @@ where
             &[instruction_type
                 .encode_verify_proof(Some(withdraw_proof_context_state_info), withdraw_proof_data)],
             Some(&self.payer.pubkey()),
-            &[self.payer.as_ref()],
+            &[self.payer.as_ref() as &dyn Signer],
             blockhash,
         );
 
@@ -2160,7 +2160,7 @@ where
 
     /// Transfer tokens confidentially
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer<S: Signers>(
+    pub async fn confidential_transfer_transfer<S: Signers + Send + Sync>(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2246,7 +2246,7 @@ where
     /// This function assumes that proof context states have already been
     /// created.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_split_proofs<S: Signers>(
+    pub async fn confidential_transfer_transfer_with_split_proofs<S: Signers + Send + Sync>(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2304,7 +2304,9 @@ where
     /// This function internally generates the ZK Token proof instructions to
     /// create the necessary proof context states.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_split_proofs_in_parallel<S: Signers>(
+    pub async fn confidential_transfer_transfer_with_split_proofs_in_parallel<
+        S: Signers + Send + Sync,
+    >(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2399,7 +2401,7 @@ where
 
     /// Create equality proof context state account for a confidential transfer.
     #[allow(clippy::too_many_arguments)]
-    pub async fn create_equality_proof_context_state_for_transfer<S: Signer>(
+    pub async fn create_equality_proof_context_state_for_transfer<S: Signer + Send + Sync>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         equality_proof_data: &CiphertextCommitmentEqualityProofData,
@@ -2440,7 +2442,9 @@ where
 
     /// Create ciphertext validity proof context state account for a
     /// confidential transfer.
-    pub async fn create_ciphertext_validity_proof_context_state_for_transfer<S: Signer>(
+    pub async fn create_ciphertext_validity_proof_context_state_for_transfer<
+        S: Signer + Send + Sync,
+    >(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
@@ -2484,7 +2488,7 @@ where
     /// a confidential transfer.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
@@ -2506,7 +2510,7 @@ where
     /// with a confidential transfer instruction.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer_parallel<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
@@ -2532,7 +2536,7 @@ where
     /// instruction is attached to the same transaction.
     #[allow(clippy::too_many_arguments)]
     async fn create_equality_and_ciphertext_validity_proof_context_state_with_optional_transfer<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
@@ -2603,7 +2607,7 @@ where
     }
 
     /// Create a range proof context state account for a confidential transfer.
-    pub async fn create_range_proof_context_state_for_transfer<S: Signer>(
+    pub async fn create_range_proof_context_state_for_transfer<S: Signer + Send + Sync>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
@@ -2644,7 +2648,7 @@ where
             &[instruction_type
                 .encode_verify_proof(Some(range_proof_context_state_info), range_proof_data)],
             Some(&self.payer.pubkey()),
-            &[self.payer.as_ref()],
+            &[self.payer.as_ref() as &dyn Signer],
             blockhash,
         );
 
@@ -2656,7 +2660,9 @@ where
 
     /// Create a range proof context state account with a confidential transfer
     /// instruction.
-    pub async fn create_range_proof_context_state_for_transfer_parallel<S: Signers>(
+    pub async fn create_range_proof_context_state_for_transfer_parallel<
+        S: Signers + Send + Sync,
+    >(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
@@ -2674,7 +2680,7 @@ where
 
     /// Create a range proof context state account and an optional confidential
     /// transfer instruction.
-    async fn create_range_proof_context_state_with_optional_transfer<S: Signers>(
+    async fn create_range_proof_context_state_with_optional_transfer<S: Signers + Send + Sync>(
         &self,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU128Data,
@@ -2713,7 +2719,7 @@ where
     }
 
     /// Close a ZK Token proof program context state
-    pub async fn confidential_transfer_close_context_state<S: Signers>(
+    pub async fn confidential_transfer_close_context_state<S: Signers + Send + Sync>(
         &self,
         context_state_account: &Pubkey,
         lamport_destination_account: &Pubkey,
@@ -2737,7 +2743,7 @@ where
 
     /// Transfer tokens confidentially with fee
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_fee<S: Signers>(
+    pub async fn confidential_transfer_transfer_with_fee<S: Signers + Send + Sync>(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2829,7 +2835,9 @@ where
     /// This function assumes that proof context states have already been
     /// created.
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_transfer_with_fee_and_split_proofs<S: Signers>(
+    pub async fn confidential_transfer_transfer_with_fee_and_split_proofs<
+        S: Signers + Send + Sync,
+    >(
         &self,
         source_account: &Pubkey,
         destination_account: &Pubkey,
@@ -2889,7 +2897,7 @@ where
     /// create the necessary proof context states.
     #[allow(clippy::too_many_arguments)]
     pub async fn confidential_transfer_transfer_with_fee_and_split_proofs_in_parallel<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         source_account: &Pubkey,
@@ -3020,7 +3028,7 @@ where
     /// state accounts for a confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer_with_fee<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
@@ -3042,7 +3050,7 @@ where
     /// state accounts with a confidential transfer instruction.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_and_ciphertext_validity_proof_context_states_for_transfer_with_fee_parallel<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
@@ -3068,7 +3076,7 @@ where
     /// instruction is attached to the same transaction.
     #[allow(clippy::too_many_arguments)]
     async fn create_equality_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
@@ -3142,7 +3150,7 @@ where
     /// accounts for a confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_fee_sigma_and_ciphertext_validity_proof_context_states_for_transfer_with_fee<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
@@ -3164,7 +3172,7 @@ where
     /// accounts with a confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_fee_sigma_and_ciphertext_validity_proof_context_states_for_transfer_with_fee_parallel<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
@@ -3190,7 +3198,7 @@ where
     /// instruction is attached to the same transaction.
     #[allow(clippy::too_many_arguments)]
     async fn create_fee_sigma_and_ciphertext_validity_proof_context_states_with_optional_transfer_with_fee<
-        S: Signers,
+        S: Signers + Send + Sync,
     >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
@@ -3263,7 +3271,9 @@ where
     /// Create range proof context state account for a confidential transfer
     /// with fee.
     #[allow(clippy::too_many_arguments)]
-    pub async fn create_range_proof_context_state_for_transfer_with_fee<S: Signers>(
+    pub async fn create_range_proof_context_state_for_transfer_with_fee<
+        S: Signers + Send + Sync,
+    >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU256Data,
@@ -3281,7 +3291,9 @@ where
     /// Create range proof context state account for a confidential transfer
     /// with fee.
     #[allow(clippy::too_many_arguments)]
-    pub async fn create_range_proof_context_state_for_transfer_with_fee_parallel<S: Signers>(
+    pub async fn create_range_proof_context_state_for_transfer_with_fee_parallel<
+        S: Signers + Send + Sync,
+    >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU256Data,
@@ -3299,7 +3311,9 @@ where
 
     /// Create a range proof context state account and an optional confidential
     /// transfer instruction.
-    async fn create_range_proof_context_state_with_optional_transfer_with_fee<S: Signers>(
+    async fn create_range_proof_context_state_with_optional_transfer_with_fee<
+        S: Signers + Send + Sync,
+    >(
         &self,
         context_state_accounts: TransferWithFeeSplitContextStateAccounts<'_>,
         range_proof_data: &BatchedRangeProofU256Data,
@@ -3339,7 +3353,7 @@ where
 
     /// Applies the confidential transfer pending balance to the available
     /// balance
-    pub async fn confidential_transfer_apply_pending_balance<S: Signers>(
+    pub async fn confidential_transfer_apply_pending_balance<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -3381,7 +3395,7 @@ where
 
     /// Enable confidential transfer `Deposit` and `Transfer` instructions for a
     /// token account
-    pub async fn confidential_transfer_enable_confidential_credits<S: Signers>(
+    pub async fn confidential_transfer_enable_confidential_credits<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -3406,7 +3420,7 @@ where
 
     /// Disable confidential transfer `Deposit` and `Transfer` instructions for
     /// a token account
-    pub async fn confidential_transfer_disable_confidential_credits<S: Signers>(
+    pub async fn confidential_transfer_disable_confidential_credits<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -3431,7 +3445,7 @@ where
 
     /// Enable a confidential extension token account to receive
     /// non-confidential payments
-    pub async fn confidential_transfer_enable_non_confidential_credits<S: Signers>(
+    pub async fn confidential_transfer_enable_non_confidential_credits<S: Signers + Send + Sync>(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -3456,7 +3470,9 @@ where
 
     /// Disable non-confidential payments for a confidential extension token
     /// account
-    pub async fn confidential_transfer_disable_non_confidential_credits<S: Signers>(
+    pub async fn confidential_transfer_disable_non_confidential_credits<
+        S: Signers + Send + Sync,
+    >(
         &self,
         account: &Pubkey,
         authority: &Pubkey,
@@ -3481,7 +3497,9 @@ where
 
     /// Withdraw withheld confidential tokens from mint
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint<S: Signers>(
+    pub async fn confidential_transfer_withdraw_withheld_tokens_from_mint<
+        S: Signers + Send + Sync,
+    >(
         &self,
         destination_account: &Pubkey,
         withdraw_withheld_authority: &Pubkey,
@@ -3542,7 +3560,9 @@ where
 
     /// Withdraw withheld confidential tokens from accounts
     #[allow(clippy::too_many_arguments)]
-    pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts<S: Signers>(
+    pub async fn confidential_transfer_withdraw_withheld_tokens_from_accounts<
+        S: Signers + Send + Sync,
+    >(
         &self,
         destination_account: &Pubkey,
         withdraw_withheld_authority: &Pubkey,
@@ -3618,7 +3638,7 @@ where
         &self,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
-        self.process_ixs::<[&dyn Signer; 0]>(
+        self.process_ixs::<[&NullSigner; 0]>(
             &[
                 confidential_transfer_fee::instruction::harvest_withheld_tokens_to_mint(
                     &self.program_id,
@@ -3632,7 +3652,7 @@ where
     }
 
     /// Enable harvest of confidential fees to mint
-    pub async fn confidential_transfer_enable_harvest_to_mint<S: Signers>(
+    pub async fn confidential_transfer_enable_harvest_to_mint<S: Signers + Send + Sync>(
         &self,
         withdraw_withheld_authority: &Pubkey,
         signing_keypairs: &S,
@@ -3656,7 +3676,7 @@ where
     }
 
     /// Disable harvest of confidential fees to mint
-    pub async fn confidential_transfer_disable_harvest_to_mint<S: Signers>(
+    pub async fn confidential_transfer_disable_harvest_to_mint<S: Signers + Send + Sync>(
         &self,
         withdraw_withheld_authority: &Pubkey,
         signing_keypairs: &S,
@@ -3679,7 +3699,7 @@ where
         .await
     }
 
-    pub async fn withdraw_excess_lamports<S: Signers>(
+    pub async fn withdraw_excess_lamports<S: Signers + Send + Sync>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
@@ -3703,7 +3723,7 @@ where
     }
 
     /// Initialize token-metadata on a mint
-    pub async fn token_metadata_initialize<S: Signers>(
+    pub async fn token_metadata_initialize<S: Signers + Send + Sync>(
         &self,
         update_authority: &Pubkey,
         mint_authority: &Pubkey,
@@ -3747,7 +3767,7 @@ where
 
     /// Initialize token-metadata on a mint
     #[allow(clippy::too_many_arguments)]
-    pub async fn token_metadata_initialize_with_rent_transfer<S: Signers>(
+    pub async fn token_metadata_initialize_with_rent_transfer<S: Signers + Send + Sync>(
         &self,
         payer: &Pubkey,
         update_authority: &Pubkey,
@@ -3788,7 +3808,7 @@ where
     }
 
     /// Update a token-metadata field on a mint
-    pub async fn token_metadata_update_field<S: Signers>(
+    pub async fn token_metadata_update_field<S: Signers + Send + Sync>(
         &self,
         update_authority: &Pubkey,
         field: Field,
@@ -3831,7 +3851,7 @@ where
     /// Update a token-metadata field on a mint. Includes a transfer for any
     /// additional rent-exempt SOL required.
     #[allow(clippy::too_many_arguments)]
-    pub async fn token_metadata_update_field_with_rent_transfer<S: Signers>(
+    pub async fn token_metadata_update_field_with_rent_transfer<S: Signers + Send + Sync>(
         &self,
         payer: &Pubkey,
         update_authority: &Pubkey,
@@ -3865,7 +3885,7 @@ where
     }
 
     /// Update the token-metadata authority in a mint
-    pub async fn token_metadata_update_authority<S: Signers>(
+    pub async fn token_metadata_update_authority<S: Signers + Send + Sync>(
         &self,
         current_authority: &Pubkey,
         new_authority: Option<Pubkey>,
@@ -3884,7 +3904,7 @@ where
     }
 
     /// Remove a token-metadata field on a mint
-    pub async fn token_metadata_remove_key<S: Signers>(
+    pub async fn token_metadata_remove_key<S: Signers + Send + Sync>(
         &self,
         update_authority: &Pubkey,
         key: String,
@@ -3905,7 +3925,7 @@ where
     }
 
     /// Initialize token-group on a mint
-    pub async fn token_group_initialize<S: Signers>(
+    pub async fn token_group_initialize<S: Signers + Send + Sync>(
         &self,
         mint_authority: &Pubkey,
         update_authority: &Pubkey,
@@ -3946,7 +3966,7 @@ where
     }
 
     /// Initialize token-group on a mint
-    pub async fn token_group_initialize_with_rent_transfer<S: Signers>(
+    pub async fn token_group_initialize_with_rent_transfer<S: Signers + Send + Sync>(
         &self,
         payer: &Pubkey,
         mint_authority: &Pubkey,
@@ -3977,7 +3997,7 @@ where
     }
 
     /// Update a token-group max size on a mint
-    pub async fn token_group_update_max_size<S: Signers>(
+    pub async fn token_group_update_max_size<S: Signers + Send + Sync>(
         &self,
         update_authority: &Pubkey,
         new_max_size: u32,
@@ -3998,7 +4018,7 @@ where
     }
 
     /// Update the token-group authority in a mint
-    pub async fn token_group_update_authority<S: Signers>(
+    pub async fn token_group_update_authority<S: Signers + Send + Sync>(
         &self,
         current_authority: &Pubkey,
         new_authority: Option<Pubkey>,
@@ -4019,7 +4039,7 @@ where
     }
 
     /// Initialize a token-group member on a mint
-    pub async fn token_group_initialize_member<S: Signers>(
+    pub async fn token_group_initialize_member<S: Signers + Send + Sync>(
         &self,
         mint_authority: &Pubkey,
         group_mint: &Pubkey,
@@ -4042,7 +4062,7 @@ where
 
     /// Initialize a token-group member on a mint
     #[allow(clippy::too_many_arguments)]
-    pub async fn token_group_initialize_member_with_rent_transfer<S: Signers>(
+    pub async fn token_group_initialize_member_with_rent_transfer<S: Signers + Sync + Send>(
         &self,
         payer: &Pubkey,
         mint_authority: &Pubkey,
