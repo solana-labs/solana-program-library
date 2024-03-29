@@ -300,10 +300,13 @@ impl<'a> Config<'a> {
             (default_program_id, false)
         };
 
-        // need to specify a compute limit if compute price and blockhash are specified
-        if matches.is_present(BLOCKHASH_ARG.name)
-            && matches.is_present(COMPUTE_UNIT_PRICE_ARG.name)
-            && !matches.is_present(COMPUTE_UNIT_LIMIT_ARG.name)
+        if matches.try_contains_id(BLOCKHASH_ARG.name).unwrap_or(false)
+            && matches
+                .try_contains_id(COMPUTE_UNIT_PRICE_ARG.name)
+                .unwrap_or(false)
+            && !matches
+                .try_contains_id(COMPUTE_UNIT_LIMIT_ARG.name)
+                .unwrap_or(false)
         {
             clap::Error::with_description(
                 format!(
@@ -321,8 +324,17 @@ impl<'a> Config<'a> {
             .flatten()
             .copied();
 
-        let compute_unit_price = value_of(matches, COMPUTE_UNIT_PRICE_ARG.name);
-        let compute_unit_limit = value_of(matches, COMPUTE_UNIT_LIMIT_ARG.name)
+        let compute_unit_price = matches
+            .try_get_one::<u64>(COMPUTE_UNIT_PRICE_ARG.name)
+            .ok()
+            .flatten()
+            .copied();
+
+        let compute_unit_limit = matches
+            .try_get_one::<u32>(COMPUTE_UNIT_PRICE_ARG.name)
+            .ok()
+            .flatten()
+            .copied()
             .map(ComputeUnitLimit::Static)
             .unwrap_or_else(|| {
                 if nonce_blockhash.is_some() {
