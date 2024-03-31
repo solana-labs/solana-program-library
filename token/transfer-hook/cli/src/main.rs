@@ -4,8 +4,10 @@ use {
     crate::meta::parse_transfer_hook_account_arg,
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{
-        input_parsers::{parse_url_or_moniker, pubkey_of_signer},
-        input_validators::{is_valid_pubkey, is_valid_signer, normalize_to_url_if_moniker},
+        input_parsers::{
+            parse_url_or_moniker, pubkey_of_signer, signer::SignerSourceParserBuilder,
+        },
+        input_validators::normalize_to_url_if_moniker,
         keypair::DefaultSigner,
     },
     solana_client::nonblocking::rpc_client::RpcClient,
@@ -25,10 +27,6 @@ use {
     },
     std::{process::exit, rc::Rc},
 };
-
-fn clap_is_valid_pubkey(arg: &str) -> Result<(), String> {
-    is_valid_pubkey(arg)
-}
 
 // Helper function to calculate the required lamports for rent
 async fn calculate_rent_lamports(
@@ -207,7 +205,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("fee_payer")
                 .long("fee-payer")
                 .value_name("KEYPAIR")
-                .validator(|s| is_valid_signer(s))
+                .value_parser(SignerSourceParserBuilder::default().build())
                 .takes_value(true)
                 .global(true)
                 .help("Filepath or URL to a keypair to pay transaction fee [default: client keypair]"),
@@ -235,7 +233,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .about("Create the extra account metas account for a transfer hook program")
                 .arg(
                     Arg::with_name("program_id")
-                        .validator(clap_is_valid_pubkey)
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TRANSFER_HOOK_PROGRAM")
                         .takes_value(true)
                         .index(1)
@@ -244,7 +242,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .arg(
                     Arg::with_name("token")
-                        .validator(clap_is_valid_pubkey)
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(2)
@@ -308,7 +306,7 @@ extraMetas:
                     Arg::new("mint_authority")
                         .long("mint-authority")
                         .value_name("KEYPAIR")
-                        .validator(|s| is_valid_signer(s))
+                        .value_parser(SignerSourceParserBuilder::default().build())
                         .takes_value(true)
                         .global(true)
                         .help("Filepath or URL to mint-authority keypair [default: client keypair]"),
@@ -319,7 +317,7 @@ extraMetas:
                 .about("Update the extra account metas account for a transfer hook program")
                 .arg(
                     Arg::with_name("program_id")
-                        .validator(clap_is_valid_pubkey)
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TRANSFER_HOOK_PROGRAM")
                         .takes_value(true)
                         .index(1)
@@ -328,7 +326,7 @@ extraMetas:
                 )
                 .arg(
                     Arg::with_name("token")
-                        .validator(clap_is_valid_pubkey)
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(2)
@@ -392,7 +390,7 @@ extraMetas:
                     Arg::new("mint_authority")
                         .long("mint-authority")
                         .value_name("KEYPAIR")
-                        .validator(|s| is_valid_signer(s))
+                        .value_parser(SignerSourceParserBuilder::default().build())
                         .takes_value(true)
                         .global(true)
                         .help("Filepath or URL to mint-authority keypair [default: client keypair]"),
