@@ -261,7 +261,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
 
-Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
+Additional accounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
                             
 ```json
 {
@@ -345,7 +345,7 @@ extraMetas:
 
 Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
 
-Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
+Additional accounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
                             
 ```json
 {
