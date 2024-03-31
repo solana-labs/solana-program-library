@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 pub mod meta;
 
 use {
