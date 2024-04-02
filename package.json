@@ -24,7 +24,7 @@
         "@solana/eslint-config-solana": "^3.0.3",
         "@solana/prettier-config-solana": "^0.0.5",
         "eslint-config-turbo": "^1.13.0",
-        "turbo": "^1.13.0"
+        "turbo": "^1.13.1"
     },
     "engines": {
         "node": ">=14.0.0"
