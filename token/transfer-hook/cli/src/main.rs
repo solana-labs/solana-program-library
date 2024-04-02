@@ -205,7 +205,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("fee_payer")
                 .long("fee-payer")
                 .value_name("KEYPAIR")
-                .value_parser(SignerSourceParserBuilder::default().build())
+                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                 .takes_value(true)
                 .global(true)
                 .help("Filepath or URL to a keypair to pay transaction fee [default: client keypair]"),
@@ -306,7 +306,7 @@ extraMetas:
                     Arg::new("mint_authority")
                         .long("mint-authority")
                         .value_name("KEYPAIR")
-                        .value_parser(SignerSourceParserBuilder::default().build())
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .global(true)
                         .help("Filepath or URL to mint-authority keypair [default: client keypair]"),
@@ -390,7 +390,7 @@ extraMetas:
                     Arg::new("mint_authority")
                         .long("mint-authority")
                         .value_name("KEYPAIR")
-                        .value_parser(SignerSourceParserBuilder::default().build())
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .global(true)
                         .help("Filepath or URL to mint-authority keypair [default: client keypair]"),
