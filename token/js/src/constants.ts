@@ -17,7 +17,7 @@ export const NATIVE_MINT_2022 = new PublicKey('9pan9bMn5HatX4EJdBwg9VgCa7Uz5HL8N
 
 /** Check that the token program provided is not `Tokenkeg...`, useful when using extensions */
 export function programSupportsExtensions(programId: PublicKey): boolean {
-    if (programId === TOKEN_PROGRAM_ID) {
+    if (programId.equals(TOKEN_PROGRAM_ID)) {
         return false;
     } else {
         return true;
