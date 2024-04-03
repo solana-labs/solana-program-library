@@ -61,7 +61,7 @@
     "typescript-collections": "^1.3.3"
   },
   "peerDependencies": {
-    "@solana/web3.js": "^1.91.2"
+    "@solana/web3.js": "^1.91.3"
   },
   "devDependencies": {
     "@metaplex-foundation/rustbin": "^0.3.5",
