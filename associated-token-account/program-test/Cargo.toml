@@ -14,6 +14,6 @@ test-sbf = []
 solana-program = ">=1.18.2,<=2"
 solana-program-test = ">=1.18.2,<=2"
 solana-sdk = ">=1.18.2,<=2"
-spl-associated-token-account = { version = "2", path = "../program", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "3.0.2", path = "../program", features = ["no-entrypoint"] }
 spl-token = { version = "4.0", path = "../../token/program", features = ["no-entrypoint"] }
-spl-token-2022 = { version = "2.0", path = "../../token/program-2022", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "3.0.2", path = "../../token/program-2022", features = ["no-entrypoint"] }

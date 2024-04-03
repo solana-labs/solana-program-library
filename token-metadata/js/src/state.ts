@@ -1,6 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
-import { getArrayCodec, getBytesCodec, getStructCodec, getTupleCodec } from '@solana/codecs-data-structures';
-import { getStringCodec } from '@solana/codecs-strings';
+import { getArrayCodec, getBytesCodec, getStringCodec, getStructCodec, getTupleCodec } from '@solana/codecs';
 
 export const TOKEN_METADATA_DISCRIMINATOR = Buffer.from([112, 132, 90, 90, 11, 88, 157, 87]);
 

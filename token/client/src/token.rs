@@ -1,6 +1,9 @@
 use {
     crate::{
-        client::{ProgramClient, ProgramClientError, SendTransaction, SimulateTransaction},
+        client::{
+            ProgramClient, ProgramClientError, SendTransaction, SimulateTransaction,
+            SimulationResult,
+        },
         proof_generation::transfer_with_fee_split_proof_data,
     },
     futures::{future::join_all, try_join},
@@ -8,6 +11,7 @@ use {
     solana_program_test::tokio::time,
     solana_sdk::{
         account::Account as BaseAccount,
+        compute_budget::ComputeBudgetInstruction,
         hash::Hash,
         instruction::{AccountMeta, Instruction},
         message::Message,
@@ -339,6 +343,8 @@ pub struct Token<T> {
     nonce_blockhash: Option<Hash>,
     memo: Arc<RwLock<Option<TokenMemo>>>,
     transfer_hook_accounts: Option<Vec<AccountMeta>>,
+    compute_unit_price: Option<u64>,
+    compute_unit_limit: Option<u32>,
 }
 
 impl<T> fmt::Debug for Token<T> {
@@ -356,6 +362,8 @@ impl<T> fmt::Debug for Token<T> {
             .field("nonce_blockhash", &self.nonce_blockhash)
             .field("memo", &self.memo.read().unwrap())
             .field("transfer_hook_accounts", &self.transfer_hook_accounts)
+            .field("compute_unit_price", &self.compute_unit_price)
+            .field("compute_unit_limit", &self.compute_unit_limit)
             .finish()
     }
 }
@@ -402,6 +410,8 @@ where
             nonce_blockhash: None,
             memo: Arc::new(RwLock::new(None)),
             transfer_hook_accounts: None,
+            compute_unit_price: None,
+            compute_unit_limit: None,
         }
     }
 
@@ -448,6 +458,16 @@ where
 
     pub fn with_transfer_hook_accounts(mut self, transfer_hook_accounts: Vec<AccountMeta>) -> Self {
         self.transfer_hook_accounts = Some(transfer_hook_accounts);
+        self
+    }
+
+    pub fn with_compute_unit_price(mut self, compute_unit_price: u64) -> Self {
+        self.compute_unit_price = Some(compute_unit_price);
+        self
+    }
+
+    pub fn with_compute_unit_limit(mut self, compute_unit_limit: u32) -> Self {
+        self.compute_unit_limit = Some(compute_unit_limit);
         self
     }
 
@@ -505,10 +525,48 @@ where
         }
     }
 
+    /// Helper function to add a compute unit limit instruction to a given set
+    /// of instructions
+    async fn add_compute_unit_limit_from_simulation(
+        &self,
+        instructions: &mut Vec<Instruction>,
+        blockhash: &Hash,
+    ) -> TokenResult<()> {
+        // add a max compute unit limit instruction for the simulation
+        const MAX_COMPUTE_UNIT_LIMIT: u32 = 1_400_000;
+        instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
+            MAX_COMPUTE_UNIT_LIMIT,
+        ));
+
+        let transaction = Transaction::new_unsigned(Message::new_with_blockhash(
+            instructions,
+            Some(&self.payer.pubkey()),
+            blockhash,
+        ));
+        let simulation_result = self
+            .client
+            .simulate_transaction(&transaction)
+            .await
+            .map_err(TokenError::Client)?;
+        if let Ok(units_consumed) = simulation_result.get_compute_units_consumed() {
+            // Overwrite the compute unit limit instruction with the actual units consumed
+            let compute_unit_limit =
+                u32::try_from(units_consumed).map_err(|x| TokenError::Client(x.into()))?;
+            instructions
+                .last_mut()
+                .expect("Compute budget instruction was added earlier")
+                .data = ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit).data;
+        } else {
+            // `get_compute_units_consumed()` fails for offline signing, so we
+            // catch that error and remove the instruction that was added
+            instructions.pop();
+        }
+        Ok(())
+    }
+
     async fn construct_tx<S: Signers>(
         &self,
         token_instructions: &[Instruction],
-        additional_compute_budget: Option<u32>,
         signing_keypairs: &S,
     ) -> TokenResult<Transaction> {
         let mut instructions = vec![];
@@ -533,40 +591,44 @@ where
 
         instructions.extend_from_slice(token_instructions);
 
-        if let Some(additional_compute_budget) = additional_compute_budget {
-            instructions.push(
-                solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(
-                    additional_compute_budget,
-                ),
+        let blockhash = if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
+            self.nonce_account,
+            &self.nonce_authority,
+            self.nonce_blockhash,
+        ) {
+            let nonce_instruction = system_instruction::advance_nonce_account(
+                &nonce_account,
+                &nonce_authority.pubkey(),
             );
+            instructions.insert(0, nonce_instruction);
+            nonce_blockhash
+        } else {
+            self.client
+                .get_latest_blockhash()
+                .await
+                .map_err(TokenError::Client)?
+        };
+
+        if let Some(compute_unit_price) = self.compute_unit_price {
+            instructions.push(ComputeBudgetInstruction::set_compute_unit_price(
+                compute_unit_price,
+            ));
         }
 
-        let (message, blockhash) =
-            if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
-                self.nonce_account,
-                &self.nonce_authority,
-                self.nonce_blockhash,
-            ) {
-                let mut message = Message::new_with_nonce(
-                    token_instructions.to_vec(),
-                    fee_payer,
-                    &nonce_account,
-                    &nonce_authority.pubkey(),
-                );
-                message.recent_blockhash = nonce_blockhash;
-                (message, nonce_blockhash)
-            } else {
-                let latest_blockhash = self
-                    .client
-                    .get_latest_blockhash()
-                    .await
-                    .map_err(TokenError::Client)?;
-                (
-                    Message::new_with_blockhash(&instructions, fee_payer, &latest_blockhash),
-                    latest_blockhash,
-                )
-            };
+        // The simulation to find out the compute unit usage must be run after
+        // all instructions have been added to the transaction, so be sure to
+        // keep this instruction as the last one before creating and sending the
+        // transaction.
+        if let Some(compute_unit_limit) = self.compute_unit_limit {
+            instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
+                compute_unit_limit,
+            ));
+        } else {
+            self.add_compute_unit_limit_from_simulation(&mut instructions, &blockhash)
+                .await?;
+        }
 
+        let message = Message::new_with_blockhash(&instructions, fee_payer, &blockhash);
         let mut transaction = Transaction::new_unsigned(message);
         let signing_pubkeys = signing_keypairs.pubkeys();
 
@@ -598,7 +660,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::SimulationOutput> {
         let transaction = self
-            .construct_tx(token_instructions, None, signing_keypairs)
+            .construct_tx(token_instructions, signing_keypairs)
             .await?;
 
         self.client
@@ -613,27 +675,7 @@ where
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let transaction = self
-            .construct_tx(token_instructions, None, signing_keypairs)
-            .await?;
-
-        self.client
-            .send_transaction(&transaction)
-            .await
-            .map_err(TokenError::Client)
-    }
-
-    pub async fn process_ixs_with_additional_compute_budget<S: Signers>(
-        &self,
-        token_instructions: &[Instruction],
-        additional_compute_budget: u32,
-        signing_keypairs: &S,
-    ) -> TokenResult<T::Output> {
-        let transaction = self
-            .construct_tx(
-                token_instructions,
-                Some(additional_compute_budget),
-                signing_keypairs,
-            )
+            .construct_tx(token_instructions, signing_keypairs)
             .await?;
 
         self.client
@@ -2094,12 +2136,26 @@ where
         )
         .await?;
 
-        self.process_ixs(
+        // This instruction is right at the transaction size limit, so we cannot
+        // add any other instructions to it
+        let blockhash = self
+            .client
+            .get_latest_blockhash()
+            .await
+            .map_err(TokenError::Client)?;
+
+        let transaction = Transaction::new_signed_with_payer(
             &[instruction_type
                 .encode_verify_proof(Some(withdraw_proof_context_state_info), withdraw_proof_data)],
-            &[] as &[&dyn Signer; 0],
-        )
-        .await
+            Some(&self.payer.pubkey()),
+            &[self.payer.as_ref()],
+            blockhash,
+        );
+
+        self.client
+            .send_transaction(&transaction)
+            .await
+            .map_err(TokenError::Client)
     }
 
     /// Transfer tokens confidentially
@@ -2578,12 +2634,24 @@ where
 
         // This instruction is right at the transaction size limit, but in the
         // future it might be able to support the transfer too
-        self.process_ixs(
+        let blockhash = self
+            .client
+            .get_latest_blockhash()
+            .await
+            .map_err(TokenError::Client)?;
+
+        let transaction = Transaction::new_signed_with_payer(
             &[instruction_type
                 .encode_verify_proof(Some(range_proof_context_state_info), range_proof_data)],
-            &[] as &[&dyn Signer; 0],
-        )
-        .await
+            Some(&self.payer.pubkey()),
+            &[self.payer.as_ref()],
+            blockhash,
+        );
+
+        self.client
+            .send_transaction(&transaction)
+            .await
+            .map_err(TokenError::Client)
     }
 
     /// Create a range proof context state account with a confidential transfer
@@ -2728,9 +2796,6 @@ where
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
 
-        // additional compute budget required for `VerifyTransferWithFee`
-        const TRANSFER_WITH_FEE_COMPUTE_BUDGET: u32 = 500_000;
-
         let mut instructions = confidential_transfer::instruction::transfer_with_fee(
             &self.program_id,
             source_account,
@@ -2756,12 +2821,7 @@ where
         )
         .await
         .map_err(|_| TokenError::AccountNotFound)?;
-        self.process_ixs_with_additional_compute_budget(
-            &instructions,
-            TRANSFER_WITH_FEE_COMPUTE_BUDGET,
-            signing_keypairs,
-        )
-        .await
+        self.process_ixs(&instructions, signing_keypairs).await
     }
 
     /// Transfer tokens confidentially with fee using split proofs.

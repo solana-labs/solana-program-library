@@ -1,6 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
-import { getBytesCodec, getStructCodec } from '@solana/codecs-data-structures';
-import { getU32Codec } from '@solana/codecs-numbers';
+import { getBytesCodec, getStructCodec, getU32Codec } from '@solana/codecs';
 
 const tokenGroupCodec = getStructCodec([
     ['updateAuthority', getBytesCodec({ size: 32 })],
@@ -8,6 +7,8 @@ const tokenGroupCodec = getStructCodec([
     ['size', getU32Codec()],
     ['maxSize', getU32Codec()],
 ]);
+
+export const TOKEN_GROUP_SIZE = tokenGroupCodec.fixedSize;
 
 export interface TokenGroup {
     /** The authority that can sign to update the group */

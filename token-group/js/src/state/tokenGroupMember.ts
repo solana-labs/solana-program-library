@@ -1,12 +1,13 @@
 import { PublicKey } from '@solana/web3.js';
-import { getBytesCodec, getStructCodec } from '@solana/codecs-data-structures';
-import { getU32Codec } from '@solana/codecs-numbers';
+import { getBytesCodec, getStructCodec, getU32Codec } from '@solana/codecs';
 
 const tokenGroupMemberCodec = getStructCodec([
     ['mint', getBytesCodec({ size: 32 })],
     ['group', getBytesCodec({ size: 32 })],
     ['memberNumber', getU32Codec()],
 ]);
+
+export const TOKEN_GROUP_MEMBER_SIZE = tokenGroupMemberCodec.fixedSize;
 
 export interface TokenGroupMember {
     /** The associated mint, used to counter spoofing to be sure that member belongs to a particular mint */

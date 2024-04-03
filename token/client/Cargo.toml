@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "spl-token-client"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "0.8.0"
+version = "0.9.2"
 
 [dependencies]
 async-trait = "0.1"
@@ -20,19 +20,19 @@ solana-rpc-client-api = ">=1.18.2,<=2"
 solana-sdk = ">=1.18.2,<=2"
 # We never want the entrypoint for ATA, but we want the entrypoint for token when
 # testing token
-spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [
+spl-associated-token-account = { version = "3.0.2", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
 ] }
-spl-memo = { version = "4.0.1", path = "../../memo/program", features = [
+spl-memo = { version = "4.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
 spl-token = { version = "4.0", path = "../program", features = [
   "no-entrypoint",
 ] }
-spl-token-2022 = { version = "2.0", path = "../program-2022" }
-spl-token-group-interface = { version = "0.1", path = "../../token-group/interface" }
-spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
-spl-transfer-hook-interface = { version = "0.5", path = "../transfer-hook/interface" }
+spl-token-2022 = { version = "3.0.2", path = "../program-2022" }
+spl-token-group-interface = { version = "0.2.3", path = "../../token-group/interface" }
+spl-token-metadata-interface = { version = "0.3.3", path = "../../token-metadata/interface" }
+spl-transfer-hook-interface = { version = "0.6.3", path = "../transfer-hook/interface" }
 thiserror = "1.0"
 
 [features]

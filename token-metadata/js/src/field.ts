@@ -1,6 +1,5 @@
-import type { DataEnumToCodecTuple } from '@solana/codecs-data-structures';
-import { getStructCodec, getTupleCodec, getUnitCodec } from '@solana/codecs-data-structures';
-import { getStringCodec } from '@solana/codecs-strings';
+import type { Codec } from '@solana/codecs';
+import { getStringCodec, getStructCodec, getTupleCodec, getUnitCodec } from '@solana/codecs';
 
 export enum Field {
     Name,
@@ -10,12 +9,13 @@ export enum Field {
 
 type FieldLayout = { __kind: 'Name' } | { __kind: 'Symbol' } | { __kind: 'Uri' } | { __kind: 'Key'; value: [string] };
 
-export const getFieldCodec = (): DataEnumToCodecTuple<FieldLayout> => [
-    ['Name', getUnitCodec()],
-    ['Symbol', getUnitCodec()],
-    ['Uri', getUnitCodec()],
-    ['Key', getStructCodec<{ value: [string] }>([['value', getTupleCodec([getStringCodec()])]])],
-];
+export const getFieldCodec = () =>
+    [
+        ['Name', getUnitCodec()],
+        ['Symbol', getUnitCodec()],
+        ['Uri', getUnitCodec()],
+        ['Key', getStructCodec([['value', getTupleCodec([getStringCodec()])]])],
+    ] as const;
 
 export function getFieldConfig(field: Field | string): FieldLayout {
     if (field === Field.Name || field === 'Name' || field === 'name') {

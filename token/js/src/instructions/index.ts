@@ -5,6 +5,12 @@ export {
     createUpdateAuthorityInstruction,
     createEmitInstruction,
 } from '@solana/spl-token-metadata';
+export {
+    createInitializeGroupInstruction,
+    createUpdateGroupMaxSizeInstruction,
+    createUpdateGroupAuthorityInstruction,
+    createInitializeMemberInstruction,
+} from '@solana/spl-token-group';
 
 export * from './associatedTokenAccount.js';
 export * from './decode.js';

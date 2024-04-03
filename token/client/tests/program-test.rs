@@ -72,9 +72,6 @@ fn keypair_clone(kp: &Keypair) -> Keypair {
     Keypair::from_bytes(&kp.to_bytes()).expect("failed to copy keypair")
 }
 
-// TODO unignore once spl-token-2022 becomes spl-token, and is included in
-// ProgramTest by default
-#[ignore]
 #[tokio::test]
 async fn associated_token_account() {
     let TestContext { token, alice, .. } = TestContext::new().await;
@@ -109,9 +106,6 @@ async fn associated_token_account() {
     );
 }
 
-// TODO unignore once spl-token-2022 becomes spl-token, and is included in
-// ProgramTest by default
-#[ignore]
 #[tokio::test]
 async fn get_or_create_associated_token_account() {
     let TestContext { token, alice, .. } = TestContext::new().await;
@@ -135,9 +129,6 @@ async fn get_or_create_associated_token_account() {
     );
 }
 
-// TODO unignore once spl-token-2022 becomes spl-token, and is included in
-// ProgramTest by default
-#[ignore]
 #[tokio::test]
 async fn set_authority() {
     let TestContext {
@@ -148,11 +139,12 @@ async fn set_authority() {
         ..
     } = TestContext::new().await;
 
+    let alice_vault = Keypair::new();
     token
-        .create_associated_token_account(&alice.pubkey())
+        .create_auxiliary_token_account(&alice_vault, &alice.pubkey())
         .await
-        .expect("failed to create associated token account");
-    let alice_vault = token.get_associated_token_address(&alice.pubkey());
+        .expect("failed to create token account");
+    let alice_vault = alice_vault.pubkey();
 
     token
         .mint_to(
@@ -215,9 +207,6 @@ async fn set_authority() {
     );
 }
 
-// TODO unignore once spl-token-2022 becomes spl-token, and is included in
-// ProgramTest by default
-#[ignore]
 #[tokio::test]
 async fn mint_to() {
     let TestContext {
@@ -256,9 +245,6 @@ async fn mint_to() {
     );
 }
 
-// TODO unignore once spl-token-2022 becomes spl-token, and is included in
-// ProgramTest by default
-#[ignore]
 #[tokio::test]
 async fn transfer() {
     let TestContext {

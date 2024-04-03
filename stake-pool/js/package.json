@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-stake-pool",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
     "build": "tsc && cross-env NODE_ENV=production rollup -c",
@@ -46,10 +46,10 @@
     "@coral-xyz/borsh": "^0.29.0",
     "@solana/buffer-layout": "^4.0.1",
     "@solana/spl-token": "0.4.0",
-    "@solana/web3.js": "^1.91.0",
+    "@solana/web3.js": "^1.91.2",
     "bn.js": "^5.2.0",
     "buffer": "^6.0.3",
-    "superstruct": "^1.0.3"
+    "superstruct": "^1.0.4"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^5.1.0",
@@ -61,10 +61,10 @@
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/bn.js": "^5.1.0",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.11.25",
+    "@types/node": "^20.12.2",
     "@types/node-fetch": "^2.6.11",
-    "@typescript-eslint/eslint-plugin": "^7.1.1",
-    "@typescript-eslint/parser": "^7.1.1",
+    "@typescript-eslint/eslint-plugin": "^7.5.0",
+    "@typescript-eslint/parser": "^7.5.0",
     "cross-env": "^7.0.3",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
@@ -72,10 +72,10 @@
     "jest": "^29.0.0",
     "prettier": "^3.2.5",
     "rimraf": "^5.0.0",
-    "rollup": "^4.12.1",
+    "rollup": "^4.13.2",
     "rollup-plugin-dts": "^6.1.0",
     "ts-jest": "^29.1.2",
-    "typescript": "^5.4.2"
+    "typescript": "^5.4.3"
   },
   "jest": {
     "moduleFileExtensions": [

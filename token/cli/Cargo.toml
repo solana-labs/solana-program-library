@@ -6,7 +6,7 @@ homepage = "https://spl.solana.com/token"
 license = "Apache-2.0"
 name = "spl-token-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "3.3.0"
+version = "3.4.0"
 
 [build-dependencies]
 walkdir = "2"
@@ -18,7 +18,7 @@ console = "0.15.8"
 futures = "0.3"
 serde = "1.0.197"
 serde_derive = "1.0.103"
-serde_json = "1.0.114"
+serde_json = "1.0.115"
 solana-account-decoder = ">=1.18.2,<=2"
 solana-clap-utils = ">=1.18.2,<=2"
 solana-cli-config = ">=1.18.2,<=2"
@@ -31,21 +31,21 @@ solana-transaction-status = ">=1.18.2,<=2"
 spl-token = { version = "4.0", path = "../program", features = [
   "no-entrypoint",
 ] }
-spl-token-2022 = { version = "2.0", path = "../program-2022", features = [
+spl-token-2022 = { version = "3.0.2", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
-spl-token-client = { version = "0.8", path = "../client" }
-spl-token-metadata-interface = { version = "0.2", path = "../../token-metadata/interface" }
-spl-token-group-interface = { version = "0.1", path = "../../token-group/interface" }
-spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [
+spl-token-client = { version = "0.9.2", path = "../client" }
+spl-token-metadata-interface = { version = "0.3.3", path = "../../token-metadata/interface" }
+spl-token-group-interface = { version = "0.2.3", path = "../../token-group/interface" }
+spl-associated-token-account = { version = "3.0.2", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
 ] }
-spl-memo = { version = "4.0.1", path = "../../memo/program", features = [
+spl-memo = { version = "4.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
 strum = "0.26"
 strum_macros = "0.26"
-tokio = "1.36"
+tokio = "1.37"
 
 [dev-dependencies]
 solana-test-validator = ">=1.18.2,<=2"

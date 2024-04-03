@@ -119,7 +119,7 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   0. `[writable]` The SPL Token account to approve.
     ///   1. `[]` The SPL Token mint.
-    ///   2. `[signer]` Confidential transfer auditor authority.
+    ///   2. `[signer]` Confidential transfer mint authority.
     ///
     /// Data expected by this instruction:
     ///   None

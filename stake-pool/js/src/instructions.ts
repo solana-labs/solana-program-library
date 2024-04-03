@@ -36,7 +36,9 @@ export type StakePoolInstructionType =
   | 'IncreaseAdditionalValidatorStake'
   | 'DecreaseAdditionalValidatorStake'
   | 'DecreaseValidatorStakeWithReserve'
-  | 'Redelegate';
+  | 'Redelegate'
+  | 'AddValidatorToPool'
+  | 'RemoveValidatorFromPool';
 
 // 'UpdateTokenMetadata' and 'CreateTokenMetadata' have dynamic layouts
 
@@ -91,6 +93,14 @@ export function tokenMetadataLayout(
 export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   [type in StakePoolInstructionType]: InstructionType;
 } = Object.freeze({
+  AddValidatorToPool: {
+    index: 1,
+    layout: BufferLayout.struct<any>([BufferLayout.u8('instruction'), BufferLayout.u32('seed')]),
+  },
+  RemoveValidatorFromPool: {
+    index: 2,
+    layout: BufferLayout.struct<any>([BufferLayout.u8('instruction')]),
+  },
   DecreaseValidatorStake: {
     index: 3,
     layout: MOVE_STAKE_LAYOUT,
@@ -376,10 +386,97 @@ export type UpdateTokenMetadataParams = {
   uri: string;
 };
 
+export type AddValidatorToPoolParams = {
+  stakePool: PublicKey;
+  staker: PublicKey;
+  reserveStake: PublicKey;
+  withdrawAuthority: PublicKey;
+  validatorList: PublicKey;
+  validatorStake: PublicKey;
+  validatorVote: PublicKey;
+  seed?: number;
+};
+
+export type RemoveValidatorFromPoolParams = {
+  stakePool: PublicKey;
+  staker: PublicKey;
+  withdrawAuthority: PublicKey;
+  validatorList: PublicKey;
+  validatorStake: PublicKey;
+  transientStake: PublicKey;
+};
+
 /**
  * Stake Pool Instruction class
  */
 export class StakePoolInstruction {
+  /**
+   * Creates instruction to add a validator into the stake pool.
+   */
+  static addValidatorToPool(params: AddValidatorToPoolParams): TransactionInstruction {
+    const {
+      stakePool,
+      staker,
+      reserveStake,
+      withdrawAuthority,
+      validatorList,
+      validatorStake,
+      validatorVote,
+      seed,
+    } = params;
+    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.AddValidatorToPool;
+    const data = encodeData(type, { seed: seed == undefined ? 0 : seed });
+
+    const keys = [
+      { pubkey: stakePool, isSigner: false, isWritable: true },
+      { pubkey: staker, isSigner: true, isWritable: false },
+      { pubkey: reserveStake, isSigner: false, isWritable: true },
+      { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: validatorStake, isSigner: false, isWritable: true },
+      { pubkey: validatorVote, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: STAKE_CONFIG_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+    ];
+
+    return new TransactionInstruction({
+      programId: STAKE_POOL_PROGRAM_ID,
+      keys,
+      data,
+    });
+  }
+
+  /**
+   * Creates instruction to remove a validator from the stake pool.
+   */
+  static removeValidatorFromPool(params: RemoveValidatorFromPoolParams): TransactionInstruction {
+    const { stakePool, staker, withdrawAuthority, validatorList, validatorStake, transientStake } =
+      params;
+    const type = STAKE_POOL_INSTRUCTION_LAYOUTS.RemoveValidatorFromPool;
+    const data = encodeData(type);
+
+    const keys = [
+      { pubkey: stakePool, isSigner: false, isWritable: true },
+      { pubkey: staker, isSigner: true, isWritable: false },
+      { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: validatorList, isSigner: false, isWritable: true },
+      { pubkey: validatorStake, isSigner: false, isWritable: true },
+      { pubkey: transientStake, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: StakeProgram.programId, isSigner: false, isWritable: false },
+    ];
+
+    return new TransactionInstruction({
+      programId: STAKE_POOL_PROGRAM_ID,
+      keys,
+      data,
+    });
+  }
+
   /**
    * Creates instruction to update a set of validators in the stake pool.
    */

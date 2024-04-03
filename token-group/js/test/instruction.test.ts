@@ -1,8 +1,7 @@
 import { expect } from 'chai';
-import type { StructToDecoderTuple } from '@solana/codecs-data-structures';
-import { getBytesDecoder, getStructDecoder } from '@solana/codecs-data-structures';
+import type { Decoder } from '@solana/codecs';
+import { getBytesDecoder, getStructDecoder, getU32Decoder } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
-import { getU32Decoder } from '@solana/codecs-numbers';
 import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 
 import {
@@ -15,11 +14,10 @@ import {
 function checkPackUnpack<T extends object>(
     instruction: TransactionInstruction,
     discriminator: Uint8Array,
-    layout: StructToDecoderTuple<T>,
+    decoder: Decoder<T>,
     values: T
 ) {
     expect(instruction.data.subarray(0, 8)).to.deep.equal(discriminator);
-    const decoder = getStructDecoder(layout);
     const unpacked = decoder.decode(instruction.data.subarray(8));
     expect(unpacked).to.deep.equal(values);
 }
@@ -43,10 +41,10 @@ describe('Token Group Instructions', () => {
                 maxSize,
             }),
             splDiscriminate('spl_token_group_interface:initialize_token_group'),
-            [
+            getStructDecoder([
                 ['updateAuthority', getBytesDecoder({ size: 32 })],
                 ['maxSize', getU32Decoder()],
-            ],
+            ]),
             { updateAuthority: Uint8Array.from(updateAuthority.toBuffer()), maxSize }
         );
     });
@@ -60,7 +58,7 @@ describe('Token Group Instructions', () => {
                 maxSize,
             }),
             splDiscriminate('spl_token_group_interface:update_group_max_size'),
-            [['maxSize', getU32Decoder()]],
+            getStructDecoder([['maxSize', getU32Decoder()]]),
             { maxSize }
         );
     });
@@ -74,7 +72,7 @@ describe('Token Group Instructions', () => {
                 newAuthority: PublicKey.default,
             }),
             splDiscriminate('spl_token_group_interface:update_authority'),
-            [['newAuthority', getBytesDecoder({ size: 32 })]],
+            getStructDecoder([['newAuthority', getBytesDecoder({ size: 32 })]]),
             { newAuthority: Uint8Array.from(PublicKey.default.toBuffer()) }
         );
     });
@@ -96,7 +94,7 @@ describe('Token Group Instructions', () => {
                 groupUpdateAuthority,
             }),
             splDiscriminate('spl_token_group_interface:initialize_member'),
-            [],
+            getStructDecoder([]),
             {}
         );
     });

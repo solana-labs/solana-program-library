@@ -1,7 +1,7 @@
 {
     "name": "@solana/spl-token-group",
     "description": "SPL Token Group Interface JS API",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
@@ -44,34 +44,31 @@
         "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.91.0"
+        "@solana/web3.js": "^1.91.2"
     },
     "dependencies": {
-        "@solana/codecs-data-structures": "2.0.0-experimental.9741939",
-        "@solana/codecs-numbers": "2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb",
-        "@solana/codecs-strings": "2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb",
-        "@solana/options": "2.0.0-preview.1.20240308041540.58947c719d61c07ce3b1ac04edf51a2b8fa4a3eb",
+        "@solana/codecs": "2.0.0-preview.2",
         "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
-        "@solana/web3.js": "^1.91.0",
-        "@types/chai": "^4.3.12",
+        "@solana/web3.js": "^1.91.2",
+        "@types/chai": "^4.3.14",
         "@types/mocha": "^10.0.6",
-        "@types/node": "^20.11.25",
-        "@typescript-eslint/eslint-plugin": "^7.1.1",
-        "@typescript-eslint/parser": "^7.1.1",
+        "@types/node": "^20.12.2",
+        "@typescript-eslint/eslint-plugin": "^7.5.0",
+        "@typescript-eslint/parser": "^7.5.0",
         "chai": "^5.1.0",
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^9.1.0",
         "eslint-plugin-prettier": "^5.1.3",
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
-        "mocha": "^10.3.0",
+        "mocha": "^10.4.0",
         "prettier": "^3.2.5",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
         "tslib": "^2.3.1",
-        "typedoc": "^0.25.11",
-        "typescript": "^5.4.2"
+        "typedoc": "^0.25.12",
+        "typescript": "^5.4.3"
     }
 }

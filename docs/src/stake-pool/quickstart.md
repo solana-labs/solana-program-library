@@ -196,7 +196,7 @@ the pool, given the stake pool and validator file.
 $ ./deposit.sh keys/stake-pool.json local_validators.txt 10
 ```
 
-Note: This is a bit more finnicky on a local network because of the short epochs, and
+Note: This is a bit more finicky on a local network because of the short epochs, and
 may fail. No problem, you simply need to retry.
 
 ## Step 5: Rebalance stake in the pool

@@ -2523,6 +2523,10 @@ async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() 
         &range_proof_context_state_account,
         &context_state_authority,
     ];
+    // With split proofs in parallel, one of the transactions does more work
+    // than the other, which isn't caught during the simulation to discover the
+    // compute unit limit.
+    let token = token.with_compute_unit_limit(500_000);
     token
         .confidential_transfer_transfer_with_split_proofs_in_parallel(
             &alice_meta.token_account,
@@ -2941,6 +2945,10 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context_in_para
         &range_proof_context_state_account,
         &context_state_authority,
     ];
+    // With split proofs in parallel, one of the transactions does more work
+    // than the other, which isn't caught during the simulation to discover the
+    // compute unit limit.
+    let token = token.with_compute_unit_limit(500_000);
     token
         .confidential_transfer_transfer_with_fee_and_split_proofs_in_parallel(
             &alice_meta.token_account,

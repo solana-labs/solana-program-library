@@ -134,18 +134,35 @@ async fn check_wallet_balance(
     }
 }
 
-fn token_client_from_config(
+fn base_token_client(
     config: &Config<'_>,
     token_pubkey: &Pubkey,
     decimals: Option<u8>,
 ) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
-    let token = Token::new(
+    Ok(Token::new(
         config.program_client.clone(),
         &config.program_id,
         token_pubkey,
         decimals,
         config.fee_payer()?.clone(),
-    );
+    ))
+}
+
+fn config_token_client(
+    token: Token<ProgramRpcClientSendTransaction>,
+    config: &Config<'_>,
+) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
+    let token = if let Some(compute_unit_limit) = config.compute_unit_limit {
+        token.with_compute_unit_limit(compute_unit_limit)
+    } else {
+        token
+    };
+
+    let token = if let Some(compute_unit_price) = config.compute_unit_price {
+        token.with_compute_unit_price(compute_unit_price)
+    } else {
+        token
+    };
 
     if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
         config.nonce_account,
@@ -160,6 +177,15 @@ fn token_client_from_config(
     } else {
         Ok(token)
     }
+}
+
+fn token_client_from_config(
+    config: &Config<'_>,
+    token_pubkey: &Pubkey,
+    decimals: Option<u8>,
+) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
+    let token = base_token_client(config, token_pubkey, decimals)?;
+    config_token_client(token, config)
 }
 
 fn native_token_client_from_config(
@@ -406,7 +432,10 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &token_pubkey, None)?;
+    // Because set_interest_rate depends on the time, it can cost more between
+    // simulation and execution. To help that, just set a static compute limit
+    let token = base_token_client(config, &token_pubkey, None)?.with_compute_unit_limit(2_500);
+    let token = config_token_client(token, config)?;
 
     if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;
@@ -1210,6 +1239,11 @@ async fn command_transfer(
     let token = if let Some(transfer_hook_accounts) = transfer_hook_accounts {
         token_client_from_config(config, &token_pubkey, decimals)?
             .with_transfer_hook_accounts(transfer_hook_accounts)
+    } else if config.sign_only {
+        // we need to pass in empty transfer hook accounts on sign-only,
+        // otherwise the token client will try to fetch the mint account and fail
+        token_client_from_config(config, &token_pubkey, decimals)?
+            .with_transfer_hook_accounts(vec![])
     } else {
         token_client_from_config(config, &token_pubkey, decimals)?
     };

@@ -1,16 +1,20 @@
 //! Rewrites of the base state types represented as Pods
 
 #[cfg(test)]
+use crate::state::{Account, Mint, Multisig};
 use {
-    crate::state::{Account, Mint, Multisig},
-    solana_program::program_option::COption,
-};
-use {
-    crate::{instruction::MAX_SIGNERS, state::PackedSizeOf},
+    crate::{
+        instruction::MAX_SIGNERS,
+        state::{AccountState, PackedSizeOf},
+    },
     bytemuck::{Pod, Zeroable},
-    solana_program::{program_pack::IsInitialized, pubkey::Pubkey},
+    solana_program::{
+        program_error::ProgramError, program_option::COption, program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
     spl_pod::{
         bytemuck::pod_get_packed_len,
+        optional_keys::OptionalNonZeroPubkey,
         primitives::{PodBool, PodU64},
     },
 };
@@ -79,6 +83,22 @@ pub struct PodAccount {
     /// Optional authority to close the account.
     pub close_authority: PodCOption<Pubkey>,
 }
+impl PodAccount {
+    /// Checks if account is frozen
+    pub fn is_frozen(&self) -> bool {
+        self.state == AccountState::Frozen as u8
+    }
+    /// Checks if account is native
+    pub fn is_native(&self) -> bool {
+        self.is_native.is_some()
+    }
+    /// Checks if a token Account's owner is the system_program or the
+    /// incinerator
+    pub fn is_owned_by_system_program_or_incinerator(&self) -> bool {
+        solana_program::system_program::check_id(&self.owner)
+            || solana_program::incinerator::check_id(&self.owner)
+    }
+}
 impl IsInitialized for PodAccount {
     fn is_initialized(&self) -> bool {
         self.state != 0
@@ -140,8 +160,8 @@ impl From<Multisig> for PodMultisig {
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct PodCOption<T: Pod + Default> {
-    option: [u8; 4],
-    value: T,
+    pub(crate) option: [u8; 4],
+    pub(crate) value: T,
 }
 impl<T: Pod + Default> PodCOption<T> {
     /// Represents that no value is stored in the option, like `Option::None`
@@ -161,15 +181,45 @@ impl<T: Pod + Default> PodCOption<T> {
         }
     }
 
-    /// Create a PodCOption equivalent of `Option::Some(value)
+    /// Create a PodCOption equivalent of `Option::Some(value)`
     pub const fn some(value: T) -> Self {
         Self {
             option: Self::SOME,
             value,
         }
     }
+
+    /// Get the underlying value or another provided value if it isn't set,
+    /// equivalent of `Option::unwrap_or`
+    pub fn unwrap_or(self, default: T) -> T {
+        if self.option == Self::NONE {
+            default
+        } else {
+            self.value
+        }
+    }
+
+    /// Checks to see if a value is set, equivalent of `Option::is_some`
+    pub fn is_some(&self) -> bool {
+        self.option == Self::SOME
+    }
+
+    /// Checks to see if no value is set, equivalent of `Option::is_none`
+    pub fn is_none(&self) -> bool {
+        self.option == Self::NONE
+    }
+
+    /// Converts the option into a Result, similar to `Option::ok_or`
+    pub fn ok_or<E>(self, error: E) -> Result<T, E> {
+        match self {
+            Self {
+                option: Self::SOME,
+                value,
+            } => Ok(value),
+            _ => Err(error),
+        }
+    }
 }
-#[cfg(test)]
 impl<T: Pod + Default> From<COption<T>> for PodCOption<T> {
     fn from(opt: COption<T>) -> Self {
         match opt {
@@ -181,6 +231,26 @@ impl<T: Pod + Default> From<COption<T>> for PodCOption<T> {
                 option: Self::SOME,
                 value: v,
             },
+        }
+    }
+}
+impl TryFrom<PodCOption<Pubkey>> for OptionalNonZeroPubkey {
+    type Error = ProgramError;
+    fn try_from(p: PodCOption<Pubkey>) -> Result<Self, Self::Error> {
+        match p {
+            PodCOption {
+                option: PodCOption::<Pubkey>::SOME,
+                value,
+            } if value == Pubkey::default() => Err(ProgramError::InvalidArgument),
+            PodCOption {
+                option: PodCOption::<Pubkey>::SOME,
+                value,
+            } => Ok(Self(value)),
+            PodCOption {
+                option: PodCOption::<Pubkey>::NONE,
+                value: _,
+            } => Ok(Self(Pubkey::default())),
+            _ => unreachable!(),
         }
     }
 }
