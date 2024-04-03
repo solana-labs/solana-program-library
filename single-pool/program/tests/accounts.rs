@@ -157,6 +157,12 @@ async fn fail_account_checks(test_mode: TestMode) {
         if instruction_account.pubkey == accounts.alice.pubkey() {
             continue;
         }
+        // stake config address can also be arbitrary. Remove all usage of
+        // `stake::config` with the upgrade to 2.0
+        #[allow(deprecated)]
+        if instruction_account.pubkey == stake::config::id() {
+            continue;
+        }
 
         let prev_pubkey = instruction_account.pubkey;
         instruction_account.pubkey = Pubkey::new_unique();
