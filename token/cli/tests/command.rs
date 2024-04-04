@@ -2978,6 +2978,9 @@ async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, pa
     let m = 2;
     let n = 3u8;
 
+    let fee_payer_keypair_file = NamedTempFile::new().unwrap();
+    write_keypair_file(payer, &fee_payer_keypair_file).unwrap();
+
     let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) = std::iter::repeat_with(Keypair::new)
         .take(n as usize)
         .map(|s| {
@@ -3059,28 +3062,82 @@ async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, pa
                 "--owner",
                 &multisig_pubkey.to_string(),
                 "--fee-payer",
-                &multisig_members[0].to_string(),
+                &payer.pubkey().to_string(),
+                "--program-id",
+                &program_id.to_string(),
             ],
         )
         .await
         .unwrap();
         // the provided signer has a signature, denoted by the pubkey followed
         // by "=" and the signature
-        assert!(result.contains(&format!("{}=", multisig_members[1])));
+        let member_prefix = format!("{}=", multisig_members[1]);
+        let signature_position = result.find(&member_prefix).unwrap();
+        let end_position = result[signature_position..].find('\n').unwrap();
+        let signer = result[signature_position..].get(..end_position).unwrap();
 
         // other three expected signers are absent
         let absent_signers_position = result.find("Absent Signers").unwrap();
         let absent_signers = result.get(absent_signers_position..).unwrap();
-        assert!(absent_signers.contains(&multisig_members[0].to_string()));
         assert!(absent_signers.contains(&multisig_members[2].to_string()));
         assert!(absent_signers.contains(&payer.pubkey().to_string()));
 
         // and nothing else is marked a signer
+        assert!(!absent_signers.contains(&multisig_members[0].to_string()));
         assert!(!absent_signers.contains(&multisig_pubkey.to_string()));
         assert!(!absent_signers.contains(&nonce.to_string()));
         assert!(!absent_signers.contains(&source.to_string()));
         assert!(!absent_signers.contains(&destination.to_string()));
         assert!(!absent_signers.contains(&token.to_string()));
+
+        // now send the transaction
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+            ProgramRpcClient::new(config.rpc_client.clone(), ProgramRpcClientSendTransaction),
+        );
+        config.program_client = program_client;
+        exec_test_cmd(
+            &config,
+            &[
+                "spl-token",
+                CommandName::Transfer.into(),
+                &token.to_string(),
+                "10",
+                &destination.to_string(),
+                "--blockhash",
+                &blockhash.to_string(),
+                "--nonce",
+                &nonce.to_string(),
+                "--nonce-authority",
+                &fee_payer_keypair_file.path().to_str().unwrap(),
+                "--mint-decimals",
+                &format!("{}", TEST_DECIMALS),
+                "--multisig-signer",
+                &multisig_members[1].to_string(),
+                "--multisig-signer",
+                multisig_paths[2].path().to_str().unwrap(),
+                "--from",
+                &source.to_string(),
+                "--owner",
+                &multisig_pubkey.to_string(),
+                "--fee-payer",
+                &fee_payer_keypair_file.path().to_str().unwrap(),
+                "--program-id",
+                &program_id.to_string(),
+                "--signer",
+                signer,
+            ],
+        )
+        .await
+        .unwrap();
+
+        let account = config.rpc_client.get_account(&source).await.unwrap();
+        let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let amount = spl_token::ui_amount_to_amount(90.0, TEST_DECIMALS);
+        assert_eq!(token_account.base.amount, amount);
+        let account = config.rpc_client.get_account(&destination).await.unwrap();
+        let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let amount = spl_token::ui_amount_to_amount(10.0, TEST_DECIMALS);
+        assert_eq!(token_account.base.amount, amount);
     }
 }
 
