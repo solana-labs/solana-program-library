@@ -20,7 +20,7 @@ use {
             ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient,
             SendTransaction, SimulateTransaction,
         },
-        token::{ExtensionInitializationParams, Token, TokenResult},
+        token::{ComputeUnitLimit, ExtensionInitializationParams, Token, TokenResult},
     },
     std::sync::Arc,
 };
@@ -113,7 +113,8 @@ impl TestContext {
             &mint_account.pubkey(),
             Some(decimals),
             Arc::new(keypair_clone(&payer)),
-        );
+        )
+        .with_compute_unit_limit(ComputeUnitLimit::Simulated);
 
         let token_unchecked = Token::new(
             Arc::clone(&client),
@@ -121,7 +122,8 @@ impl TestContext {
             &mint_account.pubkey(),
             None,
             Arc::new(payer),
-        );
+        )
+        .with_compute_unit_limit(ComputeUnitLimit::Simulated);
 
         token
             .create_mint(
@@ -157,7 +159,8 @@ impl TestContext {
             Token::create_native_mint(Arc::clone(&client), &id(), Arc::new(keypair_clone(&payer)))
                 .await?;
         // unchecked native is never needed because decimals is known statically
-        let token_unchecked = Token::new_native(Arc::clone(&client), &id(), Arc::new(payer));
+        let token_unchecked = Token::new_native(Arc::clone(&client), &id(), Arc::new(payer))
+            .with_compute_unit_limit(ComputeUnitLimit::Simulated);
         self.token_context = Some(TokenContext {
             decimals: native_mint::DECIMALS,
             mint_authority: Keypair::new(), /* bogus */

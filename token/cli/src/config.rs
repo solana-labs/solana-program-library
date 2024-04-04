@@ -1,5 +1,8 @@
 use {
-    crate::clap_app::{Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG, MULTISIG_SIGNER_ARG},
+    crate::clap_app::{
+        parse_compute_unit_limit, Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG,
+        MULTISIG_SIGNER_ARG,
+    },
     clap::ArgMatches,
     solana_clap_utils::{
         input_parsers::{pubkey_of_signer, value_of},
@@ -20,8 +23,11 @@ use {
         extension::StateWithExtensionsOwned,
         state::{Account, Mint},
     },
-    spl_token_client::client::{
-        ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
+    spl_token_client::{
+        client::{
+            ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
+        },
+        token::ComputeUnitLimit,
     },
     std::{process::exit, rc::Rc, sync::Arc},
 };
@@ -68,7 +74,7 @@ pub struct Config<'a> {
     pub program_id: Pubkey,
     pub restrict_to_program_id: bool,
     pub compute_unit_price: Option<u64>,
-    pub compute_unit_limit: Option<u32>,
+    pub compute_unit_limit: ComputeUnitLimit,
 }
 
 impl<'a> Config<'a> {
@@ -282,7 +288,10 @@ impl<'a> Config<'a> {
 
         let nonce_blockhash = value_of(matches, BLOCKHASH_ARG.name);
         let compute_unit_price = value_of(matches, COMPUTE_UNIT_PRICE_ARG.name);
-        let compute_unit_limit = value_of(matches, COMPUTE_UNIT_LIMIT_ARG.name);
+        let compute_unit_limit = matches
+            .value_of(COMPUTE_UNIT_LIMIT_ARG.name)
+            .map(|x| parse_compute_unit_limit(x).unwrap())
+            .unwrap_or(ComputeUnitLimit::Default);
         Self {
             default_signer,
             rpc_client,

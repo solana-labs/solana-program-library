@@ -44,7 +44,7 @@ use {
         client::{
             ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
         },
-        token::Token,
+        token::{ComputeUnitLimit, Token},
     },
     spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_token_metadata_interface::state::TokenMetadata,
@@ -201,7 +201,7 @@ fn test_config_with_default_signer<'a>(
         program_id: *program_id,
         restrict_to_program_id: true,
         compute_unit_price: None,
-        compute_unit_limit: None,
+        compute_unit_limit: ComputeUnitLimit::Simulated,
     }
 }
 
@@ -230,7 +230,7 @@ fn test_config_without_default_signer<'a>(
         program_id: *program_id,
         restrict_to_program_id: true,
         compute_unit_price: None,
-        compute_unit_limit: None,
+        compute_unit_limit: ComputeUnitLimit::Simulated,
     }
 }
 
@@ -2991,6 +2991,7 @@ async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, pa
         .unzip();
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
         let mut config = test_config_with_default_signer(test_validator, payer, program_id);
+        config.compute_unit_limit = ComputeUnitLimit::Default;
         let token = create_token(&config, payer).await;
         let nonce = create_nonce(&config, payer).await;
 
@@ -4081,7 +4082,7 @@ async fn compute_budget(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
         let mut config = test_config_with_default_signer(test_validator, payer, program_id);
         config.compute_unit_price = Some(42);
-        config.compute_unit_limit = Some(30_000);
+        config.compute_unit_limit = ComputeUnitLimit::Static(30_000);
         run_transfer_test(&config, payer).await;
     }
 }
