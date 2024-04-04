@@ -670,6 +670,7 @@ pub fn app<'a, 'b>(
                 .value_name("COMPUTE-UNIT-PRICE")
                 .validator(is_parsable::<u64>)
                 .help(COMPUTE_UNIT_PRICE_ARG.help)
+                .requires(COMPUTE_UNIT_LIMIT_ARG.name)
         )
         .bench_subcommand()
         .subcommand(SubCommand::with_name(CommandName::CreateToken.into()).about("Create a new token")
