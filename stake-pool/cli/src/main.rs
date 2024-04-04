@@ -2004,7 +2004,7 @@ fn main() {
                 .global(true)
                 .help("Transaction fee payer account [default: cli config keypair]"),
         )
-        .arg(compute_unit_price_arg().validator(is_parsable::<u64>))
+        .arg(compute_unit_price_arg().validator(is_parsable::<u64>).global(true))
         .arg(
             Arg::with_name(COMPUTE_UNIT_LIMIT_ARG.name)
                 .long(COMPUTE_UNIT_LIMIT_ARG.long)
@@ -2012,6 +2012,7 @@ fn main() {
                 .value_name("COMPUTE-UNIT-LIMIT")
                 .help(COMPUTE_UNIT_LIMIT_ARG.help)
                 .validator(is_parsable::<u32>)
+                .global(true)
         )
         .subcommand(SubCommand::with_name("create-pool")
             .about("Create a new stake pool")

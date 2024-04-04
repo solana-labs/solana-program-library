@@ -153,9 +153,6 @@ pub(crate) fn get_all_stake(
 
 /// Helper function to add a compute unit limit instruction to a given set
 /// of instructions
-///
-/// Returns true if the instruction was added, false if it wasn't. The false
-/// case is used for offline signing, where we cannot access the network.
 pub(crate) fn add_compute_unit_limit_from_simulation(
     rpc_client: &RpcClient,
     instructions: &mut Vec<Instruction>,
