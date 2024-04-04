@@ -21,7 +21,7 @@ use {
     solana_test_validator::{TestValidator, TestValidatorGenesis, UpgradeableProgramInfo},
     solana_vote_program::{
         vote_instruction::{self, CreateVoteAccountConfig},
-        vote_state::{VoteInit, VoteState, VoteStateVersions},
+        vote_state::{VoteInit, VoteState},
     },
     spl_token_client::client::{ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction},
     std::{path::PathBuf, process::Command, str::FromStr, sync::Arc, time::Duration},
@@ -182,7 +182,7 @@ async fn create_vote_account(
         },
         vote_rent,
         CreateVoteAccountConfig {
-            space: VoteStateVersions::vote_state_size_of(true) as u64,
+            space: VoteState::size_of() as u64,
             ..Default::default()
         },
     ));
