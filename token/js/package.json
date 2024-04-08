@@ -84,7 +84,7 @@
         "shx": "^0.3.4",
         "start-server-and-test": "^2.0.3",
         "ts-node": "^10.9.2",
-        "typedoc": "^0.25.12",
+        "typedoc": "^0.25.13",
         "typescript": "^5.4.4"
     }
 }
