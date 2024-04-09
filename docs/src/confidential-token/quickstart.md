@@ -15,6 +15,11 @@ about Token-2022 and the concept of extensions.
 See the [Token Setup Guide](../token#setup) to install the client utilities.
 Token-2022 shares the same CLI and NPM packages for maximal compatibility.
 
+All of the commands here exist in a
+[helper script](https://github.com/solana-labs/solana-program-library/tree/master/token/cli/examples/confidential-transfer.sh)
+at the
+[Token CLI Examples](https://github.com/solana-labs/solana-program-library/tree/master/token/cli/examples).
+
 ### Example: Create a mint with confidential transfers
 
 To create a new mint with confidential transfers enabled, run:
