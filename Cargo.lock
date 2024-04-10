@@ -2948,9 +2948,9 @@ dependencies = [
 
 [[package]]
 name = "libtest-mimic"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af551aaf8c38095e6a139e1e8d1588881193b4931ad6f80aeb98fd33454758ef"
+checksum = "fefdf21230d6143476a28adbee3d930e2b68a3d56443c777cae3fe9340eebff9"
 dependencies = [
  "clap 4.4.8",
  "escape8259",
