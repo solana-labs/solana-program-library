@@ -8,7 +8,7 @@ CherryPy==18.6.0
 construct==2.10.67
 cryptography==42.0.4
 ed25519==1.5
-idna==2.10
+idna==3.7
 iniconfig==1.1.1
 jaraco.classes==3.2.1
 jaraco.collections==3.3.0
