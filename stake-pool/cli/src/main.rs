@@ -70,7 +70,7 @@ pub(crate) struct Config {
     dry_run: bool,
     no_update: bool,
     compute_unit_price: Option<u64>,
-    compute_unit_limit: Option<u32>,
+    compute_unit_limit: ComputeUnitLimit,
 }
 
 type CommandResult = Result<(), Error>;
@@ -105,11 +105,43 @@ const FEES_REFERENCE: &str = "Consider setting a minimal fee. \
                               aware of the possible risks of a stake pool with no fees, \
                               you may force pool creation with the --unsafe-fees flag.";
 
-pub const COMPUTE_UNIT_LIMIT_ARG: ArgConstant<'static> = ArgConstant {
+enum ComputeUnitLimit {
+    Default,
+    Static(u32),
+    Simulated,
+}
+const COMPUTE_UNIT_LIMIT_ARG: ArgConstant<'static> = ArgConstant {
     name: "compute_unit_limit",
     long: "--with-compute-unit-limit",
-    help: "Set compute unit limit for transaction, in compute units.",
+    help: "Set compute unit limit for transaction, in compute units; also accepts \
+        keyword SIMULATED to use compute units from transaction simulation prior \
+        to sending. Note that SIMULATED may fail if accounts are modified by another \
+        transaction between simulation and execution.",
 };
+fn is_compute_unit_limit_or_simulated<T>(string: T) -> Result<(), String>
+where
+    T: AsRef<str> + std::fmt::Display,
+{
+    if string.as_ref().parse::<u32>().is_ok() || string.as_ref() == "SIMULATED" {
+        Ok(())
+    } else {
+        Err(format!(
+            "Unable to parse input compute unit limit as integer or SIMULATED, provided: {string}"
+        ))
+    }
+}
+fn parse_compute_unit_limit<T>(string: T) -> Result<ComputeUnitLimit, String>
+where
+    T: AsRef<str> + std::fmt::Display,
+{
+    match string.as_ref().parse::<u32>() {
+        Ok(compute_unit_limit) => Ok(ComputeUnitLimit::Static(compute_unit_limit)),
+        Err(_) if string.as_ref() == "SIMULATED" => Ok(ComputeUnitLimit::Simulated),
+        _ => Err(format!(
+            "Unable to parse compute unit limit, provided: {string}"
+        )),
+    }
+}
 
 fn check_stake_pool_fees(
     epoch_fee: &Fee,
@@ -200,17 +232,21 @@ fn checked_transaction_with_signers_and_additional_fee<T: Signers>(
             compute_unit_price,
         ));
     }
-    if let Some(compute_unit_limit) = config.compute_unit_limit {
-        instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
-            compute_unit_limit,
-        ));
-    } else {
-        add_compute_unit_limit_from_simulation(
-            &config.rpc_client,
-            &mut instructions,
-            &config.fee_payer.pubkey(),
-            &recent_blockhash,
-        )?;
+    match config.compute_unit_limit {
+        ComputeUnitLimit::Default => {}
+        ComputeUnitLimit::Static(compute_unit_limit) => {
+            instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
+                compute_unit_limit,
+            ));
+        }
+        ComputeUnitLimit::Simulated => {
+            add_compute_unit_limit_from_simulation(
+                &config.rpc_client,
+                &mut instructions,
+                &config.fee_payer.pubkey(),
+                &recent_blockhash,
+            )?;
+        }
     }
     let message = Message::new_with_blockhash(
         &instructions,
@@ -2004,14 +2040,14 @@ fn main() {
                 .global(true)
                 .help("Transaction fee payer account [default: cli config keypair]"),
         )
-        .arg(compute_unit_price_arg().validator(is_parsable::<u64>).global(true))
+        .arg(compute_unit_price_arg().validator(is_parsable::<u64>).requires(COMPUTE_UNIT_LIMIT_ARG.name).global(true))
         .arg(
             Arg::with_name(COMPUTE_UNIT_LIMIT_ARG.name)
                 .long(COMPUTE_UNIT_LIMIT_ARG.long)
                 .takes_value(true)
                 .value_name("COMPUTE-UNIT-LIMIT")
                 .help(COMPUTE_UNIT_LIMIT_ARG.help)
-                .validator(is_parsable::<u32>)
+                .validator(is_compute_unit_limit_or_simulated)
                 .global(true)
         )
         .subcommand(SubCommand::with_name("create-pool")
@@ -2795,7 +2831,10 @@ fn main() {
         let dry_run = matches.is_present("dry_run");
         let no_update = matches.is_present("no_update");
         let compute_unit_price = value_t!(matches, COMPUTE_UNIT_PRICE_ARG.name, u64).ok();
-        let compute_unit_limit = value_t!(matches, COMPUTE_UNIT_LIMIT_ARG.name, u32).ok();
+        let compute_unit_limit = matches
+            .value_of(COMPUTE_UNIT_LIMIT_ARG.name)
+            .map(|x| parse_compute_unit_limit(x).unwrap())
+            .unwrap_or(ComputeUnitLimit::Default);
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
