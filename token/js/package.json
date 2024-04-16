@@ -58,7 +58,8 @@
         "@solana/buffer-layout-utils": "^0.2.0",
         "@solana/spl-token-group": "^0.0.2",
         "@solana/spl-token-metadata": "^0.1.2",
-        "buffer": "^6.0.3"
+        "buffer": "^6.0.3",
+        "solana-zk-token-sdk-experimental": "^0.1.1"
     },
     "devDependencies": {
         "@solana/codecs-strings": "2.0.0-preview.2",

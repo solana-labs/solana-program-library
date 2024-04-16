@@ -777,6 +777,9 @@ importers:
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
+      solana-zk-token-sdk-experimental:
+        specifier: ^0.1.1
+        version: 0.1.1
     devDependencies:
       '@solana/codecs-strings':
         specifier: 2.0.0-preview.2
@@ -7607,6 +7610,10 @@ packages:
       - encoding
       - utf-8-validate
     dev: true
+
+  /solana-zk-token-sdk-experimental@0.1.1:
+    resolution: {integrity: sha512-pEul58buHN4lNpemHRlX5ZOSqImh3XOwWcwg+QyhQC9ZQ3pgY5Lin9NoW7psdsOfxIOyjPWiotkAq/A3xuCfvg==}
+    dev: false
 
   /source-map-support@0.5.13:
     resolution: {integrity: sha512-SHSKFHadjVA5oR4PPqhtAVdcBWwRYVd6g6cAXnIbRiIwc2EhPrTuKUBdSLvlEKyIP3GCf89fltvcZiP9MMFA1w==}

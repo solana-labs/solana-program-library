@@ -20,6 +20,7 @@ import { PERMANENT_DELEGATE_SIZE } from './permanentDelegate.js';
 import { TRANSFER_FEE_AMOUNT_SIZE, TRANSFER_FEE_CONFIG_SIZE } from './transferFee/index.js';
 import { TRANSFER_HOOK_ACCOUNT_SIZE, TRANSFER_HOOK_SIZE } from './transferHook/index.js';
 import { TOKEN_2022_PROGRAM_ID } from '../constants.js';
+import { CONFIDENTIAL_TRANSFER_MINT_SIZE } from './confidentialTransfer/state.js';
 
 // Sequence from https://github.com/solana-labs/solana-program-library/blob/master/token/program-2022/src/extension/mod.rs#L903
 export enum ExtensionType {
@@ -78,7 +79,7 @@ export function getTypeLen(e: ExtensionType): number {
         case ExtensionType.MintCloseAuthority:
             return MINT_CLOSE_AUTHORITY_SIZE;
         case ExtensionType.ConfidentialTransferMint:
-            return 65;
+            return CONFIDENTIAL_TRANSFER_MINT_SIZE;
         case ExtensionType.ConfidentialTransferAccount:
             return 295;
         case ExtensionType.CpiGuard:
