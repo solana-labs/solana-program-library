@@ -9,6 +9,7 @@ import { elgamalPublicKey } from './elgamal.js';
 
 export enum ConfidentialTransferInstruction {
     InitializeMint = 0,
+    UpdateMint = 1,
 }
 
 export interface InitializeMintData {
@@ -46,6 +47,49 @@ export function createConfidentialTransferInitializeMintInstruction(
             instruction: TokenInstruction.ConfidentialTransferExtension,
             confidentialTransferInstruction: ConfidentialTransferInstruction.InitializeMint,
             confidentialTransferMintAuthority: confidentialTransferMintAuthority ?? PublicKey.default,
+            autoApproveNewAccounts: autoApproveNewAccounts,
+            auditorElGamalPubkey: auditorElGamalPubkey ?? PodElGamalPubkey.default(),
+        },
+        data
+    );
+
+    return new TransactionInstruction({ keys, programId, data });
+}
+
+export interface UpdateMintData {
+    instruction: TokenInstruction.ConfidentialTransferExtension;
+    confidentialTransferInstruction: ConfidentialTransferInstruction.UpdateMint;
+    autoApproveNewAccounts: boolean;
+    auditorElGamalPubkey: PodElGamalPubkey | null;
+}
+
+export const updateMintData = struct<UpdateMintData>([
+    u8('instruction'),
+    u8('confidentialTransferInstruction'),
+    bool('autoApproveNewAccounts'),
+    elgamalPublicKey('auditorElGamalPubkey'),
+]);
+
+export function createConfidentialTransferUpdateMintInstruction(
+    mint: PublicKey,
+    confidentialTransferMintAuthority: PublicKey,
+    autoApproveNewAccounts: boolean,
+    auditorElGamalPubkey: PodElGamalPubkey | null,
+    programId = TOKEN_2022_PROGRAM_ID
+): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
+    const keys = [
+        { pubkey: mint, isSigner: false, isWritable: true },
+        { pubkey: confidentialTransferMintAuthority, isSigner: true, isWritable: false },
+    ];
+
+    const data = Buffer.alloc(updateMintData.span);
+    updateMintData.encode(
+        {
+            instruction: TokenInstruction.ConfidentialTransferExtension,
+            confidentialTransferInstruction: ConfidentialTransferInstruction.UpdateMint,
             autoApproveNewAccounts: autoApproveNewAccounts,
             auditorElGamalPubkey: auditorElGamalPubkey ?? PodElGamalPubkey.default(),
         },

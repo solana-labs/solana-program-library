@@ -9,6 +9,7 @@ import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../commo
 import {
     createConfidentialTransferInitializeMintInstruction,
     getConfidentialTransferMint,
+    updateMint,
 } from '../../src/extensions/confidentialTransfer/index';
 
 const TEST_TOKEN_DECIMALS = 2;
@@ -83,6 +84,29 @@ describe('confidentialTransfer', () => {
                 );
                 expect(confidentialTransferMint.autoApproveNewAccounts).to.eql(autoApproveNewAccounts);
                 expect(confidentialTransferMint.auditorElGamalPubkey.equals(auditorPubkey)); // TODO: equals?
+            }
+        });
+
+        it('mint updates', async () => {
+            const newAutoApproveNewAccounts = false;
+            const newAuditorElGamalKeypair = ElGamalKeypair.new_rand();
+            const newAuditorElGamalPubkey = PodElGamalPubkey.encoded(newAuditorElGamalKeypair.pubkey_owned());
+
+            await updateMint(
+                connection,
+                payer,
+                mint,
+                newAutoApproveNewAccounts,
+                newAuditorElGamalPubkey,
+                confidentialTransferMintAuthority
+            );
+
+            const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+            const confidentialTransferMint = getConfidentialTransferMint(mintInfo);
+            expect(confidentialTransferMint).to.not.be.null;
+            if (confidentialTransferMint !== null) {
+                expect(confidentialTransferMint.autoApproveNewAccounts).to.eql(newAutoApproveNewAccounts);
+                expect(confidentialTransferMint.auditorElGamalPubkey.equals(newAuditorElGamalPubkey));
             }
         });
     });
