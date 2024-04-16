@@ -1,4 +1,5 @@
-import { blob, Layout } from '@solana/buffer-layout';
+import { blob } from '@solana/buffer-layout';
+import type { Layout } from '@solana/buffer-layout';
 import { encodeDecode } from '@solana/buffer-layout-utils';
 import { PodElGamalPubkey } from 'solana-zk-token-sdk-experimental';
 

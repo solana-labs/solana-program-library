@@ -2,7 +2,7 @@ import type { ConfirmOptions, Connection, PublicKey, Signer, TransactionSignatur
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { TOKEN_2022_PROGRAM_ID } from '../../constants.js';
 import { createConfidentialTransferUpdateMintInstruction } from './instructions.js';
-import { PodElGamalPubkey } from 'solana-zk-token-sdk-experimental';
+import type { PodElGamalPubkey } from 'solana-zk-token-sdk-experimental';
 
 export async function updateMint(
     connection: Connection,

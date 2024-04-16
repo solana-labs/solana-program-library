@@ -3,7 +3,7 @@ import { publicKey, bool } from '@solana/buffer-layout-utils';
 import type { PublicKey } from '@solana/web3.js';
 import type { Mint } from '../../state/mint.js';
 import { ExtensionType, getExtensionData } from '../extensionType.js';
-import { PodElGamalPubkey } from 'solana-zk-token-sdk-experimental';
+import type { PodElGamalPubkey } from 'solana-zk-token-sdk-experimental';
 import { elgamalPublicKey } from './elgamal.js';
 
 export interface ConfidentialTransferMint {

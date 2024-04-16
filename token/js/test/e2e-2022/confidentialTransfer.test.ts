@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import type { Connection, Signer } from '@solana/web3.js';
-import { PublicKey } from '@solana/web3.js';
+import type { PublicKey } from '@solana/web3.js';
 import { Keypair, SystemProgram, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
 import { ElGamalKeypair, PodElGamalPubkey } from 'solana-zk-token-sdk-experimental';
 import { ExtensionType, createInitializeMintInstruction, getMint, getMintLen } from '../../src';
