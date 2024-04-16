@@ -392,8 +392,8 @@ importers:
   stake-pool/js:
     dependencies:
       '@coral-xyz/borsh':
-        specifier: ^0.29.0
-        version: 0.29.0(@solana/web3.js@1.91.4)
+        specifier: ^0.30.0
+        version: 0.30.0(@solana/web3.js@1.91.4)
       '@solana/buffer-layout':
         specifier: ^4.0.1
         version: 4.0.1
@@ -1223,8 +1223,8 @@ packages:
       buffer-layout: 1.2.2
     dev: true
 
-  /@coral-xyz/borsh@0.29.0(@solana/web3.js@1.91.4):
-    resolution: {integrity: sha512-s7VFVa3a0oqpkuRloWVPdCK7hMbAMY270geZOGfCnaqexrP5dTIpbEHL33req6IYPPJ0hYa71cdvJ1h6V55/oQ==}
+  /@coral-xyz/borsh@0.30.0(@solana/web3.js@1.91.4):
+    resolution: {integrity: sha512-OrcV+7N10cChhgDRUxM4iEIuwxUHHs52XD85R8cFCUqE0vbLYrcoPPPs+VF6kZ9DhdJGVW2I6DHJOp5TykyZog==}
     engines: {node: '>=10'}
     peerDependencies:
       '@solana/web3.js': ^1.68.0
