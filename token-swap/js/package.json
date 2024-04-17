@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-token-swap",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "SPL Token Swap JavaScript API",
   "license": "MIT",
   "type": "module",
@@ -52,7 +52,7 @@
     "@solana/web3.js": "^1.91.6"
   },
   "devDependencies": {
-    "@solana/spl-token": "0.4.0",
+    "@solana/spl-token": "0.4.4",
     "@solana/web3.js": "^1.91.6",
     "@types/bn.js": "^5.1.0",
     "@types/chai-as-promised": "^7.1.4",

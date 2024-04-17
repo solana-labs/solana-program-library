@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-stake-pool",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
     "build": "tsc && cross-env NODE_ENV=production rollup -c",
@@ -45,7 +45,7 @@
   "dependencies": {
     "@coral-xyz/borsh": "^0.30.0",
     "@solana/buffer-layout": "^4.0.1",
-    "@solana/spl-token": "0.4.0",
+    "@solana/spl-token": "0.4.4",
     "@solana/web3.js": "^1.91.6",
     "bn.js": "^5.2.0",
     "buffer": "^6.0.3",

@@ -1,7 +1,7 @@
 {
     "name": "@solana/spl-token",
     "description": "SPL Token Program JS API",
-    "version": "0.4.3",
+    "version": "0.4.4",
     "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
@@ -56,13 +56,13 @@
     "dependencies": {
         "@solana/buffer-layout": "^4.0.0",
         "@solana/buffer-layout-utils": "^0.2.0",
-        "@solana/spl-token-group": "^0.0.2",
-        "@solana/spl-token-metadata": "^0.1.2",
+        "@solana/spl-token-group": "^0.0.3",
+        "@solana/spl-token-metadata": "^0.1.3",
         "buffer": "^6.0.3"
     },
     "devDependencies": {
         "@solana/codecs-strings": "2.0.0-preview.2",
-        "@solana/spl-memo": "0.2.3",
+        "@solana/spl-memo": "0.2.4",
         "@solana/web3.js": "^1.91.6",
         "@types/chai-as-promised": "^7.1.4",
         "@types/chai": "^4.3.14",
