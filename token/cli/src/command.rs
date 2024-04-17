@@ -888,7 +888,7 @@ async fn command_create_multisig(
         ),
     );
 
-    // default is safe here because create_multisig doesnt use it
+    // default is safe here because create_multisig doesn't use it
     let token = token_client_from_config(config, &Pubkey::default(), None)?;
 
     let res = token
@@ -1127,7 +1127,7 @@ async fn command_authorize(
 
         (mint_pubkey, previous_authority)
     } else {
-        // default is safe here because authorize doesnt use it
+        // default is safe here because authorize doesn't use it
         (Pubkey::default(), None)
     };
 
@@ -1347,7 +1347,7 @@ async fn command_transfer(
                                      Add `--allow-non-system-account-recipient` to complete the transfer.".into());
             }
         }
-        // if it doesnt exist, it definitely isnt a token account!
+        // if it doesn't exist, it definitely isnt a token account!
         // we gate transfer with a different flag
         else if maybe_recipient_account_data.is_none() && allow_unfunded_recipient {
             false
@@ -2047,7 +2047,7 @@ async fn command_revoke(
 
         (source_state.base.mint, delegate)
     } else {
-        // default is safe here because revoke doesnt use it
+        // default is safe here because revoke doesn't use it
         (Pubkey::default(), delegate)
     };
 
@@ -2118,7 +2118,7 @@ async fn command_close(
 
         token
     } else {
-        // default is safe here because close doesnt use it
+        // default is safe here because close doesn't use it
         token_client_from_config(config, &Pubkey::default(), None)?
     };
 
