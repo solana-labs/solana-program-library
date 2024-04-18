@@ -7015,7 +7015,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
 ]
 
 [[package]]
@@ -7263,7 +7263,7 @@ dependencies = [
  "serde_json",
  "solana-program",
  "solana-zk-token-sdk",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
 ]
 
 [[package]]
@@ -7281,7 +7281,7 @@ dependencies = [
 
 [[package]]
 name = "spl-program-error"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "lazy_static",
  "num-derive 0.4.2",
@@ -7289,7 +7289,7 @@ dependencies = [
  "serial_test",
  "solana-program",
  "solana-sdk",
- "spl-program-error-derive 0.4.0",
+ "spl-program-error-derive 0.4.1",
  "thiserror",
 ]
 
@@ -7307,7 +7307,7 @@ dependencies = [
 
 [[package]]
 name = "spl-program-error-derive"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7476,7 +7476,7 @@ dependencies = [
  "solana-sdk",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-type-length-value 0.4.3",
 ]
 
@@ -7665,7 +7665,7 @@ dependencies = [
  "solana-sdk",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-token-2022 3.0.2",
  "spl-token-client",
  "spl-token-group-example",
@@ -7711,7 +7711,7 @@ dependencies = [
  "solana-program",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-type-length-value 0.4.3",
 ]
 
@@ -7787,7 +7787,7 @@ dependencies = [
  "solana-program",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-type-length-value 0.4.3",
 ]
 
@@ -7939,7 +7939,7 @@ dependencies = [
  "solana-program",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-tlv-account-resolution 0.6.3",
  "spl-type-length-value 0.4.3",
  "tokio",
@@ -7966,7 +7966,7 @@ dependencies = [
  "solana-program",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-type-length-value-derive",
 ]
 
