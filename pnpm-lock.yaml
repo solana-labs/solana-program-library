@@ -26,8 +26,8 @@ importers:
         specifier: ^0.4.1
         version: 0.4.1
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
       bn.js:
         specifier: ^5.2.1
         version: 5.2.1
@@ -191,8 +191,8 @@ importers:
         version: 6.0.3
     devDependencies:
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
       '@types/chai':
         specifier: ^4.3.14
         version: 4.3.14
@@ -260,8 +260,8 @@ importers:
   name-service/js:
     dependencies:
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
       bn.js:
         specifier: ^5.1.3
         version: 5.2.1
@@ -330,8 +330,8 @@ importers:
         specifier: 1.0.0
         version: link:../modern
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
     devDependencies:
       '@ava/typescript':
         specifier: ^4.1.0
@@ -393,7 +393,7 @@ importers:
     dependencies:
       '@coral-xyz/borsh':
         specifier: ^0.30.0
-        version: 0.30.0(@solana/web3.js@1.91.6)
+        version: 0.30.0(@solana/web3.js@1.91.7)
       '@solana/buffer-layout':
         specifier: ^4.0.1
         version: 4.0.1
@@ -401,8 +401,8 @@ importers:
         specifier: 0.4.4
         version: link:../../token/js
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
       bn.js:
         specifier: ^5.2.0
         version: 5.2.1
@@ -496,8 +496,8 @@ importers:
         version: link:../../libraries/type-length-value/js
     devDependencies:
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
       '@types/chai':
         specifier: ^4.3.14
         version: 4.3.14
@@ -581,8 +581,8 @@ importers:
         specifier: 0.4.4
         version: link:../../token/js
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
       '@types/eslint':
         specifier: ^8.56.7
         version: 8.56.7
@@ -639,8 +639,8 @@ importers:
         version: link:../../libraries/type-length-value/js
     devDependencies:
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
       '@types/chai':
         specifier: ^4.3.14
         version: 4.3.14
@@ -709,8 +709,8 @@ importers:
         specifier: 0.4.4
         version: link:../../token/js
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
       '@types/bn.js':
         specifier: ^5.1.0
         version: 5.1.5
@@ -785,8 +785,8 @@ importers:
         specifier: 0.2.4
         version: link:../../memo/js
       '@solana/web3.js':
-        specifier: ^1.91.6
-        version: 1.91.6
+        specifier: ^1.91.7
+        version: 1.91.7
       '@types/chai':
         specifier: ^4.3.14
         version: 4.3.14
@@ -1212,24 +1212,24 @@ packages:
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
     dev: true
 
-  /@coral-xyz/borsh@0.26.0(@solana/web3.js@1.91.6):
+  /@coral-xyz/borsh@0.26.0(@solana/web3.js@1.91.7):
     resolution: {integrity: sha512-uCZ0xus0CszQPHYfWAqKS5swS1UxvePu83oOF+TWpUkedsNlg6p2p4azxZNSSqwXb9uXMFgxhuMBX9r3Xoi0vQ==}
     engines: {node: '>=10'}
     peerDependencies:
       '@solana/web3.js': ^1.68.0
     dependencies:
-      '@solana/web3.js': 1.91.6
+      '@solana/web3.js': 1.91.7
       bn.js: 5.2.1
       buffer-layout: 1.2.2
     dev: true
 
-  /@coral-xyz/borsh@0.30.0(@solana/web3.js@1.91.6):
+  /@coral-xyz/borsh@0.30.0(@solana/web3.js@1.91.7):
     resolution: {integrity: sha512-OrcV+7N10cChhgDRUxM4iEIuwxUHHs52XD85R8cFCUqE0vbLYrcoPPPs+VF6kZ9DhdJGVW2I6DHJOp5TykyZog==}
     engines: {node: '>=10'}
     peerDependencies:
       '@solana/web3.js': ^1.68.0
     dependencies:
-      '@solana/web3.js': 1.91.6
+      '@solana/web3.js': 1.91.7
       bn.js: 5.2.1
       buffer-layout: 1.2.2
     dev: false
@@ -1823,7 +1823,7 @@ packages:
     resolution: {integrity: sha512-tgyEl6dvtLln8XX81JyBvWjIiEcjTkUwZbrM5dIobTmoqMuGewSyk9CClno8qsMsFdB5T3jC91Rjeqmu/6xk2g==}
     dependencies:
       '@metaplex-foundation/beet': 0.7.2
-      '@solana/web3.js': 1.91.6
+      '@solana/web3.js': 1.91.7
       bs58: 5.0.0
       debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
@@ -1837,7 +1837,7 @@ packages:
     resolution: {integrity: sha512-/6o32FNUtwK8tjhotrvU/vorP7umBuRFvBZrC6XCk51aKidBHe5LPVPA5AjGPbV3oftMfRuXPNd9yAGeEqeCDQ==}
     dependencies:
       '@metaplex-foundation/beet': 0.7.2
-      '@solana/web3.js': 1.91.6
+      '@solana/web3.js': 1.91.7
       bs58: 5.0.0
       debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
@@ -1875,7 +1875,7 @@ packages:
       '@metaplex-foundation/beet': 0.7.2
       '@metaplex-foundation/beet-solana': 0.3.1
       '@metaplex-foundation/rustbin': 0.3.5
-      '@solana/web3.js': 1.91.6
+      '@solana/web3.js': 1.91.7
       ansi-colors: 4.1.3
       camelcase: 6.3.0
       debug: 4.3.4(supports-color@8.1.1)
@@ -1926,17 +1926,13 @@ packages:
       '@metaplex-foundation/umi-serializers-numbers': 0.8.9
     dev: false
 
-  /@noble/curves@1.2.0:
-    resolution: {integrity: sha512-oYclrNgRaM9SsBUBVbb8M6DTV7ZHRTKugureoYEncY5c65HOmRzvSiTE3y5CYaPYJA/GVkrhXEoF0M3Ya9PMnw==}
+  /@noble/curves@1.4.0:
+    resolution: {integrity: sha512-p+4cb332SFCrReJkCYe8Xzm0OWi4Jji5jVdIZRL/PmacmDkFNw6MrrV+gGpiPxLHbV+zKFRywUWbaseT+tZRXg==}
     dependencies:
-      '@noble/hashes': 1.3.2
+      '@noble/hashes': 1.4.0
 
-  /@noble/hashes@1.3.2:
-    resolution: {integrity: sha512-MVC8EAQp7MvEcm30KWENFjgR+Mkmf+D189XJTkFIlwohU5hcBbn1ZkKq7KVTi2Hme3PMGF390DaL52beVrIihQ==}
-    engines: {node: '>= 16'}
-
-  /@noble/hashes@1.3.3:
-    resolution: {integrity: sha512-V7/fPHgl+jsVPXqqeOzT8egNj2iBIVt+ECeMMG8TdcnTikP3oaBtUVqpT/gYCR68aEBJSF+XbYUxStjbFMqIIA==}
+  /@noble/hashes@1.4.0:
+    resolution: {integrity: sha512-V1JJ1WTRUqHHrOSh597hURcMqVKVGL/ea3kv0gSnEdsEZ0/+VyPghM1lMNGc00z7CIQorSvbKpuJkxvuHbvdbg==}
     engines: {node: '>= 16'}
 
   /@nodelib/fs.scandir@2.1.5:
@@ -1983,8 +1979,8 @@ packages:
     resolution: {integrity: sha512-Nq+COIjE1135T7qfnOHEn7E0q39bQTgXLFk837/rgFe6Hkew9WML7eHsS+lSYD2p3OJaTiUOHTAq1lHy36oIqQ==}
     engines: {node: '>=11'}
     dependencies:
-      '@coral-xyz/borsh': 0.26.0(@solana/web3.js@1.91.6)
-      '@solana/web3.js': 1.91.6
+      '@coral-xyz/borsh': 0.26.0(@solana/web3.js@1.91.7)
+      '@solana/web3.js': 1.91.7
       base64-js: 1.5.1
       bn.js: 5.2.1
       bs58: 4.0.1
@@ -2344,7 +2340,7 @@ packages:
     engines: {node: '>= 10'}
     dependencies:
       '@solana/buffer-layout': 4.0.1
-      '@solana/web3.js': 1.91.6
+      '@solana/web3.js': 1.91.7
       bigint-buffer: 1.1.5
       bignumber.js: 9.1.2
     transitivePeerDependencies:
@@ -2508,12 +2504,12 @@ packages:
       '@solana/keys': 2.0.0-experimental.21e994f
     dev: false
 
-  /@solana/web3.js@1.91.6:
-    resolution: {integrity: sha512-dm20nN6HQvXToo+kM51nxHdtaa2wMSRdeK37p+WIWESfeiVHqV8XbV4XnWupq6ngt5vIckhGFG7ZnTBxUgLzDA==}
+  /@solana/web3.js@1.91.7:
+    resolution: {integrity: sha512-HqljZKDwk6Z4TajKRGhGLlRsbGK4S8EY27DA7v1z6yakewiUY3J7ZKDZRxcqz2MYV/ZXRrJ6wnnpiHFkPdv0WA==}
     dependencies:
       '@babel/runtime': 7.23.7
-      '@noble/curves': 1.2.0
-      '@noble/hashes': 1.3.3
+      '@noble/curves': 1.4.0
+      '@noble/hashes': 1.4.0
       '@solana/buffer-layout': 4.0.1
       agentkeepalive: 4.5.0
       bigint-buffer: 1.1.5
@@ -7538,7 +7534,7 @@ packages:
     resolution: {integrity: sha512-TS6vYoO/9YJZng7oiLOVyuz8V7yLow5Hp4SLYWW71XM3702v+z9f1fvUBKudRfa4dfpta4tRNufApSiBIALxJQ==}
     engines: {node: '>= 10'}
     dependencies:
-      '@solana/web3.js': 1.91.6
+      '@solana/web3.js': 1.91.7
       bs58: 4.0.1
     optionalDependencies:
       solana-bankrun-darwin-arm64: 0.2.0
