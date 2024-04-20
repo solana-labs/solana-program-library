@@ -1085,9 +1085,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.37"
+version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a0d04d43504c61aa6c7531f1871dd0d418d91130162063b789da00fd7057a5e"
+checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
@@ -4485,9 +4485,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.21.10"
+version = "0.21.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9d5a6813c0759e4609cd494e8e725babae6a2ca7b62a5536a13daaec6fcb7ba"
+checksum = "7fecbfb7b1444f477b345853b1fce097a2c6fb637b2bfb87e6bc5db0f043fae4"
 dependencies = [
  "log",
  "ring 0.17.3",
@@ -4660,9 +4660,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.197"
+version = "1.0.198"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fb1c873e1b9b056a4dc4c0c198b24c3ffa059243875552b2bd0933b1aee4ce2"
+checksum = "9846a40c979031340571da2545a4e5b7c4163bdae79b301d5f86d03979451fcc"
 dependencies = [
  "serde_derive",
 ]
@@ -4678,9 +4678,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.197"
+version = "1.0.198"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7eb0b34b42edc17f6b7cac84a52a1c5f0e1bb2227e997ca9011ea3dd34e8610b"
+checksum = "e88edab869b01783ba905e7d0153f9fc1a6505a96e4ad3018011eedb838566d9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4689,9 +4689,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.115"
+version = "1.0.116"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12dc5c46daa8e9fdf4f5e71b6cf9a53f2487da0e86e55808e2d35539666497dd"
+checksum = "3e17db7126d17feb94eb3fad46bf1a96b034e8aacbc2e775fe81505f8b0b2813"
 dependencies = [
  "itoa",
  "ryu",
@@ -7015,7 +7015,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
 ]
 
 [[package]]
@@ -7263,7 +7263,7 @@ dependencies = [
  "serde_json",
  "solana-program",
  "solana-zk-token-sdk",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
 ]
 
 [[package]]
@@ -7281,7 +7281,7 @@ dependencies = [
 
 [[package]]
 name = "spl-program-error"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "lazy_static",
  "num-derive 0.4.2",
@@ -7289,7 +7289,7 @@ dependencies = [
  "serial_test",
  "solana-program",
  "solana-sdk",
- "spl-program-error-derive 0.4.0",
+ "spl-program-error-derive 0.4.1",
  "thiserror",
 ]
 
@@ -7307,7 +7307,7 @@ dependencies = [
 
 [[package]]
 name = "spl-program-error-derive"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7476,7 +7476,7 @@ dependencies = [
  "solana-sdk",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-type-length-value 0.4.3",
 ]
 
@@ -7665,7 +7665,7 @@ dependencies = [
  "solana-sdk",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-token-2022 3.0.2",
  "spl-token-client",
  "spl-token-group-example",
@@ -7711,7 +7711,7 @@ dependencies = [
  "solana-program",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-type-length-value 0.4.3",
 ]
 
@@ -7787,7 +7787,7 @@ dependencies = [
  "solana-program",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-type-length-value 0.4.3",
 ]
 
@@ -7939,7 +7939,7 @@ dependencies = [
  "solana-program",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-tlv-account-resolution 0.6.3",
  "spl-type-length-value 0.4.3",
  "tokio",
@@ -7966,7 +7966,7 @@ dependencies = [
  "solana-program",
  "spl-discriminator 0.2.2",
  "spl-pod 0.2.2",
- "spl-program-error 0.4.0",
+ "spl-program-error 0.4.1",
  "spl-type-length-value-derive",
 ]
 

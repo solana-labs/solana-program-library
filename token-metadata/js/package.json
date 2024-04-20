@@ -1,7 +1,7 @@
 {
     "name": "@solana/spl-token-metadata",
     "description": "SPL Token Metadata Interface JS API",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
@@ -44,19 +44,19 @@
         "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.91.4"
+        "@solana/web3.js": "^1.91.7"
     },
     "dependencies": {
         "@solana/codecs": "2.0.0-preview.2",
         "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
-        "@solana/web3.js": "^1.91.4",
+        "@solana/web3.js": "^1.91.7",
         "@types/chai": "^4.3.14",
         "@types/mocha": "^10.0.6",
         "@types/node": "^20.12.7",
-        "@typescript-eslint/eslint-plugin": "^7.6.0",
-        "@typescript-eslint/parser": "^7.6.0",
+        "@typescript-eslint/eslint-plugin": "^7.7.0",
+        "@typescript-eslint/parser": "^7.7.0",
         "chai": "^5.1.0",
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^9.1.0",

@@ -50,9 +50,9 @@ impl MacroType {
 /// implements `From<Self> for solana_program::program_error::ProgramError`
 pub fn into_program_error(ident: &Ident) -> proc_macro2::TokenStream {
     quote! {
-        impl From<#ident> for solana_program::program_error::ProgramError {
+        impl From<#ident> for ::solana_program::program_error::ProgramError {
             fn from(e: #ident) -> Self {
-                solana_program::program_error::ProgramError::Custom(e as u32)
+                ::solana_program::program_error::ProgramError::Custom(e as u32)
             }
         }
     }
@@ -61,7 +61,7 @@ pub fn into_program_error(ident: &Ident) -> proc_macro2::TokenStream {
 /// Builds the implementation of `solana_program::decode_error::DecodeError<T>`
 pub fn decode_error(ident: &Ident) -> proc_macro2::TokenStream {
     quote! {
-        impl<T> solana_program::decode_error::DecodeError<T> for #ident {
+        impl<T> ::solana_program::decode_error::DecodeError<T> for #ident {
             fn type_of() -> &'static str {
                 stringify!(#ident)
             }
@@ -81,18 +81,18 @@ pub fn print_program_error(
             .unwrap_or_else(|| String::from("Unknown custom program error"));
         quote! {
             #ident::#variant_ident => {
-                solana_program::msg!(#error_msg)
+                ::solana_program::msg!(#error_msg)
             }
         }
     });
     quote! {
-        impl solana_program::program_error::PrintProgramError for #ident {
+        impl ::solana_program::program_error::PrintProgramError for #ident {
             fn print<E>(&self)
             where
                 E: 'static
                     + std::error::Error
-                    + solana_program::decode_error::DecodeError<E>
-                    + solana_program::program_error::PrintProgramError
+                    + ::solana_program::decode_error::DecodeError<E>
+                    + ::solana_program::program_error::PrintProgramError
                     + num_traits::FromPrimitive,
             {
                 match self {

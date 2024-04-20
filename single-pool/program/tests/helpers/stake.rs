@@ -1,4 +1,4 @@
-#![allow(dead_code)] // needed because cargo doesnt understand test usage
+#![allow(dead_code)] // needed because cargo doesn't understand test usage
 
 use {
     crate::get_account,
