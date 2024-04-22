@@ -7,8 +7,8 @@ const CACHE_EMPTY_NODE = new Map<number, Buffer>();
 export const LEAF_BUFFER_LENGTH = 32;
 
 export type MerkleTreeProof = {
-    leafIndex: number;
     leaf: Buffer;
+    leafIndex: number;
     proof: Buffer[];
     root: Buffer;
 };
@@ -185,12 +185,12 @@ export class MerkleTree {
 }
 
 export type TreeNode = {
-    node: Buffer;
-    left: TreeNode | undefined;
-    right: TreeNode | undefined;
-    parent: TreeNode | undefined;
-    level: number;
     id: number;
+    left: TreeNode | undefined;
+    level: number;
+    node: Buffer;
+    parent: TreeNode | undefined;
+    right: TreeNode | undefined;
 };
 
 /**

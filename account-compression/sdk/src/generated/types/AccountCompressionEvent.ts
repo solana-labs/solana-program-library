@@ -19,8 +19,8 @@ import { ChangeLogEvent, changeLogEventBeet } from './ChangeLogEvent';
  * @private
  */
 export type AccountCompressionEventRecord = {
-    ChangeLog: { fields: [ChangeLogEvent] };
     ApplicationData: { fields: [ApplicationDataEvent] };
+    ChangeLog: { fields: [ChangeLogEvent] };
 };
 
 /**

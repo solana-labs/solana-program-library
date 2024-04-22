@@ -14,8 +14,8 @@ import * as web3 from '@solana/web3.js';
  * @category generated
  */
 export type InitEmptyMerkleTreeInstructionArgs = {
-    maxDepth: number;
     maxBufferSize: number;
+    maxDepth: number;
 };
 /**
  * @category Instructions
@@ -45,10 +45,10 @@ export const initEmptyMerkleTreeStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type InitEmptyMerkleTreeInstructionAccounts = {
-    merkleTree: web3.PublicKey;
-    authority: web3.PublicKey;
-    noop: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
+    authority: web3.PublicKey;
+    merkleTree: web3.PublicKey;
+    noop: web3.PublicKey;
 };
 
 export const initEmptyMerkleTreeInstructionDiscriminator = [191, 11, 119, 7, 180, 107, 220, 110];

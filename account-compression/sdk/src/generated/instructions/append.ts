@@ -43,10 +43,10 @@ export const appendStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type AppendInstructionAccounts = {
-    merkleTree: web3.PublicKey;
-    authority: web3.PublicKey;
-    noop: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
+    authority: web3.PublicKey;
+    merkleTree: web3.PublicKey;
+    noop: web3.PublicKey;
 };
 
 export const appendInstructionDiscriminator = [149, 120, 18, 222, 236, 225, 88, 203];

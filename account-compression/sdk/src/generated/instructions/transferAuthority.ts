@@ -43,9 +43,9 @@ export const transferAuthorityStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type TransferAuthorityInstructionAccounts = {
-    merkleTree: web3.PublicKey;
-    authority: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
+    authority: web3.PublicKey;
+    merkleTree: web3.PublicKey;
 };
 
 export const transferAuthorityInstructionDiscriminator = [48, 169, 76, 72, 229, 180, 55, 161];

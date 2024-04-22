@@ -8,7 +8,7 @@ import { ALL_DEPTH_SIZE_PAIRS, ConcurrentMerkleTreeAccount, getConcurrentMerkleT
 import { emptyNode, MerkleTree } from '../../src/merkle-tree';
 import { createEmptyTreeOnChain, createTreeOnChain } from '../utils';
 
-async function assertCMTProperties(
+function assertCMTProperties(
     onChainCMT: ConcurrentMerkleTreeAccount,
     expectedMaxDepth: number,
     expectedMaxBufferSize: number,
