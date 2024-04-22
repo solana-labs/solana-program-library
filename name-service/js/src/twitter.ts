@@ -34,6 +34,8 @@ export const TWITTER_ROOT_PARENT_REGISTRY_KEY = new PublicKey(
   '4YcexoW3r78zz16J2aqmukBLRwGq6rAvWzJpkYAXqebv',
 );
 
+export const JOES_TWITTER = 'realbuffalojoe';
+
 ////////////////////////////////////////////////////
 // Bindings
 
