@@ -7023,17 +7023,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-feature-gate"
-version = "0.1.0"
-dependencies = [
- "num_enum 0.7.2",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "spl-program-error 0.4.1",
-]
-
-[[package]]
 name = "spl-feature-proposal"
 version = "1.0.0"
 dependencies = [
