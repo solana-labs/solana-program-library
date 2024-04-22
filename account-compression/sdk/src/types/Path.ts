@@ -10,7 +10,7 @@ export type Path = {
     // u32
     _padding: number;
     index: number;
-    leaf: PublicKey; 
+    leaf: PublicKey;
     proof: PublicKey[]; // u32
 };
 

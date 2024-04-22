@@ -12,7 +12,7 @@ export type ChangeLogInternal = {
     // u32
     _padding: number;
     index: number;
-    pathNodes: PublicKey[]; 
+    pathNodes: PublicKey[];
     root: PublicKey; // u32
 };
 
@@ -33,11 +33,11 @@ const changeLogBeetFactory = (maxDepth: number) => {
  */
 export type ConcurrentMerkleTree = {
     // u64
-    activeIndex: beet.bignum; 
+    activeIndex: beet.bignum;
     // u64
-    bufferSize: beet.bignum; 
+    bufferSize: beet.bignum;
     // u64
-    changeLogs: ChangeLogInternal[]; 
+    changeLogs: ChangeLogInternal[];
     rightMostPath: Path;
     sequenceNumber: beet.bignum;
 };
