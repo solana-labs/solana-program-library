@@ -14,10 +14,10 @@ import * as web3 from '@solana/web3.js';
  * @category generated
  */
 export type ReplaceLeafInstructionArgs = {
-    root: number[] /* size: 32 */;
-    previousLeaf: number[] /* size: 32 */;
-    newLeaf: number[] /* size: 32 */;
     index: number;
+    newLeaf: number[] /* size: 32 */;
+    previousLeaf: number[] /* size: 32 */;
+    root: number[] /* size: 32 */;
 };
 /**
  * @category Instructions
@@ -49,10 +49,10 @@ export const replaceLeafStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type ReplaceLeafInstructionAccounts = {
-    merkleTree: web3.PublicKey;
-    authority: web3.PublicKey;
-    noop: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
+    authority: web3.PublicKey;
+    merkleTree: web3.PublicKey;
+    noop: web3.PublicKey;
 };
 
 export const replaceLeafInstructionDiscriminator = [204, 165, 76, 100, 73, 147, 0, 128];

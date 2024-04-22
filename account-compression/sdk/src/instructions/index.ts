@@ -95,7 +95,7 @@ export function createReplaceIx(
 export function createAppendIx(
     merkleTree: PublicKey,
     authority: PublicKey,
-    newLeaf: Buffer | ArrayLike<number>,
+    newLeaf: ArrayLike<number> | Buffer,
 ): TransactionInstruction {
     return createAppendInstruction(
         {

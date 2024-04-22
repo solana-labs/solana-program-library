@@ -9,10 +9,11 @@ import { Path, pathBeetFactory } from './Path';
  * @private
  */
 export type ChangeLogInternal = {
-    root: PublicKey;
-    pathNodes: PublicKey[];
-    index: number; // u32
-    _padding: number; // u32
+    // u32
+    _padding: number;
+    index: number;
+    pathNodes: PublicKey[]; 
+    root: PublicKey; // u32
 };
 
 const changeLogBeetFactory = (maxDepth: number) => {
@@ -31,11 +32,14 @@ const changeLogBeetFactory = (maxDepth: number) => {
  * ConcurrentMerkleTree fields necessary for deserializing an on-chain ConcurrentMerkleTree
  */
 export type ConcurrentMerkleTree = {
-    sequenceNumber: beet.bignum; // u64
-    activeIndex: beet.bignum; // u64
-    bufferSize: beet.bignum; // u64
-    changeLogs: ChangeLogInternal[];
+    // u64
+    activeIndex: beet.bignum; 
+    // u64
+    bufferSize: beet.bignum; 
+    // u64
+    changeLogs: ChangeLogInternal[]; 
     rightMostPath: Path;
+    sequenceNumber: beet.bignum;
 };
 
 /**

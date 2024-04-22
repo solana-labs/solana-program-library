@@ -14,9 +14,9 @@ import * as web3 from '@solana/web3.js';
  * @category generated
  */
 export type VerifyLeafInstructionArgs = {
-    root: number[] /* size: 32 */;
-    leaf: number[] /* size: 32 */;
     index: number;
+    leaf: number[] /* size: 32 */;
+    root: number[] /* size: 32 */;
 };
 /**
  * @category Instructions
@@ -45,8 +45,8 @@ export const verifyLeafStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type VerifyLeafInstructionAccounts = {
-    merkleTree: web3.PublicKey;
     anchorRemainingAccounts?: web3.AccountMeta[];
+    merkleTree: web3.PublicKey;
 };
 
 export const verifyLeafInstructionDiscriminator = [124, 220, 22, 223, 104, 10, 250, 224];
