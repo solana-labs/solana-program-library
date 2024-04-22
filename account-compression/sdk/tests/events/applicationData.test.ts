@@ -6,7 +6,7 @@ import { deserializeApplicationDataEvent } from "../../src";
 
 describe("Serde tests", () => {
   describe("ApplicationDataEvent tests", () => {
-    it("Can serialize and deserialize ApplicationDataEvent", async () => {
+    it("Can serialize and deserialize ApplicationDataEvent", () => {
       const data = Buffer.from("Hello world");
       const applicationDataEvent = Buffer.concat([
         Buffer.from([0x1]), // ApplicationData Event tag
