@@ -40,7 +40,7 @@ spl-single-pool = { version = "1.0.0", path = "../program", features = [
 
 [dev-dependencies]
 solana-test-validator = ">=1.18.2,<=2"
-serial_test = "3.0.0"
+serial_test = "3.1.0"
 test-case = "3.3"
 tempfile = "3.10.1"
 
