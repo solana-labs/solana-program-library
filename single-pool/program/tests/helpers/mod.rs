@@ -425,7 +425,7 @@ where
         e.try_into().unwrap()
     } else {
         panic!(
-            "couldnt convert {:?} to ProgramError (expected {:?})",
+            "couldn't convert {:?} to ProgramError (expected {:?})",
             got, expected
         );
     };

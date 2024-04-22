@@ -755,7 +755,7 @@ async fn command_create_stake(config: &Config, command_config: CreateStakeCli) -
 // display stake pool(s)
 async fn command_display(config: &Config, command_config: DisplayCli) -> CommandResult {
     if command_config.all {
-        // the filter isnt necessary now but makes the cli forward-compatible
+        // the filter isn't necessary now but makes the cli forward-compatible
         let pools = config
             .rpc_client
             .get_program_accounts_with_config(
