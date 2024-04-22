@@ -1347,7 +1347,7 @@ async fn command_transfer(
                                      Add `--allow-non-system-account-recipient` to complete the transfer.".into());
             }
         }
-        // if it doesn't exist, it definitely isnt a token account!
+        // if it doesn't exist, it definitely isn't a token account!
         // we gate transfer with a different flag
         else if maybe_recipient_account_data.is_none() && allow_unfunded_recipient {
             false
