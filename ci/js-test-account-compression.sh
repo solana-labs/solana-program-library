@@ -9,5 +9,5 @@ cd account-compression/sdk
 pnpm install
 pnpm build
 pnpm build:program
-# pnpm lint # re-enable when lints are fixed
+pnpm lint
 pnpm test
