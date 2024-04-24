@@ -5,10 +5,11 @@ use {
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{
         input_parsers::{
-            parse_url_or_moniker, pubkey_of_signer, signer::SignerSourceParserBuilder,
+            parse_url_or_moniker,
+            signer::{SignerSource, SignerSourceParserBuilder},
         },
         input_validators::normalize_to_url_if_moniker,
-        keypair::DefaultSigner,
+        keypair::{pubkey_from_source, DefaultSigner},
     },
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
@@ -443,12 +444,23 @@ extraMetas:
 
     match (command, matches) {
         ("create-extra-metas", arg_matches) => {
-            let program_id = pubkey_of_signer(arg_matches, "program_id", &mut wallet_manager)
-                .unwrap()
+            let program_id_source = arg_matches
+                .try_get_one::<SignerSource>("program_id")?
                 .unwrap();
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
+            let program_id = pubkey_from_source(
+                arg_matches,
+                program_id_source,
+                "program_id",
+                &mut wallet_manager,
+            )
+            .unwrap();
+
+            let token_source = arg_matches
+                .try_get_one::<SignerSource>("program_id")?
                 .unwrap();
+            let token = pubkey_from_source(arg_matches, token_source, "token", &mut wallet_manager)
+                .unwrap();
+
             let transfer_hook_accounts = arg_matches
                 .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
                 .unwrap_or_default()
@@ -483,12 +495,23 @@ extraMetas:
             println!("Signature: {signature}");
         }
         ("update-extra-metas", arg_matches) => {
-            let program_id = pubkey_of_signer(arg_matches, "program_id", &mut wallet_manager)
-                .unwrap()
+            let program_id_source = arg_matches
+                .try_get_one::<SignerSource>("program_id")?
                 .unwrap();
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
+            let program_id = pubkey_from_source(
+                arg_matches,
+                program_id_source,
+                "program_id",
+                &mut wallet_manager,
+            )
+            .unwrap();
+
+            let token_source = arg_matches
+                .try_get_one::<SignerSource>("program_id")?
                 .unwrap();
+            let token = pubkey_from_source(arg_matches, token_source, "token", &mut wallet_manager)
+                .unwrap();
+
             let transfer_hook_accounts = arg_matches
                 .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
                 .unwrap_or_default()
