@@ -1,8 +1,5 @@
 use {
-    crate::clap_app::{
-        parse_compute_unit_limit, Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG,
-        MULTISIG_SIGNER_ARG,
-    },
+    crate::clap_app::{Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG, MULTISIG_SIGNER_ARG},
     clap::ArgMatches,
     solana_clap_utils::{
         input_parsers::{pubkey_of_signer, value_of},
@@ -286,12 +283,29 @@ impl<'a> Config<'a> {
                 (default_program_id, false)
             };
 
+        // need to specify a compute limit if compute price and blockhash are specified
+        if matches.is_present(BLOCKHASH_ARG.name)
+            && matches.is_present(COMPUTE_UNIT_PRICE_ARG.name)
+            && !matches.is_present(COMPUTE_UNIT_LIMIT_ARG.name)
+        {
+            eprintln!(
+                "error: need to set {} if {} and {} are set",
+                COMPUTE_UNIT_LIMIT_ARG.name, COMPUTE_UNIT_PRICE_ARG.name, BLOCKHASH_ARG.name,
+            );
+            exit(1);
+        }
+
         let nonce_blockhash = value_of(matches, BLOCKHASH_ARG.name);
         let compute_unit_price = value_of(matches, COMPUTE_UNIT_PRICE_ARG.name);
-        let compute_unit_limit = matches
-            .value_of(COMPUTE_UNIT_LIMIT_ARG.name)
-            .map(|x| parse_compute_unit_limit(x).unwrap())
-            .unwrap_or(ComputeUnitLimit::Default);
+        let compute_unit_limit = value_of(matches, COMPUTE_UNIT_LIMIT_ARG.name)
+            .map(ComputeUnitLimit::Static)
+            .unwrap_or_else(|| {
+                if nonce_blockhash.is_some() {
+                    ComputeUnitLimit::Default
+                } else {
+                    ComputeUnitLimit::Simulated
+                }
+            });
         Self {
             default_signer,
             rpc_client,

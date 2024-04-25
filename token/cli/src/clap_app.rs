@@ -15,7 +15,6 @@ use {
     },
     solana_sdk::{instruction::AccountMeta, pubkey::Pubkey},
     spl_token_2022::instruction::{AuthorityType, MAX_SIGNERS, MIN_SIGNERS},
-    spl_token_client::token::ComputeUnitLimit,
     std::{fmt, str::FromStr},
     strum::IntoEnumIterator,
     strum_macros::{EnumIter, EnumString, IntoStaticStr},
@@ -74,10 +73,7 @@ pub const COMPUTE_UNIT_PRICE_ARG: ArgConstant<'static> = ArgConstant {
 pub const COMPUTE_UNIT_LIMIT_ARG: ArgConstant<'static> = ArgConstant {
     name: "compute_unit_limit",
     long: "--with-compute-unit-limit",
-    help: "Set compute unit limit for transaction, in compute units; also accepts \
-        keyword SIMULATED to use compute units from transaction simulation prior \
-        to sending. Note that SIMULATED may fail if accounts are modified by another \
-        transaction between simulation and execution.",
+    help: "Set compute unit limit for transaction, in compute units.",
 };
 
 pub static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
@@ -352,31 +348,6 @@ where
             }
         }
         Err(e) => Err(e),
-    }
-}
-
-fn is_compute_unit_limit_or_simulated<T>(string: T) -> Result<(), String>
-where
-    T: AsRef<str> + fmt::Display,
-{
-    if string.as_ref().parse::<u32>().is_ok() || string.as_ref() == "SIMULATED" {
-        Ok(())
-    } else {
-        Err(format!(
-            "Unable to parse input compute unit limit as integer or SIMULATED, provided: {string}"
-        ))
-    }
-}
-pub(crate) fn parse_compute_unit_limit<T>(string: T) -> Result<ComputeUnitLimit, String>
-where
-    T: AsRef<str> + fmt::Display,
-{
-    match string.as_ref().parse::<u32>() {
-        Ok(compute_unit_limit) => Ok(ComputeUnitLimit::Static(compute_unit_limit)),
-        Err(_) if string.as_ref() == "SIMULATED" => Ok(ComputeUnitLimit::Simulated),
-        _ => Err(format!(
-            "Unable to parse compute unit limit, provided: {string}"
-        )),
     }
 }
 
@@ -659,7 +630,7 @@ pub fn app<'a, 'b>(
                 .takes_value(true)
                 .global(true)
                 .value_name("COMPUTE-UNIT-LIMIT")
-                .validator(is_compute_unit_limit_or_simulated)
+                .validator(is_parsable::<u32>)
                 .help(COMPUTE_UNIT_LIMIT_ARG.help)
         )
         .arg(
@@ -670,7 +641,6 @@ pub fn app<'a, 'b>(
                 .value_name("COMPUTE-UNIT-PRICE")
                 .validator(is_parsable::<u64>)
                 .help(COMPUTE_UNIT_PRICE_ARG.help)
-                .requires(COMPUTE_UNIT_LIMIT_ARG.name)
         )
         .bench_subcommand()
         .subcommand(SubCommand::with_name(CommandName::CreateToken.into()).about("Create a new token")
