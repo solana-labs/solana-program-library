@@ -68,7 +68,7 @@ use {
     },
     spl_token_client::{
         client::{ProgramRpcClientSendTransaction, RpcClientResponse},
-        token::{ExtensionInitializationParams, Token},
+        token::{ComputeUnitLimit, ExtensionInitializationParams, Token},
     },
     spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::{Field, TokenMetadata},
@@ -152,11 +152,7 @@ fn config_token_client(
     token: Token<ProgramRpcClientSendTransaction>,
     config: &Config<'_>,
 ) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
-    let token = if let Some(compute_unit_limit) = config.compute_unit_limit {
-        token.with_compute_unit_limit(compute_unit_limit)
-    } else {
-        token
-    };
+    let token = token.with_compute_unit_limit(config.compute_unit_limit.clone());
 
     let token = if let Some(compute_unit_price) = config.compute_unit_price {
         token.with_compute_unit_price(compute_unit_price)
@@ -432,10 +428,13 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
+    let mut token = token_client_from_config(config, &token_pubkey, None)?;
     // Because set_interest_rate depends on the time, it can cost more between
     // simulation and execution. To help that, just set a static compute limit
-    let token = base_token_client(config, &token_pubkey, None)?.with_compute_unit_limit(2_500);
-    let token = config_token_client(token, config)?;
+    // if none has been set
+    if !matches!(config.compute_unit_limit, ComputeUnitLimit::Static(_)) {
+        token = token.with_compute_unit_limit(ComputeUnitLimit::Static(2_500));
+    }
 
     if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;

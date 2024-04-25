@@ -20,8 +20,11 @@ use {
         extension::StateWithExtensionsOwned,
         state::{Account, Mint},
     },
-    spl_token_client::client::{
-        ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
+    spl_token_client::{
+        client::{
+            ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
+        },
+        token::ComputeUnitLimit,
     },
     std::{process::exit, rc::Rc, sync::Arc},
 };
@@ -68,7 +71,7 @@ pub struct Config<'a> {
     pub program_id: Pubkey,
     pub restrict_to_program_id: bool,
     pub compute_unit_price: Option<u64>,
-    pub compute_unit_limit: Option<u32>,
+    pub compute_unit_limit: ComputeUnitLimit,
 }
 
 impl<'a> Config<'a> {
@@ -280,9 +283,32 @@ impl<'a> Config<'a> {
                 (default_program_id, false)
             };
 
+        // need to specify a compute limit if compute price and blockhash are specified
+        if matches.is_present(BLOCKHASH_ARG.name)
+            && matches.is_present(COMPUTE_UNIT_PRICE_ARG.name)
+            && !matches.is_present(COMPUTE_UNIT_LIMIT_ARG.name)
+        {
+            clap::Error::with_description(
+                &format!(
+                    "Need to set `{}` if `{}` and `--{}` are set",
+                    COMPUTE_UNIT_LIMIT_ARG.long, COMPUTE_UNIT_PRICE_ARG.long, BLOCKHASH_ARG.long,
+                ),
+                clap::ErrorKind::MissingRequiredArgument,
+            )
+            .exit();
+        }
+
         let nonce_blockhash = value_of(matches, BLOCKHASH_ARG.name);
         let compute_unit_price = value_of(matches, COMPUTE_UNIT_PRICE_ARG.name);
-        let compute_unit_limit = value_of(matches, COMPUTE_UNIT_LIMIT_ARG.name);
+        let compute_unit_limit = value_of(matches, COMPUTE_UNIT_LIMIT_ARG.name)
+            .map(ComputeUnitLimit::Static)
+            .unwrap_or_else(|| {
+                if nonce_blockhash.is_some() {
+                    ComputeUnitLimit::Default
+                } else {
+                    ComputeUnitLimit::Simulated
+                }
+            });
         Self {
             default_signer,
             rpc_client,

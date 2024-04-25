@@ -44,11 +44,16 @@ use {
         client::{
             ProgramClient, ProgramOfflineClient, ProgramRpcClient, ProgramRpcClientSendTransaction,
         },
-        token::Token,
+        token::{ComputeUnitLimit, Token},
     },
     spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_token_metadata_interface::state::TokenMetadata,
-    std::{ffi::OsString, path::PathBuf, str::FromStr, sync::Arc},
+    std::{
+        ffi::{OsStr, OsString},
+        path::PathBuf,
+        str::FromStr,
+        sync::Arc,
+    },
     tempfile::NamedTempFile,
 };
 
@@ -201,7 +206,7 @@ fn test_config_with_default_signer<'a>(
         program_id: *program_id,
         restrict_to_program_id: true,
         compute_unit_price: None,
-        compute_unit_limit: None,
+        compute_unit_limit: ComputeUnitLimit::Simulated,
     }
 }
 
@@ -230,7 +235,7 @@ fn test_config_without_default_signer<'a>(
         program_id: *program_id,
         restrict_to_program_id: true,
         compute_unit_price: None,
-        compute_unit_limit: None,
+        compute_unit_limit: ComputeUnitLimit::Simulated,
     }
 }
 
@@ -441,7 +446,7 @@ where
     process_command(&sub_command, matches, config, wallet_manager, bulk_signers).await
 }
 
-async fn exec_test_cmd(config: &Config<'_>, args: &[&str]) -> CommandResult {
+async fn exec_test_cmd<T: AsRef<OsStr>>(config: &Config<'_>, args: &[T]) -> CommandResult {
     let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
     let minimum_signers_help = minimum_signers_help_string();
     let multisig_member_help = multisig_member_help_string();
@@ -2974,9 +2979,16 @@ async fn multisig_transfer(test_validator: &TestValidator, payer: &Keypair) {
     }
 }
 
-async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, payer: &Keypair) {
+async fn do_offline_multisig_transfer(
+    test_validator: &TestValidator,
+    payer: &Keypair,
+    compute_unit_price: Option<u64>,
+) {
     let m = 2;
     let n = 3u8;
+
+    let fee_payer_keypair_file = NamedTempFile::new().unwrap();
+    write_keypair_file(payer, &fee_payer_keypair_file).unwrap();
 
     let (multisig_members, multisig_paths): (Vec<_>, Vec<_>) = std::iter::repeat_with(Keypair::new)
         .take(n as usize)
@@ -2988,6 +3000,7 @@ async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, pa
         .unzip();
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
         let mut config = test_config_with_default_signer(test_validator, payer, program_id);
+        config.compute_unit_limit = ComputeUnitLimit::Default;
         let token = create_token(&config, payer).await;
         let nonce = create_nonce(&config, payer).await;
 
@@ -3032,56 +3045,119 @@ async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, pa
         let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
             ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
         );
+        let mut args = vec![
+            "spl-token".to_string(),
+            CommandName::Transfer.as_ref().to_string(),
+            token.to_string(),
+            "10".to_string(),
+            destination.to_string(),
+            "--blockhash".to_string(),
+            blockhash.to_string(),
+            "--nonce".to_string(),
+            nonce.to_string(),
+            "--nonce-authority".to_string(),
+            payer.pubkey().to_string(),
+            "--sign-only".to_string(),
+            "--mint-decimals".to_string(),
+            format!("{}", TEST_DECIMALS),
+            "--multisig-signer".to_string(),
+            multisig_paths[1].path().to_str().unwrap().to_string(),
+            "--multisig-signer".to_string(),
+            multisig_members[2].to_string(),
+            "--from".to_string(),
+            source.to_string(),
+            "--owner".to_string(),
+            multisig_pubkey.to_string(),
+            "--fee-payer".to_string(),
+            payer.pubkey().to_string(),
+            "--program-id".to_string(),
+            program_id.to_string(),
+        ];
+        if let Some(compute_unit_price) = compute_unit_price {
+            args.push("--with-compute-unit-price".to_string());
+            args.push(compute_unit_price.to_string());
+            args.push("--with-compute-unit-limit".to_string());
+            args.push(10_000.to_string());
+        }
         config.program_client = program_client;
-        let result = exec_test_cmd(
-            &config,
-            &[
-                "spl-token",
-                CommandName::Transfer.into(),
-                &token.to_string(),
-                "10",
-                &destination.to_string(),
-                "--blockhash",
-                &blockhash.to_string(),
-                "--nonce",
-                &nonce.to_string(),
-                "--nonce-authority",
-                &payer.pubkey().to_string(),
-                "--sign-only",
-                "--mint-decimals",
-                &format!("{}", TEST_DECIMALS),
-                "--multisig-signer",
-                multisig_paths[1].path().to_str().unwrap(),
-                "--multisig-signer",
-                &multisig_members[2].to_string(),
-                "--from",
-                &source.to_string(),
-                "--owner",
-                &multisig_pubkey.to_string(),
-                "--fee-payer",
-                &multisig_members[0].to_string(),
-            ],
-        )
-        .await
-        .unwrap();
+        let result = exec_test_cmd(&config, &args).await.unwrap();
         // the provided signer has a signature, denoted by the pubkey followed
         // by "=" and the signature
-        assert!(result.contains(&format!("{}=", multisig_members[1])));
+        let member_prefix = format!("{}=", multisig_members[1]);
+        let signature_position = result.find(&member_prefix).unwrap();
+        let end_position = result[signature_position..].find('\n').unwrap();
+        let signer = result[signature_position..].get(..end_position).unwrap();
 
         // other three expected signers are absent
         let absent_signers_position = result.find("Absent Signers").unwrap();
         let absent_signers = result.get(absent_signers_position..).unwrap();
-        assert!(absent_signers.contains(&multisig_members[0].to_string()));
         assert!(absent_signers.contains(&multisig_members[2].to_string()));
         assert!(absent_signers.contains(&payer.pubkey().to_string()));
 
         // and nothing else is marked a signer
+        assert!(!absent_signers.contains(&multisig_members[0].to_string()));
         assert!(!absent_signers.contains(&multisig_pubkey.to_string()));
         assert!(!absent_signers.contains(&nonce.to_string()));
         assert!(!absent_signers.contains(&source.to_string()));
         assert!(!absent_signers.contains(&destination.to_string()));
         assert!(!absent_signers.contains(&token.to_string()));
+
+        // now send the transaction
+        let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+            ProgramRpcClient::new(config.rpc_client.clone(), ProgramRpcClientSendTransaction),
+        );
+        config.program_client = program_client;
+        let mut args = vec![
+            "spl-token".to_string(),
+            CommandName::Transfer.as_ref().to_string(),
+            token.to_string(),
+            "10".to_string(),
+            destination.to_string(),
+            "--blockhash".to_string(),
+            blockhash.to_string(),
+            "--nonce".to_string(),
+            nonce.to_string(),
+            "--nonce-authority".to_string(),
+            fee_payer_keypair_file.path().to_str().unwrap().to_string(),
+            "--mint-decimals".to_string(),
+            format!("{}", TEST_DECIMALS),
+            "--multisig-signer".to_string(),
+            multisig_members[1].to_string(),
+            "--multisig-signer".to_string(),
+            multisig_paths[2].path().to_str().unwrap().to_string(),
+            "--from".to_string(),
+            source.to_string(),
+            "--owner".to_string(),
+            multisig_pubkey.to_string(),
+            "--fee-payer".to_string(),
+            fee_payer_keypair_file.path().to_str().unwrap().to_string(),
+            "--program-id".to_string(),
+            program_id.to_string(),
+            "--signer".to_string(),
+            signer.to_string(),
+        ];
+        if let Some(compute_unit_price) = compute_unit_price {
+            args.push("--with-compute-unit-price".to_string());
+            args.push(compute_unit_price.to_string());
+            args.push("--with-compute-unit-limit".to_string());
+            args.push(10_000.to_string());
+        }
+        exec_test_cmd(&config, &args).await.unwrap();
+
+        let account = config.rpc_client.get_account(&source).await.unwrap();
+        let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let amount = spl_token::ui_amount_to_amount(90.0, TEST_DECIMALS);
+        assert_eq!(token_account.base.amount, amount);
+        let account = config.rpc_client.get_account(&destination).await.unwrap();
+        let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
+        let amount = spl_token::ui_amount_to_amount(10.0, TEST_DECIMALS);
+        assert_eq!(token_account.base.amount, amount);
     }
+}
+
+async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, payer: &Keypair) {
+    do_offline_multisig_transfer(test_validator, payer, None).await;
+    do_offline_multisig_transfer(test_validator, payer, Some(10)).await;
 }
 
 async fn withdraw_excess_lamports_from_multisig(test_validator: &TestValidator, payer: &Keypair) {
@@ -4024,7 +4100,7 @@ async fn compute_budget(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
         let mut config = test_config_with_default_signer(test_validator, payer, program_id);
         config.compute_unit_price = Some(42);
-        config.compute_unit_limit = Some(30_000);
+        config.compute_unit_limit = ComputeUnitLimit::Static(30_000);
         run_transfer_test(&config, payer).await;
     }
 }

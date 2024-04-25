@@ -17,7 +17,7 @@ use {
     spl_token_2022::instruction::{AuthorityType, MAX_SIGNERS, MIN_SIGNERS},
     std::{fmt, str::FromStr},
     strum::IntoEnumIterator,
-    strum_macros::{EnumIter, EnumString, IntoStaticStr},
+    strum_macros::{AsRefStr, EnumIter, EnumString, IntoStaticStr},
 };
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -78,7 +78,7 @@ pub const COMPUTE_UNIT_LIMIT_ARG: ArgConstant<'static> = ArgConstant {
 
 pub static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
 
-#[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
+#[derive(AsRefStr, Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "kebab-case")]
 pub enum CommandName {
     CreateToken,
@@ -350,6 +350,7 @@ where
         Err(e) => Err(e),
     }
 }
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {

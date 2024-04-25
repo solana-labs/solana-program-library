@@ -332,6 +332,13 @@ impl TokenMemo {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ComputeUnitLimit {
+    Default,
+    Simulated,
+    Static(u32),
+}
+
 pub struct Token<T> {
     client: Arc<dyn ProgramClient<T>>,
     pubkey: Pubkey, /* token mint */
@@ -344,7 +351,7 @@ pub struct Token<T> {
     memo: Arc<RwLock<Option<TokenMemo>>>,
     transfer_hook_accounts: Option<Vec<AccountMeta>>,
     compute_unit_price: Option<u64>,
-    compute_unit_limit: Option<u32>,
+    compute_unit_limit: ComputeUnitLimit,
 }
 
 impl<T> fmt::Debug for Token<T> {
@@ -411,7 +418,7 @@ where
             memo: Arc::new(RwLock::new(None)),
             transfer_hook_accounts: None,
             compute_unit_price: None,
-            compute_unit_limit: None,
+            compute_unit_limit: ComputeUnitLimit::Default,
         }
     }
 
@@ -466,8 +473,8 @@ where
         self
     }
 
-    pub fn with_compute_unit_limit(mut self, compute_unit_limit: u32) -> Self {
-        self.compute_unit_limit = Some(compute_unit_limit);
+    pub fn with_compute_unit_limit(mut self, compute_unit_limit: ComputeUnitLimit) -> Self {
+        self.compute_unit_limit = compute_unit_limit;
         self
     }
 
@@ -548,19 +555,16 @@ where
             .simulate_transaction(&transaction)
             .await
             .map_err(TokenError::Client)?;
-        if let Ok(units_consumed) = simulation_result.get_compute_units_consumed() {
-            // Overwrite the compute unit limit instruction with the actual units consumed
-            let compute_unit_limit =
-                u32::try_from(units_consumed).map_err(|x| TokenError::Client(x.into()))?;
-            instructions
-                .last_mut()
-                .expect("Compute budget instruction was added earlier")
-                .data = ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit).data;
-        } else {
-            // `get_compute_units_consumed()` fails for offline signing, so we
-            // catch that error and remove the instruction that was added
-            instructions.pop();
-        }
+        let units_consumed = simulation_result
+            .get_compute_units_consumed()
+            .map_err(TokenError::Client)?;
+        // Overwrite the compute unit limit instruction with the actual units consumed
+        let compute_unit_limit =
+            u32::try_from(units_consumed).map_err(|x| TokenError::Client(x.into()))?;
+        instructions
+            .last_mut()
+            .expect("Compute budget instruction was added earlier")
+            .data = ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit).data;
         Ok(())
     }
 
@@ -619,13 +623,17 @@ where
         // all instructions have been added to the transaction, so be sure to
         // keep this instruction as the last one before creating and sending the
         // transaction.
-        if let Some(compute_unit_limit) = self.compute_unit_limit {
-            instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
-                compute_unit_limit,
-            ));
-        } else {
-            self.add_compute_unit_limit_from_simulation(&mut instructions, &blockhash)
-                .await?;
+        match self.compute_unit_limit {
+            ComputeUnitLimit::Default => {}
+            ComputeUnitLimit::Simulated => {
+                self.add_compute_unit_limit_from_simulation(&mut instructions, &blockhash)
+                    .await?;
+            }
+            ComputeUnitLimit::Static(compute_unit_limit) => {
+                instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
+                    compute_unit_limit,
+                ));
+            }
         }
 
         let message = Message::new_with_blockhash(&instructions, fee_payer, &blockhash);
