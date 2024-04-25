@@ -428,11 +428,13 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
+    let mut token = token_client_from_config(config, &token_pubkey, None)?;
     // Because set_interest_rate depends on the time, it can cost more between
     // simulation and execution. To help that, just set a static compute limit
-    let token = base_token_client(config, &token_pubkey, None)?
-        .with_compute_unit_limit(ComputeUnitLimit::Static(5_000));
-    let token = config_token_client(token, config)?;
+    // if none has been set
+    if !matches!(config.compute_unit_limit, ComputeUnitLimit::Static(_)) {
+        token = token.with_compute_unit_limit(ComputeUnitLimit::Static(2_500));
+    }
 
     if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;
