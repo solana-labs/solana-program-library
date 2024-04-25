@@ -21,7 +21,7 @@ spl-pod = { version = "0.2.2", path = "../../libraries/pod" }
 [dev-dependencies]
 solana-program-test = ">=1.18.11,<=2"
 solana-sdk = ">=1.18.11,<=2"
-spl-token-client = { version = "0.9.2", path = "../../token/client" }
+spl-token-client = { version = "0.10.0", path = "../../token/client" }
 test-case = "3.3"
 
 [lib]
