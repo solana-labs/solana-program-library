@@ -48,7 +48,12 @@ use {
     },
     spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_token_metadata_interface::state::TokenMetadata,
-    std::{ffi::OsString, path::PathBuf, str::FromStr, sync::Arc},
+    std::{
+        ffi::{OsStr, OsString},
+        path::PathBuf,
+        str::FromStr,
+        sync::Arc,
+    },
     tempfile::NamedTempFile,
 };
 
@@ -441,7 +446,7 @@ where
     process_command(&sub_command, matches, config, wallet_manager, bulk_signers).await
 }
 
-async fn exec_test_cmd(config: &Config<'_>, args: &[&str]) -> CommandResult {
+async fn exec_test_cmd<T: AsRef<OsStr>>(config: &Config<'_>, args: &[T]) -> CommandResult {
     let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
     let minimum_signers_help = minimum_signers_help_string();
     let multisig_member_help = multisig_member_help_string();
@@ -2974,7 +2979,11 @@ async fn multisig_transfer(test_validator: &TestValidator, payer: &Keypair) {
     }
 }
 
-async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, payer: &Keypair) {
+async fn do_offline_multisig_transfer(
+    test_validator: &TestValidator,
+    payer: &Keypair,
+    compute_unit_price: Option<u64>,
+) {
     let m = 2;
     let n = 3u8;
 
@@ -3036,40 +3045,42 @@ async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, pa
         let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
             ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
         );
+        let mut args = vec![
+            "spl-token".to_string(),
+            CommandName::Transfer.as_ref().to_string(),
+            token.to_string(),
+            "10".to_string(),
+            destination.to_string(),
+            "--blockhash".to_string(),
+            blockhash.to_string(),
+            "--nonce".to_string(),
+            nonce.to_string(),
+            "--nonce-authority".to_string(),
+            payer.pubkey().to_string(),
+            "--sign-only".to_string(),
+            "--mint-decimals".to_string(),
+            format!("{}", TEST_DECIMALS),
+            "--multisig-signer".to_string(),
+            multisig_paths[1].path().to_str().unwrap().to_string(),
+            "--multisig-signer".to_string(),
+            multisig_members[2].to_string(),
+            "--from".to_string(),
+            source.to_string(),
+            "--owner".to_string(),
+            multisig_pubkey.to_string(),
+            "--fee-payer".to_string(),
+            payer.pubkey().to_string(),
+            "--program-id".to_string(),
+            program_id.to_string(),
+        ];
+        if let Some(compute_unit_price) = compute_unit_price {
+            args.push("--with-compute-unit-price".to_string());
+            args.push(compute_unit_price.to_string());
+            args.push("--with-compute-unit-limit".to_string());
+            args.push(10_000.to_string());
+        }
         config.program_client = program_client;
-        let result = exec_test_cmd(
-            &config,
-            &[
-                "spl-token",
-                CommandName::Transfer.into(),
-                &token.to_string(),
-                "10",
-                &destination.to_string(),
-                "--blockhash",
-                &blockhash.to_string(),
-                "--nonce",
-                &nonce.to_string(),
-                "--nonce-authority",
-                &payer.pubkey().to_string(),
-                "--sign-only",
-                "--mint-decimals",
-                &format!("{}", TEST_DECIMALS),
-                "--multisig-signer",
-                multisig_paths[1].path().to_str().unwrap(),
-                "--multisig-signer",
-                &multisig_members[2].to_string(),
-                "--from",
-                &source.to_string(),
-                "--owner",
-                &multisig_pubkey.to_string(),
-                "--fee-payer",
-                &payer.pubkey().to_string(),
-                "--program-id",
-                &program_id.to_string(),
-            ],
-        )
-        .await
-        .unwrap();
+        let result = exec_test_cmd(&config, &args).await.unwrap();
         // the provided signer has a signature, denoted by the pubkey followed
         // by "=" and the signature
         let member_prefix = format!("{}=", multisig_members[1]);
@@ -3096,40 +3107,42 @@ async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, pa
             ProgramRpcClient::new(config.rpc_client.clone(), ProgramRpcClientSendTransaction),
         );
         config.program_client = program_client;
-        exec_test_cmd(
-            &config,
-            &[
-                "spl-token",
-                CommandName::Transfer.into(),
-                &token.to_string(),
-                "10",
-                &destination.to_string(),
-                "--blockhash",
-                &blockhash.to_string(),
-                "--nonce",
-                &nonce.to_string(),
-                "--nonce-authority",
-                &fee_payer_keypair_file.path().to_str().unwrap(),
-                "--mint-decimals",
-                &format!("{}", TEST_DECIMALS),
-                "--multisig-signer",
-                &multisig_members[1].to_string(),
-                "--multisig-signer",
-                multisig_paths[2].path().to_str().unwrap(),
-                "--from",
-                &source.to_string(),
-                "--owner",
-                &multisig_pubkey.to_string(),
-                "--fee-payer",
-                &fee_payer_keypair_file.path().to_str().unwrap(),
-                "--program-id",
-                &program_id.to_string(),
-                "--signer",
-                signer,
-            ],
-        )
-        .await
-        .unwrap();
+        let mut args = vec![
+            "spl-token".to_string(),
+            CommandName::Transfer.as_ref().to_string(),
+            token.to_string(),
+            "10".to_string(),
+            destination.to_string(),
+            "--blockhash".to_string(),
+            blockhash.to_string(),
+            "--nonce".to_string(),
+            nonce.to_string(),
+            "--nonce-authority".to_string(),
+            fee_payer_keypair_file.path().to_str().unwrap().to_string(),
+            "--mint-decimals".to_string(),
+            format!("{}", TEST_DECIMALS),
+            "--multisig-signer".to_string(),
+            multisig_members[1].to_string(),
+            "--multisig-signer".to_string(),
+            multisig_paths[2].path().to_str().unwrap().to_string(),
+            "--from".to_string(),
+            source.to_string(),
+            "--owner".to_string(),
+            multisig_pubkey.to_string(),
+            "--fee-payer".to_string(),
+            fee_payer_keypair_file.path().to_str().unwrap().to_string(),
+            "--program-id".to_string(),
+            program_id.to_string(),
+            "--signer".to_string(),
+            signer.to_string(),
+        ];
+        if let Some(compute_unit_price) = compute_unit_price {
+            args.push("--with-compute-unit-price".to_string());
+            args.push(compute_unit_price.to_string());
+            args.push("--with-compute-unit-limit".to_string());
+            args.push(10_000.to_string());
+        }
+        exec_test_cmd(&config, &args).await.unwrap();
 
         let account = config.rpc_client.get_account(&source).await.unwrap();
         let token_account = StateWithExtensionsOwned::<Account>::unpack(account.data).unwrap();
@@ -3140,6 +3153,11 @@ async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, pa
         let amount = spl_token::ui_amount_to_amount(10.0, TEST_DECIMALS);
         assert_eq!(token_account.base.amount, amount);
     }
+}
+
+async fn offline_multisig_transfer_with_nonce(test_validator: &TestValidator, payer: &Keypair) {
+    do_offline_multisig_transfer(test_validator, payer, None).await;
+    do_offline_multisig_transfer(test_validator, payer, Some(10)).await;
 }
 
 async fn withdraw_excess_lamports_from_multisig(test_validator: &TestValidator, payer: &Keypair) {
