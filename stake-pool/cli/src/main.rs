@@ -114,19 +114,21 @@ const COMPUTE_UNIT_LIMIT_ARG: ArgConstant<'static> = ArgConstant {
     name: "compute_unit_limit",
     long: "--with-compute-unit-limit",
     help: "Set compute unit limit for transaction, in compute units; also accepts \
-        keyword SIMULATED to use compute units from transaction simulation prior \
-        to sending. Note that SIMULATED may fail if accounts are modified by another \
-        transaction between simulation and execution.",
+        keyword DEFAULT to use the default compute unit limit, which is 200k per \
+        top-level instruction, with a maximum of 1.4 million. \
+        If nothing is set, transactions are simulated prior to sending, and the \
+        compute units consumed are set as the limit. This may may fail if accounts \
+        are modified by another transaction between simulation and execution.",
 };
 fn is_compute_unit_limit_or_simulated<T>(string: T) -> Result<(), String>
 where
     T: AsRef<str> + std::fmt::Display,
 {
-    if string.as_ref().parse::<u32>().is_ok() || string.as_ref() == "SIMULATED" {
+    if string.as_ref().parse::<u32>().is_ok() || string.as_ref() == "DEFAULT" {
         Ok(())
     } else {
         Err(format!(
-            "Unable to parse input compute unit limit as integer or SIMULATED, provided: {string}"
+            "Unable to parse input compute unit limit as integer or DEFAULT, provided: {string}"
         ))
     }
 }
@@ -136,7 +138,7 @@ where
 {
     match string.as_ref().parse::<u32>() {
         Ok(compute_unit_limit) => Ok(ComputeUnitLimit::Static(compute_unit_limit)),
-        Err(_) if string.as_ref() == "SIMULATED" => Ok(ComputeUnitLimit::Simulated),
+        Err(_) if string.as_ref() == "DEFAULT" => Ok(ComputeUnitLimit::Default),
         _ => Err(format!(
             "Unable to parse compute unit limit, provided: {string}"
         )),
@@ -2834,7 +2836,7 @@ fn main() {
         let compute_unit_limit = matches
             .value_of(COMPUTE_UNIT_LIMIT_ARG.name)
             .map(|x| parse_compute_unit_limit(x).unwrap())
-            .unwrap_or(ComputeUnitLimit::Default);
+            .unwrap_or(ComputeUnitLimit::Simulated);
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
