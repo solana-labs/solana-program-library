@@ -288,11 +288,14 @@ impl<'a> Config<'a> {
             && matches.is_present(COMPUTE_UNIT_PRICE_ARG.name)
             && !matches.is_present(COMPUTE_UNIT_LIMIT_ARG.name)
         {
-            eprintln!(
-                "error: need to set {} if {} and {} are set",
-                COMPUTE_UNIT_LIMIT_ARG.name, COMPUTE_UNIT_PRICE_ARG.name, BLOCKHASH_ARG.name,
-            );
-            exit(1);
+            clap::Error::with_description(
+                &format!(
+                    "Need to set `{}` if `{}` and `--{}` are set",
+                    COMPUTE_UNIT_LIMIT_ARG.long, COMPUTE_UNIT_PRICE_ARG.long, BLOCKHASH_ARG.long,
+                ),
+                clap::ErrorKind::MissingRequiredArgument,
+            )
+            .exit();
         }
 
         let nonce_blockhash = value_of(matches, BLOCKHASH_ARG.name);
