@@ -455,9 +455,7 @@ extraMetas:
             )
             .unwrap();
 
-            let token_source = arg_matches
-                .try_get_one::<SignerSource>("program_id")?
-                .unwrap();
+            let token_source = arg_matches.try_get_one::<SignerSource>("token")?.unwrap();
             let token = pubkey_from_source(arg_matches, token_source, "token", &mut wallet_manager)
                 .unwrap();
 
@@ -506,9 +504,7 @@ extraMetas:
             )
             .unwrap();
 
-            let token_source = arg_matches
-                .try_get_one::<SignerSource>("program_id")?
-                .unwrap();
+            let token_source = arg_matches.try_get_one::<SignerSource>("token")?.unwrap();
             let token = pubkey_from_source(arg_matches, token_source, "token", &mut wallet_manager)
                 .unwrap();
 
