@@ -2042,7 +2042,7 @@ fn main() {
                 .global(true)
                 .help("Transaction fee payer account [default: cli config keypair]"),
         )
-        .arg(compute_unit_price_arg().validator(is_parsable::<u64>).requires(COMPUTE_UNIT_LIMIT_ARG.name).global(true))
+        .arg(compute_unit_price_arg().validator(is_parsable::<u64>).global(true))
         .arg(
             Arg::with_name(COMPUTE_UNIT_LIMIT_ARG.name)
                 .long(COMPUTE_UNIT_LIMIT_ARG.long)
@@ -2836,7 +2836,13 @@ fn main() {
         let compute_unit_limit = matches
             .value_of(COMPUTE_UNIT_LIMIT_ARG.name)
             .map(|x| parse_compute_unit_limit(x).unwrap())
-            .unwrap_or(ComputeUnitLimit::Simulated);
+            .unwrap_or_else(|| {
+                if compute_unit_price.is_some() {
+                    ComputeUnitLimit::Simulated
+                } else {
+                    ComputeUnitLimit::Default
+                }
+            });
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
