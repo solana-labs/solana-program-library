@@ -78,6 +78,41 @@ pub const COMPUTE_UNIT_LIMIT_ARG: ArgConstant<'static> = ArgConstant {
     help: "Set compute unit limit for transaction, in compute units.",
 };
 
+// The `signer_arg` in clap-v3-utils` specifies the argument as a
+// `PubkeySignature` type, but supporting `PubkeySignature` in the token-cli
+// requires a significant re-structuring of the code. Therefore, hard-code the
+// `signer_arg` and `OfflineArgs` from clap-utils` here and remove
+// it in a subsequent PR.
+fn signer_arg<'a>() -> Arg<'a> {
+    Arg::new(SIGNER_ARG.name)
+        .long(SIGNER_ARG.long)
+        .takes_value(true)
+        .value_name("PUBKEY=SIGNATURE")
+        .requires(BLOCKHASH_ARG.name)
+        .action(clap::ArgAction::Append)
+        .multiple_values(false)
+        .help(SIGNER_ARG.help)
+}
+
+pub trait OfflineArgs {
+    fn offline_args(self) -> Self;
+    fn offline_args_config(self, config: &dyn ArgsConfig) -> Self;
+}
+
+impl OfflineArgs for clap::Command<'_> {
+    fn offline_args_config(self, config: &dyn ArgsConfig) -> Self {
+        self.arg(config.blockhash_arg(blockhash_arg()))
+            .arg(config.sign_only_arg(sign_only_arg()))
+            .arg(config.signer_arg(signer_arg()))
+            .arg(config.dump_transaction_message_arg(dump_transaction_message()))
+    }
+    fn offline_args(self) -> Self {
+        struct NullArgsConfig {}
+        impl ArgsConfig for NullArgsConfig {}
+        self.offline_args_config(&NullArgsConfig {})
+    }
+}
+
 pub static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
 
 #[derive(AsRefStr, Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
