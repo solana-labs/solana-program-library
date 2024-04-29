@@ -104,4 +104,3 @@ function createMemoTransferInstruction(
 
     return new TransactionInstruction({ keys, programId, data });
 }
-
