@@ -51,7 +51,7 @@ tokio = "1.37"
 solana-test-validator = ">=1.18.11,<=2"
 assert_cmd = "2.0.14"
 libtest-mimic = "0.7"
-serial_test = "3.1.0"
+serial_test = "3.1.1"
 tempfile = "3.10.1"
 
 [[bin]]
