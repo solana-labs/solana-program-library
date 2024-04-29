@@ -408,7 +408,7 @@ async fn command_withdraw(config: &Config, command_config: WithdrawCli) -> Comma
     let stake_account = Keypair::new();
     let stake_account_address = stake_account.pubkey();
 
-    // since we cant infer pool from token account, the withdraw invocation is
+    // since we can't infer pool from token account, the withdraw invocation is
     // rather simpler first get the pool address
     let pool_address = pool_address_from_args(
         command_config.pool_address,
