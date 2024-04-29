@@ -61,6 +61,26 @@ export function createDisableRequiredMemoTransfersInstruction(
     return createMemoTransferInstruction(MemoTransferInstruction.Disable, account, authority, multiSigners, programId);
 }
 
+/**
+ * Constructs a SendMemo instruction
+ * 
+ * @param sender            The account signing and paying for the memo [ isSigner = true, isWritable = true ]      
+ * @param message           Text message of the memo
+ * @param memoProgramId     Memo program account - Defaults to MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr
+ * @returns 
+ */
+export function createSendMemoInstruction(
+    sender: PublicKey,
+    message: string,
+    memoProgramId?: PublicKey
+): TransactionInstruction {
+    return new TransactionInstruction({
+        keys: [{ pubkey: sender, isSigner: true, isWritable: true }],
+        data: Buffer.from(message, "utf-8"),
+        programId: memoProgramId ?? new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+    });
+}
+
 function createMemoTransferInstruction(
     memoTransferInstruction: MemoTransferInstruction,
     account: PublicKey,
@@ -84,3 +104,4 @@ function createMemoTransferInstruction(
 
     return new TransactionInstruction({ keys, programId, data });
 }
+
