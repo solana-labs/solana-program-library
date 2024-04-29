@@ -270,7 +270,7 @@ impl ProposalV2 {
             .map_err(|_| GovernanceError::InvalidStateCannotEditSignatories.into())
     }
 
-    /// Checks if Proposal can be singed off
+    /// Checks if Proposal can be signed off
     pub fn assert_can_sign_off(&self) -> Result<(), ProgramError> {
         match self.state {
             ProposalState::Draft | ProposalState::SigningOff => Ok(()),
