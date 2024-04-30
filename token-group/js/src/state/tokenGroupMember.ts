@@ -1,9 +1,10 @@
 import { PublicKey } from '@solana/web3.js';
-import { getBytesCodec, getStructCodec, getU32Codec } from '@solana/codecs';
+import type { ReadonlyUint8Array } from '@solana/codecs';
+import { fixCodecSize, getBytesCodec, getStructCodec, getU32Codec } from '@solana/codecs';
 
 const tokenGroupMemberCodec = getStructCodec([
-    ['mint', getBytesCodec({ size: 32 })],
-    ['group', getBytesCodec({ size: 32 })],
+    ['mint', fixCodecSize(getBytesCodec(), 32)],
+    ['group', fixCodecSize(getBytesCodec(), 32)],
     ['memberNumber', getU32Codec()],
 ]);
 
@@ -19,7 +20,7 @@ export interface TokenGroupMember {
 }
 
 // Pack TokenGroupMember into byte slab
-export function packTokenGroupMember(member: TokenGroupMember): Uint8Array {
+export function packTokenGroupMember(member: TokenGroupMember): ReadonlyUint8Array {
     return tokenGroupMemberCodec.encode({
         mint: member.mint.toBuffer(),
         group: member.group.toBuffer(),
@@ -28,7 +29,7 @@ export function packTokenGroupMember(member: TokenGroupMember): Uint8Array {
 }
 
 // unpack byte slab into TokenGroupMember
-export function unpackTokenGroupMember(buffer: Buffer | Uint8Array): TokenGroupMember {
+export function unpackTokenGroupMember(buffer: Buffer | Uint8Array | ReadonlyUint8Array): TokenGroupMember {
     const data = tokenGroupMemberCodec.decode(buffer);
     return {
         mint: new PublicKey(data.mint),

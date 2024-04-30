@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import type { Decoder } from '@solana/codecs';
-import { getBytesDecoder, getStructDecoder, getU32Decoder } from '@solana/codecs';
+import { fixDecoderSize, getBytesDecoder, getStructDecoder, getU32Decoder } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 
@@ -42,7 +42,7 @@ describe('Token Group Instructions', () => {
             }),
             splDiscriminate('spl_token_group_interface:initialize_token_group'),
             getStructDecoder([
-                ['updateAuthority', getBytesDecoder({ size: 32 })],
+                ['updateAuthority', fixDecoderSize(getBytesDecoder(), 32)],
                 ['maxSize', getU32Decoder()],
             ]),
             { updateAuthority: Uint8Array.from(updateAuthority.toBuffer()), maxSize }
@@ -72,7 +72,7 @@ describe('Token Group Instructions', () => {
                 newAuthority: PublicKey.default,
             }),
             splDiscriminate('spl_token_group_interface:update_authority'),
-            getStructDecoder([['newAuthority', getBytesDecoder({ size: 32 })]]),
+            getStructDecoder([['newAuthority', fixDecoderSize(getBytesDecoder(), 32)]]),
             { newAuthority: Uint8Array.from(PublicKey.default.toBuffer()) }
         );
     });
