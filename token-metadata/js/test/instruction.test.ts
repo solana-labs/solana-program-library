@@ -10,17 +10,20 @@ import {
     getFieldConfig,
 } from '../src';
 import {
+    addDecoderSizePrefix,
+    fixDecoderSize,
     getBooleanDecoder,
     getBytesDecoder,
     getDataEnumCodec,
     getOptionDecoder,
-    getStringDecoder,
+    getUtf8Decoder,
+    getU32Decoder,
     getU64Decoder,
     getStructDecoder,
     some,
 } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
-import type { Decoder, Option } from '@solana/codecs';
+import type { Decoder, Option, VariableSizeDecoder } from '@solana/codecs';
 import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 
 function checkPackUnpack<T extends object>(
@@ -32,6 +35,10 @@ function checkPackUnpack<T extends object>(
     expect(instruction.data.subarray(0, 8)).to.deep.equal(discriminator);
     const unpacked = decoder.decode(instruction.data.subarray(8));
     expect(unpacked).to.deep.equal(values);
+}
+
+function getStringDecoder(): VariableSizeDecoder<string> {
+    return addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder());
 }
 
 describe('Token Metadata Instructions', () => {
@@ -134,7 +141,7 @@ describe('Token Metadata Instructions', () => {
                 newAuthority,
             }),
             splDiscriminate('spl_token_metadata_interface:update_the_authority'),
-            getStructDecoder([['newAuthority', getBytesDecoder({ size: 32 })]]),
+            getStructDecoder([['newAuthority', fixDecoderSize(getBytesDecoder(), 32)]]),
             { newAuthority: Uint8Array.from(newAuthority.toBuffer()) }
         );
     });
