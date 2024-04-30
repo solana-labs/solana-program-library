@@ -15,7 +15,7 @@ use {
         parse_token::{get_token_account_mint, parse_token, TokenAccountType, UiAccountState},
         UiAccountData,
     },
-    solana_clap_utils::{
+    solana_clap_v3_utils::{
         input_parsers::{pubkey_of_signer, pubkeys_of_multiple_signers, value_of},
         keypair::signer_from_path,
     },
@@ -96,7 +96,7 @@ fn new_throwaway_signer() -> (Arc<dyn Signer>, Pubkey) {
 }
 
 fn get_signer(
-    matches: &ArgMatches<'_>,
+    matches: &ArgMatches,
     keypair_name: &str,
     wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
 ) -> Option<(Arc<dyn Signer>, Pubkey)> {
@@ -108,7 +108,7 @@ fn get_signer(
     })
 }
 
-fn parse_amount_or_all(matches: &ArgMatches<'_>) -> Option<f64> {
+fn parse_amount_or_all(matches: &ArgMatches) -> Option<f64> {
     match matches.value_of("amount").unwrap() {
         "ALL" => None,
         amount => Some(amount.parse::<f64>().unwrap()),
@@ -3444,7 +3444,7 @@ struct ConfidentialTransferArgs {
 
 pub async fn process_command<'a>(
     sub_command: &CommandName,
-    sub_matches: &ArgMatches<'_>,
+    sub_matches: &ArgMatches,
     config: &Config<'a>,
     mut wallet_manager: Option<Rc<RemoteWalletManager>>,
     mut bulk_signers: Vec<Arc<dyn Signer>>,
