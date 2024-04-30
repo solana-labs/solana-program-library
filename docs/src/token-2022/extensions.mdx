@@ -909,13 +909,17 @@ import {
     Transaction,
     LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
+import { createMemoInstruction } from '@solana/spl-memo';
 import {
+    createAssociatedTokenAccount,
     createMint,
     createEnableRequiredMemoTransfersInstruction,
     createInitializeAccountInstruction,
+    createTransferInstruction,
     disableRequiredMemoTransfers,
     enableRequiredMemoTransfers,
     getAccountLen,
+    mintTo,
     ExtensionType,
     TOKEN_2022_PROGRAM_ID,
 } from '@solana/spl-token';
@@ -988,6 +992,43 @@ Signature: 5MnWtrhMK32zkbacDMwBNft48VAUpr4EoRM87hkT9AFYvPgPEU7V7ERV6gdfb3kASri4w
     await disableRequiredMemoTransfers(connection, payer, destination, owner, [], undefined, TOKEN_2022_PROGRAM_ID);
 
     await enableRequiredMemoTransfers(connection, payer, destination, owner, [], undefined, TOKEN_2022_PROGRAM_ID);
+```
+
+  </TabItem>
+</Tabs>
+
+#### Example: Transferring with a memo
+
+When transferring into an account with required transfer memos, you must include
+a memo instruction before the transfer.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
+```console
+$ spl-token transfer EbPBt3XkCb9trcV4c8fidhrvoeURbDbW87Acustzyi8N 10 4Uzz67txwYbfYpF8r5UGEMYJwhPAYQ5eFUY89KTYc2bL --with-memo "memo text"
+Signature: 5a9X8JrWzwZqb3iMonfUfSZbisQ57aEmW5cFntWGYRv2UZx8ACkMineBEQRHwLMzYHeyFDEHMXu8zqAMv5tm4u1g
+```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+    const sourceTokenAccount = await createAssociatedTokenAccount(
+        connection,
+        payer,
+        mint,
+        payer.publicKey,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
+    await mintTo(connection, payer, mint, sourceTokenAccount, mintAuthority, 100, [], undefined, TOKEN_2022_PROGRAM_ID);
+
+    const transferTransaction = new Transaction().add(
+        createMemoInstruction('Hello, memo-transfer!', [payer.publicKey]),
+        createTransferInstruction(sourceTokenAccount, destination, payer.publicKey, 100, [], TOKEN_2022_PROGRAM_ID)
+    );
+    await sendAndConfirmTransaction(connection, transferTransaction, [payer], undefined);
 ```
 
   </TabItem>
