@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
-
 importers:
 
   .:
@@ -783,8 +779,8 @@ importers:
         version: 6.0.3
     devDependencies:
       '@solana/codecs-strings':
-        specifier: 2.0.0-preview.2
-        version: 2.0.0-preview.2(fastestsmallesttextencoderdecoder@1.0.22)
+        specifier: 2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6
+        version: 2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.4.5)
       '@solana/spl-memo':
         specifier: 0.2.4
         version: link:../../memo/js
@@ -2363,6 +2359,15 @@ packages:
     dependencies:
       '@solana/errors': 2.0.0-preview.2
 
+  /@solana/codecs-core@2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(typescript@5.4.5):
+    resolution: {integrity: sha512-mIYSrUmffcD3Za8abqmcYk0zbUsLCmQn0m/ug8Xq9Op+PgJUHYxvGiperXG6IIZUl/a0Xxo1arovRkojskwdhw==}
+    peerDependencies:
+      typescript: '>=5'
+    dependencies:
+      '@solana/errors': 2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(typescript@5.4.5)
+      typescript: 5.4.5
+    dev: true
+
   /@solana/codecs-data-structures@2.0.0-preview.2:
     resolution: {integrity: sha512-Xf5vIfromOZo94Q8HbR04TbgTwzigqrKII0GjYr21K7rb3nba4hUW2ir8kguY7HWFBcjHGlU5x3MevKBOLp3Zg==}
     dependencies:
@@ -2376,6 +2381,16 @@ packages:
       '@solana/codecs-core': 2.0.0-preview.2
       '@solana/errors': 2.0.0-preview.2
 
+  /@solana/codecs-numbers@2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(typescript@5.4.5):
+    resolution: {integrity: sha512-tlNd7nNsmeU5PhehH5Gps7kZ/8sbGcVqb2dcTZn9SYzFErvOSn+gGb2n2OP+qWMmcs8Ej77EZl7oSqKmy6CtzA==}
+    peerDependencies:
+      typescript: '>=5'
+    dependencies:
+      '@solana/codecs-core': 2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(typescript@5.4.5)
+      '@solana/errors': 2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(typescript@5.4.5)
+      typescript: 5.4.5
+    dev: true
+
   /@solana/codecs-strings@2.0.0-preview.2(fastestsmallesttextencoderdecoder@1.0.22):
     resolution: {integrity: sha512-EgBwY+lIaHHgMJIqVOGHfIfpdmmUDNoNO/GAUGeFPf+q0dF+DtwhJPEMShhzh64X2MeCZcmSO6Kinx0Bvmmz2g==}
     peerDependencies:
@@ -2385,6 +2400,19 @@ packages:
       '@solana/codecs-numbers': 2.0.0-preview.2
       '@solana/errors': 2.0.0-preview.2
       fastestsmallesttextencoderdecoder: 1.0.22
+
+  /@solana/codecs-strings@2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.4.5):
+    resolution: {integrity: sha512-6LJ3MJW6SE3F91H9QHSegQsq+bFxZ4+yVoWVbdFhZTJmGaT66Q3X5xR7aFfvPyOIwRKSB+HxjJWmxc1ohqs6Ow==}
+    peerDependencies:
+      fastestsmallesttextencoderdecoder: ^1.0.22
+      typescript: '>=5'
+    dependencies:
+      '@solana/codecs-core': 2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(typescript@5.4.5)
+      '@solana/codecs-numbers': 2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(typescript@5.4.5)
+      '@solana/errors': 2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(typescript@5.4.5)
+      fastestsmallesttextencoderdecoder: 1.0.22
+      typescript: 5.4.5
+    dev: true
 
   /@solana/codecs@2.0.0-preview.2(fastestsmallesttextencoderdecoder@1.0.22):
     resolution: {integrity: sha512-4HHzCD5+pOSmSB71X6w9ptweV48Zj1Vqhe732+pcAQ2cMNnN0gMPMdDq7j3YwaZDZ7yrILVV/3+HTnfT77t2yA==}
@@ -2403,6 +2431,17 @@ packages:
     dependencies:
       chalk: 5.3.0
       commander: 12.0.0
+
+  /@solana/errors@2.0.0-preview.3.20240430092140.3ae70f0f8ecac462847af6d2170945c118d4f0d6(typescript@5.4.5):
+    resolution: {integrity: sha512-ZMkKNcvOraiI0LQEeGs6aLRfQhuzHpQH8doOFMA3F5m8qKx2cJY7S8A/jA2VUr/Uz0hCY8XWPtC3nRqilnwbog==}
+    hasBin: true
+    peerDependencies:
+      typescript: '>=5'
+    dependencies:
+      chalk: 5.3.0
+      commander: 12.0.0
+      typescript: 5.4.5
+    dev: true
 
   /@solana/eslint-config-solana@3.0.3(@typescript-eslint/eslint-plugin@6.21.0)(@typescript-eslint/parser@6.21.0)(eslint-plugin-jest@27.9.0)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@10.0.0)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.4.5):
     resolution: {integrity: sha512-yTaeCbOBwjmK4oUkknixOpwOzzAK8+4YWvJEJFNHuueESetieDnAeEHV7rzJllFgHEWa9nXps9Q3aD4/XJp71A==}
@@ -8487,3 +8526,7 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
