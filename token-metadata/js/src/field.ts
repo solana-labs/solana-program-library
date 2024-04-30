@@ -1,5 +1,12 @@
 import type { Codec } from '@solana/codecs';
-import { getStringCodec, getStructCodec, getTupleCodec, getUnitCodec } from '@solana/codecs';
+import {
+    addCodecSizePrefix,
+    getU32Codec,
+    getUtf8Codec,
+    getStructCodec,
+    getTupleCodec,
+    getUnitCodec,
+} from '@solana/codecs';
 
 export enum Field {
     Name,
@@ -14,7 +21,7 @@ export const getFieldCodec = () =>
         ['Name', getUnitCodec()],
         ['Symbol', getUnitCodec()],
         ['Uri', getUnitCodec()],
-        ['Key', getStructCodec([['value', getTupleCodec([getStringCodec()])]])],
+        ['Key', getStructCodec([['value', getTupleCodec([addCodecSizePrefix(getUtf8Codec(), getU32Codec())])]])],
     ] as const;
 
 export function getFieldConfig(field: Field | string): FieldLayout {
