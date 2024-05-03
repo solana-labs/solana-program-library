@@ -24,6 +24,7 @@ import {
     transferCheckedWithFee,
     withdrawWithheldTokensFromAccounts,
     withdrawWithheldTokensFromMint,
+    setTransferFee,
 } from '../../src/extensions/transferFee/index';
 
 import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
@@ -287,6 +288,32 @@ describe('transferFee', () => {
             expect(transferFeeConfig).to.not.be.null;
             if (transferFeeConfig !== null) {
                 expect(transferFeeConfig.withdrawWithheldAuthority).to.eql(PublicKey.default);
+            }
+        });
+        it('setTransferFee', async () => {
+            const UPDATED_FEE_BASIS_POINTS = 150;
+            const UPDATED_MAX_FEE = BigInt(150_000);
+
+            await setTransferFee(
+                connection,
+                payer,
+                mint,
+                transferFeeConfigAuthority,
+                [],
+                UPDATED_FEE_BASIS_POINTS,
+                UPDATED_MAX_FEE,
+                undefined,
+                TEST_PROGRAM_ID
+            );
+            const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
+            const transferFeeConfig = getTransferFeeConfig(mintInfo);
+            expect(transferFeeConfig).to.not.be.null;
+            if (transferFeeConfig !== null) {
+                expect(transferFeeConfig.transferFeeConfigAuthority).to.eql(transferFeeConfigAuthority.publicKey);
+                expect(transferFeeConfig.olderTransferFee.transferFeeBasisPoints).to.eql(FEE_BASIS_POINTS);
+                expect(transferFeeConfig.olderTransferFee.maximumFee).to.eql(MAX_FEE);
+                expect(transferFeeConfig.newerTransferFee.transferFeeBasisPoints).to.eql(UPDATED_FEE_BASIS_POINTS);
+                expect(transferFeeConfig.newerTransferFee.maximumFee).to.eql(UPDATED_MAX_FEE);
             }
         });
     });
