@@ -65,7 +65,7 @@
         "@solana/spl-memo": "0.2.4",
         "@solana/web3.js": "^1.91.7",
         "@types/chai-as-promised": "^7.1.4",
-        "@types/chai": "^4.3.14",
+        "@types/chai": "^4.3.15",
         "@types/mocha": "^10.0.6",
         "@types/node": "^20.12.8",
         "@types/node-fetch": "^2.6.11",
