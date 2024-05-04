@@ -847,7 +847,7 @@ export const setTransferFeeInstructionData = struct<SetTransferFeeInstructionDat
  * Construct a SetTransferFeeInstruction instruction
  *
  * @param mint                      The token mint
- * @param authority                 The source account's owner/delegate
+ * @param authority                 The authority of the transfer fee
  * @param signers                   The signer account(s)
  * @param transferFeeBasisPoints    Amount of transfer collected as fees, expressed as basis points of the transfer amount
  * @param maximumFee                Maximum fee assessed on transfers
