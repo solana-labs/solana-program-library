@@ -96,7 +96,7 @@ pub fn setup_voter_weight_record(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: borsh::to_vec(&instruction).unwrap(),
+        data: borsh::to_vec(&instruction).expect("Failed to serialize instruction"),
     }
 }
 
@@ -129,6 +129,6 @@ pub fn setup_max_voter_weight_record(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: borsh::to_vec(&instruction).unwrap(),
+        data: borsh::to_vec(&instruction).expect("Failed to serialize instruction"),
     }
 }
