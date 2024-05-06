@@ -343,8 +343,8 @@ importers:
         specifier: ^7.8.0
         version: 7.8.0(@typescript-eslint/parser@7.8.0)(eslint@8.57.0)(typescript@5.4.5)
       ava:
-        specifier: ^6.1.2
-        version: 6.1.2(@ava/typescript@5.0.0)
+        specifier: ^6.1.3
+        version: 6.1.3(@ava/typescript@5.0.0)
       eslint:
         specifier: ^8.57.0
         version: 8.57.0
@@ -3626,9 +3626,9 @@ packages:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
     dev: true
 
-  /ava@6.1.2(@ava/typescript@5.0.0):
-    resolution: {integrity: sha512-WcpxJ8yZ7mk9ABTinD0IAjcemovSeVGjuuwZx0JS9johREWFeLTl8UP6wd7l6nmnrWqkKZdwaD71a/ocH4qPKw==}
-    engines: {node: ^18.18 || ^20.8 || ^21}
+  /ava@6.1.3(@ava/typescript@5.0.0):
+    resolution: {integrity: sha512-tkKbpF1pIiC+q09wNU9OfyTDYZa8yuWvU2up3+lFJ3lr1RmnYh2GBpPwzYUEB0wvTPIUysGjcZLNZr7STDviRA==}
+    engines: {node: ^18.18 || ^20.8 || ^21 || ^22}
     hasBin: true
     peerDependencies:
       '@ava/typescript': '*'
