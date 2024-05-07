@@ -14,7 +14,7 @@ sol-log = [ "log" ]
 [dependencies]
 solana-program = "1.16"
 bytemuck = "1.15"
-thiserror = "1.0.59"
+thiserror = "1.0.60"
 
 [dev-dependencies]
 rand_distr = "0.4.3"
