@@ -3,7 +3,7 @@
 use spl_program_error::*;
 
 /// Errors that may be returned by the interface.
-#[spl_program_error]
+#[spl_program_error(hash_error_code_start = 3_406_457_176)]
 pub enum TokenGroupError {
     /// Size is greater than proposed max size
     #[error("Size is greater than proposed max size")]
