@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+here=$(dirname "$0")
+source "${here}"/ci/rust-version.sh stable
+# shellcheck disable=SC2054 # rust_stable is sourced from rust-version.sh
+toolchain="$rust_stable"
+set -x
+exec cargo "+${toolchain}" "${@}"
