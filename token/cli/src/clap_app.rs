@@ -1092,7 +1092,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("group_token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_MINT_ADDRESS")
+                        .value_name("GROUP_TOKEN_ADDRESS")
                         .takes_value(true)
                         .required(true)
                         .index(2)
