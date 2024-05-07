@@ -31,7 +31,7 @@ spl-associated-token-account = { version = "3.0.2", path = "../../associated-tok
 spl-token = { version = "4.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-thiserror = "^1.0.59"
+thiserror = "^1.0.60"
 
 [dev-dependencies]
 solana-program-test = ">=1.18.11,<=2"
