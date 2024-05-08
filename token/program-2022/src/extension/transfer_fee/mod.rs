@@ -90,20 +90,24 @@ impl TransferFee {
     pub fn calculate_pre_fee_amount(&self, post_fee_amount: u64) -> Option<u64> {
         let maximum_fee = u64::from(self.maximum_fee);
         let transfer_fee_basis_points = u16::from(self.transfer_fee_basis_points) as u128;
-        if transfer_fee_basis_points == 0 {
-            Some(post_fee_amount)
-        } else if transfer_fee_basis_points == ONE_IN_BASIS_POINTS || post_fee_amount == 0 {
-            Some(0)
-        } else {
-            let numerator = (post_fee_amount as u128).checked_mul(ONE_IN_BASIS_POINTS)?;
-            let denominator = ONE_IN_BASIS_POINTS.checked_sub(transfer_fee_basis_points)?;
-            let raw_pre_fee_amount = Self::ceil_div(numerator, denominator)?;
+        match (transfer_fee_basis_points, post_fee_amount) {
+            // no fee, same amount
+            (0, _) => Some(post_fee_amount),
+            // 0 zero out, 0 in
+            (_, 0) => Some(0),
+            // 100%, cap at max fee
+            (ONE_IN_BASIS_POINTS, _) => maximum_fee.checked_add(post_fee_amount),
+            _ => {
+                let numerator = (post_fee_amount as u128).checked_mul(ONE_IN_BASIS_POINTS)?;
+                let denominator = ONE_IN_BASIS_POINTS.checked_sub(transfer_fee_basis_points)?;
+                let raw_pre_fee_amount = Self::ceil_div(numerator, denominator)?;
 
-            if raw_pre_fee_amount.checked_sub(post_fee_amount as u128)? >= maximum_fee as u128 {
-                post_fee_amount.checked_add(maximum_fee)
-            } else {
-                // should return `None` if `pre_fee_amount` overflows
-                u64::try_from(raw_pre_fee_amount).ok()
+                if raw_pre_fee_amount.checked_sub(post_fee_amount as u128)? >= maximum_fee as u128 {
+                    post_fee_amount.checked_add(maximum_fee)
+                } else {
+                    // should return `None` if `pre_fee_amount` overflows
+                    u64::try_from(raw_pre_fee_amount).ok()
+                }
             }
         }
     }
@@ -356,6 +360,33 @@ pub(crate) mod test {
                 .calculate_inverse_fee(maximum_fee * one - maximum_fee - 1)
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn calculate_pre_fee_amount_edge_cases() {
+        let maximum_fee = 5_000;
+        let transfer_fee = TransferFee {
+            epoch: PodU64::from(0),
+            maximum_fee: PodU64::from(maximum_fee),
+            transfer_fee_basis_points: PodU16::from(u16::try_from(ONE_IN_BASIS_POINTS).unwrap()),
+        };
+
+        // 0 zero out, 0 in
+        assert_eq!(0, transfer_fee.calculate_pre_fee_amount(0).unwrap());
+
+        // cap at max fee
+        assert_eq!(
+            1 + maximum_fee,
+            transfer_fee.calculate_pre_fee_amount(1).unwrap()
+        );
+
+        // no fee same amount
+        let transfer_fee = TransferFee {
+            epoch: PodU64::from(0),
+            maximum_fee: PodU64::from(maximum_fee),
+            transfer_fee_basis_points: PodU16::from(0),
+        };
+        assert_eq!(1, transfer_fee.calculate_pre_fee_amount(1).unwrap());
     }
 
     #[test]
