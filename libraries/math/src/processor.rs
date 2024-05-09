@@ -50,6 +50,30 @@ fn f32_natural_log(argument: f32) -> f32 {
     argument.ln()
 }
 
+/// u128_multiply
+#[inline(never)]
+fn u128_multiply(multiplicand: u128, multiplier: u128) -> u128 {
+    multiplicand * multiplier
+}
+
+/// u128_divide
+#[inline(never)]
+fn u128_divide(dividend: u128, divisor: u128) -> u128 {
+    dividend / divisor
+}
+
+/// f64_multiply
+#[inline(never)]
+fn f64_multiply(multiplicand: f64, multiplier: f64) -> f64 {
+    multiplicand * multiplier
+}
+
+/// f64_divide
+#[inline(never)]
+fn f64_divide(dividend: f64, divisor: f64) -> f64 {
+    dividend / divisor
+}
+
 /// Instruction processor
 pub fn process_instruction(
     _program_id: &Pubkey,
@@ -153,6 +177,44 @@ pub fn process_instruction(
             msg!("{}", result as u64);
             sol_log_compute_units();
             let result = base.powf(exponent);
+            sol_log_compute_units();
+            msg!("{}", result as u64);
+            Ok(())
+        }
+        MathInstruction::U128Multiply {
+            multiplicand,
+            multiplier,
+        } => {
+            msg!("Calculating u128 Multiply");
+            sol_log_compute_units();
+            let result = u128_multiply(multiplicand, multiplier);
+            sol_log_compute_units();
+            msg!("{}", result);
+            Ok(())
+        }
+        MathInstruction::U128Divide { dividend, divisor } => {
+            msg!("Calculating u128 Divide");
+            sol_log_compute_units();
+            let result = u128_divide(dividend, divisor);
+            sol_log_compute_units();
+            msg!("{}", result);
+            Ok(())
+        }
+        MathInstruction::F64Multiply {
+            multiplicand,
+            multiplier,
+        } => {
+            msg!("Calculating f64 Multiply");
+            sol_log_compute_units();
+            let result = f64_multiply(multiplicand, multiplier);
+            sol_log_compute_units();
+            msg!("{}", result as u64);
+            Ok(())
+        }
+        MathInstruction::F64Divide { dividend, divisor } => {
+            msg!("Calculating f64 Divide");
+            sol_log_compute_units();
+            let result = f64_divide(dividend, divisor);
             sol_log_compute_units();
             msg!("{}", result as u64);
             Ok(())
