@@ -222,8 +222,10 @@ async fn test_u128_multiply() {
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
-    let mut transaction =
-        Transaction::new_with_payer(&[instruction::u128_multiply(42, 84)], Some(&payer.pubkey()));
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::u128_multiply(u64::MAX.into(), u64::MAX.into())],
+        Some(&payer.pubkey()),
+    );
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }
@@ -236,8 +238,10 @@ async fn test_u128_divide() {
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
-    let mut transaction =
-        Transaction::new_with_payer(&[instruction::u128_divide(3, 1)], Some(&payer.pubkey()));
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::u128_divide(u128::MAX, u128::MAX / 69)],
+        Some(&payer.pubkey()),
+    );
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }
@@ -251,7 +255,7 @@ async fn test_f64_multiply() {
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::f64_multiply(1.5_f64, 2.0_f64)],
+        &[instruction::f64_multiply(f64::powf(2., 42.), 1e-4)],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer], recent_blockhash);
@@ -267,13 +271,12 @@ async fn test_f64_divide() {
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::f64_divide(3_f64, 1.5_f64)],
+        &[instruction::f64_divide(f64::powf(2., 42.), 420420.6969)],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }
-
 
 #[tokio::test]
 async fn test_noop() {
