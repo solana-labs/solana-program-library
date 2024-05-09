@@ -107,7 +107,6 @@ pub enum MathInstruction {
         exponent: f64,
     },
 
-
     /// Multiply two u128 values
     ///
     /// No accounts required for this instruction
