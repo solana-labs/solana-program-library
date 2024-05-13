@@ -107,6 +107,43 @@ pub enum MathInstruction {
         exponent: f64,
     },
 
+    /// Multiply two u128 values
+    ///
+    /// No accounts required for this instruction
+    U128Multiply {
+        /// The multiplicand
+        multiplicand: u128,
+        /// The multipier
+        multiplier: u128,
+    },
+    /// Divide two u128 values
+    ///
+    /// No accounts required for this instruction
+    U128Divide {
+        /// The dividend
+        dividend: u128,
+        /// The divisor
+        divisor: u128,
+    },
+    /// Multiply two f64 values
+    ///
+    /// No accounts required for this instruction
+    F64Multiply {
+        /// The multiplicand
+        multiplicand: f64,
+        /// The multipier
+        multiplier: f64,
+    },
+    /// Divide two f64 values
+    ///
+    /// No accounts required for this instruction
+    F64Divide {
+        /// The dividend
+        dividend: f64,
+        /// The divisor
+        divisor: f64,
+    },
+
     /// Don't do anything for comparison
     ///
     /// No accounts required for this instruction
@@ -217,6 +254,50 @@ pub fn f64_pow(base: f64, exponent: f64) -> Instruction {
         program_id: id(),
         accounts: vec![],
         data: borsh::to_vec(&MathInstruction::F64Pow { base, exponent }).unwrap(),
+    }
+}
+
+/// Create U128 Multiplication instruction
+pub fn u128_multiply(multiplicand: u128, multiplier: u128) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: borsh::to_vec(&MathInstruction::U128Multiply {
+            multiplicand,
+            multiplier,
+        })
+        .unwrap(),
+    }
+}
+
+/// Create U128 Division instruction
+pub fn u128_divide(dividend: u128, divisor: u128) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: borsh::to_vec(&MathInstruction::U128Divide { dividend, divisor }).unwrap(),
+    }
+}
+
+/// Create F64 Multiplication instruction
+pub fn f64_multiply(multiplicand: f64, multiplier: f64) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: borsh::to_vec(&MathInstruction::F64Multiply {
+            multiplicand,
+            multiplier,
+        })
+        .unwrap(),
+    }
+}
+
+/// Create F64 Division instruction
+pub fn f64_divide(dividend: f64, divisor: f64) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: borsh::to_vec(&MathInstruction::F64Divide { dividend, divisor }).unwrap(),
     }
 }
 

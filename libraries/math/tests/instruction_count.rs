@@ -215,6 +215,70 @@ async fn test_f64_pow() {
 }
 
 #[tokio::test]
+async fn test_u128_multiply() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_compute_max_units(10000);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::u128_multiply(u64::MAX.into(), u64::MAX.into())],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_u128_divide() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_compute_max_units(10000);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::u128_divide(u128::MAX, u128::MAX / 69)],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_f64_multiply() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_compute_max_units(10000);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::f64_multiply(f64::powf(2., 42.), 1e-4)],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_f64_divide() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_compute_max_units(10000);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::f64_divide(f64::powf(2., 42.), 420420.6969)],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
 async fn test_noop() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
