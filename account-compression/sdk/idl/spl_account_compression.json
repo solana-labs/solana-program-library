@@ -54,54 +54,6 @@
       ]
     },
     {
-      "name": "fillProofBuffer",
-      "docs": [
-        "For extremley large trees that cannot be initialized with root in a single transaction,",
-        "this allows a user to fill a buffer of proofs that can be used to initialize the tree with roots."
-      ],
-      "accounts": [
-        {
-          "name": "payer",
-          "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "Proof Buffer"
-          ]
-        },
-        {
-          "name": "proofBuffer",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "maxDepth",
-          "type": "u32"
-        },
-        {
-          "name": "partialProof",
-          "type": {
-            "vec": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          }
-        },
-        {
-          "name": "index",
-          "type": "u32"
-        }
-      ]
-    },
-    {
       "name": "initMerkleTreeWithRoot",
       "accounts": [
         {
@@ -124,15 +76,6 @@
           "isSigner": false,
           "docs": [
             "Program used to emit changelogs as cpi instruction data."
-          ]
-        },
-        {
-          "name": "proofBuffer",
-          "isMut": false,
-          "isSigner": false,
-          "isOptional": true,
-          "docs": [
-            "Proof Buffer - Optional"
           ]
         }
       ],
@@ -164,8 +107,8 @@
           }
         },
         {
-          "name": "manifestUrl",
-          "type": "string"
+          "name": "leafIndex",
+          "type": "u32"
         }
       ]
     },
@@ -649,15 +592,6 @@
               {
                 "defined": "ApplicationDataEvent"
               }
-            ]
-          },
-          {
-            "name": "InitWithRoot",
-            "fields": [
-              {
-                "defined": "ChangeLogEvent"
-              },
-              "string"
             ]
           }
         ]

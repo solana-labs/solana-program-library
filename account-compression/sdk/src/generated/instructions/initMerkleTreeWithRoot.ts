@@ -18,14 +18,14 @@ export type InitMerkleTreeWithRootInstructionArgs = {
   maxBufferSize: number
   root: number[] /* size: 32 */
   leaf: number[] /* size: 32 */
-  manifestUrl: string
+  leafIndex: number
 }
 /**
  * @category Instructions
  * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export const initMerkleTreeWithRootStruct = new beet.FixableBeetArgsStruct<
+export const initMerkleTreeWithRootStruct = new beet.BeetArgsStruct<
   InitMerkleTreeWithRootInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
@@ -36,7 +36,7 @@ export const initMerkleTreeWithRootStruct = new beet.FixableBeetArgsStruct<
     ['maxBufferSize', beet.u32],
     ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
     ['leaf', beet.uniformFixedSizeArray(beet.u8, 32)],
-    ['manifestUrl', beet.utf8String],
+    ['leafIndex', beet.u32],
   ],
   'InitMerkleTreeWithRootInstructionArgs'
 )
@@ -46,7 +46,6 @@ export const initMerkleTreeWithRootStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
  * @property [] noop
- * @property [] proofBuffer (optional)
  * @category Instructions
  * @category InitMerkleTreeWithRoot
  * @category generated
@@ -55,7 +54,6 @@ export type InitMerkleTreeWithRootInstructionAccounts = {
   merkleTree: web3.PublicKey
   authority: web3.PublicKey
   noop: web3.PublicKey
-  proofBuffer?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -65,9 +63,6 @@ export const initMerkleTreeWithRootInstructionDiscriminator = [
 
 /**
  * Creates a _InitMerkleTreeWithRoot_ instruction.
- *
- * Optional accounts that are not provided default to the program ID since
- * this was indicated in the IDL from which this instruction was generated.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
@@ -98,11 +93,6 @@ export function createInitMerkleTreeWithRootInstruction(
     },
     {
       pubkey: accounts.noop,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.proofBuffer ?? programId,
       isWritable: false,
       isSigner: false,
     },

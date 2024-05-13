@@ -72,24 +72,17 @@ export function createInitMerkleTreeWithRootIx(
     merkleTree: PublicKey,
     authority: PublicKey,
     depthSizePair: ValidDepthSizePair,
-    firstLeaf: Buffer | ArrayLike<number>,
+    rightmostLeaf: Buffer | ArrayLike<number>,
+    rightmostLeafIndex: number,
     root: Buffer | ArrayLike<number>,
-    manifestUrl: string,
-    initialProof?: Buffer[],
-    proofBuffer?: PublicKey,
-    
+    initialProof: Buffer[],
 ): TransactionInstruction {
-    if(!initialProof && !proofBuffer) {
-        throw new Error("Either initialProof or proofBuffer must be provided");
-    } 
-
     return createInitMerkleTreeWithRootInstruction(
         {
             authority: authority,
             merkleTree,
             noop: SPL_NOOP_PROGRAM_ID,
-            proofBuffer,
-            anchorRemainingAccounts: initialProof?.map(node => {
+            anchorRemainingAccounts: initialProof.map(node => {
                 return {
                     pubkey: new PublicKey(node),
                     isSigner: false,
@@ -101,8 +94,8 @@ export function createInitMerkleTreeWithRootIx(
             root: Array.from(root),
             maxBufferSize: depthSizePair.maxBufferSize,
             maxDepth: depthSizePair.maxDepth,
-            manifestUrl,
-            leaf: Array.from(firstLeaf),
+            leaf: Array.from(rightmostLeaf),
+            leafIndex: rightmostLeafIndex,
         },
     );
 }

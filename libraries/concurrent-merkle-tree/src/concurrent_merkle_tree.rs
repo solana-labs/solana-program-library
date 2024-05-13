@@ -156,7 +156,8 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         self.active_index = 0;
         self.buffer_size = 1;
         self.rightmost_proof = rightmost_proof;
-        if root != recompute(rightmost_leaf, &proof, index) {
+        let rt = recompute(rightmost_leaf, &proof, index);
+        if root != rt {
             solana_logging!("Proof failed to verify");
             return Err(ConcurrentMerkleTreeError::InvalidProof);
         }

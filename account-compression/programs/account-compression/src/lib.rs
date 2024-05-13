@@ -71,16 +71,6 @@ pub struct Initialize<'info> {
     /// Program used to emit changelogs as cpi instruction data.
     pub noop: Program<'info, Noop>,
 }
-
-/// Context for filling a proof buffer
-#[derive(Accounts)]
-pub struct FillProofBuffer<'info> {
-    /// Proof Buffer
-    pub payer: Signer<'info>,
-    pub proof_buffer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
 /// Context for initializing a new SPL ConcurrentMerkleTree
 #[derive(Accounts)]
 pub struct InitializeWithRoot<'info> {
@@ -94,9 +84,6 @@ pub struct InitializeWithRoot<'info> {
 
     /// Program used to emit changelogs as cpi instruction data.
     pub noop: Program<'info, Noop>,
-
-    /// Proof Buffer - Optional
-    pub proof_buffer: Option<UncheckedAccount<'info>>,
 }
 
 /// Context for inserting, appending, or replacing a leaf in the tree
@@ -202,71 +189,6 @@ pub mod spl_account_compression {
         update_canopy(canopy_bytes, header.get_max_depth(), None)
     }
 
-    /// For extremley large trees that cannot be initialized with root in a single transaction,
-    /// this allows a user to fill a buffer of proofs that can be used to initialize the tree with roots.
-    pub fn fill_proof_buffer(
-        ctx: Context<FillProofBuffer>,
-        max_depth: u32,
-        partial_proof: Vec<[u8; 32]>,
-        index: u32,
-    ) -> Result<()> {
-        let buffer: &mut [u8] = &mut *ctx.accounts.proof_buffer.try_borrow_mut_data()?;
-        let len = buffer.len();
-        let owner = ctx.accounts.proof_buffer.owner;
-        let (max, remaining) = if len == 0 {
-            if index != 0 {
-                return Err(AccountCompressionError::ProofIndexOutOfBounds.into());
-            }
-            if owner != &system_program::id() {
-                return Err(AccountCompressionError::IncorrectAccountOwner.into());
-            }
-            let space = (max_depth * 32) + 4;
-            let lamports = Rent::get()?.minimum_balance(space as usize);
-            let create_ix = create_account(
-                &ctx.accounts.payer.key,
-                &ctx.accounts.proof_buffer.key,
-                lamports,
-                space as u64,
-                &crate::id(),
-            );
-            invoke(
-                &create_ix,
-                &[
-                    ctx.accounts.payer.to_account_info(),
-                    ctx.accounts.proof_buffer.to_account_info(),
-                    ctx.accounts.system_program.to_account_info(),
-                ],
-            )?;
-            buffer[0..4].copy_from_slice(&max_depth.to_le_bytes());
-            buffer[4..8].copy_from_slice(&max_depth.to_le_bytes());
-            (max_depth, max_depth)
-        } else {
-            (
-                u32::from_le_bytes(
-                    buffer[0..4]
-                        .try_into()
-                        .map_err(|_| AccountCompressionError::InvalidProofBuffer)?,
-                ),
-                u32::from_le_bytes(
-                    buffer[4..8]
-                        .try_into()
-                        .map_err(|_| AccountCompressionError::InvalidProofBuffer)?,
-                ),
-            )
-        };
-        if max != max_depth {
-            return Err(AccountCompressionError::ProofIndexOutOfBounds.into());
-        }
-        let offset = 8 + (index * 32) as usize;
-        for proof in partial_proof.iter() {
-            buffer[offset..8 + ((offset + 1) * 32)].copy_from_slice(proof);
-        }
-        let new_remaining = remaining - index;
-        //set remaining
-        buffer[4..8].copy_from_slice(&(new_remaining).to_le_bytes());
-        Ok(())
-    }
-
     // Creates a new merkle tree with an existing root in the buffer.
     // The indexers for the specific tree use case are in charge of handling the indexing or shadow indexing of the tree.
     // Shadow indexing is a technique that allows for the indexing of a tree incrementally with update operations.
@@ -276,7 +198,7 @@ pub mod spl_account_compression {
         max_buffer_size: u32,
         root: [u8; 32],
         leaf: [u8; 32], // the first leaf
-        manifest_url: String,
+        leaf_index: u32,
     ) -> Result<()> {
         require_eq!(
             *ctx.accounts.merkle_tree.owner,
@@ -286,23 +208,10 @@ pub mod spl_account_compression {
         let mut merkle_tree_bytes: std::cell::RefMut<'_, &mut [u8]> =
             ctx.accounts.merkle_tree.try_borrow_mut_data()?;
 
-        let proof: Vec<[u8; 32]> = if let Some(proof_buffer) = &ctx.accounts.proof_buffer {
-            let mut proof_buffer = proof_buffer.try_borrow_mut_data()?;
-            let (_, proof_bytes) = proof_buffer.split_at_mut(8);
-            //if len is not a multiple of 32 then return error
-            if proof_bytes.len() % 32 != 0 {
-                return Err(AccountCompressionError::InvalidProofBuffer.into());
-            }
-            proof_bytes
-                .chunks_exact(32)
-                .map(|c| c.try_into().unwrap())
-                .collect()
-        } else {
-            ctx.remaining_accounts
+        let proof: Vec<[u8; 32]> = ctx.remaining_accounts
                 .into_iter()
                 .map(|a| a.key().to_bytes())
-                .collect()
-        };
+                .collect();
         assert_eq!(proof.len(), max_depth as usize);
         let (mut header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
@@ -325,10 +234,10 @@ pub mod spl_account_compression {
             root,
             leaf,
             &proof,
-            0
+            leaf_index,
         )?;
         wrap_event(
-            &AccountCompressionEvent::InitWithRoot(*change_log_event, manifest_url),
+            &AccountCompressionEvent::ChangeLog(*change_log_event),
             &ctx.accounts.noop,
         )?;
         update_canopy(canopy_bytes, header.get_max_depth(), None)

@@ -23,7 +23,6 @@ import {
 export type AccountCompressionEventRecord = {
   ChangeLog: { fields: [ChangeLogEvent] }
   ApplicationData: { fields: [ApplicationDataEvent] }
-  InitWithRoot: { fields: [ChangeLogEvent, string] }
 }
 
 /**
@@ -48,10 +47,6 @@ export const isAccountCompressionEventApplicationData = (
   x: AccountCompressionEvent
 ): x is AccountCompressionEvent & { __kind: 'ApplicationData' } =>
   x.__kind === 'ApplicationData'
-export const isAccountCompressionEventInitWithRoot = (
-  x: AccountCompressionEvent
-): x is AccountCompressionEvent & { __kind: 'InitWithRoot' } =>
-  x.__kind === 'InitWithRoot'
 
 /**
  * @category userTypes
@@ -75,15 +70,6 @@ export const accountCompressionEventBeet =
       >(
         [['fields', beet.tuple([applicationDataEventBeet])]],
         'AccountCompressionEventRecord["ApplicationData"]'
-      ),
-    ],
-    [
-      'InitWithRoot',
-      new beet.FixableBeetArgsStruct<
-        AccountCompressionEventRecord['InitWithRoot']
-      >(
-        [['fields', beet.tuple([changeLogEventBeet, beet.utf8String])]],
-        'AccountCompressionEventRecord["InitWithRoot"]'
       ),
     ],
   ]) as beet.FixableBeet<AccountCompressionEvent, AccountCompressionEvent>

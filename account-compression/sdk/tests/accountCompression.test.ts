@@ -68,8 +68,7 @@ describe('Account Compression', () => {
       ];
       const merkleTreeRaw = new MerkleTree(leaves);
       const root = merkleTreeRaw.root;
-      const leaf = leaves[0];
-
+      const leaf = leaves[leaves.length - 1]
       const depth = 3;
       const size = 8;
       const cmtKeypair = await createTreeWithRoot({
@@ -81,19 +80,19 @@ describe('Account Compression', () => {
         },
         canopyDepth: depth,
         root,
-        firstLeaf: leaf,
-        manifestUrl: "http://manifest.com/",
+        rightmostLeaf: leaf,
+        rightmostLeafIndex: leaves.length - 1,
+        proof: merkleTreeRaw.getProof(leaves.length - 1).proof,
       });
       const cmt = cmtKeypair.publicKey;
 
       const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt);
-      assert(splCMT.getBufferSize() === size, 'Buffer size does not match');
+      assert(splCMT.getMaxBufferSize() === size, 'Buffer size does not match');
+      assert(splCMT.getCanopyDepth() === depth, 'Canopy depth does not match');
+      assert(splCMT.getBufferSize() == 1, 'Buffer size does not match');
     });
 
-    it('Huge Tree is initialized with proof buffer', async () => {
-
-    });
-  });
+  })
 
   describe('Having created a tree with a single leaf', () => {
     beforeEach(async () => {

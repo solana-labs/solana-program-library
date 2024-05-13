@@ -1,6 +1,5 @@
 export * from './append'
 export * from './closeEmptyTree'
-export * from './fillProofBuffer'
 export * from './initEmptyMerkleTree'
 export * from './initMerkleTreeWithRoot'
 export * from './insertOrAppend'

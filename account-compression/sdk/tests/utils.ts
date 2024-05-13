@@ -122,10 +122,9 @@ export type CreateTreeWithRootArgs = {
     depthSizePair: ValidDepthSizePair,
     canopyDepth: number,
     root: Buffer,
-    firstLeaf: Buffer,
-    manifestUrl: string,
-    proofBuffer?: PublicKey,
-    proofs?: Buffer[]
+    rightmostLeaf: Buffer,
+    rightmostLeafIndex: number,
+    proof: Buffer[],
 };
 export async function createTreeWithRoot(
     args: CreateTreeWithRootArgs
@@ -135,18 +134,10 @@ export async function createTreeWithRoot(
         depthSizePair,
         canopyDepth,
         root,
-        firstLeaf,
-        manifestUrl, 
-        proofBuffer, 
-        proofs 
+        rightmostLeaf,
+        rightmostLeafIndex, 
+        proof 
     } = args;
-    if (proofBuffer === null && proofs === null) {
-        throw new Error("Either proofBuffer or proofs must be provided");
-    }
-    if (!!proofBuffer && !!proofs) {
-        throw new Error("Either proofBuffer or proofs must be provided, not both");
-    }
-
     const cmtKeypair = Keypair.generate();
     const allocAccountIx = await createAllocTreeIx(
         provider.connection,
@@ -160,11 +151,10 @@ export async function createTreeWithRoot(
         cmtKeypair.publicKey,
         payer.publicKey,
         depthSizePair,
+        rightmostLeaf,
+        rightmostLeafIndex,
         root,
-        firstLeaf,
-        manifestUrl,
-        proofs,
-        proofBuffer,
+        proof,
     )
     ];
 
