@@ -46,15 +46,7 @@ pub enum AccountCompressionError {
     /// Tree information cannot be processed because the provided leaf_index
     /// is out of bounds of tree's maximum leaf capacity
     #[msg("Leaf index of concurrent merkle tree is out of bounds")]
-    LeafIndexOutOfBounds,
-
-    /// Proof index is out of bounds
-    #[msg("Proof index of is out of bounds")]
-    ProofIndexOutOfBounds,
-
-    /// Invalid proof buffer
-    #[msg("Invalid proof buffer")]
-    InvalidProofBuffer,
+    LeafIndexOutOfBounds
 }
 
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {
