@@ -178,7 +178,7 @@ pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo])
         }
     }
 
-    // Make sure the member account is not the same as the group accout
+    // Make sure the member account is not the same as the group account
     if member_info.key == group_info.key {
         return Err(TokenGroupError::MemberAccountIsGroupAccount.into());
     }

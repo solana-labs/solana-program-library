@@ -1,7 +1,7 @@
 {
     "name": "@solana/spl-token-metadata",
     "description": "SPL Token Metadata Interface JS API",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
@@ -44,31 +44,31 @@
         "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.91.1"
+        "@solana/web3.js": "^1.91.8"
     },
     "dependencies": {
-        "@solana/codecs": "2.0.0-preview.1",
+        "@solana/codecs": "2.0.0-preview.3",
         "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
-        "@solana/web3.js": "^1.91.1",
-        "@types/chai": "^4.3.12",
+        "@solana/web3.js": "^1.91.8",
+        "@types/chai": "^4.3.16",
         "@types/mocha": "^10.0.6",
-        "@types/node": "^20.11.27",
-        "@typescript-eslint/eslint-plugin": "^7.2.0",
-        "@typescript-eslint/parser": "^7.2.0",
-        "chai": "^5.1.0",
+        "@types/node": "^20.12.11",
+        "@typescript-eslint/eslint-plugin": "^7.8.0",
+        "@typescript-eslint/parser": "^7.8.0",
+        "chai": "^5.1.1",
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^9.1.0",
         "eslint-plugin-prettier": "^5.1.3",
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
-        "mocha": "^10.3.0",
+        "mocha": "^10.4.0",
         "prettier": "^3.2.5",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
         "tslib": "^2.3.1",
-        "typedoc": "^0.25.12",
-        "typescript": "^5.4.2"
+        "typedoc": "^0.25.13",
+        "typescript": "^5.4.5"
     }
 }

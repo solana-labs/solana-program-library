@@ -826,3 +826,158 @@ export function decodeHarvestWithheldTokensToMintInstructionUnchecked({
         },
     };
 }
+
+// SetTransferFee
+
+export interface SetTransferFeeInstructionData {
+    instruction: TokenInstruction.TransferFeeExtension;
+    transferFeeInstruction: TransferFeeInstruction.SetTransferFee;
+    transferFeeBasisPoints: number;
+    maximumFee: bigint;
+}
+
+export const setTransferFeeInstructionData = struct<SetTransferFeeInstructionData>([
+    u8('instruction'),
+    u8('transferFeeInstruction'),
+    u16('transferFeeBasisPoints'),
+    u64('maximumFee'),
+]);
+
+/**
+ * Construct a SetTransferFeeInstruction instruction
+ *
+ * @param mint                      The token mint
+ * @param authority                 The authority of the transfer fee
+ * @param signers                   The signer account(s)
+ * @param transferFeeBasisPoints    Amount of transfer collected as fees, expressed as basis points of the transfer amount
+ * @param maximumFee                Maximum fee assessed on transfers
+ * @param programID                 SPL Token program account
+ *
+ * @return Instruction to add to a transaction
+ */
+export function createSetTransferFeeInstruction(
+    mint: PublicKey,
+    authority: PublicKey,
+    signers: (Signer | PublicKey)[],
+    transferFeeBasisPoints: number,
+    maximumFee: bigint,
+    programId = TOKEN_2022_PROGRAM_ID
+): TransactionInstruction {
+    if (!programSupportsExtensions(programId)) {
+        throw new TokenUnsupportedInstructionError();
+    }
+
+    const data = Buffer.alloc(setTransferFeeInstructionData.span);
+    setTransferFeeInstructionData.encode(
+        {
+            instruction: TokenInstruction.TransferFeeExtension,
+            transferFeeInstruction: TransferFeeInstruction.SetTransferFee,
+            transferFeeBasisPoints: transferFeeBasisPoints,
+            maximumFee: maximumFee,
+        },
+        data
+    );
+    const keys = addSigners([{ pubkey: mint, isSigner: false, isWritable: true }], authority, signers);
+
+    return new TransactionInstruction({ keys, programId, data });
+}
+
+/** A decoded, valid SetTransferFee instruction */
+export interface DecodedSetTransferFeeInstruction {
+    programId: PublicKey;
+    keys: {
+        mint: AccountMeta;
+        authority: AccountMeta;
+        signers: AccountMeta[] | null;
+    };
+    data: {
+        instruction: TokenInstruction.TransferFeeExtension;
+        transferFeeInstruction: TransferFeeInstruction.SetTransferFee;
+        transferFeeBasisPoints: number;
+        maximumFee: bigint;
+    };
+}
+
+/**
+ * Decode an SetTransferFee instruction and validate it
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded, valid instruction
+ */
+export function decodeSetTransferFeeInstruction(
+    instruction: TransactionInstruction,
+    programId: PublicKey
+): DecodedSetTransferFeeInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== setTransferFeeInstructionData.span) throw new TokenInvalidInstructionDataError();
+
+    const {
+        keys: { mint, authority, signers },
+        data,
+    } = decodeSetTransferFeeInstructionUnchecked(instruction);
+    if (
+        data.instruction !== TokenInstruction.TransferFeeExtension ||
+        data.transferFeeInstruction !== TransferFeeInstruction.SetTransferFee
+    )
+        throw new TokenInvalidInstructionTypeError();
+    if (!mint) throw new TokenInvalidInstructionKeysError();
+
+    return {
+        programId,
+        keys: {
+            mint,
+            authority,
+            signers: signers ? signers : null,
+        },
+        data,
+    };
+}
+
+/** A decoded, valid SetTransferFee instruction */
+export interface DecodedSetTransferFeeInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        mint: AccountMeta;
+        authority: AccountMeta;
+        signers: AccountMeta[] | undefined;
+    };
+    data: {
+        instruction: TokenInstruction.TransferFeeExtension;
+        transferFeeInstruction: TransferFeeInstruction.SetTransferFee;
+        transferFeeBasisPoints: number;
+        maximumFee: bigint;
+    };
+}
+
+/**
+ * Decode a SetTransferFee instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeSetTransferFeeInstructionUnchecked({
+    programId,
+    keys: [mint, authority, ...signers],
+    data,
+}: TransactionInstruction): DecodedSetTransferFeeInstructionUnchecked {
+    const { instruction, transferFeeInstruction, transferFeeBasisPoints, maximumFee } =
+        setTransferFeeInstructionData.decode(data);
+
+    return {
+        programId,
+        keys: {
+            mint,
+            authority,
+            signers,
+        },
+        data: {
+            instruction,
+            transferFeeInstruction,
+            transferFeeBasisPoints,
+            maximumFee,
+        },
+    };
+}

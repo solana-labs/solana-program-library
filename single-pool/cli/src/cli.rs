@@ -318,7 +318,7 @@ fn pool_source_group() -> ArgGroup<'static> {
 pub fn parse_address(path: &str, name: &str) -> Result<Pubkey, String> {
     if is_valid_pubkey(path).is_ok() {
         // this all is ugly but safe
-        // wallet_manager doesnt need to be shared, it just saves cycles to cache it
+        // wallet_manager doesn't need to be shared, it just saves cycles to cache it
         // and the only way argmatches default fails with an unchecked lookup is in the
         // prompt branch which seems unlikely to ever be used for pubkeys
         // the usb lookup in signer_from_path_with_config is safe

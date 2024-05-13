@@ -1,11 +1,25 @@
 import { PublicKey } from '@solana/web3.js';
-import { getArrayCodec, getBytesCodec, getStringCodec, getStructCodec, getTupleCodec } from '@solana/codecs';
+import {
+    addCodecSizePrefix,
+    fixCodecSize,
+    getArrayCodec,
+    getBytesCodec,
+    getUtf8Codec,
+    getU32Codec,
+    getStructCodec,
+    getTupleCodec,
+} from '@solana/codecs';
+import type { ReadonlyUint8Array, VariableSizeCodec } from '@solana/codecs';
 
 export const TOKEN_METADATA_DISCRIMINATOR = Buffer.from([112, 132, 90, 90, 11, 88, 157, 87]);
 
+function getStringCodec(): VariableSizeCodec<string> {
+    return addCodecSizePrefix(getUtf8Codec(), getU32Codec());
+}
+
 const tokenMetadataCodec = getStructCodec([
-    ['updateAuthority', getBytesCodec({ size: 32 })],
-    ['mint', getBytesCodec({ size: 32 })],
+    ['updateAuthority', fixCodecSize(getBytesCodec(), 32)],
+    ['mint', fixCodecSize(getBytesCodec(), 32)],
     ['name', getStringCodec()],
     ['symbol', getStringCodec()],
     ['uri', getStringCodec()],
@@ -24,11 +38,11 @@ export interface TokenMetadata {
     // The URI pointing to richer metadata
     uri: string;
     // Any additional metadata about the token as key-value pairs
-    additionalMetadata: [string, string][];
+    additionalMetadata: (readonly [string, string])[];
 }
 
 // Checks if all elements in the array are 0
-function isNonePubkey(buffer: Uint8Array): boolean {
+function isNonePubkey(buffer: ReadonlyUint8Array): boolean {
     for (let i = 0; i < buffer.length; i++) {
         if (buffer[i] !== 0) {
             return false;
@@ -38,7 +52,7 @@ function isNonePubkey(buffer: Uint8Array): boolean {
 }
 
 // Pack TokenMetadata into byte slab
-export function pack(meta: TokenMetadata): Uint8Array {
+export function pack(meta: TokenMetadata): ReadonlyUint8Array {
     // If no updateAuthority given, set it to the None/Zero PublicKey for encoding
     const updateAuthority = meta.updateAuthority ?? PublicKey.default;
     return tokenMetadataCodec.encode({
@@ -49,7 +63,7 @@ export function pack(meta: TokenMetadata): Uint8Array {
 }
 
 // unpack byte slab into TokenMetadata
-export function unpack(buffer: Buffer | Uint8Array): TokenMetadata {
+export function unpack(buffer: Buffer | Uint8Array | ReadonlyUint8Array): TokenMetadata {
     const data = tokenMetadataCodec.decode(buffer);
 
     return isNonePubkey(data.updateAuthority)

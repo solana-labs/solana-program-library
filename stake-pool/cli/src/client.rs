@@ -7,7 +7,11 @@ use {
         rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
         rpc_filter::{Memcmp, RpcFilterType},
     },
-    solana_program::{borsh1::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
+    solana_program::{
+        borsh1::try_from_slice_unchecked, hash::Hash, instruction::Instruction, message::Message,
+        program_pack::Pack, pubkey::Pubkey, stake,
+    },
+    solana_sdk::{compute_budget::ComputeBudgetInstruction, transaction::Transaction},
     spl_stake_pool::{
         find_withdraw_authority_program_address,
         state::{StakePool, ValidatorList},
@@ -15,7 +19,7 @@ use {
     std::collections::HashSet,
 };
 
-type Error = Box<dyn std::error::Error>;
+pub(crate) type Error = Box<dyn std::error::Error>;
 
 pub fn get_stake_pool(
     rpc_client: &RpcClient,
@@ -145,4 +149,36 @@ pub(crate) fn get_all_stake(
         .into_iter()
         .map(|(address, _)| address)
         .collect())
+}
+
+/// Helper function to add a compute unit limit instruction to a given set
+/// of instructions
+pub(crate) fn add_compute_unit_limit_from_simulation(
+    rpc_client: &RpcClient,
+    instructions: &mut Vec<Instruction>,
+    payer: &Pubkey,
+    blockhash: &Hash,
+) -> Result<(), Error> {
+    // add a max compute unit limit instruction for the simulation
+    const MAX_COMPUTE_UNIT_LIMIT: u32 = 1_400_000;
+    instructions.push(ComputeBudgetInstruction::set_compute_unit_limit(
+        MAX_COMPUTE_UNIT_LIMIT,
+    ));
+
+    let transaction = Transaction::new_unsigned(Message::new_with_blockhash(
+        instructions,
+        Some(payer),
+        blockhash,
+    ));
+    let simulation_result = rpc_client.simulate_transaction(&transaction)?.value;
+    let units_consumed = simulation_result
+        .units_consumed
+        .ok_or("No units consumed on simulation")?;
+    // Overwrite the compute unit limit instruction with the actual units consumed
+    let compute_unit_limit = u32::try_from(units_consumed)?;
+    instructions
+        .last_mut()
+        .expect("Compute budget instruction was added earlier")
+        .data = ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit).data;
+    Ok(())
 }

@@ -12,14 +12,17 @@ import {
   Connection,
   Keypair,
   SystemProgram,
+  StakeProgram,
   AccountInfo,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, TokenAccountNotFoundError } from '@solana/spl-token';
-import { StakePoolLayout } from '../src/layouts';
+import { StakePoolLayout, ValidatorListLayout } from '../src/layouts';
 import {
   STAKE_POOL_INSTRUCTION_LAYOUTS,
   DepositSolParams,
+  AddValidatorToPoolParams,
+  RemoveValidatorFromPoolParams,
   StakePoolInstruction,
   depositSol,
   withdrawSol,
@@ -29,9 +32,12 @@ import {
   createPoolTokenMetadata,
   updatePoolTokenMetadata,
   tokenMetadataLayout,
+  addValidatorToPool,
+  removeValidatorFromPool,
 } from '../src';
+import { STAKE_POOL_PROGRAM_ID } from '../src/constants';
 
-import { decodeData } from '../src/utils';
+import { decodeData, findStakeProgramAddress } from '../src/utils';
 
 import {
   mockRpc,
@@ -42,6 +48,7 @@ import {
   CONSTANTS,
   stakeAccountData,
   uninitializedStakeAccount,
+  validatorListMock,
 } from './mocks';
 
 describe('StakePoolProgram', () => {
@@ -60,6 +67,69 @@ describe('StakePoolProgram', () => {
     lamports: 99999,
     data,
   };
+
+  it('StakePoolInstruction.addValidatorToPool', () => {
+    const payload: AddValidatorToPoolParams = {
+      stakePool: stakePoolAddress,
+      staker: Keypair.generate().publicKey,
+      reserveStake: Keypair.generate().publicKey,
+      withdrawAuthority: Keypair.generate().publicKey,
+      validatorList: Keypair.generate().publicKey,
+      validatorStake: Keypair.generate().publicKey,
+      validatorVote: PublicKey.default,
+      seed: 0,
+    };
+
+    const instruction = StakePoolInstruction.addValidatorToPool(payload);
+    expect(instruction.keys).toHaveLength(13);
+    expect(instruction.keys[0].pubkey).toEqual(payload.stakePool);
+    expect(instruction.keys[1].pubkey).toEqual(payload.staker);
+    expect(instruction.keys[2].pubkey).toEqual(payload.reserveStake);
+    expect(instruction.keys[3].pubkey).toEqual(payload.withdrawAuthority);
+    expect(instruction.keys[4].pubkey).toEqual(payload.validatorList);
+    expect(instruction.keys[5].pubkey).toEqual(payload.validatorStake);
+    expect(instruction.keys[6].pubkey).toEqual(payload.validatorVote);
+    expect(instruction.keys[11].pubkey).toEqual(SystemProgram.programId);
+    expect(instruction.keys[12].pubkey).toEqual(StakeProgram.programId);
+
+    const decodedData = decodeData(
+      STAKE_POOL_INSTRUCTION_LAYOUTS.AddValidatorToPool,
+      instruction.data,
+    );
+    expect(decodedData.instruction).toEqual(
+      STAKE_POOL_INSTRUCTION_LAYOUTS.AddValidatorToPool.index,
+    );
+    expect(decodedData.seed).toEqual(payload.seed);
+  });
+
+  it('StakePoolInstruction.removeValidatorFromPool', () => {
+    const payload: RemoveValidatorFromPoolParams = {
+      stakePool: stakePoolAddress,
+      staker: Keypair.generate().publicKey,
+      withdrawAuthority: Keypair.generate().publicKey,
+      validatorList: Keypair.generate().publicKey,
+      validatorStake: Keypair.generate().publicKey,
+      transientStake: Keypair.generate().publicKey,
+    };
+
+    const instruction = StakePoolInstruction.removeValidatorFromPool(payload);
+    expect(instruction.keys).toHaveLength(8);
+    expect(instruction.keys[0].pubkey).toEqual(payload.stakePool);
+    expect(instruction.keys[1].pubkey).toEqual(payload.staker);
+    expect(instruction.keys[2].pubkey).toEqual(payload.withdrawAuthority);
+    expect(instruction.keys[3].pubkey).toEqual(payload.validatorList);
+    expect(instruction.keys[4].pubkey).toEqual(payload.validatorStake);
+    expect(instruction.keys[5].pubkey).toEqual(payload.transientStake);
+    expect(instruction.keys[7].pubkey).toEqual(StakeProgram.programId);
+
+    const decodedData = decodeData(
+      STAKE_POOL_INSTRUCTION_LAYOUTS.RemoveValidatorFromPool,
+      instruction.data,
+    );
+    expect(decodedData.instruction).toEqual(
+      STAKE_POOL_INSTRUCTION_LAYOUTS.RemoveValidatorFromPool.index,
+    );
+  });
 
   it('StakePoolInstruction.depositSol', () => {
     const payload: DepositSolParams = {
@@ -97,6 +167,105 @@ describe('StakePoolProgram', () => {
 
     expect(instruction2.keys).toHaveLength(11);
     expect(instruction2.keys[10].pubkey).toEqual(payload.depositAuthority);
+  });
+
+  describe('addValidatorToPool', () => {
+    const validatorList = mockValidatorList();
+    const decodedValidatorList = ValidatorListLayout.decode(validatorList.data);
+    const voteAccount = decodedValidatorList.validators[0].voteAccountAddress;
+
+    it('should throw an error when trying to add an existing validator', async () => {
+      connection.getAccountInfo = jest.fn(async (pubKey) => {
+        if (pubKey === stakePoolAddress) {
+          return stakePoolAccount;
+        }
+        return mockValidatorList();
+      });
+      await expect(addValidatorToPool(connection, stakePoolAddress, voteAccount)).rejects.toThrow(
+        Error('Vote account is already in validator list'),
+      );
+    });
+
+    it('should successfully add a validator', async () => {
+      connection.getAccountInfo = jest.fn(async (pubKey) => {
+        if (pubKey === stakePoolAddress) {
+          return stakePoolAccount;
+        }
+        return <AccountInfo<any>>{
+          executable: true,
+          owner: new PublicKey(0),
+          lamports: 0,
+          data,
+        };
+      });
+      const res = await addValidatorToPool(
+        connection,
+        stakePoolAddress,
+        validatorListMock.validators[0].voteAccountAddress,
+      );
+      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(2);
+      expect(res.instructions).toHaveLength(1);
+      // Make sure that the validator vote account being added is the one we passed
+      expect(res.instructions[0].keys[6].pubkey).toEqual(
+        validatorListMock.validators[0].voteAccountAddress,
+      );
+    });
+  });
+
+  describe('removeValidatorFromPool', () => {
+    const voteAccount = Keypair.generate().publicKey;
+
+    it('should throw an error when trying to remove a non-existing validator', async () => {
+      connection.getAccountInfo = jest.fn(async (pubKey) => {
+        if (pubKey === stakePoolAddress) {
+          return stakePoolAccount;
+        }
+        if (pubKey.equals(stakePoolMock.validatorList)) {
+          return mockValidatorList();
+        }
+        return <AccountInfo<any>>{
+          executable: true,
+          owner: new PublicKey(0),
+          lamports: 0,
+          data,
+        };
+      });
+      await expect(
+        removeValidatorFromPool(connection, stakePoolAddress, voteAccount),
+      ).rejects.toThrow(Error('Vote account is not already in validator list'));
+    });
+
+    it('should successfully remove a validator', async () => {
+      connection.getAccountInfo = jest.fn(async (pubKey) => {
+        if (pubKey === stakePoolAddress) {
+          return stakePoolAccount;
+        }
+        if (pubKey.equals(stakePoolMock.validatorList)) {
+          return mockValidatorList();
+        }
+        return <AccountInfo<any>>{
+          executable: true,
+          owner: new PublicKey(0),
+          lamports: 0,
+          data,
+        };
+      });
+      const res = await removeValidatorFromPool(
+        connection,
+        stakePoolAddress,
+        validatorListMock.validators[0].voteAccountAddress,
+      );
+      expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(2);
+      expect(res.instructions).toHaveLength(1);
+      // Make sure that the validator stake account being removed is the one we passed
+      const validatorStake = await findStakeProgramAddress(
+        STAKE_POOL_PROGRAM_ID,
+        validatorListMock.validators[0].voteAccountAddress,
+        stakePoolAddress,
+        0,
+      );
+      expect(res.instructions[0].keys[4].pubkey).toEqual(validatorStake);
+    });
   });
 
   describe('depositSol', () => {

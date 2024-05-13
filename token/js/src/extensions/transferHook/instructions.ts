@@ -119,7 +119,7 @@ export function createUpdateTransferHookInstruction(
 
 function deEscalateAccountMeta(accountMeta: AccountMeta, accountMetas: AccountMeta[]): AccountMeta {
     const maybeHighestPrivileges = accountMetas
-        .filter((x) => x.pubkey === accountMeta.pubkey)
+        .filter((x) => x.pubkey.equals(accountMeta.pubkey))
         .reduce<{ isSigner: boolean; isWritable: boolean } | undefined>((acc, x) => {
             if (!acc) return { isSigner: x.isSigner, isWritable: x.isWritable };
             return { isSigner: acc.isSigner || x.isSigner, isWritable: acc.isWritable || x.isWritable };
@@ -205,7 +205,7 @@ export async function addExtraAccountMetasForExecute(
     const validateStateData = getExtraAccountMetas(validateStateAccount);
 
     // Check to make sure the provided keys are in the instruction
-    if (![source, mint, destination, owner].every((key) => instruction.keys.some((meta) => meta.pubkey === key))) {
+    if (![source, mint, destination, owner].every((key) => instruction.keys.some((meta) => meta.pubkey.equals(key)))) {
         throw new Error('Missing required account in instruction');
     }
 

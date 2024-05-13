@@ -17,7 +17,7 @@ use {
     spl_token_2022::instruction::{AuthorityType, MAX_SIGNERS, MIN_SIGNERS},
     std::{fmt, str::FromStr},
     strum::IntoEnumIterator,
-    strum_macros::{EnumIter, EnumString, IntoStaticStr},
+    strum_macros::{AsRefStr, EnumIter, EnumString, IntoStaticStr},
 };
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -64,9 +64,21 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     help: "Member signer of a multisig account",
 };
 
+pub const COMPUTE_UNIT_PRICE_ARG: ArgConstant<'static> = ArgConstant {
+    name: "compute_unit_price",
+    long: "--with-compute-unit-price",
+    help: "Set compute unit price for transaction, in increments of 0.000001 lamports per compute unit.",
+};
+
+pub const COMPUTE_UNIT_LIMIT_ARG: ArgConstant<'static> = ArgConstant {
+    name: "compute_unit_limit",
+    long: "--with-compute-unit-limit",
+    help: "Set compute unit limit for transaction, in compute units.",
+};
+
 pub static VALID_TOKEN_PROGRAM_IDS: [Pubkey; 2] = [spl_token_2022::ID, spl_token::ID];
 
-#[derive(Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
+#[derive(AsRefStr, Debug, Clone, Copy, PartialEq, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "kebab-case")]
 pub enum CommandName {
     CreateToken,
@@ -338,6 +350,7 @@ where
         Err(e) => Err(e),
     }
 }
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -610,6 +623,24 @@ pub fn app<'a, 'b>(
                 .global(true)
                 .hidden(true)
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
+        )
+        .arg(
+            Arg::with_name(COMPUTE_UNIT_LIMIT_ARG.name)
+                .long(COMPUTE_UNIT_LIMIT_ARG.long)
+                .takes_value(true)
+                .global(true)
+                .value_name("COMPUTE-UNIT-LIMIT")
+                .validator(is_parsable::<u32>)
+                .help(COMPUTE_UNIT_LIMIT_ARG.help)
+        )
+        .arg(
+            Arg::with_name(COMPUTE_UNIT_PRICE_ARG.name)
+                .long(COMPUTE_UNIT_PRICE_ARG.long)
+                .takes_value(true)
+                .global(true)
+                .value_name("COMPUTE-UNIT-PRICE")
+                .validator(is_parsable::<u64>)
+                .help(COMPUTE_UNIT_PRICE_ARG.help)
         )
         .bench_subcommand()
         .subcommand(SubCommand::with_name(CommandName::CreateToken.into()).about("Create a new token")
@@ -1061,7 +1092,7 @@ pub fn app<'a, 'b>(
                 .arg(
                     Arg::with_name("group_token")
                         .validator(is_valid_pubkey)
-                        .value_name("TOKEN_MINT_ADDRESS")
+                        .value_name("GROUP_TOKEN_ADDRESS")
                         .takes_value(true)
                         .required(true)
                         .index(2)

@@ -68,7 +68,7 @@ use {
     },
     spl_token_client::{
         client::{ProgramRpcClientSendTransaction, RpcClientResponse},
-        token::{ExtensionInitializationParams, Token},
+        token::{ComputeUnitLimit, ExtensionInitializationParams, Token},
     },
     spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::{Field, TokenMetadata},
@@ -134,18 +134,31 @@ async fn check_wallet_balance(
     }
 }
 
-fn token_client_from_config(
+fn base_token_client(
     config: &Config<'_>,
     token_pubkey: &Pubkey,
     decimals: Option<u8>,
 ) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
-    let token = Token::new(
+    Ok(Token::new(
         config.program_client.clone(),
         &config.program_id,
         token_pubkey,
         decimals,
         config.fee_payer()?.clone(),
-    );
+    ))
+}
+
+fn config_token_client(
+    token: Token<ProgramRpcClientSendTransaction>,
+    config: &Config<'_>,
+) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
+    let token = token.with_compute_unit_limit(config.compute_unit_limit.clone());
+
+    let token = if let Some(compute_unit_price) = config.compute_unit_price {
+        token.with_compute_unit_price(compute_unit_price)
+    } else {
+        token
+    };
 
     if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
         config.nonce_account,
@@ -160,6 +173,15 @@ fn token_client_from_config(
     } else {
         Ok(token)
     }
+}
+
+fn token_client_from_config(
+    config: &Config<'_>,
+    token_pubkey: &Pubkey,
+    decimals: Option<u8>,
+) -> Result<Token<ProgramRpcClientSendTransaction>, Error> {
+    let token = base_token_client(config, token_pubkey, decimals)?;
+    config_token_client(token, config)
 }
 
 fn native_token_client_from_config(
@@ -406,7 +428,13 @@ async fn command_set_interest_rate(
     rate_bps: i16,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
-    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let mut token = token_client_from_config(config, &token_pubkey, None)?;
+    // Because set_interest_rate depends on the time, it can cost more between
+    // simulation and execution. To help that, just set a static compute limit
+    // if none has been set
+    if !matches!(config.compute_unit_limit, ComputeUnitLimit::Static(_)) {
+        token = token.with_compute_unit_limit(ComputeUnitLimit::Static(2_500));
+    }
 
     if !config.sign_only {
         let mint_account = config.get_account_checked(&token_pubkey).await?;
@@ -859,7 +887,7 @@ async fn command_create_multisig(
         ),
     );
 
-    // default is safe here because create_multisig doesnt use it
+    // default is safe here because create_multisig doesn't use it
     let token = token_client_from_config(config, &Pubkey::default(), None)?;
 
     let res = token
@@ -1098,7 +1126,7 @@ async fn command_authorize(
 
         (mint_pubkey, previous_authority)
     } else {
-        // default is safe here because authorize doesnt use it
+        // default is safe here because authorize doesn't use it
         (Pubkey::default(), None)
     };
 
@@ -1210,6 +1238,11 @@ async fn command_transfer(
     let token = if let Some(transfer_hook_accounts) = transfer_hook_accounts {
         token_client_from_config(config, &token_pubkey, decimals)?
             .with_transfer_hook_accounts(transfer_hook_accounts)
+    } else if config.sign_only {
+        // we need to pass in empty transfer hook accounts on sign-only,
+        // otherwise the token client will try to fetch the mint account and fail
+        token_client_from_config(config, &token_pubkey, decimals)?
+            .with_transfer_hook_accounts(vec![])
     } else {
         token_client_from_config(config, &token_pubkey, decimals)?
     };
@@ -1313,7 +1346,7 @@ async fn command_transfer(
                                      Add `--allow-non-system-account-recipient` to complete the transfer.".into());
             }
         }
-        // if it doesnt exist, it definitely isnt a token account!
+        // if it doesn't exist, it definitely isn't a token account!
         // we gate transfer with a different flag
         else if maybe_recipient_account_data.is_none() && allow_unfunded_recipient {
             false
@@ -2013,7 +2046,7 @@ async fn command_revoke(
 
         (source_state.base.mint, delegate)
     } else {
-        // default is safe here because revoke doesnt use it
+        // default is safe here because revoke doesn't use it
         (Pubkey::default(), delegate)
     };
 
@@ -2084,7 +2117,7 @@ async fn command_close(
 
         token
     } else {
-        // default is safe here because close doesnt use it
+        // default is safe here because close doesn't use it
         token_client_from_config(config, &Pubkey::default(), None)?
     };
 

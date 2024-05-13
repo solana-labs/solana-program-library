@@ -277,8 +277,9 @@ fn process_withdraw_withheld_tokens_from_accounts(
 pub(crate) fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    instruction: TransferFeeInstruction,
+    input: &[u8],
 ) -> ProgramResult {
+    let instruction = TransferFeeInstruction::unpack(input)?;
     check_program_account(program_id)?;
 
     match instruction {

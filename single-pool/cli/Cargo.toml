@@ -8,30 +8,30 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dependencies]
-tokio = "1.36"
+tokio = "1.37"
 clap = { version = "3.2.23", features = ["derive"] }
 console = "0.15.8"
-borsh = "1.2.1"
+borsh = "1.5.0"
 bincode = "1.3.1"
-serde = "1.0.197"
+serde = "1.0.201"
 serde_derive = "1.0.103"
-serde_json = "1.0.114"
-serde_with = "3.7.0"
-solana-account-decoder = ">=1.18.2,<=2"
-solana-clap-v3-utils = ">=1.18.2,<=2"
-solana-cli-config = ">=1.18.2,<=2"
-solana-cli-output = ">=1.18.2,<=2"
-solana-client = ">=1.18.2,<=2"
-solana-logger = ">=1.18.2,<=2"
-solana-remote-wallet = ">=1.18.2,<=2"
-solana-sdk = ">=1.18.2,<=2"
-solana-transaction-status = ">=1.18.2,<=2"
-solana-vote-program = ">=1.18.2,<=2"
+serde_json = "1.0.117"
+serde_with = "3.8.1"
+solana-account-decoder = ">=1.18.11,<=2"
+solana-clap-v3-utils = ">=1.18.11,<=2"
+solana-cli-config = ">=1.18.11,<=2"
+solana-cli-output = ">=1.18.11,<=2"
+solana-client = ">=1.18.11,<=2"
+solana-logger = ">=1.18.11,<=2"
+solana-remote-wallet = ">=1.18.11,<=2"
+solana-sdk = ">=1.18.11,<=2"
+solana-transaction-status = ">=1.18.11,<=2"
+solana-vote-program = ">=1.18.11,<=2"
 spl-token = { version = "4.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-spl-token-client = { version = "0.8", path = "../../token/client" }
-spl-associated-token-account = { version = "2.0", path = "../../associated-token-account/program", features = [
+spl-token-client = { version = "0.10.0", path = "../../token/client" }
+spl-associated-token-account = { version = "3.0.2", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
 ] }
 spl-single-pool = { version = "1.0.0", path = "../program", features = [
@@ -39,8 +39,8 @@ spl-single-pool = { version = "1.0.0", path = "../program", features = [
 ] }
 
 [dev-dependencies]
-solana-test-validator = ">=1.18.2,<=2"
-serial_test = "3.0.0"
+solana-test-validator = ">=1.18.11,<=2"
+serial_test = "3.1.1"
 test-case = "3.3"
 tempfile = "3.10.1"
 

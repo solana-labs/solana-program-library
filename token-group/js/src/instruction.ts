@@ -1,18 +1,25 @@
 import type { Encoder } from '@solana/codecs';
 import type { PublicKey } from '@solana/web3.js';
-import { getBytesEncoder, getStructEncoder, getTupleEncoder, getU32Encoder, mapEncoder } from '@solana/codecs';
+import {
+    fixEncoderSize,
+    getBytesEncoder,
+    getStructEncoder,
+    getTupleEncoder,
+    getU32Encoder,
+    transformEncoder,
+} from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import { SystemProgram, TransactionInstruction } from '@solana/web3.js';
 
 function getInstructionEncoder<T extends object>(discriminator: Uint8Array, dataEncoder: Encoder<T>): Encoder<T> {
-    return mapEncoder(getTupleEncoder([getBytesEncoder(), dataEncoder]), (data: T): [Uint8Array, T] => [
+    return transformEncoder(getTupleEncoder([getBytesEncoder(), dataEncoder]), (data: T): [Uint8Array, T] => [
         discriminator,
         data,
     ]);
 }
 
 function getPublicKeyEncoder(): Encoder<PublicKey> {
-    return mapEncoder(getBytesEncoder({ size: 32 }), (publicKey: PublicKey) => publicKey.toBytes());
+    return transformEncoder(fixEncoderSize(getBytesEncoder(), 32), (publicKey: PublicKey) => publicKey.toBytes());
 }
 
 export interface InitializeGroupInstruction {

@@ -357,8 +357,8 @@ pub enum GovernanceError {
     #[error("Invalid proposal options")]
     InvalidProposalOptions, // 583
 
-    /// Proposal is not not executable
-    #[error("Proposal is not not executable")]
+    /// Proposal is not executable
+    #[error("Proposal is not executable")]
     ProposalIsNotExecutable, // 584
 
     /// Deny vote is not allowed

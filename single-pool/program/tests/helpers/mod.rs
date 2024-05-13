@@ -1,4 +1,4 @@
-#![allow(dead_code)] // needed because cargo doesnt understand test usage
+#![allow(dead_code)] // needed because cargo doesn't understand test usage
 
 use {
     solana_program_test::*,
@@ -15,7 +15,7 @@ use {
     },
     solana_vote_program::{
         self, vote_instruction,
-        vote_state::{VoteInit, VoteState, VoteStateVersions},
+        vote_state::{VoteInit, VoteState},
     },
     spl_associated_token_account as atoken,
     spl_single_pool::{
@@ -380,7 +380,7 @@ pub async fn create_vote(
         },
         rent_voter,
         vote_instruction::CreateVoteAccountConfig {
-            space: VoteStateVersions::vote_state_size_of(true) as u64,
+            space: VoteState::size_of() as u64,
             ..Default::default()
         },
     ));
@@ -425,7 +425,7 @@ where
         e.try_into().unwrap()
     } else {
         panic!(
-            "couldnt convert {:?} to ProgramError (expected {:?})",
+            "couldn't convert {:?} to ProgramError (expected {:?})",
             got, expected
         );
     };

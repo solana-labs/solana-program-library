@@ -1,10 +1,8 @@
-#![allow(deprecated)]
-
 use {
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{
-        input_parsers::{parse_url_or_moniker, pubkey_of},
-        input_validators::{is_valid_pubkey, is_valid_signer, normalize_to_url_if_moniker},
+        input_parsers::{parse_url_or_moniker, pubkey_of, signer::SignerSourceParserBuilder},
+        input_validators::normalize_to_url_if_moniker,
         keypair::{
             signer_from_path, signer_from_path_with_config, DefaultSigner, SignerFromPathConfig,
         },
@@ -225,7 +223,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Arg::new("payer")
                 .long("payer")
                 .value_name("KEYPAIR")
-                .validator(|s| is_valid_signer(s))
+                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                 .takes_value(true)
                 .global(true)
                 .help("Filepath or URL to a keypair [default: client keypair]"),
@@ -252,7 +250,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Command::new("create-escrow").about("Create token account for the program escrow")
             .arg(
                 Arg::new("original_mint")
-                    .validator(|s| is_valid_pubkey(s))
+                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .value_name("ADDRESS")
                     .required(true)
                     .takes_value(true)
@@ -261,7 +259,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .arg(
                 Arg::new("new_mint")
-                    .validator(|s| is_valid_pubkey(s))
+                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .value_name("ADDRESS")
                     .required(true)
                     .takes_value(true)
@@ -271,7 +269,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .arg(
                 Arg::new("account_keypair")
                     .value_name("ACCOUNT_KEYPAIR")
-                    .validator(|s| is_valid_signer(s))
+                    .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .takes_value(true)
                     .index(3)
                     .help("Specify the account keypair. This may be a keypair file or the ASK keyword. [default: associated token account for escrow authority]"),
@@ -281,7 +279,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Command::new("exchange").about("Exchange original tokens for new tokens")
             .arg(
                 Arg::new("original_mint")
-                    .validator(|s| is_valid_pubkey(s))
+                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .value_name("ADDRESS")
                     .required(true)
                     .takes_value(true)
@@ -290,7 +288,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .arg(
                 Arg::new("new_mint")
-                    .validator(|s| is_valid_pubkey(s))
+                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .value_name("ADDRESS")
                     .required(true)
                     .takes_value(true)
@@ -301,7 +299,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Arg::new("owner")
                     .long("owner")
                     .value_name("OWNER_KEYPAIR")
-                    .validator(|s| is_valid_signer(s))
+                    .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .takes_value(true)
                     .help("Specify the owner or delegate for the burnt account. This may be a keypair file or the ASK keyword. [default: fee payer]"),
             )
@@ -309,7 +307,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Arg::new("burn_from")
                     .long("burn-from")
                     .value_name("BURN_TOKEN_ACCOUNT_ADDRESS")
-                    .validator(|s| is_valid_pubkey(s))
+                    .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .takes_value(true)
                     .help("Specify the burnt account address. [default: associated token account for owner on original mint]"),
             )
@@ -317,7 +315,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Arg::new("escrow")
                     .long("escrow")
                     .value_name("ESCROW_TOKEN_ACCOUNT_ADDRESS")
-                    .validator(|s| is_valid_pubkey(s))
+                    .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .takes_value(true)
                     .help("Specify the escrow account address to transfer from. [default: associated token account for the escrow authority on new mint]"),
             )
@@ -325,14 +323,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 Arg::new("destination")
                     .long("destination")
                     .value_name("DESTINATION_ACCOUNT_ADDRESS")
-                    .validator(|s| is_valid_pubkey(s))
+                    .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .takes_value(true)
                     .help("Specify the destination account to receive new tokens. [default: associated token account for owner on new mint]"),
             )
             .arg(
                 Arg::new("multisig_signer")
                     .long("multisig-signer")
-                    .validator(|s| is_valid_signer(s))
+                    .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .value_name("MULTISIG_SIGNER")
                     .takes_value(true)
                     .multiple(true)

@@ -1,15 +1,19 @@
 import type { Encoder } from '@solana/codecs';
 import {
+    addEncoderSizePrefix,
+    fixEncoderSize,
     getBooleanEncoder,
     getBytesEncoder,
     getDataEnumCodec,
     getOptionEncoder,
-    getStringEncoder,
+    getUtf8Encoder,
     getStructEncoder,
     getTupleEncoder,
+    getU32Encoder,
     getU64Encoder,
-    mapEncoder,
+    transformEncoder,
 } from '@solana/codecs';
+import type { VariableSizeEncoder } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import type { PublicKey } from '@solana/web3.js';
 import { SystemProgram, TransactionInstruction } from '@solana/web3.js';
@@ -18,14 +22,18 @@ import type { Field } from './field.js';
 import { getFieldCodec, getFieldConfig } from './field.js';
 
 function getInstructionEncoder<T extends object>(discriminator: Uint8Array, dataEncoder: Encoder<T>): Encoder<T> {
-    return mapEncoder(getTupleEncoder([getBytesEncoder(), dataEncoder]), (data: T): [Uint8Array, T] => [
+    return transformEncoder(getTupleEncoder([getBytesEncoder(), dataEncoder]), (data: T): [Uint8Array, T] => [
         discriminator,
         data,
     ]);
 }
 
 function getPublicKeyEncoder(): Encoder<PublicKey> {
-    return mapEncoder(getBytesEncoder({ size: 32 }), (publicKey: PublicKey) => publicKey.toBytes());
+    return transformEncoder(fixEncoderSize(getBytesEncoder(), 32), (publicKey: PublicKey) => publicKey.toBytes());
+}
+
+function getStringEncoder(): VariableSizeEncoder<string> {
+    return addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder());
 }
 
 /**

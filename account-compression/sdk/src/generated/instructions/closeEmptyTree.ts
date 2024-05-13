@@ -36,6 +36,7 @@ export type CloseEmptyTreeInstructionAccounts = {
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
+
 export const closeEmptyTreeInstructionDiscriminator = [
   50, 14, 219, 107, 78, 103, 16, 103,
 ]

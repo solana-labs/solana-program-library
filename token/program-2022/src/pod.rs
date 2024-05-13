@@ -8,9 +8,13 @@ use {
         state::{AccountState, PackedSizeOf},
     },
     bytemuck::{Pod, Zeroable},
-    solana_program::{program_option::COption, program_pack::IsInitialized, pubkey::Pubkey},
+    solana_program::{
+        program_error::ProgramError, program_option::COption, program_pack::IsInitialized,
+        pubkey::Pubkey,
+    },
     spl_pod::{
         bytemuck::pod_get_packed_len,
+        optional_keys::OptionalNonZeroPubkey,
         primitives::{PodBool, PodU64},
     },
 };
@@ -199,6 +203,22 @@ impl<T: Pod + Default> PodCOption<T> {
     pub fn is_some(&self) -> bool {
         self.option == Self::SOME
     }
+
+    /// Checks to see if no value is set, equivalent of `Option::is_none`
+    pub fn is_none(&self) -> bool {
+        self.option == Self::NONE
+    }
+
+    /// Converts the option into a Result, similar to `Option::ok_or`
+    pub fn ok_or<E>(self, error: E) -> Result<T, E> {
+        match self {
+            Self {
+                option: Self::SOME,
+                value,
+            } => Ok(value),
+            _ => Err(error),
+        }
+    }
 }
 impl<T: Pod + Default> From<COption<T>> for PodCOption<T> {
     fn from(opt: COption<T>) -> Self {
@@ -211,6 +231,26 @@ impl<T: Pod + Default> From<COption<T>> for PodCOption<T> {
                 option: Self::SOME,
                 value: v,
             },
+        }
+    }
+}
+impl TryFrom<PodCOption<Pubkey>> for OptionalNonZeroPubkey {
+    type Error = ProgramError;
+    fn try_from(p: PodCOption<Pubkey>) -> Result<Self, Self::Error> {
+        match p {
+            PodCOption {
+                option: PodCOption::<Pubkey>::SOME,
+                value,
+            } if value == Pubkey::default() => Err(ProgramError::InvalidArgument),
+            PodCOption {
+                option: PodCOption::<Pubkey>::SOME,
+                value,
+            } => Ok(Self(value)),
+            PodCOption {
+                option: PodCOption::<Pubkey>::NONE,
+                value: _,
+            } => Ok(Self(Pubkey::default())),
+            _ => unreachable!(),
         }
     }
 }

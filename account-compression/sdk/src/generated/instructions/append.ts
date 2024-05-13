@@ -49,6 +49,7 @@ export type AppendInstructionAccounts = {
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
+
 export const appendInstructionDiscriminator = [
   149, 120, 18, 222, 236, 225, 88, 203,
 ]

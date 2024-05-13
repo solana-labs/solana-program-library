@@ -7,6 +7,7 @@ import { MULTISIG_SIZE } from '../state/multisig.js';
 import { ACCOUNT_TYPE_SIZE } from './accountType.js';
 import { CPI_GUARD_SIZE } from './cpiGuard/index.js';
 import { DEFAULT_ACCOUNT_STATE_SIZE } from './defaultAccountState/index.js';
+import { TOKEN_GROUP_SIZE, TOKEN_GROUP_MEMBER_SIZE } from './tokenGroup/index.js';
 import { GROUP_MEMBER_POINTER_SIZE } from './groupMemberPointer/state.js';
 import { GROUP_POINTER_SIZE } from './groupPointer/state.js';
 import { IMMUTABLE_OWNER_SIZE } from './immutableOwner.js';
@@ -43,9 +44,9 @@ export enum ExtensionType {
     MetadataPointer = 18, // Remove number once above extensions implemented
     TokenMetadata = 19, // Remove number once above extensions implemented
     GroupPointer = 20,
-    // TokenGroup = 21, // Not implemented yet
+    TokenGroup = 21,
     GroupMemberPointer = 22,
-    // TokenGroupMember = 23, // Not implemented yet
+    TokenGroupMember = 23,
 }
 
 export const TYPE_SIZE = 2;
@@ -77,9 +78,9 @@ export function getTypeLen(e: ExtensionType): number {
         case ExtensionType.MintCloseAuthority:
             return MINT_CLOSE_AUTHORITY_SIZE;
         case ExtensionType.ConfidentialTransferMint:
-            return 97;
+            return 65;
         case ExtensionType.ConfidentialTransferAccount:
-            return 286;
+            return 295;
         case ExtensionType.CpiGuard:
             return CPI_GUARD_SIZE;
         case ExtensionType.DefaultAccountState:
@@ -106,6 +107,10 @@ export function getTypeLen(e: ExtensionType): number {
             return GROUP_POINTER_SIZE;
         case ExtensionType.GroupMemberPointer:
             return GROUP_MEMBER_POINTER_SIZE;
+        case ExtensionType.TokenGroup:
+            return TOKEN_GROUP_SIZE;
+        case ExtensionType.TokenGroupMember:
+            return TOKEN_GROUP_MEMBER_SIZE;
         case ExtensionType.TokenMetadata:
             throw Error(`Cannot get type length for variable extension type: ${e}`);
         default:
@@ -127,6 +132,8 @@ export function isMintExtension(e: ExtensionType): boolean {
         case ExtensionType.TokenMetadata:
         case ExtensionType.GroupPointer:
         case ExtensionType.GroupMemberPointer:
+        case ExtensionType.TokenGroup:
+        case ExtensionType.TokenGroupMember:
             return true;
         case ExtensionType.Uninitialized:
         case ExtensionType.TransferFeeAmount:
@@ -165,6 +172,8 @@ export function isAccountExtension(e: ExtensionType): boolean {
         case ExtensionType.TokenMetadata:
         case ExtensionType.GroupPointer:
         case ExtensionType.GroupMemberPointer:
+        case ExtensionType.TokenGroup:
+        case ExtensionType.TokenGroupMember:
             return false;
         default:
             throw Error(`Unknown extension type: ${e}`);
@@ -197,6 +206,8 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
         case ExtensionType.TransferHookAccount:
         case ExtensionType.GroupPointer:
         case ExtensionType.GroupMemberPointer:
+        case ExtensionType.TokenGroup:
+        case ExtensionType.TokenGroupMember:
             return ExtensionType.Uninitialized;
     }
 }

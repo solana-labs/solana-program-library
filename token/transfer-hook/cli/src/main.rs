@@ -1,14 +1,15 @@
-#![allow(deprecated)]
-
 pub mod meta;
 
 use {
     crate::meta::parse_transfer_hook_account_arg,
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{
-        input_parsers::{parse_url_or_moniker, pubkey_of_signer},
-        input_validators::{is_valid_pubkey, is_valid_signer, normalize_to_url_if_moniker},
-        keypair::DefaultSigner,
+        input_parsers::{
+            parse_url_or_moniker,
+            signer::{SignerSource, SignerSourceParserBuilder},
+        },
+        input_validators::normalize_to_url_if_moniker,
+        keypair::{pubkey_from_source, DefaultSigner},
     },
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
@@ -27,10 +28,6 @@ use {
     },
     std::{process::exit, rc::Rc},
 };
-
-fn clap_is_valid_pubkey(arg: &str) -> Result<(), String> {
-    is_valid_pubkey(arg)
-}
 
 // Helper function to calculate the required lamports for rent
 async fn calculate_rent_lamports(
@@ -209,7 +206,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("fee_payer")
                 .long("fee-payer")
                 .value_name("KEYPAIR")
-                .validator(|s| is_valid_signer(s))
+                .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                 .takes_value(true)
                 .global(true)
                 .help("Filepath or URL to a keypair to pay transaction fee [default: client keypair]"),
@@ -237,7 +234,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .about("Create the extra account metas account for a transfer hook program")
                 .arg(
                     Arg::with_name("program_id")
-                        .validator(clap_is_valid_pubkey)
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TRANSFER_HOOK_PROGRAM")
                         .takes_value(true)
                         .index(1)
@@ -246,7 +243,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .arg(
                     Arg::with_name("token")
-                        .validator(clap_is_valid_pubkey)
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(2)
@@ -265,7 +262,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
 
-Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
+Additional accounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
                             
 ```json
 {
@@ -310,7 +307,7 @@ extraMetas:
                     Arg::new("mint_authority")
                         .long("mint-authority")
                         .value_name("KEYPAIR")
-                        .validator(|s| is_valid_signer(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .global(true)
                         .help("Filepath or URL to mint-authority keypair [default: client keypair]"),
@@ -321,7 +318,7 @@ extraMetas:
                 .about("Update the extra account metas account for a transfer hook program")
                 .arg(
                     Arg::with_name("program_id")
-                        .validator(clap_is_valid_pubkey)
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TRANSFER_HOOK_PROGRAM")
                         .takes_value(true)
                         .index(1)
@@ -330,7 +327,7 @@ extraMetas:
                 )
                 .arg(
                     Arg::with_name("token")
-                        .validator(clap_is_valid_pubkey)
+                        .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
                         .index(2)
@@ -349,7 +346,7 @@ extraMetas:
 
 Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
 
-Additional acounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
+Additional accounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
                             
 ```json
 {
@@ -394,7 +391,7 @@ extraMetas:
                     Arg::new("mint_authority")
                         .long("mint-authority")
                         .value_name("KEYPAIR")
-                        .validator(|s| is_valid_signer(s))
+                        .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                         .takes_value(true)
                         .global(true)
                         .help("Filepath or URL to mint-authority keypair [default: client keypair]"),
@@ -447,12 +444,21 @@ extraMetas:
 
     match (command, matches) {
         ("create-extra-metas", arg_matches) => {
-            let program_id = pubkey_of_signer(arg_matches, "program_id", &mut wallet_manager)
-                .unwrap()
+            let program_id_source = arg_matches
+                .try_get_one::<SignerSource>("program_id")?
                 .unwrap();
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
+            let program_id = pubkey_from_source(
+                arg_matches,
+                program_id_source,
+                "program_id",
+                &mut wallet_manager,
+            )
+            .unwrap();
+
+            let token_source = arg_matches.try_get_one::<SignerSource>("token")?.unwrap();
+            let token = pubkey_from_source(arg_matches, token_source, "token", &mut wallet_manager)
                 .unwrap();
+
             let transfer_hook_accounts = arg_matches
                 .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
                 .unwrap_or_default()
@@ -487,12 +493,21 @@ extraMetas:
             println!("Signature: {signature}");
         }
         ("update-extra-metas", arg_matches) => {
-            let program_id = pubkey_of_signer(arg_matches, "program_id", &mut wallet_manager)
-                .unwrap()
+            let program_id_source = arg_matches
+                .try_get_one::<SignerSource>("program_id")?
                 .unwrap();
-            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
-                .unwrap()
+            let program_id = pubkey_from_source(
+                arg_matches,
+                program_id_source,
+                "program_id",
+                &mut wallet_manager,
+            )
+            .unwrap();
+
+            let token_source = arg_matches.try_get_one::<SignerSource>("token")?.unwrap();
+            let token = pubkey_from_source(arg_matches, token_source, "token", &mut wallet_manager)
                 .unwrap();
+
             let transfer_hook_accounts = arg_matches
                 .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
                 .unwrap_or_default()
