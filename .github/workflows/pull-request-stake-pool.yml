@@ -51,20 +51,20 @@ jobs:
         with:
           toolchain: ${{ env.RUST_STABLE }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/rustfilt
           key: cargo-sbf-bins-${{ runner.os }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
@@ -98,7 +98,7 @@ jobs:
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.npm
           key: node-${{ hashFiles('pnpm-lock.yaml') }}
@@ -117,7 +117,7 @@ jobs:
         with:
           python-version: 3.8
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: pip-stake-pool-${{ hashFiles('stake-pool/py/requirements.txt') }}
