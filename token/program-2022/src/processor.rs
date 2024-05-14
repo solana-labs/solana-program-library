@@ -402,6 +402,15 @@ impl Processor {
                     authority_info_data_len,
                     account_info_iter.as_slice(),
                 )?;
+                if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
+                    // If delegated to self, don't allow a transfer with CPI Guard
+                    if delegate == source_account.base.owner
+                        && cpi_guard.lock_cpi.into()
+                        && in_cpi()
+                    {
+                        return Err(TokenError::CpiGuardTransferBlocked.into());
+                    }
+                }
                 let delegated_amount = u64::from(source_account.base.delegated_amount);
                 if delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
