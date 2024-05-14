@@ -12,7 +12,7 @@ serde-traits = ["dep:serde"]
 test-sbf = []
 
 [dependencies]
-bytemuck = { version = "1.15.0", features = ["derive"] }
+bytemuck = { version = "1.16.0", features = ["derive"] }
 serde = { version = "1.0.201", optional = true }
 solana-program = ">=1.18.11,<=2"
 spl-discriminator = { version = "0.2.2", path = "../discriminator" }

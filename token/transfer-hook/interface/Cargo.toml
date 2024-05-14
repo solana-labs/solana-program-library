@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 arrayref = "0.3.7"
-bytemuck = { version = "1.15.0", features = ["derive"] }
+bytemuck = { version = "1.16.0", features = ["derive"] }
 solana-program = ">=1.18.11,<=2"
 spl-discriminator = { version = "0.2.2" , path = "../../../libraries/discriminator" }
 spl-program-error = { version = "0.4.0" , path = "../../../libraries/program-error" }
