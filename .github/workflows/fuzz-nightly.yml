@@ -25,7 +25,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_STABLE }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -33,14 +33,14 @@ jobs:
             target
           key: cargo-fuzz-${{ hashFiles('**/Cargo.lock') }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/cargo-hfuzz
             ~/.cargo/bin/cargo-honggfuzz
           key: cargo-fuzz-bins-${{ runner.os }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
