@@ -61,7 +61,7 @@
         "buffer": "^6.0.3"
     },
     "devDependencies": {
-        "@solana/codecs-strings": "2.0.0-preview.3",
+        "@solana/codecs-strings": "2.0.0-preview.3.20240514172228.09086289a230aa1b780c1035408b48243ab960f2",
         "@solana/spl-memo": "0.2.4",
         "@solana/web3.js": "^1.91.8",
         "@types/chai-as-promised": "^7.1.4",
