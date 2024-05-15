@@ -99,7 +99,7 @@ describe('recoverNested', () => {
         );
     }),
         it('success', async () => {
-            // create destinaion associated token
+            // create destination associated token
             const destinationAssociatedToken = await createAssociatedTokenAccount(
                 connection,
                 payer,

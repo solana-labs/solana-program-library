@@ -1254,7 +1254,7 @@ async fn command_transfer(
         token.get_associated_token_address(&sender_owner)
     };
 
-    // the amount the user wants to tranfer, as a f64
+    // the amount the user wants to transfer, as a f64
     let maybe_transfer_balance =
         ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals));
 
@@ -1307,7 +1307,7 @@ async fn command_transfer(
         // * its a system account, we are happy
         // * its a non-account for this program, we error helpfully
         // * its a token account for a different program, we error helpfully
-        // * otherwise its probabaly a program account owner of an ata, in which case we
+        // * otherwise its probably a program account owner of an ata, in which case we
         //   gate transfer with a flag
         if let Some(recipient_account_data) = maybe_recipient_account_data {
             let recipient_account_owner = recipient_account_data.owner;

@@ -2667,7 +2667,7 @@ async fn confidential_transfer(test_validator: &TestValidator, payer: &Keypair) 
         .unwrap();
     assert!(bool::from(extension.allow_confidential_credits));
 
-    // disable and eanble non-confidential transfers for an account
+    // disable and enable non-confidential transfers for an account
     process_test_command(
         &config,
         payer,
