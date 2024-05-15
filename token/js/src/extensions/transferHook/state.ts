@@ -10,7 +10,7 @@ import { unpackSeeds } from './seeds.js';
 
 /** TransferHook as stored by the program */
 export interface TransferHook {
-    /** The transfer hook update authrority */
+    /** The transfer hook update authority */
     authority: PublicKey;
     /** The transfer hook program account */
     programId: PublicKey;
@@ -33,7 +33,7 @@ export function getTransferHook(mint: Mint): TransferHook | null {
 /** TransferHookAccount as stored by the program */
 export interface TransferHookAccount {
     /**
-     * Whether or not this account is currently tranferring tokens
+     * Whether or not this account is currently transferring tokens
      * True during the transfer hook cpi, otherwise false
      */
     transferring: boolean;
@@ -105,7 +105,7 @@ export function getExtraAccountMetas(account: AccountInfo<Buffer>): ExtraAccount
     return extraAccountsList.extraAccounts.slice(0, extraAccountsList.count);
 }
 
-/** Take an ExtraAccountMeta and construct that into an acutal AccountMeta */
+/** Take an ExtraAccountMeta and construct that into an actual AccountMeta */
 export async function resolveExtraAccountMeta(
     connection: Connection,
     extraMeta: ExtraAccountMeta,
