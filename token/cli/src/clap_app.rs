@@ -742,7 +742,7 @@ pub fn app<'a, 'b>(
                         .alias("enable-nontransferable")
                         .takes_value(false)
                         .help(
-                            "Permanently force tokens to be non-transferable. Thay may still be burned."
+                            "Permanently force tokens to be non-transferable. They may still be burned."
                         ),
                 )
                 .arg(
