@@ -139,43 +139,46 @@ export async function getStakeAccount(
 export async function getStakePoolAccounts(
   connection: Connection,
   stakePoolProgramAddress: PublicKey,
-): Promise<(StakePoolAccount | ValidatorListAccount)[] | undefined> {
+): Promise<(StakePoolAccount | ValidatorListAccount | undefined)[] | undefined> {
   const response = await connection.getProgramAccounts(stakePoolProgramAddress);
 
-  return response.map((a) => {
-    let decodedData;
-
-    if (a.account.data.readUInt8() === 1) {
+  return response
+    .map((a) => {
       try {
-        decodedData = StakePoolLayout.decode(a.account.data);
+        if (a.account.data.readUInt8() === 1) {
+          const data = StakePoolLayout.decode(a.account.data);
+          return {
+            pubkey: a.pubkey,
+            account: {
+              data,
+              executable: a.account.executable,
+              lamports: a.account.lamports,
+              owner: a.account.owner,
+            },
+          };
+        } else if (a.account.data.readUInt8() === 2) {
+          const data = ValidatorListLayout.decode(a.account.data);
+          return {
+            pubkey: a.pubkey,
+            account: {
+              data,
+              executable: a.account.executable,
+              lamports: a.account.lamports,
+              owner: a.account.owner,
+            },
+          };
+        } else {
+          console.error(
+            `Could not decode. StakePoolAccount Enum is ${a.account.data.readUInt8()}, expected 1 or 2!`,
+          );
+          return undefined;
+        }
       } catch (error) {
-        console.log('Could not decode StakeAccount. Error:', error);
-        decodedData = undefined;
+        console.error('Could not decode account. Error:', error);
+        return undefined;
       }
-    } else if (a.account.data.readUInt8() === 2) {
-      try {
-        decodedData = ValidatorListLayout.decode(a.account.data);
-      } catch (error) {
-        console.log('Could not decode ValidatorList. Error:', error);
-        decodedData = undefined;
-      }
-    } else {
-      console.error(
-        `Could not decode. StakePoolAccount Enum is ${a.account.data.readUInt8()}, expected 1 or 2!`,
-      );
-      decodedData = undefined;
-    }
-
-    return {
-      pubkey: a.pubkey,
-      account: {
-        data: decodedData,
-        executable: a.account.executable,
-        lamports: a.account.lamports,
-        owner: a.account.owner,
-      },
-    };
-  });
+    })
+    .filter((a) => a !== undefined);
 }
 
 /**

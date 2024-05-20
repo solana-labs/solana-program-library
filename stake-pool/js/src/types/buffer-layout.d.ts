@@ -3,7 +3,7 @@ declare module 'buffer-layout' {
     span: number;
     property?: string;
     constructor(span: number, property?: string);
-    decode(b: Buffer | string, offset?: number): T;
+    decode(b: Buffer | undefined, offset?: number): T;
     encode(src: T, b: Buffer, offset?: number): number;
     getSpan(b: Buffer, offset?: number): number;
     replicate(name: string): this;
