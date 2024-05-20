@@ -1,4 +1,5 @@
-import { publicKey, struct, u32, u64, u8, option, vec } from '@coral-xyz/borsh';
+import { Layout, publicKey, struct, u32, u64, u8, option, vec } from '@coral-xyz/borsh';
+import { Layout as LayoutCls, u8 as u8Cls } from 'buffer-layout';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import {
@@ -36,6 +37,50 @@ export const PublicKeyFromString = coerce(
   string(),
   (value) => new PublicKey(value),
 );
+
+export class FutureEpochLayout<T> extends LayoutCls<T | null> {
+  layout: Layout<T>;
+  discriminator: Layout<number>;
+
+  constructor(layout: Layout<T>, property?: string) {
+    super(-1, property);
+    this.layout = layout;
+    this.discriminator = u8Cls();
+  }
+
+  encode(src: T | null, b: Buffer, offset = 0): number {
+    if (src === null || src === undefined) {
+      return this.discriminator.encode(0, b, offset);
+    }
+    // This isn't right, but we don't typically encode outside of tests
+    this.discriminator.encode(2, b, offset);
+    return this.layout.encode(src, b, offset + 1) + 1;
+  }
+
+  decode(b: Buffer, offset = 0): T | null {
+    const discriminator = this.discriminator.decode(b, offset);
+    if (discriminator === 0) {
+      return null;
+    } else if (discriminator === 1 || discriminator === 2) {
+      return this.layout.decode(b, offset + 1);
+    }
+    throw new Error('Invalid future epoch ' + this.property);
+  }
+
+  getSpan(b: Buffer, offset = 0): number {
+    const discriminator = this.discriminator.decode(b, offset);
+    if (discriminator === 0) {
+      return 1;
+    } else if (discriminator === 1 || discriminator === 2) {
+      return this.layout.getSpan(b, offset + 1) + 1;
+    }
+    throw new Error('Invalid future epoch ' + this.property);
+  }
+}
+
+export function futureEpoch<T>(layout: Layout<T>, property?: string): Layout<T | null> {
+  return new FutureEpochLayout<T>(layout, property);
+}
 
 export type StakeAccountType = Infer<typeof StakeAccountType>;
 export const StakeAccountType = enums(['uninitialized', 'initialized', 'delegated', 'rewardsPool']);
@@ -131,19 +176,19 @@ export const StakePoolLayout = struct<StakePool>([
   u64('lastUpdateEpoch'),
   struct([u64('unixTimestamp'), u64('epoch'), publicKey('custodian')], 'lockup'),
   struct(feeFields, 'epochFee'),
-  option(struct(feeFields), 'nextEpochFee'),
+  futureEpoch(struct(feeFields), 'nextEpochFee'),
   option(publicKey(), 'preferredDepositValidatorVoteAddress'),
   option(publicKey(), 'preferredWithdrawValidatorVoteAddress'),
   struct(feeFields, 'stakeDepositFee'),
   struct(feeFields, 'stakeWithdrawalFee'),
-  option(struct(feeFields), 'nextStakeWithdrawalFee'),
+  futureEpoch(struct(feeFields), 'nextStakeWithdrawalFee'),
   u8('stakeReferralFee'),
   option(publicKey(), 'solDepositAuthority'),
   struct(feeFields, 'solDepositFee'),
   u8('solReferralFee'),
   option(publicKey(), 'solWithdrawAuthority'),
   struct(feeFields, 'solWithdrawalFee'),
-  option(struct(feeFields), 'nextSolWithdrawalFee'),
+  futureEpoch(struct(feeFields), 'nextSolWithdrawalFee'),
   u64('lastEpochPoolTokenSupply'),
   u64('lastEpochTotalLamports'),
 ]);
