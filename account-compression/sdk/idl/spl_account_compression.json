@@ -63,7 +63,8 @@
         "For the latter case, the canopy should be filled with the necessary nodes to render the tree usable.",
         "Thus we need to prefill the canopy with the necessary nodes.",
         "",
-        "This instruction pre-initializes the canopy with the leftmost leaf nodes of the canopy."
+        "This instruction pre-initializes the canopy with the leftmost leaf nodes of the canopy. It initializes the tree header while leaving the tree itself uninitialized.",
+        "This is intended to be used in conjunction with the `init_merkle_tree_with_root` instruction that'll finalize the tree initialization."
       ],
       "accounts": [
         {
@@ -96,6 +97,45 @@
           "name": "maxBufferSize",
           "type": "u32"
         },
+        {
+          "name": "startIndex",
+          "type": "u32"
+        },
+        {
+          "name": "canopyNodes",
+          "type": {
+            "vec": {
+              "array": ["u8", 32]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "appendCanopyNodes",
+      "accounts": [
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Authority that controls write-access to the tree",
+            "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
+          ]
+        },
+        {
+          "name": "noop",
+          "isMut": false,
+          "isSigner": false,
+          "docs": ["Program used to emit changelogs as cpi instruction data."]
+        }
+      ],
+      "args": [
         {
           "name": "startIndex",
           "type": "u32"
@@ -634,6 +674,11 @@
       "code": 6009,
       "name": "CanopyNotAllocated",
       "msg": "Tree was initialized without allocating space for the canopy"
+    },
+    {
+      "code": 6010,
+      "name": "TreeAlreadyInitialized",
+      "msg": "Tree was already initialized"
     }
   ],
   "metadata": {

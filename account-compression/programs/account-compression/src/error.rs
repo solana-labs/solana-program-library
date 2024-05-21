@@ -51,6 +51,10 @@ pub enum AccountCompressionError {
     /// When initializing a canopy of the tree, the underlying tree was allocated without space for the canopy
     #[msg("Tree was initialized without allocating space for the canopy")]
     CanopyNotAllocated,
+
+    /// The tree was already initialized
+    #[msg("Tree was already initialized")]
+    TreeAlreadyInitialized,
 }
 
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {

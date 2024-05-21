@@ -215,6 +215,26 @@ createErrorFromCodeLookup.set(0x1779, () => new CanopyNotAllocatedError());
 createErrorFromNameLookup.set('CanopyNotAllocated', () => new CanopyNotAllocatedError());
 
 /**
+ * TreeAlreadyInitialized: 'Tree was already initialized'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class TreeAlreadyInitializedError extends Error {
+    readonly code: number = 0x177a;
+    readonly name: string = 'TreeAlreadyInitialized';
+    constructor() {
+        super('Tree was already initialized');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, TreeAlreadyInitializedError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x177a, () => new TreeAlreadyInitializedError());
+createErrorFromNameLookup.set('TreeAlreadyInitialized', () => new TreeAlreadyInitializedError());
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

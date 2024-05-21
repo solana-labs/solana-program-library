@@ -1,4 +1,5 @@
 export * from './append';
+export * from './appendCanopyNodes';
 export * from './closeEmptyTree';
 export * from './initEmptyMerkleTree';
 export * from './insertOrAppend';

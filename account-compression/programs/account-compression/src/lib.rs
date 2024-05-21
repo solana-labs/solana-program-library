@@ -55,6 +55,7 @@ pub use spl_concurrent_merkle_tree::{
     concurrent_merkle_tree::{ConcurrentMerkleTree, FillEmptyOrAppendArgs},
     error::ConcurrentMerkleTreeError,
     node::Node,
+    node::EMPTY,
 };
 
 declare_id!("cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
@@ -189,7 +190,8 @@ pub mod spl_account_compression {
     /// For the latter case, the canopy should be filled with the necessary nodes to render the tree usable.
     /// Thus we need to prefill the canopy with the necessary nodes.
     ///
-    /// This instruction pre-initializes the canopy with the leftmost leaf nodes of the canopy.
+    /// This instruction pre-initializes the canopy with the leftmost leaf nodes of the canopy. It initializes the tree header while leaving the tree itself uninitialized.
+    /// This is intended to be used in conjunction with the `init_merkle_tree_with_root` instruction that'll finalize the tree initialization.
     pub fn preinitialize_canopy(
         ctx: Context<Initialize>,
         max_depth: u32,
@@ -222,7 +224,57 @@ pub mod spl_account_compression {
             0,
             AccountCompressionError::CanopyNotAllocated
         );
+        // todo: assert the start index is within bounds
         header.serialize(&mut header_bytes)?;
+        set_canopy_leaf_nodes(
+            canopy_bytes,
+            header.get_max_depth(),
+            start_index,
+            &canopy_nodes,
+        )
+    }
+
+    pub fn append_canopy_nodes(
+        ctx: Context<Initialize>,
+        start_index: u32,
+        canopy_nodes: Vec<[u8; 32]>,
+    ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
+        let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
+
+        let (header_bytes, rest) =
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
+
+        let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
+        header.assert_valid_authority(&ctx.accounts.authority.key())?;
+        // todo: assert the start index is within bounds
+        // assert the tree is not initialized yet, we don't want to overwrite the canopy of an initialized tree
+        let merkle_tree_size = merkle_tree_get_size(&header)?;
+        let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
+        // ensure the tree is not initialized, the hacky way
+        require!(
+            tree_bytes.iter().all(|&x| x == 0),
+            AccountCompressionError::TreeAlreadyInitialized
+        );
+        // TODO: remove the block below
+        // an alternative of the above line is to check the last node of the last change log event, which should contain an empty root:
+        let id = ctx.accounts.merkle_tree.key();
+        // A call is made to ConcurrentMerkleTree::is_initialized_wrapped()
+        let change_log_event =
+            merkle_tree_apply_fn!(header, id, tree_bytes, is_initialized_wrapped,)?;
+        match *change_log_event {
+            ChangeLogEvent::V1(is_initialized_change_log) => {
+                // todo: consider removing the unwrap
+                require!(
+                    is_initialized_change_log.path.last().unwrap().node == EMPTY,
+                    AccountCompressionError::TreeAlreadyInitialized
+                );
+            }
+        }
         set_canopy_leaf_nodes(
             canopy_bytes,
             header.get_max_depth(),
