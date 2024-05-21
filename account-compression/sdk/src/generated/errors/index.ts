@@ -195,6 +195,26 @@ createErrorFromCodeLookup.set(0x1778, () => new LeafIndexOutOfBoundsError());
 createErrorFromNameLookup.set('LeafIndexOutOfBounds', () => new LeafIndexOutOfBoundsError());
 
 /**
+ * CanopyNotAllocated: 'Tree was initialized without allocating space for the canopy'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CanopyNotAllocatedError extends Error {
+    readonly code: number = 0x1779;
+    readonly name: string = 'CanopyNotAllocated';
+    constructor() {
+        super('Tree was initialized without allocating space for the canopy');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, CanopyNotAllocatedError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x1779, () => new CanopyNotAllocatedError());
+createErrorFromNameLookup.set('CanopyNotAllocated', () => new CanopyNotAllocatedError());
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated
