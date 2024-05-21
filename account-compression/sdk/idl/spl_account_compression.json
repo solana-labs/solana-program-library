@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "spl_account_compression",
   "instructions": [
     {
@@ -48,6 +48,65 @@
         {
           "name": "maxBufferSize",
           "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "preinitializeCanopy",
+      "docs": [
+        "The tree might contain a canopy, which is a cache of the uppermost nodes.",
+        "The canopy is used to decrease the size of the proof required to update the tree.",
+        "There are 2 ways to initialize a merkle tree:",
+        "1. Initialize an empty tree",
+        "2. Initialize a tree with a root and leaf",
+        "For the former case, the canopy will be empty which is expected for an empty tree.",
+        "For the latter case, the canopy should be filled with the necessary nodes to render the tree usable.",
+        "Thus we need to prefill the canopy with the necessary nodes.",
+        "",
+        "This instruction pre-initializes the canopy with the leftmost leaf nodes of the canopy."
+      ],
+      "accounts": [
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Authority that controls write-access to the tree",
+            "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
+          ]
+        },
+        {
+          "name": "noop",
+          "isMut": false,
+          "isSigner": false,
+          "docs": ["Program used to emit changelogs as cpi instruction data."]
+        }
+      ],
+      "args": [
+        {
+          "name": "maxDepth",
+          "type": "u32"
+        },
+        {
+          "name": "maxBufferSize",
+          "type": "u32"
+        },
+        {
+          "name": "startIndex",
+          "type": "u32"
+        },
+        {
+          "name": "canopyNodes",
+          "type": {
+            "vec": {
+              "array": ["u8", 32]
+            }
+          }
         }
       ]
     },
@@ -570,12 +629,17 @@
       "code": 6008,
       "name": "LeafIndexOutOfBounds",
       "msg": "Leaf index of concurrent merkle tree is out of bounds"
+    },
+    {
+      "code": 6009,
+      "name": "CanopyNotAllocated",
+      "msg": "Tree was initialized without allocating space for the canopy"
     }
   ],
   "metadata": {
     "address": "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK",
     "origin": "anchor",
-    "binaryVersion": "0.25.0",
-    "libVersion": "0.25.0"
+    "binaryVersion": "0.29.0",
+    "libVersion": "0.29.0"
   }
 }

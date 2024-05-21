@@ -40,7 +40,7 @@ pub mod zero_copy;
 
 pub use crate::noop::{wrap_application_data_v1, Noop};
 
-use crate::canopy::{fill_in_proof_from_canopy, update_canopy};
+use crate::canopy::{fill_in_proof_from_canopy, set_canopy_leaf_nodes, update_canopy};
 use crate::concurrent_tree_wrapper::*;
 pub use crate::error::AccountCompressionError;
 pub use crate::events::{AccountCompressionEvent, ChangeLogEvent};
@@ -178,6 +178,57 @@ pub mod spl_account_compression {
             &ctx.accounts.noop,
         )?;
         update_canopy(canopy_bytes, header.get_max_depth(), None)
+    }
+
+    /// The tree might contain a canopy, which is a cache of the uppermost nodes.
+    /// The canopy is used to decrease the size of the proof required to update the tree.
+    /// There are 2 ways to initialize a merkle tree:
+    /// 1. Initialize an empty tree
+    /// 2. Initialize a tree with a root and leaf
+    /// For the former case, the canopy will be empty which is expected for an empty tree.
+    /// For the latter case, the canopy should be filled with the necessary nodes to render the tree usable.
+    /// Thus we need to prefill the canopy with the necessary nodes.
+    ///
+    /// This instruction pre-initializes the canopy with the leftmost leaf nodes of the canopy.
+    pub fn preinitialize_canopy(
+        ctx: Context<Initialize>,
+        max_depth: u32,
+        max_buffer_size: u32,
+        start_index: u32,
+        canopy_nodes: Vec<[u8; 32]>,
+    ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
+        let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
+
+        let (mut header_bytes, rest) =
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
+
+        let mut header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
+        header.initialize(
+            max_depth,
+            max_buffer_size,
+            &ctx.accounts.authority.key(),
+            Clock::get()?.slot,
+        );
+        let merkle_tree_size = merkle_tree_get_size(&header)?;
+        let (_tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
+        // Ensure canopy is allocated before writing the header to the state
+        require_gt!(
+            canopy_bytes.len(),
+            0,
+            AccountCompressionError::CanopyNotAllocated
+        );
+        header.serialize(&mut header_bytes)?;
+        set_canopy_leaf_nodes(
+            canopy_bytes,
+            header.get_max_depth(),
+            start_index,
+            &canopy_nodes,
+        )
     }
 
     /// Note:
