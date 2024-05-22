@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")/.."
 source ./ci/rust-version.sh stable
 
-cargo +"$rust_stable" install honggfuzz --version=0.5.55 --force || true
+cargo +"$rust_stable" install honggfuzz --version=0.5.56 --force || true
 
 usage() {
   exitcode=0
