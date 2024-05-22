@@ -55,6 +55,14 @@ pub enum AccountCompressionError {
     /// The tree was already initialized
     #[msg("Tree was already initialized")]
     TreeAlreadyInitialized,
+
+    /// The canopy root doesn't match the root of the tree
+    #[msg("Canopy root does not match the root of the tree")]
+    CanopyRootMismatch,
+
+    /// The canopy contains nodes to the right of the rightmost leaf of the tree
+    #[msg("Canopy contains nodes to the right of the rightmost leaf of the tree")]
+    CanopyRightmostLeafMismatch,
 }
 
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {

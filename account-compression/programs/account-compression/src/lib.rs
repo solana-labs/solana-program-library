@@ -40,7 +40,10 @@ pub mod zero_copy;
 
 pub use crate::noop::{wrap_application_data_v1, Noop};
 
-use crate::canopy::{fill_in_proof_from_canopy, set_canopy_leaf_nodes, update_canopy};
+use crate::canopy::{
+    check_canopy_bytes, check_canopy_no_nodes_to_right_of_index, check_canopy_root,
+    fill_in_proof_from_canopy, set_canopy_leaf_nodes, update_canopy,
+};
 use crate::concurrent_tree_wrapper::*;
 pub use crate::error::AccountCompressionError;
 pub use crate::events::{AccountCompressionEvent, ChangeLogEvent};
@@ -181,23 +184,23 @@ pub mod spl_account_compression {
         update_canopy(canopy_bytes, header.get_max_depth(), None)
     }
 
+    /// In order to initialize a tree with a root, we need to create the tree on-chain first with the proper authority.
     /// The tree might contain a canopy, which is a cache of the uppermost nodes.
     /// The canopy is used to decrease the size of the proof required to update the tree.
+    /// If the tree is expected to have a canopy, it needs to be prefilled with the necessary nodes.
     /// There are 2 ways to initialize a merkle tree:
     /// 1. Initialize an empty tree
     /// 2. Initialize a tree with a root and leaf
-    /// For the former case, the canopy will be empty which is expected for an empty tree.
+    /// For the former case, the canopy will be empty which is expected for an empty tree. The expected flow is `init_empty_merkle_tree`.
     /// For the latter case, the canopy should be filled with the necessary nodes to render the tree usable.
-    /// Thus we need to prefill the canopy with the necessary nodes.
-    ///
-    /// This instruction pre-initializes the canopy with the leftmost leaf nodes of the canopy. It initializes the tree header while leaving the tree itself uninitialized.
-    /// This is intended to be used in conjunction with the `init_merkle_tree_with_root` instruction that'll finalize the tree initialization.
-    pub fn preinitialize_canopy(
+    /// Thus we need to prefill the canopy with the necessary nodes.    
+    /// The expected flow for a tree without canopy is `prepare_tree` -> `init_merkle_tree_with_root`.
+    /// The expected flow for a tree with canopy is `prepare_tree` -> `append_canopy_nodes` (multiple times until all of the canopy is filled) -> `init_merkle_tree_with_root`.
+    /// This instruction initializes the tree header while leaving the tree itself uninitialized. This allows distinguishing between an empty tree and a tree prepare to be initialized with a root.
+    pub fn prepare_tree(
         ctx: Context<Initialize>,
         max_depth: u32,
         max_buffer_size: u32,
-        start_index: u32,
-        canopy_nodes: Vec<[u8; 32]>,
     ) -> Result<()> {
         require_eq!(
             *ctx.accounts.merkle_tree.owner,
@@ -216,24 +219,14 @@ pub mod spl_account_compression {
             &ctx.accounts.authority.key(),
             Clock::get()?.slot,
         );
+        header.serialize(&mut header_bytes)?;
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (_tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
-        // Ensure canopy is allocated before writing the header to the state
-        require_gt!(
-            canopy_bytes.len(),
-            0,
-            AccountCompressionError::CanopyNotAllocated
-        );
-        // todo: assert the start index is within bounds
-        header.serialize(&mut header_bytes)?;
-        set_canopy_leaf_nodes(
-            canopy_bytes,
-            header.get_max_depth(),
-            start_index,
-            &canopy_nodes,
-        )
+        check_canopy_bytes(canopy_bytes)
     }
 
+    /// This instruction pre-initializes the canopy with the specified leaf nodes of the canopy.
+    /// This is intended to be used after `prepare_tree` and in conjunction with the `init_merkle_tree_with_root` instruction that'll finalize the tree initialization.
     pub fn append_canopy_nodes(
         ctx: Context<Initialize>,
         start_index: u32,
@@ -251,7 +244,6 @@ pub mod spl_account_compression {
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
-        // todo: assert the start index is within bounds
         // assert the tree is not initialized yet, we don't want to overwrite the canopy of an initialized tree
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
@@ -283,69 +275,68 @@ pub mod spl_account_compression {
         )
     }
 
-    /// Note:
-    /// Supporting this instruction open a security vulnerability for indexers.
-    /// This instruction has been deemed unusable for publicly indexed compressed NFTs.
-    /// Indexing batched data in this way requires indexers to read in the `uri`s onto physical storage
-    /// and then into their database. This opens up a DOS attack vector, whereby this instruction is
-    /// repeatedly invoked, causing indexers to fail.
-    ///
-    /// Because this instruction was deemed insecure, this instruction has been removed
-    /// until secure usage is available on-chain.
-    // pub fn init_merkle_tree_with_root(
-    //     ctx: Context<Initialize>,
-    //     max_depth: u32,
-    //     max_buffer_size: u32,
-    //     root: [u8; 32],
-    //     leaf: [u8; 32],
-    //     index: u32,
-    //     _changelog_db_uri: String,
-    //     _metadata_db_uri: String,
-    // ) -> Result<()> {
-    //     require_eq!(
-    //         *ctx.accounts.merkle_tree.owner,
-    //         crate::id(),
-    //         AccountCompressionError::IncorrectAccountOwner
-    //     );
-    //     let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
+    /// Initializes a tree with a root and a rightmost leaf. The rightmost leaf is used to verify the canopy if the tree has it. Before calling this instruction, the tree should be prepared with `prepare_tree` and the canopy should be filled with the necessary nodes with `append_canopy_nodes`.
+    /// This method should be used for rolluped creation of trees. The indexing of such rollups should be done off-chain. The programs calling this instruction should take care of ensuring the indexing is possible. For example, staking may be required to ensure the tree creator has some responsibility for what is being indexed. If indexing is not possible, there should be a mechanism to penalize the tree creator.
+    pub fn init_merkle_tree_with_root(
+        ctx: Context<Initialize>,
+        root: [u8; 32],
+        rightmost_leaf: [u8; 32],
+        rightmost_index: u32,
+    ) -> Result<()> {
+        require_eq!(
+            *ctx.accounts.merkle_tree.owner,
+            crate::id(),
+            AccountCompressionError::IncorrectAccountOwner
+        );
+        let mut merkle_tree_bytes = ctx.accounts.merkle_tree.try_borrow_mut_data()?;
 
-    //     let (mut header_bytes, rest) =
-    //         merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
+        let (header_bytes, rest) =
+            merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
+        // the header should already be initialized with prepare_tree
+        let header = ConcurrentMerkleTreeHeader::try_from_slice(&header_bytes)?;
+        header.assert_valid_authority(&ctx.accounts.authority.key())?;
+        let merkle_tree_size = merkle_tree_get_size(&header)?;
+        let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
+        // check the canopy root matches the tree root
+        check_canopy_root(canopy_bytes, &root)?;
+        // verify the canopy does not conain any nodes to the right of the rightmost leaf
+        check_canopy_no_nodes_to_right_of_index(
+            canopy_bytes,
+            header.get_max_depth(),
+            rightmost_index,
+        )?;
 
-    //     let mut header = ConcurrentMerkleTreeHeader::try_from_slice(&header_bytes)?;
-    //     header.initialize(
-    //         max_depth,
-    //         max_buffer_size,
-    //         &ctx.accounts.authority.key(),
-    //         Clock::get()?.slot,
-    //     );
-    //     header.serialize(&mut header_bytes)?;
-    //     let merkle_tree_size = merkle_tree_get_size(&header)?;
-    //     let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
+        // Get rightmost proof from accounts
+        let mut proof = vec![];
+        for node in ctx.remaining_accounts.iter() {
+            proof.push(node.key().to_bytes());
+        }
+        fill_in_proof_from_canopy(
+            canopy_bytes,
+            header.get_max_depth(),
+            rightmost_index,
+            &mut proof,
+        )?;
+        assert_eq!(proof.len(), header.get_max_depth() as usize);
 
-    //     // Get rightmost proof from accounts
-    //     let mut proof = vec![];
-    //     for node in ctx.remaining_accounts.iter() {
-    //         proof.push(node.key().to_bytes());
-    //     }
-    //     fill_in_proof_from_canopy(canopy_bytes, header.max_depth, index, &mut proof)?;
-    //     assert_eq!(proof.len(), max_depth as usize);
-
-    //     let id = ctx.accounts.merkle_tree.key();
-    //     // A call is made to ConcurrentMerkleTree::initialize_with_root(root, leaf, proof, index)
-    //     let change_log = merkle_tree_apply_fn!(
-    //         header,
-    //         id,
-    //         tree_bytes,
-    //         initialize_with_root,
-    //         root,
-    //         leaf,
-    //         &proof,
-    //         index
-    //     )?;
-    //     wrap_event(change_log.try_to_vec()?, &ctx.accounts.log_wrapper)?;
-    //     update_canopy(canopy_bytes, header.max_depth, Some(change_log))
-    // }
+        let id = ctx.accounts.merkle_tree.key();
+        // A call is made to ConcurrentMerkleTree::initialize_with_root(root, rightmost_leaf, proof, rightmost_index)
+        let change_log = merkle_tree_apply_fn_mut!(
+            header,
+            id,
+            tree_bytes,
+            initialize_with_root,
+            root,
+            rightmost_leaf,
+            &proof,
+            rightmost_index
+        )?;
+        update_canopy(canopy_bytes, header.get_max_depth(), Some(&change_log))?;
+        wrap_event(
+            &AccountCompressionEvent::ChangeLog(*change_log),
+            &ctx.accounts.noop,
+        )
+    }
 
     /// Executes an instruction that overwrites a leaf node.
     /// Composing programs should check that the data hashed into previous_leaf

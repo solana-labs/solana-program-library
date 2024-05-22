@@ -134,7 +134,7 @@ pub fn fill_in_proof_from_canopy(
 
 /// Sets the leaf nodes of the canopy. The leaf nodes are the lowest level of the canopy, representing the leaves of the canopy-tree.
 /// The method will update the parent nodes of all the modified subtrees up to the uppermost level of the canopy.
-/// The leaf nodes indexing is 0-based for the start_index.
+/// The leaf nodes indexing for the start_index is 0-based without regards to the full tree indexes or the node indexes. The start_index is the index of the first leaf node to be updated.
 pub fn set_canopy_leaf_nodes(
     canopy_bytes: &mut [u8],
     max_depth: u32,
@@ -144,8 +144,10 @@ pub fn set_canopy_leaf_nodes(
     check_canopy_bytes(canopy_bytes)?;
     let canopy = cast_slice_mut::<u8, Node>(canopy_bytes);
     let path_len = get_cached_path_length(canopy, max_depth)?;
-
-    let start_canopy_node = leaf_node_index_to_canopy_index(path_len, start_index);
+    if path_len == 0 {
+        return err!(AccountCompressionError::CanopyNotAllocated);
+    }
+    let start_canopy_node = leaf_node_index_to_canopy_index(path_len, start_index)?;
     let start_canopy_idx = start_canopy_node - 2;
     // set the "leaf" nodes of the canopy first - that's the lowest level of the canopy
     for (i, node) in nodes.iter().enumerate() {
@@ -178,6 +180,70 @@ pub fn set_canopy_leaf_nodes(
     Ok(())
 }
 
+/// Checks the root of the canopy against the expected root.
+pub fn check_canopy_root(canopy_bytes: &[u8], expected_root: &Node) -> Result<()> {
+    check_canopy_bytes(canopy_bytes)?;
+    let canopy = cast_slice::<u8, Node>(canopy_bytes);
+    if canopy.len() < 1 {
+        return Ok(()); // Canopy is empty
+    }
+    let actual_root = hashv(&[&canopy[0], &canopy[1]]).to_bytes();
+    if actual_root != *expected_root {
+        msg!(
+            "Canopy root mismatch. Expected: {:?}, Actual: {:?}",
+            expected_root,
+            actual_root
+        );
+        err!(AccountCompressionError::CanopyRootMismatch)
+    } else {
+        Ok(())
+    }
+}
+
+/// Checks the canopy doesn't have any nodes to the right of the provided index in the full tree.
+/// This is done by iterating through the canopy nodes to the right of the provided index and finding the top-most node that has the node as its left child.
+/// The node should be empty. The iteration contains following the previous checked node on the same level until the last node on the level is reached.
+pub fn check_canopy_no_nodes_to_right_of_index(
+    canopy_bytes: &[u8],
+    max_depth: u32,
+    index: u32,
+) -> Result<()> {
+    check_canopy_bytes(canopy_bytes)?;
+    check_index(index, max_depth)?;
+    let canopy = cast_slice::<u8, Node>(canopy_bytes);
+    let path_len = get_cached_path_length(canopy, max_depth)?;
+
+    let mut node_idx = ((1 << max_depth) + index) >> (max_depth - path_len);
+    // no need to check the node_idx as it's the leaf continaing the index underneath it
+    while node_idx & node_idx + 1 != 0 {
+        // check the next node to the right
+        node_idx += 1;
+        // find the top-most node that has the node as its left-most child
+        node_idx >>= node_idx.trailing_zeros();
+
+        let shifted_index = node_idx as usize - 2;
+        if canopy[shifted_index] != EMPTY {
+            msg!("Canopy node at index {} is not empty", shifted_index);
+            return err!(AccountCompressionError::CanopyRightmostLeafMismatch);
+        }
+    }
+    Ok(())
+}
+
+#[inline(always)]
+fn check_index(index: u32, at_depth: u32) -> Result<()> {
+    if at_depth > MAX_SUPPORTED_DEPTH as u32 {
+        return err!(AccountCompressionError::ConcurrentMerkleTreeConstantsError);
+    }
+    if at_depth == 0 {
+        return err!(AccountCompressionError::ConcurrentMerkleTreeConstantsError);
+    }
+    if index >= (1 << at_depth) {
+        return err!(AccountCompressionError::LeafIndexOutOfBounds);
+    }
+    Ok(())
+}
+
 #[inline(always)]
 fn get_value_for_node<const N: usize>(
     node_idx: usize,
@@ -192,8 +258,9 @@ fn get_value_for_node<const N: usize>(
 }
 
 #[inline(always)]
-fn leaf_node_index_to_canopy_index(path_len: u32, index: u32) -> usize {
-    (1 << path_len) + index as usize
+fn leaf_node_index_to_canopy_index(path_len: u32, index: u32) -> Result<usize> {
+    check_index(index, path_len)?;
+    Ok((1 << path_len) + index as usize)
 }
 
 #[cfg(test)]
@@ -201,39 +268,48 @@ mod tests {
     use super::*;
     use spl_concurrent_merkle_tree::node::empty_node;
 
-    fn test_leaf_node_index_to_canopy_index_impl(path_len: u32, index: u32, expected: usize) {
-        assert_eq!(leaf_node_index_to_canopy_index(path_len, index), expected);
+    fn success_leaf_node_index_to_canopy_index(path_len: u32, index: u32, expected: usize) {
+        assert_eq!(
+            leaf_node_index_to_canopy_index(path_len, index).unwrap(),
+            expected
+        );
     }
 
-    // todo: 0,0,0?
+    #[test]
+    fn test_zero_length_tree() {
+        assert_eq!(
+            leaf_node_index_to_canopy_index(0, 0).unwrap_err(),
+            AccountCompressionError::ConcurrentMerkleTreeConstantsError.into()
+        );
+    }
 
     #[test]
     fn test_1_level_0_index() {
-        test_leaf_node_index_to_canopy_index_impl(1, 0, 2);
+        success_leaf_node_index_to_canopy_index(1, 0, 2);
     }
 
     #[test]
     fn test_1_level_1_index() {
-        test_leaf_node_index_to_canopy_index_impl(1, 1, 3);
+        success_leaf_node_index_to_canopy_index(1, 1, 3);
     }
 
     #[test]
     fn test_2_level_0_index() {
-        test_leaf_node_index_to_canopy_index_impl(2, 0, 4);
+        success_leaf_node_index_to_canopy_index(2, 0, 4);
     }
     #[test]
     fn test_2_level_3_index() {
-        test_leaf_node_index_to_canopy_index_impl(2, 3, 7);
+        success_leaf_node_index_to_canopy_index(2, 3, 7);
     }
 
     #[test]
     fn test_10_level_0_index() {
-        test_leaf_node_index_to_canopy_index_impl(10, 0, 1024);
+        success_leaf_node_index_to_canopy_index(10, 0, 1024);
     }
 
     #[test]
     fn test_10_level_1023_index() {
-        test_leaf_node_index_to_canopy_index_impl(10, 1023, 2047);
+        success_leaf_node_index_to_canopy_index(10, 1023, 2047);
     }
 
     #[test]
@@ -356,5 +432,108 @@ mod tests {
         let nodes = vec![];
         set_canopy_leaf_nodes(&mut canopy_bytes, 10, 0, &nodes).unwrap();
         assert_eq!(canopy_bytes, vec![0_u8; 14 * size_of::<Node>()]);
+    }
+
+    #[test]
+    fn test_success_check_canopy_root() {
+        let mut canopy_bytes = vec![0_u8; 2 * size_of::<Node>()];
+        let expected_root = hashv(&[&[1_u8; 32], &[2_u8; 32]]).to_bytes();
+        let nodes = vec![[1_u8; 32], [2_u8; 32]];
+        set_canopy_leaf_nodes(&mut canopy_bytes, 1, 0, &nodes).unwrap();
+        check_canopy_root(&canopy_bytes, &expected_root).unwrap();
+    }
+
+    #[test]
+    fn test_failure_check_canopy_root() {
+        let mut canopy_bytes = vec![0_u8; 2 * size_of::<Node>()];
+        let expected_root = hashv(&[&[1_u8; 32], &[2_u8; 32]]).to_bytes();
+        let nodes = vec![[1_u8; 32], [2_u8; 32]];
+        set_canopy_leaf_nodes(&mut canopy_bytes, 1, 0, &nodes).unwrap();
+        let mut expected_root = expected_root;
+        expected_root[0] = 0;
+        assert_eq!(
+            check_canopy_root(&canopy_bytes, &expected_root).unwrap_err(),
+            AccountCompressionError::CanopyRootMismatch.into()
+        );
+    }
+
+    #[test]
+    fn test_success_check_canopy_no_nodes_to_right_of_index_empty_tree_first_index() {
+        let canopy_bytes = vec![0_u8; 6 * size_of::<Node>()];
+        check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 20, 0).unwrap();
+    }
+
+    #[test]
+    fn test_success_check_canopy_no_nodes_to_right_of_index_empty_tree_last_index() {
+        let canopy_bytes = vec![0_u8; 6 * size_of::<Node>()];
+        check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 20, (1 << 20) - 1).unwrap();
+    }
+
+    #[test]
+    fn test_success_check_canopy_no_nodes_to_right_of_index_empty_canopy_only_tree_first_index() {
+        let canopy_bytes = vec![0_u8; 6 * size_of::<Node>()];
+        check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 2, 0).unwrap();
+    }
+
+    #[test]
+    fn test_success_check_canopy_no_nodes_to_right_of_index_empty_canopy_only_tree_last_index() {
+        let canopy_bytes = vec![0_u8; 6 * size_of::<Node>()];
+        check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 2, (1 << 2) - 1).unwrap();
+    }
+
+    #[test]
+    fn test_failure_check_canopy_no_nodes_to_right_of_index_empty_tree_index_out_of_range() {
+        let canopy_bytes = vec![0_u8; 6 * size_of::<Node>()];
+        assert_eq!(
+            check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 2, 1 << 20).unwrap_err(),
+            AccountCompressionError::LeafIndexOutOfBounds.into()
+        );
+    }
+
+    #[test]
+    fn test_failure_check_canopy_no_nodes_to_right_of_index_full_tree_index_out_of_range() {
+        let canopy_bytes = vec![1_u8; 6 * size_of::<Node>()];
+        assert_eq!(
+            check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 2, 1 << 21).unwrap_err(),
+            AccountCompressionError::LeafIndexOutOfBounds.into()
+        );
+    }
+
+    #[test]
+    fn test_success_check_canopy_no_nodes_to_right_of_index_full_tree_last_index() {
+        let canopy_bytes = vec![1_u8; 6 * size_of::<Node>()];
+        check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 20, (1 << 20) - 1).unwrap();
+    }
+
+    #[test]
+    fn test_success_check_canopy_no_nodes_to_right_of_index_full_tree_first_child_of_last_canopy_node_leaf(
+    ) {
+        let canopy_bytes = vec![1_u8; 6 * size_of::<Node>()];
+        check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 20, 3 << (20 - 2)).unwrap();
+    }
+
+    #[test]
+    fn test_failure_check_canopy_no_nodes_to_right_of_index_full_tree_last_child_of_second_to_last_canopy_node_leaf(
+    ) {
+        let canopy_bytes = vec![1_u8; 6 * size_of::<Node>()];
+        assert_eq!(
+            check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 20, (3 << (20 - 2)) - 1)
+                .unwrap_err(),
+            AccountCompressionError::CanopyRightmostLeafMismatch.into()
+        );
+    }
+
+    #[test]
+    fn test_success_check_canopy_no_nodes_to_right_of_index_last_child_of_second_to_last_canopy_node_leaf(
+    ) {
+        let mut canopy_bytes = vec![1_u8; 6 * size_of::<Node>()];
+        canopy_bytes[5 * size_of::<Node>()..].fill(0);
+        check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 20, (3 << (20 - 2)) - 1).unwrap();
+    }
+    
+    #[test]
+    fn test_succes_check_canopy_no_nodes_to_right_of_index_no_canopy() {
+        let canopy_bytes = vec![];
+        check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 20, 0).unwrap();
     }
 }

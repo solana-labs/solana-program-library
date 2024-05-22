@@ -10,70 +10,68 @@ import * as web3 from '@solana/web3.js';
 
 /**
  * @category Instructions
- * @category PreinitializeCanopy
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export type PreinitializeCanopyInstructionArgs = {
-    canopyNodes: number[] /* size: 32 */[];
-    maxBufferSize: number;
-    maxDepth: number;
-    startIndex: number;
+export type InitMerkleTreeWithRootInstructionArgs = {
+    rightmostIndex: number;
+    rightmostLeaf: number[] /* size: 32 */;
+    root: number[] /* size: 32 */;
 };
 /**
  * @category Instructions
- * @category PreinitializeCanopy
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export const preinitializeCanopyStruct = new beet.FixableBeetArgsStruct<
-    PreinitializeCanopyInstructionArgs & {
+export const initMerkleTreeWithRootStruct = new beet.BeetArgsStruct<
+    InitMerkleTreeWithRootInstructionArgs & {
         instructionDiscriminator: number[] /* size: 8 */;
     }
 >(
     [
         ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-        ['maxDepth', beet.u32],
-        ['maxBufferSize', beet.u32],
-        ['startIndex', beet.u32],
-        ['canopyNodes', beet.array(beet.uniformFixedSizeArray(beet.u8, 32))],
+        ['root', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['rightmostLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
+        ['rightmostIndex', beet.u32],
     ],
-    'PreinitializeCanopyInstructionArgs',
+    'InitMerkleTreeWithRootInstructionArgs',
 );
 /**
- * Accounts required by the _preinitializeCanopy_ instruction
+ * Accounts required by the _initMerkleTreeWithRoot_ instruction
  *
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
  * @property [] noop
  * @category Instructions
- * @category PreinitializeCanopy
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export type PreinitializeCanopyInstructionAccounts = {
+export type InitMerkleTreeWithRootInstructionAccounts = {
     anchorRemainingAccounts?: web3.AccountMeta[];
     authority: web3.PublicKey;
     merkleTree: web3.PublicKey;
     noop: web3.PublicKey;
 };
 
-export const preinitializeCanopyInstructionDiscriminator = [233, 92, 157, 34, 63, 20, 168, 13];
+export const initMerkleTreeWithRootInstructionDiscriminator = [67, 221, 160, 236, 108, 179, 112, 198];
 
 /**
- * Creates a _PreinitializeCanopy_ instruction.
+ * Creates a _InitMerkleTreeWithRoot_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category PreinitializeCanopy
+ * @category InitMerkleTreeWithRoot
  * @category generated
  */
-export function createPreinitializeCanopyInstruction(
-    accounts: PreinitializeCanopyInstructionAccounts,
-    args: PreinitializeCanopyInstructionArgs,
+export function createInitMerkleTreeWithRootInstruction(
+    accounts: InitMerkleTreeWithRootInstructionAccounts,
+    args: InitMerkleTreeWithRootInstructionArgs,
     programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
 ) {
-    const [data] = preinitializeCanopyStruct.serialize({
-        instructionDiscriminator: preinitializeCanopyInstructionDiscriminator,
+    const [data] = initMerkleTreeWithRootStruct.serialize({
+        instructionDiscriminator: initMerkleTreeWithRootInstructionDiscriminator,
         ...args,
     });
     const keys: web3.AccountMeta[] = [

@@ -235,6 +235,46 @@ createErrorFromCodeLookup.set(0x177a, () => new TreeAlreadyInitializedError());
 createErrorFromNameLookup.set('TreeAlreadyInitialized', () => new TreeAlreadyInitializedError());
 
 /**
+ * CanopyRootMismatch: 'Canopy root does not match the root of the tree'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CanopyRootMismatchError extends Error {
+    readonly code: number = 0x177b;
+    readonly name: string = 'CanopyRootMismatch';
+    constructor() {
+        super('Canopy root does not match the root of the tree');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, CanopyRootMismatchError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x177b, () => new CanopyRootMismatchError());
+createErrorFromNameLookup.set('CanopyRootMismatch', () => new CanopyRootMismatchError());
+
+/**
+ * CanopyRightmostLeafMismatch: 'Canopy contains nodes to the right of the rightmost leaf of the tree'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CanopyRightmostLeafMismatchError extends Error {
+    readonly code: number = 0x177c;
+    readonly name: string = 'CanopyRightmostLeafMismatch';
+    constructor() {
+        super('Canopy contains nodes to the right of the rightmost leaf of the tree');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, CanopyRightmostLeafMismatchError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x177c, () => new CanopyRightmostLeafMismatchError());
+createErrorFromNameLookup.set('CanopyRightmostLeafMismatch', () => new CanopyRightmostLeafMismatchError());
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated
