@@ -228,7 +228,7 @@ pub mod spl_account_compression {
     /// This instruction pre-initializes the canopy with the specified leaf nodes of the canopy.
     /// This is intended to be used after `prepare_tree` and in conjunction with the `init_merkle_tree_with_root` instruction that'll finalize the tree initialization.
     pub fn append_canopy_nodes(
-        ctx: Context<Initialize>,
+        ctx: Context<Modify>,
         start_index: u32,
         canopy_nodes: Vec<[u8; 32]>,
     ) -> Result<()> {
@@ -278,7 +278,7 @@ pub mod spl_account_compression {
     /// Initializes a prepared tree with a root and a rightmost leaf. The rightmost leaf is used to verify the canopy if the tree has it. Before calling this instruction, the tree should be prepared with `prepare_tree` and the canopy should be filled with the necessary nodes with `append_canopy_nodes` (if the canopy is used).
     /// This method should be used for rolluped creation of trees. The indexing of such rollups should be done off-chain. The programs calling this instruction should take care of ensuring the indexing is possible. For example, staking may be required to ensure the tree creator has some responsibility for what is being indexed. If indexing is not possible, there should be a mechanism to penalize the tree creator.
     pub fn finalize_merkle_tree_with_root(
-        ctx: Context<Initialize>,
+        ctx: Context<Modify>,
         root: [u8; 32],
         rightmost_leaf: [u8; 32],
         rightmost_index: u32,
