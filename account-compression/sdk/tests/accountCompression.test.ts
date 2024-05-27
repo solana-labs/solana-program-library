@@ -250,7 +250,7 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
 
-            const appendIx = createAppendCanopyNodesIx(cmt, payer, [merkleTreeRaw.leaves[0].parent?.node!], 0);
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, [merkleTreeRaw.leaves[0].parent!.node!], 0);
             await execute(provider, [appendIx], [payerKeypair]);
             const finalize = createFinalizeMerkleTreeWithRootIx(cmt, payer, root, leaf, leaves.length - 1, merkleTreeRaw.getProof(leaves.length - 1).proof);
 
@@ -265,7 +265,7 @@ describe('Account Compression', () => {
             const leaf = leaves[leaves.length - 1];
 
             // take every second leaf and append it's parent node to the canopy
-            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.filter((_, i) => i % 2 === 0).map(leaf => leaf.parent?.node!), 0);
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!), 0);
             await execute(provider, [appendIx], [payerKeypair]);
             const finalize = createFinalizeMerkleTreeWithRootIx(cmt, payer, root, leaf, leaves.length - 1, merkleTreeRaw.getProof(leaves.length - 1).proof);
             await execute(provider, [finalize], [payerKeypair]);
@@ -275,10 +275,10 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
             // take every second leaf of the first half of a tree and append it's parent node to the canopy
-            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(0, leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent?.node!), 0);
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(0, leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!), 0);
             await execute(provider, [appendIx], [payerKeypair]);
             // take every second leaf of the second half of a tree and append it's parent node to the canopy
-            const appendIx2 = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent?.node!), 2);
+            const appendIx2 = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!), 2);
             await execute(provider, [appendIx2], [payerKeypair]);
             const finalize = createFinalizeMerkleTreeWithRootIx(cmt, payer, root, leaf, leaves.length - 1, merkleTreeRaw.getProof(leaves.length - 1).proof);
             await execute(provider, [finalize], [payerKeypair]);
@@ -288,9 +288,9 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
 
-            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent?.node!), 2);
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!), 2);
             await execute(provider, [appendIx], [payerKeypair]);
-            const appendIx2 = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(0, leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent?.node!), 0);
+            const appendIx2 = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(0, leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!), 0);
             await execute(provider, [appendIx2], [payerKeypair]);
             const finalize = createFinalizeMerkleTreeWithRootIx(cmt, payer, root, leaf, leaves.length - 1, merkleTreeRaw.getProof(leaves.length - 1).proof);
             await execute(provider, [finalize], [payerKeypair]);
@@ -300,11 +300,11 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
 
-            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(0, leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent?.node!), 0);
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(0, leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!), 0);
             await execute(provider, [appendIx], [payerKeypair]);
             const appendIx2 = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32)], 2);
             await execute(provider, [appendIx2], [payerKeypair]);
-            const replaceIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent?.node!), 2);
+            const replaceIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.slice(leaves.length / 2).filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!), 2);
             await execute(provider, [replaceIx], [payerKeypair]);
             const finalize = createFinalizeMerkleTreeWithRootIx(cmt, payer, root, leaf, leaves.length - 1, merkleTreeRaw.getProof(leaves.length - 1).proof);
             await execute(provider, [finalize], [payerKeypair]);
@@ -314,7 +314,7 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
 
-            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.filter((_, i) => i % 2 === 0).map(leaf => leaf.parent?.node!), 0);
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, merkleTreeRaw.leaves.filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!), 0);
             await execute(provider, [appendIx], [payerKeypair]);
             const finalize = createFinalizeMerkleTreeWithRootIx(cmt, payer, root, leaf, leaves.length - 1, merkleTreeRaw.getProof(leaves.length - 1).proof);
             await execute(provider, [finalize], [payerKeypair]);
