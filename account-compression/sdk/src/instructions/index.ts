@@ -3,9 +3,12 @@ import { Connection, PublicKey, SystemProgram, TransactionInstruction } from '@s
 import { getConcurrentMerkleTreeAccountSize } from '../accounts';
 import { SPL_NOOP_PROGRAM_ID, ValidDepthSizePair } from '../constants';
 import {
+    createAppendCanopyNodesInstruction,
     createAppendInstruction,
     createCloseEmptyTreeInstruction,
+    createFinalizeMerkleTreeWithRootInstruction,
     createInitEmptyMerkleTreeInstruction,
+    createPrepareTreeInstruction,
     createReplaceLeafInstruction,
     createTransferAuthorityInstruction,
     createVerifyLeafInstruction,
@@ -50,6 +53,94 @@ export function createInitEmptyMerkleTreeIx(
             noop: SPL_NOOP_PROGRAM_ID,
         },
         depthSizePair,
+    );
+}
+
+/**
+ * Helper function for {@link createPrepareTreeInstruction}
+ * @param merkleTree
+ * @param authority
+ * @param depthSizePair
+ * @returns
+ */
+export function prepareTreeIx(
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    depthSizePair: ValidDepthSizePair,
+): TransactionInstruction {
+    return createPrepareTreeInstruction(
+        {
+            authority: authority,
+            merkleTree,
+            noop: SPL_NOOP_PROGRAM_ID,
+        },
+        depthSizePair,
+    );
+}
+
+/**
+ * Helper function for {@link createAppendCanopyNodesInstruction}
+ * @param merkleTree
+ * @param authority
+ * @param canopyNodes
+ * @param startIndex
+ * @returns
+ */
+export function createAppendCanopyNodesIx(
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    canopyNodes: ArrayLike<number>[] | Buffer[],
+    startIndex: number,
+): TransactionInstruction {
+    return createAppendCanopyNodesInstruction(
+        {
+            authority,
+            merkleTree,
+            noop: SPL_NOOP_PROGRAM_ID,
+        },
+        {
+            canopyNodes: canopyNodes.map(node => Array.from(node)),
+            startIndex,
+        },
+    );
+}
+
+/**
+ * Helper function for {@link createFinalizeMerkleTreeWithRootInstruction}
+ * @param merkleTree
+ * @param authority
+ * @param root
+ * @param rightmostLeaf
+ * @param rightmostIndex
+ * @param proof
+ * @returns
+ */
+export function createFinalizeMerkleTreeWithRootIx(
+    merkleTree: PublicKey,
+    authority: PublicKey,
+    root: ArrayLike<number> | Buffer,
+    rightmostLeaf: ArrayLike<number> | Buffer,
+    rightmostIndex: number,
+    proof: Buffer[],
+): TransactionInstruction {
+    return createFinalizeMerkleTreeWithRootInstruction(
+        {
+            anchorRemainingAccounts: proof.map(node => {
+                return {
+                    isSigner: false,
+                    isWritable: false,
+                    pubkey: new PublicKey(node),
+                };
+            }),
+            authority,
+            merkleTree,
+            noop: SPL_NOOP_PROGRAM_ID,
+        },
+        {
+            rightmostIndex,
+            rightmostLeaf: Array.from(rightmostLeaf),
+            root: Array.from(root),
+        },
     );
 }
 
