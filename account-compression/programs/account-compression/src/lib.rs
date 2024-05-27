@@ -283,7 +283,7 @@ pub mod spl_account_compression {
         let (header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
         // the header should already be initialized with prepare_tree
-        let header = ConcurrentMerkleTreeHeader::try_from_slice(&header_bytes)?;
+        let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);

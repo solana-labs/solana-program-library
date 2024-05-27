@@ -156,7 +156,7 @@ pub fn set_canopy_leaf_nodes(
         canopy[start_canopy_idx + i] = *node;
     }
     let mut start_canopy_node = start_canopy_node;
-    let mut end_canopy_node = start_canopy_node + nodes.len() - 1 as usize;
+    let mut end_canopy_node = start_canopy_node + nodes.len() - 1;
     let mut empty_node_cache = Box::new([EMPTY; MAX_SUPPORTED_DEPTH]);
     let leaf_node_level = max_depth - path_len;
     // traverse up the tree and update the parent nodes in the modified subtree
@@ -167,16 +167,16 @@ pub fn set_canopy_leaf_nodes(
             let left_child = get_value_for_node::<MAX_SUPPORTED_DEPTH>(
                 node << 1,
                 level - 1,
-                &canopy,
+                canopy,
                 &mut empty_node_cache,
             );
             let right_child = get_value_for_node::<MAX_SUPPORTED_DEPTH>(
                 (node << 1) + 1,
                 level - 1,
-                &canopy,
+                canopy,
                 &mut empty_node_cache,
             );
-            canopy[node - 2 as usize].copy_from_slice(hashv(&[&left_child, &right_child]).as_ref());
+            canopy[node - 2].copy_from_slice(hashv(&[&left_child, &right_child]).as_ref());
         }
     }
     Ok(())
@@ -186,7 +186,7 @@ pub fn set_canopy_leaf_nodes(
 pub fn check_canopy_root(canopy_bytes: &[u8], expected_root: &Node) -> Result<()> {
     check_canopy_bytes(canopy_bytes)?;
     let canopy = cast_slice::<u8, Node>(canopy_bytes);
-    if canopy.len() < 1 {
+    if canopy.is_empty() {
         return Ok(()); // Canopy is empty
     }
     let actual_root = hashv(&[&canopy[0], &canopy[1]]).to_bytes();
@@ -219,7 +219,7 @@ pub fn check_canopy_no_nodes_to_right_of_index(
 
     let mut node_idx = ((1 << max_depth) + index) >> (max_depth - path_len);
     // no need to check the node_idx as it's the leaf continaing the index underneath it
-    while node_idx & node_idx + 1 != 0 {
+    while node_idx & (node_idx + 1) != 0 {
         // check the next node to the right
         node_idx += 1;
         // find the top-most node that has the node as its left-most child
