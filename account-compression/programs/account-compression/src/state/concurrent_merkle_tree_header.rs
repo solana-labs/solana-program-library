@@ -99,19 +99,6 @@ impl ConcurrentMerkleTreeHeader {
         }
     }
 
-    pub fn is_initialized(&self) -> bool {
-        match self.account_type {
-            CompressionAccountType::Uninitialized => false,
-            CompressionAccountType::ConcurrentMerkleTree => {
-                match &self.header {
-                    ConcurrentMerkleTreeHeaderData::V1(header) => {
-                        header.max_buffer_size != 0 && header.max_depth != 0
-                    }
-                }
-            }
-        }
-    }
-
     pub fn get_max_depth(&self) -> u32 {
         match &self.header {
             ConcurrentMerkleTreeHeaderData::V1(header) => header.max_depth,
