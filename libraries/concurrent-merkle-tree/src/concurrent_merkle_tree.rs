@@ -141,11 +141,6 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
         !(self.buffer_size == 0 && self.sequence_number == 0 && self.active_index == 0)
     }
 
-    // The initialization method is wrapped to allow for calls through the macro
-    pub fn is_initialized_wrapped(&self) -> Result<bool, ConcurrentMerkleTreeError> {
-        Ok(self.is_initialized())
-    }
-
     /// This is the trustless initialization method that should be used in most
     /// cases.
     pub fn initialize(&mut self) -> Result<Node, ConcurrentMerkleTreeError> {

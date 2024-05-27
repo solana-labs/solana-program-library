@@ -184,19 +184,22 @@ pub mod spl_account_compression {
         update_canopy(canopy_bytes, header.get_max_depth(), None)
     }
 
-    /// In order to initialize a tree with a root, we need to create the tree on-chain first with the proper authority.
-    /// The tree might contain a canopy, which is a cache of the uppermost nodes.
-    /// The canopy is used to decrease the size of the proof required to update the tree.
+    /// In order to initialize a tree with a root, we need to create the tree on-chain first with
+    /// the proper authority. The tree might contain a canopy, which is a cache of the uppermost
+    /// nodes. The canopy is used to decrease the size of the proof required to update the tree.
     /// If the tree is expected to have a canopy, it needs to be prefilled with the necessary nodes.
     /// There are 2 ways to initialize a merkle tree:
     /// 1. Initialize an empty tree
     /// 2. Initialize a tree with a root and leaf
-    /// For the former case, the canopy will be empty which is expected for an empty tree. The expected flow is `init_empty_merkle_tree`.
-    /// For the latter case, the canopy should be filled with the necessary nodes to render the tree usable.
-    /// Thus we need to prefill the canopy with the necessary nodes.    
-    /// The expected flow for a tree without canopy is `prepare_tree` -> `init_merkle_tree_with_root`.
-    /// The expected flow for a tree with canopy is `prepare_tree` -> `append_canopy_nodes` (multiple times until all of the canopy is filled) -> `init_merkle_tree_with_root`.
-    /// This instruction initializes the tree header while leaving the tree itself uninitialized. This allows distinguishing between an empty tree and a tree prepare to be initialized with a root.
+    /// For the former case, the canopy will be empty which is expected for an empty tree. The
+    /// expected flow is `init_empty_merkle_tree`. For the latter case, the canopy should be
+    /// filled with the necessary nodes to render the tree usable. Thus we need to prefill the
+    /// canopy with the necessary nodes. The expected flow for a tree without canopy is
+    /// `prepare_tree` -> `init_merkle_tree_with_root`. The expected flow for a tree with canopy
+    /// is `prepare_tree` -> `append_canopy_nodes` (multiple times until all of the canopy is
+    /// filled) -> `init_merkle_tree_with_root`. This instruction initializes the tree header
+    /// while leaving the tree itself uninitialized. This allows distinguishing between an empty
+    /// tree and a tree prepare to be initialized with a root.
     pub fn prepare_tree(
         ctx: Context<Initialize>,
         max_depth: u32,
@@ -226,7 +229,8 @@ pub mod spl_account_compression {
     }
 
     /// This instruction pre-initializes the canopy with the specified leaf nodes of the canopy.
-    /// This is intended to be used after `prepare_tree` and in conjunction with the `init_merkle_tree_with_root` instruction that'll finalize the tree initialization.
+    /// This is intended to be used after `prepare_tree` and in conjunction with the
+    /// `init_merkle_tree_with_root` instruction that'll finalize the tree initialization.
     pub fn append_canopy_nodes(
         ctx: Context<Modify>,
         start_index: u32,
@@ -244,7 +248,8 @@ pub mod spl_account_compression {
 
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
-        // assert the tree is not initialized yet, we don't want to overwrite the canopy of an initialized tree
+        // assert the tree is not initialized yet, we don't want to overwrite the canopy of an
+        // initialized tree
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
         // ensure the tree is not initialized, the hacky way
@@ -252,21 +257,6 @@ pub mod spl_account_compression {
             tree_bytes.iter().all(|&x| x == 0),
             AccountCompressionError::TreeAlreadyInitialized
         );
-        // TODO: remove the block below
-        // an alternative of the above line is to check the last node of the last change log event, which should contain an empty root:
-        let id = ctx.accounts.merkle_tree.key();
-        // A call is made to ConcurrentMerkleTree::is_initialized_wrapped()
-        let change_log_event =
-            merkle_tree_apply_fn!(header, id, tree_bytes, is_initialized_wrapped,)?;
-        match *change_log_event {
-            ChangeLogEvent::V1(is_initialized_change_log) => {
-                // todo: consider removing the unwrap
-                require!(
-                    is_initialized_change_log.path.last().unwrap().node == EMPTY,
-                    AccountCompressionError::TreeAlreadyInitialized
-                );
-            }
-        }
         set_canopy_leaf_nodes(
             canopy_bytes,
             header.get_max_depth(),

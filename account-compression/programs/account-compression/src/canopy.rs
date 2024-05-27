@@ -132,9 +132,11 @@ pub fn fill_in_proof_from_canopy(
     Ok(())
 }
 
-/// Sets the leaf nodes of the canopy. The leaf nodes are the lowest level of the canopy, representing the leaves of the canopy-tree.
-/// The method will update the parent nodes of all the modified subtrees up to the uppermost level of the canopy.
-/// The leaf nodes indexing for the start_index is 0-based without regards to the full tree indexes or the node indexes. The start_index is the index of the first leaf node to be updated.
+/// Sets the leaf nodes of the canopy. The leaf nodes are the lowest level of the canopy,
+/// representing the leaves of the canopy-tree. The method will update the parent nodes of all the
+/// modified subtrees up to the uppermost level of the canopy. The leaf nodes indexing for the
+/// start_index is 0-based without regards to the full tree indexes or the node indexes. The
+/// start_index is the index of the first leaf node to be updated.
 pub fn set_canopy_leaf_nodes(
     canopy_bytes: &mut [u8],
     max_depth: u32,
@@ -201,8 +203,10 @@ pub fn check_canopy_root(canopy_bytes: &[u8], expected_root: &Node) -> Result<()
 }
 
 /// Checks the canopy doesn't have any nodes to the right of the provided index in the full tree.
-/// This is done by iterating through the canopy nodes to the right of the provided index and finding the top-most node that has the node as its left child.
-/// The node should be empty. The iteration contains following the previous checked node on the same level until the last node on the level is reached.
+/// This is done by iterating through the canopy nodes to the right of the provided index and
+/// finding the top-most node that has the node as its left child. The node should be empty. The
+/// iteration contains following the previous checked node on the same level until the last node on
+/// the level is reached.
 pub fn check_canopy_no_nodes_to_right_of_index(
     canopy_bytes: &[u8],
     max_depth: u32,
@@ -530,7 +534,7 @@ mod tests {
         canopy_bytes[5 * size_of::<Node>()..].fill(0);
         check_canopy_no_nodes_to_right_of_index(&canopy_bytes, 20, (3 << (20 - 2)) - 1).unwrap();
     }
-    
+
     #[test]
     fn test_succes_check_canopy_no_nodes_to_right_of_index_no_canopy() {
         let canopy_bytes = vec![];
