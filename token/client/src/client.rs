@@ -402,7 +402,7 @@ where
         &self,
         _data_len: usize,
     ) -> ProgramClientResult<u64> {
-        Err("Unable to fetch minimum blance for rent exemption in offline mode".into())
+        Err("Unable to fetch minimum balance for rent exemption in offline mode".into())
     }
 
     async fn get_latest_blockhash(&self) -> ProgramClientResult<Hash> {

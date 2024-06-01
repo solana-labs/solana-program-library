@@ -2296,7 +2296,7 @@ pub fn app<'a, 'b>(
         )
         .subcommand(
             SubCommand::with_name(CommandName::UpdateConfidentialTransferSettings.into())
-                .about("Update confidential transfer configuation for a token")
+                .about("Update confidential transfer configuration for a token")
                 .arg(
                     Arg::with_name("token")
                         .validator(is_valid_pubkey)
