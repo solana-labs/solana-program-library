@@ -1,5 +1,5 @@
-import { Layout, publicKey, struct, u32, u64, u8, option, vec } from '@coral-xyz/borsh';
-import { Layout as LayoutCls, u8 as u8Cls } from 'buffer-layout';
+import { Layout, publicKey, u64, option, vec } from './codecs';
+import { struct, Layout as LayoutCls, u8, u32 } from 'buffer-layout';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import {
@@ -45,7 +45,7 @@ export class FutureEpochLayout<T> extends LayoutCls<T | null> {
   constructor(layout: Layout<T>, property?: string) {
     super(-1, property);
     this.layout = layout;
-    this.discriminator = u8Cls();
+    this.discriminator = u8();
   }
 
   encode(src: T | null, b: Buffer, offset = 0): number {
@@ -78,7 +78,7 @@ export class FutureEpochLayout<T> extends LayoutCls<T | null> {
   }
 }
 
-export function futureEpoch<T>(layout: Layout<T>, property?: string): Layout<T | null> {
+export function futureEpoch<T>(layout: Layout<T>, property?: string): LayoutCls<T | null> {
   return new FutureEpochLayout<T>(layout, property);
 }
 
