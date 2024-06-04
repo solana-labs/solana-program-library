@@ -13,6 +13,13 @@ declare module 'buffer-layout' {
     property?: string,
     decodePrefixes?: boolean,
   ): Layout<T>;
+  export function seq<T>(
+    elementLayout: Layout<T>,
+    count: number | Layout<number>,
+    property?: string,
+  ): Layout<T[]>;
+  export function offset<T>(layout: Layout<T>, offset?: number, property?: string): Layout<T>;
+  export function blob(length: number | Layout<number>, property?: string): Layout<Buffer>;
   export function s32(property?: string): Layout<number>;
   export function u32(property?: string): Layout<number>;
   export function s16(property?: string): Layout<number>;
