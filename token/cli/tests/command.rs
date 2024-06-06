@@ -4100,7 +4100,7 @@ async fn compute_budget(test_validator: &TestValidator, payer: &Keypair) {
     for program_id in VALID_TOKEN_PROGRAM_IDS.iter() {
         let mut config = test_config_with_default_signer(test_validator, payer, program_id);
         config.compute_unit_price = Some(42);
-        config.compute_unit_limit = ComputeUnitLimit::Static(30_000);
+        config.compute_unit_limit = ComputeUnitLimit::Static(40_000);
         run_transfer_test(&config, payer).await;
     }
 }
