@@ -90,6 +90,7 @@ pub fn process_initialize_extra_account_meta_list(
 
     // check that the one mint we want to target is trying to create extra
     // account metas
+    #[cfg(feature = "forbid-additional-mints")]
     if *mint_info.key != crate::mint::id() {
         return Err(ProgramError::InvalidArgument);
     }
