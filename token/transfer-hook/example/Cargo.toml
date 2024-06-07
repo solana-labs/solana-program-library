@@ -8,8 +8,10 @@ license = "Apache-2.0"
 edition = "2021"
 
 [features]
+default = ["forbid-additional-mints"]
 no-entrypoint = []
 test-sbf = []
+forbid-additional-mints = []
 
 [dependencies]
 arrayref = "0.3.7"

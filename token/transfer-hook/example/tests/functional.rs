@@ -142,7 +142,7 @@ async fn success_execute() {
 
     let token_program_id = spl_token_2022::id();
     let wallet = Keypair::new();
-    let mint_address = Pubkey::new_unique();
+    let mint_address = spl_transfer_hook_example::mint::id();
     let mint_authority = Keypair::new();
     let mint_authority_pubkey = mint_authority.pubkey();
     let source = Pubkey::new_unique();
@@ -439,7 +439,7 @@ async fn fail_incorrect_derivation() {
 
     let token_program_id = spl_token_2022::id();
     let wallet = Keypair::new();
-    let mint_address = Pubkey::new_unique();
+    let mint_address = spl_transfer_hook_example::mint::id();
     let mint_authority = Keypair::new();
     let mint_authority_pubkey = mint_authority.pubkey();
     let source = Pubkey::new_unique();
@@ -495,6 +495,69 @@ async fn fail_incorrect_derivation() {
     );
 }
 
+#[tokio::test]
+async fn fail_incorrect_mint() {
+    let program_id = Pubkey::new_unique();
+    let mut program_test = setup(&program_id);
+
+    let token_program_id = spl_token_2022::id();
+    let wallet = Keypair::new();
+    // wrong mint, only `spl_transfer_hook_example::mint::id()` allowed
+    let mint_address = Pubkey::new_unique();
+    let mint_authority = Keypair::new();
+    let mint_authority_pubkey = mint_authority.pubkey();
+    let source = Pubkey::new_unique();
+    let destination = Pubkey::new_unique();
+    let decimals = 2;
+    setup_token_accounts(
+        &mut program_test,
+        &token_program_id,
+        &mint_address,
+        &mint_authority_pubkey,
+        &source,
+        &destination,
+        &wallet.pubkey(),
+        decimals,
+        true,
+    );
+
+    let extra_account_metas = get_extra_account_metas_address(&mint_address, &program_id);
+
+    let mut context = program_test.start_with_context().await;
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let rent_lamports = rent.minimum_balance(ExtraAccountMetaList::size_of(0).unwrap());
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                &extra_account_metas,
+                rent_lamports,
+            ),
+            initialize_extra_account_meta_list(
+                &program_id,
+                &extra_account_metas,
+                &mint_address,
+                &mint_authority_pubkey,
+                &[],
+            ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &mint_authority],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap_err()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(1, InstructionError::InvalidArgument)
+    );
+}
+
 /// Test program to CPI into default transfer-hook-interface program
 pub fn process_instruction(
     _program_id: &Pubkey,
@@ -530,7 +593,7 @@ async fn success_on_chain_invoke() {
 
     let token_program_id = spl_token_2022::id();
     let wallet = Keypair::new();
-    let mint_address = Pubkey::new_unique();
+    let mint_address = spl_transfer_hook_example::mint::id();
     let mint_authority = Keypair::new();
     let mint_authority_pubkey = mint_authority.pubkey();
     let source = Pubkey::new_unique();
@@ -673,7 +736,7 @@ async fn fail_without_transferring_flag() {
 
     let token_program_id = spl_token_2022::id();
     let wallet = Keypair::new();
-    let mint_address = Pubkey::new_unique();
+    let mint_address = spl_transfer_hook_example::mint::id();
     let mint_authority = Keypair::new();
     let mint_authority_pubkey = mint_authority.pubkey();
     let source = Pubkey::new_unique();
@@ -767,7 +830,7 @@ async fn success_on_chain_invoke_with_updated_extra_account_metas() {
 
     let token_program_id = spl_token_2022::id();
     let wallet = Keypair::new();
-    let mint_address = Pubkey::new_unique();
+    let mint_address = spl_transfer_hook_example::mint::id();
     let mint_authority = Keypair::new();
     let mint_authority_pubkey = mint_authority.pubkey();
     let source = Pubkey::new_unique();
@@ -970,7 +1033,7 @@ async fn success_execute_with_updated_extra_account_metas() {
 
     let token_program_id = spl_token_2022::id();
     let wallet = Keypair::new();
-    let mint_address = Pubkey::new_unique();
+    let mint_address = spl_transfer_hook_example::mint::id();
     let mint_authority = Keypair::new();
     let mint_authority_pubkey = mint_authority.pubkey();
     let source = Pubkey::new_unique();

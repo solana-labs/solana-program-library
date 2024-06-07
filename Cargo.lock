@@ -7914,6 +7914,7 @@ dependencies = [
  "spl-tlv-account-resolution 0.6.3",
  "spl-token-2022 3.0.2",
  "spl-token-client",
+ "spl-transfer-hook-example",
  "spl-transfer-hook-interface 0.6.3",
  "strum 0.26.2",
  "strum_macros 0.26.4",

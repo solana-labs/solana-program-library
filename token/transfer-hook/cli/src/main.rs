@@ -263,7 +263,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
 
 Additional accounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
-                            
+
 ```json
 {
     "extraMetas": [
@@ -347,7 +347,7 @@ extraMetas:
 Additional accounts with known fixed addresses can be passed at the command line in the format "<PUBKEY>:<ROLE>". The role must be "readonly", "writable". "readonlySigner", or "writableSigner".
 
 Additional accounts requiring seed configurations can be defined in a configuration file using either JSON or YAML. The format is as follows:
-                            
+
 ```json
 {
     "extraMetas": [
@@ -551,19 +551,27 @@ extraMetas:
 mod test {
     use {
         super::*,
-        solana_sdk::{bpf_loader_upgradeable, instruction::AccountMeta, signer::keypair::Keypair},
+        solana_sdk::{
+            account::Account, bpf_loader_upgradeable, instruction::AccountMeta,
+            program_option::COption, signer::keypair::Keypair,
+        },
         solana_test_validator::{TestValidator, TestValidatorGenesis, UpgradeableProgramInfo},
+        spl_token_2022::{
+            extension::{ExtensionType, StateWithExtensionsMut},
+            state::Mint,
+        },
         spl_token_client::{
-            client::{
-                ProgramClient, ProgramRpcClient, ProgramRpcClientSendTransaction, SendTransaction,
-                SimulateTransaction,
-            },
+            client::{ProgramRpcClient, ProgramRpcClientSendTransaction},
             token::Token,
         },
         std::{path::PathBuf, sync::Arc},
     };
 
-    async fn new_validator_for_test(program_id: Pubkey) -> (TestValidator, Keypair) {
+    async fn new_validator_for_test(
+        program_id: Pubkey,
+        mint_authority: &Pubkey,
+        decimals: u8,
+    ) -> (TestValidator, Keypair) {
         solana_logger::setup();
         let mut test_validator_genesis = TestValidatorGenesis::default();
         test_validator_genesis.add_upgradeable_programs_with_path(&[UpgradeableProgramInfo {
@@ -572,36 +580,41 @@ mod test {
             program_path: PathBuf::from("../../../target/deploy/spl_transfer_hook_example.so"),
             upgrade_authority: Pubkey::new_unique(),
         }]);
-        test_validator_genesis.start_async().await
-    }
 
-    async fn setup_mint<T: SendTransaction + SimulateTransaction>(
-        program_id: &Pubkey,
-        mint_authority: &Pubkey,
-        decimals: u8,
-        payer: Arc<dyn Signer>,
-        client: Arc<dyn ProgramClient<T>>,
-    ) -> Token<T> {
-        let mint_account = Keypair::new();
-        let token = Token::new(
-            client,
-            program_id,
-            &mint_account.pubkey(),
-            Some(decimals),
-            payer,
+        let mint_size = ExtensionType::try_calculate_account_len::<Mint>(&[]).unwrap();
+        let mut mint_data = vec![0; mint_size];
+        let mut state =
+            StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data).unwrap();
+        let token_amount = 1_000_000_000_000;
+        state.base = Mint {
+            mint_authority: COption::Some(*mint_authority),
+            supply: token_amount,
+            decimals,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        state.pack_base();
+        test_validator_genesis.add_account(
+            spl_transfer_hook_example::mint::id(),
+            Account {
+                lamports: 1_000_000_000,
+                data: mint_data,
+                owner: spl_token_2022::id(),
+                ..Account::default()
+            }
+            .into(),
         );
-        token
-            .create_mint(mint_authority, None, vec![], &[&mint_account])
-            .await
-            .unwrap();
-        token
+        test_validator_genesis.start_async().await
     }
 
     #[tokio::test]
     async fn test_create() {
         let program_id = Pubkey::new_unique();
 
-        let (test_validator, payer) = new_validator_for_test(program_id).await;
+        let decimals = 2;
+        let mint_authority = Keypair::new();
+        let (test_validator, payer) =
+            new_validator_for_test(program_id, &mint_authority.pubkey(), decimals).await;
         let payer: Arc<dyn Signer> = Arc::new(payer);
         let rpc_client = Arc::new(test_validator.get_async_rpc_client());
         let client = Arc::new(ProgramRpcClient::new(
@@ -609,17 +622,13 @@ mod test {
             ProgramRpcClientSendTransaction,
         ));
 
-        let mint_authority = Keypair::new();
-        let decimals = 2;
-
-        let token = setup_mint(
-            &spl_token_2022::id(),
-            &mint_authority.pubkey(),
-            decimals,
-            payer.clone(),
+        let token = Token::new(
             client.clone(),
-        )
-        .await;
+            &spl_token_2022::id(),
+            &spl_transfer_hook_example::mint::id(),
+            Some(decimals),
+            payer.clone(),
+        );
 
         let required_address = Pubkey::new_unique();
         let accounts = vec![AccountMeta::new_readonly(required_address, false)];
