@@ -499,7 +499,7 @@ fn create_token_metadata(
     uri:String) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
-    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     let instructions = vec![
         spl_stake_pool::instruction::create_token_metadata(
             &spl_stake_pool::id(),
