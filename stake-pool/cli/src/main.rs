@@ -494,24 +494,23 @@ fn command_create_pool(
 fn create_token_metadata(
     config: &Config,
     stake_pool_address: &Pubkey,
-    name: String, 
-    symbol:String, 
-    uri:String) -> CommandResult {
+    name: String,
+    symbol: String,
+    uri: String,
+) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
-    let instructions = vec![
-        spl_stake_pool::instruction::create_token_metadata(
-            &spl_stake_pool::id(),
-            stake_pool_address,
-            &stake_pool.manager,
-            &stake_pool.pool_mint,
-            &config.fee_payer.pubkey(),
-            name,
-            symbol,
-            uri,
-        ),
-    ];
+    let instructions = vec![spl_stake_pool::instruction::create_token_metadata(
+        &spl_stake_pool::id(),
+        stake_pool_address,
+        &stake_pool.manager,
+        &stake_pool.pool_mint,
+        &config.fee_payer.pubkey(),
+        name,
+        symbol,
+        uri,
+    )];
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
@@ -521,23 +520,22 @@ fn create_token_metadata(
 fn update_token_metadata(
     config: &Config,
     stake_pool_address: &Pubkey,
-    name: String, 
-    symbol:String, 
-    uri:String) -> CommandResult {
+    name: String,
+    symbol: String,
+    uri: String,
+) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
-    let instructions = vec![
-        spl_stake_pool::instruction::update_token_metadata(
-            &spl_stake_pool::id(),
-            stake_pool_address,
-            &stake_pool.manager,
-            &stake_pool.pool_mint,
-            name,
-            symbol,
-            uri,
-        ),
-    ];
+    let instructions = vec![spl_stake_pool::instruction::update_token_metadata(
+        &spl_stake_pool::id(),
+        stake_pool_address,
+        &stake_pool.manager,
+        &stake_pool.pool_mint,
+        name,
+        symbol,
+        uri,
+    )];
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
