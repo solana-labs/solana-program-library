@@ -491,6 +491,57 @@ fn command_create_pool(
     Ok(())
 }
 
+fn create_token_metadata(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    name: String,
+    symbol: String,
+    uri: String,
+) -> CommandResult {
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    let instructions = vec![spl_stake_pool::instruction::create_token_metadata(
+        &spl_stake_pool::id(),
+        stake_pool_address,
+        &stake_pool.manager,
+        &stake_pool.pool_mint,
+        &config.fee_payer.pubkey(),
+        name,
+        symbol,
+        uri,
+    )];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
+fn update_token_metadata(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    name: String,
+    symbol: String,
+    uri: String,
+) -> CommandResult {
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    let instructions = vec![spl_stake_pool::instruction::update_token_metadata(
+        &spl_stake_pool::id(),
+        stake_pool_address,
+        &stake_pool.manager,
+        &stake_pool.pool_mint,
+        name,
+        symbol,
+        uri,
+    )];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
 fn command_vsa_add(
     config: &Config,
     stake_pool_address: &Pubkey,
@@ -2175,6 +2226,78 @@ fn main() {
                     .help("Bypass fee checks, allowing pool to be created with unsafe fees"),
             )
         )
+        .subcommand(SubCommand::with_name("create-token-metadata")
+        .about("Creates stake pool token metadata")
+        .arg(
+            Arg::with_name("pool")
+                .index(1)
+                .validator(is_pubkey)
+                .value_name("POOL_ADDRESS")
+                .takes_value(true)
+                .required(true)
+                .help("Stake pool address"),
+        )
+        .arg(
+            Arg::with_name("name")
+                .index(2)
+                .value_name("TOKEN_NAME")
+                .takes_value(true)
+                .required(true)
+                .help("Name of the token"),
+        )
+        .arg(
+            Arg::with_name("symbol")
+                .index(3)
+                .value_name("TOKEN_SYMBOL")
+                .takes_value(true)
+                .required(true)
+                .help("Symbol of the token"),
+        )
+        .arg(
+            Arg::with_name("uri")
+                .index(4)
+                .value_name("TOKEN_URI")
+                .takes_value(true)
+                .required(true)
+                .help("URI of the token metadata json"),
+        )
+    )
+    .subcommand(SubCommand::with_name("update-token-metadata")
+    .about("Updates stake pool token metadata")
+    .arg(
+        Arg::with_name("pool")
+            .index(1)
+            .validator(is_pubkey)
+            .value_name("POOL_ADDRESS")
+            .takes_value(true)
+            .required(true)
+            .help("Stake pool address"),
+    )
+    .arg(
+        Arg::with_name("name")
+            .index(2)
+            .value_name("TOKEN_NAME")
+            .takes_value(true)
+            .required(true)
+            .help("Name of the token"),
+    )
+    .arg(
+        Arg::with_name("symbol")
+            .index(3)
+            .value_name("TOKEN_SYMBOL")
+            .takes_value(true)
+            .required(true)
+            .help("Symbol of the token"),
+    )
+    .arg(
+        Arg::with_name("uri")
+            .index(4)
+            .value_name("TOKEN_URI")
+            .takes_value(true)
+            .required(true)
+            .help("URI of the token metadata json"),
+        )
+    )
         .subcommand(SubCommand::with_name("add-validator")
             .about("Add validator account to the stake pool. Must be signed by the pool staker.")
             .arg(
@@ -2899,6 +3022,20 @@ fn main() {
                 reserve_keypair,
                 unsafe_fees,
             )
+        }
+        ("create-token-metadata", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let name = value_t_or_exit!(arg_matches, "name", String);
+            let symbol = value_t_or_exit!(arg_matches, "symbol", String);
+            let uri = value_t_or_exit!(arg_matches, "uri", String);
+            create_token_metadata(&config, &stake_pool_address, name, symbol, uri)
+        }
+        ("update-token-metadata", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let name = value_t_or_exit!(arg_matches, "name", String);
+            let symbol = value_t_or_exit!(arg_matches, "symbol", String);
+            let uri = value_t_or_exit!(arg_matches, "uri", String);
+            update_token_metadata(&config, &stake_pool_address, name, symbol, uri)
         }
         ("add-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
