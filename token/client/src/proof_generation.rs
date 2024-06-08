@@ -4,31 +4,29 @@
 //! The logic in this submodule should belong to the `solana-zk-token-sdk` and
 //! will be removed with an upgrade to the Solana program.
 
-use {
-    curve25519_dalek::scalar::Scalar,
-    spl_token_2022::{
-        error::TokenError,
-        extension::confidential_transfer::{
-            ciphertext_extraction::{transfer_amount_source_ciphertext, SourceDecryptHandles},
-            processor::verify_and_split_deposit_amount,
+use spl_token_2022::{
+    error::TokenError,
+    extension::confidential_transfer::{
+        ciphertext_extraction::{transfer_amount_source_ciphertext, SourceDecryptHandles},
+        processor::verify_and_split_deposit_amount,
+    },
+    solana_zk_token_sdk::{
+        curve25519_dalek::scalar::Scalar,
+        encryption::{
+            auth_encryption::{AeCiphertext, AeKey},
+            elgamal::{DecryptHandle, ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
+            grouped_elgamal::GroupedElGamal,
+            pedersen::{Pedersen, PedersenCommitment, PedersenOpening},
         },
-        solana_zk_token_sdk::{
-            encryption::{
-                auth_encryption::{AeCiphertext, AeKey},
-                elgamal::{DecryptHandle, ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
-                grouped_elgamal::GroupedElGamal,
-                pedersen::{Pedersen, PedersenCommitment, PedersenOpening},
+        instruction::{
+            transfer::{
+                combine_lo_hi_commitments, combine_lo_hi_openings, FeeEncryption, FeeParameters,
+                TransferAmountCiphertext,
             },
-            instruction::{
-                transfer::{
-                    combine_lo_hi_commitments, combine_lo_hi_openings, FeeEncryption,
-                    FeeParameters, TransferAmountCiphertext,
-                },
-                BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU256Data,
-                CiphertextCommitmentEqualityProofData, FeeSigmaProofData,
-            },
-            zk_token_elgamal::ops::subtract_with_lo_hi,
+            BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU256Data,
+            CiphertextCommitmentEqualityProofData, FeeSigmaProofData,
         },
+        zk_token_elgamal::ops::subtract_with_lo_hi,
     },
 };
 

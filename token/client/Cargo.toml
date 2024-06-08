@@ -9,7 +9,6 @@ version = "0.10.0"
 
 [dependencies]
 async-trait = "0.1"
-curve25519-dalek = "3.2.1"
 futures = "0.3.30"
 futures-util = "0.3"
 solana-banks-interface = ">=1.18.11,<=2"
