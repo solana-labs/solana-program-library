@@ -78,7 +78,8 @@ pub struct Initialize<'info> {
     pub noop: Program<'info, Noop>,
 }
 
-/// Context for inserting, appending, or replacing a leaf in the tree
+/// Context for modifying a tree: inserting, appending, or replacing a leaf in
+/// the existing tree and setting the canopy or finalizing a prepared tree.
 ///
 /// Modification instructions also require the proof to the leaf to be provided
 /// as 32-byte nodes via "remaining accounts".
