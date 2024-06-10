@@ -51,6 +51,15 @@ fn check_leaf_index(leaf_index: u32, max_depth: usize) -> Result<(), ConcurrentM
 /// [append](ConcurrentMerkleTree::append) operations, which do not require any
 /// proofs to be passed. This is accomplished by keeping track of the
 /// proof to the rightmost leaf in the tree (`rightmost_proof`).
+///
+/// The `ConcurrentMerkleTree` is a generic struct that may be interacted with
+/// using macros. Those macros may wrap up the construction and both mutable and
+/// immutable calls to the `ConcurrentMerkleTree` struct. If the macro contains
+/// a big match statement over different sizes of a tree and buffer, it might
+/// create a huge stack footprint. This in turn might lead to a stack overflow
+/// given the max stack offset of just 4kb. In order to minimize the stack frame
+/// size, the arguments for the `ConcurrentMerkleTree` methods that contain the
+/// proofs are passed as references to structs.
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ConcurrentMerkleTree<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> {
@@ -85,6 +94,40 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize> Default
             rightmost_proof: Path::<MAX_DEPTH>::default(),
         }
     }
+}
+
+/// Arguments structure for initializing a tree with a root.
+pub struct InitializeWithRootArgs {
+    pub root: Node,
+    pub rightmost_leaf: Node,
+    pub proof_vec: Vec<Node>,
+    pub index: u32,
+}
+
+/// Arguments structure for setting a leaf in the tree.
+pub struct SetLeafArgs {
+    pub current_root: Node,
+    pub previous_leaf: Node,
+    pub new_leaf: Node,
+    pub proof_vec: Vec<Node>,
+    pub index: u32,
+}
+
+/// Arguments structure for filling an empty leaf or appending a new leaf to the
+/// tree.
+pub struct FillEmptyOrAppendArgs {
+    pub current_root: Node,
+    pub leaf: Node,
+    pub proof_vec: Vec<Node>,
+    pub index: u32,
+}
+
+/// Arguments structure for proving a leaf in the tree.
+pub struct ProveLeafArgs {
+    pub current_root: Node,
+    pub leaf: Node,
+    pub proof_vec: Vec<Node>,
+    pub index: u32,
 }
 
 impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
@@ -132,35 +175,32 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     /// other applications from indexing the leaf data stored in this tree.
     pub fn initialize_with_root(
         &mut self,
-        root: Node,
-        rightmost_leaf: Node,
-        proof_vec: &[Node],
-        index: u32,
+        args: &InitializeWithRootArgs,
     ) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
-        check_leaf_index(index, MAX_DEPTH)?;
+        check_leaf_index(args.index, MAX_DEPTH)?;
 
         if self.is_initialized() {
             return Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized);
         }
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
-        proof.copy_from_slice(proof_vec);
+        proof.copy_from_slice(&args.proof_vec);
         let rightmost_proof = Path {
             proof,
-            index: index + 1,
-            leaf: rightmost_leaf,
+            index: args.index + 1,
+            leaf: args.rightmost_leaf,
             _padding: 0,
         };
-        self.change_logs[0].root = root;
+        self.change_logs[0].root = args.root;
         self.sequence_number = 1;
         self.active_index = 0;
         self.buffer_size = 1;
         self.rightmost_proof = rightmost_proof;
-        if root != recompute(rightmost_leaf, &proof, index) {
+        if args.root != recompute(args.rightmost_leaf, &proof, args.index) {
             solana_logging!("Proof failed to verify");
             return Err(ConcurrentMerkleTreeError::InvalidProof);
         }
-        Ok(root)
+        Ok(args.root)
     }
 
     /// Errors if one of the leaves of the current merkle tree is non-EMPTY
@@ -200,31 +240,25 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     /// Note: this is *not* the same as verifying that a (proof, leaf)
     /// combination is valid for the given root. That functionality
     /// is provided by `check_valid_proof`.
-    pub fn prove_leaf(
-        &self,
-        current_root: Node,
-        leaf: Node,
-        proof_vec: &[Node],
-        leaf_index: u32,
-    ) -> Result<(), ConcurrentMerkleTreeError> {
+    pub fn prove_leaf(&self, args: &ProveLeafArgs) -> Result<(), ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
-        check_leaf_index(leaf_index, MAX_DEPTH)?;
+        check_leaf_index(args.index, MAX_DEPTH)?;
         if !self.is_initialized() {
             return Err(ConcurrentMerkleTreeError::TreeNotInitialized);
         }
 
-        if leaf_index > self.rightmost_proof.index {
+        if args.index > self.rightmost_proof.index {
             solana_logging!(
                 "Received an index larger than the rightmost index {} > {}",
-                leaf_index,
+                args.index,
                 self.rightmost_proof.index
             );
             Err(ConcurrentMerkleTreeError::LeafIndexOutOfBounds)
         } else {
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
-            fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
+            fill_in_proof::<MAX_DEPTH>(&args.proof_vec, &mut proof);
             let valid_root =
-                self.check_valid_leaf(current_root, leaf, &mut proof, leaf_index, true)?;
+                self.check_valid_leaf(args.current_root, args.leaf, &mut proof, args.index, true)?;
             if !valid_root {
                 solana_logging!("Proof failed to verify");
                 return Err(ConcurrentMerkleTreeError::InvalidProof);
@@ -313,25 +347,29 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     /// otherwise it will `append` the new leaf.
     pub fn fill_empty_or_append(
         &mut self,
-        current_root: Node,
-        leaf: Node,
-        proof_vec: &[Node],
-        index: u32,
+        args: &FillEmptyOrAppendArgs,
     ) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
-        check_leaf_index(index, MAX_DEPTH)?;
+        check_leaf_index(args.index, MAX_DEPTH)?;
         if !self.is_initialized() {
             return Err(ConcurrentMerkleTreeError::TreeNotInitialized);
         }
 
         let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
-        fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
+        fill_in_proof::<MAX_DEPTH>(&args.proof_vec, &mut proof);
 
         log_compute!();
-        match self.try_apply_proof(current_root, EMPTY, leaf, &mut proof, index, false) {
+        match self.try_apply_proof(
+            args.current_root,
+            EMPTY,
+            args.leaf,
+            &mut proof,
+            args.index,
+            false,
+        ) {
             Ok(new_root) => Ok(new_root),
             Err(error) => match error {
-                ConcurrentMerkleTreeError::LeafContentsModified => self.append(leaf),
+                ConcurrentMerkleTreeError::LeafContentsModified => self.append(args.leaf),
                 _ => Err(error),
             },
         }
@@ -340,33 +378,26 @@ impl<const MAX_DEPTH: usize, const MAX_BUFFER_SIZE: usize>
     /// This method will update the leaf at `index`.
     ///
     /// However if the proof cannot be verified, this method will fail.
-    pub fn set_leaf(
-        &mut self,
-        current_root: Node,
-        previous_leaf: Node,
-        new_leaf: Node,
-        proof_vec: &[Node],
-        index: u32,
-    ) -> Result<Node, ConcurrentMerkleTreeError> {
+    pub fn set_leaf(&mut self, args: &SetLeafArgs) -> Result<Node, ConcurrentMerkleTreeError> {
         check_bounds(MAX_DEPTH, MAX_BUFFER_SIZE);
-        check_leaf_index(index, MAX_DEPTH)?;
+        check_leaf_index(args.index, MAX_DEPTH)?;
         if !self.is_initialized() {
             return Err(ConcurrentMerkleTreeError::TreeNotInitialized);
         }
 
-        if index > self.rightmost_proof.index {
+        if args.index > self.rightmost_proof.index {
             Err(ConcurrentMerkleTreeError::LeafIndexOutOfBounds)
         } else {
             let mut proof: [Node; MAX_DEPTH] = [Node::default(); MAX_DEPTH];
-            fill_in_proof::<MAX_DEPTH>(proof_vec, &mut proof);
+            fill_in_proof::<MAX_DEPTH>(&args.proof_vec, &mut proof);
 
             log_compute!();
             self.try_apply_proof(
-                current_root,
-                previous_leaf,
-                new_leaf,
+                args.current_root,
+                args.previous_leaf,
+                args.new_leaf,
                 &mut proof,
-                index,
+                args.index,
                 true,
             )
         }

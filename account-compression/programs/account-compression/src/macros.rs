@@ -4,8 +4,8 @@ enum TreeLoad {
     Mutable,
 }
 
-/// This macro applies functions on a ConcurrentMerkleT:ee and emits leaf information
-/// needed to sync the merkle tree state with off-chain indexers.
+/// This macro applies functions on a ConcurrentMerkleT:ee and emits leaf
+/// information needed to sync the merkle tree state with off-chain indexers.
 #[macro_export]
 macro_rules! _merkle_tree_depth_size_apply_fn {
     ($max_depth:literal, $max_size:literal, $id:ident, $bytes:ident, $func:ident, TreeLoad::Mutable, $($arg:tt)*)
@@ -118,3 +118,8 @@ macro_rules! merkle_tree_apply_fn {
         _merkle_tree_apply_fn!($header, $id, $bytes, $func, TreeLoad::Immutable, $($arg)*)
     };
 }
+
+pub(crate) use {
+    _merkle_tree_apply_fn, _merkle_tree_depth_size_apply_fn, merkle_tree_apply_fn,
+    merkle_tree_apply_fn_mut,
+};
