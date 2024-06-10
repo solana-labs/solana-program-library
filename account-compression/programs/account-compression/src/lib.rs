@@ -281,7 +281,7 @@ pub mod spl_account_compression {
             proof_vec: proof,
             index,
         };
-        let change_log_event = merkle_tree_set_leaf(&header, id, tree_bytes, &args)?;
+        let change_log_event = merkle_tree_set_leaf(&header, id, tree_bytes, args)?;
 
         update_canopy(
             canopy_bytes,
@@ -355,7 +355,7 @@ pub mod spl_account_compression {
             proof_vec: proof,
             index,
         };
-        merkle_tree_prove_leaf(&header, id, tree_bytes, &args)?;
+        merkle_tree_prove_leaf(&header, id, tree_bytes, args)?;
 
         Ok(())
     }
@@ -433,7 +433,7 @@ pub mod spl_account_compression {
             proof_vec: proof,
             index,
         };
-        let change_log_event = merkle_tree_fill_empty_or_append(&header, id, tree_bytes, &args)?;
+        let change_log_event = merkle_tree_fill_empty_or_append(&header, id, tree_bytes, args)?;
 
         update_canopy(
             canopy_bytes,
