@@ -867,11 +867,12 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_proof_con
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let recent_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            recent_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
@@ -1034,11 +1035,12 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_proof
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let recent_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            recent_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
