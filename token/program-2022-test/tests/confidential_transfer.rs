@@ -1621,11 +1621,12 @@ async fn confidential_transfer_configure_token_account_with_proof_context() {
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            last_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
@@ -1707,11 +1708,12 @@ async fn confidential_transfer_configure_token_account_with_proof_context() {
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            last_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
@@ -1793,11 +1795,12 @@ async fn confidential_transfer_empty_account_with_proof_context() {
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            last_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
@@ -1847,11 +1850,12 @@ async fn confidential_transfer_empty_account_with_proof_context() {
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            last_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
@@ -1959,11 +1963,12 @@ async fn confidential_transfer_withdraw_with_proof_context() {
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            last_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
@@ -2016,11 +2021,12 @@ async fn confidential_transfer_withdraw_with_proof_context() {
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            last_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
@@ -2148,11 +2154,12 @@ async fn confidential_transfer_transfer_with_proof_context() {
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            last_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
@@ -2219,11 +2226,12 @@ async fn confidential_transfer_transfer_with_proof_context() {
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
 
+        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&ctx.payer.pubkey()),
             &[&ctx.payer, &context_state_account],
-            ctx.last_blockhash,
+            last_blockhash,
         );
         ctx.banks_client.process_transaction(tx).await.unwrap();
     }
