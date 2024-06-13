@@ -24,11 +24,12 @@
         "@solana/eslint-config-solana": "^3.0.3",
         "@solana/prettier-config-solana": "^0.0.5",
         "eslint-config-turbo": "^2.0.3",
-        "turbo": "^1.13.3"
+        "turbo": "^2.0.3"
     },
     "engines": {
         "node": ">=14.0.0"
     },
-    "packageManager": "pnpm@8.5.1",
-    "prettier": "@solana/prettier-config-solana"
+    "packageManager": "pnpm@8.14.3",
+    "prettier": "@solana/prettier-config-solana",
+    "name": "solana-program-library"
 }
