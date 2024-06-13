@@ -219,11 +219,11 @@ master. Once a program is tested and deemed ready for release:
 
   * Increment the version number in the program's Cargo.toml
   * Run `cargo build-sbf <program>` to build binary. Note the
-    location of the generated `spl_<program>.so` for attaching to the Github
+    location of the generated `spl_<program>.so` for attaching to the GitHub
     release.
   * Open a PR with these version changes and merge after passing CI.
 
-### Create Github tag
+### Create GitHub tag
 
 Program tags are of the form `<program>-vX.Y.Z`.
 Create the new tag at the version-bump commit and push to the
@@ -234,7 +234,7 @@ $ git tag token-v1.0.0 b24bfe7
 $ git push upstream --tags
 ```
 
-### Publish Github release
+### Publish GitHub release
 
   * Go to [GitHub Releases UI](https://github.com/solana-labs/solana-program-library/releases)
   * Click "Draft new release", and enter the new tag in the "Tag version" box.
