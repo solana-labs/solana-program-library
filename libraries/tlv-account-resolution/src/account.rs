@@ -4,11 +4,13 @@
 //! collection of seeds
 
 use {
-    crate::{error::AccountResolutionError, seeds::Seed},
+    crate::{error::AccountResolutionError, pubkey_data::PubkeyData, seeds::Seed},
     bytemuck::{Pod, Zeroable},
     solana_program::{
-        account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
-        pubkey::Pubkey,
+        account_info::AccountInfo,
+        instruction::AccountMeta,
+        program_error::ProgramError,
+        pubkey::{Pubkey, PUBKEY_BYTES},
     },
     spl_pod::primitives::PodBool,
 };
@@ -66,18 +68,66 @@ where
     Ok(Pubkey::find_program_address(&pda_seeds, program_id).0)
 }
 
+/// Resolve a pubkey from a pubkey data configuration.
+fn resolve_key_data<'a, F>(
+    key_data: &PubkeyData,
+    instruction_data: &[u8],
+    get_account_key_data_fn: F,
+) -> Result<Pubkey, ProgramError>
+where
+    F: Fn(usize) -> Option<(&'a Pubkey, Option<&'a [u8]>)>,
+{
+    match key_data {
+        PubkeyData::Uninitialized => Err(ProgramError::InvalidAccountData),
+        PubkeyData::InstructionData { index } => {
+            let key_start = *index as usize;
+            let key_end = key_start + PUBKEY_BYTES;
+            if key_end > instruction_data.len() {
+                return Err(AccountResolutionError::InstructionDataTooSmall.into());
+            }
+            Ok(Pubkey::new_from_array(
+                instruction_data[key_start..key_end].try_into().unwrap(),
+            ))
+        }
+        PubkeyData::AccountData {
+            account_index,
+            data_index,
+        } => {
+            let account_index = *account_index as usize;
+            let account_data = get_account_key_data_fn(account_index)
+                .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?
+                .1
+                .ok_or::<ProgramError>(AccountResolutionError::AccountDataNotFound.into())?;
+            let arg_start = *data_index as usize;
+            let arg_end = arg_start + PUBKEY_BYTES;
+            if account_data.len() < arg_end {
+                return Err(AccountResolutionError::AccountDataTooSmall.into());
+            }
+            Ok(Pubkey::new_from_array(
+                account_data[arg_start..arg_end].try_into().unwrap(),
+            ))
+        }
+    }
+}
+
 /// `Pod` type for defining a required account in a validation account.
 ///
-/// This can either be a standard `AccountMeta` or a PDA.
+/// This can be any of the following:
+///
+/// * A standard `AccountMeta`
+/// * A PDA (with seed configurations)
+/// * A pubkey stored in some data (account or instruction data)
+///
 /// Can be used in TLV-encoded data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ExtraAccountMeta {
     /// Discriminator to tell whether this represents a standard
-    /// `AccountMeta` or a PDA
+    /// `AccountMeta`, PDA, or pubkey data.
     pub discriminator: u8,
-    /// This `address_config` field can either be the pubkey of the account
-    /// or the seeds used to derive the pubkey from provided inputs
+    /// This `address_config` field can either be the pubkey of the account,
+    /// the seeds used to derive the pubkey from provided inputs (PDA), or the
+    /// data used to derive the pubkey (account or instruction data).
     pub address_config: [u8; 32],
     /// Whether the account should sign
     pub is_signer: PodBool,
@@ -113,6 +163,20 @@ impl ExtraAccountMeta {
         Ok(Self {
             discriminator: 1,
             address_config: Seed::pack_into_address_config(seeds)?,
+            is_signer: is_signer.into(),
+            is_writable: is_writable.into(),
+        })
+    }
+
+    /// Create a `ExtraAccountMeta` from a pubkey data configuration.
+    pub fn new_with_pubkey_data(
+        key_data: &PubkeyData,
+        is_signer: bool,
+        is_writable: bool,
+    ) -> Result<Self, ProgramError> {
+        Ok(Self {
+            discriminator: 2,
+            address_config: PubkeyData::pack_into_address_config(key_data)?,
             is_signer: is_signer.into(),
             is_writable: is_writable.into(),
         })
@@ -169,6 +233,14 @@ impl ExtraAccountMeta {
                         program_id,
                         get_account_key_data_fn,
                     )?,
+                    is_signer: self.is_signer.into(),
+                    is_writable: self.is_writable.into(),
+                })
+            }
+            2 => {
+                let key_data = PubkeyData::unpack(&self.address_config)?;
+                Ok(AccountMeta {
+                    pubkey: resolve_key_data(&key_data, instruction_data, get_account_key_data_fn)?,
                     is_signer: self.is_signer.into(),
                     is_writable: self.is_writable.into(),
                 })

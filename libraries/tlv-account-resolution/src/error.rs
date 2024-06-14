@@ -60,4 +60,13 @@ pub enum AccountResolutionError {
     /// Failed to fetch account
     #[error("Failed to fetch account")]
     AccountFetchFailed,
+    /// Not enough bytes available to pack pubkey data configuration.
+    #[error("Not enough bytes available to pack pubkey data configuration")]
+    NotEnoughBytesForPubkeyData,
+    /// The provided bytes are not valid for a pubkey data configuration
+    #[error("The provided bytes are not valid for a pubkey data configuration")]
+    InvalidBytesForPubkeyData,
+    /// Tried to pack an invalid pubkey data configuration
+    #[error("Tried to pack an invalid pubkey data configuration")]
+    InvalidPubkeyDataConfig,
 }
