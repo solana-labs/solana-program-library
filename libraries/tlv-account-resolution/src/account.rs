@@ -4,11 +4,13 @@
 //! collection of seeds
 
 use {
-    crate::{error::AccountResolutionError, seeds::Seed},
+    crate::{error::AccountResolutionError, key_data::KeyData, seeds::Seed},
     bytemuck::{Pod, Zeroable},
     solana_program::{
-        account_info::AccountInfo, instruction::AccountMeta, program_error::ProgramError,
-        pubkey::Pubkey,
+        account_info::AccountInfo,
+        instruction::AccountMeta,
+        program_error::ProgramError,
+        pubkey::{Pubkey, PUBKEY_BYTES},
     },
     spl_pod::primitives::PodBool,
 };
@@ -66,6 +68,48 @@ where
     Ok(Pubkey::find_program_address(&pda_seeds, program_id).0)
 }
 
+/// Resolve a pubkey from key data configuration.
+fn resolve_key_data<'a, F>(
+    key_data: &KeyData,
+    instruction_data: &[u8],
+    get_account_key_data_fn: F,
+) -> Result<Pubkey, ProgramError>
+where
+    F: Fn(usize) -> Option<(&'a Pubkey, Option<&'a [u8]>)>,
+{
+    match key_data {
+        KeyData::Uninitialized => Err(ProgramError::InvalidAccountData),
+        KeyData::InstructionData { index } => {
+            let key_start = *index as usize;
+            let key_end = key_start + PUBKEY_BYTES;
+            if key_end > instruction_data.len() {
+                return Err(AccountResolutionError::InstructionDataTooSmall.into());
+            }
+            Ok(Pubkey::new_from_array(
+                instruction_data[key_start..key_end].try_into().unwrap(),
+            ))
+        }
+        KeyData::AccountData {
+            account_index,
+            data_index,
+        } => {
+            let account_index = *account_index as usize;
+            let account_data = get_account_key_data_fn(account_index)
+                .ok_or::<ProgramError>(AccountResolutionError::AccountNotFound.into())?
+                .1
+                .ok_or::<ProgramError>(AccountResolutionError::AccountDataNotFound.into())?;
+            let arg_start = *data_index as usize;
+            let arg_end = arg_start + PUBKEY_BYTES;
+            if account_data.len() < arg_end {
+                return Err(AccountResolutionError::AccountDataTooSmall.into());
+            }
+            Ok(Pubkey::new_from_array(
+                account_data[arg_start..arg_end].try_into().unwrap(),
+            ))
+        }
+    }
+}
+
 /// `Pod` type for defining a required account in a validation account.
 ///
 /// This can either be a standard `AccountMeta` or a PDA.
@@ -113,6 +157,20 @@ impl ExtraAccountMeta {
         Ok(Self {
             discriminator: 1,
             address_config: Seed::pack_into_address_config(seeds)?,
+            is_signer: is_signer.into(),
+            is_writable: is_writable.into(),
+        })
+    }
+
+    /// Create a `ExtraAccountMeta` from a key data configuration.
+    pub fn new_with_key_data(
+        key_data: &KeyData,
+        is_signer: bool,
+        is_writable: bool,
+    ) -> Result<Self, ProgramError> {
+        Ok(Self {
+            discriminator: 2,
+            address_config: KeyData::pack_into_address_config(key_data)?,
             is_signer: is_signer.into(),
             is_writable: is_writable.into(),
         })
@@ -169,6 +227,14 @@ impl ExtraAccountMeta {
                         program_id,
                         get_account_key_data_fn,
                     )?,
+                    is_signer: self.is_signer.into(),
+                    is_writable: self.is_writable.into(),
+                })
+            }
+            2 => {
+                let key_data = KeyData::unpack(&self.address_config)?;
+                Ok(AccountMeta {
+                    pubkey: resolve_key_data(&key_data, instruction_data, get_account_key_data_fn)?,
                     is_signer: self.is_signer.into(),
                     is_writable: self.is_writable.into(),
                 })
