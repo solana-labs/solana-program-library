@@ -112,16 +112,22 @@ where
 
 /// `Pod` type for defining a required account in a validation account.
 ///
-/// This can either be a standard `AccountMeta` or a PDA.
+/// This can be any of the following:
+///
+/// * A standard `AccountMeta`
+/// * A PDA (with seed configurations)
+/// * A pubkey stored in some data (account or instruction data)
+///
 /// Can be used in TLV-encoded data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ExtraAccountMeta {
     /// Discriminator to tell whether this represents a standard
-    /// `AccountMeta` or a PDA
+    /// `AccountMeta`, PDA, or pubkey data.
     pub discriminator: u8,
-    /// This `address_config` field can either be the pubkey of the account
-    /// or the seeds used to derive the pubkey from provided inputs
+    /// This `address_config` field can either be the pubkey of the account,
+    /// the seeds used to derive the pubkey from provided inputs (PDA), or the
+    /// data used to derive the pubkey (account or instruction data).
     pub address_config: [u8; 32],
     /// Whether the account should sign
     pub is_signer: PodBool,
