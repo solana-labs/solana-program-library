@@ -12,10 +12,10 @@ use {crate::error::AccountResolutionError, solana_program::program_error::Progra
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
-pub enum KeyData {
+pub enum PubkeyData {
     /// Uninitialized configuration byte space.
     Uninitialized,
-    /// A key to be resolved from the instruction data.
+    /// A pubkey to be resolved from the instruction data.
     ///
     /// Packed as:
     ///     * 1 - Discriminator
@@ -26,7 +26,7 @@ pub enum KeyData {
         /// The index where the address bytes begin in the instruction data.
         index: u8,
     },
-    /// A key to be resolved from the inner data of some account.
+    /// A pubkey to be resolved from the inner data of some account.
     ///
     /// Packed as:
     ///     * 1 - Discriminator
@@ -41,8 +41,8 @@ pub enum KeyData {
         data_index: u8,
     },
 }
-impl KeyData {
-    /// Get the size of a key data configuration.
+impl PubkeyData {
+    /// Get the size of a pubkey data configuration.
     pub fn tlv_size(&self) -> u8 {
         match self {
             Self::Uninitialized => 0,
@@ -54,15 +54,17 @@ impl KeyData {
         }
     }
 
-    /// Packs a key data configuration into a slice.
+    /// Packs a pubkey data configuration into a slice.
     pub fn pack(&self, dst: &mut [u8]) -> Result<(), ProgramError> {
-        // Because no `KeyData`` variant is larger than 3 bytes, this check is
-        // sufficient for the data length.
+        // Because no `PubkeyData` variant is larger than 3 bytes, this check
+        // is sufficient for the data length.
         if dst.len() != self.tlv_size() as usize {
-            return Err(AccountResolutionError::NotEnoughBytesForKeyData.into());
+            return Err(AccountResolutionError::NotEnoughBytesForPubkeyData.into());
         }
         match &self {
-            Self::Uninitialized => return Err(AccountResolutionError::InvalidKeyDataConfig.into()),
+            Self::Uninitialized => {
+                return Err(AccountResolutionError::InvalidPubkeyDataConfig.into())
+            }
             Self::InstructionData { index } => {
                 dst[0] = 1;
                 dst[1] = *index;
@@ -79,8 +81,8 @@ impl KeyData {
         Ok(())
     }
 
-    /// Packs a key data configuration into a 32-byte array, filling the rest
-    /// with 0s.
+    /// Packs a pubkey data configuration into a 32-byte array, filling the
+    /// rest with 0s.
     pub fn pack_into_address_config(key_data: &Self) -> Result<[u8; 32], ProgramError> {
         let mut packed = [0u8; 32];
         let tlv_size = key_data.tlv_size() as usize;
@@ -88,7 +90,7 @@ impl KeyData {
         Ok(packed)
     }
 
-    /// Unpacks a key data configuration from a slice.
+    /// Unpacks a pubkey data configuration from a slice.
     pub fn unpack(bytes: &[u8]) -> Result<Self, ProgramError> {
         let (discrim, rest) = bytes
             .split_first()
@@ -97,13 +99,13 @@ impl KeyData {
             0 => Ok(Self::Uninitialized),
             1 => {
                 if rest.is_empty() {
-                    return Err(AccountResolutionError::InvalidBytesForKeyData.into());
+                    return Err(AccountResolutionError::InvalidBytesForPubkeyData.into());
                 }
                 Ok(Self::InstructionData { index: rest[0] })
             }
             2 => {
                 if rest.len() < 2 {
-                    return Err(AccountResolutionError::InvalidBytesForKeyData.into());
+                    return Err(AccountResolutionError::InvalidBytesForPubkeyData.into());
                 }
                 Ok(Self::AccountData {
                     account_index: rest[0],
@@ -122,27 +124,27 @@ mod tests {
     #[test]
     fn test_pack() {
         // Should fail if the length is too short.
-        let key = KeyData::InstructionData { index: 0 };
+        let key = PubkeyData::InstructionData { index: 0 };
         let mut packed = vec![0u8; key.tlv_size() as usize - 1];
         assert_eq!(
             key.pack(&mut packed).unwrap_err(),
-            AccountResolutionError::NotEnoughBytesForKeyData.into(),
+            AccountResolutionError::NotEnoughBytesForPubkeyData.into(),
         );
 
         // Should fail if the length is too long.
-        let key = KeyData::InstructionData { index: 0 };
+        let key = PubkeyData::InstructionData { index: 0 };
         let mut packed = vec![0u8; key.tlv_size() as usize + 1];
         assert_eq!(
             key.pack(&mut packed).unwrap_err(),
-            AccountResolutionError::NotEnoughBytesForKeyData.into(),
+            AccountResolutionError::NotEnoughBytesForPubkeyData.into(),
         );
 
-        // Can't pack a `KeyData::Uninitialized`.
-        let key = KeyData::Uninitialized;
+        // Can't pack a `PubkeyData::Uninitialized`.
+        let key = PubkeyData::Uninitialized;
         let mut packed = vec![0u8; key.tlv_size() as usize];
         assert_eq!(
             key.pack(&mut packed).unwrap_err(),
-            AccountResolutionError::InvalidKeyDataConfig.into(),
+            AccountResolutionError::InvalidPubkeyDataConfig.into(),
         );
     }
 
@@ -150,32 +152,32 @@ mod tests {
     fn test_unpack() {
         // Can unpack zeroes.
         let zeroes = [0u8; 32];
-        let key = KeyData::unpack(&zeroes).unwrap();
-        assert_eq!(key, KeyData::Uninitialized);
+        let key = PubkeyData::unpack(&zeroes).unwrap();
+        assert_eq!(key, PubkeyData::Uninitialized);
 
         // Should fail for empty bytes.
         let bytes = [];
         assert_eq!(
-            KeyData::unpack(&bytes).unwrap_err(),
+            PubkeyData::unpack(&bytes).unwrap_err(),
             ProgramError::InvalidAccountData
         );
     }
 
-    fn test_pack_unpack_key(key: KeyData) {
+    fn test_pack_unpack_key(key: PubkeyData) {
         let tlv_size = key.tlv_size() as usize;
         let mut packed = vec![0u8; tlv_size];
         key.pack(&mut packed).unwrap();
-        let unpacked = KeyData::unpack(&packed).unwrap();
+        let unpacked = PubkeyData::unpack(&packed).unwrap();
         assert_eq!(key, unpacked);
     }
 
     #[test]
     fn test_pack_unpack() {
         // Instruction data.
-        test_pack_unpack_key(KeyData::InstructionData { index: 0 });
+        test_pack_unpack_key(PubkeyData::InstructionData { index: 0 });
 
         // Account data.
-        test_pack_unpack_key(KeyData::AccountData {
+        test_pack_unpack_key(PubkeyData::AccountData {
             account_index: 0,
             data_index: 0,
         });

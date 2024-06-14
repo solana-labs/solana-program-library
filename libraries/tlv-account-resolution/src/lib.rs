@@ -9,7 +9,7 @@
 
 pub mod account;
 pub mod error;
-pub mod key_data;
+pub mod pubkey_data;
 pub mod seeds;
 pub mod state;
 

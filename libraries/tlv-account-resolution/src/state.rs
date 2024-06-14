@@ -373,7 +373,7 @@ impl ExtraAccountMetaList {
 mod tests {
     use {
         super::*,
-        crate::{key_data::KeyData, seeds::Seed},
+        crate::{pubkey_data::PubkeyData, seeds::Seed},
         solana_program::{clock::Epoch, instruction::AccountMeta, pubkey::Pubkey},
         solana_program_test::tokio,
         spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
@@ -581,8 +581,8 @@ mod tests {
             true,
         )
         .unwrap();
-        let extra_meta4 = ExtraAccountMeta::new_with_key_data(
-            &KeyData::InstructionData { index: 4 },
+        let extra_meta4 = ExtraAccountMeta::new_with_pubkey_data(
+            &PubkeyData::InstructionData { index: 4 },
             false,
             true,
         )
@@ -676,8 +676,8 @@ mod tests {
             true,
         )
         .unwrap();
-        let extra_meta6 = ExtraAccountMeta::new_with_key_data(
-            &KeyData::InstructionData { index: 8 },
+        let extra_meta6 = ExtraAccountMeta::new_with_pubkey_data(
+            &PubkeyData::InstructionData { index: 8 },
             false,
             true,
         )
@@ -699,8 +699,8 @@ mod tests {
             true,
         )
         .unwrap();
-        let other_meta3 = ExtraAccountMeta::new_with_key_data(
-            &KeyData::InstructionData { index: 7 },
+        let other_meta3 = ExtraAccountMeta::new_with_pubkey_data(
+            &PubkeyData::InstructionData { index: 7 },
             false,
             true,
         )
@@ -907,8 +907,8 @@ mod tests {
             true,
         )
         .unwrap();
-        let extra_meta7 = ExtraAccountMeta::new_with_key_data(
-            &KeyData::InstructionData { index: 41 }, // After the other pubkey arg.
+        let extra_meta7 = ExtraAccountMeta::new_with_pubkey_data(
+            &PubkeyData::InstructionData { index: 41 }, // After the other pubkey arg.
             false,
             true,
         )
@@ -1126,14 +1126,14 @@ mod tests {
                 true,
             )
             .unwrap(),
-            ExtraAccountMeta::new_with_key_data(
-                &KeyData::InstructionData { index: 17 },
+            ExtraAccountMeta::new_with_pubkey_data(
+                &PubkeyData::InstructionData { index: 17 },
                 false,
                 true,
             )
             .unwrap(),
-            ExtraAccountMeta::new_with_key_data(
-                &KeyData::AccountData {
+            ExtraAccountMeta::new_with_pubkey_data(
+                &PubkeyData::AccountData {
                     account_index: 6,
                     data_index: 0,
                 },
@@ -1141,8 +1141,8 @@ mod tests {
                 true,
             )
             .unwrap(),
-            ExtraAccountMeta::new_with_key_data(
-                &KeyData::AccountData {
+            ExtraAccountMeta::new_with_pubkey_data(
+                &PubkeyData::AccountData {
                     account_index: 7,
                     data_index: 8,
                 },
@@ -1218,7 +1218,7 @@ mod tests {
         let mut data_pda2 = [8; 32];
         let mut lamports_pda3 = 0;
         let mut data_pda3 = [0; 40];
-        data_pda3[8..].copy_from_slice(&[9; 32]); // Add key data for key data pubkey 3.
+        data_pda3[8..].copy_from_slice(&[9; 32]); // Add pubkey data for pubkey data pubkey 3.
         let mut lamports_pda4 = 0;
         let mut data_pda4 = [];
         let mut data_key_data1 = [];
@@ -1587,8 +1587,8 @@ mod tests {
                 true,
             )
             .unwrap(),
-            ExtraAccountMeta::new_with_key_data(
-                &KeyData::InstructionData { index: 8 },
+            ExtraAccountMeta::new_with_pubkey_data(
+                &PubkeyData::InstructionData { index: 8 },
                 false,
                 true,
             )
@@ -1682,7 +1682,7 @@ mod tests {
                 false,
                 Epoch::default(),
             ),
-            // Required account 4 (Key Data)
+            // Required account 4 (pubkey data)
             AccountInfo::new(
                 &key_data_pubkey,
                 false,

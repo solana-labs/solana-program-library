@@ -4,7 +4,7 @@
 //! collection of seeds
 
 use {
-    crate::{error::AccountResolutionError, key_data::KeyData, seeds::Seed},
+    crate::{error::AccountResolutionError, pubkey_data::PubkeyData, seeds::Seed},
     bytemuck::{Pod, Zeroable},
     solana_program::{
         account_info::AccountInfo,
@@ -68,9 +68,9 @@ where
     Ok(Pubkey::find_program_address(&pda_seeds, program_id).0)
 }
 
-/// Resolve a pubkey from key data configuration.
+/// Resolve a pubkey from a pubkey data configuration.
 fn resolve_key_data<'a, F>(
-    key_data: &KeyData,
+    key_data: &PubkeyData,
     instruction_data: &[u8],
     get_account_key_data_fn: F,
 ) -> Result<Pubkey, ProgramError>
@@ -78,8 +78,8 @@ where
     F: Fn(usize) -> Option<(&'a Pubkey, Option<&'a [u8]>)>,
 {
     match key_data {
-        KeyData::Uninitialized => Err(ProgramError::InvalidAccountData),
-        KeyData::InstructionData { index } => {
+        PubkeyData::Uninitialized => Err(ProgramError::InvalidAccountData),
+        PubkeyData::InstructionData { index } => {
             let key_start = *index as usize;
             let key_end = key_start + PUBKEY_BYTES;
             if key_end > instruction_data.len() {
@@ -89,7 +89,7 @@ where
                 instruction_data[key_start..key_end].try_into().unwrap(),
             ))
         }
-        KeyData::AccountData {
+        PubkeyData::AccountData {
             account_index,
             data_index,
         } => {
@@ -162,15 +162,15 @@ impl ExtraAccountMeta {
         })
     }
 
-    /// Create a `ExtraAccountMeta` from a key data configuration.
-    pub fn new_with_key_data(
-        key_data: &KeyData,
+    /// Create a `ExtraAccountMeta` from a pubkey data configuration.
+    pub fn new_with_pubkey_data(
+        key_data: &PubkeyData,
         is_signer: bool,
         is_writable: bool,
     ) -> Result<Self, ProgramError> {
         Ok(Self {
             discriminator: 2,
-            address_config: KeyData::pack_into_address_config(key_data)?,
+            address_config: PubkeyData::pack_into_address_config(key_data)?,
             is_signer: is_signer.into(),
             is_writable: is_writable.into(),
         })
@@ -232,7 +232,7 @@ impl ExtraAccountMeta {
                 })
             }
             2 => {
-                let key_data = KeyData::unpack(&self.address_config)?;
+                let key_data = PubkeyData::unpack(&self.address_config)?;
                 Ok(AccountMeta {
                     pubkey: resolve_key_data(&key_data, instruction_data, get_account_key_data_fn)?,
                     is_signer: self.is_signer.into(),
