@@ -3,7 +3,7 @@
 use crate::extension::transfer_hook;
 #[cfg(feature = "zk-ops")]
 use {
-    crate::extension::non_transferable::NonTransferable,
+    crate::extension::non_transferable::NonTransferableAccount,
     solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
 };
 use {
@@ -269,13 +269,15 @@ fn process_deposit(
         return Err(TokenError::MintDecimalsMismatch.into());
     }
 
-    if mint.get_extension::<NonTransferable>().is_ok() {
-        return Err(TokenError::NonTransferable.into());
-    }
-
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
+    if token_account
+        .get_extension::<NonTransferableAccount>()
+        .is_ok()
+    {
+        return Err(TokenError::NonTransferable.into());
+    }
 
     Processor::validate_owner(
         program_id,
@@ -367,13 +369,15 @@ fn process_withdraw(
         return Err(TokenError::MintDecimalsMismatch.into());
     }
 
-    if mint.get_extension::<NonTransferable>().is_ok() {
-        return Err(TokenError::NonTransferable.into());
-    }
-
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
+    if token_account
+        .get_extension::<NonTransferableAccount>()
+        .is_ok()
+    {
+        return Err(TokenError::NonTransferable.into());
+    }
 
     Processor::validate_owner(
         program_id,
@@ -450,9 +454,6 @@ fn process_transfer(
     let mint_data = mint_info.data.borrow_mut();
     let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
 
-    if mint.get_extension::<NonTransferable>().is_ok() {
-        return Err(TokenError::NonTransferable.into());
-    }
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
     // A `Transfer` instruction must be accompanied by a zero-knowledge proof
@@ -677,6 +678,12 @@ fn process_source_for_transfer(
     let authority_info_data_len = authority_info.data_len();
     let token_account_data = &mut source_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
+    if token_account
+        .get_extension::<NonTransferableAccount>()
+        .is_ok()
+    {
+        return Err(TokenError::NonTransferable.into());
+    }
 
     Processor::validate_owner(
         program_id,
@@ -803,6 +810,12 @@ fn process_source_for_transfer_with_fee(
     let authority_info_data_len = authority_info.data_len();
     let token_account_data = &mut source_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
+    if token_account
+        .get_extension::<NonTransferableAccount>()
+        .is_ok()
+    {
+        return Err(TokenError::NonTransferable.into());
+    }
 
     Processor::validate_owner(
         program_id,
