@@ -115,8 +115,8 @@ importers:
         specifier: ^2.0.4
         version: 2.0.4
       ts-jest:
-        specifier: ^29.1.4
-        version: 29.1.4(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5)
+        specifier: ^29.1.5
+        version: 29.1.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5)
       ts-jest-resolver:
         specifier: ^2.0.1
         version: 2.0.1
@@ -249,8 +249,8 @@ importers:
         specifier: ^2.0.4
         version: 2.0.4
       ts-jest:
-        specifier: ^29.1.4
-        version: 29.1.4(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5)
+        specifier: ^29.1.5
+        version: 29.1.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5)
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.14.2)(typescript@5.4.5)
@@ -316,8 +316,8 @@ importers:
         specifier: ^2.0.4
         version: 2.0.4
       ts-jest:
-        specifier: ^29.1.4
-        version: 29.1.4(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5)
+        specifier: ^29.1.5
+        version: 29.1.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5)
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.14.2)(typescript@5.4.5)
@@ -484,8 +484,8 @@ importers:
         specifier: ^6.1.1
         version: 6.1.1(rollup@4.18.0)(typescript@5.4.5)
       ts-jest:
-        specifier: ^29.1.4
-        version: 29.1.4(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5)
+        specifier: ^29.1.5
+        version: 29.1.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5)
       typescript:
         specifier: ^5.4.5
         version: 5.4.5
@@ -8110,8 +8110,8 @@ packages:
       jest-resolve: 29.7.0
     dev: true
 
-  /ts-jest@29.1.4(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5):
-    resolution: {integrity: sha512-YiHwDhSvCiItoAgsKtoLFCuakDzDsJ1DLDnSouTaTmdOcOwIkSzbLXduaQ6M5DRVhuZC/NYaaZ/mtHbWMv/S6Q==}
+  /ts-jest@29.1.5(@babel/core@7.23.2)(jest@29.7.0)(typescript@5.4.5):
+    resolution: {integrity: sha512-UuClSYxM7byvvYfyWdFI+/2UxMmwNyJb0NPkZPQE2hew3RurV7l7zURgOHAd/1I1ZdPpe3GUsXNXAcN8TFKSIg==}
     engines: {node: ^14.15.0 || ^16.10.0 || ^18.0.0 || >=20.0.0}
     hasBin: true
     peerDependencies:
