@@ -59,8 +59,7 @@ pub enum TransferFeeInstruction {
     ///   * Single owner/delegate
     ///   0. `[writable]` The source account. May include the
     ///      `TransferFeeAmount` extension.
-    ///   1. `[]` The token mint. May include the `TransferFeeConfig`
-    ///      extension.
+    ///   1. `[]` The token mint. May include the `TransferFeeConfig` extension.
     ///   2. `[writable]` The destination account. May include the
     ///      `TransferFeeAmount` extension.
     ///   3. `[signer]` The source account's owner/delegate.
