@@ -362,8 +362,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       tsx:
-        specifier: ^4.15.4
-        version: 4.15.4
+        specifier: ^4.15.6
+        version: 4.15.6
       typescript:
         specifier: ^5.4.5
         version: 5.4.5
@@ -8204,8 +8204,8 @@ packages:
       typescript: 5.4.5
     dev: true
 
-  /tsx@4.15.4:
-    resolution: {integrity: sha512-d++FLCwJLrXaBFtRcqdPBzu6FiVOJ2j+UsvUZPtoTrnYtCGU5CEW7iHXtNZfA2fcRTvJFWPqA6SWBuB0GSva9w==}
+  /tsx@4.15.6:
+    resolution: {integrity: sha512-is0VQQlfNZRHEuSSTKA6m4xw74IU4AizmuB6lAYLRt9XtuyeQnyJYexhNZOPCB59SqC4JzmSzPnHGBXxf3k0hA==}
     engines: {node: '>=18.0.0'}
     hasBin: true
     dependencies:
