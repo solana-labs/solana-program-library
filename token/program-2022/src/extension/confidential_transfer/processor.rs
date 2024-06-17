@@ -454,6 +454,7 @@ fn process_transfer(
         return Err(TokenError::NonTransferable.into());
     }
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
+    let is_self_transfer = source_account_info.key == destination_account_info.key;
 
     // A `Transfer` instruction must be accompanied by a zero-knowledge proof
     // instruction that certify the validity of the transfer amounts. The kind
@@ -523,6 +524,7 @@ fn process_transfer(
             destination_account_info,
             mint_info,
             maybe_proof_context.as_ref(),
+            is_self_transfer,
         )?;
 
         if maybe_proof_context.is_none() {
@@ -608,7 +610,6 @@ fn process_transfer(
             new_source_decryptable_available_balance,
         )?;
 
-        let is_self_transfer = source_account_info.key == destination_account_info.key;
         process_destination_for_transfer_with_fee(
             destination_account_info,
             mint_info,
@@ -736,6 +737,7 @@ fn process_destination_for_transfer(
     destination_account_info: &AccountInfo,
     mint_info: &AccountInfo,
     maybe_transfer_proof_context_info: Option<&TransferProofContextInfo>,
+    is_self_transfer: bool,
 ) -> ProgramResult {
     check_program_account(destination_account_info.owner)?;
     let destination_token_account_data = &mut destination_account_info.data.borrow_mut();
@@ -750,7 +752,7 @@ fn process_destination_for_transfer(
         return Err(TokenError::MintMismatch.into());
     }
 
-    if memo_required(&destination_token_account) {
+    if !is_self_transfer && memo_required(&destination_token_account) {
         check_previous_sibling_instruction_is_memo()?;
     }
 
@@ -879,7 +881,7 @@ fn process_destination_for_transfer_with_fee(
         return Err(TokenError::MintMismatch.into());
     }
 
-    if memo_required(&destination_token_account) {
+    if !is_self_transfer && memo_required(&destination_token_account) {
         check_previous_sibling_instruction_is_memo()?;
     }
 
