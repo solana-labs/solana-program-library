@@ -296,6 +296,9 @@ impl Processor {
         let expected_mint_info = if let Some(expected_decimals) = expected_decimals {
             Some((next_account_info(account_info_iter)?, expected_decimals))
         } else {
+            // Transfer must not be called with an expected fee but no mint,
+            // otherwise it's a programmer error.
+            assert!(expected_fee.is_none());
             None
         };
 
