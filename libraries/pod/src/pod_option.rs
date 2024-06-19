@@ -1,12 +1,15 @@
 //! Generic `Option` that can be used as a `Pod`s for types that can have
 //! a `None` value.
 
-use bytemuck::{Pod, Zeroable};
-use solana_program::{program_option::COption, pubkey::Pubkey};
+use {
+    bytemuck::{Pod, Zeroable},
+    solana_program::{program_option::COption, pubkey::Pubkey},
+};
 
 /// Trait for types that can be `None`.
 ///
-/// This trait is used to indicate that a type can be `None` according to a specific value.
+/// This trait is used to indicate that a type can be `None` according to a
+/// specific value.
 pub trait Nullable: Pod {
     /// Indicates whether the value is `None` or not.
     fn is_none(&self) -> bool;
@@ -91,7 +94,8 @@ impl_int_nullable!(u128);
 
 /// Implementation of `Nullable` for `Pubkey`.
 ///
-/// The implementation assumes that the default value of `Pubkey` represents `None`.
+/// The implementation assumes that the default value of `Pubkey` represents
+/// `None`.
 impl Nullable for Pubkey {
     fn is_none(&self) -> bool {
         self == &Pubkey::default()
@@ -101,10 +105,7 @@ impl Nullable for Pubkey {
 #[cfg(test)]
 mod tests {
 
-    use solana_program::sysvar;
-
-    use super::*;
-    use crate::bytemuck::pod_slice_from_bytes;
+    use {super::*, crate::bytemuck::pod_slice_from_bytes, solana_program::sysvar};
 
     #[test]
     fn test_pod_option_u8() {
