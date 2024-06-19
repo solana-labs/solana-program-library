@@ -47,7 +47,7 @@
         "@solana/web3.js": "^1.93.0"
     },
     "dependencies": {
-        "@solana/codecs": "2.0.0-preview.3",
+        "@solana/codecs": "2.0.0-preview.3.20240618181558.545c43992f555d54fe865788190e14eadd62264d",
         "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
