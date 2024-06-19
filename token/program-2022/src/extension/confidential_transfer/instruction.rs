@@ -1,8 +1,11 @@
 #[cfg(not(target_os = "solana"))]
+use crate::{proof::ProofLocation, solana_program::sysvar};
+#[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
 pub use solana_zk_token_sdk::{
     zk_token_proof_instruction::*, zk_token_proof_state::ProofContextState,
 };
+
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::aeciphertext_fromstr,
@@ -13,7 +16,6 @@ use {
         check_program_account,
         extension::confidential_transfer::{ciphertext_extraction::SourceDecryptHandles, *},
         instruction::{encode_instruction, TokenInstruction},
-        proof::ProofLocation,
     },
     bytemuck::Zeroable, // `Pod` comes from zk_token_proof_instruction
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -21,7 +23,6 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar,
     },
 };
 
@@ -665,6 +666,7 @@ pub fn initialize_mint(
 }
 
 /// Create a `UpdateMint` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -697,6 +699,7 @@ pub fn update_mint(
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn inner_configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -749,6 +752,7 @@ pub fn inner_configure_account(
 
 /// Create a `ConfigureAccount` instruction
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -788,6 +792,7 @@ pub fn configure_account(
 }
 
 /// Create an `ApproveAccount` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn approve_account(
     token_program_id: &Pubkey,
     account_to_approve: &Pubkey,
@@ -816,6 +821,7 @@ pub fn approve_account(
 /// Create an inner `EmptyAccount` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
+#[cfg(not(target_os = "solana"))]
 pub fn inner_empty_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -858,6 +864,7 @@ pub fn inner_empty_account(
 }
 
 /// Create a `EmptyAccount` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn empty_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -892,6 +899,7 @@ pub fn empty_account(
 
 /// Create a `Deposit` instruction
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn deposit(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -928,6 +936,7 @@ pub fn deposit(
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn inner_withdraw(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -981,6 +990,7 @@ pub fn inner_withdraw(
 
 /// Create a `Withdraw` instruction
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn withdraw(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1025,6 +1035,7 @@ pub fn withdraw(
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn inner_transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1076,6 +1087,7 @@ pub fn inner_transfer(
 
 /// Create a `Transfer` instruction with regular (no-fee) proof
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn transfer(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1118,6 +1130,7 @@ pub fn transfer(
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn inner_transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1169,6 +1182,7 @@ pub fn inner_transfer_with_fee(
 
 /// Create a `Transfer` instruction with fee proof
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1210,6 +1224,7 @@ pub fn transfer_with_fee(
 /// Create a inner `ApplyPendingBalance` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
+#[cfg(not(target_os = "solana"))]
 pub fn inner_apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1241,6 +1256,7 @@ pub fn inner_apply_pending_balance(
 }
 
 /// Create a `ApplyPendingBalance` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1259,6 +1275,7 @@ pub fn apply_pending_balance(
     ) // calls check_program_account
 }
 
+#[cfg(not(target_os = "solana"))]
 fn enable_or_disable_balance_credits(
     instruction: ConfidentialTransferInstruction,
     token_program_id: &Pubkey,
@@ -1286,6 +1303,7 @@ fn enable_or_disable_balance_credits(
 }
 
 /// Create a `EnableConfidentialCredits` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn enable_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1302,6 +1320,7 @@ pub fn enable_confidential_credits(
 }
 
 /// Create a `DisableConfidentialCredits` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn disable_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1318,6 +1337,7 @@ pub fn disable_confidential_credits(
 }
 
 /// Create a `EnableNonConfidentialCredits` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn enable_non_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1334,6 +1354,7 @@ pub fn enable_non_confidential_credits(
 }
 
 /// Create a `DisableNonConfidentialCredits` instruction
+#[cfg(not(target_os = "solana"))]
 pub fn disable_non_confidential_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -1351,6 +1372,7 @@ pub fn disable_non_confidential_credits(
 
 /// Create a `TransferWithSplitProof` instruction without fee
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn transfer_with_split_proofs(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
@@ -1429,6 +1451,7 @@ pub fn transfer_with_split_proofs(
 
 /// Create a `TransferWithSplitProof` instruction with fee
 #[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
 pub fn transfer_with_fee_and_split_proofs(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,

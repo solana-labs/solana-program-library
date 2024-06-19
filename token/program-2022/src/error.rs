@@ -243,6 +243,11 @@ pub enum TokenError {
     /// Ciphertext arithmetic failed
     #[error("Ciphertext arithmetic failed")]
     CiphertextArithmeticFailed,
+
+    //61
+    /// Withdraw / Deposit not allowed for confidential-mint-burn
+    #[error("When the confidential-mint-burn extension is enabled, mints are only allowed into the confidential balance. Likewise conversions confidential token balance to normal balance and vice versa are illegal.")]
+    IllegalMintBurnConversion,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
@@ -417,6 +422,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::CiphertextArithmeticFailed => {
                 msg!("Ciphertext arithmetic failed")
+            }
+            TokenError::IllegalMintBurnConversion => {
+                msg!("Conversions from normal to confidential token balance and vice versa are illegal if the confidential-mint-burn extension is enabled")
             }
         }
     }

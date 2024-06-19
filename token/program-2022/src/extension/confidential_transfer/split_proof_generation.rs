@@ -4,6 +4,8 @@
 //! The logic in this submodule should belong to the `solana-zk-token-sdk` and
 //! will be removed with the next upgrade to the Solana program.
 
+use solana_zk_token_sdk::encryption::pedersen::PedersenOpening;
+
 use crate::{
     extension::confidential_transfer::{
         ciphertext_extraction::{transfer_amount_source_ciphertext, SourceDecryptHandles},
@@ -26,6 +28,7 @@ use crate::{
 };
 
 /// The main logic to create the three split proof data for a transfer.
+#[allow(clippy::type_complexity)]
 pub fn transfer_split_proof_data(
     current_available_balance: &ElGamalCiphertext,
     current_decryptable_available_balance: &AeCiphertext,
@@ -40,6 +43,7 @@ pub fn transfer_split_proof_data(
         BatchedGroupedCiphertext2HandlesValidityProofData,
         BatchedRangeProofU128Data,
         SourceDecryptHandles,
+        (PedersenOpening, PedersenOpening),
     ),
     TokenError,
 > {
@@ -186,5 +190,6 @@ pub fn transfer_split_proof_data(
         ciphertext_validity_proof_data,
         range_proof_data,
         source_decrypt_handles,
+        (transfer_amount_opening_hi, transfer_amount_opening_lo),
     ))
 }

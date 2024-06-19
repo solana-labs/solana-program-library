@@ -5,6 +5,7 @@ use {
         check_program_account, cmp_pubkeys,
         error::TokenError,
         extension::{
+            confidential_mint_burn::{self, ConfidentialMintBurn},
             confidential_transfer::{self, ConfidentialTransferAccount, ConfidentialTransferMint},
             confidential_transfer_fee::{
                 self, ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig,
@@ -319,6 +320,7 @@ impl Processor {
         {
             return Err(TokenError::NonTransferable.into());
         }
+
         let (fee, maybe_permanent_delegate, maybe_transfer_hook_program_id) =
             if let Some((mint_info, expected_decimals)) = expected_mint_info {
                 if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
@@ -366,9 +368,9 @@ impl Processor {
                     .is_ok()
                 {
                     return Err(TokenError::MintRequiredForTransfer.into());
-                } else {
-                    (0, None, None)
                 }
+
+                (0, None, None)
             };
         if let Some(expected_fee) = expected_fee {
             if expected_fee != fee {
@@ -951,6 +953,10 @@ impl Processor {
                 .is_err()
         {
             return Err(TokenError::NonTransferableNeedsImmutableOwnership.into());
+        }
+
+        if mint.get_extension::<ConfidentialMintBurn>().is_ok() {
+            return Err(TokenError::IllegalMintBurnConversion.into());
         }
 
         if let Some(expected_decimals) = expected_decimals {
@@ -1782,6 +1788,14 @@ impl Processor {
                 }
                 PodTokenInstruction::GroupMemberPointerExtension => {
                     group_member_pointer::processor::process_instruction(
+                        program_id,
+                        accounts,
+                        &input[1..],
+                    )
+                }
+                PodTokenInstruction::ConfidentialMintBurnExtension => {
+                    msg!("Instruction: ConfidentialMintBurnExtension");
+                    confidential_mint_burn::processor::process_instruction(
                         program_id,
                         accounts,
                         &input[1..],

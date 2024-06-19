@@ -35,10 +35,12 @@ use {
     },
     spl_associated_token_account::get_associated_token_address_with_program_id,
     spl_token_2022::{
+        error::TokenError,
         extension::{
             confidential_transfer::{
                 account_info::{
-                    ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
+                    combine_balances, ApplyPendingBalanceAccountInfo, TransferAccountInfo,
+                    WithdrawAccountInfo,
                 },
                 instruction::TransferSplitContextStateAccounts,
                 ConfidentialTransferAccount, ConfidentialTransferMint,
@@ -72,7 +74,14 @@ use {
     },
     spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::{Field, TokenMetadata},
-    std::{collections::HashMap, fmt::Display, process::exit, rc::Rc, str::FromStr, sync::Arc},
+    std::{
+        collections::HashMap,
+        fmt::Display,
+        process::exit,
+        rc::Rc,
+        str::{self, FromStr},
+        sync::Arc,
+    },
 };
 
 fn print_error_and_exit<T, E: Display>(e: E) -> T {
@@ -239,6 +248,7 @@ async fn command_create_token(
     enable_group: bool,
     enable_member: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
+    enable_confidential_mint_burn: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -283,6 +293,10 @@ async fn command_create_token(
             "Token requires a freeze authority to default to frozen accounts"
         );
         extensions.push(ExtensionInitializationParams::DefaultAccountState { state })
+    }
+
+    if enable_confidential_mint_burn {
+        extensions.push(ExtensionInitializationParams::ConfidentialMintBurnMint { authority });
     }
 
     if let Some((transfer_fee_basis_points, maximum_fee)) = transfer_fee {
@@ -1593,6 +1607,7 @@ async fn command_transfer(
                 ciphertext_validity_proof_data,
                 range_proof_data,
                 source_decrypt_handles,
+                _,
             ) = transfer_account_info
                 .generate_split_transfer_proof_data(
                     transfer_balance,
@@ -3200,10 +3215,11 @@ async fn command_enable_disable_confidential_transfers(
 enum ConfidentialInstructionType {
     Deposit,
     Withdraw,
+    Mint,
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn command_deposit_withdraw_confidential_tokens(
+async fn command_deposit_withdraw_mint_confidential_tokens(
     config: &Config<'_>,
     token_pubkey: Pubkey,
     owner: Pubkey,
@@ -3368,6 +3384,11 @@ async fn command_deposit_withdraw_confidential_tokens(
                 )
                 .await?
         }
+        ConfidentialInstructionType::Mint => {
+            token
+                .confidential_mint(&token_account_address, &owner, amount, &bulk_signers)
+                .await?
+        }
     };
 
     let tx_return = finish_tx(config, &res, false).await?;
@@ -3523,6 +3544,7 @@ pub async fn process_command<'a>(
                 arg_matches.is_present("enable_group"),
                 arg_matches.is_present("enable_member"),
                 bulk_signers,
+                arg_matches.is_present("enable_confidential_mint_burn"),
             )
             .await
         }
@@ -4472,7 +4494,43 @@ pub async fn process_command<'a>(
             )
             .await
         }
-        (c @ CommandName::DepositConfidentialTokens, arg_matches)
+        (CommandName::BurnConfidentialTokens, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let ui_amount = match arg_matches.value_of("amount").unwrap() {
+                "ALL" => None,
+                amount => Some(amount.parse::<f64>().unwrap()),
+            };
+            let account = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+
+            let (owner_signer, owner) =
+                config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
+
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+
+            let elgamal_keypair = ElGamalKeypair::new_from_signer(&*owner_signer, b"").unwrap();
+            let aes_key = AeKey::new_from_signer(&*owner_signer, b"").unwrap();
+
+            let bulk_signers = vec![owner_signer];
+
+            command_confidential_burn(
+                config,
+                token,
+                account,
+                ui_amount,
+                owner,
+                mint_decimals,
+                bulk_signers,
+                &elgamal_keypair,
+                &aes_key,
+            )
+            .await
+        }
+        (c @ CommandName::MintConfidentialTokens, arg_matches)
+        | (c @ CommandName::DepositConfidentialTokens, arg_matches)
         | (c @ CommandName::WithdrawConfidentialTokens, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
@@ -4488,6 +4546,9 @@ pub async fn process_command<'a>(
             let (instruction_type, elgamal_keypair, aes_key) = match c {
                 CommandName::DepositConfidentialTokens => {
                     (ConfidentialInstructionType::Deposit, None, None)
+                }
+                CommandName::MintConfidentialTokens => {
+                    (ConfidentialInstructionType::Mint, None, None)
                 }
                 CommandName::WithdrawConfidentialTokens => {
                     // Deriving ElGamal and AES key from signer. Custom ElGamal and AES keys will be
@@ -4512,7 +4573,7 @@ pub async fn process_command<'a>(
                 push_signer_with_dedup(owner_signer, &mut bulk_signers);
             }
 
-            command_deposit_withdraw_confidential_tokens(
+            command_deposit_withdraw_mint_confidential_tokens(
                 config,
                 token,
                 owner,
@@ -4557,7 +4618,208 @@ pub async fn process_command<'a>(
             )
             .await
         }
+        (CommandName::ConfidentialBalance, arg_matches) => {
+            let address = config
+                .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
+                .await?;
+            let (auth_signer, _auth) =
+                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+            command_confidential_balance(config, address, auth_signer).await
+        }
     }
+}
+
+async fn command_confidential_balance(
+    config: &Config<'_>,
+    address: Pubkey,
+    authority_signer: Arc<dyn Signer>,
+) -> CommandResult {
+    let account_data = config
+        .rpc_client
+        .get_account_data(&address)
+        .await
+        .map_err(|_| format!("Could not fetch token account account data for {}", address))?;
+
+    let elgamal_keypair = ElGamalKeypair::new_from_signer(&*authority_signer, b"").unwrap();
+    let aes_key = AeKey::new_from_signer(&*authority_signer, b"").unwrap();
+    let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account_data)?;
+    let extension_state = state_with_extension.get_extension::<ConfidentialTransferAccount>()?;
+
+    let decryptable_available_balance = extension_state
+        .decryptable_available_balance
+        .try_into()
+        .map_err(|_| TokenError::MalformedCiphertext)?;
+    let decrypted_available_balance = aes_key
+        .decrypt(&decryptable_available_balance)
+        .ok_or(TokenError::AccountDecryption)?;
+
+    let pending_balance_lo = extension_state
+        .pending_balance_lo
+        .try_into()
+        .map_err(|_| TokenError::MalformedCiphertext)?;
+    let decrypted_pending_balance_lo = elgamal_keypair
+        .secret()
+        .decrypt_u32(&pending_balance_lo)
+        .ok_or(TokenError::AccountDecryption)?;
+
+    let pending_balance_hi = extension_state
+        .pending_balance_hi
+        .try_into()
+        .map_err(|_| TokenError::MalformedCiphertext)?;
+    let decrypted_pending_balance_hi = elgamal_keypair
+        .secret()
+        .decrypt_u32(&pending_balance_hi)
+        .ok_or(TokenError::AccountDecryption)?;
+    let pending_balance =
+        combine_balances(decrypted_pending_balance_lo, decrypted_pending_balance_hi)
+            .ok_or(TokenError::AccountDecryption)?;
+
+    Ok(format!("{address} has a pending balance of {pending_balance} and an available balance of {decrypted_available_balance}")
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn command_confidential_burn(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    ata_pubkey: Pubkey,
+    ui_amount: Option<f64>,
+    authority: Pubkey,
+    mint_decimals: Option<u8>,
+    bulk_signers: BulkSigners,
+    elgamal_keypair: &ElGamalKeypair,
+    aes_key: &AeKey,
+) -> CommandResult {
+    let mint_info = config.get_mint_info(&token_pubkey, mint_decimals).await?;
+
+    // if the user got the decimals wrong, they may well have calculated the
+    // transfer amount wrong we only check in online mode, because in offline,
+    // mint_info.decimals is always 9
+    if !config.sign_only && mint_decimals.is_some() && mint_decimals != Some(mint_info.decimals) {
+        return Err(format!(
+            "Decimals {} was provided, but actual value is {}",
+            mint_decimals.unwrap(),
+            mint_info.decimals
+        )
+        .into());
+    }
+
+    let token = token_client_from_config(config, &token_pubkey, Some(mint_info.decimals))?;
+
+    // the amount the user wants to tranfer, as a f64
+    let burn_amount = ui_amount
+        .map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals))
+        .unwrap();
+
+    // deserialize `pod` ElGamal pubkeys
+    let recipient_elgamal_pubkey = elgamal_keypair.pubkey();
+    let auditor_elgamal_pubkey = None;
+
+    let context_state_authority = config.fee_payer()?;
+    let equality_proof_context_state_account = Keypair::new();
+    let equality_proof_pubkey = equality_proof_context_state_account.pubkey();
+    let ciphertext_validity_proof_context_state_account = Keypair::new();
+    let ciphertext_validity_proof_pubkey = ciphertext_validity_proof_context_state_account.pubkey();
+    let range_proof_context_state_account = Keypair::new();
+    let range_proof_pubkey = range_proof_context_state_account.pubkey();
+
+    let context_state_accounts = TransferSplitContextStateAccounts {
+        equality_proof: &equality_proof_pubkey,
+        ciphertext_validity_proof: &ciphertext_validity_proof_pubkey,
+        range_proof: &range_proof_pubkey,
+        authority: &context_state_authority.pubkey(),
+        no_op_on_uninitialized_split_context_state: false,
+        close_split_context_state_accounts: None,
+    };
+
+    let state = token.get_account_info(&ata_pubkey).await.unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    let transfer_account_info = TransferAccountInfo::new(extension);
+
+    let (
+        equality_proof_data,
+        ciphertext_validity_proof_data,
+        range_proof_data,
+        source_decrypt_handles,
+        pedersen_openings,
+    ) = transfer_account_info
+        .generate_split_transfer_proof_data(
+            burn_amount,
+            elgamal_keypair,
+            aes_key,
+            recipient_elgamal_pubkey,
+            auditor_elgamal_pubkey.as_ref(),
+        )
+        .unwrap();
+
+    // setup proofs
+    let _ = try_join!(
+        token.create_range_proof_context_state_for_transfer(
+            context_state_accounts,
+            &range_proof_data,
+            &range_proof_context_state_account,
+        ),
+        token.create_equality_proof_context_state_for_transfer(
+            context_state_accounts,
+            &equality_proof_data,
+            &equality_proof_context_state_account,
+        ),
+        token.create_ciphertext_validity_proof_context_state_for_transfer(
+            context_state_accounts,
+            &ciphertext_validity_proof_data,
+            &ciphertext_validity_proof_context_state_account,
+        )
+    )?;
+
+    // do the burn
+    let res = token
+        .confidential_burn(
+            &ata_pubkey,
+            &authority,
+            context_state_accounts,
+            burn_amount,
+            aes_key,
+            &source_decrypt_handles,
+            &bulk_signers,
+            &pedersen_openings,
+        )
+        .await?;
+
+    // close context state accounts
+    let context_state_authority_pubkey = context_state_authority.pubkey();
+    let close_context_state_signers = &[context_state_authority];
+    let _ = try_join!(
+        token.confidential_transfer_close_context_state(
+            &equality_proof_pubkey,
+            &authority,
+            &context_state_authority_pubkey,
+            close_context_state_signers,
+        ),
+        token.confidential_transfer_close_context_state(
+            &ciphertext_validity_proof_pubkey,
+            &authority,
+            &context_state_authority_pubkey,
+            close_context_state_signers,
+        ),
+        token.confidential_transfer_close_context_state(
+            &range_proof_pubkey,
+            &authority,
+            &context_state_authority_pubkey,
+            close_context_state_signers,
+        ),
+    )?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn format_output<T>(command_output: T, command_name: &CommandName, config: &Config) -> String
