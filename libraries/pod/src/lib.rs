@@ -3,6 +3,7 @@
 pub mod bytemuck;
 pub mod error;
 pub mod optional_keys;
+pub mod pod_option;
 pub mod primitives;
 pub mod slice;
 
