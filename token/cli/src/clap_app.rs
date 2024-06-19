@@ -133,6 +133,10 @@ pub enum CommandName {
     ApplyPendingBalance,
     UpdateGroupAddress,
     UpdateMemberAddress,
+    ConfigureRSA,
+    PostEncryptedKeys,
+    ApproveWithConfidentialPermanentDelegate,
+    GenerateRSA,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -196,7 +200,6 @@ pub enum CliAuthorityType {
     WithheldWithdraw,
     InterestRate,
     PermanentDelegate,
-    ConfidentialTransferMint,
     TransferHookProgramId,
     ConfidentialTransferFee,
     MetadataPointer,
@@ -218,9 +221,6 @@ impl TryFrom<CliAuthorityType> for AuthorityType {
             CliAuthorityType::WithheldWithdraw => Ok(AuthorityType::WithheldWithdraw),
             CliAuthorityType::InterestRate => Ok(AuthorityType::InterestRate),
             CliAuthorityType::PermanentDelegate => Ok(AuthorityType::PermanentDelegate),
-            CliAuthorityType::ConfidentialTransferMint => {
-                Ok(AuthorityType::ConfidentialTransferMint)
-            }
             CliAuthorityType::TransferHookProgramId => Ok(AuthorityType::TransferHookProgramId),
             CliAuthorityType::ConfidentialTransferFee => {
                 Ok(AuthorityType::ConfidentialTransferFeeConfig)
@@ -818,6 +818,14 @@ pub fn app<'a, 'b>(
                         .conflicts_with("member_address")
                         .takes_value(false)
                         .help("Enables group member configurations in the mint. The mint authority must initialize the member."),
+                )
+                .arg(
+                    Arg::with_name("enable_confidential_permanent_delegate")
+                        .long("enable-confidential-permanent-delegate")
+                        .takes_value(false)
+                        .help(
+                            "Enables permanent delegate for confidential transfers"
+                        ),
                 )
                 .nonce_args(true)
                 .arg(memo_arg())
@@ -2614,6 +2622,154 @@ pub fn app<'a, 'b>(
                     owner_address_arg()
                 )
                 .arg(multisig_signer_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::PostEncryptedKeys.into())
+                .about("Post encrypted ElGamalKeypair and AeKey to chain for mint with confidential permanent delegate enabled")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(2)
+                        .help("The address of the token account to for which to fetch the confidential balance")
+                )
+                .arg(
+                    Arg::with_name("authority")
+                        .long("authority")
+                        .alias("owner")
+                        .validator(is_valid_signer)
+                        .value_name("SIGNER")
+                        .takes_value(true)
+                        .help("Keypair from which encryption keys for token account were derived.")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::ConfigureRSA.into())
+                .about("Configure RSA public key for confidential permanent delegate")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("permanent_delegate")
+                        .long("permanent-delegate")
+                        .alias("owner")
+                        .validator(is_valid_signer)
+                        .value_name("SIGNER")
+                        .takes_value(true)
+                        .help("Keypair from which encryption keys for token account were derived.")
+                )
+                .arg(
+                    Arg::with_name("rsa_key")
+                        .long("rsa-key")
+                        .value_name("RSA_KEY")
+                        .takes_value(true)
+                        .help(
+                            "PEM file containing either a RSA public or private key"
+                        )
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::ApproveWithConfidentialPermanentDelegate.into())
+                .about("Approve an account for which the encryption keys have been posted to chain with the confidential permanent delegate")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(2)
+                        .help("The address of the token account to for which to fetch the confidential balance")
+                )
+                .arg(
+                    Arg::with_name("permanent_delegate")
+                        .long("permanent-delegate")
+                        .alias("owner")
+                        .validator(is_valid_signer)
+                        .value_name("SIGNER")
+                        .takes_value(true)
+                        .help("Keypair from which encryption keys for token account were derived.")
+                )
+                .arg(
+                    Arg::with_name("rsa_key")
+                        .long("rsa-key")
+                        .value_name("RSA_KEY")
+                        .takes_value(true)
+                        .help(
+                            "PEM file containing a RSA private key"
+                        )
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::GenerateRSA.into())
+                .about("generate rsa key and persist it to file")
+                .arg(
+                    Arg::with_name("outfile")
+                        .long("outfile")
+                        .value_name("OUT")
+                        .takes_value(true)
+                        .required(true)
+                        .help("location to which to write generated key")
+                )
+                .arg(
+                    Arg::with_name("bits")
+                        .long("bits")
+                        .takes_value(true)
+                        .default_value("4096")
+                        .help("location to which to write generated key")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
                 .nonce_args(true)
         )
 }

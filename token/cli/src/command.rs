@@ -10,6 +10,13 @@ use {
     },
     clap::{value_t, value_t_or_exit, ArgMatches},
     futures::try_join,
+    pem::parse,
+    rand_core::OsRng,
+    rsa::{
+        pkcs1::FromRsaPublicKey,
+        pkcs8::{FromPrivateKey, ToPrivateKey},
+        RsaPrivateKey, RsaPublicKey,
+    },
     serde::Serialize,
     solana_account_decoder::{
         parse_token::{get_token_account_mint, parse_token, TokenAccountType, UiAccountState},
@@ -36,9 +43,13 @@ use {
     spl_associated_token_account::get_associated_token_address_with_program_id,
     spl_token_2022::{
         extension::{
+            confidential_permanent_delegate::{
+                encrypted_keys_pda_address, instruction::PrivateKeyType,
+            },
             confidential_transfer::{
                 account_info::{
-                    ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
+                    ApplyPendingBalanceAccountInfo, TransferAccountInfo,
+                    WithdrawAccountInfo,
                 },
                 instruction::TransferSplitContextStateAccounts,
                 ConfidentialTransferAccount, ConfidentialTransferMint,
@@ -72,7 +83,15 @@ use {
     },
     spl_token_group_interface::state::TokenGroup,
     spl_token_metadata_interface::state::{Field, TokenMetadata},
-    std::{collections::HashMap, fmt::Display, process::exit, rc::Rc, str::FromStr, sync::Arc},
+    std::{
+        collections::HashMap,
+        fmt::Display,
+        fs,
+        process::exit,
+        rc::Rc,
+        str::{self, FromStr},
+        sync::Arc,
+    },
 };
 
 fn print_error_and_exit<T, E: Display>(e: E) -> T {
@@ -239,6 +258,7 @@ async fn command_create_token(
     enable_group: bool,
     enable_member: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
+    enable_confidential_permanent_delegate: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -283,6 +303,14 @@ async fn command_create_token(
             "Token requires a freeze authority to default to frozen accounts"
         );
         extensions.push(ExtensionInitializationParams::DefaultAccountState { state })
+    }
+
+    if enable_confidential_permanent_delegate {
+        extensions.push(
+            ExtensionInitializationParams::ConfidentialPermanentDelegate {
+                permanent_delegate: authority,
+            },
+        );
     }
 
     if let Some((transfer_fee_basis_points, maximum_fee)) = transfer_fee {
@@ -909,6 +937,118 @@ async fn command_create_multisig(
     })
 }
 
+async fn command_configure_rsa(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    permanent_delegate: Pubkey,
+    rsa_pubkey: RsaPublicKey,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    let res = token
+        .configure_rsa(&permanent_delegate, rsa_pubkey, &bulk_signers)
+        .await?;
+
+    let tx_return = finish_tx(config, &res, false).await?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+async fn command_post_encrypted_keys(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    address: Pubkey,
+    authority_signer: Arc<dyn Signer>,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+    let elgamal_keypair = ElGamalKeypair::new_from_signer(&*authority_signer, b"").unwrap();
+    let aes_seed = AeKey::seed_from_signer(&*authority_signer, b"").unwrap();
+
+    let res_elg = token
+        .post_encrypted_keys(
+            &authority_signer.pubkey(),
+            &address,
+            elgamal_keypair.to_bytes().to_vec(),
+            PrivateKeyType::ElGamalKeypair,
+            &bulk_signers,
+        )
+        .await?;
+
+    let res_aes = token
+        .post_encrypted_keys(
+            &authority_signer.pubkey(),
+            &address,
+            aes_seed,
+            PrivateKeyType::AeKey,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return_elg = finish_tx(config, &res_elg, false).await?;
+    println!(
+        "{}",
+        match tx_return_elg {
+            TransactionReturnData::CliSignature(signature) => {
+                config.output_format.formatted_string(&signature)
+            }
+            TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                config.output_format.formatted_string(&sign_only_data)
+            }
+        }
+    );
+    let tx_return_aes = finish_tx(config, &res_aes, false).await?;
+    Ok(match tx_return_aes {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
+async fn command_approve_with_conf_perm_delegate(
+    config: &Config<'_>,
+    token_pubkey: Pubkey,
+    address: Pubkey,
+    perm_delegate: Pubkey,
+    rsa_key: RsaPrivateKey,
+    bulk_signers: Vec<Arc<dyn Signer>>,
+) -> CommandResult {
+    let token = token_client_from_config(config, &token_pubkey, None)?;
+
+    let key_pda = encrypted_keys_pda_address(&token_pubkey, &address, &config.program_id);
+    let key_pda_bytes = config.rpc_client.get_account_data(&key_pda).await?;
+
+    let res = token
+        .approve_confidential_account_with_permanent_delegate(
+            &address,
+            &perm_delegate,
+            key_pda_bytes,
+            &rsa_key,
+            &bulk_signers,
+        )
+        .await?;
+
+    let tx_return_aes = finish_tx(config, &res, false).await?;
+    Ok(match tx_return_aes {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn command_authorize(
     config: &Config<'_>,
@@ -976,18 +1116,6 @@ async fn command_authorize(
                     } else {
                         Err(format!(
                             "Mint `{}` does not support permanent delegate",
-                            account
-                        ))
-                    }
-                }
-                CliAuthorityType::ConfidentialTransferMint => {
-                    if let Ok(confidential_transfer_mint) =
-                        mint.get_extension::<ConfidentialTransferMint>()
-                    {
-                        Ok(Option::<Pubkey>::from(confidential_transfer_mint.authority))
-                    } else {
-                        Err(format!(
-                            "Mint `{}` does not support confidential transfers",
                             account
                         ))
                     }
@@ -1094,7 +1222,6 @@ async fn command_authorize(
                 | CliAuthorityType::WithheldWithdraw
                 | CliAuthorityType::InterestRate
                 | CliAuthorityType::PermanentDelegate
-                | CliAuthorityType::ConfidentialTransferMint
                 | CliAuthorityType::TransferHookProgramId
                 | CliAuthorityType::ConfidentialTransferFee
                 | CliAuthorityType::MetadataPointer
@@ -3523,6 +3650,7 @@ pub async fn process_command<'a>(
                 arg_matches.is_present("enable_group"),
                 arg_matches.is_present("enable_member"),
                 bulk_signers,
+                arg_matches.is_present("enable_confidential_permanent_delegate"),
             )
             .await
         }
@@ -4556,6 +4684,100 @@ pub async fn process_command<'a>(
                 &aes_key,
             )
             .await
+        }
+        (CommandName::ConfigureRSA, arg_matches) => {
+            let rsa_file = value_t_or_exit!(arg_matches, "rsa_key", String);
+            let pem_contents = fs::read_to_string(rsa_file.as_str()).unwrap();
+            let pem = parse(pem_contents.clone()).unwrap();
+
+            let rsa_pubkey = match pem.tag.as_str() {
+                "PRIVATE KEY" => {
+                    let private_key = RsaPrivateKey::from_pkcs8_pem(&pem_contents).unwrap();
+                    private_key.to_public_key()
+                }
+                "RSA PUBLIC KEY" => RsaPublicKey::from_pkcs1_pem(&pem_contents).unwrap(),
+                _ => {
+                    panic!("no valid rsa key provided for ConfigureRSA");
+                }
+            };
+
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let (perm_delegate_signer, permanent_delegate) =
+                config.signer_or_default(arg_matches, "permanent_delegate", &mut wallet_manager);
+            let bulk_signers = vec![perm_delegate_signer];
+
+            command_configure_rsa(
+                config,
+                token_pubkey,
+                permanent_delegate,
+                rsa_pubkey,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::PostEncryptedKeys, arg_matches) => {
+            let (auth_signer, _auth) =
+                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let address = config
+                .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
+                .await?;
+
+            let bulk_signers = vec![auth_signer.clone()];
+            command_post_encrypted_keys(config, token_pubkey, address, auth_signer, bulk_signers)
+                .await
+        }
+        (CommandName::ApproveWithConfidentialPermanentDelegate, arg_matches) => {
+            let rsa_file = value_t_or_exit!(arg_matches, "rsa_key", String);
+            let pem_contents = fs::read_to_string(rsa_file.as_str()).unwrap();
+            let pem = parse(pem_contents.clone()).unwrap();
+
+            let rsa_key = match pem.tag.as_str() {
+                "PRIVATE KEY" => RsaPrivateKey::from_pkcs8_pem(&pem_contents).unwrap(),
+                _ => {
+                    panic!("no valid rsa key provided for ConfigureRSA");
+                }
+            };
+            let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let address = config
+                .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
+                .await?;
+            let (perm_delegate_signer, permanent_delegate) =
+                config.signer_or_default(arg_matches, "permanent_delegate", &mut wallet_manager);
+            let bulk_signers = vec![perm_delegate_signer];
+
+            command_approve_with_conf_perm_delegate(
+                config,
+                token_pubkey,
+                address,
+                permanent_delegate,
+                rsa_key,
+                bulk_signers,
+            )
+            .await
+        }
+        (CommandName::GenerateRSA, arg_matches) => {
+            let rsa_file = value_t_or_exit!(arg_matches, "outfile", String);
+            let bits = value_t_or_exit!(arg_matches, "bits", String);
+            let bits = bits.parse::<usize>().unwrap();
+
+            let mut rng = OsRng;
+            let rsa_key = RsaPrivateKey::new(&mut rng, bits).unwrap();
+            fs::write(
+                format!("./{}", rsa_file),
+                rsa_key.to_pkcs8_pem().unwrap().as_str(),
+            )
+            .expect("Unable to write rsa key to file");
+
+            Ok(format!(
+                "RSA private key successfully written to {rsa_file}"
+            ))
         }
     }
 }

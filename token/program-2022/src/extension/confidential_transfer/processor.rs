@@ -3,6 +3,7 @@
 use crate::extension::transfer_hook;
 #[cfg(feature = "zk-ops")]
 use {
+    crate::extension::confidential_permanent_delegate::expected_authority,
     crate::extension::non_transferable::NonTransferableAccount,
     solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
 };
@@ -11,6 +12,7 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
+            confidential_permanent_delegate::ConfidentialPermanentDelegate,
             confidential_transfer::{ciphertext_extraction::*, instruction::*, verify_proof::*, *},
             confidential_transfer_fee::{
                 ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig,
@@ -135,7 +137,15 @@ fn process_configure_account(
     // `ConfidentialTransferAccount` extension
     let confidential_transfer_account =
         token_account.init_extension::<ConfidentialTransferAccount>(false)?;
-    confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
+    let approved = if mint
+        .get_extension::<ConfidentialPermanentDelegate>()
+        .is_ok()
+    {
+        false.into()
+    } else {
+        confidential_transfer_mint.auto_approve_new_accounts
+    };
+    confidential_transfer_account.approved = approved;
     confidential_transfer_account.elgamal_pubkey = proof_context.pubkey;
     confidential_transfer_account.maximum_pending_balance_credit_counter =
         *maximum_pending_balance_credit_counter;
@@ -182,6 +192,10 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
     let mint_data = &mint_info.data.borrow_mut();
     let mint = PodStateWithExtensions::<PodMint>::unpack(mint_data)?;
     let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
+    if let Ok(_ext) = mint.get_extension::<ConfidentialPermanentDelegate>() {
+        msg!("account approval for mints with the confidential permanent delegate extension have to be done via that extension");
+        return Err(TokenError::InvalidInstruction.into());
+    }
     let maybe_confidential_transfer_mint_authority: Option<Pubkey> =
         confidential_transfer_mint.authority.into();
     let confidential_transfer_mint_authority =
@@ -514,6 +528,7 @@ fn process_transfer(
             program_id,
             source_account_info,
             mint_info,
+            &mint,
             authority_info,
             account_info_iter.as_slice(),
             maybe_proof_context.as_ref(),
@@ -618,9 +633,7 @@ fn process_transfer(
         )?;
 
         if maybe_proof_context.is_none() {
-            msg!(
-                "Context state not fully initialized: returning with no op; transfer is NOT yet executed"
-            );
+            msg!("Context state not fully initialized: returning with no op; transfer is NOT yet executed");
         }
         authority_info
     };
@@ -664,11 +677,14 @@ fn process_transfer(
     Ok(())
 }
 
+/// Processes the changes for the sending party of a confidential transfer
+#[allow(clippy::too_many_arguments)]
 #[cfg(feature = "zk-ops")]
 fn process_source_for_transfer(
     program_id: &Pubkey,
     source_account_info: &AccountInfo,
     mint_info: &AccountInfo,
+    mint: &PodStateWithExtensions<'_, PodMint>,
     authority_info: &AccountInfo,
     signers: &[AccountInfo],
     maybe_proof_context: Option<&TransferProofContextInfo>,
@@ -687,7 +703,7 @@ fn process_source_for_transfer(
 
     Processor::validate_owner(
         program_id,
-        &token_account.base.owner,
+        &expected_authority(mint, authority_info, &token_account),
         authority_info,
         authority_info_data_len,
         signers,
@@ -982,16 +998,19 @@ fn process_apply_pending_balance(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
+    let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
+    let mint_data = mint_info.data.borrow();
+    let mint = PodStateWithExtensions::<PodMint>::unpack(&mint_data)?;
 
     Processor::validate_owner(
         program_id,
-        &token_account.base.owner,
+        &expected_authority(&mint, authority_info, &token_account),
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
