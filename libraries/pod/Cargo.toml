@@ -14,7 +14,7 @@ borsh = ["dep:borsh"]
 [dependencies]
 base64 = { version = "0.22.1", optional = true }
 borsh = { version = "1.5.1", optional = true }
-bytemuck = { version = "1.16.0" }
+bytemuck = { version = "1.16.1" }
 serde = { version = "1.0.203", optional = true }
 solana-program = ">=1.18.11,<=2"
 solana-zk-token-sdk = ">=1.18.11,<=2"
