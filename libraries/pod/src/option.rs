@@ -1,5 +1,10 @@
-//! Generic `Option` that can be used as a `Pod`s for types that can have
-//! a `None` value.
+//! Generic `Option` that can be used as a `Pod` for types that can have
+//! a designated `None` value.
+//!
+//! For example, a 64-bit unsigned integer can designate `0` as a `None` value.
+//! This would be equivalent to
+//! [`Option<NonZeroU64>`](https://doc.rust-lang.org/std/num/type.NonZeroU64.html)
+//! and provide the same memory layout optimization.
 
 use {
     bytemuck::{Pod, Zeroable},
