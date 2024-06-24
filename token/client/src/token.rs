@@ -8,6 +8,8 @@ use {
     },
     futures::{future::join_all, try_join},
     futures_util::TryFutureExt,
+    rsa::{PaddingScheme, RsaPrivateKey, RsaPublicKey},
+    sha2::Sha256,
     solana_program_test::tokio::time,
     solana_sdk::{
         account::Account as BaseAccount,
@@ -18,7 +20,7 @@ use {
         program_error::ProgramError,
         program_pack::Pack,
         pubkey::Pubkey,
-        signer::{signers::Signers, Signer, SignerError},
+        signer::{signers::Signers, SeedDerivable, Signer, SignerError},
         system_instruction,
         transaction::Transaction,
     },
@@ -30,6 +32,11 @@ use {
     },
     spl_token_2022::{
         extension::{
+            confidential_permanent_delegate::{
+                self,
+                instruction::{EncryptedPrivateKeyData, PrivateKeyType},
+                ConfidentialPermanentDelegate,
+            },
             confidential_transfer::{
                 self,
                 account_info::{
@@ -54,7 +61,7 @@ use {
         proof::ProofLocation,
         solana_zk_token_sdk::{
             encryption::{
-                auth_encryption::AeKey,
+                auth_encryption::{AeCiphertext, AeKey},
                 elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
             },
             instruction::*,
@@ -184,6 +191,9 @@ pub enum ExtensionInitializationParams {
         authority: Option<Pubkey>,
         member_address: Option<Pubkey>,
     },
+    ConfidentialPermanentDelegate {
+        permanent_delegate: Pubkey,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
@@ -203,6 +213,9 @@ impl ExtensionInitializationParams {
             }
             Self::GroupPointer { .. } => ExtensionType::GroupPointer,
             Self::GroupMemberPointer { .. } => ExtensionType::GroupMemberPointer,
+            Self::ConfidentialPermanentDelegate { .. } => {
+                ExtensionType::ConfidentialPermanentDelegate
+            }
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
@@ -312,6 +325,13 @@ impl ExtensionInitializationParams {
                 authority,
                 member_address,
             ),
+            Self::ConfidentialPermanentDelegate { permanent_delegate } => {
+                confidential_permanent_delegate::instruction::initialize_mint(
+                    token_program_id,
+                    mint,
+                    permanent_delegate,
+                )
+            }
         }
     }
 }
@@ -3377,6 +3397,7 @@ where
             &[confidential_transfer::instruction::apply_pending_balance(
                 &self.program_id,
                 account,
+                self.get_address(),
                 expected_pending_balance_credit_counter,
                 new_decryptable_available_balance,
                 authority,
@@ -4078,5 +4099,167 @@ where
             group_update_authority,
         ));
         self.process_ixs(&instructions, signing_keypairs).await
+    }
+
+    pub async fn encryption_keys_from_bytes(
+        &self,
+        rsa_key: &RsaPrivateKey,
+        key_pda_bytes: Vec<u8>,
+    ) -> TokenResult<(ElGamalKeypair, AeKey)> {
+        let mint_info = self.get_mint_info().await?;
+        let confidential_permanent_delegate =
+            mint_info.get_extension::<ConfidentialPermanentDelegate>()?;
+        if !Into::<bool>::into(confidential_permanent_delegate.delegate_initialized) {
+            return Err(ProgramError::UninitializedAccount.into());
+        }
+
+        let padding = PaddingScheme::new_oaep::<Sha256>();
+        let key_data: EncryptedPrivateKeyData = key_pda_bytes.try_into()?;
+        let elgamal_bytes = rsa_key
+            .decrypt(
+                padding,
+                &key_data.elgamal_keypair[..(Into::<u16>::into(
+                    confidential_permanent_delegate.encryption_pubkey.len_n,
+                ) as usize)],
+            )
+            .unwrap();
+        let padding = PaddingScheme::new_oaep::<Sha256>();
+        let aes_bytes = rsa_key
+            .decrypt(
+                padding,
+                &key_data.ae_key[..(Into::<u16>::into(
+                    confidential_permanent_delegate.encryption_pubkey.len_n,
+                ) as usize)],
+            )
+            .unwrap();
+        let elgamal_keypair = ElGamalKeypair::from_bytes(&elgamal_bytes).unwrap();
+        let aes_key = AeKey::from_seed(&aes_bytes).unwrap();
+
+        Ok((elgamal_keypair, aes_key))
+    }
+
+    /// Approve token account for usage of confidential transfers on mint
+    /// with a confidential permanent delegate
+    #[allow(clippy::too_many_arguments)]
+    pub async fn approve_confidential_account_with_permanent_delegate<S: Signers>(
+        &self,
+        account: &Pubkey,
+        permanent_delegate: &Pubkey,
+        key_pda_bytes: Vec<u8>,
+        rsa_key: &RsaPrivateKey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(permanent_delegate, &signing_pubkeys);
+
+        let account_data = self.get_account_info(account).await?;
+        let confidential_transfer_account =
+            account_data.get_extension::<ConfidentialTransferAccount>()?;
+
+        let (elgamal_keypair, aes_key) = self
+            .encryption_keys_from_bytes(rsa_key, key_pda_bytes)
+            .await?;
+
+        // generate dummy proof for change of 0 simply to
+        // prove ownership of encryption secrets
+        let proof_data =
+            confidential_transfer::instruction::PubkeyValidityData::new(&elgamal_keypair)
+                .map_err(|_| TokenError::ProofGeneration)?;
+
+        let proof_location = ProofLocation::InstructionOffset(1.try_into().unwrap(), &proof_data);
+
+        let decrypted_balance = aes_key
+            .decrypt(
+                &TryInto::<AeCiphertext>::try_into(
+                    confidential_transfer_account.decryptable_available_balance,
+                )
+                .map_err(|_| ProgramError::InvalidAccountData)?,
+            )
+            .ok_or(ProgramError::InvalidAccountData)?;
+        if decrypted_balance != 0 {
+            return Err(ProgramError::AccountAlreadyInitialized.into());
+        }
+
+        self.process_ixs(
+            &confidential_permanent_delegate::instruction::approve_account(
+                &self.program_id,
+                &self.pubkey,
+                account,
+                permanent_delegate,
+                &multisig_signers,
+                proof_location,
+            )?,
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Configure RSA public key for mint with a confidential permanent delegate
+    #[allow(clippy::too_many_arguments)]
+    pub async fn configure_rsa<S: Signers>(
+        &self,
+        permanent_delegate: &Pubkey,
+        rsa_pubkey: RsaPublicKey,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(permanent_delegate, &signing_pubkeys);
+
+        self.process_ixs(
+            &[confidential_permanent_delegate::instruction::configure_rsa(
+                &self.program_id,
+                &self.pubkey,
+                rsa_pubkey,
+                permanent_delegate,
+                &multisig_signers,
+            )?],
+            signing_keypairs,
+        )
+        .await
+    }
+
+    ///
+    #[allow(clippy::too_many_arguments)]
+    pub async fn post_encrypted_keys<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        ata_pubkey: &Pubkey,
+        key_bytes: Vec<u8>,
+        key_type: PrivateKeyType,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+        let mint_info = self.get_mint_info().await?;
+        let confidential_permanent_delegate =
+            mint_info.get_extension::<ConfidentialPermanentDelegate>()?;
+        if !Into::<bool>::into(confidential_permanent_delegate.delegate_initialized) {
+            return Err(Into::<ProgramError>::into(
+                spl_token_2022::error::TokenError::InvalidState,
+            )
+            .into());
+        }
+
+        let rsa_pubkey = confidential_permanent_delegate
+            .encryption_pubkey
+            .to_rsa_public_key();
+
+        self.process_ixs(
+            &[
+                confidential_permanent_delegate::instruction::post_encrypted_private_keys(
+                    &self.program_id,
+                    self.get_address(),
+                    ata_pubkey,
+                    authority,
+                    &self.payer.pubkey(),
+                    &multisig_signers,
+                    rsa_pubkey,
+                    key_bytes,
+                    key_type,
+                )?,
+            ],
+            signing_keypairs,
+        )
+        .await
     }
 }

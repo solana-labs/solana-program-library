@@ -41,6 +41,15 @@ serde = { version = "1.0.203", optional = true }
 serde_with = { version = "3.8.1", optional = true }
 base64 = { version = "0.22.1", optional = true }
 
+[target.'cfg(not(target_os = "solana"))'.dependencies.rsa]
+version = ">=0.5.0"
+
+[target.'cfg(not(target_os = "solana"))'.dependencies.rand_core]
+version = "0.6.3"
+
+[target.'cfg(not(target_os = "solana"))'.dependencies.sha2]
+version = "0.9.9"
+
 [dev-dependencies]
 lazy_static = "1.4.0"
 proptest = "1.5"

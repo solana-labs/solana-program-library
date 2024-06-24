@@ -708,6 +708,9 @@ pub enum TokenInstruction<'a> {
     /// for further details about the extended instructions that share this
     /// instruction prefix
     GroupMemberPointerExtension,
+    /// Instruction prefix for instructions to the
+    /// confidential-permanent-delegate extension
+    ConfidentialPermanentDelegateExtension,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a
@@ -847,6 +850,7 @@ impl<'a> TokenInstruction<'a> {
             39 => Self::MetadataPointerExtension,
             40 => Self::GroupPointerExtension,
             41 => Self::GroupMemberPointerExtension,
+            42 => Self::ConfidentialPermanentDelegateExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -1017,6 +1021,9 @@ impl<'a> TokenInstruction<'a> {
             }
             &Self::GroupMemberPointerExtension => {
                 buf.push(41);
+            }
+            &Self::ConfidentialPermanentDelegateExtension => {
+                buf.push(42);
             }
         };
         buf

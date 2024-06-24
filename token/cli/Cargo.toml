@@ -46,6 +46,9 @@ spl-memo = { version = "4.0", path = "../../memo/program", features = [
 strum = "0.26"
 strum_macros = "0.26"
 tokio = "1.38"
+rsa = "0.5.0"
+pem = "1.1.1"
+rand_core = "0.6.3"
 
 [dev-dependencies]
 solana-test-validator = ">=1.18.11,<=2"

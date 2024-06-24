@@ -106,6 +106,33 @@ pub(crate) fn transfer_amount_destination_ciphertext(
     ElGamalCiphertext(destination_ciphertext_bytes)
 }
 
+/// Extract the transfer amount ciphertext encrypted under the auditor ElGamal
+/// public key.
+///
+/// A transfer amount ciphertext consists of the following 32-byte components
+/// that are serialized in order:
+///   1. The `commitment` component that encodes the transfer amount.
+///   2. The `decryption handle` component with respect to the source public
+///      key.
+///   3. The `decryption handle` component with respect to the destination
+///      public key.
+///   4. The `decryption handle` component with respect to the auditor public
+///      key.
+///
+/// An ElGamal ciphertext for the auditor consists of the `commitment` component
+/// and the `decryption handle` component with respect to the auditor.
+pub fn transfer_amount_auditor_ciphertext(
+    transfer_amount_ciphertext: &TransferAmountCiphertext,
+) -> ElGamalCiphertext {
+    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
+
+    let mut auditor_ciphertext_bytes = [0u8; 64];
+    auditor_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
+    auditor_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[96..128]);
+
+    ElGamalCiphertext(auditor_ciphertext_bytes)
+}
+
 /// Extract the fee amount ciphertext encrypted under the destination ElGamal
 /// public key.
 ///

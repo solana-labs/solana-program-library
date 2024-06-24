@@ -6,6 +6,7 @@ use {
     crate::{
         error::TokenError,
         extension::{
+            confidential_permanent_delegate::ConfidentialPermanentDelegate,
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             confidential_transfer_fee::{
                 ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig,
@@ -83,6 +84,9 @@ pub mod token_metadata;
 pub mod transfer_fee;
 /// Transfer Hook extension
 pub mod transfer_hook;
+
+/// Confidential permanent delegate extension
+pub mod confidential_permanent_delegate;
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -1101,6 +1105,11 @@ pub enum ExtensionType {
     GroupMemberPointer,
     /// Mint contains token group member configurations
     TokenGroupMember,
+
+    /// Mint with confidential transfers and a permanent delegate for the
+    /// confidential balances
+    ConfidentialPermanentDelegate = u16::MAX - 4268,
+
     /// Test variable-length mint extension
     #[cfg(test)]
     VariableLenMintTest = u16::MAX - 2,
@@ -1181,6 +1190,9 @@ impl ExtensionType {
             ExtensionType::TokenGroup => pod_get_packed_len::<TokenGroup>(),
             ExtensionType::GroupMemberPointer => pod_get_packed_len::<GroupMemberPointer>(),
             ExtensionType::TokenGroupMember => pod_get_packed_len::<TokenGroupMember>(),
+            ExtensionType::ConfidentialPermanentDelegate => {
+                pod_get_packed_len::<ConfidentialPermanentDelegate>()
+            }
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -1244,6 +1256,7 @@ impl ExtensionType {
             | ExtensionType::GroupPointer
             | ExtensionType::TokenGroup
             | ExtensionType::GroupMemberPointer
+            | ExtensionType::ConfidentialPermanentDelegate
             | ExtensionType::TokenGroupMember => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount

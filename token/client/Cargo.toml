@@ -34,6 +34,8 @@ spl-token-group-interface = { version = "0.2.3", path = "../../token-group/inter
 spl-token-metadata-interface = { version = "0.3.3", path = "../../token-metadata/interface" }
 spl-transfer-hook-interface = { version = "0.6.3", path = "../transfer-hook/interface" }
 thiserror = "1.0"
+rsa = "0.5.0"
+sha2 = "0.9.9"
 
 [features]
 default = ["display"]
