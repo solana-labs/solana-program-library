@@ -30,5 +30,10 @@ cargo_audit_ignores=(
   #
   # Remove once SPL upgrades to Solana v1.17 or greater
   --ignore RUSTSEC-2023-0065
+
+  # curve25519-dalek
+  #
+  # Remove once SPL upgrades to curve25519-dalek v4
+  --ignore RUSTSEC-2024-0344
 )
 cargo +"$rust_stable" audit "${cargo_audit_ignores[@]}"

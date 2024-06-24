@@ -14,7 +14,7 @@ test-sbf = []
 [dependencies]
 borsh = "1.5.1"
 solana-program = ">=1.18.11,<=2"
-spl-token = { version = "4.0", path = "../../token/program", features = [
+spl-token = { version = "5.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
 

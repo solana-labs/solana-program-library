@@ -71,7 +71,16 @@ $spl_stake_pool \
   --reserve-keypair "$reserve_keyfile"
 
 set +ex
-echo "Depositing SOL into stake pool"
 stake_pool_pubkey=$(solana-keygen pubkey "$stake_pool_keyfile")
 set -ex
+
+echo "Creating token metadata"
+$spl_stake_pool \
+  create-token-metadata \
+  "$stake_pool_pubkey" \
+  NAME \
+  SYMBOL \
+  URI
+
+echo "Depositing SOL into stake pool"
 $spl_stake_pool deposit-sol "$stake_pool_pubkey" "$sol_amount"

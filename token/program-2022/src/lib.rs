@@ -25,11 +25,7 @@ mod entrypoint;
 // Export current sdk types for downstream users building with a different sdk
 // version
 use solana_program::{
-    entrypoint::ProgramResult,
-    program_error::ProgramError,
-    program_memory::sol_memcmp,
-    pubkey::{Pubkey, PUBKEY_BYTES},
-    system_program,
+    entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey, system_program,
 };
 pub use {solana_program, solana_zk_token_sdk};
 
@@ -131,10 +127,4 @@ pub fn check_system_program_account(system_program_id: &Pubkey) -> ProgramResult
         return Err(ProgramError::IncorrectProgramId);
     }
     Ok(())
-}
-
-/// Checks two pubkeys for equality in a computationally cheap way using
-/// `sol_memcmp`
-pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {
-    sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0
 }

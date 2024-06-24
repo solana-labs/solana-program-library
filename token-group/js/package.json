@@ -44,19 +44,19 @@
         "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.92.3"
+        "@solana/web3.js": "^1.93.1"
     },
     "dependencies": {
         "@solana/codecs": "2.0.0-preview.3",
         "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
-        "@solana/web3.js": "^1.92.3",
+        "@solana/web3.js": "^1.93.1",
         "@types/chai": "^4.3.16",
-        "@types/mocha": "^10.0.6",
-        "@types/node": "^20.14.2",
-        "@typescript-eslint/eslint-plugin": "^7.12.0",
-        "@typescript-eslint/parser": "^7.12.0",
+        "@types/mocha": "^10.0.7",
+        "@types/node": "^20.14.8",
+        "@typescript-eslint/eslint-plugin": "^7.13.1",
+        "@typescript-eslint/parser": "^7.13.1",
         "chai": "^5.1.1",
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^9.1.0",
@@ -64,11 +64,11 @@
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
         "mocha": "^10.4.0",
-        "prettier": "^3.3.1",
+        "prettier": "^3.3.2",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
         "tslib": "^2.6.3",
-        "typedoc": "^0.25.13",
-        "typescript": "^5.4.5"
+        "typedoc": "^0.26.2",
+        "typescript": "^5.5.2"
     }
 }

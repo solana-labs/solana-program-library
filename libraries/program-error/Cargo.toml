@@ -15,7 +15,7 @@ spl-program-error-derive = { version = "0.4.1", path = "./derive" }
 thiserror = "1.0"
 
 [dev-dependencies]
-lazy_static = "1.4"
+lazy_static = "1.5"
 serial_test = "3.1"
 solana-sdk = ">=1.18.11,<=2"
 

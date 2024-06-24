@@ -373,7 +373,7 @@ impl ExtraAccountMetaList {
 mod tests {
     use {
         super::*,
-        crate::seeds::Seed,
+        crate::{pubkey_data::PubkeyData, seeds::Seed},
         solana_program::{clock::Epoch, instruction::AccountMeta, pubkey::Pubkey},
         solana_program_test::tokio,
         spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
@@ -581,14 +581,24 @@ mod tests {
             true,
         )
         .unwrap();
+        let extra_meta4 = ExtraAccountMeta::new_with_pubkey_data(
+            &PubkeyData::InstructionData { index: 4 },
+            false,
+            true,
+        )
+        .unwrap();
 
         let metas = [
             ExtraAccountMeta::from(&extra_meta1),
             ExtraAccountMeta::from(&extra_meta2),
             extra_meta3,
+            extra_meta4,
         ];
 
-        let ix_data = vec![1, 2, 3, 4];
+        let mut ix_data = vec![1, 2, 3, 4];
+        let check_extra_meta4_pubkey = Pubkey::new_unique();
+        ix_data.extend_from_slice(check_extra_meta4_pubkey.as_ref());
+
         let ix_accounts = vec![ix_account1.clone(), ix_account2.clone()];
         let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
 
@@ -624,11 +634,16 @@ mod tests {
             extra_meta1,
             extra_meta2,
             AccountMeta::new(check_extra_meta3_pubkey, false),
+            AccountMeta::new(check_extra_meta4_pubkey, false),
         ];
 
         assert_eq!(
             instruction.accounts.get(4).unwrap().pubkey,
             check_extra_meta3_pubkey,
+        );
+        assert_eq!(
+            instruction.accounts.get(5).unwrap().pubkey,
+            check_extra_meta4_pubkey,
         );
         assert_eq!(instruction.accounts, check_metas,);
     }
@@ -661,6 +676,12 @@ mod tests {
             true,
         )
         .unwrap();
+        let extra_meta6 = ExtraAccountMeta::new_with_pubkey_data(
+            &PubkeyData::InstructionData { index: 8 },
+            false,
+            true,
+        )
+        .unwrap();
 
         let other_meta1 = AccountMeta::new(Pubkey::new_unique(), false);
         let other_meta2 = ExtraAccountMeta::new_with_seeds(
@@ -678,6 +699,12 @@ mod tests {
             true,
         )
         .unwrap();
+        let other_meta3 = ExtraAccountMeta::new_with_pubkey_data(
+            &PubkeyData::InstructionData { index: 7 },
+            false,
+            true,
+        )
+        .unwrap();
 
         let metas = [
             ExtraAccountMeta::from(&extra_meta1),
@@ -685,8 +712,13 @@ mod tests {
             ExtraAccountMeta::from(&extra_meta3),
             ExtraAccountMeta::from(&extra_meta4),
             extra_meta5,
+            extra_meta6,
         ];
-        let other_metas = [ExtraAccountMeta::from(&other_meta1), other_meta2];
+        let other_metas = [
+            ExtraAccountMeta::from(&other_meta1),
+            other_meta2,
+            other_meta3,
+        ];
 
         let account_size = ExtraAccountMetaList::size_of(metas.len()).unwrap()
             + ExtraAccountMetaList::size_of(other_metas.len()).unwrap();
@@ -698,8 +730,13 @@ mod tests {
         let mock_rpc = MockRpc::setup(&[]);
 
         let program_id = Pubkey::new_unique();
-        let ix_data = vec![0, 0, 0, 0, 0, 7, 0, 0];
+
+        let mut ix_data = vec![0, 0, 0, 0, 0, 7, 0, 0];
+        let check_extra_meta6_pubkey = Pubkey::new_unique();
+        ix_data.extend_from_slice(check_extra_meta6_pubkey.as_ref());
+
         let ix_accounts = vec![];
+
         let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
         ExtraAccountMetaList::add_to_instruction::<TestInstruction, _, _>(
             &mut instruction,
@@ -726,19 +763,29 @@ mod tests {
             extra_meta3,
             extra_meta4,
             AccountMeta::new(check_extra_meta5_pubkey, false),
+            AccountMeta::new(check_extra_meta6_pubkey, false),
         ];
 
         assert_eq!(
             instruction.accounts.get(4).unwrap().pubkey,
             check_extra_meta5_pubkey,
         );
+        assert_eq!(
+            instruction.accounts.get(5).unwrap().pubkey,
+            check_extra_meta6_pubkey,
+        );
         assert_eq!(instruction.accounts, check_metas,);
 
         let program_id = Pubkey::new_unique();
+
         let ix_account1 = AccountMeta::new(Pubkey::new_unique(), false);
         let ix_account2 = AccountMeta::new(Pubkey::new_unique(), true);
         let ix_accounts = vec![ix_account1.clone(), ix_account2.clone()];
-        let ix_data = vec![0, 26, 0, 0, 0, 0, 0];
+
+        let mut ix_data = vec![0, 26, 0, 0, 0, 0, 0];
+        let check_other_meta3_pubkey = Pubkey::new_unique();
+        ix_data.extend_from_slice(check_other_meta3_pubkey.as_ref());
+
         let mut instruction = Instruction::new_with_bytes(program_id, &ix_data, ix_accounts);
         ExtraAccountMetaList::add_to_instruction::<TestOtherInstruction, _, _>(
             &mut instruction,
@@ -763,11 +810,16 @@ mod tests {
             ix_account2,
             other_meta1,
             AccountMeta::new(check_other_meta2_pubkey, false),
+            AccountMeta::new(check_other_meta3_pubkey, false),
         ];
 
         assert_eq!(
             instruction.accounts.get(3).unwrap().pubkey,
             check_other_meta2_pubkey,
+        );
+        assert_eq!(
+            instruction.accounts.get(4).unwrap().pubkey,
+            check_other_meta3_pubkey,
         );
         assert_eq!(instruction.accounts, check_other_metas,);
     }
@@ -855,6 +907,12 @@ mod tests {
             true,
         )
         .unwrap();
+        let extra_meta7 = ExtraAccountMeta::new_with_pubkey_data(
+            &PubkeyData::InstructionData { index: 41 }, // After the other pubkey arg.
+            false,
+            true,
+        )
+        .unwrap();
 
         let test_ix_required_extra_accounts = account_infos
             .iter()
@@ -867,6 +925,7 @@ mod tests {
             ExtraAccountMeta::from(&extra_meta4),
             extra_meta5,
             extra_meta6,
+            extra_meta7,
         ];
 
         let account_size = ExtraAccountMetaList::size_of(test_ix_required_extra_accounts.len())
@@ -904,11 +963,16 @@ mod tests {
         assert_eq!(instruction.accounts, test_ix_check_metas,);
 
         let program_id = Pubkey::new_unique();
+
         let instruction_u8array_arg = [1, 2, 3, 4, 5, 6, 7, 8];
         let instruction_pubkey_arg = Pubkey::new_unique();
+        let instruction_key_data_pubkey_arg = Pubkey::new_unique();
+
         let mut instruction_data = vec![0];
         instruction_data.extend_from_slice(&instruction_u8array_arg);
         instruction_data.extend_from_slice(instruction_pubkey_arg.as_ref());
+        instruction_data.extend_from_slice(instruction_key_data_pubkey_arg.as_ref());
+
         let mut instruction = Instruction::new_with_bytes(program_id, &instruction_data, vec![]);
         ExtraAccountMetaList::add_to_instruction::<TestOtherInstruction, _, _>(
             &mut instruction,
@@ -946,6 +1010,7 @@ mod tests {
             extra_meta4,
             AccountMeta::new(check_extra_meta5_pubkey, false),
             AccountMeta::new(check_extra_meta6_pubkey, false),
+            AccountMeta::new(instruction_key_data_pubkey_arg, false),
         ];
 
         assert_eq!(
@@ -955,6 +1020,10 @@ mod tests {
         assert_eq!(
             instruction.accounts.get(5).unwrap().pubkey,
             check_extra_meta6_pubkey,
+        );
+        assert_eq!(
+            instruction.accounts.get(6).unwrap().pubkey,
+            instruction_key_data_pubkey_arg,
         );
         assert_eq!(instruction.accounts, test_other_ix_check_metas,);
     }
@@ -972,6 +1041,7 @@ mod tests {
         // Some seeds used by the program for PDAs
         let required_pda1_literal_string = "required_pda1";
         let required_pda2_literal_u32 = 4u32;
+        let required_key_data_instruction_data = Pubkey::new_unique();
 
         // Define instruction data
         //  - 0: u8
@@ -982,6 +1052,7 @@ mod tests {
         let mut instruction_data = vec![0];
         instruction_data.extend_from_slice(&instruction_u8array_arg);
         instruction_data.extend_from_slice(instruction_u64_arg.to_le_bytes().as_ref());
+        instruction_data.extend_from_slice(required_key_data_instruction_data.as_ref());
 
         // Define known instruction accounts
         let ix_accounts = vec![
@@ -1055,6 +1126,30 @@ mod tests {
                 true,
             )
             .unwrap(),
+            ExtraAccountMeta::new_with_pubkey_data(
+                &PubkeyData::InstructionData { index: 17 },
+                false,
+                true,
+            )
+            .unwrap(),
+            ExtraAccountMeta::new_with_pubkey_data(
+                &PubkeyData::AccountData {
+                    account_index: 6,
+                    data_index: 0,
+                },
+                false,
+                true,
+            )
+            .unwrap(),
+            ExtraAccountMeta::new_with_pubkey_data(
+                &PubkeyData::AccountData {
+                    account_index: 7,
+                    data_index: 8,
+                },
+                false,
+                true,
+            )
+            .unwrap(),
         ];
 
         // Now here we're going to build the list of account infos
@@ -1098,9 +1193,12 @@ mod tests {
             &program_id,
         )
         .0;
+        let check_key_data1_pubkey = required_key_data_instruction_data;
+        let check_key_data2_pubkey = Pubkey::new_from_array([8; 32]);
+        let check_key_data3_pubkey = Pubkey::new_from_array([9; 32]);
 
         // The instruction account infos for the program to CPI to
-        let pubkey_ix_1 = ix_accounts.get(0).unwrap().pubkey;
+        let pubkey_ix_1 = ix_accounts.first().unwrap().pubkey;
         let mut lamports_ix_1 = 0;
         let mut data_ix_1 = [];
         let pubkey_ix_2 = ix_accounts.get(1).unwrap().pubkey;
@@ -1117,11 +1215,18 @@ mod tests {
         let mut lamports_pda1 = 0;
         let mut data_pda1 = [7; 12];
         let mut lamports_pda2 = 0;
-        let mut data_pda2 = [];
+        let mut data_pda2 = [8; 32];
         let mut lamports_pda3 = 0;
-        let mut data_pda3 = [];
+        let mut data_pda3 = [0; 40];
+        data_pda3[8..].copy_from_slice(&[9; 32]); // Add pubkey data for pubkey data pubkey 3.
         let mut lamports_pda4 = 0;
         let mut data_pda4 = [];
+        let mut data_key_data1 = [];
+        let mut lamports_key_data1 = 0;
+        let mut data_key_data2 = [];
+        let mut lamports_key_data2 = 0;
+        let mut data_key_data3 = [];
+        let mut lamports_key_data3 = 0;
 
         // Some other arbitrary account infos our program may use
         let pubkey_arb_1 = Pubkey::new_unique();
@@ -1134,8 +1239,8 @@ mod tests {
         let all_account_infos = [
             AccountInfo::new(
                 &pubkey_ix_1,
-                ix_accounts.get(0).unwrap().is_signer,
-                ix_accounts.get(0).unwrap().is_writable,
+                ix_accounts.first().unwrap().is_signer,
+                ix_accounts.first().unwrap().is_writable,
                 &mut lamports_ix_1,
                 &mut data_ix_1,
                 &owner,
@@ -1154,8 +1259,8 @@ mod tests {
             ),
             AccountInfo::new(
                 &extra_meta1.pubkey,
-                required_accounts.get(0).unwrap().is_signer.into(),
-                required_accounts.get(0).unwrap().is_writable.into(),
+                required_accounts.first().unwrap().is_signer.into(),
+                required_accounts.first().unwrap().is_writable.into(),
                 &mut lamports1,
                 &mut data1,
                 &owner,
@@ -1218,6 +1323,36 @@ mod tests {
                 required_accounts.get(6).unwrap().is_writable.into(),
                 &mut lamports_pda4,
                 &mut data_pda4,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &check_key_data1_pubkey,
+                required_accounts.get(7).unwrap().is_signer.into(),
+                required_accounts.get(7).unwrap().is_writable.into(),
+                &mut lamports_key_data1,
+                &mut data_key_data1,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &check_key_data2_pubkey,
+                required_accounts.get(8).unwrap().is_signer.into(),
+                required_accounts.get(8).unwrap().is_writable.into(),
+                &mut lamports_key_data2,
+                &mut data_key_data2,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
+            AccountInfo::new(
+                &check_key_data3_pubkey,
+                required_accounts.get(9).unwrap().is_signer.into(),
+                required_accounts.get(9).unwrap().is_writable.into(),
+                &mut lamports_key_data3,
+                &mut data_key_data3,
                 &owner,
                 false,
                 Epoch::default(),
@@ -1299,7 +1434,7 @@ mod tests {
         // Note: The two additional arbitrary account infos for the currently
         // executing program won't be present in the CPI instruction's account
         // infos, so we will omit them (hence the `..9`).
-        let check_account_infos = &all_account_infos[..9];
+        let check_account_infos = &all_account_infos[..12];
         assert_eq!(cpi_account_infos.len(), check_account_infos.len());
         for (a, b) in std::iter::zip(cpi_account_infos, check_account_infos) {
             assert_eq!(a.key, b.key);
@@ -1452,6 +1587,12 @@ mod tests {
                 true,
             )
             .unwrap(),
+            ExtraAccountMeta::new_with_pubkey_data(
+                &PubkeyData::InstructionData { index: 8 },
+                false,
+                true,
+            )
+            .unwrap(),
         ];
 
         // Create the validation data
@@ -1460,7 +1601,9 @@ mod tests {
         ExtraAccountMetaList::init::<TestInstruction>(&mut buffer, &required_accounts).unwrap();
 
         // Create the instruction data
-        let instruction_data = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        let mut instruction_data = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        let key_data_pubkey = Pubkey::new_unique();
+        instruction_data.extend_from_slice(key_data_pubkey.as_ref());
 
         // Set up a list of the required accounts as account infos,
         // with two instruction accounts
@@ -1476,6 +1619,8 @@ mod tests {
         let mut data2 = [];
         let mut lamports3 = 0;
         let mut data3 = [];
+        let mut lamports4 = 0;
+        let mut data4 = [];
         let pda = Pubkey::find_program_address(
             &[b"lit_seed", &instruction_data[..4], pubkey_ix_1.as_ref()],
             &program_id,
@@ -1537,6 +1682,17 @@ mod tests {
                 false,
                 Epoch::default(),
             ),
+            // Required account 4 (pubkey data)
+            AccountInfo::new(
+                &key_data_pubkey,
+                false,
+                true,
+                &mut lamports4,
+                &mut data4,
+                &owner,
+                false,
+                Epoch::default(),
+            ),
         ];
 
         // Create another list of account infos to intentionally mess up
@@ -1544,6 +1700,7 @@ mod tests {
         messed_account_infos.swap(0, 2);
         messed_account_infos.swap(1, 4);
         messed_account_infos.swap(3, 2);
+        messed_account_infos.swap(5, 4);
 
         // Account info check should fail for the messed list
         assert_eq!(

@@ -22,7 +22,7 @@ confidential-hook = []
 
 [dependencies]
 arrayref = "0.3.7"
-bytemuck = { version = "1.16.0", features = ["derive"] }
+bytemuck = { version = "1.16.1", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.2"
@@ -30,7 +30,7 @@ solana-program = ">=1.18.11,<=2"
 solana-security-txt = "1.1.1"
 solana-zk-token-sdk = ">=1.18.11,<=2"
 spl-memo = { version = "4.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
-spl-token = { version = "4.0",  path = "../program", features = ["no-entrypoint"] }
+spl-token = { version = "5.0",  path = "../program", features = ["no-entrypoint"] }
 spl-token-group-interface = { version = "0.2.3", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.3.3", path = "../../token-metadata/interface" }
 spl-transfer-hook-interface = { version = "0.6.3", path = "../transfer-hook/interface" }
@@ -42,8 +42,8 @@ serde_with = { version = "3.8.1", optional = true }
 base64 = { version = "0.22.1", optional = true }
 
 [dev-dependencies]
-lazy_static = "1.4.0"
-proptest = "1.4"
+lazy_static = "1.5.0"
+proptest = "1.5"
 serial_test = "3.1.1"
 solana-program-test = ">=1.18.11,<=2"
 solana-sdk = ">=1.18.11,<=2"
