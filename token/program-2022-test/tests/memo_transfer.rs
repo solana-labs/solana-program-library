@@ -75,6 +75,23 @@ async fn test_memo_transfers(
     let bob_state = token.get_account_info(&bob_account).await.unwrap();
     assert_eq!(bob_state.base.amount, 0);
 
+    // attempt to transfer from bob to bob without memo
+    let err = token
+        .transfer(&bob_account, &bob_account, &bob.pubkey(), 0, &[&bob])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NoMemo as u32)
+            )
+        )))
+    );
+    let bob_state = token.get_account_info(&bob_account).await.unwrap();
+    assert_eq!(bob_state.base.amount, 0);
+
     // attempt to transfer from alice to bob with misplaced memo, v1 and current
     let mut memo_ix = spl_memo::build_memo(&[240, 159, 166, 150], &[]);
     for program_id in [spl_memo::id(), spl_memo::v1::id()] {

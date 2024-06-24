@@ -449,6 +449,9 @@ impl Processor {
         // This check MUST occur just before the amounts are manipulated
         // to ensure self-transfers are fully validated
         if self_transfer {
+            if memo_required(&source_account) {
+                check_previous_sibling_instruction_is_memo()?;
+            }
             return Ok(());
         }
 
