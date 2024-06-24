@@ -2,7 +2,7 @@
 use {
     rand::{self, thread_rng, Rng},
     spl_concurrent_merkle_tree::{
-        concurrent_merkle_tree::ConcurrentMerkleTree,
+        concurrent_merkle_tree::{ConcurrentMerkleTree, FillEmptyOrAppendArgs, InitializeWithRootArgs, ProveLeafArgs, SetLeafArgs},
         error::ConcurrentMerkleTreeError,
         node::{Node, EMPTY},
     },
@@ -57,11 +57,11 @@ async fn test_bypass_initialize() {
     assert_eq!(
         ConcurrentMerkleTreeError::TreeNotInitialized,
         cmt.set_leaf(
-            off_chain_tree.get_root(),
-            [0; 32],
-            leaf,
-            &off_chain_tree.get_proof_of_leaf(0),
-            0
+            &SetLeafArgs{ current_root: off_chain_tree.get_root(),
+            previous_leaf: [0; 32],
+            new_leaf: leaf,
+            proof_vec: off_chain_tree.get_proof_of_leaf(0),
+            index: 0 },
         )
         .unwrap_err(),
         "Expected TreeNotInitialized error when setting a leaf on an uninitialized tree"
@@ -70,10 +70,7 @@ async fn test_bypass_initialize() {
     assert_eq!(
         ConcurrentMerkleTreeError::TreeNotInitialized,
         cmt.prove_leaf(
-            off_chain_tree.get_root(),
-            leaf,
-            &off_chain_tree.get_proof_of_leaf(0),
-            0,
+            &ProveLeafArgs { current_root: off_chain_tree.get_root(), leaf, proof_vec: off_chain_tree.get_proof_of_leaf(0), index: 0 }
         )
         .unwrap_err(),
         "Expected TreeNotInitialized error when proving a leaf exists on an uninitialized tree"
@@ -82,10 +79,7 @@ async fn test_bypass_initialize() {
     assert_eq!(
         ConcurrentMerkleTreeError::TreeNotInitialized,
         cmt.fill_empty_or_append(
-            off_chain_tree.get_root(),
-            leaf,
-            &off_chain_tree.get_proof_of_leaf(0),
-            0,
+            &FillEmptyOrAppendArgs { current_root: off_chain_tree.get_root(), leaf, proof_vec: off_chain_tree.get_proof_of_leaf(0), index: 0 }
         )
         .unwrap_err(),
         "Expected TreeNotInitialized error when filling an empty leaf or appending to uninitialized tree"
@@ -130,10 +124,7 @@ async fn test_prove_leaf() {
     // Test that all leaves can be verified
     for leaf_index in 0..(1 << DEPTH) {
         cmt.prove_leaf(
-            off_chain_tree.get_root(),
-            off_chain_tree.get_leaf(leaf_index),
-            &off_chain_tree.get_proof_of_leaf(leaf_index),
-            leaf_index as u32,
+            &ProveLeafArgs { current_root: off_chain_tree.get_root(), leaf: off_chain_tree.get_leaf(leaf_index), proof_vec: off_chain_tree.get_proof_of_leaf(leaf_index), index: leaf_index as u32} 
         )
         .unwrap();
     }
@@ -157,17 +148,18 @@ async fn test_prove_leaf() {
             }
 
             cmt.set_leaf(
-                off_chain_tree.get_root(),
-                off_chain_tree.get_leaf(random_leaf_idx),
-                new_leaf,
-                &off_chain_tree.get_proof_of_leaf(random_leaf_idx),
-                random_leaf_idx as u32,
+                &SetLeafArgs{ current_root: off_chain_tree.get_root(),
+                previous_leaf: off_chain_tree.get_leaf(random_leaf_idx),
+                new_leaf: new_leaf,
+                proof_vec: off_chain_tree.get_proof_of_leaf(random_leaf_idx),
+                index: random_leaf_idx as u32, },
+
             )
             .unwrap();
             off_chain_tree.add_leaf(new_leaf, random_leaf_idx);
 
             // Assert that we can still prove existence of our mostly unused leaf
-            cmt.prove_leaf(root, leaf, &old_proof, leaf_idx as u32)
+            cmt.prove_leaf(&ProveLeafArgs { current_root: root, leaf: leaf, proof_vec: old_proof.clone(), index: leaf_idx as u32 })
                 .unwrap();
         }
     }
@@ -184,10 +176,7 @@ async fn test_initialize_with_root() {
 
     let last_leaf_idx = tree.leaf_nodes.len() - 1;
     cmt.initialize_with_root(
-        tree.get_root(),
-        tree.get_leaf(last_leaf_idx),
-        &tree.get_proof_of_leaf(last_leaf_idx),
-        last_leaf_idx as u32,
+        &InitializeWithRootArgs { root: tree.get_root(), rightmost_leaf: tree.get_leaf(last_leaf_idx), proof_vec: tree.get_proof_of_leaf(last_leaf_idx), index: last_leaf_idx as u32 }
     )
     .unwrap();
 
@@ -199,10 +188,7 @@ async fn test_initialize_with_root() {
 
     // Check that reinitialization fails
     if let Err(ConcurrentMerkleTreeError::TreeAlreadyInitialized) = cmt.initialize_with_root(
-        tree.get_root(),
-        tree.get_leaf(last_leaf_idx),
-        &tree.get_proof_of_leaf(last_leaf_idx),
-        last_leaf_idx as u32,
+        &InitializeWithRootArgs { root: tree.get_root(), rightmost_leaf: tree.get_leaf(last_leaf_idx), proof_vec: tree.get_proof_of_leaf(last_leaf_idx), index: last_leaf_idx as u32}
     ) {
         println!("Reinitialization with root successfully prevented");
     } else {
@@ -228,12 +214,12 @@ async fn test_leaf_contents_modified() {
     // Update leaf to be something else
     let new_leaf_0 = rng.gen::<[u8; 32]>();
     tree.add_leaf(leaf, 0);
-    cmt.set_leaf(root, leaf, new_leaf_0, &proof, 0_u32).unwrap();
+    cmt.set_leaf(&SetLeafArgs{ current_root: root, previous_leaf: leaf, new_leaf: new_leaf_0, proof_vec: proof.clone(), index: 0_u32}).unwrap();
 
     // Should fail to replace same leaf using outdated info
     let new_leaf_1 = rng.gen::<[u8; 32]>();
     tree.add_leaf(leaf, 0);
-    match cmt.set_leaf(root, leaf, new_leaf_1, &proof, 0_u32) {
+    match cmt.set_leaf(&SetLeafArgs { current_root: root, previous_leaf: leaf, new_leaf: new_leaf_1, proof_vec: proof, index: 0u32 }) {
         Ok(_) => {
             panic!("CMT should fail when replacing leafs with outdated leaf proofs")
         }
@@ -264,11 +250,11 @@ async fn test_replaces() {
     for i in 0..(1 << DEPTH) {
         let leaf = rng.gen::<[u8; 32]>();
         cmt.set_leaf(
-            tree.get_root(),
-            tree.get_leaf(i),
-            leaf,
-            &tree.get_proof_of_leaf(i),
-            i as u32,
+            &SetLeafArgs{ current_root: tree.get_root(),
+            previous_leaf: tree.get_leaf(i),
+            new_leaf: leaf,
+            proof_vec: tree.get_proof_of_leaf(i),
+            index: i as u32, },
         )
         .unwrap();
         tree.add_leaf(leaf, i);
@@ -281,11 +267,12 @@ async fn test_replaces() {
         let index = rng.gen_range(0..test_capacity) % (1 << DEPTH);
         let leaf = rng.gen::<[u8; 32]>();
         cmt.set_leaf(
-            tree.get_root(),
-            tree.get_leaf(index),
-            leaf,
-            &tree.get_proof_of_leaf(index),
-            index as u32,
+            &SetLeafArgs{ current_root: tree.get_root(),
+            previous_leaf: tree.get_leaf(index),
+            new_leaf: leaf,
+            proof_vec: tree.get_proof_of_leaf(index),
+            index: index as u32, },
+
         )
         .unwrap();
         tree.add_leaf(leaf, index);
@@ -333,11 +320,7 @@ async fn test_mixed() {
             let index = rng.gen_range(0..tree_size) % (tree_size);
             println!("{} replace {}", tree_size, index);
             cmt.set_leaf(
-                tree.get_root(),
-                tree.get_leaf(index),
-                leaf,
-                &tree.get_proof_of_leaf(index),
-                index as u32,
+                &SetLeafArgs { current_root: tree.get_root(), previous_leaf: tree.get_leaf(index), new_leaf: leaf, proof_vec: tree.get_proof_of_leaf(index), index: index as u32},
             )
             .unwrap();
             tree.add_leaf(leaf, index);
@@ -374,11 +357,11 @@ async fn test_append_bug_repro_1() {
     let leaf_0 = rng.gen::<[u8; 32]>();
     let index = 9;
     cmt.set_leaf(
-        tree.get_root(),
-        tree.get_leaf(index),
-        leaf_0,
-        &tree.get_proof_of_leaf(index),
-        index as u32,
+       &SetLeafArgs{ current_root: tree.get_root(),
+        previous_leaf: tree.get_leaf(index),
+        new_leaf: leaf_0,
+        proof_vec: tree.get_proof_of_leaf(index),
+        index: index as u32, },
     )
     .unwrap();
     tree.add_leaf(leaf_0, index);
@@ -418,11 +401,11 @@ async fn test_append_bug_repro_2() {
     let mut leaf = rng.gen::<[u8; 32]>();
     let index = 10;
     cmt.set_leaf(
-        tree.get_root(),
-        tree.get_leaf(index),
-        leaf,
-        &tree.get_proof_of_leaf(index),
-        index as u32,
+        &SetLeafArgs{ current_root: tree.get_root(),
+        previous_leaf: tree.get_leaf(index),
+        new_leaf: leaf,
+        proof_vec: tree.get_proof_of_leaf(index),
+        index: index as u32, },
     )
     .unwrap();
     tree.add_leaf(leaf, index);
@@ -474,11 +457,11 @@ async fn test_prove_tree_empty_incremental() {
         }
 
         cmt.set_leaf(
-            tree.get_root(),
-            tree.get_leaf(i),
-            EMPTY,
-            &tree.get_proof_of_leaf(i),
-            i as u32,
+            &SetLeafArgs{ current_root: tree.get_root(),
+            previous_leaf: tree.get_leaf(i),
+            new_leaf: EMPTY,
+            proof_vec: tree.get_proof_of_leaf(i),
+            index: i as u32, },
         )
         .unwrap();
         tree.add_leaf(EMPTY, i);
@@ -520,11 +503,11 @@ async fn test_prove_tree_empty_batched() {
     // Remove random leaves
     for i in 0..tree_size - 1 {
         cmt.set_leaf(
-            tree.get_root(),
-            tree.get_leaf(i),
-            EMPTY,
-            &tree.get_proof_of_leaf(i),
-            i as u32,
+            &SetLeafArgs{ current_root: tree.get_root(),
+            previous_leaf: tree.get_leaf(i),
+            new_leaf: EMPTY,
+            proof_vec: tree.get_proof_of_leaf(i),
+            index: i as u32, },
         )
         .unwrap();
         tree.add_leaf(EMPTY, i);
@@ -542,11 +525,7 @@ async fn test_prove_tree_empty_batched() {
         }
     }
     cmt.set_leaf(
-        tree.get_root(),
-        tree.get_leaf(tree_size - 1),
-        EMPTY,
-        &tree.get_proof_of_leaf(tree_size - 1),
-        (tree_size - 1) as u32,
+        &SetLeafArgs { current_root: tree.get_root(), previous_leaf: tree.get_leaf(tree_size - 1), new_leaf: EMPTY, proof_vec: tree.get_proof_of_leaf(tree_size - 1), index: (tree_size - 1) as u32 },
     )
     .unwrap();
     tree.add_leaf(EMPTY, tree_size - 1);
