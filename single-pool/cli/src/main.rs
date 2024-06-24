@@ -282,7 +282,7 @@ async fn command_deposit(config: &Config, command_config: DepositCli) -> Command
             .into());
         }
 
-        if stake.delegation.deactivation_epoch < std::u64::MAX {
+        if stake.delegation.deactivation_epoch < u64::MAX {
             return Err(format!(
                 "Stake account {} is deactivating or deactivated",
                 stake_account_address

@@ -159,11 +159,17 @@ impl From<Multisig> for PodMultisig {
 /// COption<T> stored as a Pod type
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct PodCOption<T: Pod + Default> {
+pub struct PodCOption<T>
+where
+    T: Pod + Default,
+{
     pub(crate) option: [u8; 4],
     pub(crate) value: T,
 }
-impl<T: Pod + Default> PodCOption<T> {
+impl<T> PodCOption<T>
+where
+    T: Pod + Default,
+{
     /// Represents that no value is stored in the option, like `Option::None`
     pub const NONE: [u8; 4] = [0; 4];
     /// Represents that some value is stored in the option, like
