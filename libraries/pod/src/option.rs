@@ -33,47 +33,68 @@ unsafe impl<T: Nullable> Pod for PodOption<T> {}
 
 unsafe impl<T: Nullable> Zeroable for PodOption<T> {}
 
-impl<T: Nullable> PodOption<T> {
-    #[inline]
-    pub fn new(value: T) -> Self {
-        Self(value)
-    }
-
-    #[inline]
-    pub fn to_option(&self) -> Option<&T> {
-        if self.0.is_none() {
-            None
-        } else {
-            Some(&self.0)
-        }
-    }
-
-    #[inline]
-    pub fn to_option_mut(&mut self) -> Option<&mut T> {
-        if self.0.is_none() {
-            None
-        } else {
-            Some(&mut self.0)
-        }
+impl<T: Nullable> From<T> for PodOption<T> {
+    fn from(value: T) -> Self {
+        PodOption(value)
     }
 }
 
 impl<T: Nullable> From<PodOption<T>> for Option<T> {
-    fn from(value: PodOption<T>) -> Self {
-        if value.0.is_none() {
+    fn from(from: PodOption<T>) -> Self {
+        if from.0.is_none() {
             None
         } else {
-            Some(value.0)
+            Some(from.0)
+        }
+    }
+}
+
+impl<'a, T: Nullable> From<&'a PodOption<T>> for Option<&'a T> {
+    fn from(from: &'a PodOption<T>) -> Self {
+        if from.0.is_none() {
+            None
+        } else {
+            Some(&from.0)
+        }
+    }
+}
+
+impl<'a, T: Nullable> From<&'a mut PodOption<T>> for Option<&'a mut T> {
+    fn from(from: &'a mut PodOption<T>) -> Self {
+        if from.0.is_none() {
+            None
+        } else {
+            Some(&mut from.0)
         }
     }
 }
 
 impl<T: Nullable> From<PodOption<T>> for COption<T> {
-    fn from(value: PodOption<T>) -> Self {
-        if value.0.is_none() {
+    fn from(from: PodOption<T>) -> Self {
+        if from.0.is_none() {
             COption::None
         } else {
-            COption::Some(value.0)
+            COption::Some(from.0)
+        }
+    }
+}
+
+impl<'a, T: Nullable> From<&'a PodOption<T>> for COption<&'a T> {
+    fn from(from: &'a PodOption<T>) -> Self {
+        if from.0.is_none() {
+            COption::None
+        } else {
+            COption::Some(&from.0)
+        }
+    }
+}
+
+impl<'a, T: Nullable> From<&'a mut PodOption<T>> for COption<&'a mut T> {
+    fn from(from: &'a mut PodOption<T>) -> Self {
+        if from.0.is_none() {
+            COption::None
+        } else {
+            COption::Some(&mut from.0)
         }
     }
 }
@@ -81,7 +102,7 @@ impl<T: Nullable> From<PodOption<T>> for COption<T> {
 /// Implementation of `Nullable` for `Pubkey`.
 ///
 /// The implementation assumes that the default value of `Pubkey` represents
-/// `None`.
+/// the `None` value.
 impl Nullable for Pubkey {
     fn is_none(&self) -> bool {
         self == &Pubkey::default()
@@ -95,18 +116,18 @@ mod tests {
 
     #[test]
     fn test_pod_option_pubkey() {
-        let some_pubkey = PodOption::new(sysvar::ID);
-        assert_eq!(some_pubkey.to_option(), Some(&sysvar::ID));
+        let some_pubkey = PodOption::from(sysvar::ID);
+        assert_eq!(Into::<Option<Pubkey>>::into(some_pubkey), Some(sysvar::ID));
 
-        let none_pubkey = PodOption::new(Pubkey::default());
-        assert_eq!(none_pubkey.to_option(), None);
+        let none_pubkey = PodOption::from(Pubkey::default());
+        assert_eq!(Into::<Option<Pubkey>>::into(none_pubkey), None);
 
         let mut data = Vec::with_capacity(64);
         data.extend_from_slice(sysvar::ID.as_ref());
         data.extend_from_slice(&[0u8; 32]);
 
         let values = pod_slice_from_bytes::<PodOption<Pubkey>>(&data).unwrap();
-        assert_eq!(values[0].to_option(), Some(&sysvar::ID));
-        assert_eq!(values[1].to_option(), None);
+        assert_eq!(values[0], PodOption::from(sysvar::ID));
+        assert_eq!(values[1], PodOption::from(Pubkey::default()));
     }
 }
