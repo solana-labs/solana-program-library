@@ -381,6 +381,18 @@ impl Processor {
         }
 
         let self_transfer = source_account_info.key == destination_account_info.key;
+        if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
+            // Blocks all cases where the authority has signed if CPI Guard is
+            // enabled, including:
+            // * the account is delegated to the owner
+            // * the account owner is the permanent delegate
+            if *authority_info.key == source_account.base.owner
+                && cpi_guard.lock_cpi.into()
+                && in_cpi()
+            {
+                return Err(TokenError::CpiGuardTransferBlocked.into());
+            }
+        }
         match (source_account.base.delegate, maybe_permanent_delegate) {
             (_, Some(ref delegate)) if authority_info.key == delegate => Self::validate_owner(
                 program_id,
@@ -403,15 +415,6 @@ impl Processor {
                     authority_info_data_len,
                     account_info_iter.as_slice(),
                 )?;
-                if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
-                    // If delegated to self, don't allow a transfer with CPI Guard
-                    if delegate == source_account.base.owner
-                        && cpi_guard.lock_cpi.into()
-                        && in_cpi()
-                    {
-                        return Err(TokenError::CpiGuardTransferBlocked.into());
-                    }
-                }
                 let delegated_amount = u64::from(source_account.base.delegated_amount);
                 if delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
@@ -434,12 +437,6 @@ impl Processor {
                     authority_info_data_len,
                     account_info_iter.as_slice(),
                 )?;
-
-                if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
-                    if cpi_guard.lock_cpi.into() && in_cpi() {
-                        return Err(TokenError::CpiGuardTransferBlocked.into());
-                    }
-                }
             }
         }
 
@@ -1033,6 +1030,19 @@ impl Processor {
         }
         let maybe_permanent_delegate = get_permanent_delegate(&mint);
 
+        if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
+            // Blocks all cases where the authority has signed if CPI Guard is
+            // enabled, including:
+            // * the account is delegated to the owner
+            // * the account owner is the permanent delegate
+            if *authority_info.key == source_account.base.owner
+                && cpi_guard.lock_cpi.into()
+                && in_cpi()
+            {
+                return Err(TokenError::CpiGuardBurnBlocked.into());
+            }
+        }
+
         if !source_account
             .base
             .is_owned_by_system_program_or_incinerator()
@@ -1080,12 +1090,6 @@ impl Processor {
                         authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
-
-                    if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
-                        if cpi_guard.lock_cpi.into() && in_cpi() {
-                            return Err(TokenError::CpiGuardBurnBlocked.into());
-                        }
-                    }
                 }
             }
         }
