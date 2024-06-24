@@ -29,6 +29,7 @@ use anchor_lang::{
 use borsh::{BorshDeserialize, BorshSerialize};
 
 pub mod canopy;
+pub mod concurrent_tree_wrapper;
 pub mod error;
 pub mod events;
 #[macro_use]
@@ -40,6 +41,7 @@ pub mod zero_copy;
 pub use crate::noop::{wrap_application_data_v1, Noop};
 
 use crate::canopy::{fill_in_proof_from_canopy, update_canopy};
+use crate::concurrent_tree_wrapper::*;
 pub use crate::error::AccountCompressionError;
 pub use crate::events::{AccountCompressionEvent, ChangeLogEvent};
 use crate::noop::wrap_event;
@@ -50,7 +52,9 @@ use crate::zero_copy::ZeroCopy;
 
 /// Exported for Anchor / Solita
 pub use spl_concurrent_merkle_tree::{
-    concurrent_merkle_tree::ConcurrentMerkleTree, error::ConcurrentMerkleTreeError, node::Node,
+    concurrent_merkle_tree::{ConcurrentMerkleTree, FillEmptyOrAppendArgs},
+    error::ConcurrentMerkleTreeError,
+    node::Node,
 };
 
 declare_id!("cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
@@ -270,17 +274,15 @@ pub mod spl_account_compression {
         fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         let id = ctx.accounts.merkle_tree.key();
         // A call is made to ConcurrentMerkleTree::set_leaf(root, previous_leaf, new_leaf, proof, index)
-        let change_log_event = merkle_tree_apply_fn_mut!(
-            header,
-            id,
-            tree_bytes,
-            set_leaf,
-            root,
+        let args = &SetLeafArgs {
+            current_root: root,
             previous_leaf,
             new_leaf,
-            &proof,
+            proof_vec: proof,
             index,
-        )?;
+        };
+        let change_log_event = merkle_tree_set_leaf(&header, id, tree_bytes, args)?;
+
         update_canopy(
             canopy_bytes,
             header.get_max_depth(),
@@ -347,7 +349,14 @@ pub mod spl_account_compression {
         fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         let id = ctx.accounts.merkle_tree.key();
 
-        merkle_tree_apply_fn!(header, id, tree_bytes, prove_leaf, root, leaf, &proof, index)?;
+        let args = &ProveLeafArgs {
+            current_root: root,
+            leaf,
+            proof_vec: proof,
+            index,
+        };
+        merkle_tree_prove_leaf(&header, id, tree_bytes, args)?;
+
         Ok(())
     }
 
@@ -418,16 +427,14 @@ pub mod spl_account_compression {
         fill_in_proof_from_canopy(canopy_bytes, header.get_max_depth(), index, &mut proof)?;
         // A call is made to ConcurrentMerkleTree::fill_empty_or_append
         let id = ctx.accounts.merkle_tree.key();
-        let change_log_event = merkle_tree_apply_fn_mut!(
-            header,
-            id,
-            tree_bytes,
-            fill_empty_or_append,
-            root,
+        let args = &FillEmptyOrAppendArgs {
+            current_root: root,
             leaf,
-            &proof,
+            proof_vec: proof,
             index,
-        )?;
+        };
+        let change_log_event = merkle_tree_fill_empty_or_append(&header, id, tree_bytes, args)?;
+
         update_canopy(
             canopy_bytes,
             header.get_max_depth(),
