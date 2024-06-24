@@ -29,6 +29,17 @@ pub trait Nullable: Pod {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct PodOption<T: Nullable>(T);
 
+impl<T: Nullable> PodOption<T> {
+    /// Returns the contained value as an `Option`.
+    pub fn get(self) -> Option<T> {
+        if self.0.is_none() {
+            None
+        } else {
+            Some(self.0)
+        }
+    }
+}
+
 unsafe impl<T: Nullable> Pod for PodOption<T> {}
 
 unsafe impl<T: Nullable> Zeroable for PodOption<T> {}
@@ -41,11 +52,7 @@ impl<T: Nullable> From<T> for PodOption<T> {
 
 impl<T: Nullable> From<PodOption<T>> for Option<T> {
     fn from(from: PodOption<T>) -> Self {
-        if from.0.is_none() {
-            None
-        } else {
-            Some(from.0)
-        }
+        from.get()
     }
 }
 
@@ -120,7 +127,7 @@ mod tests {
         assert_eq!(Into::<Option<Pubkey>>::into(some_pubkey), Some(sysvar::ID));
 
         let none_pubkey = PodOption::from(Pubkey::default());
-        assert_eq!(Into::<Option<Pubkey>>::into(none_pubkey), None);
+        assert_eq!(none_pubkey.get(), None);
 
         let mut data = Vec::with_capacity(64);
         data.extend_from_slice(sysvar::ID.as_ref());
