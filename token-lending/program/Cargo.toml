@@ -23,7 +23,7 @@ uint = "0.9"
 
 [dev-dependencies]
 assert_matches = "1.5.0"
-proptest = "1.4"
+proptest = "1.5"
 solana-program-test = ">=1.18.11,<=2"
 solana-sdk = ">=1.18.11,<=2"
 
