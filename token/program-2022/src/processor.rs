@@ -2,7 +2,7 @@
 
 use {
     crate::{
-        check_program_account, cmp_pubkeys,
+        check_program_account,
         error::TokenError,
         extension::{
             confidential_transfer::{self, ConfidentialTransferAccount, ConfidentialTransferMint},
@@ -192,7 +192,7 @@ impl Processor {
         account.base.delegate = PodCOption::none();
         account.base.delegated_amount = 0.into();
         account.base.state = starting_state.into();
-        if cmp_pubkeys(mint_info.key, &native_mint::id()) {
+        if mint_info.key == &native_mint::id() {
             let rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
             account.base.is_native = PodCOption::some(rent_exempt_reserve.into());
             account.base.amount = new_account_info
@@ -324,7 +324,7 @@ impl Processor {
         }
         let (fee, maybe_permanent_delegate, maybe_transfer_hook_program_id) =
             if let Some((mint_info, expected_decimals)) = expected_mint_info {
-                if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
+                if &source_account.base.mint != mint_info.key {
                     return Err(TokenError::MintMismatch.into());
                 }
 
@@ -380,24 +380,22 @@ impl Processor {
             }
         }
 
-        let self_transfer = cmp_pubkeys(source_account_info.key, destination_account_info.key);
+        let self_transfer = source_account_info.key == destination_account_info.key;
         match (source_account.base.delegate, maybe_permanent_delegate) {
-            (_, Some(ref delegate)) if cmp_pubkeys(authority_info.key, delegate) => {
-                Self::validate_owner(
-                    program_id,
-                    delegate,
-                    authority_info,
-                    authority_info_data_len,
-                    account_info_iter.as_slice(),
-                )?
-            }
+            (_, Some(ref delegate)) if authority_info.key == delegate => Self::validate_owner(
+                program_id,
+                delegate,
+                authority_info,
+                authority_info_data_len,
+                account_info_iter.as_slice(),
+            )?,
             (
                 PodCOption {
                     option: PodCOption::<Pubkey>::SOME,
                     value: delegate,
                 },
                 _,
-            ) if cmp_pubkeys(authority_info.key, &delegate) => {
+            ) if authority_info.key == &delegate => {
                 Self::validate_owner(
                     program_id,
                     &delegate,
@@ -465,7 +463,7 @@ impl Processor {
         if destination_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
-        if !cmp_pubkeys(&source_account.base.mint, &destination_account.base.mint) {
+        if source_account.base.mint != destination_account.base.mint {
             return Err(TokenError::MintMismatch.into());
         }
 
@@ -573,7 +571,7 @@ impl Processor {
         }
 
         if let Some((mint_info, expected_decimals)) = expected_mint_info {
-            if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
+            if &source_account.base.mint != mint_info.key {
                 return Err(TokenError::MintMismatch.into());
             }
 
@@ -624,7 +622,7 @@ impl Processor {
                 PodCOption {
                     option: PodCOption::<Pubkey>::SOME,
                     value: delegate,
-                } if cmp_pubkeys(authority_info.key, delegate) => delegate,
+                } if authority_info.key == delegate => delegate,
                 _ => &source_account.base.owner,
             },
             authority_info,
@@ -939,7 +937,7 @@ impl Processor {
         if destination_account.base.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
-        if !cmp_pubkeys(mint_info.key, &destination_account.base.mint) {
+        if mint_info.key != &destination_account.base.mint {
             return Err(TokenError::MintMismatch.into());
         }
 
@@ -1040,22 +1038,20 @@ impl Processor {
             .is_owned_by_system_program_or_incinerator()
         {
             match (&source_account.base.delegate, maybe_permanent_delegate) {
-                (_, Some(ref delegate)) if cmp_pubkeys(authority_info.key, delegate) => {
-                    Self::validate_owner(
-                        program_id,
-                        delegate,
-                        authority_info,
-                        authority_info_data_len,
-                        account_info_iter.as_slice(),
-                    )?
-                }
+                (_, Some(ref delegate)) if authority_info.key == delegate => Self::validate_owner(
+                    program_id,
+                    delegate,
+                    authority_info,
+                    authority_info_data_len,
+                    account_info_iter.as_slice(),
+                )?,
                 (
                     PodCOption {
                         option: PodCOption::<Pubkey>::SOME,
                         value: delegate,
                     },
                     _,
-                ) if cmp_pubkeys(authority_info.key, delegate) => {
+                ) if authority_info.key == delegate => {
                     Self::validate_owner(
                         program_id,
                         delegate,
@@ -1120,7 +1116,7 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
         let authority_info_data_len = authority_info.data_len();
 
-        if cmp_pubkeys(source_account_info.key, destination_account_info.key) {
+        if source_account_info.key == destination_account_info.key {
             return Err(ProgramError::InvalidAccountData);
         }
 
@@ -1144,7 +1140,7 @@ impl Processor {
                 if let Ok(cpi_guard) = source_account.get_extension::<CpiGuard>() {
                     if cpi_guard.lock_cpi.into()
                         && in_cpi()
-                        && !cmp_pubkeys(destination_account_info.key, &source_account.base.owner)
+                        && destination_account_info.key != &source_account.base.owner
                     {
                         return Err(TokenError::CpiGuardCloseAccountBlocked.into());
                     }
@@ -1230,7 +1226,7 @@ impl Processor {
         if source_account.base.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
-        if !cmp_pubkeys(mint_info.key, &source_account.base.mint) {
+        if mint_info.key != &source_account.base.mint {
             return Err(TokenError::MintMismatch.into());
         }
 
@@ -1808,12 +1804,11 @@ impl Processor {
         owner_account_data_len: usize,
         signers: &[AccountInfo],
     ) -> ProgramResult {
-        if !cmp_pubkeys(expected_owner, owner_account_info.key) {
+        if expected_owner != owner_account_info.key {
             return Err(TokenError::OwnerMismatch.into());
         }
 
-        if cmp_pubkeys(program_id, owner_account_info.owner)
-            && owner_account_data_len == PodMultisig::SIZE_OF
+        if program_id == owner_account_info.owner && owner_account_data_len == PodMultisig::SIZE_OF
         {
             let multisig_data = &owner_account_info.data.borrow();
             let multisig = pod_from_bytes::<PodMultisig>(multisig_data)?;
@@ -1821,7 +1816,7 @@ impl Processor {
             let mut matched = [false; MAX_SIGNERS];
             for signer in signers.iter() {
                 for (position, key) in multisig.signers[0..multisig.n as usize].iter().enumerate() {
-                    if cmp_pubkeys(key, signer.key) && !matched[position] {
+                    if key == signer.key && !matched[position] {
                         if !signer.is_signer {
                             return Err(ProgramError::MissingRequiredSignature);
                         }
