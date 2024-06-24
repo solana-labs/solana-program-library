@@ -98,6 +98,10 @@ jobs:
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
 
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+
       - name: Test token-2022 with "serde" activated
         run: |
           cargo test \
