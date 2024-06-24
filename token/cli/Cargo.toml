@@ -28,7 +28,7 @@ solana-logger = ">=1.18.11,<=2"
 solana-remote-wallet = ">=1.18.11,<=2"
 solana-sdk = ">=1.18.11,<=2"
 solana-transaction-status = ">=1.18.11,<=2"
-spl-token = { version = "4.0", path = "../program", features = [
+spl-token = { version = "5.0", path = "../program", features = [
   "no-entrypoint",
 ] }
 spl-token-2022 = { version = "3.0.2", path = "../program-2022", features = [

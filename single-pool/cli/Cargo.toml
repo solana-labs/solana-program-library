@@ -27,7 +27,7 @@ solana-remote-wallet = ">=1.18.11,<=2"
 solana-sdk = ">=1.18.11,<=2"
 solana-transaction-status = ">=1.18.11,<=2"
 solana-vote-program = ">=1.18.11,<=2"
-spl-token = { version = "4.0", path = "../../token/program", features = [
+spl-token = { version = "5.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
 spl-token-client = { version = "0.10.0", path = "../../token/client" }
