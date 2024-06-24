@@ -40,7 +40,7 @@ proptest = "1.5"
 solana-program-test = ">=1.18.11,<=2"
 solana-sdk = ">=1.18.11,<=2"
 solana-vote-program = ">=1.18.11,<=2"
-spl-token = { version = "4.0", path = "../../token/program", features = [
+spl-token = { version = "5.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
 test-case = "3.3"

@@ -13,7 +13,7 @@ test-sbf = []
 
 [dependencies]
 solana-program = ">=1.18.11,<=2"
-spl-token = { version = "4.0", path = "../../../token/program", features = [ "no-entrypoint" ] }
+spl-token = { version = "5.0", path = "../../../token/program", features = [ "no-entrypoint" ] }
 
 [dev-dependencies]
 solana-program-test = ">=1.18.11,<=2"
