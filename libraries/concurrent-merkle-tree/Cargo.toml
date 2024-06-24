@@ -12,7 +12,7 @@ log = []
 sol-log = ["log"]
 
 [dependencies]
-solana-program = "1.16"
+solana-program = "2.0.0"
 bytemuck = "1.16"
 thiserror = "1.0.61"
 
