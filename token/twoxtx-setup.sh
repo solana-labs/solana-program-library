@@ -13,9 +13,9 @@ if [[ ! -d twoxtx-solana ]]; then
   if [[ -n $CI ]]; then
     git config --global user.email "you@example.com"
     git config --global user.name "Your Name"
-    git clone https://github.com/solana-labs/solana.git twoxtx-solana
+    git clone https://github.com/anza-xyz/agave.git twoxtx-solana
   else
-    git clone git@github.com:solana-labs/solana.git twoxtx-solana
+    git clone git@github.com:anza-xyz/agave.git twoxtx-solana
   fi
 fi
 

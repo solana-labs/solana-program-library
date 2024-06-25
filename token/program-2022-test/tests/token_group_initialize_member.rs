@@ -247,7 +247,7 @@ async fn success_initialize() {
         &TokenGroupMember {
             mint: member1_mint_keypair.pubkey(),
             group: group_mint_keypair.pubkey(),
-            member_number: 1.try_into().unwrap(),
+            member_number: 1.into(),
         }
     );
 
@@ -298,7 +298,7 @@ async fn success_initialize() {
         &TokenGroupMember {
             mint: member2_mint_keypair.pubkey(),
             group: group_mint_keypair.pubkey(),
-            member_number: 2.try_into().unwrap(),
+            member_number: 2.into(),
         }
     );
 
