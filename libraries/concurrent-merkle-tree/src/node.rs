@@ -27,9 +27,8 @@ pub fn empty_node_cached<const N: usize>(level: u32, cache: &[Node; N]) -> Node 
     data
 }
 
-
 /// Calculates and caches the hash of empty nodes up to level i
-pub fn empty_node_cached_mut<const N: usize>(level: u32, cache: &mut[Node; N]) -> Node {
+pub fn empty_node_cached_mut<const N: usize>(level: u32, cache: &mut [Node; N]) -> Node {
     let mut data = EMPTY;
     if level != 0 {
         let target = (level - 1) as usize;

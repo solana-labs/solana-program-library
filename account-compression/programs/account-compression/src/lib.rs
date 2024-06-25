@@ -311,17 +311,14 @@ pub mod spl_account_compression {
         assert_eq!(proof.len(), header.get_max_depth() as usize);
 
         let id = ctx.accounts.merkle_tree.key();
-        // A call is made to ConcurrentMerkleTree::initialize_with_root(root, rightmost_leaf, proof, rightmost_index)
-        let change_log = merkle_tree_apply_fn_mut!(
-            header,
-            id,
-            tree_bytes,
-            initialize_with_root,
+        // A call is made to ConcurrentMerkleTree::initialize_with_root
+        let args = &InitializeWithRootArgs {
             root,
             rightmost_leaf,
-            &proof,
-            rightmost_index
-        )?;
+            proof_vec: proof,
+            index: rightmost_index,
+        };
+        let change_log = merkle_tree_initialize_with_root(&header, id, tree_bytes, args)?;
         update_canopy(canopy_bytes, header.get_max_depth(), Some(&change_log))?;
         wrap_event(
             &AccountCompressionEvent::ChangeLog(*change_log),
