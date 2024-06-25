@@ -60,6 +60,7 @@ members = [
   "token/transfer-hook/cli",
   "token/transfer-hook/example",
   "token/transfer-hook/interface",
+  "token/confidential-transfer/proofs",
   "token/client",
   "utils/cgen",
   "utils/test-client",

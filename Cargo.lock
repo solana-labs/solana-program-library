@@ -6888,6 +6888,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-confidential-transfer-proofs"
+version = "0.1.0"
+
+[[package]]
 name = "spl-discriminator"
 version = "0.2.2"
 dependencies = [
