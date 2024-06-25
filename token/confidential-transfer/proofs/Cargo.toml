@@ -11,5 +11,8 @@ edition = "2021"
 
 [dev-dependencies]
 
+[target.'cfg(not(target_os = "solana"))'.dependencies]
+solana-zk-sdk = "2.0.0"
+
 [lib]
 crate-type = ["cdylib", "lib"]

@@ -6890,6 +6890,9 @@ dependencies = [
 [[package]]
 name = "spl-confidential-transfer-proofs"
 version = "0.1.0"
+dependencies = [
+ "solana-zk-sdk",
+]
 
 [[package]]
 name = "spl-discriminator"
