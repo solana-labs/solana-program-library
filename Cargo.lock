@@ -646,7 +646,7 @@ dependencies = [
  "arrayref",
  "borsh 1.5.1",
  "solana-program",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
  "uint",
 ]
@@ -1922,7 +1922,7 @@ version = "1.0.0"
 dependencies = [
  "arrayref",
  "solana-program",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
 ]
 
 [[package]]
@@ -6826,7 +6826,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "solana-program",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-2022 3.0.2",
  "thiserror",
 ]
@@ -6855,7 +6855,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 3.0.2",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-2022 3.0.2",
 ]
 
@@ -6869,7 +6869,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
  "uint",
 ]
@@ -7004,7 +7004,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
 ]
 
 [[package]]
@@ -7015,7 +7015,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
 ]
 
 [[package]]
@@ -7053,7 +7053,7 @@ dependencies = [
  "spl-governance-addin-mock",
  "spl-governance-test-sdk",
  "spl-governance-tools",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
 ]
 
@@ -7085,7 +7085,7 @@ dependencies = [
  "spl-governance-addin-api",
  "spl-governance-test-sdk",
  "spl-governance-tools",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
 ]
 
@@ -7110,7 +7110,7 @@ dependencies = [
  "spl-governance-addin-mock",
  "spl-governance-test-sdk",
  "spl-governance-tools",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
 ]
 
@@ -7129,7 +7129,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
 ]
 
@@ -7145,7 +7145,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "solana-program",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
 ]
 
@@ -7169,7 +7169,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 3.0.2",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
 ]
 
@@ -7346,7 +7346,7 @@ dependencies = [
  "solana-security-txt",
  "solana-vote-program",
  "spl-associated-token-account 3.0.2",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "test-case",
  "thiserror",
 ]
@@ -7377,7 +7377,7 @@ dependencies = [
  "solana-vote-program",
  "spl-associated-token-account 3.0.2",
  "spl-single-pool",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-client",
  "tempfile",
  "test-case",
@@ -7406,7 +7406,7 @@ dependencies = [
  "solana-vote-program",
  "spl-math",
  "spl-pod 0.2.2",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-2022 3.0.2",
  "test-case",
  "thiserror",
@@ -7434,7 +7434,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 3.0.2",
  "spl-stake-pool",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
 ]
 
 [[package]]
@@ -7486,7 +7486,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token"
-version = "5.0.0"
+version = "6.0.0"
 dependencies = [
  "arrayref",
  "bytemuck",
@@ -7526,7 +7526,7 @@ dependencies = [
  "spl-memo 5.0.0",
  "spl-pod 0.2.2",
  "spl-tlv-account-resolution 0.6.3",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-group-interface 0.2.3",
  "spl-token-metadata-interface 0.3.3",
  "spl-transfer-hook-interface 0.6.3",
@@ -7609,7 +7609,7 @@ dependencies = [
  "solana-transaction-status",
  "spl-associated-token-account 3.0.2",
  "spl-memo 5.0.0",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-2022 3.0.2",
  "spl-token-client",
  "spl-token-group-interface 0.2.3",
@@ -7637,7 +7637,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 3.0.2",
  "spl-memo 5.0.0",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-2022 3.0.2",
  "spl-token-group-interface 0.2.3",
  "spl-token-metadata-interface 0.3.3",
@@ -7717,7 +7717,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
  "uint",
 ]
@@ -7733,7 +7733,7 @@ dependencies = [
  "solana-logger",
  "solana-program",
  "solana-sdk",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-lending",
 ]
 
@@ -7794,7 +7794,7 @@ dependencies = [
  "solana-program",
  "solana-sdk",
  "spl-math",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-2022 3.0.2",
  "test-case",
  "thiserror",
@@ -7808,7 +7808,7 @@ dependencies = [
  "honggfuzz",
  "solana-program",
  "spl-math",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-swap",
 ]
 
@@ -7822,7 +7822,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-2022 3.0.2",
  "spl-token-client",
  "test-case",
@@ -7843,7 +7843,7 @@ dependencies = [
  "solana-sdk",
  "solana-test-validator",
  "spl-associated-token-account 3.0.2",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-2022 3.0.2",
  "spl-token-client",
  "spl-token-upgrade",
@@ -7859,7 +7859,7 @@ dependencies = [
  "num_enum",
  "solana-program",
  "spl-associated-token-account 3.0.2",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-2022 3.0.2",
  "thiserror",
 ]
@@ -7988,7 +7988,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 3.0.2",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "thiserror",
 ]
 
@@ -8293,7 +8293,7 @@ version = "0.1.0"
 dependencies = [
  "solana-sdk",
  "spl-memo 5.0.0",
- "spl-token 5.0.0",
+ "spl-token 6.0.0",
  "spl-token-swap",
 ]
 
