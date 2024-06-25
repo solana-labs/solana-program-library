@@ -18,7 +18,7 @@ bytemuck = { version = "1.16.1" }
 serde = { version = "1.0.203", optional = true }
 solana-program = "2.0.0"
 solana-zk-token-sdk = "2.0.0"
-spl-program-error = { version = "0.4.0", path = "../program-error" }
+spl-program-error = { version = "0.5.0", path = "../program-error" }
 
 [dev-dependencies]
 serde_json = "1.0.117"
