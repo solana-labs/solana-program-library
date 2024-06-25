@@ -7151,7 +7151,7 @@ dependencies = [
 
 [[package]]
 name = "spl-instruction-padding"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "num_enum",
  "solana-program",
