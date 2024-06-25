@@ -9,7 +9,7 @@ use {
     std::{convert::TryFrom, fmt, str::FromStr},
 };
 use {
-    bytemuck::{Pod, Zeroable},
+    bytemuck_derive::{Pod, Zeroable},
     solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
     solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
 };

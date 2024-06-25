@@ -129,7 +129,11 @@ fn max_len_for_type<T>(data_len: usize) -> Result<usize, ProgramError> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::bytemuck::pod_slice_to_bytes, bytemuck::Zeroable};
+    use {
+        super::*,
+        crate::bytemuck::pod_slice_to_bytes,
+        bytemuck_derive::{Pod, Zeroable},
+    };
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
