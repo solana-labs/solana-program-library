@@ -4998,7 +4998,7 @@ dependencies = [
  "solana-config-program",
  "solana-sdk",
  "spl-token 4.0.1",
- "spl-token-2022 3.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 3.0.2",
  "spl-token-group-interface 0.2.3",
  "spl-token-metadata-interface 0.3.3",
  "thiserror",
@@ -5643,7 +5643,7 @@ dependencies = [
  "solana-vote",
  "solana-vote-program",
  "spl-token 4.0.1",
- "spl-token-2022 3.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 3.0.2",
  "static_assertions",
  "strum 0.24.1",
  "strum_macros 0.24.3",
@@ -6040,7 +6040,7 @@ dependencies = [
  "solana-vote",
  "solana-vote-program",
  "spl-token 4.0.1",
- "spl-token-2022 3.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 3.0.2",
  "stream-cancel",
  "thiserror",
  "tokio",
@@ -6525,7 +6525,7 @@ dependencies = [
  "spl-associated-token-account 3.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-memo 4.0.1",
  "spl-token 4.0.1",
- "spl-token-2022 3.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 3.0.2",
  "spl-token-group-interface 0.2.3",
  "spl-token-metadata-interface 0.3.3",
  "thiserror",
@@ -6827,7 +6827,7 @@ dependencies = [
  "num-traits",
  "solana-program",
  "spl-token 6.0.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "thiserror",
 ]
 
@@ -6843,7 +6843,7 @@ dependencies = [
  "num-traits",
  "solana-program",
  "spl-token 4.0.1",
- "spl-token-2022 3.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token-2022 3.0.2",
  "thiserror",
 ]
 
@@ -6856,7 +6856,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account 3.0.2",
  "spl-token 6.0.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
 ]
 
 [[package]]
@@ -7408,7 +7408,7 @@ dependencies = [
  "spl-math",
  "spl-pod 0.3.0",
  "spl-token 6.0.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "test-case",
  "thiserror",
 ]
@@ -7506,6 +7506,30 @@ dependencies = [
 [[package]]
 name = "spl-token-2022"
 version = "3.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5412f99ae7ee6e0afde00defaa354e6228e47e30c0e3adf553e2e01e6abb584"
+dependencies = [
+ "arrayref",
+ "bytemuck",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
+ "solana-security-txt",
+ "solana-zk-token-sdk",
+ "spl-memo 4.0.1",
+ "spl-pod 0.2.2",
+ "spl-token 4.0.1",
+ "spl-token-group-interface 0.2.3",
+ "spl-token-metadata-interface 0.3.3",
+ "spl-transfer-hook-interface 0.6.3",
+ "spl-type-length-value 0.4.3",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-token-2022"
+version = "4.0.0"
 dependencies = [
  "arrayref",
  "base64 0.22.1",
@@ -7536,30 +7560,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-token-2022"
-version = "3.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5412f99ae7ee6e0afde00defaa354e6228e47e30c0e3adf553e2e01e6abb584"
-dependencies = [
- "arrayref",
- "bytemuck",
- "num-derive",
- "num-traits",
- "num_enum",
- "solana-program",
- "solana-security-txt",
- "solana-zk-token-sdk",
- "spl-memo 4.0.1",
- "spl-pod 0.2.2",
- "spl-token 4.0.1",
- "spl-token-group-interface 0.2.3",
- "spl-token-metadata-interface 0.3.3",
- "spl-transfer-hook-interface 0.6.3",
- "spl-type-length-value 0.4.3",
- "thiserror",
-]
-
-[[package]]
 name = "spl-token-2022-test"
 version = "0.0.1"
 dependencies = [
@@ -7574,7 +7574,7 @@ dependencies = [
  "spl-memo 5.0.0",
  "spl-pod 0.3.0",
  "spl-tlv-account-resolution 0.7.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-token-client",
  "spl-token-group-interface 0.3.0",
  "spl-token-metadata-interface 0.4.0",
@@ -7611,7 +7611,7 @@ dependencies = [
  "spl-associated-token-account 3.0.2",
  "spl-memo 5.0.0",
  "spl-token 6.0.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-token-client",
  "spl-token-group-interface 0.3.0",
  "spl-token-metadata-interface 0.4.0",
@@ -7639,7 +7639,7 @@ dependencies = [
  "spl-associated-token-account 3.0.2",
  "spl-memo 5.0.0",
  "spl-token 6.0.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-token-group-interface 0.3.0",
  "spl-token-metadata-interface 0.4.0",
  "spl-transfer-hook-interface 0.7.0",
@@ -7656,7 +7656,7 @@ dependencies = [
  "spl-discriminator 0.3.0",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-token-client",
  "spl-token-group-example",
  "spl-token-group-interface 0.3.0",
@@ -7673,7 +7673,7 @@ dependencies = [
  "solana-sdk",
  "spl-discriminator 0.3.0",
  "spl-pod 0.3.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-token-client",
  "spl-token-group-interface 0.3.0",
  "spl-token-metadata-interface 0.4.0",
@@ -7746,7 +7746,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-pod 0.3.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-token-client",
  "spl-token-metadata-interface 0.4.0",
  "spl-type-length-value 0.5.0",
@@ -7796,7 +7796,7 @@ dependencies = [
  "solana-sdk",
  "spl-math",
  "spl-token 6.0.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "test-case",
  "thiserror",
 ]
@@ -7824,7 +7824,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 6.0.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-token-client",
  "test-case",
  "thiserror",
@@ -7845,7 +7845,7 @@ dependencies = [
  "solana-test-validator",
  "spl-associated-token-account 3.0.2",
  "spl-token 6.0.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-token-client",
  "spl-token-upgrade",
  "tokio",
@@ -7861,7 +7861,7 @@ dependencies = [
  "solana-program",
  "spl-associated-token-account 3.0.2",
  "spl-token 6.0.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "thiserror",
 ]
 
@@ -7882,7 +7882,7 @@ dependencies = [
  "solana-sdk",
  "solana-test-validator",
  "spl-tlv-account-resolution 0.7.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-token-client",
  "spl-transfer-hook-example",
  "spl-transfer-hook-interface 0.7.0",
@@ -7900,7 +7900,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-tlv-account-resolution 0.7.0",
- "spl-token-2022 3.0.2",
+ "spl-token-2022 4.0.0",
  "spl-transfer-hook-interface 0.7.0",
  "spl-type-length-value 0.5.0",
 ]
