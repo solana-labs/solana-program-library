@@ -28,7 +28,7 @@ spl-math = { version = "0.2", path = "../../libraries/math", features = [
 spl-pod = { version = "0.3.0", path = "../../libraries/pod", features = [
   "borsh",
 ] }
-spl-token-2022 = { version = "3.0.2", path = "../../token/program-2022", features = [
+spl-token-2022 = { version = "4.0.0", path = "../../token/program-2022", features = [
   "no-entrypoint",
 ] }
 thiserror = "1.0"
