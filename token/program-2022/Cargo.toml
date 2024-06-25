@@ -29,7 +29,7 @@ num_enum = "0.7.2"
 solana-program = "2.0.0"
 solana-security-txt = "1.1.1"
 solana-zk-token-sdk = "2.0.0"
-spl-memo = { version = "4.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
+spl-memo = { version = "5.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
 spl-token = { version = "5.0",  path = "../program", features = ["no-entrypoint"] }
 spl-token-group-interface = { version = "0.2.3", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.3.3", path = "../../token-metadata/interface" }
