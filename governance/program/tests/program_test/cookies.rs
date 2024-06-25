@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use {
     solana_program::{clock::UnixTimestamp, instruction::Instruction, pubkey::Pubkey},
     solana_sdk::signature::Keypair,
@@ -72,7 +73,6 @@ impl TokenOwnerRecordCookie {
             .unwrap_or(&self.token_owner)
     }
 
-    #[allow(dead_code)]
     pub fn clone_governance_delegate(&self) -> Keypair {
         clone_keypair(&self.governance_delegate)
     }

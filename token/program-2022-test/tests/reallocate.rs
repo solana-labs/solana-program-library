@@ -16,7 +16,6 @@ use {
     },
     spl_token_2022::{error::TokenError, extension::ExtensionType, state::Account},
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
-    std::convert::TryInto,
     test_case::test_case,
 };
 
@@ -162,8 +161,8 @@ async fn reallocate_without_current_extension_knowledge() {
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: COption::Some(Pubkey::new_unique()).try_into().unwrap(),
-            withdraw_withheld_authority: COption::Some(Pubkey::new_unique()).try_into().unwrap(),
+            transfer_fee_config_authority: COption::Some(Pubkey::new_unique()).into(),
+            withdraw_withheld_authority: COption::Some(Pubkey::new_unique()).into(),
             transfer_fee_basis_points: 250,
             maximum_fee: 10_000_000,
         }])

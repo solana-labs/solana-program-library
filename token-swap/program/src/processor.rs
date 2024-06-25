@@ -475,9 +475,9 @@ impl Processor {
         let result = token_swap
             .swap_curve()
             .swap(
-                to_u128(actual_amount_in)?,
-                to_u128(source_account.amount)?,
-                to_u128(dest_account.amount)?,
+                u128::from(actual_amount_in),
+                u128::from(source_account.amount),
+                u128::from(dest_account.amount),
                 trade_direction,
                 token_swap.fees(),
             )
@@ -562,7 +562,7 @@ impl Processor {
                     result.owner_fee,
                     swap_token_a_amount,
                     swap_token_b_amount,
-                    to_u128(pool_mint.supply)?,
+                    u128::from(pool_mint.supply),
                     trade_direction,
                     RoundDirection::Floor,
                 )
@@ -672,9 +672,9 @@ impl Processor {
         let token_a = Self::unpack_token_account(token_a_info, token_swap.token_program_id())?;
         let token_b = Self::unpack_token_account(token_b_info, token_swap.token_program_id())?;
         let pool_mint = Self::unpack_mint(pool_mint_info, token_swap.token_program_id())?;
-        let current_pool_mint_supply = to_u128(pool_mint.supply)?;
+        let current_pool_mint_supply = u128::from(pool_mint.supply);
         let (pool_token_amount, pool_mint_supply) = if current_pool_mint_supply > 0 {
-            (to_u128(pool_token_amount)?, current_pool_mint_supply)
+            (u128::from(pool_token_amount), current_pool_mint_supply)
         } else {
             (calculator.new_pool_supply(), calculator.new_pool_supply())
         };
@@ -683,8 +683,8 @@ impl Processor {
             .pool_tokens_to_trading_tokens(
                 pool_token_amount,
                 pool_mint_supply,
-                to_u128(token_a.amount)?,
-                to_u128(token_b.amount)?,
+                u128::from(token_a.amount),
+                u128::from(token_b.amount),
                 RoundDirection::Ceiling,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
@@ -794,22 +794,22 @@ impl Processor {
                 } else {
                     token_swap
                         .fees()
-                        .owner_withdraw_fee(to_u128(pool_token_amount)?)
+                        .owner_withdraw_fee(u128::from(pool_token_amount))
                         .ok_or(SwapError::FeeCalculationFailure)?
                 }
             }
             Err(_) => 0,
         };
-        let pool_token_amount = to_u128(pool_token_amount)?
+        let pool_token_amount = u128::from(pool_token_amount)
             .checked_sub(withdraw_fee)
             .ok_or(SwapError::CalculationFailure)?;
 
         let results = calculator
             .pool_tokens_to_trading_tokens(
                 pool_token_amount,
-                to_u128(pool_mint.supply)?,
-                to_u128(token_a.amount)?,
-                to_u128(token_b.amount)?,
+                u128::from(pool_mint.supply),
+                u128::from(token_a.amount),
+                u128::from(token_b.amount),
                 RoundDirection::Floor,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
@@ -942,14 +942,14 @@ impl Processor {
         )?;
 
         let pool_mint = Self::unpack_mint(pool_mint_info, token_swap.token_program_id())?;
-        let pool_mint_supply = to_u128(pool_mint.supply)?;
+        let pool_mint_supply = u128::from(pool_mint.supply);
         let pool_token_amount = if pool_mint_supply > 0 {
             token_swap
                 .swap_curve()
                 .deposit_single_token_type(
-                    to_u128(source_token_amount)?,
-                    to_u128(swap_token_a.amount)?,
-                    to_u128(swap_token_b.amount)?,
+                    u128::from(source_token_amount),
+                    u128::from(swap_token_a.amount),
+                    u128::from(swap_token_b.amount),
                     pool_mint_supply,
                     trade_direction,
                     token_swap.fees(),
@@ -1067,14 +1067,14 @@ impl Processor {
         )?;
 
         let pool_mint = Self::unpack_mint(pool_mint_info, token_swap.token_program_id())?;
-        let pool_mint_supply = to_u128(pool_mint.supply)?;
-        let swap_token_a_amount = to_u128(swap_token_a.amount)?;
-        let swap_token_b_amount = to_u128(swap_token_b.amount)?;
+        let pool_mint_supply = u128::from(pool_mint.supply);
+        let swap_token_a_amount = u128::from(swap_token_a.amount);
+        let swap_token_b_amount = u128::from(swap_token_b.amount);
 
         let burn_pool_token_amount = token_swap
             .swap_curve()
             .withdraw_single_token_type_exact_out(
-                to_u128(destination_token_amount)?,
+                u128::from(destination_token_amount),
                 swap_token_a_amount,
                 swap_token_b_amount,
                 pool_mint_supply,
@@ -1248,10 +1248,6 @@ impl Processor {
             }
         }
     }
-}
-
-fn to_u128(val: u64) -> Result<u128, SwapError> {
-    val.try_into().map_err(|_| SwapError::ConversionFailure)
 }
 
 fn to_u64(val: u128) -> Result<u64, SwapError> {
@@ -4758,9 +4754,9 @@ mod tests {
                 .calculator
                 .pool_tokens_to_trading_tokens(
                     withdraw_amount - withdraw_fee,
-                    pool_mint.base.supply.try_into().unwrap(),
-                    swap_token_a.base.amount.try_into().unwrap(),
-                    swap_token_b.base.amount.try_into().unwrap(),
+                    pool_mint.base.supply.into(),
+                    swap_token_a.base.amount.into(),
+                    swap_token_b.base.amount.into(),
                     RoundDirection::Floor,
                 )
                 .unwrap();
@@ -4837,10 +4833,10 @@ mod tests {
                 .swap_curve
                 .calculator
                 .pool_tokens_to_trading_tokens(
-                    pool_fee_amount.try_into().unwrap(),
-                    pool_mint.base.supply.try_into().unwrap(),
-                    swap_token_a.base.amount.try_into().unwrap(),
-                    swap_token_b.base.amount.try_into().unwrap(),
+                    pool_fee_amount.into(),
+                    pool_mint.base.supply.into(),
+                    swap_token_a.base.amount.into(),
+                    swap_token_b.base.amount.into(),
                     RoundDirection::Floor,
                 )
                 .unwrap();
@@ -6005,10 +6001,10 @@ mod tests {
             let pool_token_amount = accounts
                 .swap_curve
                 .withdraw_single_token_type_exact_out(
-                    destination_a_amount.try_into().unwrap(),
-                    swap_token_a.base.amount.try_into().unwrap(),
-                    swap_token_b.base.amount.try_into().unwrap(),
-                    pool_mint.base.supply.try_into().unwrap(),
+                    destination_a_amount.into(),
+                    swap_token_a.base.amount.into(),
+                    swap_token_b.base.amount.into(),
+                    pool_mint.base.supply.into(),
                     TradeDirection::AtoB,
                     &accounts.fees,
                 )
@@ -6165,9 +6161,9 @@ mod tests {
         let actual_a_to_b_amount = a_to_b_amount - token_a_fee;
         let results = swap_curve
             .swap(
-                actual_a_to_b_amount.try_into().unwrap(),
-                token_a_amount.try_into().unwrap(),
-                token_b_amount.try_into().unwrap(),
+                actual_a_to_b_amount.into(),
+                token_a_amount.into(),
+                token_b_amount.into(),
                 TradeDirection::AtoB,
                 &fees,
             )
@@ -6201,9 +6197,9 @@ mod tests {
                 .calculator
                 .withdraw_single_token_type_exact_out(
                     results.owner_fee,
-                    token_a_amount.try_into().unwrap(),
-                    token_b_amount.try_into().unwrap(),
-                    initial_supply.try_into().unwrap(),
+                    token_a_amount.into(),
+                    token_b_amount.into(),
+                    initial_supply.into(),
                     TradeDirection::AtoB,
                     RoundDirection::Floor,
                 )
@@ -6243,9 +6239,9 @@ mod tests {
 
         let mut results = swap_curve
             .swap(
-                b_to_a_amount.try_into().unwrap(),
-                token_b_amount.try_into().unwrap(),
-                token_a_amount.try_into().unwrap(),
+                b_to_a_amount.into(),
+                token_b_amount.into(),
+                token_a_amount.into(),
                 TradeDirection::BtoA,
                 &fees,
             )
@@ -6290,9 +6286,9 @@ mod tests {
                 .calculator
                 .withdraw_single_token_type_exact_out(
                     results.owner_fee,
-                    token_a_amount.try_into().unwrap(),
-                    token_b_amount.try_into().unwrap(),
-                    initial_supply.try_into().unwrap(),
+                    token_a_amount.into(),
+                    token_b_amount.into(),
+                    initial_supply.into(),
                     TradeDirection::BtoA,
                     RoundDirection::Floor,
                 )

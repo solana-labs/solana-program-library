@@ -7,7 +7,6 @@ use {
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack, Sealed},
     },
-    std::convert::TryFrom,
 };
 
 /// Encapsulates all fee information and calculations for swap operations
@@ -101,8 +100,8 @@ impl Fees {
     pub fn owner_withdraw_fee(&self, pool_tokens: u128) -> Option<u128> {
         calculate_fee(
             pool_tokens,
-            u128::try_from(self.owner_withdraw_fee_numerator).ok()?,
-            u128::try_from(self.owner_withdraw_fee_denominator).ok()?,
+            u128::from(self.owner_withdraw_fee_numerator),
+            u128::from(self.owner_withdraw_fee_denominator),
         )
     }
 
@@ -110,8 +109,8 @@ impl Fees {
     pub fn trading_fee(&self, trading_tokens: u128) -> Option<u128> {
         calculate_fee(
             trading_tokens,
-            u128::try_from(self.trade_fee_numerator).ok()?,
-            u128::try_from(self.trade_fee_denominator).ok()?,
+            u128::from(self.trade_fee_numerator),
+            u128::from(self.trade_fee_denominator),
         )
     }
 
@@ -119,8 +118,8 @@ impl Fees {
     pub fn owner_trading_fee(&self, trading_tokens: u128) -> Option<u128> {
         calculate_fee(
             trading_tokens,
-            u128::try_from(self.owner_trade_fee_numerator).ok()?,
-            u128::try_from(self.owner_trade_fee_denominator).ok()?,
+            u128::from(self.owner_trade_fee_numerator),
+            u128::from(self.owner_trade_fee_denominator),
         )
     }
 
@@ -159,8 +158,8 @@ impl Fees {
     pub fn host_fee(&self, owner_fee: u128) -> Option<u128> {
         calculate_fee(
             owner_fee,
-            u128::try_from(self.host_fee_numerator).ok()?,
-            u128::try_from(self.host_fee_denominator).ok()?,
+            u128::from(self.host_fee_numerator),
+            u128::from(self.host_fee_denominator),
         )
     }
 

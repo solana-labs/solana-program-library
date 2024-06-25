@@ -98,6 +98,10 @@ jobs:
             ~/.cargo/git
           key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
 
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+
       - name: Test token-2022 with "serde" activated
         run: |
           cargo test \
@@ -215,7 +219,7 @@ jobs:
 
       - name: Set env vars
         run: |
-          echo "RUST_STABLE_VERSION=1.72.0" >> $GITHUB_ENV
+          echo "RUST_STABLE_VERSION=1.78.0" >> $GITHUB_ENV
           source ci/rust-version.sh
           echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
           source ci/solana-version.sh

@@ -2492,7 +2492,7 @@ async fn transfer_fee(test_validator: &TestValidator, payer: &Keypair) {
     let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
 
     assert_eq!(
-        Option::<Pubkey>::try_from(extension.transfer_fee_config_authority).unwrap(),
+        Option::<Pubkey>::from(extension.transfer_fee_config_authority),
         None,
     );
 
@@ -2516,7 +2516,7 @@ async fn transfer_fee(test_validator: &TestValidator, payer: &Keypair) {
     let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
 
     assert_eq!(
-        Option::<Pubkey>::try_from(extension.withdraw_withheld_authority).unwrap(),
+        Option::<Pubkey>::from(extension.withdraw_withheld_authority),
         None,
     );
 }

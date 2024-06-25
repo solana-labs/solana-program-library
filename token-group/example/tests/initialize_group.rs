@@ -51,7 +51,7 @@ async fn test_initialize_group() {
         &group.pubkey(),
         &group_mint.pubkey(),
         &group_mint_authority.pubkey(),
-        group_state.update_authority.try_into().unwrap(),
+        group_state.update_authority.into(),
         group_state.max_size.into(),
     );
     init_group_ix.accounts[2].is_signer = false;
@@ -95,7 +95,7 @@ async fn test_initialize_group() {
                 &group.pubkey(),
                 &group_mint.pubkey(),
                 &group_mint_authority.pubkey(),
-                group_state.update_authority.try_into().unwrap(),
+                group_state.update_authority.into(),
                 group_state.max_size.into(),
             ),
         ],

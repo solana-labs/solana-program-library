@@ -2,19 +2,19 @@
 
 #![cfg(not(feature = "no-entrypoint"))]
 
+use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, pubkey::Pubkey};
+#[cfg(target_os = "solana")]
 use {
-    solana_program::{
-        account_info::AccountInfo,
-        entrypoint::{ProgramResult, HEAP_LENGTH, HEAP_START_ADDRESS},
-        pubkey::Pubkey,
-    },
+    solana_program::entrypoint::{HEAP_LENGTH, HEAP_START_ADDRESS},
     std::{alloc::Layout, mem::size_of, ptr::null_mut, usize},
 };
 
 /// Developers can implement their own heap by defining their own
 /// `#[global_allocator]`.  The following implements a dummy for test purposes
 /// but can be flushed out with whatever the developer sees fit.
+#[cfg(target_os = "solana")]
 struct BumpAllocator;
+#[cfg(target_os = "solana")]
 unsafe impl std::alloc::GlobalAlloc for BumpAllocator {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {

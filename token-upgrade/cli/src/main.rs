@@ -1,7 +1,10 @@
 use {
     clap::{crate_description, crate_name, crate_version, Arg, Command},
     solana_clap_v3_utils::{
-        input_parsers::{parse_url_or_moniker, pubkey_of, signer::SignerSourceParserBuilder},
+        input_parsers::{
+            parse_url_or_moniker,
+            signer::{try_pubkey_of, SignerSourceParserBuilder},
+        },
         input_validators::normalize_to_url_if_moniker,
         keypair::{
             signer_from_path, signer_from_path_with_config, DefaultSigner, SignerFromPathConfig,
@@ -391,8 +394,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     match (command, matches) {
         ("create-escrow", arg_matches) => {
-            let original_mint = pubkey_of(arg_matches, "original_mint").unwrap();
-            let new_mint = pubkey_of(arg_matches, "new_mint").unwrap();
+            let original_mint = try_pubkey_of(arg_matches, "original_mint")
+                .unwrap()
+                .unwrap();
+            let new_mint = try_pubkey_of(arg_matches, "new_mint").unwrap().unwrap();
             let account_keypair = matches.value_of("account_keypair").map(|path| {
                 signer_from_path(arg_matches, path, "account_keypair", &mut wallet_manager)
                     .unwrap_or_else(|err| {
@@ -436,8 +441,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
 
-            let original_mint = pubkey_of(arg_matches, "original_mint").unwrap();
-            let new_mint = pubkey_of(arg_matches, "new_mint").unwrap();
+            let original_mint = try_pubkey_of(arg_matches, "original_mint")
+                .unwrap()
+                .unwrap();
+            let new_mint = try_pubkey_of(arg_matches, "new_mint").unwrap().unwrap();
             let signer_config = SignerFromPathConfig {
                 allow_null_signer: !multisig_pubkeys.is_empty(),
             };
@@ -460,9 +467,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             if !signer_config.allow_null_signer && !bulk_signers.contains(&owner) {
                 bulk_signers.push(owner.clone());
             }
-            let burn_from = pubkey_of(arg_matches, "burn_from");
-            let escrow = pubkey_of(arg_matches, "escrow");
-            let destination = pubkey_of(arg_matches, "destination");
+            let burn_from = try_pubkey_of(arg_matches, "burn_from").unwrap();
+            let escrow = try_pubkey_of(arg_matches, "escrow").unwrap();
+            let destination = try_pubkey_of(arg_matches, "destination").unwrap();
 
             let signature = process_exchange(
                 &rpc_client,

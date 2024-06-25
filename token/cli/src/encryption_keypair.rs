@@ -70,6 +70,6 @@ fn elgamal_pubkey_from_str(s: &str) -> Option<PodElGamalPubkey> {
         return None;
     }
     let pubkey_vec = BASE64_STANDARD.decode(s).ok()?;
-    let elgamal_pubkey = ElGamalPubkey::from_bytes(&pubkey_vec)?;
+    let elgamal_pubkey = ElGamalPubkey::try_from(pubkey_vec.as_ref()).ok()?;
     Some(elgamal_pubkey.into())
 }

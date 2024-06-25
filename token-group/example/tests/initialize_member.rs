@@ -84,7 +84,7 @@ async fn test_initialize_group_member() {
                 &group.pubkey(),
                 &group_mint.pubkey(),
                 &group_mint_authority.pubkey(),
-                group_state.update_authority.try_into().unwrap(),
+                group_state.update_authority.into(),
                 group_state.max_size.into(),
             ),
         ],
