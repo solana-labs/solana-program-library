@@ -1,8 +1,9 @@
+use solana_zk_sdk::encryption::pod::grouped_elgamal::PodGroupedElGamalCiphertext3Handles;
+#[cfg(not(target_os = "solana"))]
 use solana_zk_sdk::encryption::{
     elgamal::{DecryptHandle, ElGamalPubkey},
     grouped_elgamal::{GroupedElGamal, GroupedElGamalCiphertext},
     pedersen::{PedersenCommitment, PedersenOpening},
-    pod::grouped_elgamal::PodGroupedElGamalCiphertext3Handles,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
