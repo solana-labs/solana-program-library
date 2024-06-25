@@ -1,7 +1,7 @@
 //! primitive types that can be used in `Pod`s
 #[cfg(feature = "borsh")]
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use bytemuck::{Pod, Zeroable};
+use bytemuck_derive::{Pod, Zeroable};
 #[cfg(feature = "serde-traits")]
 use serde::{Deserialize, Serialize};
 

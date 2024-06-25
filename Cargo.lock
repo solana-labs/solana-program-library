@@ -7248,6 +7248,7 @@ dependencies = [
  "base64 0.22.1",
  "borsh 1.5.1",
  "bytemuck",
+ "bytemuck_derive",
  "serde",
  "serde_json",
  "solana-program",
