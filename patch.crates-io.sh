@@ -110,6 +110,7 @@ crates_map+=("solana-transaction-status transaction-status")
 crates_map+=("solana-udp-client udp-client")
 crates_map+=("solana-version version")
 crates_map+=("solana-zk-token-sdk zk-token-sdk")
+crates_map+=("solana-zk-sdk zk-sdk")
 
 patch_crates=()
 for map_entry in "${crates_map[@]}"; do
