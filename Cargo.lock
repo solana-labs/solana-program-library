@@ -871,12 +871,6 @@ dependencies = [
 
 [[package]]
 name = "bs58"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "771fe0050b883fcc3ea2359b1a96bcfbc090b7116eae7c3c512c7a083fdf23d3"
-
-[[package]]
-name = "bs58"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
@@ -4989,7 +4983,7 @@ dependencies = [
  "Inflector",
  "base64 0.22.1",
  "bincode",
- "bs58 0.5.1",
+ "bs58",
  "bv",
  "lazy_static",
  "serde",
@@ -5350,7 +5344,7 @@ dependencies = [
  "ahash 0.8.11",
  "base64 0.22.1",
  "bincode",
- "bs58 0.5.1",
+ "bs58",
  "bytes",
  "chrono",
  "crossbeam-channel",
@@ -5507,7 +5501,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ed8822fc12c576e3e998072976622db4f3758c0db8bf7a032b97fd176737e8d"
 dependencies = [
  "agave-geyser-plugin-interface",
- "bs58 0.5.1",
+ "bs58",
  "crossbeam-channel",
  "json5",
  "jsonrpc-core",
@@ -5816,7 +5810,7 @@ dependencies = [
  "blake3",
  "borsh 0.10.3",
  "borsh 1.5.1",
- "bs58 0.5.1",
+ "bs58",
  "bv",
  "bytemuck",
  "bytemuck_derive",
@@ -5996,7 +5990,7 @@ checksum = "1da6f960ef08063c709af6ea665dae0910a5a96a83b9ca6fb68b7267e338a4e7"
 dependencies = [
  "base64 0.22.1",
  "bincode",
- "bs58 0.5.1",
+ "bs58",
  "crossbeam-channel",
  "dashmap",
  "itertools 0.12.1",
@@ -6056,7 +6050,7 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "bincode",
- "bs58 0.5.1",
+ "bs58",
  "indicatif",
  "log",
  "reqwest",
@@ -6082,7 +6076,7 @@ checksum = "7854ed73e8fb4d7659154bb56936bae57a7fcddb72c985f90addbbd848e7a6b4"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
- "bs58 0.5.1",
+ "bs58",
  "jsonrpc-core",
  "reqwest",
  "reqwest-middleware",
@@ -6200,7 +6194,7 @@ dependencies = [
  "bincode",
  "bitflags 2.5.0",
  "borsh 1.5.1",
- "bs58 0.5.1",
+ "bs58",
  "bytemuck",
  "bytemuck_derive",
  "byteorder",
@@ -6246,7 +6240,7 @@ version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ebe207139d12a438f87f353792066340c5cb31b124561715b7edfd743456424"
 dependencies = [
- "bs58 0.5.1",
+ "bs58",
  "proc-macro2",
  "quote",
  "rustversion",
@@ -6332,7 +6326,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "124192666aa17e73f06d031c9f2be5f6ce51b1ffb606997c7cc978ac00b751c9"
 dependencies = [
  "bincode",
- "bs58 0.5.1",
+ "bs58",
  "prost",
  "protobuf-src",
  "serde",
@@ -6514,7 +6508,7 @@ dependencies = [
  "base64 0.22.1",
  "bincode",
  "borsh 1.5.1",
- "bs58 0.5.1",
+ "bs58",
  "lazy_static",
  "log",
  "serde",
@@ -7419,7 +7413,7 @@ version = "1.0.0"
 dependencies = [
  "bincode",
  "borsh 1.5.1",
- "bs58 0.4.0",
+ "bs58",
  "clap 2.34.0",
  "serde",
  "serde_derive",
