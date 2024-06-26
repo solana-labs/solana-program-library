@@ -34,20 +34,20 @@ impl TransferAmountCiphertext {
     }
 
     pub fn get_source_handle(&self) -> &DecryptHandle {
-        // `TransferAmountCiphertext` is a wrapper for `GroupedElGamalCiphertext<3>`, which
-        // holds exactly three decryption handles.
+        // `TransferAmountCiphertext` is a wrapper for `GroupedElGamalCiphertext<3>`,
+        // which holds exactly three decryption handles.
         self.0.handles.first().unwrap()
     }
 
     pub fn get_destination_handle(&self) -> &DecryptHandle {
-        // `TransferAmountCiphertext` is a wrapper for `GroupedElGamalCiphertext<3>`, which holds
-        // exactly three decryption handles.
+        // `TransferAmountCiphertext` is a wrapper for `GroupedElGamalCiphertext<3>`,
+        // which holds exactly three decryption handles.
         self.0.handles.get(1).unwrap()
     }
 
     pub fn get_auditor_handle(&self) -> &DecryptHandle {
-        // `TransferAmountCiphertext` is a wrapper for `GroupedElGamalCiphertext<3>`, which holds
-        // exactly three decryption handles.
+        // `TransferAmountCiphertext` is a wrapper for `GroupedElGamalCiphertext<3>`,
+        // which holds exactly three decryption handles.
         self.0.handles.get(2).unwrap()
     }
 }

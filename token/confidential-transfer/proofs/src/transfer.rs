@@ -50,7 +50,8 @@ pub struct TransferProofContext {
     pub new_source_ciphertext: PodElGamalCiphertext,
 }
 
-/// The pdding bit length in range proofs that are used for a confidential token transfer
+/// The padding bit length in range proofs that are used for a confidential
+/// token transfer
 #[cfg(not(target_os = "solana"))]
 const RANGE_PROOF_PADDING_BIT_LENGTH: usize = 16;
 
@@ -231,8 +232,8 @@ impl TransferProofContext {
             bit_lengths: range_proof_bit_lengths,
         } = range_proof_context;
 
-        // check that the source pubkey is consistent between equality and ciphertext validity
-        // proofs
+        // check that the source pubkey is consistent between equality and ciphertext
+        // validity proofs
         if source_pubkey_from_equality_proof != source_pubkey_from_validity_proof {
             return Err(TokenProofExtractionError::ElGamalPubkeyMismatch);
         }
@@ -296,8 +297,7 @@ impl TransferProofContext {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use solana_zk_sdk::zk_elgamal_proof_program::proof_data::ZkProofData;
+    use {super::*, solana_zk_sdk::zk_elgamal_proof_program::proof_data::ZkProofData};
 
     #[test]
     fn test_transfer_correctness() {
