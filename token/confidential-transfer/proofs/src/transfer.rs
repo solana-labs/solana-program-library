@@ -121,6 +121,7 @@ pub fn transfer_split_proof_data(
         .to_elgamal_ciphertext(0)
         .unwrap();
 
+    #[allow(clippy::arithmetic_side_effects)]
     let new_available_balance_ciphertext = current_available_balance
         - try_combine_lo_hi_ciphertexts(
             &transfer_amount_source_ciphertext_lo,
