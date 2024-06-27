@@ -289,7 +289,7 @@ pub mod spl_account_compression {
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
         // check the canopy root matches the tree root
-        check_canopy_root(canopy_bytes, &root)?;
+        check_canopy_root(canopy_bytes, &root, header.get_max_depth())?;
         // verify the canopy does not conain any nodes to the right of the rightmost leaf
         check_canopy_no_nodes_to_right_of_index(
             canopy_bytes,
