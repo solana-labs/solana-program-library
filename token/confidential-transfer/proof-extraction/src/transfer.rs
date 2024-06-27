@@ -138,7 +138,14 @@ impl TransferProofContext {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, solana_zk_sdk::zk_elgamal_proof_program::proof_data::ZkProofData};
+    use {
+        super::*,
+        solana_zk_sdk::{
+            encryption::{auth_encryption::AeKey, elgamal::ElGamalKeypair},
+            zk_elgamal_proof_program::proof_data::ZkProofData,
+        },
+        spl_token_confidential_transfer_proof_generation::transfer::transfer_split_proof_data,
+    };
 
     #[test]
     fn test_transfer_correctness() {
@@ -175,10 +182,6 @@ mod tests {
                 Some(auditor_pubkey),
             )
             .unwrap();
-
-        equality_proof_data.verify_proof().unwrap();
-        validity_proof_data.verify_proof().unwrap();
-        range_proof_data.verify_proof().unwrap();
 
         TransferProofContext::verify_and_extract(
             equality_proof_data.context_data(),

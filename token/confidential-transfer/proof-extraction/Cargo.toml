@@ -12,6 +12,7 @@ solana-zk-sdk = "2.0.0"
 thiserror = "1.0.61"
 
 [dev-dependencies]
+spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "../proof-generation" }
 
 [lib]
 crate-type = ["cdylib", "lib"]

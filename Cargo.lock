@@ -7668,6 +7668,7 @@ name = "spl-token-confidential-transfer-proof-extraction"
 version = "0.1.0"
 dependencies = [
  "solana-zk-sdk",
+ "spl-token-confidential-transfer-proof-generation",
  "thiserror",
 ]
 

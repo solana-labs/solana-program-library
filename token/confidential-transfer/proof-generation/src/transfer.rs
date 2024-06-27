@@ -201,12 +201,5 @@ mod tests {
         equality_proof_data.verify_proof().unwrap();
         validity_proof_data.verify_proof().unwrap();
         range_proof_data.verify_proof().unwrap();
-
-        TransferProofContext::verify_and_extract(
-            equality_proof_data.context_data(),
-            validity_proof_data.context_data(),
-            range_proof_data.context_data(),
-        )
-        .unwrap();
     }
 }
