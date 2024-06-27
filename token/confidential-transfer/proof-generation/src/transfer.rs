@@ -19,10 +19,8 @@ use {
 
 /// The padding bit length in range proofs that are used for a confidential
 /// token transfer
-#[cfg(not(target_os = "solana"))]
 const RANGE_PROOF_PADDING_BIT_LENGTH: usize = 16;
 
-#[cfg(not(target_os = "solana"))]
 pub fn transfer_split_proof_data(
     current_available_balance: &ElGamalCiphertext,
     current_decryptable_available_balance: &AeCiphertext,

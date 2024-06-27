@@ -54,7 +54,6 @@ pub fn try_combine_lo_hi_u64(amount_lo: u64, amount_hi: u64, bit_length: usize) 
     }
 }
 
-#[cfg(not(target_os = "solana"))]
 #[allow(clippy::arithmetic_side_effects)]
 pub fn try_combine_lo_hi_ciphertexts(
     ciphertext_lo: &ElGamalCiphertext,
@@ -65,7 +64,6 @@ pub fn try_combine_lo_hi_ciphertexts(
     Some(ciphertext_lo + ciphertext_hi * Scalar::from(two_power))
 }
 
-#[cfg(not(target_os = "solana"))]
 #[allow(clippy::arithmetic_side_effects)]
 pub fn try_combine_lo_hi_commitments(
     comm_lo: &PedersenCommitment,
@@ -76,7 +74,6 @@ pub fn try_combine_lo_hi_commitments(
     Some(comm_lo + comm_hi * Scalar::from(two_power))
 }
 
-#[cfg(not(target_os = "solana"))]
 #[allow(clippy::arithmetic_side_effects)]
 pub fn try_combine_lo_hi_openings(
     opening_lo: &PedersenOpening,
