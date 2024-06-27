@@ -183,13 +183,19 @@ pub fn set_canopy_leaf_nodes(
 }
 
 /// Checks the root of the canopy against the expected root.
-pub fn check_canopy_root(canopy_bytes: &[u8], expected_root: &Node) -> Result<()> {
+pub fn check_canopy_root(canopy_bytes: &[u8], expected_root: &Node, max_depth: u32) -> Result<()> {
     check_canopy_bytes(canopy_bytes)?;
     let canopy = cast_slice::<u8, Node>(canopy_bytes);
     if canopy.is_empty() {
         return Ok(()); // Canopy is empty
     }
-    let actual_root = hashv(&[&canopy[0], &canopy[1]]).to_bytes();
+    let mut empty_node_cache = Box::new([EMPTY; MAX_SUPPORTED_DEPTH]);
+    // first two nodes are the children of the root, they have index 2 and 3 respectively
+    let left_root_child =
+        get_value_for_node::<MAX_SUPPORTED_DEPTH>(2, max_depth - 1, canopy, &mut empty_node_cache);
+    let right_root_child =
+        get_value_for_node::<MAX_SUPPORTED_DEPTH>(3, max_depth - 1, canopy, &mut empty_node_cache);
+    let actual_root = hashv(&[&left_root_child, &right_root_child]).to_bytes();
     if actual_root != *expected_root {
         msg!(
             "Canopy root mismatch. Expected: {:?}, Actual: {:?}",
@@ -269,8 +275,7 @@ fn leaf_node_index_to_canopy_index(path_len: u32, index: u32) -> Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use spl_concurrent_merkle_tree::node::empty_node;
+    use {super::*, spl_concurrent_merkle_tree::node::empty_node};
 
     fn success_leaf_node_index_to_canopy_index(path_len: u32, index: u32, expected: usize) {
         assert_eq!(
@@ -444,7 +449,20 @@ mod tests {
         let expected_root = hashv(&[&[1_u8; 32], &[2_u8; 32]]).to_bytes();
         let nodes = vec![[1_u8; 32], [2_u8; 32]];
         set_canopy_leaf_nodes(&mut canopy_bytes, 1, 0, &nodes).unwrap();
-        check_canopy_root(&canopy_bytes, &expected_root).unwrap();
+        check_canopy_root(&canopy_bytes, &expected_root, 30).unwrap();
+    }
+
+    #[test]
+    fn test_success_check_canopy_root_with_empty_right_branch() {
+        let mut canopy_bytes = vec![0_u8; 2 * size_of::<Node>()];
+        let mut empty_node_cache = Box::new([EMPTY; MAX_SUPPORTED_DEPTH]);
+        let top_level = (MAX_SUPPORTED_DEPTH - 1) as u32;
+        let right_branch =
+            empty_node_cached_mut::<MAX_SUPPORTED_DEPTH>(top_level, &mut empty_node_cache);
+        let expected_root = hashv(&[&[1_u8; 32], &right_branch]).to_bytes();
+        let nodes = vec![[1_u8; 32], EMPTY];
+        set_canopy_leaf_nodes(&mut canopy_bytes, MAX_SUPPORTED_DEPTH as u32, 0, &nodes).unwrap();
+        check_canopy_root(&canopy_bytes, &expected_root, 30).unwrap();
     }
 
     #[test]
@@ -456,7 +474,7 @@ mod tests {
         let mut expected_root = expected_root;
         expected_root[0] = 0;
         assert_eq!(
-            check_canopy_root(&canopy_bytes, &expected_root).unwrap_err(),
+            check_canopy_root(&canopy_bytes, &expected_root, 30).unwrap_err(),
             AccountCompressionError::CanopyRootMismatch.into()
         );
     }
