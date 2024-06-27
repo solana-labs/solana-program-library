@@ -7668,7 +7668,6 @@ name = "spl-token-confidential-transfer-proof-extraction"
 version = "0.1.0"
 dependencies = [
  "solana-zk-sdk",
- "spl-token-confidential-transfer-proof-generation",
  "thiserror",
 ]
 
@@ -7678,6 +7677,17 @@ version = "0.1.0"
 dependencies = [
  "curve25519-dalek",
  "solana-zk-sdk",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-token-confidential-transfer-proof-test"
+version = "0.0.1"
+dependencies = [
+ "curve25519-dalek",
+ "solana-zk-sdk",
+ "spl-token-confidential-transfer-proof-extraction",
+ "spl-token-confidential-transfer-proof-generation",
  "thiserror",
 ]
 
