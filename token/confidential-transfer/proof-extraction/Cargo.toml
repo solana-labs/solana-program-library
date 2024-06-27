@@ -1,5 +1,5 @@
 [package]
-name = "spl-confidential-transfer-proofs"
+name = "spl-token-confidential-transfer-proof-extraction"
 version = "0.1.0"
 description = "Solana Program Library Confidential Transfer Proofs"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
@@ -12,9 +12,6 @@ solana-zk-sdk = "2.0.0"
 thiserror = "1.0.61"
 
 [dev-dependencies]
-
-[target.'cfg(not(target_os = "solana"))'.dependencies]
-curve25519-dalek = "3.2.1"
 
 [lib]
 crate-type = ["cdylib", "lib"]

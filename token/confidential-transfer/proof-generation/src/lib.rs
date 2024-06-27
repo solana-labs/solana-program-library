@@ -1,4 +1,3 @@
-#[cfg(not(target_os = "solana"))]
 use {
     curve25519_dalek::scalar::Scalar,
     solana_zk_sdk::encryption::{

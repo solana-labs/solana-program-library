@@ -1,5 +1,3 @@
-use solana_zk_sdk::encryption::pod::grouped_elgamal::PodGroupedElGamalCiphertext3Handles;
-#[cfg(not(target_os = "solana"))]
 use solana_zk_sdk::encryption::{
     elgamal::{DecryptHandle, ElGamalPubkey},
     grouped_elgamal::{GroupedElGamal, GroupedElGamalCiphertext},
@@ -8,10 +6,8 @@ use solana_zk_sdk::encryption::{
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(C)]
-#[cfg(not(target_os = "solana"))]
 pub struct TransferAmountCiphertext(pub(crate) GroupedElGamalCiphertext<3>);
 
-#[cfg(not(target_os = "solana"))]
 impl TransferAmountCiphertext {
     pub fn new(
         amount: u64,
@@ -51,7 +47,3 @@ impl TransferAmountCiphertext {
         self.0.handles.get(2).unwrap()
     }
 }
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[repr(C)]
-pub struct PodTransferAmountCiphertext(pub(crate) PodGroupedElGamalCiphertext3Handles);
