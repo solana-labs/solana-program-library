@@ -8,7 +8,7 @@ license = "Apache-2.0"
 edition = "2021"
 
 [dev-dependencies]
-curve25519-dalek = "3.2.1"
+curve25519-dalek = "4.1.3"
 solana-zk-sdk = "2.0.0"
 thiserror = "1.0.61"
 spl-token-confidential-transfer-proof-extraction = { version = "0.1.0", path = "../proof-extraction" }
