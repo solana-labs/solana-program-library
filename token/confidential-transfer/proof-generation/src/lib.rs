@@ -9,6 +9,7 @@ use {
 pub mod encryption;
 pub mod errors;
 pub mod transfer;
+pub mod transfer_with_fee;
 
 /// The low bit length of the encrypted transfer amount
 pub const TRANSFER_AMOUNT_LO_BITS: usize = 16;
