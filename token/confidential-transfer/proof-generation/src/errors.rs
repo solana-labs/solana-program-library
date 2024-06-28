@@ -8,4 +8,6 @@ pub enum TokenProofGenerationError {
     NotEnoughFunds,
     #[error("illegal amount bit length")]
     IllegalAmountBitLength,
+    #[error("fee calculation failed")]
+    FeeCalculation,
 }
