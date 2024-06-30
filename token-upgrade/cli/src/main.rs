@@ -1,5 +1,5 @@
 use {
-    clap::{crate_description, crate_name, crate_version, Arg, Command},
+    clap::{crate_description, crate_name, crate_version, Arg, ArgAction, Command},
     solana_clap_v3_utils::{
         input_parsers::{
             parse_url_or_moniker,
@@ -336,7 +336,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     .value_parser(SignerSourceParserBuilder::default().allow_all().build())
                     .value_name("MULTISIG_SIGNER")
                     .takes_value(true)
-                    .multiple(true)
+                    .action(ArgAction::Append)
                     .min_values(0)
                     .max_values(spl_token_2022::instruction::MAX_SIGNERS)
                     .help("Member signer of a multisig account")
