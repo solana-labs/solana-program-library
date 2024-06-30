@@ -9,7 +9,7 @@ use {
             signer::{SignerSource, SignerSourceParserBuilder},
         },
         input_validators::normalize_to_url_if_moniker,
-        keypair::{pubkey_from_source, DefaultSigner},
+        keypair::{pubkey_from_source, signer_from_path},
     },
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
@@ -401,35 +401,35 @@ extraMetas:
     let (command, matches) = app_matches.subcommand().unwrap();
     let mut wallet_manager: Option<Rc<RemoteWalletManager>> = None;
 
-    let cli_config = if let Some(config_file) = matches.value_of("config_file") {
+    let cli_config = if let Some(config_file) = matches.get_one::<String>("config_file") {
         solana_cli_config::Config::load(config_file).unwrap_or_default()
     } else {
         solana_cli_config::Config::default()
     };
 
     let config = {
-        let default_signer = DefaultSigner::new(
-            "fee_payer",
-            matches
-                .value_of("fee_payer")
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| cli_config.keypair_path.clone()),
-        );
+        let default_signer = if let Some((signer, _)) =
+            SignerSource::try_get_signer(matches, "fee_payer", &mut wallet_manager)?
+        {
+            signer
+        } else {
+            signer_from_path(
+                matches,
+                &cli_config.keypair_path,
+                "fee_payer",
+                &mut wallet_manager,
+            )?
+        };
 
         let json_rpc_url = normalize_to_url_if_moniker(
             matches
-                .value_of("json_rpc_url")
+                .get_one::<String>("json_rpc_url")
                 .unwrap_or(&cli_config.json_rpc_url),
         );
 
         Config {
             commitment_config: CommitmentConfig::confirmed(),
-            default_signer: default_signer
-                .signer_from_path(matches, &mut wallet_manager)
-                .unwrap_or_else(|err| {
-                    eprintln!("error: {err}");
-                    exit(1);
-                }),
+            default_signer,
             json_rpc_url,
             verbose: matches.try_contains_id("verbose")?,
         }
@@ -465,18 +465,18 @@ extraMetas:
                 .flatten()
                 .cloned()
                 .collect();
-            let mint_authority = DefaultSigner::new(
-                "mint_authority",
-                matches
-                    .value_of("mint_authority")
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| cli_config.keypair_path.clone()),
-            )
-            .signer_from_path(matches, &mut wallet_manager)
-            .unwrap_or_else(|err| {
-                eprintln!("error: {err}");
-                exit(1);
-            });
+            let mint_authority = if let Some((signer, _)) =
+                SignerSource::try_get_signer(matches, "mint_authority", &mut wallet_manager)?
+            {
+                signer
+            } else {
+                signer_from_path(
+                    matches,
+                    &cli_config.keypair_path,
+                    "mint_authority",
+                    &mut wallet_manager,
+                )?
+            };
             let signature = process_create_extra_account_metas(
                 &rpc_client,
                 &program_id,
@@ -514,18 +514,18 @@ extraMetas:
                 .flatten()
                 .cloned()
                 .collect();
-            let mint_authority = DefaultSigner::new(
-                "mint_authority",
-                matches
-                    .value_of("mint_authority")
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| cli_config.keypair_path.clone()),
-            )
-            .signer_from_path(matches, &mut wallet_manager)
-            .unwrap_or_else(|err| {
-                eprintln!("error: {err}");
-                exit(1);
-            });
+            let mint_authority = if let Some((signer, _)) =
+                SignerSource::try_get_signer(matches, "mint_authority", &mut wallet_manager)?
+            {
+                signer
+            } else {
+                signer_from_path(
+                    matches,
+                    &cli_config.keypair_path,
+                    "mint_authority",
+                    &mut wallet_manager,
+                )?
+            };
             let signature = process_update_extra_account_metas(
                 &rpc_client,
                 &program_id,
