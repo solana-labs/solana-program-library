@@ -2,7 +2,7 @@ pub mod meta;
 
 use {
     crate::meta::parse_transfer_hook_account_arg,
-    clap::{crate_description, crate_name, crate_version, Arg, Command},
+    clap::{crate_description, crate_name, crate_version, Arg, ArgAction, Command},
     solana_clap_v3_utils::{
         input_parsers::{
             parse_url_or_moniker,
@@ -255,7 +255,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .value_parser(parse_transfer_hook_account_arg)
                         .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
-                        .multiple(true)
+                        .action(ArgAction::Append)
                         .min_values(0)
                         .index(3)
                         .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
@@ -339,7 +339,7 @@ extraMetas:
                         .value_parser(parse_transfer_hook_account_arg)
                         .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
-                        .multiple(true)
+                        .action(ArgAction::Append)
                         .min_values(0)
                         .index(3)
                         .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
