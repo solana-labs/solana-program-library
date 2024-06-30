@@ -431,7 +431,7 @@ extraMetas:
                     exit(1);
                 }),
             json_rpc_url,
-            verbose: matches.is_present("verbose"),
+            verbose: matches.try_contains_id("verbose")?,
         }
     };
     solana_logger::setup_with_default("solana=info");
