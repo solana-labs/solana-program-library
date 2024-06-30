@@ -233,7 +233,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Command::new("create-extra-metas")
                 .about("Create the extra account metas account for a transfer hook program")
                 .arg(
-                    Arg::with_name("program_id")
+                    Arg::new("program_id")
                         .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TRANSFER_HOOK_PROGRAM")
                         .takes_value(true)
@@ -242,7 +242,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("The transfer hook program id"),
                 )
                 .arg(
-                    Arg::with_name("token")
+                    Arg::new("token")
                         .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -251,7 +251,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("The token mint address for the transfer hook"),
                 )
                 .arg(
-                    Arg::with_name("transfer_hook_accounts")
+                    Arg::new("transfer_hook_accounts")
                         .value_parser(parse_transfer_hook_account_arg)
                         .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
@@ -317,7 +317,7 @@ extraMetas:
             Command::new("update-extra-metas")
                 .about("Update the extra account metas account for a transfer hook program")
                 .arg(
-                    Arg::with_name("program_id")
+                    Arg::new("program_id")
                         .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TRANSFER_HOOK_PROGRAM")
                         .takes_value(true)
@@ -326,7 +326,7 @@ extraMetas:
                         .help("The transfer hook program id"),
                 )
                 .arg(
-                    Arg::with_name("token")
+                    Arg::new("token")
                         .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -335,7 +335,7 @@ extraMetas:
                         .help("The token mint address for the transfer hook"),
                 )
                 .arg(
-                    Arg::with_name("transfer_hook_accounts")
+                    Arg::new("transfer_hook_accounts")
                         .value_parser(parse_transfer_hook_account_arg)
                         .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
