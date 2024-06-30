@@ -11,7 +11,7 @@ edition = "2021"
 walkdir = "2"
 
 [dependencies]
-clap = { version = "3", features = ["cargo", "deprecated"] }
+clap = { version = "3", features = ["cargo"] }
 futures-util = "0.3.30"
 solana-clap-v3-utils = "2.0.0"
 solana-cli-config = "2.0.0"
