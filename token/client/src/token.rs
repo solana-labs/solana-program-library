@@ -18,7 +18,6 @@ use {
         program_error::ProgramError,
         program_pack::Pack,
         pubkey::Pubkey,
-        signature::Keypair,
         signer::{signers::Signers, Signer, SignerError},
         system_instruction,
         transaction::Transaction,
@@ -31,7 +30,7 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_mint_burn::{self, instruction::mint_range_proof},
+            confidential_mint_burn::{self},
             confidential_transfer::{
                 self,
                 account_info::{
@@ -2469,36 +2468,11 @@ where
         ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
         ciphertext_validity_proof_signer: &S,
     ) -> TokenResult<T::Output> {
-        // create ciphertext validity proof context state
-        let instruction_type = ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity;
-        let space =
-            size_of::<ProofContextState<BatchedGroupedCiphertext2HandlesValidityProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-
-        let ciphertext_validity_proof_context_state_info = ContextStateInfo {
-            context_state_account: context_state_accounts.ciphertext_validity_proof,
-            context_state_authority: context_state_accounts.authority,
-        };
-
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    context_state_accounts.ciphertext_validity_proof,
-                    rent,
-                    space as u64,
-                    &zk_token_proof_program::id(),
-                ),
-                instruction_type.encode_verify_proof(
-                    Some(ciphertext_validity_proof_context_state_info),
-                    ciphertext_validity_proof_data,
-                ),
-            ],
-            &[ciphertext_validity_proof_signer],
+        self.create_batched_grouped_2_handles_ciphertext_validity_proof_context_state(
+            context_state_accounts.ciphertext_validity_proof,
+            context_state_accounts.authority,
+            ciphertext_validity_proof_data,
+            ciphertext_validity_proof_signer,
         )
         .await
     }
@@ -4095,26 +4069,8 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    /// Mint SPL Tokens into the pending balance of a confidential token account
-    pub async fn confidential_mint<S: Signers>(
-        &self,
-        account: &Pubkey,
-        authority: &Pubkey,
-        amount: u64,
-        signing_keypairs: &S,
-    ) -> TokenResult<T::Output> {
-        let signing_pubkeys = signing_keypairs.pubkeys();
-        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
-
-        let account_data = self.get_account_info(account).await?;
-        let confidential_transfer_account =
-            account_data.get_extension::<ConfidentialTransferAccount>()?;
-
-        let mint_to_elgamal_pubkey = &confidential_transfer_account
-            .elgamal_pubkey
-            .try_into()
-            .expect("invalid elgamal pubkey pod");
-        let auditor_elgamal_pubkey =
+    pub async fn auditor_elgamal(&self) -> TokenResult<Option<ElGamalPubkey>> {
+        Ok(
             TryInto::<Option<zk_token_elgamal::pod::ElGamalPubkey>>::try_into(
                 self.get_mint_info()
                     .await?
@@ -4122,57 +4078,64 @@ where
                     .auditor_elgamal_pubkey,
             )
             .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))?
-            .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap());
-
-        let range_proof_context_state_account = Keypair::new();
-        let range_proof_context_pubkey = range_proof_context_state_account.pubkey();
-        self.create_range_proof_context_state_for_mint(
-            &range_proof_context_pubkey,
-            &self.payer.pubkey(),
-            &mint_range_proof(amount, mint_to_elgamal_pubkey, &auditor_elgamal_pubkey)?,
-            &[&range_proof_context_state_account],
+            .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()),
         )
-        .await?;
+    }
 
-        let proof_location = ProofLocation::ContextStateAccount(&range_proof_context_pubkey);
+    pub async fn account_elgamal_pubkey(&self, account: &Pubkey) -> TokenResult<ElGamalPubkey> {
+        TryInto::<ElGamalPubkey>::try_into(
+            self.get_account_info(account)
+                .await?
+                .get_extension::<ConfidentialTransferAccount>()?
+                .elgamal_pubkey,
+        )
+        .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))
+    }
 
-        let res = self
+    /// Mint SPL Tokens into the pending balance of a confidential token account
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_mint<S: Signers>(
+        &self,
+        account: &Pubkey,
+        authority: &Pubkey,
+        amount: u64,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+        range_proof_location: ProofLocation<'_, BatchedRangeProofU64Data>,
+        ciphertext_validity_proof_location: ProofLocation<
+            '_,
+            BatchedGroupedCiphertext2HandlesValidityProofData,
+        >,
+        pedersen_openings: &(PedersenOpening, PedersenOpening),
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+        self
             .process_ixs(
                 &confidential_mint_burn::instruction::confidential_mint(
                     &self.program_id,
                     account,
                     &self.pubkey,
                     amount,
-                    mint_to_elgamal_pubkey,
                     auditor_elgamal_pubkey,
                     authority,
                     &multisig_signers,
-                    proof_location,
+                    range_proof_location,
+                    ciphertext_validity_proof_location,
+                    pedersen_openings,
                 )?,
                 signing_keypairs,
             )
-            .await;
-
-        let close_context_state_signers = &[self.payer.clone()];
-        let _ = self
-            .confidential_transfer_close_context_state(
-                &range_proof_context_pubkey,
-                &self.payer.pubkey(),
-                &self.payer.pubkey(),
-                close_context_state_signers,
-            )
-            .await;
-
-        res
+            .await
     }
 
     /// Create a range proof context state account for mint
-    async fn create_range_proof_context_state_for_mint<S: Signers>(
+    pub async fn create_batched_u64_range_proof_context_state<S: Signer>(
         &self,
         range_proof_pubkey: &Pubkey,
         range_proof_authority: &Pubkey,
         range_proof_data: &BatchedRangeProofU64Data,
-        signing_keypairs: &S,
+        range_proof_signer: &S,
     ) -> TokenResult<T::Output> {
         let instruction_type = ProofInstruction::VerifyBatchedRangeProofU64;
         let space = size_of::<ProofContextState<BatchedRangeProofContext>>();
@@ -4194,7 +4157,7 @@ where
                 space as u64,
                 &zk_token_proof_program::id(),
             )],
-            signing_keypairs,
+            &[range_proof_signer],
         )
         .await?;
 
@@ -4202,6 +4165,49 @@ where
             &[instruction_type
                 .encode_verify_proof(Some(range_proof_context_state_info), range_proof_data)],
             &[self.payer.clone()],
+        )
+        .await
+    }
+
+    /// Create a ciphertext validity proof context state account for mint
+    pub async fn create_batched_grouped_2_handles_ciphertext_validity_proof_context_state<
+        S: Signer,
+    >(
+        &self,
+        proof_pubkey: &Pubkey,
+        proof_authority: &Pubkey,
+        ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
+        ciphertext_validity_proof_signer: &S,
+    ) -> TokenResult<T::Output> {
+        let instruction_type = ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity;
+        let space =
+            size_of::<ProofContextState<BatchedGroupedCiphertext2HandlesValidityProofContext>>();
+        let rent = self
+            .client
+            .get_minimum_balance_for_rent_exemption(space)
+            .await
+            .map_err(TokenError::Client)?;
+
+        let ciphertext_validity_proof_context_state_info = ContextStateInfo {
+            context_state_account: proof_pubkey,
+            context_state_authority: proof_authority,
+        };
+
+        self.process_ixs(
+            &[
+                system_instruction::create_account(
+                    &self.payer.pubkey(),
+                    proof_pubkey,
+                    rent,
+                    space as u64,
+                    &zk_token_proof_program::id(),
+                ),
+                instruction_type.encode_verify_proof(
+                    Some(ciphertext_validity_proof_context_state_info),
+                    ciphertext_validity_proof_data,
+                ),
+            ],
+            &[ciphertext_validity_proof_signer],
         )
         .await
     }

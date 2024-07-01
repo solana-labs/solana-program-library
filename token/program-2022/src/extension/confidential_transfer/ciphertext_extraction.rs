@@ -219,9 +219,9 @@ pub struct TransferPubkeysInfo {
 /// The proof context information needed to process a [Transfer] instruction.
 #[cfg(feature = "zk-ops")]
 pub struct TransferProofContextInfo {
-    /// Ciphertext containing the low 16 bits of the transafer amount
+    /// Ciphertext containing the low 16 bits of the transfer amount
     pub ciphertext_lo: TransferAmountCiphertext,
-    /// Ciphertext containing the high 32 bits of the transafer amount
+    /// Ciphertext containing the high 32 bits of the transfer amount
     pub ciphertext_hi: TransferAmountCiphertext,
     /// The transfer public keys associated with a transfer
     pub transfer_pubkeys: TransferPubkeysInfo,

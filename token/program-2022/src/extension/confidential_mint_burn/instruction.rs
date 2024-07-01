@@ -5,16 +5,17 @@ use crate::{
     proof::ProofLocation,
 };
 #[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::{
-    encryption::pedersen::Pedersen,
-    instruction::{transfer::TransferAmountCiphertext, BatchedRangeProofU64Data},
-    zk_token_proof_instruction::verify_batched_verify_range_proof_u64,
+use solana_zk_token_sdk::instruction::{
+    BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU64Data,
 };
 
 #[cfg(feature = "serde-traits")]
 use serde::{Deserialize, Serialize};
 #[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::encryption::{elgamal::ElGamalPubkey, pedersen::PedersenOpening};
+use solana_zk_token_sdk::{
+    encryption::{elgamal::ElGamalPubkey, pedersen::PedersenOpening},
+    zk_token_proof_instruction::{verify_batched_verify_range_proof_u64, ProofInstruction},
+};
 use {
     crate::extension::confidential_transfer::{
         ciphertext_extraction::SourceDecryptHandles, DecryptableBalance,
@@ -97,17 +98,16 @@ pub struct UpdateMintData {
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct MintInstructionData {
-    /// low 16 bits of encrypted amount to be minted
-    pub mint_lo: ElGamalCiphertext,
-    /// high 48 bits of encrypted amount to be minted
-    pub mint_hi: ElGamalCiphertext,
-    /// low 16 bits of encrypted amount to be minted
+    /// low 16 bits of encrypted amount to be minted, exposes mint amounts
+    /// to the auditor through the data received via `get_transaction`
     pub audit_amount_lo: ElGamalCiphertext,
-    /// high 48 bits of encrypted amount to be minted
+    /// high 48 bits of encrypted amount to be minted, exposes mint amounts
+    /// to the auditor through the data received via `get_transaction`
     pub audit_amount_hi: ElGamalCiphertext,
     /// Relative location of the `ProofInstruction::VerifyBatchedRangeProofU64`
     /// instruction to the `ConfidentialMint` instruction in the
-    /// transaction.
+    /// transaction. The `ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity`
+    /// has to always be at the instruction directly after the range proof one.
     pub proof_instruction_offset: i8,
 }
 
@@ -185,11 +185,15 @@ pub fn confidential_mint(
     token_account: &Pubkey,
     mint: &Pubkey,
     amount: u64,
-    destination_elgamal_pubkey: &ElGamalPubkey,
     auditor_elgamal_pubkey: Option<ElGamalPubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<BatchedRangeProofU64Data>,
+    range_proof_location: ProofLocation<'_, BatchedRangeProofU64Data>,
+    ciphertext_validity_proof_location: ProofLocation<
+        '_,
+        BatchedGroupedCiphertext2HandlesValidityProofData,
+    >,
+    pedersen_openings: &(PedersenOpening, PedersenOpening),
 ) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -203,16 +207,11 @@ pub fn confidential_mint(
     }
 
     let (amount_lo, amount_hi) = verify_and_split_deposit_amount(amount)?;
-    let opening = PedersenOpening::new_rand();
-    let mint_lo = destination_elgamal_pubkey.encrypt_with(amount_lo, &opening);
-    let mint_hi = destination_elgamal_pubkey.encrypt_with(amount_hi, &opening);
-
     let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
-    let opening = PedersenOpening::new_rand();
-    let audit_amount_hi = auditor_elgamal_pubkey.encrypt_with(amount_hi, &opening);
-    let audit_amount_lo = auditor_elgamal_pubkey.encrypt_with(amount_lo, &opening);
+    let audit_amount_lo = auditor_elgamal_pubkey.encrypt_with(amount_lo, &pedersen_openings.0);
+    let audit_amount_hi = auditor_elgamal_pubkey.encrypt_with(amount_hi, &pedersen_openings.1);
 
-    let proof_instruction_offset = match proof_data_location {
+    let proof_instruction_offset = match range_proof_location {
         ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
             proof_instruction_offset.into()
@@ -222,6 +221,14 @@ pub fn confidential_mint(
             0
         }
     };
+    match ciphertext_validity_proof_location {
+        ProofLocation::InstructionOffset(_, _) => {
+            // already pushed instruction introspection sysvar previously
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+        }
+    }
 
     let mut instrs = vec![encode_instruction(
         token_program_id,
@@ -229,85 +236,40 @@ pub fn confidential_mint(
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::ConfidentialMint,
         &MintInstructionData {
-            mint_lo: mint_lo.into(),
-            mint_hi: mint_hi.into(),
             audit_amount_lo: audit_amount_lo.into(),
             audit_amount_hi: audit_amount_hi.into(),
             proof_instruction_offset,
         },
     )];
 
-    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
-        proof_data_location
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, range_proof_data) =
+        range_proof_location
     {
-        // This constructor appends the proof instruction right after the
-        // `ConfidentialMint` instruction. This means that the proof instruction
-        // offset must be always be 1.
-        let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 1 {
-            return Err(TokenError::InvalidProofInstructionOffset.into());
+        if let ProofLocation::InstructionOffset(_, ciphertext_validity_proof_data) =
+            ciphertext_validity_proof_location
+        {
+            // This constructor appends the proof instruction right after the
+            // `ConfidentialMint` instruction. This means that the proof instruction
+            // offset must be always be 1.
+            let proof_instruction_offset: i8 = proof_instruction_offset.into();
+            if proof_instruction_offset != 1 {
+                return Err(TokenError::InvalidProofInstructionOffset.into());
+            }
+            instrs.push(verify_batched_verify_range_proof_u64(
+                None,
+                range_proof_data,
+            ));
+            instrs.push(
+                ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity
+                    .encode_verify_proof(None, ciphertext_validity_proof_data),
+            );
+        } else {
+            // both proofs have to either be context state or instruction offset
+            return Err(ProgramError::InvalidArgument);
         }
-        instrs.push(verify_batched_verify_range_proof_u64(
-            None,
-            proof_data,
-        ))
     };
 
     Ok(instrs)
-}
-
-/// Generates range proof for mint instruction
-#[cfg(not(target_os = "solana"))]
-pub fn mint_range_proof(
-    amount: u64,
-    destination_elgamal_pubkey: &ElGamalPubkey,
-    auditor_elgamal_pubkey: &Option<ElGamalPubkey>,
-) -> Result<BatchedRangeProofU64Data, ProgramError> {
-    let (amount_lo, amount_hi) = verify_and_split_deposit_amount(amount)?;
-    let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
-
-    const MINT_AMOUNT_LO_BIT_LENGTH: usize = 16;
-    const MINT_AMOUNT_HI_BIT_LENGTH: usize = 32;
-    const PADDING_BIT_LENGTH: usize = 16;
-
-    // Encrypt the `lo` and `hi` transfer amounts.
-    let (mint_amount_grouped_ciphertext_lo, transfer_amount_opening_lo) =
-        TransferAmountCiphertext::new(
-            amount_lo,
-            destination_elgamal_pubkey,
-            &ElGamalPubkey::default(),
-            &auditor_elgamal_pubkey,
-        );
-
-    let (transfer_amount_grouped_ciphertext_hi, transfer_amount_opening_hi) =
-        TransferAmountCiphertext::new(
-            amount_hi,
-            destination_elgamal_pubkey,
-            &ElGamalPubkey::default(),
-            &auditor_elgamal_pubkey,
-        );
-
-    let (padding_commitment, padding_opening) = Pedersen::new(0_u64);
-
-    Ok(BatchedRangeProofU64Data::new(
-        vec![
-            mint_amount_grouped_ciphertext_lo.get_commitment(),
-            transfer_amount_grouped_ciphertext_hi.get_commitment(),
-            &padding_commitment,
-        ],
-        vec![amount_lo, amount_hi, 0],
-        vec![
-            MINT_AMOUNT_LO_BIT_LENGTH,
-            MINT_AMOUNT_HI_BIT_LENGTH,
-            PADDING_BIT_LENGTH,
-        ],
-        vec![
-            &transfer_amount_opening_lo,
-            &transfer_amount_opening_hi,
-            &padding_opening,
-        ],
-    )
-    .map_err(|_| TokenError::ProofGeneration)?)
 }
 
 /// Create a `ConfidentialBurn` instruction

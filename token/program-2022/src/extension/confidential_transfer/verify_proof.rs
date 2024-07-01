@@ -8,11 +8,7 @@ use {
         proof::decode_proof_instruction_context,
     },
     solana_program::{
-        account_info::{next_account_info, AccountInfo},
-        msg,
-        program::invoke,
-        program_error::ProgramError,
-        sysvar::instructions::get_instruction_relative,
+        account_info::{next_account_info, AccountInfo}, msg, program::invoke, program_error::ProgramError, sysvar::instructions::get_instruction_relative
     },
     solana_zk_token_sdk::zk_token_proof_instruction::{self, ContextStateInfo},
     std::slice::Iter,
@@ -533,7 +529,7 @@ fn verify_equality_proof(
 
 /// Verify and process ciphertext validity proof for [Transfer] and
 /// [TransferWithFee] instructions.
-fn verify_ciphertext_validity_proof(
+pub fn verify_ciphertext_validity_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<BatchedGroupedCiphertext2HandlesValidityProofContext, ProgramError> {
     check_zk_token_proof_program_account(account_info.owner)?;

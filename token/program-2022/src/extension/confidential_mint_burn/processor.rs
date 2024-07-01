@@ -2,18 +2,10 @@
 use {
     self::ciphertext_extraction::SourceDecryptHandles,
     self::processor::validate_auditor_ciphertext,
-    crate::check_zk_token_proof_program_account,
     crate::extension::confidential_transfer::processor::process_source_for_transfer,
     crate::extension::non_transferable::NonTransferable,
-    crate::proof::decode_proof_instruction_context,
-    solana_zk_token_sdk::instruction::BatchedRangeProofContext,
-    solana_zk_token_sdk::instruction::BatchedRangeProofU128Data,
     solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
     solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext,
-    solana_zk_token_sdk::zk_token_proof_instruction::ProofInstruction,
-    solana_zk_token_sdk::{instruction::ProofType, zk_token_proof_state::ProofContextState},
-    spl_pod::bytemuck::pod_from_bytes,
-    std::slice::Iter,
 };
 use {
     crate::{
@@ -21,10 +13,14 @@ use {
         error::TokenError,
         extension::{
             confidential_mint_burn::{
+                ciphertext_extraction::{
+                    mint_amount_auditor_ciphertext, mint_amount_destination_ciphertext,
+                },
                 instruction::{
                     BurnInstructionData, ConfidentialMintBurnInstruction, InitializeMintData,
                     MintInstructionData, UpdateMintData,
                 },
+                verify_proof::verify_mint_proof,
                 ConfidentialMintBurn,
             },
             confidential_transfer::{verify_proof::*, *},
@@ -41,7 +37,6 @@ use {
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar::instructions::get_instruction_relative,
     },
 };
 
@@ -107,7 +102,7 @@ fn process_confidential_mint(
     let mint_data = &mint_info.data.borrow_mut();
     let mint = PodStateWithExtensions::<PodMint>::unpack(mint_data)?;
 
-    if let Err(_e) = mint.get_extension::<ConfidentialTransferMint>() {
+    let Ok(conf_transf_ext) = mint.get_extension::<ConfidentialTransferMint>() else {
         msg!("confidential-mint-burn extension initialized on mint without confidential transfer extension");
         return Err(TokenError::ExtensionNotFound.into());
     };
@@ -145,65 +140,45 @@ fn process_confidential_mint(
     // it'd enable creating SOL out of thin air
     assert!(!token_account.base.is_native());
 
-    // TODO: how to verify actual conents of the proof?
-    //       is it even possible without equality / validity proof?
-    let _proof_context =
-        verify_mint_proof(account_info_iter, data.proof_instruction_offset as i64)?;
+    let proof_context = verify_mint_proof(account_info_iter, data.proof_instruction_offset as i64)?;
 
     let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.valid_as_destination()?;
 
+    if proof_context.destination_pubkey != confidential_transfer_account.elgamal_pubkey {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    if !conf_transf_ext
+        .auditor_elgamal_pubkey
+        .equals(&proof_context.auditor_pubkey)
+    {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    if data.audit_amount_lo != mint_amount_auditor_ciphertext(&proof_context.ciphertext_lo) {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    if data.audit_amount_hi != mint_amount_auditor_ciphertext(&proof_context.ciphertext_hi) {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
     confidential_transfer_account.pending_balance_lo = syscall::add(
         &confidential_transfer_account.pending_balance_lo,
-        &data.mint_lo,
+        &mint_amount_destination_ciphertext(&proof_context.ciphertext_lo),
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
     confidential_transfer_account.pending_balance_hi = syscall::add(
         &confidential_transfer_account.pending_balance_hi,
-        &data.mint_hi,
+        &mint_amount_destination_ciphertext(&proof_context.ciphertext_hi),
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
     confidential_transfer_account.increment_pending_balance_credit_counter()?;
 
     Ok(())
-}
-
-/// Verify zero-knowledge proof needed for a [ConfigureAccount] instruction and
-/// return the corresponding proof context.
-#[cfg(feature = "zk-ops")]
-pub fn verify_mint_proof(
-    account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
-    proof_instruction_offset: i64,
-) -> Result<BatchedRangeProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        // interpret `account_info` as a context state account
-        let context_state_account_info = next_account_info(account_info_iter)?;
-        check_zk_token_proof_program_account(context_state_account_info.owner)?;
-        let context_state_account_data = context_state_account_info.data.borrow();
-        let context_state = pod_from_bytes::<ProofContextState<BatchedRangeProofContext>>(
-            &context_state_account_data,
-        )?;
-
-        if context_state.proof_type != ProofType::BatchedRangeProofU64.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        let sysvar_account_info = next_account_info(account_info_iter)?;
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-
-        Ok(*decode_proof_instruction_context::<
-            BatchedRangeProofU128Data,
-            BatchedRangeProofContext,
-        >(
-            ProofInstruction::VerifyBatchedRangeProofU64,
-            &zkp_instruction,
-        )?)
-    }
 }
 
 /// Processes a [ConfidentialBurn] instruction.

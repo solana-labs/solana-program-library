@@ -38,6 +38,7 @@ use {
     spl_token_2022::{
         error::TokenError,
         extension::{
+            confidential_mint_burn::proof_generation::generate_mint_proofs,
             confidential_transfer::{
                 account_info::{
                     combine_balances, ApplyPendingBalanceAccountInfo, TransferAccountInfo,
@@ -60,6 +61,7 @@ use {
             transfer_hook::TransferHook,
             BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
         },
+        proof::ProofLocation,
         solana_zk_token_sdk::{
             encryption::{
                 auth_encryption::AeKey,
@@ -3387,9 +3389,72 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
                 .await?
         }
         ConfidentialInstructionType::Mint => {
-            token
-                .confidential_mint(&token_account_address, &owner, amount, &bulk_signers)
-                .await?
+            let payer = config.fee_payer()?;
+            let range_proof_context_state_account = Keypair::new();
+            let range_proof_context_pubkey = range_proof_context_state_account.pubkey();
+            let ciphertext_validity_proof_context_state_account = Keypair::new();
+            let ciphertext_validity_proof_context_pubkey =
+                ciphertext_validity_proof_context_state_account.pubkey();
+
+            let mint_to_elgamal_pubkey =
+                token.account_elgamal_pubkey(&token_account_address).await?;
+            let auditor_elgamal_pubkey = token.auditor_elgamal().await?;
+
+            let (range_proof, ciphertext_validity_proof, pedersen_openings) =
+                generate_mint_proofs(amount, &mint_to_elgamal_pubkey, &auditor_elgamal_pubkey)?;
+
+            let context_state_auth = payer.pubkey();
+            let _ = try_join!(
+                token.create_batched_u64_range_proof_context_state(
+                    &range_proof_context_pubkey,
+                    &context_state_auth,
+                    &range_proof,
+                    &range_proof_context_state_account,
+                ),
+                token.create_batched_grouped_2_handles_ciphertext_validity_proof_context_state(
+                    &ciphertext_validity_proof_context_pubkey,
+                    &context_state_auth,
+                    &ciphertext_validity_proof,
+                    &ciphertext_validity_proof_context_state_account,
+                ),
+            )?;
+
+            let range_proof_location =
+                ProofLocation::ContextStateAccount(&range_proof_context_pubkey);
+            let ciphertext_validity_proof_location =
+                ProofLocation::ContextStateAccount(&ciphertext_validity_proof_context_pubkey);
+
+            let res = token
+                .confidential_mint(
+                    &token_account_address,
+                    &owner,
+                    amount,
+                    auditor_elgamal_pubkey,
+                    range_proof_location,
+                    ciphertext_validity_proof_location,
+                    &pedersen_openings,
+                    &bulk_signers,
+                )
+                .await?;
+
+            let close_context_auth = payer.pubkey();
+            let close_context_state_signers = &[payer];
+            let _ = try_join!(
+                token.confidential_transfer_close_context_state(
+                    &range_proof_context_pubkey,
+                    &close_context_auth,
+                    &close_context_auth,
+                    close_context_state_signers,
+                ),
+                token.confidential_transfer_close_context_state(
+                    &ciphertext_validity_proof_context_pubkey,
+                    &close_context_auth,
+                    &close_context_auth,
+                    close_context_state_signers,
+                ),
+            )?;
+
+            res
         }
     };
 

@@ -12,11 +12,20 @@ pub const MAXIMUM_DEPOSIT_TRANSFER_AMOUNT: u64 = (u16::MAX as u64) + (1 << 16) *
 /// Bit length of the low bits of pending balance plaintext
 pub const PENDING_BALANCE_LO_BIT_LENGTH: u32 = 16;
 
-/// Confidential Transfer Extension instructions
+/// Confidential Mint-Burn Extension instructions
 pub mod instruction;
 
-/// Confidential Transfer Extension processor
+/// Confidential Mint-Burn Extension processor
 pub mod processor;
+
+/// Confidential Mint-Burn proof generation
+pub mod proof_generation;
+
+/// Confidential Mint-Burn proof verification 
+pub mod verify_proof;
+
+/// Confidential Mint-Burn proof verification 
+pub mod ciphertext_extraction;
 
 /// Confidential transfer mint configuration
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
