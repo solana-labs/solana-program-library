@@ -3,8 +3,12 @@ use {
         encryption::{auth_encryption::AeKey, elgamal::ElGamalKeypair},
         zk_elgamal_proof_program::proof_data::ZkProofData,
     },
-    spl_token_confidential_transfer_proof_extraction::transfer::TransferProofContext,
-    spl_token_confidential_transfer_proof_generation::transfer::transfer_split_proof_data,
+    spl_token_confidential_transfer_proof_extraction::{
+        transfer::TransferProofContext, withdraw::WithdrawProofContext,
+    },
+    spl_token_confidential_transfer_proof_generation::{
+        transfer::transfer_split_proof_data, withdraw::withdraw_proof_data,
+    },
 };
 
 #[test]
@@ -49,6 +53,36 @@ fn test_proof_validity(spendable_balance: u64, transfer_amount: u64) {
     TransferProofContext::verify_and_extract(
         equality_proof_data.context_data(),
         validity_proof_data.context_data(),
+        range_proof_data.context_data(),
+    )
+    .unwrap();
+}
+
+#[test]
+fn test_withdraw_proof_correctness() {
+    test_withdraw_validity(0, 0);
+    test_withdraw_validity(77, 55);
+    test_withdraw_validity(281474976710655, 281474976710655);
+}
+
+fn test_withdraw_validity(spendable_balance: u64, withdraw_amount: u64) {
+    let keypair = ElGamalKeypair::new_rand();
+
+    let spendable_ciphertext = keypair.pubkey().encrypt(spendable_balance);
+
+    let (equality_proof_data, range_proof_data) = withdraw_proof_data(
+        &spendable_ciphertext,
+        spendable_balance,
+        withdraw_amount,
+        &keypair,
+    )
+    .unwrap();
+
+    equality_proof_data.verify_proof().unwrap();
+    range_proof_data.verify_proof().unwrap();
+
+    WithdrawProofContext::verify_and_extract(
+        equality_proof_data.context_data(),
         range_proof_data.context_data(),
     )
     .unwrap();
