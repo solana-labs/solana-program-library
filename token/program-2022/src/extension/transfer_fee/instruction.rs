@@ -50,14 +50,17 @@ pub enum TransferFeeInstruction {
     },
     /// Transfer, providing expected mint information and fees
     ///
+    /// This instruction succeeds if the mint has no configured transfer fee
+    /// and the provided fee is 0. This allows applications to use
+    /// `TransferCheckedWithFee` with any mint.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The source account. Must include the
+    ///   0. `[writable]` The source account. May include the
     ///      `TransferFeeAmount` extension.
-    ///   1. `[]` The token mint. Must include the `TransferFeeConfig`
-    ///      extension.
-    ///   2. `[writable]` The destination account. Must include the
+    ///   1. `[]` The token mint. May include the `TransferFeeConfig` extension.
+    ///   2. `[writable]` The destination account. May include the
     ///      `TransferFeeAmount` extension.
     ///   3. `[signer]` The source account's owner/delegate.
     ///
@@ -73,8 +76,8 @@ pub enum TransferFeeInstruction {
         /// Expected number of base 10 digits to the right of the decimal place.
         decimals: u8,
         /// Expected fee assessed on this transfer, calculated off-chain based
-        /// on the transfer_fee_basis_points and maximum_fee of the
-        /// mint.
+        /// on the transfer_fee_basis_points and maximum_fee of the mint. May
+        /// be 0 for a mint without a configured transfer fee.
         fee: u64,
     },
     /// Transfer all withheld tokens in the mint to an account. Signed by the

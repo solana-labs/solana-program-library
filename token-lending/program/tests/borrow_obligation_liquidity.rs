@@ -18,7 +18,6 @@ use {
         processor::process_instruction,
         state::{FeeCalculation, INITIAL_COLLATERAL_RATIO},
     },
-    std::u64,
 };
 
 #[tokio::test]

@@ -12,7 +12,8 @@ use {
     futures::try_join,
     serde::Serialize,
     solana_account_decoder::{
-        parse_token::{get_token_account_mint, parse_token, TokenAccountType, UiAccountState},
+        parse_account_data::SplTokenAdditionalData,
+        parse_token::{get_token_account_mint, parse_token_v2, TokenAccountType, UiAccountState},
         UiAccountData,
     },
     solana_clap_utils::{
@@ -2293,7 +2294,7 @@ async fn command_address(
 async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult {
     let account_data = config.get_account_checked(&address).await?;
 
-    let (decimals, has_permanent_delegate) =
+    let (additional_data, has_permanent_delegate) =
         if let Some(mint_address) = get_token_account_mint(&account_data.data) {
             let mint_account = config.get_account_checked(&mint_address).await?;
             let mint_state = StateWithExtensionsOwned::<Mint>::unpack(mint_account.data)
@@ -2305,13 +2306,14 @@ async fn command_display(config: &Config<'_>, address: Pubkey) -> CommandResult 
                 } else {
                     false
                 };
+            let additional_data = SplTokenAdditionalData::with_decimals(mint_state.base.decimals);
 
-            (Some(mint_state.base.decimals), has_permanent_delegate)
+            (Some(additional_data), has_permanent_delegate)
         } else {
             (None, false)
         };
 
-    let token_data = parse_token(&account_data.data, decimals);
+    let token_data = parse_token_v2(&account_data.data, additional_data.as_ref());
 
     match token_data {
         Ok(TokenAccountType::Account(account)) => {

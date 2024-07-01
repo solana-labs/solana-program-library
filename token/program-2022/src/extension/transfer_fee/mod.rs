@@ -113,6 +113,15 @@ impl TransferFee {
     }
 
     /// Calculate the fee that would produce the given output
+    ///
+    /// Note: this function is not an exact inverse operation of
+    /// `calculate_fee`. Meaning, it is not the case that:
+    ///
+    /// `calculate_fee(x) == calculate_inverse_fee(x - calculate_fee(x))`
+    ///
+    /// Only the following relationship holds:
+    ///
+    /// `calculate_fee(x) >= calculate_inverse_fee(x - calculate_fee(x))`
     pub fn calculate_inverse_fee(&self, post_fee_amount: u64) -> Option<u64> {
         let pre_fee_amount = self.calculate_pre_fee_amount(post_fee_amount)?;
         self.calculate_fee(pre_fee_amount)
@@ -442,6 +451,25 @@ pub(crate) mod test {
             let one = MAX_FEE_BASIS_POINTS as u64;
             let precision = amount_in / one / one / one;
             assert!(diff < precision, "diff is {} for precision {}", diff, precision);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn inverse_fee_relationship(
+            transfer_fee_basis_points in 0u16..MAX_FEE_BASIS_POINTS,
+            maximum_fee in u64::MIN..=u64::MAX,
+            amount_in in 0..=u64::MAX
+        ) {
+            let transfer_fee = TransferFee {
+                epoch: PodU64::from(0),
+                maximum_fee: PodU64::from(maximum_fee),
+                transfer_fee_basis_points: PodU16::from(transfer_fee_basis_points),
+            };
+            let fee = transfer_fee.calculate_fee(amount_in).unwrap();
+            let amount_out = amount_in.checked_sub(fee).unwrap();
+            let fee_exact_out = transfer_fee.calculate_inverse_fee(amount_out).unwrap();
+            assert!(fee >= fee_exact_out);
         }
     }
 }

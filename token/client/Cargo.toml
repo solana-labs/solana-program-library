@@ -5,34 +5,34 @@ edition = "2021"
 license = "Apache-2.0"
 name = "spl-token-client"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "0.10.0"
+version = "0.11.0"
 
 [dependencies]
 async-trait = "0.1"
 curve25519-dalek = "3.2.1"
 futures = "0.3.30"
 futures-util = "0.3"
-solana-banks-interface = ">=1.18.11,<=2"
-solana-cli-output = { version = ">=1.18.11,<=2", optional = true }
-solana-program-test = ">=1.18.11,<=2"
-solana-rpc-client = ">=1.18.11,<=2"
-solana-rpc-client-api = ">=1.18.11,<=2"
-solana-sdk = ">=1.18.11,<=2"
+solana-banks-interface = "2.0.0"
+solana-cli-output = { version = "2.0.0", optional = true }
+solana-program-test = "2.0.0"
+solana-rpc-client = "2.0.0"
+solana-rpc-client-api = "2.0.0"
+solana-sdk = "2.0.0"
 # We never want the entrypoint for ATA, but we want the entrypoint for token when
 # testing token
-spl-associated-token-account = { version = "3.0.2", path = "../../associated-token-account/program", features = [
+spl-associated-token-account = { version = "4.0.0", path = "../../associated-token-account/program", features = [
   "no-entrypoint",
 ] }
-spl-memo = { version = "4.0", path = "../../memo/program", features = [
+spl-memo = { version = "5.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
-spl-token = { version = "4.0", path = "../program", features = [
+spl-token = { version = "6.0", path = "../program", features = [
   "no-entrypoint",
 ] }
-spl-token-2022 = { version = "3.0.2", path = "../program-2022" }
-spl-token-group-interface = { version = "0.2.3", path = "../../token-group/interface" }
-spl-token-metadata-interface = { version = "0.3.3", path = "../../token-metadata/interface" }
-spl-transfer-hook-interface = { version = "0.6.3", path = "../transfer-hook/interface" }
+spl-token-2022 = { version = "4.0.0", path = "../program-2022" }
+spl-token-group-interface = { version = "0.3.0", path = "../../token-group/interface" }
+spl-token-metadata-interface = { version = "0.4.0", path = "../../token-metadata/interface" }
+spl-transfer-hook-interface = { version = "0.7.0", path = "../transfer-hook/interface" }
 thiserror = "1.0"
 
 [features]

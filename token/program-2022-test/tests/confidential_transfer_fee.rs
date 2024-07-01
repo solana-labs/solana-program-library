@@ -430,7 +430,7 @@ async fn confidential_transfer_initialize_and_update_mint() {
     );
     assert_eq!(
         extension.auto_approve_new_accounts,
-        new_auto_approve_new_accounts.try_into().unwrap(),
+        new_auto_approve_new_accounts.into(),
     );
     assert_eq!(
         extension.auditor_elgamal_pubkey,

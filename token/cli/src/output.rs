@@ -18,8 +18,6 @@ use {
     std::fmt::{self, Display},
 };
 
-pub(crate) trait Output: Serialize + fmt::Display + QuietDisplay + VerboseDisplay {}
-
 static WARNING: Emoji = Emoji("⚠️", "!");
 
 #[derive(Serialize, Deserialize)]

@@ -1,0 +1,15 @@
+[package]
+name = "spl-token-confidential-transfer-proof-extraction"
+version = "0.1.0"
+description = "Solana Program Library Confidential Transfer Proof Extraction"
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2021"
+
+[dependencies]
+solana-zk-sdk = "2.0.0"
+thiserror = "1.0.61"
+
+[lib]
+crate-type = ["cdylib", "lib"]

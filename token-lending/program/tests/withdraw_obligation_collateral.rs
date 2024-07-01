@@ -17,7 +17,6 @@ use {
         processor::process_instruction,
         state::INITIAL_COLLATERAL_RATIO,
     },
-    std::u64,
 };
 
 #[tokio::test]

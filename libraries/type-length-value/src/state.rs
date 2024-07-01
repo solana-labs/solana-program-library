@@ -756,7 +756,7 @@ mod test {
         // correct due to the good discriminator length and zero length
         assert_eq!(
             get_discriminators_and_end_index(&[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap(),
-            (vec![ArrayDiscriminator::try_from(1).unwrap()], 12)
+            (vec![ArrayDiscriminator::from(1)], 12)
         );
         // correct since it's just uninitialized data
         assert_eq!(

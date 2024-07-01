@@ -420,6 +420,27 @@ async fn test_cpi_guard_burn() {
         let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
         assert_eq!(alice_state.base.amount, amount);
 
+        // delegate-auth cpi burn by self does not work
+        token_obj
+            .approve(
+                &alice.pubkey(),
+                &alice.pubkey(),
+                &alice.pubkey(),
+                1,
+                &[&alice],
+            )
+            .await
+            .unwrap();
+
+        let error = token_obj
+            .process_ixs(&[mk_burn(alice.pubkey(), do_checked)], &[&alice])
+            .await
+            .unwrap_err();
+        assert_eq!(error, client_error(TokenError::CpiGuardBurnBlocked));
+
+        let alice_state = token_obj.get_account_info(&alice.pubkey()).await.unwrap();
+        assert_eq!(alice_state.base.amount, amount);
+
         // delegate-auth cpi burn with cpi guard works
         token_obj
             .approve(

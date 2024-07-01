@@ -21,8 +21,8 @@ default = []
 anchor-lang = "0.29.0"
 bytemuck = "1.13"
 solana-program = ">=1.18.11,<=2"
-spl-concurrent-merkle-tree = { version = "0.2.0", path = "../../../libraries/concurrent-merkle-tree", features = [
-  "sol-log",
+spl-concurrent-merkle-tree = { version = "0.3.0", path = "../../../libraries/concurrent-merkle-tree", features = [
+    "sol-log",
 ] }
 spl-noop = { version = "0.2.0", path = "../noop", features = ["no-entrypoint"] }
 

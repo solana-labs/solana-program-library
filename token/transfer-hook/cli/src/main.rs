@@ -631,7 +631,7 @@ mod test {
         );
 
         let required_address = Pubkey::new_unique();
-        let accounts = vec![AccountMeta::new_readonly(required_address, false)];
+        let accounts = [AccountMeta::new_readonly(required_address, false)];
         process_create_extra_account_metas(
             &rpc_client,
             &program_id,

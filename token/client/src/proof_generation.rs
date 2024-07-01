@@ -21,7 +21,7 @@ use {
             },
             instruction::{
                 transfer::{
-                    combine_lo_hi_commitments, combine_lo_hi_openings, FeeEncryption,
+                    try_combine_lo_hi_commitments, try_combine_lo_hi_openings, FeeEncryption,
                     FeeParameters, TransferAmountCiphertext,
                 },
                 BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU256Data,
@@ -184,25 +184,29 @@ pub fn transfer_with_fee_split_proof_data(
 
     // create combined commitments and openings to be used to generate proofs
     const TRANSFER_AMOUNT_LO_BIT_LENGTH: usize = 16;
-    let combined_transfer_amount_commitment = combine_lo_hi_commitments(
+    let combined_transfer_amount_commitment = try_combine_lo_hi_commitments(
         transfer_amount_grouped_ciphertext_lo.get_commitment(),
         transfer_amount_grouped_ciphertext_hi.get_commitment(),
         TRANSFER_AMOUNT_LO_BIT_LENGTH,
-    );
-    let combined_transfer_amount_opening = combine_lo_hi_openings(
+    )
+    .map_err(|_| TokenError::ProofGeneration)?;
+    let combined_transfer_amount_opening = try_combine_lo_hi_openings(
         &transfer_amount_opening_lo,
         &transfer_amount_opening_hi,
         TRANSFER_AMOUNT_LO_BIT_LENGTH,
-    );
+    )
+    .map_err(|_| TokenError::ProofGeneration)?;
 
     const FEE_AMOUNT_LO_BIT_LENGTH: usize = 16;
-    let combined_fee_commitment = combine_lo_hi_commitments(
+    let combined_fee_commitment = try_combine_lo_hi_commitments(
         fee_ciphertext_lo.get_commitment(),
         fee_ciphertext_hi.get_commitment(),
         FEE_AMOUNT_LO_BIT_LENGTH,
-    );
+    )
+    .map_err(|_| TokenError::ProofGeneration)?;
     let combined_fee_opening =
-        combine_lo_hi_openings(&fee_opening_lo, &fee_opening_hi, FEE_AMOUNT_LO_BIT_LENGTH);
+        try_combine_lo_hi_openings(&fee_opening_lo, &fee_opening_hi, FEE_AMOUNT_LO_BIT_LENGTH)
+            .map_err(|_| TokenError::ProofGeneration)?;
 
     // compute claimed and real delta commitment
     let (claimed_commitment, claimed_opening) = Pedersen::new(delta_fee);
