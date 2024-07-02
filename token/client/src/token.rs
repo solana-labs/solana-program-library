@@ -595,23 +595,24 @@ where
 
         instructions.extend_from_slice(token_instructions);
 
-        let blockhash = if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
-            self.nonce_account,
-            &self.nonce_authority,
-            self.nonce_blockhash,
-        ) {
-            let nonce_instruction = system_instruction::advance_nonce_account(
-                &nonce_account,
-                &nonce_authority.pubkey(),
-            );
-            instructions.insert(0, nonce_instruction);
-            nonce_blockhash
-        } else {
-            self.client
-                .get_latest_blockhash()
-                .await
-                .map_err(TokenError::Client)?
-        };
+        let mut blockhash =
+            if let (Some(nonce_account), Some(nonce_authority), Some(nonce_blockhash)) = (
+                self.nonce_account,
+                &self.nonce_authority,
+                self.nonce_blockhash,
+            ) {
+                let nonce_instruction = system_instruction::advance_nonce_account(
+                    &nonce_account,
+                    &nonce_authority.pubkey(),
+                );
+                instructions.insert(0, nonce_instruction);
+                nonce_blockhash
+            } else {
+                self.client
+                    .get_latest_blockhash()
+                    .await
+                    .map_err(TokenError::Client)?
+            };
 
         if let Some(compute_unit_price) = self.compute_unit_price {
             instructions.push(ComputeBudgetInstruction::set_compute_unit_price(
@@ -636,6 +637,14 @@ where
             }
         }
 
+        // ensure the blockhash is still the latest one
+        if self.nonce_blockhash.is_none() {
+            blockhash = self
+                .client
+                .get_latest_blockhash()
+                .await
+                .map_err(TokenError::Client)?
+        }
         let message = Message::new_with_blockhash(&instructions, fee_payer, &blockhash);
         let mut transaction = Transaction::new_unsigned(message);
         let signing_pubkeys = signing_keypairs.pubkeys();
