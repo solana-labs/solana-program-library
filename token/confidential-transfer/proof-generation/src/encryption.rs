@@ -47,3 +47,21 @@ impl TransferAmountCiphertext {
         self.0.handles.get(2).unwrap()
     }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub struct BurnAmountCiphertext(pub(crate) GroupedElGamalCiphertext<2>);
+
+impl BurnAmountCiphertext {
+    pub fn new(
+        amount: u64,
+        source_pubkey: &ElGamalPubkey,
+        auditor_pubkey: &ElGamalPubkey,
+    ) -> (Self, PedersenOpening) {
+        let opening = PedersenOpening::new_rand();
+        let grouped_ciphertext =
+            GroupedElGamal::<2>::encrypt_with([source_pubkey, auditor_pubkey], amount, &opening);
+
+        (Self(grouped_ciphertext), opening)
+    }
+}
