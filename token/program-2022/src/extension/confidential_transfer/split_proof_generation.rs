@@ -4,27 +4,29 @@
 //! The logic in this submodule should belong to the `solana-zk-token-sdk` and
 //! will be removed with the next upgrade to the Solana program.
 
-use solana_zk_token_sdk::encryption::pedersen::PedersenOpening;
-
-use crate::{
-    extension::confidential_transfer::{
-        ciphertext_extraction::{transfer_amount_source_ciphertext, SourceDecryptHandles},
-        processor::verify_and_split_deposit_amount,
-        *,
-    },
-    solana_zk_token_sdk::{
-        encryption::{
-            auth_encryption::{AeCiphertext, AeKey},
-            elgamal::{DecryptHandle, ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
-            grouped_elgamal::GroupedElGamal,
-            pedersen::Pedersen,
+use {
+    crate::{
+        extension::confidential_transfer::{
+            ciphertext_extraction::{transfer_amount_source_ciphertext, SourceDecryptHandles},
+            processor::verify_and_split_deposit_amount,
+            *,
         },
-        instruction::{
-            transfer::TransferAmountCiphertext, BatchedGroupedCiphertext2HandlesValidityProofData,
-            BatchedRangeProofU128Data, CiphertextCommitmentEqualityProofData,
+        solana_zk_token_sdk::{
+            encryption::{
+                auth_encryption::{AeCiphertext, AeKey},
+                elgamal::{DecryptHandle, ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
+                grouped_elgamal::GroupedElGamal,
+                pedersen::Pedersen,
+            },
+            instruction::{
+                transfer::TransferAmountCiphertext,
+                BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU128Data,
+                CiphertextCommitmentEqualityProofData,
+            },
+            zk_token_elgamal::ops::subtract_with_lo_hi,
         },
-        zk_token_elgamal::ops::subtract_with_lo_hi,
     },
+    solana_zk_token_sdk::encryption::pedersen::PedersenOpening,
 };
 
 /// The main logic to create the three split proof data for a transfer.

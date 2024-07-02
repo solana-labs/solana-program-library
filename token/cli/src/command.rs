@@ -38,7 +38,9 @@ use {
     spl_token_2022::{
         error::TokenError,
         extension::{
-            confidential_mint_burn::proof_generation::generate_mint_proofs,
+            confidential_mint_burn::proof_generation::{
+                generate_burn_proofs, generate_mint_proofs,
+            },
             confidential_transfer::{
                 account_info::{
                     combine_balances, ApplyPendingBalanceAccountInfo, TransferAccountInfo,
@@ -4778,9 +4780,7 @@ async fn command_confidential_burn(
         .map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals))
         .unwrap();
 
-    // deserialize `pod` ElGamal pubkeys
-    let recipient_elgamal_pubkey = elgamal_keypair.pubkey();
-    let auditor_elgamal_pubkey = None;
+    let auditor_elgamal_pubkey = token.auditor_elgamal().await?;
 
     let context_state_authority = config.fee_payer()?;
     let equality_proof_context_state_account = Keypair::new();
@@ -4805,19 +4805,20 @@ async fn command_confidential_burn(
         .unwrap();
     let transfer_account_info = TransferAccountInfo::new(extension);
 
-    let (
-        equality_proof_data,
-        ciphertext_validity_proof_data,
-        range_proof_data,
-        source_decrypt_handles,
-        pedersen_openings,
-    ) = transfer_account_info
-        .generate_split_transfer_proof_data(
+    let (equality_proof_data, ciphertext_validity_proof_data, range_proof_data, pedersen_openings) =
+        generate_burn_proofs(
+            &transfer_account_info
+                .available_balance
+                .try_into()
+                .map_err(|_| TokenError::MalformedCiphertext)?,
+            &transfer_account_info
+                .decryptable_available_balance
+                .try_into()
+                .map_err(|_| TokenError::MalformedCiphertext)?,
             burn_amount,
             elgamal_keypair,
             aes_key,
-            recipient_elgamal_pubkey,
-            auditor_elgamal_pubkey.as_ref(),
+            &auditor_elgamal_pubkey,
         )
         .unwrap();
 
@@ -4848,7 +4849,6 @@ async fn command_confidential_burn(
             context_state_accounts,
             burn_amount,
             aes_key,
-            &source_decrypt_handles,
             &bulk_signers,
             &pedersen_openings,
         )

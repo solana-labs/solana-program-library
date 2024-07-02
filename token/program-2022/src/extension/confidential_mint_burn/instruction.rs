@@ -4,22 +4,19 @@ use crate::{
     extension::confidential_transfer::processor::verify_and_split_deposit_amount,
     proof::ProofLocation,
 };
+#[cfg(feature = "serde-traits")]
+use serde::{Deserialize, Serialize};
 #[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::instruction::{
     BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU64Data,
 };
-
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 #[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::{
     encryption::{elgamal::ElGamalPubkey, pedersen::PedersenOpening},
     zk_token_proof_instruction::{verify_batched_verify_range_proof_u64, ProofInstruction},
 };
 use {
-    crate::extension::confidential_transfer::{
-        ciphertext_extraction::SourceDecryptHandles, DecryptableBalance,
-    },
+    crate::extension::confidential_transfer::DecryptableBalance,
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::pubkey::Pubkey,
@@ -106,7 +103,8 @@ pub struct MintInstructionData {
     pub audit_amount_hi: ElGamalCiphertext,
     /// Relative location of the `ProofInstruction::VerifyBatchedRangeProofU64`
     /// instruction to the `ConfidentialMint` instruction in the
-    /// transaction. The `ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity`
+    /// transaction. The
+    /// `ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity`
     /// has to always be at the instruction directly after the range proof one.
     pub proof_instruction_offset: i8,
 }
@@ -120,16 +118,18 @@ pub struct BurnInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
-    /// The ElGamal decryption handle pertaining to the low and high bits of the
-    /// transfer amount. This field is used when the transfer proofs are
-    /// split and verified as smaller components.
-    ///
-    /// NOTE: This field is to be removed in the next Solana upgrade.
-    pub source_decrypt_handles: SourceDecryptHandles,
     /// low 16 bits of encrypted amount to be minted
-    pub burn_lo: ElGamalCiphertext,
+    pub auditor_lo: ElGamalCiphertext,
     /// high 48 bits of encrypted amount to be minted
-    pub burn_hi: ElGamalCiphertext,
+    pub auditor_hi: ElGamalCiphertext,
+    /// Relative location of the
+    /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
+    /// to the `ConfidentialBurn` instruction in the transaction. The
+    /// `ProofInstruction::VerifyBatchedRangeProofU128` has to always be at
+    /// the instruction directly after the equality proof one,
+    /// with the `ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity`
+    /// following after that.
+    pub proof_instruction_offset: i8,
 }
 
 /// Create a `InitializeMint` instruction
@@ -283,7 +283,6 @@ pub fn confidential_burn_with_split_proofs(
     burn_amount: u64,
     new_decryptable_available_balance: DecryptableBalance,
     context_accounts: TransferSplitContextStateAccounts,
-    source_decrypt_handles: &SourceDecryptHandles,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     pedersen_openings: &(PedersenOpening, PedersenOpening),
@@ -296,7 +295,6 @@ pub fn confidential_burn_with_split_proofs(
         burn_amount,
         new_decryptable_available_balance,
         context_accounts,
-        source_decrypt_handles,
         authority,
         multisig_signers,
         pedersen_openings,
@@ -314,7 +312,6 @@ pub fn inner_confidential_burn_with_split_proofs(
     burn_amount: u64,
     new_decryptable_available_balance: DecryptableBalance,
     context_accounts: TransferSplitContextStateAccounts,
-    source_decrypt_handles: &SourceDecryptHandles,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     pedersen_openings: &(PedersenOpening, PedersenOpening),
@@ -372,9 +369,9 @@ pub fn inner_confidential_burn_with_split_proofs(
         ConfidentialMintBurnInstruction::ConfidentialBurn,
         &BurnInstructionData {
             new_decryptable_available_balance,
-            source_decrypt_handles: *source_decrypt_handles,
-            burn_hi,
-            burn_lo,
+            auditor_hi: burn_hi,
+            auditor_lo: burn_lo,
+            proof_instruction_offset: 0,
         },
     ))
 }

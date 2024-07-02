@@ -748,40 +748,6 @@ pub fn process_source_for_transfer(
     Ok(())
 }
 
-/// Validates the auditor transfer amounts from the instruction against those from zk-proofs
-#[allow(clippy::too_many_arguments)]
-#[cfg(feature = "zk-ops")]
-pub fn validate_auditor_ciphertext(
-    confidential_mint: &ConfidentialTransferMint,
-    maybe_proof_context: Option<&TransferProofContextInfo>,
-    auditor_hi: &ElGamalCiphertext,
-    auditor_lo: &ElGamalCiphertext,
-) -> ProgramResult {
-    if let Some(proof_context) = maybe_proof_context {
-        if let Some(auditor_pk) = confidential_mint.auditor_elgamal_pubkey.into() {
-            // Check that the auditor encryption public key is consistent with what was
-            // actually used to generate the zkp.
-            if proof_context.transfer_pubkeys.auditor != auditor_pk {
-                return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
-            }
-
-            let auditor_transfer_amount_lo =
-                transfer_amount_auditor_ciphertext(&proof_context.ciphertext_lo);
-            let auditor_transfer_amount_hi =
-                transfer_amount_auditor_ciphertext(&proof_context.ciphertext_hi);
-
-            if auditor_hi != &auditor_transfer_amount_hi {
-                return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
-            }
-            if auditor_lo != &auditor_transfer_amount_lo {
-                return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
-            }
-        }
-    }
-
-    Ok(())
-}
-
 #[cfg(feature = "zk-ops")]
 fn process_destination_for_transfer(
     destination_account_info: &AccountInfo,

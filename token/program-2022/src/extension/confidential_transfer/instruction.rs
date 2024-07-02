@@ -5,7 +5,6 @@ use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
 pub use solana_zk_token_sdk::{
     zk_token_proof_instruction::*, zk_token_proof_state::ProofContextState,
 };
-
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::aeciphertext_fromstr,

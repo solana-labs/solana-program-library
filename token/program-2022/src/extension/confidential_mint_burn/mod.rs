@@ -21,10 +21,10 @@ pub mod processor;
 /// Confidential Mint-Burn proof generation
 pub mod proof_generation;
 
-/// Confidential Mint-Burn proof verification 
+/// Confidential Mint-Burn proof verification
 pub mod verify_proof;
 
-/// Confidential Mint-Burn proof verification 
+/// Confidential Mint-Burn proof verification
 pub mod ciphertext_extraction;
 
 /// Confidential transfer mint configuration

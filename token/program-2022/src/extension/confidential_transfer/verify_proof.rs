@@ -8,7 +8,11 @@ use {
         proof::decode_proof_instruction_context,
     },
     solana_program::{
-        account_info::{next_account_info, AccountInfo}, msg, program::invoke, program_error::ProgramError, sysvar::instructions::get_instruction_relative
+        account_info::{next_account_info, AccountInfo},
+        msg,
+        program::invoke,
+        program_error::ProgramError,
+        sysvar::instructions::get_instruction_relative,
     },
     solana_zk_token_sdk::zk_token_proof_instruction::{self, ContextStateInfo},
     std::slice::Iter,
@@ -511,7 +515,7 @@ pub fn verify_transfer_with_fee_proof(
 
 /// Verify and process equality proof for [Transfer] and [TransferWithFee]
 /// instructions.
-fn verify_equality_proof(
+pub fn verify_equality_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<CiphertextCommitmentEqualityProofContext, ProgramError> {
     check_zk_token_proof_program_account(account_info.owner)?;
@@ -548,7 +552,7 @@ pub fn verify_ciphertext_validity_proof(
 }
 
 /// Verify and process range proof for [Transfer] instruction.
-fn verify_transfer_range_proof(
+pub fn verify_transfer_range_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<BatchedRangeProofContext, ProgramError> {
     check_zk_token_proof_program_account(account_info.owner)?;

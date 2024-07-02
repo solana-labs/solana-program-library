@@ -4110,23 +4110,22 @@ where
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
-        self
-            .process_ixs(
-                &confidential_mint_burn::instruction::confidential_mint(
-                    &self.program_id,
-                    account,
-                    &self.pubkey,
-                    amount,
-                    auditor_elgamal_pubkey,
-                    authority,
-                    &multisig_signers,
-                    range_proof_location,
-                    ciphertext_validity_proof_location,
-                    pedersen_openings,
-                )?,
-                signing_keypairs,
-            )
-            .await
+        self.process_ixs(
+            &confidential_mint_burn::instruction::confidential_mint(
+                &self.program_id,
+                account,
+                &self.pubkey,
+                amount,
+                auditor_elgamal_pubkey,
+                authority,
+                &multisig_signers,
+                range_proof_location,
+                ciphertext_validity_proof_location,
+                pedersen_openings,
+            )?,
+            signing_keypairs,
+        )
+        .await
     }
 
     /// Create a range proof context state account for mint
@@ -4222,7 +4221,6 @@ where
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         amount: u64,
         aes_key: &AeKey,
-        source_decrypt_handles: &SourceDecryptHandles,
         signing_keypairs: &S,
         pedersen_openings: &(PedersenOpening, PedersenOpening),
     ) -> TokenResult<T::Output> {
@@ -4254,7 +4252,6 @@ where
                 amount,
                 new_decryptable_available_balance.into(),
                 context_state_accounts,
-                source_decrypt_handles,
                 authority,
                 &multisig_signers,
                 pedersen_openings,
