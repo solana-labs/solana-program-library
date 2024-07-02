@@ -2,6 +2,7 @@
 
 pub mod bytemuck;
 pub mod error;
+pub mod option;
 pub mod optional_keys;
 pub mod primitives;
 pub mod slice;
