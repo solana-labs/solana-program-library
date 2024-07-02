@@ -244,11 +244,15 @@ pub fn transfer_with_fee_split_proof_data(
     const DELTA_BIT_LENGTH: usize = 48;
     const MAX_FEE_BASIS_POINTS: u64 = 10_000;
 
-    let delta_fee_complement = MAX_FEE_BASIS_POINTS - delta_fee;
+    let delta_fee_complement = MAX_FEE_BASIS_POINTS
+        .checked_sub(delta_fee)
+        .ok_or(TokenProofGenerationError::FeeCalculation)?;
 
     let max_fee_basis_points_commitment =
         Pedersen::with(MAX_FEE_BASIS_POINTS, &PedersenOpening::default());
+    #[allow(clippy::arithmetic_side_effects)]
     let claimed_complement_commitment = max_fee_basis_points_commitment - claimed_commitment;
+    #[allow(clippy::arithmetic_side_effects)]
     let claimed_complement_opening = PedersenOpening::default() - &claimed_opening;
 
     let range_proof_data = BatchedRangeProofU256Data::new(
@@ -320,6 +324,7 @@ fn calculate_fee(transfer_amount: u64, fee_rate_basis_points: u16) -> Option<(u6
     Some((fee as u64, delta_fee as u64))
 }
 
+#[allow(clippy::arithmetic_side_effects)]
 fn compute_delta_commitment_and_opening(
     (combined_commitment, combined_opening): (&PedersenCommitment, &PedersenOpening),
     (combined_fee_commitment, combined_fee_opening): (&PedersenCommitment, &PedersenOpening),
