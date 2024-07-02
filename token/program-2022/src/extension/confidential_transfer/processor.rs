@@ -3,6 +3,7 @@
 use crate::extension::transfer_hook;
 #[cfg(feature = "zk-ops")]
 use {
+    crate::extension::confidential_mint_burn::ConfidentialMintBurn,
     crate::extension::non_transferable::NonTransferableAccount,
     solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
 };
@@ -135,6 +136,7 @@ fn process_configure_account(
     // `ConfidentialTransferAccount` extension
     let confidential_transfer_account =
         token_account.init_extension::<ConfidentialTransferAccount>(false)?;
+
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
     confidential_transfer_account.elgamal_pubkey = proof_context.pubkey;
     confidential_transfer_account.maximum_pending_balance_credit_counter =
@@ -269,6 +271,10 @@ fn process_deposit(
         return Err(TokenError::MintDecimalsMismatch.into());
     }
 
+    if mint.get_extension::<ConfidentialMintBurn>().is_ok() {
+        return Err(TokenError::IllegalMintBurnConversion.into());
+    }
+
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = PodStateWithExtensionsMut::<PodAccount>::unpack(token_account_data)?;
@@ -367,6 +373,10 @@ fn process_withdraw(
 
     if expected_decimals != mint.base.decimals {
         return Err(TokenError::MintDecimalsMismatch.into());
+    }
+
+    if mint.get_extension::<ConfidentialMintBurn>().is_ok() {
+        return Err(TokenError::IllegalMintBurnConversion.into());
     }
 
     check_program_account(token_account_info.owner)?;
@@ -618,9 +628,7 @@ fn process_transfer(
         )?;
 
         if maybe_proof_context.is_none() {
-            msg!(
-                "Context state not fully initialized: returning with no op; transfer is NOT yet executed"
-            );
+            msg!("Context state not fully initialized: returning with no op; transfer is NOT yet executed");
         }
         authority_info
     };
@@ -664,8 +672,10 @@ fn process_transfer(
     Ok(())
 }
 
+/// Processes the changes for the sending party of a confidential transfer
+#[allow(clippy::too_many_arguments)]
 #[cfg(feature = "zk-ops")]
-fn process_source_for_transfer(
+pub fn process_source_for_transfer(
     program_id: &Pubkey,
     source_account_info: &AccountInfo,
     mint_info: &AccountInfo,

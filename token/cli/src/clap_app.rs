@@ -133,6 +133,9 @@ pub enum CommandName {
     ApplyPendingBalance,
     UpdateGroupAddress,
     UpdateMemberAddress,
+    MintConfidentialTokens,
+    BurnConfidentialTokens,
+    ConfidentialBalance,
 }
 impl fmt::Display for CommandName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -818,6 +821,14 @@ pub fn app<'a, 'b>(
                         .conflicts_with("member_address")
                         .takes_value(false)
                         .help("Enables group member configurations in the mint. The mint authority must initialize the member."),
+                )
+                .arg(
+                    Arg::with_name("enable_confidential_mint_burn")
+                        .long("enable-confidential-mint-burn")
+                        .takes_value(false)
+                        .help(
+                            "Enables minting of new tokens into confidential balance and burning of tokens directly from the confidential balance"
+                        ),
                 )
                 .nonce_args(true)
                 .arg(memo_arg())
@@ -2614,6 +2625,110 @@ pub fn app<'a, 'b>(
                     owner_address_arg()
                 )
                 .arg(multisig_signer_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::MintConfidentialTokens.into())
+                .about("Mint tokens amounts for into confidential balance")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .validator(is_amount_or_all)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to deposit; accepts keyword ALL"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::BurnConfidentialTokens.into())
+                .about("Burn tokens from available confidential balance")
+                .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .validator(is_amount_or_all)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to deposit; accepts keyword ALL"),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .help("The address of the token account to configure confidential transfers for \
+                            [default: owner's associated token account]")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
+                .nonce_args(true)
+        )
+        .subcommand(
+            SubCommand::with_name(CommandName::ConfidentialBalance.into())
+                .about("Display confidential balance")
+                .arg(
+                    Arg::with_name("address")
+                        .long("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .help("The address of the token account to for which to fetch the confidential balance")
+                )
+                .arg(
+                    Arg::with_name("authority")
+                        .long("authority")
+                        .alias("owner")
+                        .validator(is_valid_signer)
+                        .value_name("SIGNER")
+                        .takes_value(true)
+                        .help("Keypair from which encryption keys for token account were derived.")
+                )
+                .arg(
+                    owner_address_arg()
+                )
+                .arg(multisig_signer_arg())
+                .arg(mint_decimals_arg())
                 .nonce_args(true)
         )
 }
