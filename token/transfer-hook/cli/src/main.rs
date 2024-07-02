@@ -2,14 +2,14 @@ pub mod meta;
 
 use {
     crate::meta::parse_transfer_hook_account_arg,
-    clap::{crate_description, crate_name, crate_version, Arg, Command},
+    clap::{crate_description, crate_name, crate_version, Arg, ArgAction, Command},
     solana_clap_v3_utils::{
         input_parsers::{
             parse_url_or_moniker,
             signer::{SignerSource, SignerSourceParserBuilder},
         },
         input_validators::normalize_to_url_if_moniker,
-        keypair::{pubkey_from_source, DefaultSigner},
+        keypair::signer_from_path,
     },
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
@@ -233,7 +233,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Command::new("create-extra-metas")
                 .about("Create the extra account metas account for a transfer hook program")
                 .arg(
-                    Arg::with_name("program_id")
+                    Arg::new("program_id")
                         .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TRANSFER_HOOK_PROGRAM")
                         .takes_value(true)
@@ -242,7 +242,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("The transfer hook program id"),
                 )
                 .arg(
-                    Arg::with_name("token")
+                    Arg::new("token")
                         .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -251,11 +251,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("The token mint address for the transfer hook"),
                 )
                 .arg(
-                    Arg::with_name("transfer_hook_accounts")
+                    Arg::new("transfer_hook_accounts")
                         .value_parser(parse_transfer_hook_account_arg)
                         .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
-                        .multiple(true)
+                        .action(ArgAction::Append)
                         .min_values(0)
                         .index(3)
                         .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
@@ -317,7 +317,7 @@ extraMetas:
             Command::new("update-extra-metas")
                 .about("Update the extra account metas account for a transfer hook program")
                 .arg(
-                    Arg::with_name("program_id")
+                    Arg::new("program_id")
                         .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TRANSFER_HOOK_PROGRAM")
                         .takes_value(true)
@@ -326,7 +326,7 @@ extraMetas:
                         .help("The transfer hook program id"),
                 )
                 .arg(
-                    Arg::with_name("token")
+                    Arg::new("token")
                         .value_parser(SignerSourceParserBuilder::default().allow_pubkey().allow_file_path().build())
                         .value_name("TOKEN_MINT_ADDRESS")
                         .takes_value(true)
@@ -335,11 +335,11 @@ extraMetas:
                         .help("The token mint address for the transfer hook"),
                 )
                 .arg(
-                    Arg::with_name("transfer_hook_accounts")
+                    Arg::new("transfer_hook_accounts")
                         .value_parser(parse_transfer_hook_account_arg)
                         .value_name("TRANSFER_HOOK_ACCOUNTS")
                         .takes_value(true)
-                        .multiple(true)
+                        .action(ArgAction::Append)
                         .min_values(0)
                         .index(3)
                         .help(r#"Additional account(s) required for a transfer hook and their respective configurations, whether they are a fixed address or PDA.
@@ -401,37 +401,37 @@ extraMetas:
     let (command, matches) = app_matches.subcommand().unwrap();
     let mut wallet_manager: Option<Rc<RemoteWalletManager>> = None;
 
-    let cli_config = if let Some(config_file) = matches.value_of("config_file") {
+    let cli_config = if let Some(config_file) = matches.get_one::<String>("config_file") {
         solana_cli_config::Config::load(config_file).unwrap_or_default()
     } else {
         solana_cli_config::Config::default()
     };
 
     let config = {
-        let default_signer = DefaultSigner::new(
-            "fee_payer",
-            matches
-                .value_of("fee_payer")
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| cli_config.keypair_path.clone()),
-        );
+        let default_signer = if let Some((signer, _)) =
+            SignerSource::try_get_signer(matches, "fee_payer", &mut wallet_manager)?
+        {
+            signer
+        } else {
+            signer_from_path(
+                matches,
+                &cli_config.keypair_path,
+                "fee_payer",
+                &mut wallet_manager,
+            )?
+        };
 
         let json_rpc_url = normalize_to_url_if_moniker(
             matches
-                .value_of("json_rpc_url")
+                .get_one::<String>("json_rpc_url")
                 .unwrap_or(&cli_config.json_rpc_url),
         );
 
         Config {
             commitment_config: CommitmentConfig::confirmed(),
-            default_signer: default_signer
-                .signer_from_path(matches, &mut wallet_manager)
-                .unwrap_or_else(|err| {
-                    eprintln!("error: {err}");
-                    exit(1);
-                }),
+            default_signer,
             json_rpc_url,
-            verbose: matches.is_present("verbose"),
+            verbose: matches.try_contains_id("verbose")?,
         }
     };
     solana_logger::setup_with_default("solana=info");
@@ -444,20 +444,11 @@ extraMetas:
 
     match (command, matches) {
         ("create-extra-metas", arg_matches) => {
-            let program_id_source = arg_matches
-                .try_get_one::<SignerSource>("program_id")?
-                .unwrap();
-            let program_id = pubkey_from_source(
-                arg_matches,
-                program_id_source,
-                "program_id",
-                &mut wallet_manager,
-            )
-            .unwrap();
-
-            let token_source = arg_matches.try_get_one::<SignerSource>("token")?.unwrap();
-            let token = pubkey_from_source(arg_matches, token_source, "token", &mut wallet_manager)
-                .unwrap();
+            let program_id =
+                SignerSource::try_get_pubkey(arg_matches, "program_id", &mut wallet_manager)?
+                    .unwrap();
+            let token =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)?.unwrap();
 
             let transfer_hook_accounts = arg_matches
                 .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
@@ -465,18 +456,18 @@ extraMetas:
                 .flatten()
                 .cloned()
                 .collect();
-            let mint_authority = DefaultSigner::new(
-                "mint_authority",
-                matches
-                    .value_of("mint_authority")
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| cli_config.keypair_path.clone()),
-            )
-            .signer_from_path(matches, &mut wallet_manager)
-            .unwrap_or_else(|err| {
-                eprintln!("error: {err}");
-                exit(1);
-            });
+            let mint_authority = if let Some((signer, _)) =
+                SignerSource::try_get_signer(matches, "mint_authority", &mut wallet_manager)?
+            {
+                signer
+            } else {
+                signer_from_path(
+                    matches,
+                    &cli_config.keypair_path,
+                    "mint_authority",
+                    &mut wallet_manager,
+                )?
+            };
             let signature = process_create_extra_account_metas(
                 &rpc_client,
                 &program_id,
@@ -493,20 +484,11 @@ extraMetas:
             println!("Signature: {signature}");
         }
         ("update-extra-metas", arg_matches) => {
-            let program_id_source = arg_matches
-                .try_get_one::<SignerSource>("program_id")?
-                .unwrap();
-            let program_id = pubkey_from_source(
-                arg_matches,
-                program_id_source,
-                "program_id",
-                &mut wallet_manager,
-            )
-            .unwrap();
-
-            let token_source = arg_matches.try_get_one::<SignerSource>("token")?.unwrap();
-            let token = pubkey_from_source(arg_matches, token_source, "token", &mut wallet_manager)
-                .unwrap();
+            let program_id =
+                SignerSource::try_get_pubkey(arg_matches, "program_id", &mut wallet_manager)?
+                    .unwrap();
+            let token =
+                SignerSource::try_get_pubkey(arg_matches, "token", &mut wallet_manager)?.unwrap();
 
             let transfer_hook_accounts = arg_matches
                 .get_many::<Vec<ExtraAccountMeta>>("transfer_hook_accounts")
@@ -514,18 +496,18 @@ extraMetas:
                 .flatten()
                 .cloned()
                 .collect();
-            let mint_authority = DefaultSigner::new(
-                "mint_authority",
-                matches
-                    .value_of("mint_authority")
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| cli_config.keypair_path.clone()),
-            )
-            .signer_from_path(matches, &mut wallet_manager)
-            .unwrap_or_else(|err| {
-                eprintln!("error: {err}");
-                exit(1);
-            });
+            let mint_authority = if let Some((signer, _)) =
+                SignerSource::try_get_signer(matches, "mint_authority", &mut wallet_manager)?
+            {
+                signer
+            } else {
+                signer_from_path(
+                    matches,
+                    &cli_config.keypair_path,
+                    "mint_authority",
+                    &mut wallet_manager,
+                )?
+            };
             let signature = process_update_extra_account_metas(
                 &rpc_client,
                 &program_id,
