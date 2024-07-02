@@ -7684,6 +7684,8 @@ dependencies = [
 name = "spl-token-confidential-transfer-proof-extraction"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
+ "solana-curve25519",
  "solana-zk-sdk",
  "thiserror",
 ]
