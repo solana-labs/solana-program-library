@@ -139,7 +139,8 @@ pub fn transfer_with_fee_split_proof_data(
     let (raw_fee_amount, delta_fee) = calculate_fee(transfer_amount, transfer_fee_basis_points)
         .ok_or(TokenProofGenerationError::FeeCalculation)?;
 
-    // if raw fee is greater than the maximum fee, then use the maximum fee for the fee amount
+    // if raw fee is greater than the maximum fee, then use the maximum fee for the
+    // fee amount
     let fee_amount = std::cmp::min(transfer_fee_maximum_fee, raw_fee_amount);
 
     // split and encrypt fee
@@ -302,10 +303,11 @@ pub fn transfer_with_fee_split_proof_data(
 fn calculate_fee(transfer_amount: u64, fee_rate_basis_points: u16) -> Option<(u64, u64)> {
     let numerator = (transfer_amount as u128).checked_mul(fee_rate_basis_points as u128)?;
 
-    // Warning: Division may involve CPU opcodes that have variable execution times. This
-    // non-constant-time execution of the fee calculation can theoretically reveal information
-    // about the transfer amount. For transfers that invole extremely sensitive data, additional
-    // care should be put into how the fees are calculated.
+    // Warning: Division may involve CPU opcodes that have variable execution times.
+    // This non-constant-time execution of the fee calculation can theoretically
+    // reveal information about the transfer amount. For transfers that invole
+    // extremely sensitive data, additional care should be put into how the fees
+    // are calculated.
     let fee = numerator
         .checked_add(ONE_IN_BASIS_POINTS)?
         .checked_sub(1)?
