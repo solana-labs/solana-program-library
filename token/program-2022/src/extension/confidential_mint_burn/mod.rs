@@ -2,6 +2,8 @@ use {
     crate::extension::{Extension, ExtensionType},
     bytemuck::{Pod, Zeroable},
     solana_program::pubkey::Pubkey,
+    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext,
+    spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
 };
 
 /// Maximum bit length of any mint or burn amount
@@ -33,9 +35,13 @@ pub mod ciphertext_extraction;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ConfidentialMintBurn {
-    /// Authority to modify the `WhitelistTransferMint` configuration and to
-    /// approve new accounts.
+    /// Authority to modify the `ConfidentialMintBurnMint` configuration and to
+    /// mint new confidential tokens
     pub mint_authority: Pubkey,
+    /// The confidential supply of the mint
+    pub confidential_supply: ElGamalCiphertext,
+    /// The ElGamal pubkey used to encrypt the confidential supply
+    pub supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
 }
 
 impl Extension for ConfidentialMintBurn {

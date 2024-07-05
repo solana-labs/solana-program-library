@@ -8,22 +8,23 @@ use crate::{
 use serde::{Deserialize, Serialize};
 #[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::instruction::{
-    BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU64Data,
+    BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU64Data,
+    CiphertextCiphertextEqualityProofData,
 };
 #[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::{
-    encryption::{elgamal::ElGamalPubkey, pedersen::PedersenOpening},
-    zk_token_proof_instruction::{verify_batched_verify_range_proof_u64, ProofInstruction},
-};
-use {
-    crate::extension::confidential_transfer::DecryptableBalance,
-    bytemuck::{Pod, Zeroable},
-    num_enum::{IntoPrimitive, TryFromPrimitive},
-    solana_program::pubkey::Pubkey,
-    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext,
+    encryption::{
+        elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
+        pedersen::PedersenOpening,
+    },
+    zk_token_proof_instruction::{
+        verify_batched_verify_range_proof_u64, verify_ciphertext_ciphertext_equality,
+        ProofInstruction,
+    },
 };
 #[cfg(not(target_os = "solana"))]
 use {
+    super::ConfidentialMintBurn,
     crate::{
         check_program_account,
         extension::confidential_transfer::instruction::TransferSplitContextStateAccounts,
@@ -34,6 +35,15 @@ use {
         program_error::ProgramError,
         sysvar,
     },
+    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey as PodElGamalPubkey,
+};
+use {
+    crate::extension::confidential_transfer::DecryptableBalance,
+    bytemuck::{Pod, Zeroable},
+    num_enum::{IntoPrimitive, TryFromPrimitive},
+    solana_program::pubkey::Pubkey,
+    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext as PodElGamalCiphertext,
+    spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
 };
 
 /// Confidential Transfer extension instructions
@@ -60,33 +70,50 @@ pub enum ConfidentialMintBurnInstruction {
     ///   `InitializeMintData`
     InitializeMint,
     /// Updates mint-authority for confidential-mint-burn mint.
-    UpdateMint,
+    UpdateAuthority,
+    /// Rotates the ElGamal key used to encrypt confidential supply
+    RotateSupplyElGamal,
     /// Mints confidential tokens to
     ConfidentialMint,
     /// Removes whitelist designation for specific address
     ConfidentialBurn,
 }
 
-/// Data expected by `WhitelistedTransferInstruction::InitializeMint`
+/// Data expected by `ConfidentialMintBurnInstruction::InitializeMint`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct InitializeMintData {
-    /// Authority to modify the `WhitelistTransferMint` configuration and to
-    /// approve new accounts.
+    /// Authority used to modify the `ConfidentialMintBurn` mint
+    /// configuration and mint new tokens
     pub authority: Pubkey,
+    /// The ElGamal pubkey used to encrypt the confidential supply
+    pub supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
 }
 
-/// Data expected by `ConfidentialTransferInstruction::UpdateMint`
+/// Data expected by `ConfidentialMintBurnInstruction::UpdateMint`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
-pub struct UpdateMintData {
-    /// Determines if newly configured accounts must be approved by the
-    /// `authority` before they may be used by the user.
+pub struct UpdateAuthorityData {
+    /// The pubkey the `authority` is to be rotated to
     pub new_authority: Pubkey,
+}
+
+/// Data expected by `ConfidentialMintBurnInstruction::RotateSupplyElGamal`
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[repr(C)]
+pub struct RotateSupplyElGamalData {
+    /// The new ElGamal pubkey for supply encryption
+    pub new_supply_elgamal_pubkey: OptionalNonZeroElGamalPubkey,
+    /// The location of the
+    /// `ProofInstruction::VerifyCiphertextCiphertextEquality` instruction
+    /// relative to the `RotateSupplyElGamal` instruction in the transaction
+    pub proof_location: i8,
 }
 
 /// Data expected by `ConfidentialMintBurnInstruction::ConfidentialMint`
@@ -97,10 +124,10 @@ pub struct UpdateMintData {
 pub struct MintInstructionData {
     /// low 16 bits of encrypted amount to be minted, exposes mint amounts
     /// to the auditor through the data received via `get_transaction`
-    pub audit_amount_lo: ElGamalCiphertext,
+    pub audit_amount_lo: PodElGamalCiphertext,
     /// high 48 bits of encrypted amount to be minted, exposes mint amounts
     /// to the auditor through the data received via `get_transaction`
-    pub audit_amount_hi: ElGamalCiphertext,
+    pub audit_amount_hi: PodElGamalCiphertext,
     /// Relative location of the `ProofInstruction::VerifyBatchedRangeProofU64`
     /// instruction to the `ConfidentialMint` instruction in the
     /// transaction. The
@@ -119,9 +146,9 @@ pub struct BurnInstructionData {
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
     /// low 16 bits of encrypted amount to be minted
-    pub auditor_lo: ElGamalCiphertext,
+    pub auditor_lo: PodElGamalCiphertext,
     /// high 48 bits of encrypted amount to be minted
-    pub auditor_hi: ElGamalCiphertext,
+    pub auditor_hi: PodElGamalCiphertext,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `ConfidentialBurn` instruction in the transaction. The
@@ -138,6 +165,7 @@ pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: Pubkey,
+    confidential_supply_pubkey: Option<PodElGamalPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -147,13 +175,16 @@ pub fn initialize_mint(
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
         ConfidentialMintBurnInstruction::InitializeMint,
-        &InitializeMintData { authority },
+        &InitializeMintData {
+            authority,
+            supply_elgamal_pubkey: confidential_supply_pubkey.try_into()?,
+        },
     ))
 }
 
 /// Create a `UpdateMint` instruction
 #[cfg(not(target_os = "solana"))]
-pub fn update_mint(
+pub fn update_authority(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: &Pubkey,
@@ -172,9 +203,66 @@ pub fn update_mint(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialMintBurnExtension,
-        ConfidentialMintBurnInstruction::UpdateMint,
-        &UpdateMintData { new_authority },
+        ConfidentialMintBurnInstruction::UpdateAuthority,
+        &UpdateAuthorityData { new_authority },
     ))
+}
+
+/// Create a `RotateSupplyElGamal` instruction
+#[allow(clippy::too_many_arguments)]
+#[cfg(not(target_os = "solana"))]
+pub fn rotate_supply_elgamal(
+    token_program_id: &Pubkey,
+    mint: &Pubkey,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+    extension_state: &ConfidentialMintBurn,
+    current_supply: u64,
+    supply_elgamal_keypair: ElGamalKeypair,
+    new_supply_elgamal_keypair: ElGamalKeypair,
+) -> Result<Vec<Instruction>, ProgramError> {
+    check_program_account(token_program_id)?;
+    let mut accounts = vec![
+        AccountMeta::new(*mint, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
+    ];
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
+
+    let new_supply_opening = PedersenOpening::new_rand();
+    let new_supply_ciphertext = new_supply_elgamal_keypair
+        .pubkey()
+        .encrypt_with(current_supply, &new_supply_opening);
+
+    let proof_data = CiphertextCiphertextEqualityProofData::new(
+        &supply_elgamal_keypair,
+        new_supply_elgamal_keypair.pubkey(),
+        &ElGamalCiphertext::try_from(extension_state.confidential_supply)
+            .map_err(|_| TokenError::InvalidState)?,
+        &new_supply_ciphertext,
+        &new_supply_opening,
+        current_supply,
+    )
+    .map_err(|_| TokenError::ProofGeneration)?;
+    accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+
+    Ok(vec![
+        encode_instruction(
+            token_program_id,
+            accounts,
+            TokenInstruction::ConfidentialMintBurnExtension,
+            ConfidentialMintBurnInstruction::RotateSupplyElGamal,
+            &RotateSupplyElGamalData {
+                new_supply_elgamal_pubkey: Some(Into::<PodElGamalPubkey>::into(
+                    *new_supply_elgamal_keypair.pubkey(),
+                ))
+                .try_into()?,
+                proof_location: 1,
+            },
+        ),
+        verify_ciphertext_ciphertext_equality(None, &proof_data),
+    ])
 }
 
 /// Create a `ConfidentialMint` instruction
@@ -186,22 +274,30 @@ pub fn confidential_mint(
     mint: &Pubkey,
     amount: u64,
     auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+    supply_elgamal_pubkey: Option<ElGamalPubkey>,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     range_proof_location: ProofLocation<'_, BatchedRangeProofU64Data>,
     ciphertext_validity_proof_location: ProofLocation<
         '_,
-        BatchedGroupedCiphertext2HandlesValidityProofData,
+        BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
     pedersen_openings: &(PedersenOpening, PedersenOpening),
 ) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*token_account, false),
-        AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
-    ];
+    let mut accounts = vec![AccountMeta::new(*token_account, false)];
+    // we only need write lock to adjust confidential suppy on
+    // mint if a value for supply_elgamal_pubkey has been set
+    if supply_elgamal_pubkey.is_some() {
+        accounts.push(AccountMeta::new(*mint, false));
+    } else {
+        accounts.push(AccountMeta::new_readonly(*mint, false));
+    }
 
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
     for multisig_signer in multisig_signers.iter() {
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
@@ -280,6 +376,7 @@ pub fn confidential_burn_with_split_proofs(
     token_account: &Pubkey,
     mint: &Pubkey,
     auditor_pubkey: Option<ElGamalPubkey>,
+    supply_elgamal_pubkey: Option<ElGamalPubkey>,
     burn_amount: u64,
     new_decryptable_available_balance: DecryptableBalance,
     context_accounts: TransferSplitContextStateAccounts,
@@ -292,6 +389,7 @@ pub fn confidential_burn_with_split_proofs(
         token_account,
         mint,
         auditor_pubkey,
+        supply_elgamal_pubkey,
         burn_amount,
         new_decryptable_available_balance,
         context_accounts,
@@ -309,6 +407,7 @@ pub fn inner_confidential_burn_with_split_proofs(
     token_account: &Pubkey,
     mint: &Pubkey,
     auditor_pubkey: Option<ElGamalPubkey>,
+    supply_elgamal_pubkey: Option<ElGamalPubkey>,
     burn_amount: u64,
     new_decryptable_available_balance: DecryptableBalance,
     context_accounts: TransferSplitContextStateAccounts,
@@ -317,17 +416,11 @@ pub fn inner_confidential_burn_with_split_proofs(
     pedersen_openings: &(PedersenOpening, PedersenOpening),
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*token_account, false),
-        AccountMeta::new_readonly(*mint, false),
-    ];
-
-    if context_accounts
-        .close_split_context_state_accounts
-        .is_some()
-    {
-        println!("close split context accounts on execution not implemented for confidential burn");
-        return Err(ProgramError::InvalidInstructionData);
+    let mut accounts = vec![AccountMeta::new(*token_account, false)];
+    if supply_elgamal_pubkey.is_some() {
+        accounts.push(AccountMeta::new(*mint, false));
+    } else {
+        accounts.push(AccountMeta::new_readonly(*mint, false));
     }
 
     accounts.push(AccountMeta::new_readonly(
@@ -359,7 +452,10 @@ pub fn inner_confidential_burn_with_split_proofs(
         let burn_lo = apk.encrypt_with(amount_lo, opening_lo);
         (burn_hi.into(), burn_lo.into())
     } else {
-        (ElGamalCiphertext::zeroed(), ElGamalCiphertext::zeroed())
+        (
+            PodElGamalCiphertext::zeroed(),
+            PodElGamalCiphertext::zeroed(),
+        )
     };
 
     Ok(encode_instruction(

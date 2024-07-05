@@ -254,6 +254,8 @@ async fn command_create_token(
     enable_member: bool,
     bulk_signers: Vec<Arc<dyn Signer>>,
     enable_confidential_mint_burn: bool,
+    auditor_pubkey: ElGamalPubkeyOrNone,
+    confidential_supply_pubkey: ElGamalPubkeyOrNone,
 ) -> CommandResult {
     println_display(
         config,
@@ -300,10 +302,6 @@ async fn command_create_token(
         extensions.push(ExtensionInitializationParams::DefaultAccountState { state })
     }
 
-    if enable_confidential_mint_burn {
-        extensions.push(ExtensionInitializationParams::ConfidentialMintBurnMint { authority });
-    }
-
     if let Some((transfer_fee_basis_points, maximum_fee)) = transfer_fee {
         extensions.push(ExtensionInitializationParams::TransferFeeConfig {
             transfer_fee_config_authority: Some(authority),
@@ -317,7 +315,7 @@ async fn command_create_token(
         extensions.push(ExtensionInitializationParams::ConfidentialTransferMint {
             authority: Some(authority),
             auto_approve_new_accounts: auto_approve,
-            auditor_elgamal_pubkey: None,
+            auditor_elgamal_pubkey: auditor_pubkey.into(),
         });
         if transfer_fee.is_some() {
             // Deriving ElGamal key from default signer. Custom ElGamal keys
@@ -334,6 +332,13 @@ async fn command_create_token(
                 },
             );
         }
+    }
+
+    if enable_confidential_mint_burn {
+        extensions.push(ExtensionInitializationParams::ConfidentialMintBurnMint {
+            authority,
+            confidential_supply_pubkey: confidential_supply_pubkey.into(),
+        });
     }
 
     if let Some(program_id) = transfer_hook_program_id {
@@ -1612,7 +1617,6 @@ async fn command_transfer(
                 ciphertext_validity_proof_data,
                 range_proof_data,
                 source_decrypt_handles,
-                _,
             ) = transfer_account_info
                 .generate_split_transfer_proof_data(
                     transfer_balance,
@@ -3400,10 +3404,15 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
 
             let mint_to_elgamal_pubkey =
                 token.account_elgamal_pubkey(&token_account_address).await?;
-            let auditor_elgamal_pubkey = token.auditor_elgamal().await?;
+            let auditor_elgamal_pubkey = token.auditor_elgamal_pubkey().await?;
+            let supply_elgamal_pubkey = token.supply_elgamal_pubkey().await?;
 
-            let (range_proof, ciphertext_validity_proof, pedersen_openings) =
-                generate_mint_proofs(amount, &mint_to_elgamal_pubkey, &auditor_elgamal_pubkey)?;
+            let (range_proof, ciphertext_validity_proof, pedersen_openings) = generate_mint_proofs(
+                amount,
+                &mint_to_elgamal_pubkey,
+                &auditor_elgamal_pubkey,
+                &supply_elgamal_pubkey,
+            )?;
 
             let context_state_auth = payer.pubkey();
             let _ = try_join!(
@@ -3413,7 +3422,7 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
                     &range_proof,
                     &range_proof_context_state_account,
                 ),
-                token.create_batched_grouped_2_handles_ciphertext_validity_proof_context_state(
+                token.create_batched_grouped_3_handles_ciphertext_validity_proof_context_state(
                     &ciphertext_validity_proof_context_pubkey,
                     &context_state_auth,
                     &ciphertext_validity_proof,
@@ -3432,6 +3441,7 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
                     &owner,
                     amount,
                     auditor_elgamal_pubkey,
+                    supply_elgamal_pubkey,
                     range_proof_location,
                     ciphertext_validity_proof_location,
                     &pedersen_openings,
@@ -3591,6 +3601,11 @@ pub async fn process_command<'a>(
                 .value_of("enable_confidential_transfers")
                 .map(|b| b == "auto");
 
+            let auditor_elgamal_pubkey =
+                elgamal_pubkey_or_none(arg_matches, "auditor_pubkey").unwrap();
+            let confidential_supply_pubkey =
+                elgamal_pubkey_or_none(arg_matches, "confidential_supply_pubkey").unwrap();
+
             command_create_token(
                 config,
                 decimals,
@@ -3614,6 +3629,8 @@ pub async fn process_command<'a>(
                 arg_matches.is_present("enable_member"),
                 bulk_signers,
                 arg_matches.is_present("enable_confidential_mint_burn"),
+                auditor_elgamal_pubkey,
+                confidential_supply_pubkey,
             )
             .await
         }
@@ -4695,6 +4712,62 @@ pub async fn process_command<'a>(
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
             command_confidential_balance(config, address, auth_signer).await
         }
+        (CommandName::ConfidentialSupply, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let elgamal_keypair = if arg_matches.is_present("confidential_supply_keypair") {
+                elgamal_keypair_of(arg_matches, "confidential_supply_keypair").unwrap()
+            } else {
+                let (auth_signer, _auth) =
+                    config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+
+                ElGamalKeypair::new_from_signer(&*auth_signer, b"").unwrap()
+            };
+
+            let token_cl = token_client_from_config(config, &token, None)?;
+            let supply = token_cl
+                .confidential_supply(&elgamal_keypair)
+                .await
+                .map_err(|e| format!("Could not fetch confidential supply for {token}: {e}",))?;
+
+            Ok(format!("Supply of {token} is {supply}"))
+        }
+        (CommandName::RotateSupplyElgamal, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let cur_elgamal_keypair =
+                elgamal_keypair_of(arg_matches, "current_supply_keypair").unwrap();
+            let new_elgamal_keypair =
+                elgamal_keypair_of(arg_matches, "new_supply_keypair").unwrap();
+            let (auth_signer, auth) =
+                config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
+
+            Ok(
+                match finish_tx(
+                    config,
+                    &token_client_from_config(config, &token, None)?
+                        .rotate_supply_elgamal(
+                            &auth,
+                            cur_elgamal_keypair,
+                            new_elgamal_keypair,
+                            &[auth_signer],
+                        )
+                        .await?,
+                    false,
+                )
+                .await?
+                {
+                    TransactionReturnData::CliSignature(signature) => {
+                        config.output_format.formatted_string(&signature)
+                    }
+                    TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                        config.output_format.formatted_string(&sign_only_data)
+                    }
+                },
+            )
+        }
     }
 }
 
@@ -4780,7 +4853,8 @@ async fn command_confidential_burn(
         .map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, mint_info.decimals))
         .unwrap();
 
-    let auditor_elgamal_pubkey = token.auditor_elgamal().await?;
+    let auditor_elgamal_pubkey = token.auditor_elgamal_pubkey().await?;
+    let supply_elgamal_pubkey = token.supply_elgamal_pubkey().await?;
 
     let context_state_authority = config.fee_payer()?;
     let equality_proof_context_state_account = Keypair::new();
@@ -4819,6 +4893,7 @@ async fn command_confidential_burn(
             elgamal_keypair,
             aes_key,
             &auditor_elgamal_pubkey,
+            &supply_elgamal_pubkey,
         )
         .unwrap();
 
@@ -4834,8 +4909,9 @@ async fn command_confidential_burn(
             &equality_proof_data,
             &equality_proof_context_state_account,
         ),
-        token.create_ciphertext_validity_proof_context_state_for_transfer(
-            context_state_accounts,
+        token.create_batched_grouped_3_handles_ciphertext_validity_proof_context_state(
+            context_state_accounts.ciphertext_validity_proof,
+            context_state_accounts.authority,
             &ciphertext_validity_proof_data,
             &ciphertext_validity_proof_context_state_account,
         )
@@ -4848,6 +4924,8 @@ async fn command_confidential_burn(
             &authority,
             context_state_accounts,
             burn_amount,
+            auditor_elgamal_pubkey,
+            supply_elgamal_pubkey,
             aes_key,
             &bulk_signers,
             &pedersen_openings,

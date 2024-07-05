@@ -20,7 +20,7 @@ use solana_zk_token_sdk::{
         pedersen::Pedersen,
     },
     instruction::{
-        BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU128Data,
+        BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
         BatchedRangeProofU64Data, CiphertextCommitmentEqualityProofData,
     },
     zk_token_elgamal::ops::subtract_with_lo_hi,
@@ -32,16 +32,18 @@ pub fn generate_mint_proofs(
     mint_amount: u64,
     destination_elgamal_pubkey: &ElGamalPubkey,
     auditor_elgamal_pubkey: &Option<ElGamalPubkey>,
+    supply_elgamal_pubkey: &Option<ElGamalPubkey>,
 ) -> Result<
     (
         BatchedRangeProofU64Data,
-        BatchedGroupedCiphertext2HandlesValidityProofData,
+        BatchedGroupedCiphertext3HandlesValidityProofData,
         (PedersenOpening, PedersenOpening),
     ),
     ProgramError,
 > {
     let (amount_lo, amount_hi) = verify_and_split_deposit_amount(mint_amount)?;
     let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
+    let supply_elgamal_pubkey = supply_elgamal_pubkey.unwrap_or_default();
 
     const MINT_AMOUNT_LO_BIT_LENGTH: usize = 16;
     const MINT_AMOUNT_HI_BIT_LENGTH: usize = 32;
@@ -49,15 +51,23 @@ pub fn generate_mint_proofs(
 
     // Encrypt the `lo` and `hi` transfer amounts.
     let mint_amount_opening_lo = PedersenOpening::new_rand();
-    let mint_amount_grouped_ciphertext_lo = GroupedElGamal::<2>::encrypt_with(
-        [destination_elgamal_pubkey, &auditor_elgamal_pubkey],
+    let mint_amount_grouped_ciphertext_lo = GroupedElGamal::<3>::encrypt_with(
+        [
+            destination_elgamal_pubkey,
+            &auditor_elgamal_pubkey,
+            &supply_elgamal_pubkey,
+        ],
         amount_lo,
         &mint_amount_opening_lo,
     );
 
     let mint_amount_opening_hi = PedersenOpening::new_rand();
-    let mint_amount_grouped_ciphertext_hi = GroupedElGamal::<2>::encrypt_with(
-        [destination_elgamal_pubkey, &auditor_elgamal_pubkey],
+    let mint_amount_grouped_ciphertext_hi = GroupedElGamal::<3>::encrypt_with(
+        [
+            destination_elgamal_pubkey,
+            &auditor_elgamal_pubkey,
+            &supply_elgamal_pubkey,
+        ],
         amount_hi,
         &mint_amount_opening_hi,
     );
@@ -84,9 +94,10 @@ pub fn generate_mint_proofs(
             ],
         )
         .map_err(|_| TokenError::ProofGeneration)?,
-        BatchedGroupedCiphertext2HandlesValidityProofData::new(
+        BatchedGroupedCiphertext3HandlesValidityProofData::new(
             destination_elgamal_pubkey,
             &auditor_elgamal_pubkey,
+            &supply_elgamal_pubkey,
             &mint_amount_grouped_ciphertext_lo,
             &mint_amount_grouped_ciphertext_hi,
             amount_lo,
@@ -109,10 +120,11 @@ pub fn generate_burn_proofs(
     source_elgamal_keypair: &ElGamalKeypair,
     aes_key: &AeKey,
     auditor_elgamal_pubkey: &Option<ElGamalPubkey>,
+    supply_elgamal_pubkey: &Option<ElGamalPubkey>,
 ) -> Result<
     (
         CiphertextCommitmentEqualityProofData,
-        BatchedGroupedCiphertext2HandlesValidityProofData,
+        BatchedGroupedCiphertext3HandlesValidityProofData,
         BatchedRangeProofU128Data,
         (PedersenOpening, PedersenOpening),
     ),
@@ -120,21 +132,30 @@ pub fn generate_burn_proofs(
 > {
     let burner_elgamal_pubkey = source_elgamal_keypair.pubkey();
     let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or_default();
+    let supply_elgamal_pubkey = supply_elgamal_pubkey.unwrap_or_default();
 
     // Split the transfer amount into the low and high bit components.
     let (burn_amount_lo, burn_amount_hi) = verify_and_split_deposit_amount(burn_amount)?;
 
     // Encrypt the `lo` and `hi` transfer amounts.
     let burn_amount_opening_lo = PedersenOpening::new_rand();
-    let burn_amount_grouped_ciphertext_lo = GroupedElGamal::<2>::encrypt_with(
-        [burner_elgamal_pubkey, &auditor_elgamal_pubkey],
+    let burn_amount_grouped_ciphertext_lo = GroupedElGamal::<3>::encrypt_with(
+        [
+            burner_elgamal_pubkey,
+            &auditor_elgamal_pubkey,
+            &supply_elgamal_pubkey,
+        ],
         burn_amount_lo,
         &burn_amount_opening_lo,
     );
 
     let burn_amount_opening_hi = PedersenOpening::new_rand();
-    let burn_amount_grouped_ciphertext_hi = GroupedElGamal::<2>::encrypt_with(
-        [burner_elgamal_pubkey, &auditor_elgamal_pubkey],
+    let burn_amount_grouped_ciphertext_hi = GroupedElGamal::<3>::encrypt_with(
+        [
+            burner_elgamal_pubkey,
+            &auditor_elgamal_pubkey,
+            &supply_elgamal_pubkey,
+        ],
         burn_amount_hi,
         &burn_amount_opening_hi,
     );
@@ -181,9 +202,10 @@ pub fn generate_burn_proofs(
     .map_err(|_| TokenError::ProofGeneration)?;
 
     // generate ciphertext validity data
-    let ciphertext_validity_proof_data = BatchedGroupedCiphertext2HandlesValidityProofData::new(
+    let ciphertext_validity_proof_data = BatchedGroupedCiphertext3HandlesValidityProofData::new(
         burner_elgamal_pubkey,
         &auditor_elgamal_pubkey,
+        &supply_elgamal_pubkey,
         &burn_amount_grouped_ciphertext_lo,
         &burn_amount_grouped_ciphertext_hi,
         burn_amount_lo,

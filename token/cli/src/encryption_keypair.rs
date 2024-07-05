@@ -32,6 +32,9 @@ pub(crate) fn elgamal_pubkey_or_none(
     matches: &ArgMatches,
     name: &str,
 ) -> Result<ElGamalPubkeyOrNone, String> {
+    if !matches.is_present(name) {
+        return Ok(ElGamalPubkeyOrNone::None);
+    }
     let arg_str = matches.value_of(name).unwrap();
     if arg_str == "none" {
         return Ok(ElGamalPubkeyOrNone::None);

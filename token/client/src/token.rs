@@ -30,7 +30,7 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_mint_burn::{self},
+            confidential_mint_burn::{self, ConfidentialMintBurn},
             confidential_transfer::{
                 self,
                 account_info::{
@@ -188,6 +188,7 @@ pub enum ExtensionInitializationParams {
     },
     ConfidentialMintBurnMint {
         authority: Pubkey,
+        confidential_supply_pubkey: Option<PodElGamalPubkey>,
     },
 }
 impl ExtensionInitializationParams {
@@ -318,13 +319,15 @@ impl ExtensionInitializationParams {
                 authority,
                 member_address,
             ),
-            Self::ConfidentialMintBurnMint { authority } => {
-                confidential_mint_burn::instruction::initialize_mint(
-                    token_program_id,
-                    mint,
-                    authority,
-                )
-            }
+            Self::ConfidentialMintBurnMint {
+                authority,
+                confidential_supply_pubkey,
+            } => confidential_mint_burn::instruction::initialize_mint(
+                token_program_id,
+                mint,
+                authority,
+                confidential_supply_pubkey,
+            ),
         }
     }
 }
@@ -2354,7 +2357,6 @@ where
             ciphertext_validity_proof_data,
             range_proof_data,
             source_decrypt_handles,
-            _,
         ) = account_info
             .generate_split_transfer_proof_data(
                 transfer_amount,
@@ -4069,7 +4071,7 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    pub async fn auditor_elgamal(&self) -> TokenResult<Option<ElGamalPubkey>> {
+    pub async fn auditor_elgamal_pubkey(&self) -> TokenResult<Option<ElGamalPubkey>> {
         Ok(
             TryInto::<Option<zk_token_elgamal::pod::ElGamalPubkey>>::try_into(
                 self.get_mint_info()
@@ -4100,10 +4102,11 @@ where
         authority: &Pubkey,
         amount: u64,
         auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+        supply_elgamal_pubkey: Option<ElGamalPubkey>,
         range_proof_location: ProofLocation<'_, BatchedRangeProofU64Data>,
         ciphertext_validity_proof_location: ProofLocation<
             '_,
-            BatchedGroupedCiphertext2HandlesValidityProofData,
+            BatchedGroupedCiphertext3HandlesValidityProofData,
         >,
         pedersen_openings: &(PedersenOpening, PedersenOpening),
         signing_keypairs: &S,
@@ -4117,6 +4120,7 @@ where
                 &self.pubkey,
                 amount,
                 auditor_elgamal_pubkey,
+                supply_elgamal_pubkey,
                 authority,
                 &multisig_signers,
                 range_proof_location,
@@ -4211,6 +4215,49 @@ where
         .await
     }
 
+    /// Create a ciphertext validity proof context state account for mint
+    pub async fn create_batched_grouped_3_handles_ciphertext_validity_proof_context_state<
+        S: Signer,
+    >(
+        &self,
+        proof_pubkey: &Pubkey,
+        proof_authority: &Pubkey,
+        ciphertext_validity_proof_data: &BatchedGroupedCiphertext3HandlesValidityProofData,
+        ciphertext_validity_proof_signer: &S,
+    ) -> TokenResult<T::Output> {
+        let instruction_type = ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity;
+        let space =
+            size_of::<ProofContextState<BatchedGroupedCiphertext3HandlesValidityProofContext>>();
+        let rent = self
+            .client
+            .get_minimum_balance_for_rent_exemption(space)
+            .await
+            .map_err(TokenError::Client)?;
+
+        let ciphertext_validity_proof_context_state_info = ContextStateInfo {
+            context_state_account: proof_pubkey,
+            context_state_authority: proof_authority,
+        };
+
+        self.process_ixs(
+            &[
+                system_instruction::create_account(
+                    &self.payer.pubkey(),
+                    proof_pubkey,
+                    rent,
+                    space as u64,
+                    &zk_token_proof_program::id(),
+                ),
+                instruction_type.encode_verify_proof(
+                    Some(ciphertext_validity_proof_context_state_info),
+                    ciphertext_validity_proof_data,
+                ),
+            ],
+            &[ciphertext_validity_proof_signer],
+        )
+        .await
+    }
+
     /// Burn SPL Tokens from the available balance of a confidential token
     /// account
     #[allow(clippy::too_many_arguments)]
@@ -4220,6 +4267,8 @@ where
         authority: &Pubkey,
         context_state_accounts: TransferSplitContextStateAccounts<'_>,
         amount: u64,
+        auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+        supply_elgamal_pubkey: Option<ElGamalPubkey>,
         aes_key: &AeKey,
         signing_keypairs: &S,
         pedersen_openings: &(PedersenOpening, PedersenOpening),
@@ -4235,26 +4284,90 @@ where
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(amount, aes_key)
             .map_err(|_| TokenError::AccountDecryption)?;
-        let mint_info = self.get_mint_info().await?;
 
         self.process_ixs(
             &confidential_mint_burn::instruction::confidential_burn_with_split_proofs(
                 &self.program_id,
                 ata_pubkey,
                 self.get_address(),
-                TryInto::<Option<zk_token_elgamal::pod::ElGamalPubkey>>::try_into(
-                    mint_info
-                        .get_extension::<ConfidentialTransferMint>()?
-                        .auditor_elgamal_pubkey,
-                )
-                .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))?
-                .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()),
+                auditor_elgamal_pubkey,
+                supply_elgamal_pubkey,
                 amount,
                 new_decryptable_available_balance.into(),
                 context_state_accounts,
                 authority,
                 &multisig_signers,
                 pedersen_openings,
+            )?,
+            signing_keypairs,
+        )
+        .await
+    }
+
+    /// Burn SPL Tokens from the available balance of a confidential token
+    /// account
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_supply(
+        &self,
+        supply_elgamal_keypair: &ElGamalKeypair,
+    ) -> Result<u64, TokenError> {
+        let mint = self.get_mint_info().await?;
+        let confidential_mint_burn_ext = mint.get_extension::<ConfidentialMintBurn>()?;
+
+        // Currently only correctly displays supplies until u32::MAX,
+        // the supply ciphertext will still be correct after, but it
+        // can't be decrypted here until a corresponding decryption
+        // method is added to the solana-zk-token-sdk
+        Ok(supply_elgamal_keypair
+            .secret()
+            .decrypt_u32(
+                &TryInto::<ElGamalCiphertext>::try_into(
+                    confidential_mint_burn_ext.confidential_supply,
+                )
+                .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))?,
+            )
+            .unwrap_or_default())
+    }
+
+    pub async fn supply_elgamal_pubkey(&self) -> TokenResult<Option<ElGamalPubkey>> {
+        Ok(
+            TryInto::<Option<zk_token_elgamal::pod::ElGamalPubkey>>::try_into(
+                self.get_mint_info()
+                    .await?
+                    .get_extension::<ConfidentialMintBurn>()?
+                    .supply_elgamal_pubkey,
+            )
+            .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))?
+            .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()),
+        )
+    }
+
+    /// Rotate the elgamal pubkey encrypting the confidential supply
+    #[allow(clippy::too_many_arguments)]
+    pub async fn rotate_supply_elgamal<S: Signers>(
+        &self,
+        authority: &Pubkey,
+        supply_elgamal_keypair: ElGamalKeypair,
+        new_supply_elgamal_keypair: ElGamalKeypair,
+        signing_keypairs: &S,
+    ) -> TokenResult<T::Output> {
+        let signing_pubkeys = signing_keypairs.pubkeys();
+        let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
+
+        let mint = self.get_mint_info().await?;
+        let extension_state = mint.get_extension::<ConfidentialMintBurn>()?;
+        let current_supply = self.confidential_supply(&supply_elgamal_keypair).await?;
+
+        self.process_ixs(
+            &confidential_mint_burn::instruction::rotate_supply_elgamal(
+                &self.program_id,
+                self.get_address(),
+                authority,
+                &multisig_signers,
+                extension_state,
+                current_supply,
+                supply_elgamal_keypair,
+                new_supply_elgamal_keypair,
             )?,
             signing_keypairs,
         )

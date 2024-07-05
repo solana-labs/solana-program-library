@@ -1,13 +1,12 @@
 #[cfg(feature = "zk-ops")]
 use crate::{
     error::TokenError,
-    extension::confidential_transfer::ciphertext_extraction::extract_commitment_from_grouped_ciphertext,
     solana_program::program_error::ProgramError,
     solana_zk_token_sdk::{
         instruction::{
-            BatchedGroupedCiphertext2HandlesValidityProofContext, BatchedRangeProofContext,
+            BatchedGroupedCiphertext3HandlesValidityProofContext, BatchedRangeProofContext,
         },
-        zk_token_elgamal::pod::GroupedElGamalCiphertext2Handles,
+        zk_token_elgamal::pod::GroupedElGamalCiphertext3Handles,
     },
 };
 #[cfg(feature = "zk-ops")]
@@ -15,6 +14,7 @@ use bytemuck::{Pod, Zeroable};
 #[cfg(feature = "zk-ops")]
 #[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::encryption::grouped_elgamal::GroupedElGamalCiphertext;
+use solana_zk_token_sdk::zk_token_elgamal::pod::PedersenCommitment;
 #[cfg(feature = "zk-ops")]
 use solana_zk_token_sdk::{
     instruction::CiphertextCommitmentEqualityProofContext,
@@ -24,11 +24,11 @@ use solana_zk_token_sdk::{
 /// Wrapper for `GroupedElGamalCiphertext2Handles` when used during minting
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
-pub struct MintBurnAmountCiphertext(pub(crate) GroupedElGamalCiphertext2Handles);
+pub struct MintBurnAmountCiphertext(pub(crate) GroupedElGamalCiphertext3Handles);
 
 #[cfg(not(target_os = "solana"))]
-impl From<GroupedElGamalCiphertext<2>> for MintBurnAmountCiphertext {
-    fn from(value: GroupedElGamalCiphertext<2>) -> Self {
+impl From<GroupedElGamalCiphertext<3>> for MintBurnAmountCiphertext {
+    fn from(value: GroupedElGamalCiphertext<3>) -> Self {
         Self(value.into())
     }
 }
@@ -48,9 +48,11 @@ pub trait AuditableProofContextInfo {
 #[cfg(feature = "zk-ops")]
 pub struct MintProofContextInfo {
     /// destination elgamal pubkey used in proof generation
-    pub destination_pubkey: ElGamalPubkey,
+    pub mint_to_pubkey: ElGamalPubkey,
     /// auditor elgamal pubkey used in proof generation
     pub auditor_pubkey: ElGamalPubkey,
+    /// supply elgamal pubkey used in proof generation
+    pub supply_pubkey: ElGamalPubkey,
     /// Ciphertext containing the low 16 bits of the mint amount
     pub ciphertext_lo: MintBurnAmountCiphertext,
     /// Ciphertext containing the high 32 bits of the mint amount
@@ -77,6 +79,8 @@ pub struct BurnProofContextInfo {
     pub burner_pubkey: ElGamalPubkey,
     /// auditor elgamal pubkey used in proof generation
     pub auditor_pubkey: ElGamalPubkey,
+    /// supply elgamal pubkey used in proof generation
+    pub supply_pubkey: ElGamalPubkey,
     /// Ciphertext containing the low 16 bits of the burn amount
     pub ciphertext_lo: MintBurnAmountCiphertext,
     /// Ciphertext containing the high 32 bits of the burn amount
@@ -104,7 +108,7 @@ impl MintProofContextInfo {
     /// [ConfidentialMint] instruction from context state accounts
     /// after verifying their consistency.
     pub fn verify_and_extract(
-        ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
+        ciphertext_validity_proof_context: &BatchedGroupedCiphertext3HandlesValidityProofContext,
         range_proof_context: &BatchedRangeProofContext,
     ) -> Result<Self, ProgramError> {
         // The ciphertext validity proof context consists of the destination ElGamal
@@ -113,9 +117,13 @@ impl MintProofContextInfo {
         // `MintProofContextInfo`. In addition, the commitments pertaining
         // to the mint amount ciphertexts should be checked with range proof for
         // consistency.
-        let BatchedGroupedCiphertext2HandlesValidityProofContext {
-            destination_pubkey,
-            auditor_pubkey,
+        let BatchedGroupedCiphertext3HandlesValidityProofContext {
+            source_pubkey: mint_to_pubkey,
+            // the orignal proof context member names were given with transfers
+            // in mind as this was it's only usage, so the remapping here looks
+            // a bit confusing
+            destination_pubkey: auditor_pubkey,
+            auditor_pubkey: supply_pubkey,
             grouped_ciphertext_lo: mint_amount_ciphertext_lo,
             grouped_ciphertext_hi: mint_amount_ciphertext_hi,
         } = ciphertext_validity_proof_context;
@@ -134,9 +142,9 @@ impl MintProofContextInfo {
         // check that the range proof was created for the correct set of Pedersen
         // commitments
         let mint_amount_commitment_lo =
-            extract_commitment_from_grouped_ciphertext(mint_amount_ciphertext_lo);
+            extract_commitment_from_3_grouped_ciphertext(mint_amount_ciphertext_lo);
         let mint_amount_commitment_hi =
-            extract_commitment_from_grouped_ciphertext(mint_amount_ciphertext_hi);
+            extract_commitment_from_3_grouped_ciphertext(mint_amount_ciphertext_hi);
 
         let expected_commitments = [mint_amount_commitment_lo, mint_amount_commitment_hi];
 
@@ -168,8 +176,9 @@ impl MintProofContextInfo {
         }
 
         Ok(Self {
-            destination_pubkey: *destination_pubkey,
+            mint_to_pubkey: *mint_to_pubkey,
             auditor_pubkey: *auditor_pubkey,
+            supply_pubkey: *supply_pubkey,
             ciphertext_lo: MintBurnAmountCiphertext(*mint_amount_ciphertext_lo),
             ciphertext_hi: MintBurnAmountCiphertext(*mint_amount_ciphertext_hi),
         })
@@ -183,7 +192,7 @@ impl BurnProofContextInfo {
     /// their consistency.
     pub fn verify_and_extract(
         equality_proof_context: &CiphertextCommitmentEqualityProofContext,
-        ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
+        ciphertext_validity_proof_context: &BatchedGroupedCiphertext3HandlesValidityProofContext,
         range_proof_context: &BatchedRangeProofContext,
     ) -> Result<Self, ProgramError> {
         // The equality proof context consists of the source ElGamal public key, the new
@@ -203,9 +212,11 @@ impl BurnProofContextInfo {
         // `TransferProofContextInfo`. In addition, the commitments pertaining
         // to the transfer amount ciphertexts should be checked with range proof for
         // consistency.
-        let BatchedGroupedCiphertext2HandlesValidityProofContext {
-            destination_pubkey: burner_pubkey,
-            auditor_pubkey,
+        let BatchedGroupedCiphertext3HandlesValidityProofContext {
+            source_pubkey: burner_pubkey,
+            // see MintProofContextInfo::verify_and_extract
+            destination_pubkey: auditor_pubkey,
+            auditor_pubkey: supply_pubkey,
             grouped_ciphertext_lo: transfer_amount_ciphertext_lo,
             grouped_ciphertext_hi: transfer_amount_ciphertext_hi,
         } = ciphertext_validity_proof_context;
@@ -228,9 +239,9 @@ impl BurnProofContextInfo {
         // check that the range proof was created for the correct set of Pedersen
         // commitments
         let transfer_amount_commitment_lo =
-            extract_commitment_from_grouped_ciphertext(transfer_amount_ciphertext_lo);
+            extract_commitment_from_3_grouped_ciphertext(transfer_amount_ciphertext_lo);
         let transfer_amount_commitment_hi =
-            extract_commitment_from_grouped_ciphertext(transfer_amount_ciphertext_hi);
+            extract_commitment_from_3_grouped_ciphertext(transfer_amount_ciphertext_hi);
 
         let expected_commitments = [
             *new_source_commitment,
@@ -271,6 +282,7 @@ impl BurnProofContextInfo {
         Ok(Self {
             burner_pubkey: *burner_pubkey,
             auditor_pubkey: *auditor_pubkey,
+            supply_pubkey: *supply_pubkey,
             ciphertext_lo: MintBurnAmountCiphertext(*transfer_amount_ciphertext_lo),
             ciphertext_hi: MintBurnAmountCiphertext(*transfer_amount_ciphertext_hi),
             new_burner_ciphertext: *new_source_ciphertext,
@@ -278,7 +290,7 @@ impl BurnProofContextInfo {
     }
 }
 
-/// Extract the mint amount ciphertext encrypted under the auditor ElGamal
+/// Extract the amount ciphertext encrypted under the auditor ElGamal
 /// public key.
 ///
 /// A mint amount ciphertext consists of the following 32-byte components
@@ -287,6 +299,8 @@ impl BurnProofContextInfo {
 ///   2. The `decryption handle` component with respect to the destination or
 ///      source public key.
 ///   3. The `decryption handle` component with respect to the auditor public
+///      key.
+///   4. The `decryption handle` component with respect to the supply public
 ///      key.
 ///
 /// An ElGamal ciphertext for the auditor consists of the `commitment` component
@@ -303,7 +317,7 @@ pub fn mint_burn_amount_auditor_ciphertext(
     ElGamalCiphertext(auditor_ciphertext_bytes)
 }
 
-/// Extract the mint amount ciphertext encrypted under the destination or source
+/// Extract the amount ciphertext encrypted under the destination or source
 /// ElGamal public key, for mint and burn respectively.
 ///
 /// Structure see `mint_amount_auditor_ciphertext`
@@ -317,4 +331,42 @@ pub fn mint_burn_amount_target_ciphertext(
     destination_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[32..64]);
 
     ElGamalCiphertext(destination_ciphertext_bytes)
+}
+
+/// Extract the amount ciphertext encrypted under the supply ElGamal
+/// public key, for mint and burn respectively.
+///
+/// Structure see `mint_amount_auditor_ciphertext`
+pub fn mint_burn_amount_supply_ciphertext(
+    transfer_amount_ciphertext: &MintBurnAmountCiphertext,
+) -> ElGamalCiphertext {
+    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
+
+    let mut destination_ciphertext_bytes = [0u8; 64];
+    destination_ciphertext_bytes[..32].copy_from_slice(&transfer_amount_ciphertext_bytes[..32]);
+    destination_ciphertext_bytes[32..].copy_from_slice(&transfer_amount_ciphertext_bytes[96..128]);
+
+    ElGamalCiphertext(destination_ciphertext_bytes)
+}
+
+/// Extract the commitment component from a grouped ciphertext with 3 handles.
+///
+/// A grouped ciphertext with 2 handles consists of the following 32-bytes
+/// components that are serialized in order:
+///   1. The `commitment` component that encodes the fee amount.
+///   3. The `decryption handle` component with respect to the target account's
+///      public key.
+///   4. The `decryption handle` component with respect to the auditor's public
+///      key
+///   5. The `decryption handle` component with respect to the supply's public
+///      key
+///
+/// The fee commitment component consists of the first 32-byte.
+pub(crate) fn extract_commitment_from_3_grouped_ciphertext(
+    transfer_amount_ciphertext: &GroupedElGamalCiphertext3Handles,
+) -> PedersenCommitment {
+    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
+    let transfer_amount_commitment_bytes =
+        transfer_amount_ciphertext_bytes[..32].try_into().unwrap();
+    PedersenCommitment(transfer_amount_commitment_bytes)
 }

@@ -4,29 +4,25 @@
 //! The logic in this submodule should belong to the `solana-zk-token-sdk` and
 //! will be removed with the next upgrade to the Solana program.
 
-use {
-    crate::{
-        extension::confidential_transfer::{
-            ciphertext_extraction::{transfer_amount_source_ciphertext, SourceDecryptHandles},
-            processor::verify_and_split_deposit_amount,
-            *,
-        },
-        solana_zk_token_sdk::{
-            encryption::{
-                auth_encryption::{AeCiphertext, AeKey},
-                elgamal::{DecryptHandle, ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
-                grouped_elgamal::GroupedElGamal,
-                pedersen::Pedersen,
-            },
-            instruction::{
-                transfer::TransferAmountCiphertext,
-                BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU128Data,
-                CiphertextCommitmentEqualityProofData,
-            },
-            zk_token_elgamal::ops::subtract_with_lo_hi,
-        },
+use crate::{
+    extension::confidential_transfer::{
+        ciphertext_extraction::{transfer_amount_source_ciphertext, SourceDecryptHandles},
+        processor::verify_and_split_deposit_amount,
+        *,
     },
-    solana_zk_token_sdk::encryption::pedersen::PedersenOpening,
+    solana_zk_token_sdk::{
+        encryption::{
+            auth_encryption::{AeCiphertext, AeKey},
+            elgamal::{DecryptHandle, ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
+            grouped_elgamal::GroupedElGamal,
+            pedersen::Pedersen,
+        },
+        instruction::{
+            transfer::TransferAmountCiphertext, BatchedGroupedCiphertext2HandlesValidityProofData,
+            BatchedRangeProofU128Data, CiphertextCommitmentEqualityProofData,
+        },
+        zk_token_elgamal::ops::subtract_with_lo_hi,
+    },
 };
 
 /// The main logic to create the three split proof data for a transfer.
@@ -45,7 +41,6 @@ pub fn transfer_split_proof_data(
         BatchedGroupedCiphertext2HandlesValidityProofData,
         BatchedRangeProofU128Data,
         SourceDecryptHandles,
-        (PedersenOpening, PedersenOpening),
     ),
     TokenError,
 > {
@@ -192,6 +187,5 @@ pub fn transfer_split_proof_data(
         ciphertext_validity_proof_data,
         range_proof_data,
         source_decrypt_handles,
-        (transfer_amount_opening_hi, transfer_amount_opening_lo),
     ))
 }

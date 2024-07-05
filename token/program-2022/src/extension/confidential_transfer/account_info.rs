@@ -12,7 +12,6 @@ use {
         encryption::{
             auth_encryption::{AeCiphertext, AeKey},
             elgamal::{ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
-            pedersen::PedersenOpening,
         },
         instruction::{
             transfer::{FeeParameters, TransferData, TransferWithFeeData},
@@ -289,7 +288,6 @@ impl TransferAccountInfo {
             BatchedGroupedCiphertext2HandlesValidityProofData,
             BatchedRangeProofU128Data,
             SourceDecryptHandles,
-            (PedersenOpening, PedersenOpening),
         ),
         TokenError,
     > {
