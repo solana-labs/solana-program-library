@@ -49,7 +49,7 @@
     "bn.js": "^5.2.0",
     "buffer": "^6.0.3",
     "buffer-layout": "^1.2.2",
-    "superstruct": "^1.0.4"
+    "superstruct": "^2.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^5.1.0",
