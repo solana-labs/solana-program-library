@@ -218,8 +218,8 @@ pub fn rotate_supply_elgamal(
     multisig_signers: &[&Pubkey],
     extension_state: &ConfidentialMintBurn,
     current_supply: u64,
-    supply_elgamal_keypair: ElGamalKeypair,
-    new_supply_elgamal_keypair: ElGamalKeypair,
+    supply_elgamal_keypair: &ElGamalKeypair,
+    new_supply_elgamal_keypair: &ElGamalKeypair,
 ) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -236,7 +236,7 @@ pub fn rotate_supply_elgamal(
         .encrypt_with(current_supply, &new_supply_opening);
 
     let proof_data = CiphertextCiphertextEqualityProofData::new(
-        &supply_elgamal_keypair,
+        supply_elgamal_keypair,
         new_supply_elgamal_keypair.pubkey(),
         &ElGamalCiphertext::try_from(extension_state.confidential_supply)
             .map_err(|_| TokenError::InvalidState)?,

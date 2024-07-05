@@ -2737,12 +2737,22 @@ pub fn app<'a, 'b>(
             SubCommand::with_name(CommandName::ConfidentialBalance.into())
                 .about("Display confidential balance")
                 .arg(
+                    Arg::with_name("token")
+                        .long("token")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_MINT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The token address with confidential transfers enabled"),
+                )
+                .arg(
                     Arg::with_name("address")
                         .long("address")
                         .validator(is_valid_pubkey)
                         .value_name("TOKEN_ACCOUNT_ADDRESS")
                         .takes_value(true)
-                        .index(1)
+                        .index(2)
                         .help("The address of the token account to for which to fetch the confidential balance")
                 )
                 .arg(

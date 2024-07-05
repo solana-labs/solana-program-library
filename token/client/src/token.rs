@@ -29,13 +29,14 @@ use {
         },
     },
     spl_token_2022::{
+        error::TokenError as Token2022Error,
         extension::{
             confidential_mint_burn::{self, ConfidentialMintBurn},
             confidential_transfer::{
                 self,
                 account_info::{
-                    ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo, TransferAccountInfo,
-                    WithdrawAccountInfo,
+                    combine_balances, ApplyPendingBalanceAccountInfo, EmptyAccountAccountInfo,
+                    TransferAccountInfo, WithdrawAccountInfo,
                 },
                 ciphertext_extraction::SourceDecryptHandles,
                 instruction::{
@@ -110,6 +111,13 @@ pub enum TokenError {
     MissingDecimals,
     #[error("decimals specified, but incorrect")]
     InvalidDecimals,
+    #[error("TokenProgramError: {0}")]
+    TokenProgramError(String),
+}
+impl From<Token2022Error> for TokenError {
+    fn from(e: Token2022Error) -> Self {
+        Self::TokenProgramError(e.to_string())
+    }
 }
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
@@ -4304,6 +4312,50 @@ where
         .await
     }
 
+    /// Fetch confidential balance for token account
+    #[allow(clippy::too_many_arguments)]
+    pub async fn confidential_balance(
+        &self,
+        token_account: &Pubkey,
+        elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+    ) -> TokenResult<(u64, u64)> {
+        let account = self.get_account_info(token_account).await?;
+        let confidential_transfer_account =
+            account.get_extension::<ConfidentialTransferAccount>()?;
+
+        let decryptable_available_balance = confidential_transfer_account
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| Token2022Error::MalformedCiphertext)?;
+        let available_balance = aes_key
+            .decrypt(&decryptable_available_balance)
+            .ok_or(Token2022Error::AccountDecryption)?;
+
+        let pending_balance_lo = confidential_transfer_account
+            .pending_balance_lo
+            .try_into()
+            .map_err(|_| Token2022Error::MalformedCiphertext)?;
+        let decrypted_pending_balance_lo = elgamal_keypair
+            .secret()
+            .decrypt_u32(&pending_balance_lo)
+            .ok_or(Token2022Error::AccountDecryption)?;
+
+        let pending_balance_hi = confidential_transfer_account
+            .pending_balance_hi
+            .try_into()
+            .map_err(|_| Token2022Error::MalformedCiphertext)?;
+        let decrypted_pending_balance_hi = elgamal_keypair
+            .secret()
+            .decrypt_u32(&pending_balance_hi)
+            .ok_or(Token2022Error::AccountDecryption)?;
+        let pending_balance =
+            combine_balances(decrypted_pending_balance_lo, decrypted_pending_balance_hi)
+                .ok_or(Token2022Error::AccountDecryption)?;
+
+        Ok((available_balance, pending_balance))
+    }
+
     /// Burn SPL Tokens from the available balance of a confidential token
     /// account
     #[allow(clippy::too_many_arguments)]
@@ -4347,8 +4399,8 @@ where
     pub async fn rotate_supply_elgamal<S: Signers>(
         &self,
         authority: &Pubkey,
-        supply_elgamal_keypair: ElGamalKeypair,
-        new_supply_elgamal_keypair: ElGamalKeypair,
+        supply_elgamal_keypair: &ElGamalKeypair,
+        new_supply_elgamal_keypair: &ElGamalKeypair,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let signing_pubkeys = signing_keypairs.pubkeys();
@@ -4356,7 +4408,7 @@ where
 
         let mint = self.get_mint_info().await?;
         let extension_state = mint.get_extension::<ConfidentialMintBurn>()?;
-        let current_supply = self.confidential_supply(&supply_elgamal_keypair).await?;
+        let current_supply = self.confidential_supply(supply_elgamal_keypair).await?;
 
         self.process_ixs(
             &confidential_mint_burn::instruction::rotate_supply_elgamal(

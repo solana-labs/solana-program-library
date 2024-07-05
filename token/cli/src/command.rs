@@ -43,8 +43,7 @@ use {
             },
             confidential_transfer::{
                 account_info::{
-                    combine_balances, ApplyPendingBalanceAccountInfo, TransferAccountInfo,
-                    WithdrawAccountInfo,
+                    ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
                 },
                 instruction::TransferSplitContextStateAccounts,
                 ConfidentialTransferAccount, ConfidentialTransferMint,
@@ -4705,12 +4704,15 @@ pub async fn process_command<'a>(
             .await
         }
         (CommandName::ConfidentialBalance, arg_matches) => {
+            let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
             let address = config
                 .associated_token_address_or_override(arg_matches, "address", &mut wallet_manager)
                 .await?;
             let (auth_signer, _auth) =
                 config.signer_or_default(arg_matches, "authority", &mut wallet_manager);
-            command_confidential_balance(config, address, auth_signer).await
+            command_confidential_balance(config, token, address, auth_signer).await
         }
         (CommandName::ConfidentialSupply, arg_matches) => {
             let token = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
@@ -4750,8 +4752,8 @@ pub async fn process_command<'a>(
                     &token_client_from_config(config, &token, None)?
                         .rotate_supply_elgamal(
                             &auth,
-                            cur_elgamal_keypair,
-                            new_elgamal_keypair,
+                            &cur_elgamal_keypair,
+                            &new_elgamal_keypair,
                             &[auth_signer],
                         )
                         .await?,
@@ -4773,50 +4775,21 @@ pub async fn process_command<'a>(
 
 async fn command_confidential_balance(
     config: &Config<'_>,
+    token: Pubkey,
     address: Pubkey,
     authority_signer: Arc<dyn Signer>,
 ) -> CommandResult {
-    let account_data = config
-        .rpc_client
-        .get_account_data(&address)
-        .await
-        .map_err(|_| format!("Could not fetch token account account data for {}", address))?;
-
     let elgamal_keypair = ElGamalKeypair::new_from_signer(&*authority_signer, b"").unwrap();
     let aes_key = AeKey::new_from_signer(&*authority_signer, b"").unwrap();
-    let state_with_extension = StateWithExtensionsOwned::<Account>::unpack(account_data)?;
-    let extension_state = state_with_extension.get_extension::<ConfidentialTransferAccount>()?;
 
-    let decryptable_available_balance = extension_state
-        .decryptable_available_balance
-        .try_into()
-        .map_err(|_| TokenError::MalformedCiphertext)?;
-    let decrypted_available_balance = aes_key
-        .decrypt(&decryptable_available_balance)
-        .ok_or(TokenError::AccountDecryption)?;
+    let token = token_client_from_config(config, &token, None)?;
 
-    let pending_balance_lo = extension_state
-        .pending_balance_lo
-        .try_into()
-        .map_err(|_| TokenError::MalformedCiphertext)?;
-    let decrypted_pending_balance_lo = elgamal_keypair
-        .secret()
-        .decrypt_u32(&pending_balance_lo)
-        .ok_or(TokenError::AccountDecryption)?;
+    let (available_balance, pending_balance) = token
+        .confidential_balance(&address, &elgamal_keypair, &aes_key)
+        .await
+        .unwrap();
 
-    let pending_balance_hi = extension_state
-        .pending_balance_hi
-        .try_into()
-        .map_err(|_| TokenError::MalformedCiphertext)?;
-    let decrypted_pending_balance_hi = elgamal_keypair
-        .secret()
-        .decrypt_u32(&pending_balance_hi)
-        .ok_or(TokenError::AccountDecryption)?;
-    let pending_balance =
-        combine_balances(decrypted_pending_balance_lo, decrypted_pending_balance_hi)
-            .ok_or(TokenError::AccountDecryption)?;
-
-    Ok(format!("{address} has a pending balance of {pending_balance} and an available balance of {decrypted_available_balance}")
+    Ok(format!("{address} has a pending balance of {pending_balance} and an available balance of {available_balance}")
     )
 }
 
