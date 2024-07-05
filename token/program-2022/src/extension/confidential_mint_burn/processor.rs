@@ -100,14 +100,11 @@ fn process_rotate_supply_elgamal(
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
-    solana_program::log::sol_log("rotate 1");
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = PodStateWithExtensionsMut::<PodMint>::unpack(mint_data)?;
-    solana_program::log::sol_log("rotate 2");
     let mint = mint.get_extension_mut::<ConfidentialMintBurn>()?;
-    solana_program::log::sol_log("rotate 3");
 
     Processor::validate_owner(
         program_id,
@@ -116,17 +113,14 @@ fn process_rotate_supply_elgamal(
         authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
-    solana_program::log::sol_log("rotate 4");
 
     if data.proof_location != 1 {
         return Err(ProgramError::InvalidInstructionData);
     }
-    solana_program::log::sol_log("rotate 5");
 
     let sysvar_account_info = next_account_info(account_info_iter)?;
     let equality_proof_instruction =
         get_instruction_relative(data.proof_location as i64, sysvar_account_info)?;
-    solana_program::log::sol_log("rotate 6");
 
     let proof_context = *decode_proof_instruction_context::<
         CiphertextCiphertextEqualityProofData,
@@ -135,7 +129,6 @@ fn process_rotate_supply_elgamal(
         ProofInstruction::VerifyCiphertextCiphertextEquality,
         &equality_proof_instruction,
     )?;
-    solana_program::log::sol_log("rotate 7");
 
     if !mint
         .supply_elgamal_pubkey
@@ -143,16 +136,12 @@ fn process_rotate_supply_elgamal(
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-    solana_program::log::sol_log("rotate 8");
     if mint.confidential_supply != proof_context.source_ciphertext {
         return Err(ProgramError::InvalidInstructionData);
     }
-    solana_program::log::sol_log("rotate 9");
 
     mint.supply_elgamal_pubkey = Some(proof_context.destination_pubkey).try_into()?;
-    solana_program::log::sol_log("rotate 10");
     mint.confidential_supply = proof_context.destination_ciphertext;
-    solana_program::log::sol_log("rotate 11");
 
     Ok(())
 }
