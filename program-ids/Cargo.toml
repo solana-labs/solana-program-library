@@ -1,5 +1,5 @@
 [package]
-name = "spl-program-id"
+name = "spl-program-ids"
 version = "1.0.0"
 description = "Solana Program Library Program IDs"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
