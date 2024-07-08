@@ -13,6 +13,7 @@ test-sbf = []
 
 [dependencies]
 solana-program = "2.0.0"
+spl-program-ids = { version = "1.0.0", path = "../../program-ids" }
 
 [dev-dependencies]
 solana-program-test = "2.0.0"

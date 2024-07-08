@@ -14,4 +14,4 @@ mod entrypoint;
 pub use solana_program;
 
 // Binary Oracle Pair id
-solana_program::declare_id!("Fd7btgySsrjuo25CJCj7oE7VPMyezDhnx7pZkj2v69Nk");
+pub use spl_program_ids::spl_bianry_oracle_pair::*;

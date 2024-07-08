@@ -25,6 +25,7 @@ spl-concurrent-merkle-tree = { version = "0.3.0", path = "../../../libraries/con
     "sol-log",
 ] }
 spl-noop = { version = "0.2.0", path = "../noop", features = ["no-entrypoint"] }
+spl-program-ids = { version = "1.0.0", path = "../../../program-ids" }
 
 [profile.release]
 overflow-checks = true

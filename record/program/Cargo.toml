@@ -18,6 +18,7 @@ num-traits = "0.2"
 solana-program = "2.0.0"
 thiserror = "1.0"
 spl-pod = { version = "0.3.0", path = "../../libraries/pod" }
+spl-program-ids = { version = "1.0.0", path = "../../program-ids" }
 
 [dev-dependencies]
 solana-program-test = "2.0.0"

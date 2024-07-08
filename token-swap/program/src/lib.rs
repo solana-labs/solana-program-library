@@ -17,4 +17,4 @@ mod entrypoint;
 // version
 pub use solana_program;
 
-solana_program::declare_id!("SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw");
+pub use spl_program_ids::spl_token_swap::*;

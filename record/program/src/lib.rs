@@ -11,4 +11,4 @@ pub mod state;
 // version
 pub use solana_program;
 
-solana_program::declare_id!("recr1L3PCGKLbckBqMNcJhuuyU1zgo8nBhfLVsJNwr5");
+pub use spl_program_ids::spl_record::*;

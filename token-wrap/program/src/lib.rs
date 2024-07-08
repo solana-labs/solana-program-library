@@ -12,7 +12,7 @@ pub mod state;
 pub use solana_program;
 use solana_program::pubkey::Pubkey;
 
-solana_program::declare_id!("TwRapQCDhWkZRrDaHfZGuHxkZ91gHDRkyuzNqeU5MgR");
+pub use spl_program_ids::spl_token_wrap::*;
 
 const WRAPPED_MINT_SEED: &[u8] = br"mint";
 

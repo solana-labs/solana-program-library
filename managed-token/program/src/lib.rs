@@ -1,4 +1,4 @@
-solana_program::declare_id!("mTok58Lg4YfcmwqyrDHpf7ogp599WRhzb6PxjaBqAxS");
+pub use spl_program_ids::spl_managed_token::*;
 
 use {
     borsh::BorshDeserialize,

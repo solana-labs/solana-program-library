@@ -11,4 +11,4 @@ pub mod validation_utils;
 // version
 pub use solana_program;
 
-solana_program::declare_id!("betw959P4WToez4DkuXwNsJszqbpe3HuY56AcG5yevx");
+pub use spl_program_ids::spl_binary_option::*;

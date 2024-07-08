@@ -15,4 +15,4 @@ pub mod state;
 // version
 pub use solana_program;
 
-solana_program::declare_id!("6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH");
+pub use spl_program_ids::spl_token_lending::*;

@@ -16,7 +16,7 @@ pub mod entrypoint;
 pub use solana_program;
 use solana_program::{pubkey::Pubkey, stake};
 
-solana_program::declare_id!("SVSPxpvHdN29nkVg9rPapPNDddN5DipNLRUFhyjFThE");
+pub use spl_program_ids::spl_single_pool::*;
 
 const POOL_PREFIX: &[u8] = b"pool";
 const POOL_STAKE_PREFIX: &[u8] = b"stake";

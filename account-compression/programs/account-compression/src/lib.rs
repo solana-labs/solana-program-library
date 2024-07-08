@@ -57,7 +57,7 @@ pub use spl_concurrent_merkle_tree::{
     node::Node,
 };
 
-declare_id!("cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
+pub use spl_program_ids::spl_account_compression::*;
 
 /// Context for initializing a new SPL ConcurrentMerkleTree
 #[derive(Accounts)]

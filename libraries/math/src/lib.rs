@@ -12,4 +12,4 @@ pub mod precise_number;
 pub mod processor;
 pub mod uint;
 
-solana_program::declare_id!("Math111111111111111111111111111111111111111");
+pub use spl_program_ids::spl_math::*;

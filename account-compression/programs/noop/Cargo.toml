@@ -17,3 +17,4 @@ default = []
 
 [dependencies]
 solana-program = ">=1.18.11,<=2"
+spl-program-ids = { version = "1.0.0", path = "../../../program-ids" }

@@ -9,4 +9,4 @@ pub mod state;
 // version
 pub use solana_program;
 
-solana_program::declare_id!("namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX");
+pub use spl_program_ids::spl_name_service::*;

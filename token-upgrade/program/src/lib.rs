@@ -12,7 +12,7 @@ pub mod processor;
 pub use solana_program;
 use solana_program::pubkey::Pubkey;
 
-solana_program::declare_id!("TkupDoNseygccBCjSsrSpMccjwHfTYwcrjpnDSrFDhC");
+pub use spl_program_ids::spl_token_upgrade::*;
 
 const TOKEN_ESCROW_AUTHORITY_SEED: &[u8] = b"token-escrow-authority";
 

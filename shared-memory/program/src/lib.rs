@@ -11,7 +11,6 @@ extern crate solana_program;
 use {
     arrayref::{array_refs, mut_array_refs},
     solana_program::{
-        declare_id,
         entrypoint::{MAX_PERMITTED_DATA_INCREASE, SUCCESS},
         program_error::ProgramError,
         pubkey::Pubkey,
@@ -23,7 +22,7 @@ use {
     },
 };
 
-declare_id!("shmem4EWT2sPdVGvTZCzXXRAURL9G5vpPxNwSeKhHUL");
+pub use spl_program_ids::spl_shared_memory::*;
 
 /// A more efficient `copy_from_slice` implementation.
 fn fast_copy(mut src: &[u8], mut dst: &mut [u8]) {

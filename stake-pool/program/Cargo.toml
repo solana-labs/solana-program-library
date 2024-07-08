@@ -28,6 +28,7 @@ spl-math = { version = "0.2", path = "../../libraries/math", features = [
 spl-pod = { version = "0.3.0", path = "../../libraries/pod", features = [
   "borsh",
 ] }
+spl-program-ids = { version = "1.0.0", path = "../../program-ids" }
 spl-token-2022 = { version = "4.0.0", path = "../../token/program-2022", features = [
   "no-entrypoint",
 ] }

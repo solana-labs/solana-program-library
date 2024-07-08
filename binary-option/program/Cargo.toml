@@ -10,6 +10,7 @@ test-sbf = []
 
 [dependencies]
 solana-program = "2.0.0"
+spl-program-ids = { version = "1.0.0", path = "../../program-ids" }
 thiserror = "1.0"
 spl-token = { version = "6.0", path = "../../token/program", features = [
   "no-entrypoint",
