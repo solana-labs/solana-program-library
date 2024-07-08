@@ -6848,6 +6848,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "solana-program",
+ "spl-associated-token-address",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
  "thiserror",
@@ -7198,6 +7199,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-token 6.0.0",
  "thiserror",
 ]
@@ -7464,6 +7466,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-stake-pool",
  "spl-token 6.0.0",
 ]
@@ -7925,7 +7928,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
  "spl-token-client",
@@ -8070,7 +8073,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-token 6.0.0",
  "thiserror",
 ]

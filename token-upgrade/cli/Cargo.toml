@@ -20,6 +20,7 @@ solana-logger = "2.0.3"
 solana-remote-wallet = "2.0.3"
 solana-sdk = "2.0.3"
 spl-associated-token-account = { version = "4.0.0", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
+spl-associated-token-address = { version = "1.0.0", path = "../../associated-token-address" }
 spl-token = { version = "6.0", path = "../../token/program", features = ["no-entrypoint"] }
 spl-token-2022 = { version = "4.0.0", path = "../../token/program-2022", features = ["no-entrypoint"] }
 spl-token-client = { version = "0.11.0", path = "../../token/client" }
