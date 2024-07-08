@@ -8,9 +8,9 @@ macro_rules! declare_id_mod {
     }
 }
 
-delcare_id_mod!(spl_account_compression, "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
-delcare_id_mod!(spl_noop, "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
-delcare_id_mod!(spl_associated_token_account, "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+declare_id_mod!(spl_account_compression, "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK");
+declare_id_mod!(spl_noop, "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
+declare_id_mod!(spl_associated_token_account, "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 declare_id_mod!(spl_binary_option, "betw959P4WToez4DkuXwNsJszqbpe3HuY56AcG5yevx");
 declare_id_mod!(spl_bianry_oracle_pair, "Fd7btgySsrjuo25CJCj7oE7VPMyezDhnx7pZkj2v69Nk");
 declare_id_mod!(spl_feature_proposal, "Feat1YXHhH6t1juaWF74WLcfv4XoNocjXA6sPWHNgAse");
