@@ -34,6 +34,7 @@ members = [
   "memo/program",
   "name-service/program",
   "managed-token/program",
+  "program-ids",
   "record/program",
   "shared-memory/program",
   "single-pool/cli",
