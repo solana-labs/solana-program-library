@@ -8,6 +8,7 @@
 // implement the typical `process_instruction` entrypoint.
 
 extern crate solana_program;
+pub use spl_program_ids::spl_shared_memory::*;
 use {
     arrayref::{array_refs, mut_array_refs},
     solana_program::{
@@ -21,8 +22,6 @@ use {
         slice::{from_raw_parts, from_raw_parts_mut},
     },
 };
-
-pub use spl_program_ids::spl_shared_memory::*;
 
 /// A more efficient `copy_from_slice` implementation.
 fn fast_copy(mut src: &[u8], mut dst: &mut [u8]) {

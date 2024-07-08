@@ -7,12 +7,10 @@ pub mod error;
 pub mod instruction;
 pub mod processor;
 
+use solana_program::pubkey::Pubkey;
 // Export current SDK types for downstream users building with a different SDK
 // version
-pub use solana_program;
-use solana_program::pubkey::Pubkey;
-
-pub use spl_program_ids::spl_token_upgrade::*;
+pub use {solana_program, spl_program_ids::spl_token_upgrade::*};
 
 const TOKEN_ESCROW_AUTHORITY_SEED: &[u8] = b"token-escrow-authority";
 

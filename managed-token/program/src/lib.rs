@@ -1,5 +1,4 @@
 pub use spl_program_ids::spl_managed_token::*;
-
 use {
     borsh::BorshDeserialize,
     solana_program::{

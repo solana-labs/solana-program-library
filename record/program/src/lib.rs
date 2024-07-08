@@ -9,6 +9,4 @@ pub mod state;
 
 // Export current SDK types for downstream users building with a different SDK
 // version
-pub use solana_program;
-
-pub use spl_program_ids::spl_record::*;
+pub use {solana_program, spl_program_ids::spl_record::*};

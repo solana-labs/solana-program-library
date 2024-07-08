@@ -7,15 +7,13 @@
 mod entrypoint;
 pub mod processor;
 
-// Export current sdk types for downstream users building with a different sdk
-// version
-pub use solana_program;
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
 };
-
-pub use spl_program_ids::spl_memo::*;
+// Export current sdk types for downstream users building with a different sdk
+// version
+pub use {solana_program, spl_program_ids::spl_memo::*};
 
 /// Build a memo instruction, possibly signed
 ///

@@ -7,12 +7,10 @@ pub mod instruction;
 pub mod processor;
 pub mod state;
 
+use solana_program::pubkey::Pubkey;
 // Export current SDK types for downstream users building with a different SDK
 // version
-pub use solana_program;
-use solana_program::pubkey::Pubkey;
-
-pub use spl_program_ids::spl_token_wrap::*;
+pub use {solana_program, spl_program_ids::spl_token_wrap::*};
 
 const WRAPPED_MINT_SEED: &[u8] = br"mint";
 
