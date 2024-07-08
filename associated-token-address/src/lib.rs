@@ -4,6 +4,8 @@
 
 use solana_program::pubkey::Pubkey;
 
+solana_program::declare_id!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+
 /// Derives the associated token account address and bump seed
 /// for the given wallet address, token mint and token program id
 pub fn get_associated_token_address_and_bump_seed(
@@ -20,8 +22,9 @@ pub fn get_associated_token_address_and_bump_seed(
     )
 }
 
-const TOKEN_PROGRAM: Pubkey = solana_program::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-const ASSOCIATED_TOKEN_PROGRAM: Pubkey = solana_program::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+const TOKEN_PROGRAM_ID: Pubkey = solana_program::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+/// Program ID for the Associated Token Program
+pub const ASSOCIATED_TOKEN_PROGRAM_ID: Pubkey = solana_program::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
 /// Derives the associated token account address for the given wallet address
 /// and token mint
@@ -32,7 +35,7 @@ pub fn get_associated_token_address(
     get_associated_token_address_with_program_id(
         wallet_address,
         token_mint_address,
-        &TOKEN_PROGRAM,
+        &TOKEN_PROGRAM_ID,
     )
 }
 
@@ -46,13 +49,14 @@ pub fn get_associated_token_address_with_program_id(
     get_associated_token_address_and_bump_seed(
         wallet_address,
         token_mint_address,
-        &ASSOCIATED_TOKEN_PROGRAM,
+        &ASSOCIATED_TOKEN_PROGRAM_ID,
         token_program_id,
     )
     .0
 }
 
-fn get_associated_token_address_and_bump_seed_internal(
+/// For internal use only.
+pub fn get_associated_token_address_and_bump_seed_internal(
     wallet_address: &Pubkey,
     token_mint_address: &Pubkey,
     program_id: &Pubkey,

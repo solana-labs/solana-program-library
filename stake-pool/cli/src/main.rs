@@ -46,7 +46,7 @@ use {
         system_instruction,
         transaction::Transaction,
     },
-    spl_associated_token_account::get_associated_token_address,
+    spl_associated_token_address::get_associated_token_address,
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
