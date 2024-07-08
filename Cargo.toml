@@ -5,6 +5,7 @@ split-debuginfo = "unpacked"
 members = [
   "associated-token-account/program",
   "associated-token-account/program-test",
+  "associated-token-address",
   "binary-option/program",
   "binary-oracle-pair/program",
   "examples/rust/cross-program-invocation",

@@ -6882,6 +6882,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-associated-token-address"
+version = "1.0.0"
+dependencies = [
+ "solana-program",
+]
+
+[[package]]
 name = "spl-binary-oracle-pair"
 version = "0.1.0"
 dependencies = [
