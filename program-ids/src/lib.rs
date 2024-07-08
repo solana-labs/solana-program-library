@@ -1,6 +1,6 @@
 //! SPL Program IDs
 
-macro_rules! delcare_id_mod {
+macro_rules! declare_id_mod {
     ($mod_name:ident, $id_bs58:literal) => {
         pub mod $mod_name {
             ::solana_program::declare_id!($id_bs58);
