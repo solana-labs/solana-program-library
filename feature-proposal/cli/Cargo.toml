@@ -10,11 +10,11 @@ edition = "2021"
 [dependencies]
 chrono = "0.4.38"
 clap = "2.33.3"
-solana-clap-utils = ">=1.18.11"
-solana-cli-config = ">=1.18.11"
-solana-client = ">=1.18.11"
-solana-logger = ">=1.18.11"
-solana-sdk = ">=1.18.11"
+solana-clap-utils = "1.18.11"
+solana-cli-config = "1.18.11"
+solana-client = "1.18.11"
+solana-logger = "1.18.11"
+solana-sdk = "1.18.11"
 spl-feature-proposal = { version = "1.0", path = "../program", features = ["no-entrypoint"] }
 
 [[bin]]
