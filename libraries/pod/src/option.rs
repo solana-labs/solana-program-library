@@ -15,9 +15,14 @@ use {
 ///
 /// This trait is used to indicate that a type can be `None` according to a
 /// specific value.
-pub trait Nullable: Pod {
+pub trait Nullable: Default + Pod {
     /// Indicates whether the value is `None` or not.
     fn is_none(&self) -> bool;
+
+    /// Indicates whether the value is `Some`` value of type `T`` or not.
+    fn is_some(&self) -> bool {
+        !self.is_none()
+    }
 }
 
 /// A "pod-enabled" type that can be used as an `Option<T>` without
@@ -26,16 +31,37 @@ pub trait Nullable: Pod {
 /// This can be used when a specific value of `T` indicates that its
 /// value is `None`.
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct PodOption<T: Nullable>(T);
 
 impl<T: Nullable> PodOption<T> {
     /// Returns the contained value as an `Option`.
+    #[inline]
     pub fn get(self) -> Option<T> {
         if self.0.is_none() {
             None
         } else {
             Some(self.0)
+        }
+    }
+
+    /// Returns the contained value as an `Option`.
+    #[inline]
+    pub fn as_ref(&self) -> Option<&T> {
+        if self.0.is_none() {
+            None
+        } else {
+            Some(&self.0)
+        }
+    }
+
+    /// Returns the contained value as a mutable `Option`.
+    #[inline]
+    pub fn as_mut(&mut self) -> Option<&mut T> {
+        if self.0.is_none() {
+            None
+        } else {
+            Some(&mut self.0)
         }
     }
 }
@@ -50,58 +76,20 @@ impl<T: Nullable> From<T> for PodOption<T> {
     }
 }
 
-impl<T: Nullable> From<PodOption<T>> for Option<T> {
-    fn from(from: PodOption<T>) -> Self {
-        from.get()
-    }
-}
-
-impl<'a, T: Nullable> From<&'a PodOption<T>> for Option<&'a T> {
-    fn from(from: &'a PodOption<T>) -> Self {
-        if from.0.is_none() {
-            None
-        } else {
-            Some(&from.0)
+impl<T: Nullable> From<Option<T>> for PodOption<T> {
+    fn from(from: Option<T>) -> Self {
+        match from {
+            Some(value) => PodOption(value),
+            None => PodOption(T::default()),
         }
     }
 }
 
-impl<'a, T: Nullable> From<&'a mut PodOption<T>> for Option<&'a mut T> {
-    fn from(from: &'a mut PodOption<T>) -> Self {
-        if from.0.is_none() {
-            None
-        } else {
-            Some(&mut from.0)
-        }
-    }
-}
-
-impl<T: Nullable> From<PodOption<T>> for COption<T> {
-    fn from(from: PodOption<T>) -> Self {
-        if from.0.is_none() {
-            COption::None
-        } else {
-            COption::Some(from.0)
-        }
-    }
-}
-
-impl<'a, T: Nullable> From<&'a PodOption<T>> for COption<&'a T> {
-    fn from(from: &'a PodOption<T>) -> Self {
-        if from.0.is_none() {
-            COption::None
-        } else {
-            COption::Some(&from.0)
-        }
-    }
-}
-
-impl<'a, T: Nullable> From<&'a mut PodOption<T>> for COption<&'a mut T> {
-    fn from(from: &'a mut PodOption<T>) -> Self {
-        if from.0.is_none() {
-            COption::None
-        } else {
-            COption::Some(&mut from.0)
+impl<T: Nullable> From<COption<T>> for PodOption<T> {
+    fn from(from: COption<T>) -> Self {
+        match from {
+            COption::Some(value) => PodOption(value),
+            COption::None => PodOption(T::default()),
         }
     }
 }
@@ -124,7 +112,7 @@ mod tests {
     #[test]
     fn test_pod_option_pubkey() {
         let some_pubkey = PodOption::from(sysvar::ID);
-        assert_eq!(Into::<Option<Pubkey>>::into(some_pubkey), Some(sysvar::ID));
+        assert_eq!(some_pubkey.get(), Some(sysvar::ID));
 
         let none_pubkey = PodOption::from(Pubkey::default());
         assert_eq!(none_pubkey.get(), None);
@@ -136,5 +124,15 @@ mod tests {
         let values = pod_slice_from_bytes::<PodOption<Pubkey>>(&data).unwrap();
         assert_eq!(values[0], PodOption::from(sysvar::ID));
         assert_eq!(values[1], PodOption::from(Pubkey::default()));
+
+        let option_pubkey = Some(sysvar::ID);
+        let pod_option_pubkey: PodOption<Pubkey> = option_pubkey.into();
+        assert_eq!(pod_option_pubkey, PodOption::from(sysvar::ID));
+        assert_eq!(pod_option_pubkey, PodOption::from(option_pubkey));
+
+        let coption_pubkey = COption::Some(sysvar::ID);
+        let pod_option_pubkey: PodOption<Pubkey> = coption_pubkey.into();
+        assert_eq!(pod_option_pubkey, PodOption::from(sysvar::ID));
+        assert_eq!(pod_option_pubkey, PodOption::from(coption_pubkey));
     }
 }
