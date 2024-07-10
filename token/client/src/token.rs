@@ -21,12 +21,10 @@ use {
         system_instruction,
         transaction::Transaction,
     },
-    spl_associated_token_account::{
-        get_associated_token_address_with_program_id,
-        instruction::{
+    spl_associated_token_account::instruction::{
             create_associated_token_account, create_associated_token_account_idempotent,
-        },
     },
+    spl_associated_token_address::get_associated_token_address_with_program_id,
     spl_record::state::RecordData,
     spl_token_2022::{
         extension::{

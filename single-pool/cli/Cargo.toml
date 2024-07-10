@@ -31,9 +31,6 @@ spl-token = { version = "6.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
 spl-token-client = { version = "0.11.0", path = "../../token/client" }
-spl-associated-token-account = { version = "4.0.0", path = "../../associated-token-account/program", features = [
-  "no-entrypoint",
-] }
 spl-single-pool = { version = "1.0.0", path = "../program", features = [
   "no-entrypoint",
 ] }
