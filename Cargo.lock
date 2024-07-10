@@ -6881,6 +6881,7 @@ name = "spl-associated-token-address"
 version = "1.0.0"
 dependencies = [
  "solana-program",
+ "spl-program-ids",
 ]
 
 [[package]]
