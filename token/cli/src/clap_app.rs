@@ -657,6 +657,12 @@ pub fn app<'a, 'b>(
                         ),
                 )
                 .arg(
+                    Arg::with_name("program_2022")
+                        .value_name("TOKEN_22_PROGRAM_ID")
+                        .short("token22")
+                        .long("TokenProgram22")
+                        .help("Use token extension program token 2022 program id: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"))
+                .arg(
                     Arg::with_name("mint_authority")
                         .long("mint-authority")
                         .alias("owner")
