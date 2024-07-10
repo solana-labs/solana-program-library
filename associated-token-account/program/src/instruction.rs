@@ -1,13 +1,14 @@
 //! Program instructions
 
 use {
-    crate::{get_associated_token_address_with_program_id, id},
+    crate::id,
     assert_matches::assert_matches,
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
     },
+    spl_associated_token_address::get_associated_token_address_with_program_id,
 };
 
 /// Instructions supported by the AssociatedTokenAccount program
