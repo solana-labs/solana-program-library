@@ -14,3 +14,8 @@ docker-target
 .idea
 .coderrect
 .turbo
+
+# 1.18 Patching
+ci/detect-changed-manifests.sh
+ci/publish-new-crates.sh
+update-crate.sh
