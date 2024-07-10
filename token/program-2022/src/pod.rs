@@ -101,7 +101,7 @@ impl PodAccount {
 }
 impl IsInitialized for PodAccount {
     fn is_initialized(&self) -> bool {
-        self.state != 0
+        self.state == AccountState::Initialized as u8 || self.state == AccountState::Frozen as u8
     }
 }
 impl PackedSizeOf for PodAccount {
