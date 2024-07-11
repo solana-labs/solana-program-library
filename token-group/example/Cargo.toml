@@ -23,7 +23,7 @@ solana-program-test = ">=1.18.11,<=2"
 solana-sdk = ">=1.18.11,<=2"
 spl-discriminator = { version = "0.2.5", path = "../../libraries/discriminator" }
 spl-token-client = { version = "0.10.0", path = "../../token/client" }
-spl-token-metadata-interface = { version = "0.3.3", path = "../../token-metadata/interface" }
+spl-token-metadata-interface = { version = "0.3.5", path = "../../token-metadata/interface" }
 
 [lib]
 crate-type = ["cdylib", "lib"]
