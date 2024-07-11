@@ -20,7 +20,7 @@ solana-program = ">=1.18.11,<=2"
 spl-token = { version = "4.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-spl-token-2022 = { version = "3.0.2", path = "../../token/program-2022", features = [
+spl-token-2022 = { version = "3.0.4", path = "../../token/program-2022", features = [
   "no-entrypoint",
 ] }
 thiserror = "1.0"

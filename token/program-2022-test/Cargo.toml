@@ -27,7 +27,7 @@ spl-memo = { version = "4.0.4", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
 spl-pod = { version = "0.2.5", path = "../../libraries/pod" }
-spl-token-2022 = { version = "3.0.2", path = "../program-2022", features = [
+spl-token-2022 = { version = "3.0.4", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
 spl-instruction-padding = { version = "0.1.3", path = "../../instruction-padding/program", features = [
