@@ -16,7 +16,7 @@ serde = { version = "1.0.203", optional = true }
 solana-program = ">=1.18.11,<=2"
 spl-discriminator = { version = "0.2.5", path = "../../libraries/discriminator" }
 spl-program-error = { version = "0.4.0", path = "../../libraries/program-error" }
-spl-type-length-value = { version = "0.4.3", path = "../../libraries/type-length-value" }
+spl-type-length-value = { version = "0.4.5", path = "../../libraries/type-length-value" }
 spl-pod = { version = "0.2.5", path = "../../libraries/pod", features = [
   "borsh",
 ] }
