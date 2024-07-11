@@ -436,8 +436,8 @@ async fn mint_tokens(
     println!("MINT: account is {token_account} with owner {authority}");
     token
         .confidential_mint(
-            &token_account,
-            &authority,
+            token_account,
+            authority,
             mint_amount,
             auditor_elgamal_pubkey,
             supply_elgamal_pubkey,

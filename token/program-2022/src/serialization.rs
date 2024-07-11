@@ -147,6 +147,54 @@ pub mod aeciphertext_fromstr {
     }
 }
 
+/// helper to ser/deser ElGamalCiphertext values
+pub mod elgamalciphertext_fromstr {
+    use {
+        serde::{
+            de::{Error, Visitor},
+            Deserializer, Serializer,
+        },
+        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext,
+        std::fmt,
+    };
+
+    const AE_CIPHERTEXT_LEN: usize = 64;
+
+    /// serialize AeCiphertext values supporting Display trait
+    pub fn serialize<S>(x: &ElGamalCiphertext, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        s.serialize_str(&x.to_string())
+    }
+
+    struct AeCiphertextVisitor;
+
+    impl<'de> Visitor<'de> for AeCiphertextVisitor {
+        type Value = ElGamalCiphertext;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a FromStr type")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            let array = super::base64_to_bytes::<AE_CIPHERTEXT_LEN, E>(v)?;
+            Ok(ElGamalCiphertext(array))
+        }
+    }
+
+    /// deserialize AeCiphertext values from str
+    pub fn deserialize<'de, D>(d: D) -> Result<ElGamalCiphertext, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        d.deserialize_str(AeCiphertextVisitor)
+    }
+}
+
 /// helper to ser/deser pod::ElGamalPubkey values
 pub mod elgamalpubkey_fromstr {
     use {

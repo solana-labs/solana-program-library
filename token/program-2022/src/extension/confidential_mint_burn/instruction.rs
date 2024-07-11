@@ -4,8 +4,6 @@ use crate::{
     extension::confidential_transfer::processor::verify_and_split_deposit_amount,
     proof::ProofLocation,
 };
-#[cfg(feature = "serde-traits")]
-use serde::{Deserialize, Serialize};
 #[cfg(not(target_os = "solana"))]
 use solana_zk_token_sdk::instruction::{
     BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU64Data,
@@ -44,6 +42,11 @@ use {
     solana_program::pubkey::Pubkey,
     solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext as PodElGamalCiphertext,
     spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
+};
+#[cfg(feature = "serde-traits")]
+use {
+    crate::serialization::{aeciphertext_fromstr, elgamalciphertext_fromstr},
+    serde::{Deserialize, Serialize},
 };
 
 /// Confidential Transfer extension instructions
@@ -124,9 +127,11 @@ pub struct RotateSupplyElGamalData {
 pub struct MintInstructionData {
     /// low 16 bits of encrypted amount to be minted, exposes mint amounts
     /// to the auditor through the data received via `get_transaction`
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
     pub audit_amount_lo: PodElGamalCiphertext,
     /// high 48 bits of encrypted amount to be minted, exposes mint amounts
     /// to the auditor through the data received via `get_transaction`
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
     pub audit_amount_hi: PodElGamalCiphertext,
     /// Relative location of the `ProofInstruction::VerifyBatchedRangeProofU64`
     /// instruction to the `ConfidentialMint` instruction in the
@@ -146,8 +151,10 @@ pub struct BurnInstructionData {
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
     /// low 16 bits of encrypted amount to be minted
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
     pub auditor_lo: PodElGamalCiphertext,
     /// high 48 bits of encrypted amount to be minted
+    #[cfg_attr(feature = "serde-traits", serde(with = "elgamalciphertext_fromstr"))]
     pub auditor_hi: PodElGamalCiphertext,
     /// Relative location of the
     /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction

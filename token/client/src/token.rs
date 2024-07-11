@@ -4080,16 +4080,13 @@ where
     }
 
     pub async fn auditor_elgamal_pubkey(&self) -> TokenResult<Option<ElGamalPubkey>> {
-        Ok(
-            TryInto::<Option<zk_token_elgamal::pod::ElGamalPubkey>>::try_into(
-                self.get_mint_info()
-                    .await?
-                    .get_extension::<ConfidentialTransferMint>()?
-                    .auditor_elgamal_pubkey,
-            )
-            .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))?
-            .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()),
+        Ok(Into::<Option<zk_token_elgamal::pod::ElGamalPubkey>>::into(
+            self.get_mint_info()
+                .await?
+                .get_extension::<ConfidentialTransferMint>()?
+                .auditor_elgamal_pubkey,
         )
+        .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()))
     }
 
     pub async fn account_elgamal_pubkey(&self, account: &Pubkey) -> TokenResult<ElGamalPubkey> {
@@ -4382,16 +4379,13 @@ where
     }
 
     pub async fn supply_elgamal_pubkey(&self) -> TokenResult<Option<ElGamalPubkey>> {
-        Ok(
-            TryInto::<Option<zk_token_elgamal::pod::ElGamalPubkey>>::try_into(
-                self.get_mint_info()
-                    .await?
-                    .get_extension::<ConfidentialMintBurn>()?
-                    .supply_elgamal_pubkey,
-            )
-            .map_err(|_| TokenError::Program(ProgramError::InvalidAccountData))?
-            .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()),
+        Ok(Into::<Option<zk_token_elgamal::pod::ElGamalPubkey>>::into(
+            self.get_mint_info()
+                .await?
+                .get_extension::<ConfidentialMintBurn>()?
+                .supply_elgamal_pubkey,
         )
+        .map(|pk| TryInto::<ElGamalPubkey>::try_into(pk).unwrap()))
     }
 
     /// Rotate the elgamal pubkey encrypting the confidential supply

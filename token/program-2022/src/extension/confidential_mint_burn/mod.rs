@@ -29,9 +29,7 @@ pub mod verify_proof;
 /// Confidential Mint-Burn proof verification
 pub mod ciphertext_extraction;
 
-/// Confidential transfer mint configuration
-#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde-traits", serde(rename_all = "camelCase"))]
+/// Confidential mint-burn mint configuration
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 #[repr(C)]
 pub struct ConfidentialMintBurn {
