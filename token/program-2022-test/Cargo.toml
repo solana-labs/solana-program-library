@@ -30,7 +30,7 @@ spl-pod = { version = "0.2.5", path = "../../libraries/pod" }
 spl-token-2022 = { version = "3.0.2", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
-spl-instruction-padding = { version = "0.1.1", path = "../../instruction-padding/program", features = [
+spl-instruction-padding = { version = "0.1.3", path = "../../instruction-padding/program", features = [
   "no-entrypoint",
 ] }
 spl-tlv-account-resolution = { version = "0.6.5", path = "../../libraries/tlv-account-resolution" }
