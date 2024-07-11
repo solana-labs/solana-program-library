@@ -657,12 +657,6 @@ pub fn app<'a, 'b>(
                         ),
                 )
                 .arg(
-                    Arg::with_name("program_2022")
-                        .value_name("TOKEN_22_PROGRAM_ID")
-                        .short("token22")
-                        .long("TokenProgram22")
-                        .help("Use token extension program token 2022 program id: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"))
-                .arg(
                     Arg::with_name("mint_authority")
                         .long("mint-authority")
                         .alias("owner")
@@ -699,6 +693,13 @@ pub fn app<'a, 'b>(
                             "Enable the mint authority to close this mint"
                         ),
                 )
+                .arg(
+                    Arg::with_name("token_program_2022")
+                        .value_name("token-program-2022")
+                        .short("2")
+                        .long("token-program-2022")
+                        .takes_value(false)
+                        .help("Use token extension program token 2022 with program id: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"))
                 .arg(
                     Arg::with_name("interest_rate")
                         .long("interest-rate")
