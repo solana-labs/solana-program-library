@@ -34,7 +34,7 @@ spl-instruction-padding = { version = "0.1.3", path = "../../instruction-padding
   "no-entrypoint",
 ] }
 spl-tlv-account-resolution = { version = "0.6.5", path = "../../libraries/tlv-account-resolution" }
-spl-token-client = { version = "0.10.0", path = "../client" }
+spl-token-client = { version = "0.10.1", path = "../client" }
 spl-token-group-interface = { version = "0.2.5", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.3.5", path = "../../token-metadata/interface" }
 spl-transfer-hook-example = { version = "0.6", path = "../transfer-hook/example", features = [
