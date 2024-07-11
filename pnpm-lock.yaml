@@ -304,8 +304,8 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0(eslint@8.57.0)
       eslint-plugin-functional:
-        specifier: ^6.6.1
-        version: 6.6.1(eslint@8.57.0)(typescript@5.5.3)
+        specifier: ^6.6.3
+        version: 6.6.3(eslint@8.57.0)(typescript@5.5.3)
       eslint-plugin-import:
         specifier: ^2.29.1
         version: 2.29.1(@typescript-eslint/parser@7.16.0)(eslint@8.57.0)
@@ -3231,22 +3231,6 @@ packages:
       - typescript
     dev: true
 
-  /@typescript-eslint/utils@7.15.0(eslint@8.57.0)(typescript@5.5.3):
-    resolution: {integrity: sha512-hfDMDqaqOqsUVGiEPSMLR/AjTSCsmJwjpKkYQRo1FNbmW4tBwBspYDwO9eh7sKSTwMQgBw9/T4DHudPaqshRWA==}
-    engines: {node: ^18.18.0 || >=20.0.0}
-    peerDependencies:
-      eslint: ^8.56.0
-    dependencies:
-      '@eslint-community/eslint-utils': 4.4.0(eslint@8.57.0)
-      '@typescript-eslint/scope-manager': 7.15.0
-      '@typescript-eslint/types': 7.15.0
-      '@typescript-eslint/typescript-estree': 7.15.0(typescript@5.5.3)
-      eslint: 8.57.0
-    transitivePeerDependencies:
-      - supports-color
-      - typescript
-    dev: true
-
   /@typescript-eslint/utils@7.16.0(eslint@8.57.0)(typescript@5.5.3):
     resolution: {integrity: sha512-PqP4kP3hb4r7Jav+NiRCntlVzhxBNWq6ZQ+zQwII1y/G/1gdIPeYDCKr2+dH6049yJQsWZiHU6RlwvIFBXXGNA==}
     engines: {node: ^18.18.0 || >=20.0.0}
@@ -4695,8 +4679,8 @@ packages:
       ignore: 5.2.4
     dev: true
 
-  /eslint-plugin-functional@6.6.1(eslint@8.57.0)(typescript@5.5.3):
-    resolution: {integrity: sha512-BXA0XtP2ygMh+3wx5zvX5cBcd54sq6l5ceOS9Yift3J7bp8oSAk7UVV7+i9wKuhtNoo11qiDEjjPuO/qxMQ98g==}
+  /eslint-plugin-functional@6.6.3(eslint@8.57.0)(typescript@5.5.3):
+    resolution: {integrity: sha512-sVbbvNvwX3HVkXAykKyoNLv57r4DPF7f1sy+/8j4YtzLYVQPGljMUWv3T6Kd4lwnnjmcKuj0EkIbS+knL6P5jw==}
     engines: {node: '>=16.10.0'}
     peerDependencies:
       eslint: ^8.0.0 || ^9.0.0
@@ -4705,7 +4689,7 @@ packages:
       typescript:
         optional: true
     dependencies:
-      '@typescript-eslint/utils': 7.15.0(eslint@8.57.0)(typescript@5.5.3)
+      '@typescript-eslint/utils': 7.16.0(eslint@8.57.0)(typescript@5.5.3)
       deepmerge-ts: 5.1.0
       escape-string-regexp: 4.0.0
       eslint: 8.57.0
