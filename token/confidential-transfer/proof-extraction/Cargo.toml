@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 solana-zk-sdk = "2.0.0"
-thiserror = "1.0.61"
+thiserror = "1.0.62"
 
 [lib]
 crate-type = ["cdylib", "lib"]
