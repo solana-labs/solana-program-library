@@ -3,7 +3,7 @@ use {
     solana_clap_v3_utils::{
         input_parsers::{
             parse_url_or_moniker,
-            signer::{try_pubkey_of, SignerSource, SignerSourceParserBuilder},
+            signer::{SignerSource, SignerSourceParserBuilder},
         },
         input_validators::normalize_to_url_if_moniker,
         keypair::{signer_from_path, signer_from_source, SignerFromPathConfig},
@@ -390,10 +390,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     match (command, matches) {
         ("create-escrow", arg_matches) => {
-            let original_mint = try_pubkey_of(arg_matches, "original_mint")
-                .unwrap()
-                .unwrap();
-            let new_mint = try_pubkey_of(arg_matches, "new_mint").unwrap().unwrap();
+            let original_mint =
+                SignerSource::try_get_pubkey(arg_matches, "original_mint", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
+            let new_mint =
+                SignerSource::try_get_pubkey(arg_matches, "new_mint", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let account_keypair =
                 SignerSource::try_get_signer(matches, "account_keypair", &mut wallet_manager)?
                     .map(|(signer, _)| signer);
@@ -435,10 +439,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
 
-            let original_mint = try_pubkey_of(arg_matches, "original_mint")
-                .unwrap()
-                .unwrap();
-            let new_mint = try_pubkey_of(arg_matches, "new_mint").unwrap().unwrap();
+            let original_mint =
+                SignerSource::try_get_pubkey(arg_matches, "original_mint", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
+            let new_mint =
+                SignerSource::try_get_pubkey(arg_matches, "new_mint", &mut wallet_manager)
+                    .unwrap()
+                    .unwrap();
             let signer_config = SignerFromPathConfig {
                 allow_null_signer: !multisig_pubkeys.is_empty(),
             };
@@ -452,9 +460,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
             if !signer_config.allow_null_signer && !bulk_signers.contains(&owner) {
                 bulk_signers.push(owner.clone());
             }
-            let burn_from = try_pubkey_of(arg_matches, "burn_from").unwrap();
-            let escrow = try_pubkey_of(arg_matches, "escrow").unwrap();
-            let destination = try_pubkey_of(arg_matches, "destination").unwrap();
+            let burn_from =
+                SignerSource::try_get_pubkey(arg_matches, "burn_from", &mut wallet_manager)
+                    .unwrap();
+            let escrow =
+                SignerSource::try_get_pubkey(arg_matches, "escrow", &mut wallet_manager).unwrap();
+            let destination =
+                SignerSource::try_get_pubkey(arg_matches, "destination", &mut wallet_manager)
+                    .unwrap();
 
             let signature = process_exchange(
                 &rpc_client,
