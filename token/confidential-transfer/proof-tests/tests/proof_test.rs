@@ -69,6 +69,15 @@ fn test_transfer_with_fee_correctness() {
 
     test_transfer_with_fee_proof_validity(100, 100, 5, 10);
     test_transfer_with_fee_proof_validity(100, 100, 5, 1);
+
+    test_transfer_with_fee_proof_validity(65535, 65535, 5, 10);
+    test_transfer_with_fee_proof_validity(65535, 65535, 5, 1);
+
+    test_transfer_with_fee_proof_validity(65536, 65536, 5, 10);
+    test_transfer_with_fee_proof_validity(65536, 65536, 5, 1);
+
+    test_transfer_with_fee_proof_validity(281474976710655, 281474976710655, 5, 10); // 2^48 - 1
+    test_transfer_with_fee_proof_validity(281474976710655, 281474976710655, 5, 1);
 }
 
 fn test_transfer_with_fee_proof_validity(
