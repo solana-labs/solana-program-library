@@ -309,7 +309,7 @@ fn calculate_fee(transfer_amount: u64, fee_rate_basis_points: u16) -> Option<(u6
 
     // Warning: Division may involve CPU opcodes that have variable execution times.
     // This non-constant-time execution of the fee calculation can theoretically
-    // reveal information about the transfer amount. For transfers that invole
+    // reveal information about the transfer amount. For transfers that involve
     // extremely sensitive data, additional care should be put into how the fees
     // are calculated.
     let fee = numerator

@@ -8,7 +8,7 @@ pub enum TokenProofExtractionError {
     PedersenCommitmentMismatch,
     #[error("Range proof length mismatch")]
     RangeProofLengthMismatch,
-    #[error("Fee pparameters mismatch")]
+    #[error("Fee parameters mismatch")]
     FeeParametersMismatch,
     #[error("Curve arithmetic failed")]
     CurveArithmetic,
