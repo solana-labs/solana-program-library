@@ -592,6 +592,15 @@ pub fn app<'a, 'b>(
                 .help("Return information in specified output format"),
         )
         .arg(
+            Arg::with_name("program_2022")
+                .short("2")
+                .long("program-2022")
+                .takes_value(false)
+                .global(true)
+                .conflicts_with("program_id")
+                .help("Use token extension program token 2022 with program id: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
+        )
+        .arg(
             Arg::with_name("program_id")
                 .short("p")
                 .long("program-id")
@@ -599,6 +608,7 @@ pub fn app<'a, 'b>(
                 .takes_value(true)
                 .global(true)
                 .validator(is_valid_token_program_id)
+                .conflicts_with("program_2022")
                 .help("SPL Token program id"),
         )
         .arg(
@@ -693,13 +703,6 @@ pub fn app<'a, 'b>(
                             "Enable the mint authority to close this mint"
                         ),
                 )
-                .arg(
-                    Arg::with_name("token_program_2022")
-                        .value_name("token-program-2022")
-                        .short("2")
-                        .long("token-program-2022")
-                        .takes_value(false)
-                        .help("Use token extension program token 2022 with program id: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"))
                 .arg(
                     Arg::with_name("interest_rate")
                         .long("interest-rate")

@@ -261,7 +261,7 @@ impl<'a> Config<'a> {
 
         let default_program_id = spl_token::id();
         let (program_id, restrict_to_program_id) =
-            if matches.is_present("token_program_2022") {
+            if matches.is_present("program_2022") {
                 (spl_token_2022::id(), true)
             } else if let Some(program_id) = value_of(matches, "program_id") {
                 (program_id, true)

@@ -496,7 +496,6 @@ async fn create_token_default(test_validator: &TestValidator, payer: &Keypair) {
     }
 }
 
-
 async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
     let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
     let mut wallet_manager = None;
@@ -506,7 +505,7 @@ async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
     let args = &[
         "spl-token",
         CommandName::CreateToken.into(),
-        "--token-program-2022"
+        "--program-2022"
     ];
     
     let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
@@ -520,11 +519,8 @@ async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
     )
     .get_matches_from(args);
 
-    let (_sub_command, sub_matches) = app_matches.subcommand();
-    let matches = sub_matches.unwrap();
-
     let config = Config::new_with_clients_and_ws_url(
-        matches,
+        &app_matches,
         &mut wallet_manager,
         &mut bulk_signers,
         &mut multisigner_ids,
