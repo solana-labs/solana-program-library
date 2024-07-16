@@ -27,6 +27,9 @@ const ONE_IN_BASIS_POINTS: u128 = MAX_FEE_BASIS_POINTS as u128;
 const FEE_AMOUNT_LO_BITS: usize = 16;
 const FEE_AMOUNT_HI_BITS: usize = 32;
 
+const REMAINING_BALANCE_BIT_LENGTH: usize = 64;
+const DELTA_BIT_LENGTH: usize = 48;
+
 #[allow(clippy::too_many_arguments)]
 pub fn transfer_with_fee_split_proof_data(
     current_available_balance: &ElGamalCiphertext,
@@ -240,10 +243,6 @@ pub fn transfer_with_fee_split_proof_data(
         .map_err(TokenProofGenerationError::from)?;
 
     // generate range proof data
-    const REMAINING_BALANCE_BIT_LENGTH: usize = 64;
-    const DELTA_BIT_LENGTH: usize = 48;
-    const MAX_FEE_BASIS_POINTS: u64 = 10_000;
-
     let delta_fee_complement = MAX_FEE_BASIS_POINTS
         .checked_sub(delta_fee)
         .ok_or(TokenProofGenerationError::FeeCalculation)?;

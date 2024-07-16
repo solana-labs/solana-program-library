@@ -22,6 +22,12 @@ use {
 };
 
 const MAX_FEE_BASIS_POINTS: u64 = 10_000;
+const REMAINING_BALANCE_BIT_LENGTH: u8 = 64;
+const TRANSFER_AMOUNT_LO_BIT_LENGTH: u8 = 16;
+const TRANSFER_AMOUNT_HI_BIT_LENGTH: u8 = 32;
+const DELTA_BIT_LENGTH: u8 = 48;
+const FEE_AMOUNT_LO_BIT_LENGTH: u8 = 16;
+const FEE_AMOUNT_HI_BIT_LENGTH: u8 = 32;
 
 /// The transfer public keys associated with a transfer with fee.
 pub struct TransferWithFeePubkeys {
@@ -181,13 +187,6 @@ impl TransferWithFeeProofContext {
         }
 
         // check that the range proof was created for the correct number of bits
-        const REMAINING_BALANCE_BIT_LENGTH: u8 = 64;
-        const TRANSFER_AMOUNT_LO_BIT_LENGTH: u8 = 16;
-        const TRANSFER_AMOUNT_HI_BIT_LENGTH: u8 = 32;
-        const DELTA_BIT_LENGTH: u8 = 48;
-        const FEE_AMOUNT_LO_BIT_LENGTH: u8 = 16;
-        const FEE_AMOUNT_HI_BIT_LENGTH: u8 = 32;
-
         let expected_bit_lengths = [
             REMAINING_BALANCE_BIT_LENGTH,
             TRANSFER_AMOUNT_LO_BIT_LENGTH,
@@ -306,7 +305,6 @@ fn verify_delta_commitment(
         ristretto::multiply_ristretto(&transfer_fee_basis_points_scalar, &transfer_amount_point)
             .ok_or(TokenProofExtractionError::CurveArithmetic)?;
 
-    const MAX_FEE_BASIS_POINTS: u64 = 10_000;
     let max_fee_basis_points_scalar = u64_to_scalar(MAX_FEE_BASIS_POINTS);
     let fee_point: PodRistrettoPoint = commitment_to_ristretto(fee_commitment);
     let scaled_fee_point = ristretto::multiply_ristretto(&max_fee_basis_points_scalar, &fee_point)
