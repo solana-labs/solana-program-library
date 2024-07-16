@@ -1,6 +1,4 @@
 // Remove feature once zk ops syscalls are enabled on all networks
-#[cfg(feature = "confidential-hook")]
-use crate::extension::transfer_hook;
 #[cfg(feature = "zk-ops")]
 use {
     crate::extension::non_transferable::NonTransferableAccount,
@@ -18,8 +16,8 @@ use {
             },
             memo_transfer::{check_previous_sibling_instruction_is_memo, memo_required},
             transfer_fee::TransferFeeConfig,
-            BaseStateWithExtensions, BaseStateWithExtensionsMut, PodStateWithExtensions,
-            PodStateWithExtensionsMut,
+            transfer_hook, BaseStateWithExtensions, BaseStateWithExtensionsMut,
+            PodStateWithExtensions, PodStateWithExtensionsMut,
         },
         instruction::{decode_instruction_data, decode_instruction_type},
         pod::{PodAccount, PodMint},
@@ -625,7 +623,6 @@ fn process_transfer(
         authority_info
     };
 
-    #[cfg(feature = "confidential-hook")]
     if let Some(program_id) = transfer_hook::get_program_id(&mint) {
         // set transferring flags, scope the borrow to avoid double-borrow during CPI
         {
