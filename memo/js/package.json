@@ -57,7 +57,7 @@
         "@types/jest": "^29.5.12",
         "@types/node": "^20.14.10",
         "@types/node-fetch": "^2.6.11",
-        "@typescript-eslint/eslint-plugin": "^7.16.0",
+        "@typescript-eslint/eslint-plugin": "^7.16.1",
         "@typescript-eslint/parser": "^7.16.0",
         "chai": "^5.1.1",
         "eslint": "^8.57.0",
