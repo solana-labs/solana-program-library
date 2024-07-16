@@ -115,6 +115,18 @@ impl_int_conversion!(PodU64, u64);
 pub struct PodI64([u8; 8]);
 impl_int_conversion!(PodI64, i64);
 
+/// `u128` type that can be used in Pods
+#[cfg_attr(
+    feature = "borsh",
+    derive(BorshDeserialize, BorshSerialize, BorshSchema)
+)]
+#[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde-traits", serde(from = "u128", into = "u128"))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[repr(transparent)]
+pub struct PodU128(pub [u8; 16]);
+impl_int_conversion!(PodU128, u128);
+
 #[cfg(test)]
 mod tests {
     use {super::*, crate::bytemuck::pod_from_bytes};
@@ -229,5 +241,29 @@ mod tests {
 
         let deserialized = serde_json::from_str::<PodI64>(&serialized).unwrap();
         assert_eq!(pod_i64, deserialized);
+    }
+
+    #[test]
+    fn test_pod_u128() {
+        assert!(pod_from_bytes::<PodU128>(&[]).is_err());
+        assert_eq!(
+            1u128,
+            u128::from(
+                *pod_from_bytes::<PodU128>(&[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+                    .unwrap()
+            )
+        );
+    }
+
+    #[cfg(feature = "serde-traits")]
+    #[test]
+    fn test_pod_u128_serde() {
+        let pod_u128: PodU128 = u128::MAX.into();
+
+        let serialized = serde_json::to_string(&pod_u128).unwrap();
+        assert_eq!(&serialized, "340282366920938463463374607431768211455");
+
+        let deserialized = serde_json::from_str::<PodU128>(&serialized).unwrap();
+        assert_eq!(pod_u128, deserialized);
     }
 }
