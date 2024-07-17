@@ -593,7 +593,6 @@ pub fn app<'a, 'b>(
         )
         .arg(
             Arg::with_name("program_2022")
-                .short("2")
                 .long("program-2022")
                 .takes_value(false)
                 .global(true)
