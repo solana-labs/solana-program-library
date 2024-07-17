@@ -8,8 +8,8 @@ use {
         withdraw::WithdrawProofContext,
     },
     spl_token_confidential_transfer_proof_generation::{
-        transfer::transfer_split_proof_data,
-        transfer_with_fee::transfer_with_fee_split_proof_data,
+        transfer::{transfer_split_proof_data, TransferProofData},
+        transfer_with_fee::{transfer_with_fee_split_proof_data, TransferWithFeeProofData},
         withdraw::{withdraw_proof_data, WithdrawProofData},
     },
 };
@@ -38,7 +38,11 @@ fn test_transfer_proof_validity(spendable_balance: u64, transfer_amount: u64) {
     let spendable_ciphertext = source_keypair.pubkey().encrypt(spendable_balance);
     let decryptable_balance = aes_key.encrypt(spendable_balance);
 
-    let (equality_proof_data, validity_proof_data, range_proof_data) = transfer_split_proof_data(
+    let TransferProofData {
+        equality_proof_data,
+        ciphertext_validity_proof_data,
+        range_proof_data,
+    } = transfer_split_proof_data(
         &spendable_ciphertext,
         &decryptable_balance,
         transfer_amount,
@@ -50,12 +54,12 @@ fn test_transfer_proof_validity(spendable_balance: u64, transfer_amount: u64) {
     .unwrap();
 
     equality_proof_data.verify_proof().unwrap();
-    validity_proof_data.verify_proof().unwrap();
+    ciphertext_validity_proof_data.verify_proof().unwrap();
     range_proof_data.verify_proof().unwrap();
 
     TransferProofContext::verify_and_extract(
         equality_proof_data.context_data(),
-        validity_proof_data.context_data(),
+        ciphertext_validity_proof_data.context_data(),
         range_proof_data.context_data(),
     )
     .unwrap();
@@ -104,13 +108,13 @@ fn test_transfer_with_fee_proof_validity(
     let spendable_ciphertext = source_keypair.pubkey().encrypt(spendable_balance);
     let decryptable_balance = aes_key.encrypt(spendable_balance);
 
-    let (
+    let TransferWithFeeProofData {
         equality_proof_data,
         transfer_amount_ciphertext_validity_proof_data,
         percentage_with_cap_proof_data,
         fee_ciphertext_validity_proof_data,
         range_proof_data,
-    ) = transfer_with_fee_split_proof_data(
+    } = transfer_with_fee_split_proof_data(
         &spendable_ciphertext,
         &decryptable_balance,
         transfer_amount,
