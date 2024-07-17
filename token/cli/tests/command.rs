@@ -505,9 +505,9 @@ async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
     let args = &[
         "spl-token",
         CommandName::CreateToken.into(),
-        "--program-2022"
+        "--program-2022",
     ];
-    
+
     let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
     let minimum_signers_help = minimum_signers_help_string();
     let multisig_member_help = multisig_member_help_string();
@@ -527,7 +527,8 @@ async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
         config.rpc_client.clone(),
         config.program_client.clone(),
         config.websocket_url.clone(),
-    ).await; 
+    )
+    .await;
 
     assert_eq!(config.program_id, spl_token_2022::ID);
 }
