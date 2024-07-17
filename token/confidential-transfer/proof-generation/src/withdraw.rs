@@ -13,18 +13,18 @@ use {
 
 const REMAINING_BALANCE_BIT_LENGTH: usize = 64;
 
+/// Proof data required for a withdraw instruction
+pub struct WithdrawProofData {
+    pub equality_proof_data: CiphertextCommitmentEqualityProofData,
+    pub range_proof_data: BatchedRangeProofU64Data,
+}
+
 pub fn withdraw_proof_data(
     current_available_balance: &ElGamalCiphertext,
     current_balance: u64,
     withdraw_amount: u64,
     elgamal_keypair: &ElGamalKeypair,
-) -> Result<
-    (
-        CiphertextCommitmentEqualityProofData,
-        BatchedRangeProofU64Data,
-    ),
-    TokenProofGenerationError,
-> {
+) -> Result<WithdrawProofData, TokenProofGenerationError> {
     // Calculate the remaining balance after withdraw
     let remaining_balance = current_balance
         .checked_sub(withdraw_amount)
@@ -56,5 +56,8 @@ pub fn withdraw_proof_data(
     )
     .map_err(TokenProofGenerationError::from)?;
 
-    Ok((equality_proof_data, range_proof_data))
+    Ok(WithdrawProofData {
+        equality_proof_data,
+        range_proof_data,
+    })
 }
