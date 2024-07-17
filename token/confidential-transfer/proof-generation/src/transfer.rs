@@ -21,8 +21,8 @@ use {
 /// token transfer
 const RANGE_PROOF_PADDING_BIT_LENGTH: usize = 16;
 
-/// The proof data required for a confidential transfer instruction when the mint is not extended
-/// for fees
+/// The proof data required for a confidential transfer instruction when the
+/// mint is not extended for fees
 pub struct TransferProofData {
     pub equality_proof_data: CiphertextCommitmentEqualityProofData,
     pub ciphertext_validity_proof_data: BatchedGroupedCiphertext3HandlesValidityProofData,

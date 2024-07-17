@@ -30,8 +30,8 @@ const FEE_AMOUNT_HI_BITS: usize = 32;
 const REMAINING_BALANCE_BIT_LENGTH: usize = 64;
 const DELTA_BIT_LENGTH: usize = 48;
 
-/// The proof data required for a confidential transfer instruction when the mint is extended for
-/// fees
+/// The proof data required for a confidential transfer instruction when the
+/// mint is extended for fees
 pub struct TransferWithFeeProofData {
     pub equality_proof_data: CiphertextCommitmentEqualityProofData,
     pub transfer_amount_ciphertext_validity_proof_data:
