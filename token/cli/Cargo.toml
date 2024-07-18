@@ -47,7 +47,6 @@ tokio = "1.38"
 
 [dev-dependencies]
 solana-test-validator = "2.0.0"
-spl-program-ids = { path = "../../program-ids", version = "1.0.0" }
 assert_cmd = "2.0.14"
 libtest-mimic = "0.7"
 serial_test = "3.1.1"
