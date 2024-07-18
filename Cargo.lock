@@ -6886,8 +6886,8 @@ dependencies = [
 name = "spl-associated-token-address"
 version = "1.0.0"
 dependencies = [
+ "solana-inline-spl",
  "solana-program",
- "spl-program-ids",
 ]
 
 [[package]]
@@ -7649,7 +7649,6 @@ dependencies = [
  "solana-transaction-status",
  "spl-associated-token-address",
  "spl-memo 5.0.0",
- "spl-program-ids",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
  "spl-token-client",
