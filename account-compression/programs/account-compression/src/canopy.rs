@@ -24,7 +24,7 @@ use solana_program::keccak::hashv;
 use spl_concurrent_merkle_tree::node::{empty_node_cached, empty_node_cached_mut, Node, EMPTY};
 use std::mem::size_of;
 
-// 30 is hard coded as it is the current max depth that SPL Compression supports
+/// Maximum depth of the tree, supported by the SPL Compression
 const MAX_SUPPORTED_DEPTH: usize = 30;
 
 #[inline(always)]
