@@ -31,7 +31,7 @@ pub fn get_associated_token_address(
     get_associated_token_address_with_program_id(
         wallet_address,
         token_mint_address,
-        &spl_program_ids::spl_token::ID,
+        &solana_inline_spl::spl_token::ID,
     )
 }
 
@@ -45,7 +45,7 @@ pub fn get_associated_token_address_with_program_id(
     get_associated_token_address_and_bump_seed(
         wallet_address,
         token_mint_address,
-        &spl_program_ids::spl_associated_token_account::ID,
+        &solana_inline_spl::spl_associated_token_account::ID,
         token_program_id,
     )
     .0
