@@ -49,7 +49,8 @@ pub fn multiply(
     ))
 }
 
-/// Compute `left_ciphertext + (right_ciphertext_lo + 2^16 * right_ciphertext_hi)`
+/// Compute `left_ciphertext + (right_ciphertext_lo + 2^16 *
+/// right_ciphertext_hi)`
 pub fn add_with_lo_hi(
     left_ciphertext: &PodElGamalCiphertext,
     right_ciphertext_lo: &PodElGamalCiphertext,
@@ -78,7 +79,8 @@ pub fn subtract(
     ))
 }
 
-/// Compute `left_ciphertext - (right_ciphertext_lo + 2^16 * right_ciphertext_hi)`
+/// Compute `left_ciphertext - (right_ciphertext_lo + 2^16 *
+/// right_ciphertext_hi)`
 pub fn subtract_with_lo_hi(
     left_ciphertext: &PodElGamalCiphertext,
     right_ciphertext_lo: &PodElGamalCiphertext,
@@ -124,8 +126,8 @@ fn u64_to_scalar(amount: u64) -> PodScalar {
     PodScalar(amount_bytes)
 }
 
-/// Convert a `PodElGamalCiphertext` into a tuple of commitment and decrypt handle
-/// `PodRistrettoPoint`
+/// Convert a `PodElGamalCiphertext` into a tuple of commitment and decrypt
+/// handle `PodRistrettoPoint`
 fn elgamal_ciphertext_to_ristretto(
     ciphertext: &PodElGamalCiphertext,
 ) -> (PodRistrettoPoint, PodRistrettoPoint) {
