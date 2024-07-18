@@ -5,9 +5,12 @@ use {
     },
     spl_token_confidential_transfer_proof_extraction::{
         transfer::TransferProofContext, transfer_with_fee::TransferWithFeeProofContext,
+        withdraw::WithdrawProofContext,
     },
     spl_token_confidential_transfer_proof_generation::{
-        transfer::transfer_split_proof_data, transfer_with_fee::transfer_with_fee_split_proof_data,
+        transfer::transfer_split_proof_data,
+        transfer_with_fee::transfer_with_fee_split_proof_data,
+        withdraw::{withdraw_proof_data, WithdrawProofData},
     },
 };
 
@@ -137,6 +140,41 @@ fn test_transfer_with_fee_proof_validity(
         range_proof_data.context_data(),
         fee_rate_basis_points,
         maximum_fee,
+    )
+    .unwrap();
+}
+
+#[test]
+fn test_withdraw_proof_correctness() {
+    test_withdraw_validity(0, 0);
+    test_withdraw_validity(77, 55);
+    test_withdraw_validity(65535, 65535);
+    test_withdraw_validity(65536, 65536);
+    test_withdraw_validity(281474976710655, 281474976710655);
+}
+
+fn test_withdraw_validity(spendable_balance: u64, withdraw_amount: u64) {
+    let keypair = ElGamalKeypair::new_rand();
+
+    let spendable_ciphertext = keypair.pubkey().encrypt(spendable_balance);
+
+    let WithdrawProofData {
+        equality_proof_data,
+        range_proof_data,
+    } = withdraw_proof_data(
+        &spendable_ciphertext,
+        spendable_balance,
+        withdraw_amount,
+        &keypair,
+    )
+    .unwrap();
+
+    equality_proof_data.verify_proof().unwrap();
+    range_proof_data.verify_proof().unwrap();
+
+    WithdrawProofContext::verify_and_extract(
+        equality_proof_data.context_data(),
+        range_proof_data.context_data(),
     )
     .unwrap();
 }
