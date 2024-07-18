@@ -140,6 +140,8 @@ fn elgamal_ciphertext_to_ristretto(
     )
 }
 
+/// Convert a pair of `PodRistrettoPoint` to a `PodElGamalCiphertext`
+/// interpretting the first as the commitment and the second as the handle
 fn ristretto_to_elgamal_ciphertext(
     commitment: &PodRistrettoPoint,
     handle: &PodRistrettoPoint,
@@ -147,6 +149,10 @@ fn ristretto_to_elgamal_ciphertext(
     let mut ciphertext_bytes = [0u8; 64];
     ciphertext_bytes[..32].copy_from_slice(bytes_of(commitment));
     ciphertext_bytes[32..64].copy_from_slice(bytes_of(handle));
+    // Unfortunately, the `solana-zk-sdk` does not exporse a constructor interface
+    // to construct `PodRistrettoPoint` from bytes. As a work-around, encode the
+    // bytes as base64 string and then convert the string to a
+    // `PodElGamalCiphertext`.
     let ciphertext_string = STANDARD.encode(ciphertext_bytes);
     FromStr::from_str(&ciphertext_string).unwrap()
 }
