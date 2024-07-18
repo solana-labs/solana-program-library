@@ -30,6 +30,17 @@ const FEE_AMOUNT_HI_BITS: usize = 32;
 const REMAINING_BALANCE_BIT_LENGTH: usize = 64;
 const DELTA_BIT_LENGTH: usize = 48;
 
+/// The proof data required for a confidential transfer instruction when the
+/// mint is extended for fees
+pub struct TransferWithFeeProofData {
+    pub equality_proof_data: CiphertextCommitmentEqualityProofData,
+    pub transfer_amount_ciphertext_validity_proof_data:
+        BatchedGroupedCiphertext3HandlesValidityProofData,
+    pub percentage_with_cap_proof_data: PercentageWithCapProofData,
+    pub fee_ciphertext_validity_proof_data: BatchedGroupedCiphertext2HandlesValidityProofData,
+    pub range_proof_data: BatchedRangeProofU256Data,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn transfer_with_fee_split_proof_data(
     current_available_balance: &ElGamalCiphertext,
@@ -42,16 +53,7 @@ pub fn transfer_with_fee_split_proof_data(
     withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
     fee_rate_basis_points: u16,
     maximum_fee: u64,
-) -> Result<
-    (
-        CiphertextCommitmentEqualityProofData,
-        BatchedGroupedCiphertext3HandlesValidityProofData,
-        PercentageWithCapProofData,
-        BatchedGroupedCiphertext2HandlesValidityProofData,
-        BatchedRangeProofU256Data,
-    ),
-    TokenProofGenerationError,
-> {
+) -> Result<TransferWithFeeProofData, TokenProofGenerationError> {
     let default_auditor_pubkey = ElGamalPubkey::default();
     let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or(&default_auditor_pubkey);
 
@@ -294,13 +296,13 @@ pub fn transfer_with_fee_split_proof_data(
     )
     .map_err(TokenProofGenerationError::from)?;
 
-    Ok((
+    Ok(TransferWithFeeProofData {
         equality_proof_data,
         transfer_amount_ciphertext_validity_proof_data,
         percentage_with_cap_proof_data,
         fee_ciphertext_validity_proof_data,
         range_proof_data,
-    ))
+    })
 }
 
 fn calculate_fee(transfer_amount: u64, fee_rate_basis_points: u16) -> Option<(u64, u64)> {

@@ -21,6 +21,14 @@ use {
 /// token transfer
 const RANGE_PROOF_PADDING_BIT_LENGTH: usize = 16;
 
+/// The proof data required for a confidential transfer instruction when the
+/// mint is not extended for fees
+pub struct TransferProofData {
+    pub equality_proof_data: CiphertextCommitmentEqualityProofData,
+    pub ciphertext_validity_proof_data: BatchedGroupedCiphertext3HandlesValidityProofData,
+    pub range_proof_data: BatchedRangeProofU128Data,
+}
+
 pub fn transfer_split_proof_data(
     current_available_balance: &ElGamalCiphertext,
     current_decryptable_available_balance: &AeCiphertext,
@@ -29,14 +37,7 @@ pub fn transfer_split_proof_data(
     aes_key: &AeKey,
     destination_elgamal_pubkey: &ElGamalPubkey,
     auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
-) -> Result<
-    (
-        CiphertextCommitmentEqualityProofData,
-        BatchedGroupedCiphertext3HandlesValidityProofData,
-        BatchedRangeProofU128Data,
-    ),
-    TokenProofGenerationError,
-> {
+) -> Result<TransferProofData, TokenProofGenerationError> {
     let default_auditor_pubkey = ElGamalPubkey::default();
     let auditor_elgamal_pubkey = auditor_elgamal_pubkey.unwrap_or(&default_auditor_pubkey);
 
@@ -149,9 +150,9 @@ pub fn transfer_split_proof_data(
     )
     .map_err(TokenProofGenerationError::from)?;
 
-    Ok((
+    Ok(TransferProofData {
         equality_proof_data,
         ciphertext_validity_proof_data,
         range_proof_data,
-    ))
+    })
 }
