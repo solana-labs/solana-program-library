@@ -7681,6 +7681,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-confidential-transfer-ciphertext-arithmetic"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "bytemuck",
+ "curve25519-dalek",
+ "solana-curve25519",
+ "solana-zk-sdk",
+ "spl-token-confidential-transfer-proof-generation",
+]
+
+[[package]]
 name = "spl-token-confidential-transfer-proof-extraction"
 version = "0.1.0"
 dependencies = [
