@@ -19,6 +19,7 @@ import {
     ValidDepthSizePair,
 } from '../src';
 import { hash, MerkleTree } from '../src/merkle-tree';
+import { assertCMTProperties } from './accounts/concurrentMerkleTreeAccount.test';
 import { createTreeOnChain, execute, prepareTree } from './utils';
 
 // eslint-disable-next-line no-empty
@@ -96,7 +97,7 @@ describe('Account Compression', () => {
             const merkleTreeRaw = new MerkleTree(leaves);
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
-
+            const canopyDepth = 0;
             const finalize = createFinalizeMerkleTreeWithRootIx(
                 cmt,
                 payer,
@@ -109,11 +110,7 @@ describe('Account Compression', () => {
             await execute(provider, [finalize], [payerKeypair]);
 
             const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt);
-            assert(splCMT.getMaxBufferSize() === size, 'Buffer size does not match');
-            assert(
-                splCMT.getCanopyDepth() === canopyDepth,
-                'Canopy depth does not match: expected ' + canopyDepth + ' but got ' + splCMT.getCanopyDepth(),
-            );
+            assertCMTProperties(splCMT, depth, size, payer, root, canopyDepth, true);
             assert(splCMT.getBufferSize() == 1, 'Buffer size does not match');
         });
         it('Should fail to append canopy node for a tree without canopy', async () => {
@@ -327,6 +324,8 @@ describe('Account Compression', () => {
                 merkleTreeRaw.getProof(leaves.length - 1).proof,
             );
             await execute(provider, [finalize], [payerKeypair]);
+            const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt);
+            assertCMTProperties(splCMT, depth, size, payer, root, canopyDepth, true);
         });
         it('Should be able to setup canopy with several transactions', async () => {
             const merkleTreeRaw = new MerkleTree(leaves);
