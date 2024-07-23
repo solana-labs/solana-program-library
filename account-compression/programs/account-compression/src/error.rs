@@ -56,6 +56,10 @@ pub enum AccountCompressionError {
     #[msg("Tree was already initialized")]
     TreeAlreadyInitialized,
 
+    /// The tree header was not initialized for batch processing
+    #[msg("Tree header was not initialized for batch processing")]
+    BatchNotInitialized,
+
     /// The canopy root doesn't match the root of the tree
     #[msg("Canopy root does not match the root of the tree")]
     CanopyRootMismatch,
