@@ -75,7 +75,7 @@
     "rollup": "^4.19.0",
     "rollup-plugin-dts": "^6.1.1",
     "ts-jest": "^29.2.3",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.4"
   },
   "jest": {
     "moduleFileExtensions": [
