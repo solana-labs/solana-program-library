@@ -235,13 +235,33 @@ createErrorFromCodeLookup.set(0x177a, () => new TreeAlreadyInitializedError());
 createErrorFromNameLookup.set('TreeAlreadyInitialized', () => new TreeAlreadyInitializedError());
 
 /**
+ * BatchNotInitialized: 'Tree header was not initialized for batch processing'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class BatchNotInitializedError extends Error {
+    readonly code: number = 0x177b;
+    readonly name: string = 'BatchNotInitialized';
+    constructor() {
+        super('Tree header was not initialized for batch processing');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, BatchNotInitializedError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x177b, () => new BatchNotInitializedError());
+createErrorFromNameLookup.set('BatchNotInitialized', () => new BatchNotInitializedError());
+
+/**
  * CanopyRootMismatch: 'Canopy root does not match the root of the tree'
  *
  * @category Errors
  * @category generated
  */
 export class CanopyRootMismatchError extends Error {
-    readonly code: number = 0x177b;
+    readonly code: number = 0x177c;
     readonly name: string = 'CanopyRootMismatch';
     constructor() {
         super('Canopy root does not match the root of the tree');
@@ -251,7 +271,7 @@ export class CanopyRootMismatchError extends Error {
     }
 }
 
-createErrorFromCodeLookup.set(0x177b, () => new CanopyRootMismatchError());
+createErrorFromCodeLookup.set(0x177c, () => new CanopyRootMismatchError());
 createErrorFromNameLookup.set('CanopyRootMismatch', () => new CanopyRootMismatchError());
 
 /**
@@ -261,7 +281,7 @@ createErrorFromNameLookup.set('CanopyRootMismatch', () => new CanopyRootMismatch
  * @category generated
  */
 export class CanopyRightmostLeafMismatchError extends Error {
-    readonly code: number = 0x177c;
+    readonly code: number = 0x177d;
     readonly name: string = 'CanopyRightmostLeafMismatch';
     constructor() {
         super('Canopy contains nodes to the right of the rightmost leaf of the tree');
@@ -271,7 +291,7 @@ export class CanopyRightmostLeafMismatchError extends Error {
     }
 }
 
-createErrorFromCodeLookup.set(0x177c, () => new CanopyRightmostLeafMismatchError());
+createErrorFromCodeLookup.set(0x177d, () => new CanopyRightmostLeafMismatchError());
 createErrorFromNameLookup.set('CanopyRightmostLeafMismatch', () => new CanopyRightmostLeafMismatchError());
 
 /**

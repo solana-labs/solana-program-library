@@ -11,6 +11,7 @@ import {
     createAppendCanopyNodesIx,
     createAppendIx,
     createCloseEmptyTreeInstruction,
+    createCloseEmptyTreeIx,
     createFinalizeMerkleTreeWithRootIx,
     createInitEmptyMerkleTreeIx,
     createReplaceIx,
@@ -176,6 +177,27 @@ describe('Account Compression', () => {
                 await execute(provider, [finalize], [payerKeypair]);
                 assert(false, 'Double finalizing should have failed');
             } catch {}
+        });
+        
+        it('Should be able to close a prepared tree', async () => {
+            let payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            let treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed')!;
+
+            const payerLamports = payerInfo!.lamports;
+            const treeLamports = treeInfo!.lamports;
+
+            const closeIx = createCloseEmptyTreeIx(cmt, payer, payer);
+            await execute(provider, [closeIx], [payerKeypair]);
+            
+            payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            const finalLamports = payerInfo!.lamports;
+            assert(
+                finalLamports === payerLamports + treeLamports - 5000,
+                'Expected payer to have received the lamports from the closed tree account'
+            );
+
+            treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
+            assert(treeInfo === null, 'Expected the merkle tree account info to be null');
         });
     });
     describe('Having prepared a tree with canopy', () => {
@@ -473,6 +495,108 @@ describe('Account Compression', () => {
                 await execute(provider, ixs, [payerKeypair]);
                 assert(false, 'Initializing an empty tree after preparing a tree should have failed');
             } catch {}
+        });
+        it('Should be able to close a prepared tree after setting the canopy', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            
+            const appendIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves
+                    .slice(0, leaves.length / 2)
+                    .filter((_, i) => i % 2 === 0)
+                    .map(leaf => leaf.parent!.node!),
+                0,
+            );
+            await execute(provider, [appendIx], [payerKeypair]);
+            let payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            let treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed')!;
+
+            const payerLamports = payerInfo!.lamports;
+            const treeLamports = treeInfo!.lamports;
+
+            const closeIx = createCloseEmptyTreeIx(cmt, payer, payer);
+            await execute(provider, [closeIx], [payerKeypair]);
+            
+            payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            const finalLamports = payerInfo!.lamports;
+            assert(
+                finalLamports === payerLamports + treeLamports - 5000,
+                'Expected payer to have received the lamports from the closed tree account'
+            );
+
+            treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
+            assert(treeInfo === null, 'Expected the merkle tree account info to be null');
+        });
+    });
+    describe('Having prepared an empty tree with canopy', () => {
+        const depth = 3;
+        const size = 8;
+        const canopyDepth = 2;
+        // empty leaves represent the empty tree
+        const leaves = [
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+        ];
+        let anotherKeyPair: Keypair;
+        let another: PublicKey;
+        beforeEach(async () => {
+            const cmtKeypair = await prepareTree({
+                canopyDepth,
+                depthSizePair: {
+                    maxBufferSize: size,
+                    maxDepth: depth,
+                },
+                payer: payerKeypair,
+                provider,
+            });
+            cmt = cmtKeypair.publicKey;
+            anotherKeyPair = Keypair.generate();
+            another = anotherKeyPair.publicKey;
+            await provider.connection.confirmTransaction(
+                await provider.connection.requestAirdrop(another, 1e10),
+                'confirmed',
+            );
+        });
+        
+        it('Should be able to finalize an empty tree with empty canopy and close it afterwards', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            const finalize = createFinalizeMerkleTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+            await execute(provider, [finalize], [payerKeypair]);
+            let payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            let treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed')!;
+
+            const payerLamports = payerInfo!.lamports;
+            const treeLamports = treeInfo!.lamports;
+
+            const closeIx = createCloseEmptyTreeIx(cmt, payer, payer);
+            await execute(provider, [closeIx], [payerKeypair]);
+            
+            payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            const finalLamports = payerInfo!.lamports;
+            assert(
+                finalLamports === payerLamports + treeLamports - 5000,
+                'Expected payer to have received the lamports from the closed tree account'
+            );
+
+            treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
+            assert(treeInfo === null, 'Expected the merkle tree account info to be null');
         });
     });
 

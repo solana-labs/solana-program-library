@@ -140,6 +140,12 @@ impl ConcurrentMerkleTreeHeader {
         }
     }
 
+    pub fn get_is_batch_initialized(&self) -> bool {
+        match &self.header {
+            ConcurrentMerkleTreeHeaderData::V1(header) => header.is_batch_initialized,
+        }
+    }
+
     pub fn set_new_authority(&mut self, new_authority: &Pubkey) {
         match self.header {
             ConcurrentMerkleTreeHeaderData::V1(ref mut header) => {
