@@ -1,4 +1,6 @@
+import type { Base58EncodedAddress } from '@solana/addresses';
 import { PublicKey, Connection } from '@solana/web3.js';
+import type { PoolAddress, VoteAccountAddress } from '@solana/spl-single-pool';
 import { SinglePoolProgram as PoolProgramModern } from '@solana/spl-single-pool';
 
 import { paramsToModern, modernTransactionToLegacy, rpc } from './internal.js';
@@ -38,8 +40,8 @@ export class SinglePoolProgram {
   ) {
     const modernTransaction = await PoolProgramModern.initialize(
       rpc(connection),
-      voteAccount.toBase58(),
-      payer.toBase58(),
+      voteAccount.toBase58() as VoteAccountAddress,
+      payer.toBase58() as Base58EncodedAddress,
       skipMetadata,
     );
 
@@ -47,7 +49,9 @@ export class SinglePoolProgram {
   }
 
   static async reactivatePoolStake(connection: Connection, voteAccount: PublicKey) {
-    const modernTransaction = await PoolProgramModern.reactivatePoolStake(voteAccount.toBase58());
+    const modernTransaction = await PoolProgramModern.reactivatePoolStake(
+      voteAccount.toBase58() as VoteAccountAddress,
+    );
 
     return modernTransactionToLegacy(modernTransaction);
   }
@@ -68,8 +72,8 @@ export class SinglePoolProgram {
 
   static async createTokenMetadata(pool: PublicKey, payer: PublicKey) {
     const modernTransaction = await PoolProgramModern.createTokenMetadata(
-      pool.toBase58(),
-      payer.toBase58(),
+      pool.toBase58() as PoolAddress,
+      payer.toBase58() as Base58EncodedAddress,
     );
 
     return modernTransactionToLegacy(modernTransaction);
@@ -83,8 +87,8 @@ export class SinglePoolProgram {
     uri?: string,
   ) {
     const modernTransaction = await PoolProgramModern.updateTokenMetadata(
-      voteAccount.toBase58(),
-      authorizedWithdrawer.toBase58(),
+      voteAccount.toBase58() as VoteAccountAddress,
+      authorizedWithdrawer.toBase58() as Base58EncodedAddress,
       name,
       symbol,
       uri,
@@ -101,8 +105,8 @@ export class SinglePoolProgram {
   ) {
     const modernTransaction = await PoolProgramModern.createAndDelegateUserStake(
       rpc(connection),
-      voteAccount.toBase58(),
-      userWallet.toBase58(),
+      voteAccount.toBase58() as VoteAccountAddress,
+      userWallet.toBase58() as Base58EncodedAddress,
       BigInt(stakeAmount),
     );
 

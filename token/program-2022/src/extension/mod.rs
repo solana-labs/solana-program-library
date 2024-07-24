@@ -1512,7 +1512,9 @@ mod test {
             pubkey::Pubkey,
         },
         spl_pod::{
-            bytemuck::pod_bytes_of, optional_keys::OptionalNonZeroPubkey, primitives::PodU64,
+            bytemuck::pod_bytes_of,
+            optional_keys::OptionalNonZeroPubkey,
+            primitives::{PodBool, PodU64},
         },
         transfer_fee::test::test_transfer_fee_config,
     };
@@ -1575,8 +1577,28 @@ mod test {
         1, 1, // data
     ];
 
+    const ACCOUNT_WITH_EXTENSION: &[u8] = &[
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, // mint
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, // owner
+        3, 0, 0, 0, 0, 0, 0, 0, // amount
+        1, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, // delegate
+        2, // account state
+        1, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, // is native
+        6, 0, 0, 0, 0, 0, 0, 0, // delegated amount
+        1, 0, 0, 0, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, // close authority
+        2, // account type
+        15, 0, // extension type
+        1, 0, // length
+        1, // data
+    ];
+
     #[test]
     fn unpack_opaque_buffer() {
+        // Mint
         let state = PodStateWithExtensions::<PodMint>::unpack(MINT_WITH_EXTENSION).unwrap();
         assert_eq!(state.base, &TEST_POD_MINT);
         let extension = state.get_extension::<MintCloseAuthority>().unwrap();
@@ -1598,10 +1620,28 @@ mod test {
         let mut test_mint = TEST_MINT_SLICE.to_vec();
         let state = PodStateWithExtensionsMut::<PodMint>::unpack(&mut test_mint).unwrap();
         assert_eq!(state.base, &TEST_POD_MINT);
+
+        // Account
+        let state = PodStateWithExtensions::<PodAccount>::unpack(ACCOUNT_WITH_EXTENSION).unwrap();
+        assert_eq!(state.base, &TEST_POD_ACCOUNT);
+        let extension = state.get_extension::<TransferHookAccount>().unwrap();
+        let transferring = PodBool::from(true);
+        assert_eq!(extension.transferring, transferring);
+        assert_eq!(
+            PodStateWithExtensions::<PodMint>::unpack(ACCOUNT_WITH_EXTENSION),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        let state = PodStateWithExtensions::<PodAccount>::unpack(TEST_ACCOUNT_SLICE).unwrap();
+        assert_eq!(state.base, &TEST_POD_ACCOUNT);
+
+        let mut test_account = TEST_ACCOUNT_SLICE.to_vec();
+        let state = PodStateWithExtensionsMut::<PodAccount>::unpack(&mut test_account).unwrap();
+        assert_eq!(state.base, &TEST_POD_ACCOUNT);
     }
 
     #[test]
-    fn fail_unpack_opaque_buffer() {
+    fn mint_fail_unpack_opaque_buffer() {
         // input buffer too small
         let mut buffer = vec![0, 3];
         assert_eq!(
@@ -1675,6 +1715,89 @@ mod test {
         let state = PodStateWithExtensions::<PodMint>::unpack(buffer).unwrap();
         assert_eq!(
             state.get_extension::<MintCloseAuthority>(),
+            Err(ProgramError::InvalidAccountData)
+        );
+    }
+
+    #[test]
+    fn account_fail_unpack_opaque_buffer() {
+        // input buffer too small
+        let mut buffer = vec![0, 3];
+        assert_eq!(
+            PodStateWithExtensions::<PodAccount>::unpack(&buffer),
+            Err(ProgramError::InvalidAccountData)
+        );
+        assert_eq!(
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut buffer),
+            Err(ProgramError::InvalidAccountData)
+        );
+        assert_eq!(
+            PodStateWithExtensionsMut::<PodAccount>::unpack_uninitialized(&mut buffer),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        // input buffer invalid
+        // all 5's - not a valid `AccountState`
+        let mut buffer = vec![5; BASE_ACCOUNT_LENGTH];
+        assert_eq!(
+            PodStateWithExtensions::<PodAccount>::unpack(&buffer),
+            Err(ProgramError::UninitializedAccount)
+        );
+        assert_eq!(
+            PodStateWithExtensionsMut::<PodAccount>::unpack(&mut buffer),
+            Err(ProgramError::UninitializedAccount)
+        );
+
+        // tweak the account type
+        let mut buffer = ACCOUNT_WITH_EXTENSION.to_vec();
+        buffer[BASE_ACCOUNT_LENGTH] = 3;
+        assert_eq!(
+            PodStateWithExtensions::<PodAccount>::unpack(&buffer),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        // clear the state byte
+        let mut buffer = ACCOUNT_WITH_EXTENSION.to_vec();
+        buffer[108] = 0;
+        assert_eq!(
+            PodStateWithExtensions::<PodAccount>::unpack(&buffer),
+            Err(ProgramError::UninitializedAccount)
+        );
+
+        // tweak the extension type
+        let mut buffer = ACCOUNT_WITH_EXTENSION.to_vec();
+        buffer[BASE_ACCOUNT_LENGTH + 1] = 12;
+        let state = PodStateWithExtensions::<PodAccount>::unpack(&buffer).unwrap();
+        assert_eq!(
+            state.get_extension::<TransferHookAccount>(),
+            Err(ProgramError::Custom(
+                TokenError::ExtensionTypeMismatch as u32
+            ))
+        );
+
+        // tweak the length, too big
+        let mut buffer = ACCOUNT_WITH_EXTENSION.to_vec();
+        buffer[BASE_ACCOUNT_LENGTH + 3] = 100;
+        let state = PodStateWithExtensions::<PodAccount>::unpack(&buffer).unwrap();
+        assert_eq!(
+            state.get_extension::<TransferHookAccount>(),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        // tweak the length, too small
+        let mut buffer = ACCOUNT_WITH_EXTENSION.to_vec();
+        buffer[BASE_ACCOUNT_LENGTH + 3] = 10;
+        let state = PodStateWithExtensions::<PodAccount>::unpack(&buffer).unwrap();
+        assert_eq!(
+            state.get_extension::<TransferHookAccount>(),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        // data buffer is too small
+        let buffer = &ACCOUNT_WITH_EXTENSION[..ACCOUNT_WITH_EXTENSION.len() - 1];
+        let state = PodStateWithExtensions::<PodAccount>::unpack(buffer).unwrap();
+        assert_eq!(
+            state.get_extension::<TransferHookAccount>(),
             Err(ProgramError::InvalidAccountData)
         );
     }

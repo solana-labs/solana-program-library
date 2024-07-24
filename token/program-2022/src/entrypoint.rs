@@ -33,7 +33,7 @@ security_txt! {
     // Optional Fields
     preferred_languages: "en",
     source_code: "https://github.com/solana-labs/solana-program-library/tree/master/token/program-2022",
-    source_revision: "15ebdb6440a4585a908ee3d91429561d64afebf6",
-    source_release: "token-2022-v1.0.0",
+    source_revision: "61a2fb715e51f14b12ccde56dea30650a6bca487",
+    source_release: "token-2022-v4.0.1",
     auditors: "https://github.com/solana-labs/security-audits#token-2022"
 }
