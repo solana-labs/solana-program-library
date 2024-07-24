@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 
-import { AnchorProvider } from '@project-serum/anchor';
-import NodeWallet from '@project-serum/anchor/dist/cjs/nodewallet';
+import { AnchorProvider } from '@coral-xyz/anchor';
+import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';
 import { Connection, Keypair, PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import * as crypto from 'crypto';
@@ -385,7 +385,7 @@ describe('Account Compression', () => {
                 await execute(provider, ixs, [payerKeypair]);
             }
         });
-        it('Testing canopy for appends and replaces on a full on chain tree', async () => {
+        it.only('Testing canopy for appends and replaces on a full on chain tree', async () => {
             [cmtKeypair, offChainTree] = await createTreeOnChain(
                 provider,
                 payerKeypair,

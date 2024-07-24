@@ -1,4 +1,4 @@
-import { AnchorProvider } from '@project-serum/anchor';
+import { AnchorProvider } from '@coral-xyz/anchor';
 import { Keypair, SendTransactionError, Signer, Transaction, TransactionInstruction } from '@solana/web3.js';
 import * as crypto from 'crypto';
 
@@ -9,7 +9,7 @@ import { MerkleTree } from '../src/merkle-tree';
 export async function confirmAndLogTx(provider: AnchorProvider, txId: string, verbose = false) {
     const tx = await provider.connection.confirmTransaction(txId, 'confirmed');
     if (tx.value.err || verbose) {
-        console.log((await provider.connection.getConfirmedTransaction(txId, 'confirmed'))!.meta!.logMessages);
+        console.log((await provider.connection.getTransaction(txId, { commitment: 'confirmed' }))!.meta!.logMessages);
     }
     if (tx.value.err) {
         console.log('Transaction failed');
@@ -43,7 +43,7 @@ export async function execute(
     }
 
     if (verbose && txid) {
-        console.log((await provider.connection.getConfirmedTransaction(txid, 'confirmed'))!.meta!.logMessages);
+        console.log((await provider.connection.getTransaction(txid, { commitment: 'confirmed' }))!.meta!.logMessages);
     }
 
     return txid;
