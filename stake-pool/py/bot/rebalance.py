@@ -2,8 +2,8 @@ import argparse
 import asyncio
 import json
 
-from solana.keypair import Keypair
-from solana.publickey import PublicKey
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
 
@@ -27,30 +27,30 @@ async def get_client(endpoint: str) -> AsyncClient:
     return async_client
 
 
-async def rebalance(endpoint: str, stake_pool_address: PublicKey, staker: Keypair, retained_reserve_amount: float):
+async def rebalance(endpoint: str, stake_pool_address: Pubkey, staker: Keypair, retained_reserve_amount: float):
     async_client = await get_client(endpoint)
 
-    resp = await async_client.get_epoch_info(commitment=Confirmed)
-    epoch = resp['result']['epoch']
+    epoch_resp = await async_client.get_epoch_info(commitment=Confirmed)
+    epoch = epoch_resp.value.epoch
     resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
 
     print(f'Stake pool last update epoch {stake_pool.last_update_epoch}, current epoch {epoch}')
     if stake_pool.last_update_epoch != epoch:
         print('Updating stake pool')
         await update_stake_pool(async_client, staker, stake_pool_address)
         resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
-        data = resp['result']['value']['data']
-        stake_pool = StakePool.decode(data[0], data[1])
+        data = resp.value.data if resp.value else bytes()
+        stake_pool = StakePool.decode(data)
 
-    resp = await async_client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
-    stake_rent_exemption = resp['result']
+    rent_resp = await async_client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
+    stake_rent_exemption = rent_resp.value
     retained_reserve_lamports = int(retained_reserve_amount * LAMPORTS_PER_SOL)
 
-    resp = await async_client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    val_resp = await async_client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
+    data = val_resp.value.data if val_resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
 
     print('Stake pool stats:')
     print(f'* {stake_pool.total_lamports} total lamports')
@@ -107,7 +107,7 @@ def keypair_from_file(keyfile_name: str) -> Keypair:
         data = keyfile.read()
     int_list = json.loads(data)
     bytes_list = [value.to_bytes(1, 'little') for value in int_list]
-    return Keypair.from_secret_key(b''.join(bytes_list))
+    return Keypair.from_seed(b''.join(bytes_list))
 
 
 if __name__ == "__main__":
@@ -124,9 +124,9 @@ if __name__ == "__main__":
                         help='RPC endpoint to use, e.g. https://api.mainnet-beta.solana.com')
 
     args = parser.parse_args()
-    stake_pool = PublicKey(args.stake_pool)
+    stake_pool = Pubkey(args.stake_pool)
     staker = keypair_from_file(args.staker)
     print(f'Rebalancing stake pool {stake_pool}')
-    print(f'Staker public key: {staker.public_key}')
+    print(f'Staker public key: {staker.pubkey()}')
     print(f'Amount to leave in the reserve: {args.reserve_amount} SOL')
     asyncio.run(rebalance(args.endpoint, stake_pool, staker, args.reserve_amount))
