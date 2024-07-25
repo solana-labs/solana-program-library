@@ -6859,6 +6859,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "solana-program",
+ "spl-associated-token-address",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
  "thiserror",
@@ -6874,6 +6875,14 @@ dependencies = [
  "spl-associated-token-account 4.0.0",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
+]
+
+[[package]]
+name = "spl-associated-token-address"
+version = "1.0.0"
+dependencies = [
+ "solana-inline-spl",
+ "solana-program",
 ]
 
 [[package]]
@@ -7186,6 +7195,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-token 6.0.0",
  "thiserror",
 ]
@@ -7364,6 +7374,7 @@ dependencies = [
  "solana-security-txt",
  "solana-vote-program",
  "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-token 6.0.0",
  "test-case",
  "thiserror",
@@ -7393,7 +7404,6 @@ dependencies = [
  "solana-test-validator",
  "solana-transaction-status",
  "solana-vote-program",
- "spl-associated-token-account 4.0.0",
  "spl-single-pool",
  "spl-token 6.0.0",
  "spl-token-client",
@@ -7451,6 +7461,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-stake-pool",
  "spl-token 6.0.0",
 ]
@@ -7586,7 +7597,6 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 4.0.0",
  "spl-instruction-padding",
  "spl-memo 5.0.0",
  "spl-pod 0.3.0",
@@ -7625,7 +7635,7 @@ dependencies = [
  "solana-sdk",
  "solana-test-validator",
  "solana-transaction-status",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-memo 5.0.0",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
@@ -7654,6 +7664,7 @@ dependencies = [
  "solana-rpc-client-api",
  "solana-sdk",
  "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-memo 5.0.0",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
@@ -7902,7 +7913,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
  "spl-token-client",
@@ -8047,7 +8058,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-address",
  "spl-token 6.0.0",
  "thiserror",
 ]

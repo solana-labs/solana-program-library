@@ -15,7 +15,7 @@ use {
         account::Account as RawAccount, commitment_config::CommitmentConfig, hash::Hash,
         pubkey::Pubkey, signature::Signer,
     },
-    spl_associated_token_account::*,
+    spl_associated_token_address::get_associated_token_address_with_program_id,
     spl_token_2022::{
         extension::StateWithExtensionsOwned,
         state::{Account, Mint},
