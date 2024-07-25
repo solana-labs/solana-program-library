@@ -1,11 +1,11 @@
 """Stake Program Constants."""
 
-from solana.publickey import PublicKey
+from solders.pubkey import Pubkey
 
-STAKE_PROGRAM_ID: PublicKey = PublicKey("Stake11111111111111111111111111111111111111")
+STAKE_PROGRAM_ID = Pubkey.from_string("Stake11111111111111111111111111111111111111")
 """Public key that identifies the Stake program."""
 
-SYSVAR_STAKE_CONFIG_ID: PublicKey = PublicKey("StakeConfig11111111111111111111111111111111")
+SYSVAR_STAKE_CONFIG_ID = Pubkey.from_string("StakeConfig11111111111111111111111111111111")
 """Public key that identifies the Stake config sysvar."""
 
 STAKE_LEN: int = 200

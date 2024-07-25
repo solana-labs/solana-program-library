@@ -4,10 +4,10 @@ from enum import IntEnum
 from typing import List, NamedTuple, Optional
 from construct import Prefixed, GreedyString, Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ignore
 
-from solana.publickey import PublicKey
-from solana.transaction import AccountMeta, TransactionInstruction
-from solana.system_program import SYS_PROGRAM_ID
-from solana.sysvar import SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY, SYSVAR_STAKE_HISTORY_PUBKEY
+from solana.constants import SYSTEM_PROGRAM_ID
+from solders.pubkey import Pubkey
+from solders.instruction import AccountMeta, Instruction
+from solders.sysvar import CLOCK, RENT, STAKE_HISTORY
 from spl.token.constants import TOKEN_PROGRAM_ID
 
 from stake.constants import STAKE_PROGRAM_ID, SYSVAR_STAKE_CONFIG_ID
@@ -41,25 +41,25 @@ class InitializeParams(NamedTuple):
     """Initialize token mint transaction params."""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """[w] Stake Pool account to initialize."""
-    manager: PublicKey
+    manager: Pubkey
     """[s] Manager for new stake pool."""
-    staker: PublicKey
+    staker: Pubkey
     """[] Staker for the new stake pool."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """[] Withdraw authority for the new stake pool."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """[w] Uninitialized validator list account for the new stake pool."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """[] Reserve stake account."""
-    pool_mint: PublicKey
+    pool_mint: Pubkey
     """[w] Pool token mint account."""
-    manager_fee_account: PublicKey
+    manager_fee_account: Pubkey
     """[w] Manager's fee account"""
-    token_program_id: PublicKey
+    token_program_id: Pubkey
     """[] SPL Token program id."""
 
     # Params
@@ -75,40 +75,40 @@ class InitializeParams(NamedTuple):
     """Maximum number of possible validators in the pool."""
 
     # Optional
-    deposit_authority: Optional[PublicKey] = None
+    deposit_authority: Optional[Pubkey] = None
     """[] Optional deposit authority that must sign all deposits."""
 
 
 class AddValidatorToPoolParams(NamedTuple):
     """(Staker only) Adds stake account delegated to validator to the pool's list of managed validators."""
 
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[w]` Stake pool."""
-    staker: PublicKey
+    staker: Pubkey
     """`[s]` Staker."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """`[w]` Reserve stake account."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
-    validator_stake: PublicKey
+    validator_stake: Pubkey
     """`[w]` Stake account to add to the pool."""
-    validator_vote: PublicKey
+    validator_vote: Pubkey
     """`[]` Validator this stake account will be delegated to."""
-    rent_sysvar: PublicKey
+    rent_sysvar: Pubkey
     """`[]` Rent sysvar."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    stake_history_sysvar: PublicKey
+    stake_history_sysvar: Pubkey
     """'[]' Stake history sysvar."""
-    stake_config_sysvar: PublicKey
+    stake_config_sysvar: Pubkey
     """'[]' Stake config sysvar."""
-    system_program_id: PublicKey
+    system_program_id: Pubkey
     """`[]` System program."""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program."""
 
     # Params
@@ -119,23 +119,23 @@ class AddValidatorToPoolParams(NamedTuple):
 class RemoveValidatorFromPoolParams(NamedTuple):
     """(Staker only) Removes validator from the pool."""
 
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[w]` Stake pool."""
-    staker: PublicKey
+    staker: Pubkey
     """`[s]` Staker."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
-    validator_stake: PublicKey
+    validator_stake: Pubkey
     """`[w]` Stake account to remove from the pool."""
-    transient_stake: PublicKey
+    transient_stake: Pubkey
     """`[]` Transient stake account, to check that there's no activation ongoing."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """'[]' Stake config sysvar."""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program."""
 
 
@@ -143,27 +143,27 @@ class DecreaseValidatorStakeParams(NamedTuple):
     """(Staker only) Decrease active stake on a validator, eventually moving it to the reserve"""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[]` Stake pool."""
-    staker: PublicKey
+    staker: Pubkey
     """`[s]` Staker."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
-    validator_stake: PublicKey
+    validator_stake: Pubkey
     """`[w]` Canonical stake to split from."""
-    transient_stake: PublicKey
+    transient_stake: Pubkey
     """`[w]` Transient stake account to receive split."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    rent_sysvar: PublicKey
+    rent_sysvar: Pubkey
     """`[]` Rent sysvar."""
-    system_program_id: PublicKey
+    system_program_id: Pubkey
     """`[]` System program."""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program."""
 
     # Params
@@ -177,29 +177,29 @@ class DecreaseValidatorStakeWithReserveParams(NamedTuple):
     """(Staker only) Decrease active stake on a validator, eventually moving it to the reserve"""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[]` Stake pool."""
-    staker: PublicKey
+    staker: Pubkey
     """`[s]` Staker."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """`[w]` Stake pool's reserve."""
-    validator_stake: PublicKey
+    validator_stake: Pubkey
     """`[w]` Canonical stake to split from."""
-    transient_stake: PublicKey
+    transient_stake: Pubkey
     """`[w]` Transient stake account to receive split."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    stake_history_sysvar: PublicKey
+    stake_history_sysvar: Pubkey
     """'[]' Stake history sysvar."""
-    system_program_id: PublicKey
+    system_program_id: Pubkey
     """`[]` System program."""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program."""
 
     # Params
@@ -213,35 +213,35 @@ class IncreaseValidatorStakeParams(NamedTuple):
     """(Staker only) Increase stake on a validator from the reserve account."""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[]` Stake pool."""
-    staker: PublicKey
+    staker: Pubkey
     """`[s]` Staker."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """`[w]` Stake pool's reserve."""
-    transient_stake: PublicKey
+    transient_stake: Pubkey
     """`[w]` Transient stake account to receive split."""
-    validator_stake: PublicKey
+    validator_stake: Pubkey
     """`[]` Canonical stake account to check."""
-    validator_vote: PublicKey
+    validator_vote: Pubkey
     """`[]` Validator vote account to delegate to."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    rent_sysvar: PublicKey
+    rent_sysvar: Pubkey
     """`[]` Rent sysvar."""
-    stake_history_sysvar: PublicKey
+    stake_history_sysvar: Pubkey
     """'[]' Stake history sysvar."""
-    stake_config_sysvar: PublicKey
+    stake_config_sysvar: Pubkey
     """'[]' Stake config sysvar."""
-    system_program_id: PublicKey
+    system_program_id: Pubkey
     """`[]` System program."""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program."""
 
     # Params
@@ -259,23 +259,23 @@ class UpdateValidatorListBalanceParams(NamedTuple):
     """Updates balances of validator and transient stake accounts in the pool."""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[]` Stake pool."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """`[w]` Stake pool's reserve."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    stake_history_sysvar: PublicKey
+    stake_history_sysvar: Pubkey
     """'[]' Stake history sysvar."""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program."""
-    validator_and_transient_stake_pairs: List[PublicKey]
+    validator_and_transient_stake_pairs: List[Pubkey]
     """[] N pairs of validator and transient stake accounts"""
 
     # Params
@@ -288,102 +288,102 @@ class UpdateValidatorListBalanceParams(NamedTuple):
 class UpdateStakePoolBalanceParams(NamedTuple):
     """Updates total pool balance based on balances in the reserve and validator list."""
 
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[w]` Stake pool."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """`[w]` Stake pool's reserve."""
-    manager_fee_account: PublicKey
+    manager_fee_account: Pubkey
     """`[w]` Account to receive pool fee tokens."""
-    pool_mint: PublicKey
+    pool_mint: Pubkey
     """`[w]` Pool mint account."""
-    token_program_id: PublicKey
+    token_program_id: Pubkey
     """`[]` Pool token program."""
 
 
 class CleanupRemovedValidatorEntriesParams(NamedTuple):
     """Cleans up validator stake account entries marked as `ReadyForRemoval`"""
 
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[w]` Stake pool."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
 
 
 class DepositStakeParams(NamedTuple):
     """Deposits a stake account into the pool in exchange for pool tokens"""
 
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[w]` Stake pool"""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account"""
-    deposit_authority: PublicKey
+    deposit_authority: Pubkey
     """`[s]/[]` Stake pool deposit authority"""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority"""
-    deposit_stake: PublicKey
+    deposit_stake: Pubkey
     """`[w]` Stake account to join the pool (stake's withdraw authority set to the stake pool deposit authority)"""
-    validator_stake: PublicKey
+    validator_stake: Pubkey
     """`[w]` Validator stake account for the stake account to be merged with"""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """`[w]` Reserve stake account, to withdraw rent exempt reserve"""
-    destination_pool_account: PublicKey
+    destination_pool_account: Pubkey
     """`[w]` User account to receive pool tokens"""
-    manager_fee_account: PublicKey
+    manager_fee_account: Pubkey
     """`[w]` Account to receive pool fee tokens"""
-    referral_pool_account: PublicKey
+    referral_pool_account: Pubkey
     """`[w]` Account to receive a portion of pool fee tokens as referral fees"""
-    pool_mint: PublicKey
+    pool_mint: Pubkey
     """`[w]` Pool token mint account"""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Sysvar clock account"""
-    stake_history_sysvar: PublicKey
+    stake_history_sysvar: Pubkey
     """`[]` Sysvar stake history account"""
-    token_program_id: PublicKey
+    token_program_id: Pubkey
     """`[]` Pool token program id"""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program id"""
 
 
 class WithdrawStakeParams(NamedTuple):
     """Withdraws a stake account from the pool in exchange for pool tokens"""
 
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[w]` Stake pool"""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account"""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority"""
-    validator_stake: PublicKey
+    validator_stake: Pubkey
     """`[w]` Validator or reserve stake account to split"""
-    destination_stake: PublicKey
+    destination_stake: Pubkey
     """`[w]` Unitialized stake account to receive withdrawal"""
-    destination_stake_authority: PublicKey
+    destination_stake_authority: Pubkey
     """`[]` User account to set as a new withdraw authority"""
-    source_transfer_authority: PublicKey
+    source_transfer_authority: Pubkey
     """`[s]` User transfer authority, for pool token account"""
-    source_pool_account: PublicKey
+    source_pool_account: Pubkey
     """`[w]` User account with pool tokens to burn from"""
-    manager_fee_account: PublicKey
+    manager_fee_account: Pubkey
     """`[w]` Account to receive pool fee tokens"""
-    pool_mint: PublicKey
+    pool_mint: Pubkey
     """`[w]` Pool token mint account"""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Sysvar clock account"""
-    token_program_id: PublicKey
+    token_program_id: Pubkey
     """`[]` Pool token program id"""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program id"""
 
     # Params
@@ -408,27 +408,27 @@ class DepositSolParams(NamedTuple):
     representing ownership into the pool. Inputs are converted to the current ratio."""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[w]` Stake pool."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """`[w]` Stake pool's reserve."""
-    funding_account: PublicKey
+    funding_account: Pubkey
     """`[ws]` Funding account (must be a system account)."""
-    destination_pool_account: PublicKey
+    destination_pool_account: Pubkey
     """`[w]` User account to receive pool tokens."""
-    manager_fee_account: PublicKey
+    manager_fee_account: Pubkey
     """`[w]` Manager's pool token account to receive deposit fee."""
-    referral_pool_account: PublicKey
+    referral_pool_account: Pubkey
     """`[w]` Referrer pool token account to receive referral fee."""
-    pool_mint: PublicKey
+    pool_mint: Pubkey
     """`[w]` Pool token mint."""
-    system_program_id: PublicKey
+    system_program_id: Pubkey
     """`[]` System program."""
-    token_program_id: PublicKey
+    token_program_id: Pubkey
     """`[]` Token program."""
 
     # Params
@@ -436,7 +436,7 @@ class DepositSolParams(NamedTuple):
     """Amount of SOL to deposit"""
 
     # Optional
-    deposit_authority: Optional[PublicKey] = None
+    deposit_authority: Optional[Pubkey] = None
     """`[s]` (Optional) Stake pool sol deposit authority."""
 
 
@@ -448,31 +448,31 @@ class WithdrawSolParams(NamedTuple):
     """Withdraw SOL directly from the pool's reserve account."""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[w]` Stake pool."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    source_transfer_authority: PublicKey
+    source_transfer_authority: Pubkey
     """`[s]` Transfer authority for user pool token account."""
-    source_pool_account: PublicKey
+    source_pool_account: Pubkey
     """`[w]` User's pool token account to burn pool tokens."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """`[w]` Stake pool's reserve."""
-    destination_system_account: PublicKey
+    destination_system_account: Pubkey
     """`[w]` Destination system account to receive lamports from the reserve."""
-    manager_fee_account: PublicKey
+    manager_fee_account: Pubkey
     """`[w]` Manager's pool token account to receive fee."""
-    pool_mint: PublicKey
+    pool_mint: Pubkey
     """`[w]` Pool token mint."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    stake_history_sysvar: PublicKey
+    stake_history_sysvar: Pubkey
     """'[]' Stake history sysvar."""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program."""
-    token_program_id: PublicKey
+    token_program_id: Pubkey
     """`[]` Token program."""
 
     # Params
@@ -480,7 +480,7 @@ class WithdrawSolParams(NamedTuple):
     """Amount of pool tokens to burn"""
 
     # Optional
-    sol_withdraw_authority: Optional[PublicKey] = None
+    sol_withdraw_authority: Optional[Pubkey] = None
     """`[s]` (Optional) Stake pool sol withdraw authority."""
 
 
@@ -488,23 +488,23 @@ class CreateTokenMetadataParams(NamedTuple):
     """Create token metadata for the stake-pool token in the metaplex-token program."""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[]` Stake pool."""
-    manager: PublicKey
+    manager: Pubkey
     """`[s]` Manager."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    pool_mint: PublicKey
+    pool_mint: Pubkey
     """`[]` Pool token mint account."""
-    payer: PublicKey
+    payer: Pubkey
     """`[s, w]` Payer for creation of token metadata account."""
-    token_metadata: PublicKey
+    token_metadata: Pubkey
     """`[w]` Token metadata program account."""
-    metadata_program_id: PublicKey
+    metadata_program_id: Pubkey
     """`[]` Metadata program id"""
-    system_program_id: PublicKey
+    system_program_id: Pubkey
     """`[]` System program id"""
 
     # Params
@@ -519,19 +519,19 @@ class CreateTokenMetadataParams(NamedTuple):
 class UpdateTokenMetadataParams(NamedTuple):
     """Update token metadata for the stake-pool token in the metaplex-token program."""
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[]` Stake pool."""
-    manager: PublicKey
+    manager: Pubkey
     """`[s]` Manager."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    pool_mint: PublicKey
+    pool_mint: Pubkey
     """`[]` Pool token mint account."""
-    token_metadata: PublicKey
+    token_metadata: Pubkey
     """`[w]` Token metadata program account."""
-    metadata_program_id: PublicKey
+    metadata_program_id: Pubkey
     """`[]` Metadata program id"""
 
     # Params
@@ -547,37 +547,37 @@ class IncreaseAdditionalValidatorStakeParams(NamedTuple):
     """(Staker only) Increase stake on a validator from the reserve account."""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[]` Stake pool."""
-    staker: PublicKey
+    staker: Pubkey
     """`[s]` Staker."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """`[w]` Stake pool's reserve."""
-    ephemeral_stake: PublicKey
+    ephemeral_stake: Pubkey
     """The ephemeral stake account used during the operation."""
-    transient_stake: PublicKey
+    transient_stake: Pubkey
     """`[w]` Transient stake account to receive split."""
-    validator_stake: PublicKey
+    validator_stake: Pubkey
     """`[]` Canonical stake account to check."""
-    validator_vote: PublicKey
+    validator_vote: Pubkey
     """`[]` Validator vote account to delegate to."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    rent_sysvar: PublicKey
+    rent_sysvar: Pubkey
     """`[]` Rent sysvar."""
-    stake_history_sysvar: PublicKey
+    stake_history_sysvar: Pubkey
     """'[]' Stake history sysvar."""
-    stake_config_sysvar: PublicKey
+    stake_config_sysvar: Pubkey
     """'[]' Stake config sysvar."""
-    system_program_id: PublicKey
+    system_program_id: Pubkey
     """`[]` System program."""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program."""
 
     # Params
@@ -593,33 +593,33 @@ class DecreaseAdditionalValidatorStakeParams(NamedTuple):
     """(Staker only) Decrease active stake on a validator, eventually moving it to the reserve"""
 
     # Accounts
-    program_id: PublicKey
+    program_id: Pubkey
     """SPL Stake Pool program account."""
-    stake_pool: PublicKey
+    stake_pool: Pubkey
     """`[]` Stake pool."""
-    staker: PublicKey
+    staker: Pubkey
     """`[s]` Staker."""
-    withdraw_authority: PublicKey
+    withdraw_authority: Pubkey
     """`[]` Stake pool withdraw authority."""
-    validator_list: PublicKey
+    validator_list: Pubkey
     """`[w]` Validator stake list storage account."""
-    reserve_stake: PublicKey
+    reserve_stake: Pubkey
     """The reserve stake account to move the stake to."""
-    validator_stake: PublicKey
+    validator_stake: Pubkey
     """`[w]` Canonical stake to split from."""
-    ephemeral_stake: PublicKey
+    ephemeral_stake: Pubkey
     """The ephemeral stake account used during the operation."""
-    transient_stake: PublicKey
+    transient_stake: Pubkey
     """`[w]` Transient stake account to receive split."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    rent_sysvar: PublicKey
+    rent_sysvar: Pubkey
     """`[]` Rent sysvar."""
-    stake_history_sysvar: PublicKey
+    stake_history_sysvar: Pubkey
     """'[]' Stake history sysvar."""
-    system_program_id: PublicKey
+    system_program_id: Pubkey
     """`[]` System program."""
-    stake_program_id: PublicKey
+    stake_program_id: Pubkey
     """`[]` Stake program."""
 
     # Params
@@ -730,7 +730,7 @@ INSTRUCTIONS_LAYOUT = Struct(
 )
 
 
-def initialize(params: InitializeParams) -> TransactionInstruction:
+def initialize(params: InitializeParams) -> Instruction:
     """Creates a transaction instruction to initialize a new stake pool."""
 
     data = INSTRUCTIONS_LAYOUT.build(
@@ -745,7 +745,7 @@ def initialize(params: InitializeParams) -> TransactionInstruction:
             ),
         )
     )
-    keys = [
+    accounts = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.manager, is_signer=True, is_writable=False),
         AccountMeta(pubkey=params.staker, is_signer=False, is_writable=False),
@@ -757,20 +757,20 @@ def initialize(params: InitializeParams) -> TransactionInstruction:
         AccountMeta(pubkey=TOKEN_PROGRAM_ID, is_signer=False, is_writable=False),
     ]
     if params.deposit_authority:
-        keys.append(
+        accounts.append(
             AccountMeta(pubkey=params.deposit_authority, is_signer=True, is_writable=False),
         )
-    return TransactionInstruction(
-        keys=keys,
+    return Instruction(
+        accounts=accounts,
         program_id=params.program_id,
         data=data,
     )
 
 
-def add_validator_to_pool(params: AddValidatorToPoolParams) -> TransactionInstruction:
+def add_validator_to_pool(params: AddValidatorToPoolParams) -> Instruction:
     """Creates instruction to add a validator to the pool."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
@@ -796,14 +796,14 @@ def add_validator_to_pool(params: AddValidatorToPoolParams) -> TransactionInstru
 
 
 def add_validator_to_pool_with_vote(
-    program_id: PublicKey,
-    stake_pool: PublicKey,
-    staker: PublicKey,
-    validator_list: PublicKey,
-    reserve_stake: PublicKey,
-    validator: PublicKey,
+    program_id: Pubkey,
+    stake_pool: Pubkey,
+    staker: Pubkey,
+    validator_list: Pubkey,
+    reserve_stake: Pubkey,
+    validator: Pubkey,
     validator_stake_seed: Optional[int],
-) -> TransactionInstruction:
+) -> Instruction:
     """Creates instruction to add a validator based on their vote account address."""
     (withdraw_authority, _seed) = find_withdraw_authority_program_address(program_id, stake_pool)
     (validator_stake, _seed) = find_stake_program_address(program_id, validator, stake_pool, validator_stake_seed)
@@ -817,21 +817,21 @@ def add_validator_to_pool_with_vote(
             validator_list=validator_list,
             validator_stake=validator_stake,
             validator_vote=validator,
-            rent_sysvar=SYSVAR_RENT_PUBKEY,
-            clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-            stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+            rent_sysvar=RENT,
+            clock_sysvar=CLOCK,
+            stake_history_sysvar=STAKE_HISTORY,
             stake_config_sysvar=SYSVAR_STAKE_CONFIG_ID,
-            system_program_id=SYS_PROGRAM_ID,
+            system_program_id=SYSTEM_PROGRAM_ID,
             stake_program_id=STAKE_PROGRAM_ID,
             seed=validator_stake_seed,
         )
     )
 
 
-def remove_validator_from_pool(params: RemoveValidatorFromPoolParams) -> TransactionInstruction:
+def remove_validator_from_pool(params: RemoveValidatorFromPoolParams) -> Instruction:
     """Creates instruction to remove a validator from the pool."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
@@ -852,14 +852,14 @@ def remove_validator_from_pool(params: RemoveValidatorFromPoolParams) -> Transac
 
 
 def remove_validator_from_pool_with_vote(
-    program_id: PublicKey,
-    stake_pool: PublicKey,
-    staker: PublicKey,
-    validator_list: PublicKey,
-    validator: PublicKey,
+    program_id: Pubkey,
+    stake_pool: Pubkey,
+    staker: Pubkey,
+    validator_list: Pubkey,
+    validator: Pubkey,
     validator_stake_seed: Optional[int],
     transient_stake_seed: int,
-) -> TransactionInstruction:
+) -> Instruction:
     """Creates instruction to remove a validator based on their vote account address."""
     (withdraw_authority, seed) = find_withdraw_authority_program_address(program_id, stake_pool)
     (validator_stake, seed) = find_stake_program_address(program_id, validator, stake_pool, validator_stake_seed)
@@ -874,15 +874,15 @@ def remove_validator_from_pool_with_vote(
             validator_list=validator_list,
             validator_stake=validator_stake,
             transient_stake=transient_stake,
-            clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+            clock_sysvar=CLOCK,
             stake_program_id=STAKE_PROGRAM_ID,
         )
     )
 
 
-def deposit_stake(params: DepositStakeParams) -> TransactionInstruction:
+def deposit_stake(params: DepositStakeParams) -> Instruction:
     """Creates a transaction instruction to deposit a stake account into a stake pool."""
-    keys = [
+    accounts = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.deposit_authority, is_signer=False, is_writable=False),
@@ -899,8 +899,8 @@ def deposit_stake(params: DepositStakeParams) -> TransactionInstruction:
         AccountMeta(pubkey=params.token_program_id, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
     ]
-    return TransactionInstruction(
-        keys=keys,
+    return Instruction(
+        accounts=accounts,
         program_id=params.program_id,
         data=INSTRUCTIONS_LAYOUT.build(
             dict(
@@ -911,10 +911,10 @@ def deposit_stake(params: DepositStakeParams) -> TransactionInstruction:
     )
 
 
-def withdraw_stake(params: WithdrawStakeParams) -> TransactionInstruction:
+def withdraw_stake(params: WithdrawStakeParams) -> Instruction:
     """Creates a transaction instruction to withdraw active stake from a stake pool."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
@@ -939,9 +939,9 @@ def withdraw_stake(params: WithdrawStakeParams) -> TransactionInstruction:
     )
 
 
-def deposit_sol(params: DepositSolParams) -> TransactionInstruction:
+def deposit_sol(params: DepositSolParams) -> Instruction:
     """Creates a transaction instruction to deposit SOL into a stake pool."""
-    keys = [
+    accounts = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
@@ -954,9 +954,9 @@ def deposit_sol(params: DepositSolParams) -> TransactionInstruction:
         AccountMeta(pubkey=params.token_program_id, is_signer=False, is_writable=False),
     ]
     if params.deposit_authority:
-        keys.append(AccountMeta(pubkey=params.deposit_authority, is_signer=True, is_writable=False))
-    return TransactionInstruction(
-        keys=keys,
+        accounts.append(AccountMeta(pubkey=params.deposit_authority, is_signer=True, is_writable=False))
+    return Instruction(
+        accounts=accounts,
         program_id=params.program_id,
         data=INSTRUCTIONS_LAYOUT.build(
             dict(
@@ -967,9 +967,9 @@ def deposit_sol(params: DepositSolParams) -> TransactionInstruction:
     )
 
 
-def withdraw_sol(params: WithdrawSolParams) -> TransactionInstruction:
+def withdraw_sol(params: WithdrawSolParams) -> Instruction:
     """Creates a transaction instruction to withdraw SOL from a stake pool."""
-    keys = [
+    accounts = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.source_transfer_authority, is_signer=True, is_writable=False),
@@ -987,8 +987,8 @@ def withdraw_sol(params: WithdrawSolParams) -> TransactionInstruction:
     if params.sol_withdraw_authority:
         AccountMeta(pubkey=params.sol_withdraw_authority, is_signer=True, is_writable=False)
 
-    return TransactionInstruction(
-        keys=keys,
+    return Instruction(
+        accounts=accounts,
         program_id=params.program_id,
         data=INSTRUCTIONS_LAYOUT.build(
             dict(
@@ -999,9 +999,9 @@ def withdraw_sol(params: WithdrawSolParams) -> TransactionInstruction:
     )
 
 
-def update_validator_list_balance(params: UpdateValidatorListBalanceParams) -> TransactionInstruction:
+def update_validator_list_balance(params: UpdateValidatorListBalanceParams) -> Instruction:
     """Creates instruction to update a set of validators in the stake pool."""
-    keys = [
+    accounts = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
@@ -1010,12 +1010,12 @@ def update_validator_list_balance(params: UpdateValidatorListBalanceParams) -> T
         AccountMeta(pubkey=params.stake_history_sysvar, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
     ]
-    keys.extend([
+    accounts.extend([
         AccountMeta(pubkey=pubkey, is_signer=False, is_writable=True)
         for pubkey in params.validator_and_transient_stake_pairs
     ])
-    return TransactionInstruction(
-        keys=keys,
+    return Instruction(
+        accounts=accounts,
         program_id=params.program_id,
         data=INSTRUCTIONS_LAYOUT.build(
             dict(
@@ -1026,10 +1026,10 @@ def update_validator_list_balance(params: UpdateValidatorListBalanceParams) -> T
     )
 
 
-def update_stake_pool_balance(params: UpdateStakePoolBalanceParams) -> TransactionInstruction:
+def update_stake_pool_balance(params: UpdateStakePoolBalanceParams) -> Instruction:
     """Creates instruction to update the overall stake pool balance."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
@@ -1048,10 +1048,10 @@ def update_stake_pool_balance(params: UpdateStakePoolBalanceParams) -> Transacti
     )
 
 
-def cleanup_removed_validator_entries(params: CleanupRemovedValidatorEntriesParams) -> TransactionInstruction:
+def cleanup_removed_validator_entries(params: CleanupRemovedValidatorEntriesParams) -> Instruction:
     """Creates instruction to cleanup removed validator entries."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
         ],
@@ -1065,10 +1065,10 @@ def cleanup_removed_validator_entries(params: CleanupRemovedValidatorEntriesPara
     )
 
 
-def increase_validator_stake(params: IncreaseValidatorStakeParams) -> TransactionInstruction:
+def increase_validator_stake(params: IncreaseValidatorStakeParams) -> Instruction:
     """Creates instruction to increase the stake on a validator."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
@@ -1099,11 +1099,11 @@ def increase_validator_stake(params: IncreaseValidatorStakeParams) -> Transactio
 
 def increase_additional_validator_stake(
     params: IncreaseAdditionalValidatorStakeParams,
-  ) -> TransactionInstruction:
+  ) -> Instruction:
 
     """Creates `IncreaseAdditionalValidatorStake` instruction (rebalance from reserve account to transient account)"""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
@@ -1133,10 +1133,10 @@ def increase_additional_validator_stake(
     )
 
 
-def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> TransactionInstruction:
+def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> Instruction:
     """Creates instruction to decrease the stake on a validator."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
@@ -1161,11 +1161,11 @@ def decrease_validator_stake(params: DecreaseValidatorStakeParams) -> Transactio
     )
 
 
-def decrease_additional_validator_stake(params: DecreaseAdditionalValidatorStakeParams) -> TransactionInstruction:
+def decrease_additional_validator_stake(params: DecreaseAdditionalValidatorStakeParams) -> Instruction:
     """ Creates `DecreaseAdditionalValidatorStake` instruction (rebalance from validator account to
     transient account)."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
@@ -1193,10 +1193,10 @@ def decrease_additional_validator_stake(params: DecreaseAdditionalValidatorStake
     )
 
 
-def decrease_validator_stake_with_reserve(params: DecreaseValidatorStakeWithReserveParams) -> TransactionInstruction:
+def decrease_validator_stake_with_reserve(params: DecreaseValidatorStakeWithReserveParams) -> Instruction:
     """Creates instruction to decrease the stake on a validator."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
             AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
@@ -1222,10 +1222,10 @@ def decrease_validator_stake_with_reserve(params: DecreaseValidatorStakeWithRese
     )
 
 
-def create_token_metadata(params: CreateTokenMetadataParams) -> TransactionInstruction:
+def create_token_metadata(params: CreateTokenMetadataParams) -> Instruction:
     """Creates an instruction to create metadata using the mpl token metadata program for the pool token."""
 
-    keys = [
+    accounts = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.manager, is_signer=True, is_writable=False),
         AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
@@ -1235,8 +1235,8 @@ def create_token_metadata(params: CreateTokenMetadataParams) -> TransactionInstr
         AccountMeta(pubkey=params.metadata_program_id, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.system_program_id, is_signer=False, is_writable=False),
     ]
-    return TransactionInstruction(
-        keys=keys,
+    return Instruction(
+        accounts=accounts,
         program_id=params.program_id,
         data=INSTRUCTIONS_LAYOUT.build(
             dict(
@@ -1251,18 +1251,18 @@ def create_token_metadata(params: CreateTokenMetadataParams) -> TransactionInstr
     )
 
 
-def update_token_metadata(params: UpdateTokenMetadataParams) -> TransactionInstruction:
+def update_token_metadata(params: UpdateTokenMetadataParams) -> Instruction:
     """Creates an instruction to update metadata in the mpl token metadata program account for the pool token."""
 
-    keys = [
+    accounts = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.manager, is_signer=True, is_writable=False),
         AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.token_metadata, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.metadata_program_id, is_signer=False, is_writable=False)
     ]
-    return TransactionInstruction(
-        keys=keys,
+    return Instruction(
+        accounts=accounts,
         program_id=params.program_id,
         data=INSTRUCTIONS_LAYOUT.build(
             dict(

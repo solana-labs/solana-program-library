@@ -1,5 +1,5 @@
 import pytest
-from solana.keypair import Keypair
+from solders.keypair import Keypair
 from solana.rpc.commitment import Confirmed
 from spl.token.constants import TOKEN_PROGRAM_ID
 
@@ -19,7 +19,7 @@ async def test_create_stake_pool(async_client, payer):
     stake_pool = Keypair()
     validator_list = Keypair()
     (pool_withdraw_authority, seed) = find_withdraw_authority_program_address(
-        STAKE_POOL_PROGRAM_ID, stake_pool.public_key)
+        STAKE_POOL_PROGRAM_ID, stake_pool.pubkey())
 
     reserve_stake = Keypair()
     await create_stake(async_client, payer, reserve_stake, pool_withdraw_authority, MINIMUM_RESERVE_LAMPORTS)
@@ -30,25 +30,25 @@ async def test_create_stake_pool(async_client, payer):
     manager_fee_account = await create_associated_token_account(
         async_client,
         payer,
-        payer.public_key,
-        pool_mint.public_key,
+        payer.pubkey(),
+        pool_mint.pubkey(),
     )
 
     fee = Fee(numerator=1, denominator=1000)
     referral_fee = 20
     await create(
-        async_client, payer, stake_pool, validator_list, pool_mint.public_key,
-        reserve_stake.public_key, manager_fee_account, fee, referral_fee)
-    resp = await async_client.get_account_info(stake_pool.public_key, commitment=Confirmed)
-    assert resp['result']['value']['owner'] == str(STAKE_POOL_PROGRAM_ID)
-    data = resp['result']['value']['data']
-    pool_data = StakePool.decode(data[0], data[1])
-    assert pool_data.manager == payer.public_key
-    assert pool_data.staker == payer.public_key
+        async_client, payer, stake_pool, validator_list, pool_mint.pubkey(),
+        reserve_stake.pubkey(), manager_fee_account, fee, referral_fee)
+    resp = await async_client.get_account_info(stake_pool.pubkey(), commitment=Confirmed)
+    assert resp.value.owner == STAKE_POOL_PROGRAM_ID
+    data = resp.value.data if resp.value else bytes()
+    pool_data = StakePool.decode(data)
+    assert pool_data.manager == payer.pubkey()
+    assert pool_data.staker == payer.pubkey()
     assert pool_data.stake_withdraw_bump_seed == seed
-    assert pool_data.validator_list == validator_list.public_key
-    assert pool_data.reserve_stake == reserve_stake.public_key
-    assert pool_data.pool_mint == pool_mint.public_key
+    assert pool_data.validator_list == validator_list.pubkey()
+    assert pool_data.reserve_stake == reserve_stake.pubkey()
+    assert pool_data.pool_mint == pool_mint.pubkey()
     assert pool_data.manager_fee_account == manager_fee_account
     assert pool_data.token_program_id == TOKEN_PROGRAM_ID
     assert pool_data.total_lamports == 0
