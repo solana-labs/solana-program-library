@@ -61,8 +61,7 @@ async def stake_pool_addresses(
 ) -> Tuple[Pubkey, Pubkey, Pubkey]:
     fee = Fee(numerator=1, denominator=1000)
     referral_fee = 20
-    # Change back to `wait_for_next_epoch_if_soon` once https://github.com/solana-labs/solana/pull/26851 is available
-    await waiter.wait_for_next_epoch(async_client)
+    await waiter.wait_for_next_epoch_if_soon(async_client)
     stake_pool_addresses = await create_all(async_client, payer, fee, referral_fee)
     stake_pool = stake_pool_addresses[0]
     pool_mint = stake_pool_addresses[2]

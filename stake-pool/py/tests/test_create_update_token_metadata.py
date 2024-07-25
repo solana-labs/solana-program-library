@@ -2,15 +2,14 @@ import pytest
 from stake_pool.actions import create_all, create_token_metadata, update_token_metadata
 from stake_pool.state import Fee, StakePool
 from solana.rpc.commitment import Confirmed
-from solana.rpc.async_api import AsyncClient
-from solders.keypair import Keypair
 from stake_pool.constants import find_metadata_account
 
 
 @pytest.mark.asyncio
-async def test_create_metadata_success(async_client: AsyncClient, payer: Keypair):
+async def test_create_metadata_success(async_client, waiter, payer):
     fee = Fee(numerator=1, denominator=1000)
     referral_fee = 20
+    await waiter.wait_for_next_epoch_if_soon(async_client)
     (stake_pool_address, _validator_list_address, _) = await create_all(async_client, payer, fee, referral_fee)
     resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp.value.data if resp.value else bytes()
@@ -30,9 +29,10 @@ async def test_create_metadata_success(async_client: AsyncClient, payer: Keypair
 
 
 @pytest.mark.asyncio
-async def test_update_metadata_success(async_client: AsyncClient, payer: Keypair):
+async def test_update_metadata_success(async_client, waiter, payer):
     fee = Fee(numerator=1, denominator=1000)
     referral_fee = 20
+    await waiter.wait_for_next_epoch_if_soon(async_client)
     (stake_pool_address, _validator_list_address, _) = await create_all(async_client, payer, fee, referral_fee)
     resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp.value.data if resp.value else bytes()

@@ -8,9 +8,10 @@ from stake_pool.actions import create_all, deposit_sol, withdraw_sol
 
 
 @pytest.mark.asyncio
-async def test_deposit_withdraw_sol(async_client, payer):
+async def test_deposit_withdraw_sol(async_client, waiter, payer):
     fee = Fee(numerator=1, denominator=1000)
     referral_fee = 20
+    await waiter.wait_for_next_epoch(async_client)
     (stake_pool_address, validator_list_address, _) = await create_all(async_client, payer, fee, referral_fee)
     resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp.value.data if resp.value else bytes()
