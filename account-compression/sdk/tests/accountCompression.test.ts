@@ -385,7 +385,7 @@ describe('Account Compression', () => {
                 await execute(provider, ixs, [payerKeypair]);
             }
         });
-        it.only('Testing canopy for appends and replaces on a full on chain tree', async () => {
+        it('Testing canopy for appends and replaces on a full on chain tree', async () => {
             [cmtKeypair, offChainTree] = await createTreeOnChain(
                 provider,
                 payerKeypair,
