@@ -42,6 +42,7 @@ use {
         sysvar::instructions::get_instruction_relative,
     },
     spl_pod::{bytemuck::pod_from_bytes, optional_keys::OptionalNonZeroPubkey},
+    std::slice::Iter,
 };
 
 /// Processes an [InitializeConfidentialTransferFeeConfig] instruction.
@@ -79,10 +80,8 @@ fn process_withdraw_withheld_tokens_from_mint(
 
     // zero-knowledge proof certifies that the exact withheld amount is credited to
     // the destination account.
-    let proof_context = verify_ciphertext_ciphertext_equality_proof(
-        next_account_info(account_info_iter)?,
-        proof_instruction_offset,
-    )?;
+    let proof_context =
+        verify_ciphertext_ciphertext_equality_proof(account_info_iter, proof_instruction_offset)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -175,13 +174,14 @@ fn process_withdraw_withheld_tokens_from_mint(
 /// instruction or a `[WithdrawWithheldTokensFromAccounts]` and return the
 /// corresponding proof context.
 fn verify_ciphertext_ciphertext_equality_proof(
-    account_info: &AccountInfo<'_>,
+    account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
 ) -> Result<CiphertextCiphertextEqualityProofContext, ProgramError> {
     if proof_instruction_offset == 0 {
+        let context_account_info = next_account_info(account_info_iter)?;
         // interpret `account_info` as a context state account
-        check_zk_token_proof_program_account(account_info.owner)?;
-        let context_state_account_data = account_info.data.borrow();
+        check_zk_token_proof_program_account(context_account_info.owner)?;
+        let context_state_account_data = context_account_info.data.borrow();
         let context_state = pod_from_bytes::<
             ProofContextState<CiphertextCiphertextEqualityProofContext>,
         >(&context_state_account_data)?;
@@ -192,12 +192,15 @@ fn verify_ciphertext_ciphertext_equality_proof(
 
         Ok(context_state.proof_context)
     } else {
+        let sysvar_account_info = next_account_info(account_info_iter)?;
         // interpret `account_info` as a sysvar
-        let zkp_instruction = get_instruction_relative(proof_instruction_offset, account_info)?;
-        Ok(*decode_proof_instruction_context::<
+        let zkp_instruction =
+            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
+        Ok(decode_proof_instruction_context::<
             CiphertextCiphertextEqualityProofData,
             CiphertextCiphertextEqualityProofContext,
         >(
+            account_info_iter,
             ProofInstruction::VerifyCiphertextCiphertextEquality,
             &zkp_instruction,
         )?)
@@ -219,10 +222,8 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     // zero-knowledge proof certifies that the exact aggregate withheld amount is
     // credited to the destination account.
-    let proof_context = verify_ciphertext_ciphertext_equality_proof(
-        next_account_info(account_info_iter)?,
-        proof_instruction_offset,
-    )?;
+    let proof_context =
+        verify_ciphertext_ciphertext_equality_proof(account_info_iter, proof_instruction_offset)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();

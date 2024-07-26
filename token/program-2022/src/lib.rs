@@ -121,6 +121,14 @@ pub fn check_zk_token_proof_program_account(zk_token_proof_program_id: &Pubkey) 
     Ok(())
 }
 
+/// Checks that the supplied program ID is correct for the spl record program
+pub fn check_spl_record_program_account(spl_record_program_id: &Pubkey) -> ProgramResult {
+    if spl_record_program_id != &spl_record::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    Ok(())
+}
+
 /// Checks if the spplied program ID is that of the system program
 pub fn check_system_program_account(system_program_id: &Pubkey) -> ProgramResult {
     if system_program_id != &system_program::id() {
