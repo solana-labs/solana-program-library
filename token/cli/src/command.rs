@@ -62,7 +62,8 @@ use {
             encryption::{
                 auth_encryption::AeKey,
                 elgamal::{self, ElGamalKeypair},
-            }, instruction::transfer, zk_token_elgamal::pod::ElGamalPubkey
+            },
+            zk_token_elgamal::pod::ElGamalPubkey,
         },
         state::{Account, AccountState, Mint},
     },
