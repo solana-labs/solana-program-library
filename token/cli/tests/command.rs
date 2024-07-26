@@ -123,6 +123,8 @@ async fn main() {
         async_trial!(non_transferable, test_validator, payer),
         async_trial!(default_account_state, test_validator, payer),
         async_trial!(transfer_fee, test_validator, payer),
+        async_trial!(transfer_fee_basis_point, test_validator, payer),
+        // async_trial!(transfer_fee_maximum_fee, test_validator, payer),
         async_trial!(confidential_transfer, test_validator, payer),
         async_trial!(multisig_transfer, test_validator, payer),
         async_trial!(offline_multisig_transfer_with_nonce, test_validator, payer),
@@ -2518,6 +2520,53 @@ async fn transfer_fee(test_validator: &TestValidator, payer: &Keypair) {
     assert_eq!(
         Option::<Pubkey>::from(extension.withdraw_withheld_authority),
         None,
+    );
+}
+
+async fn transfer_fee_basis_point(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
+
+    let transfer_fee_basis_points = 100;
+    let maximum_fee = 1.2;
+    let decimal = 9;
+
+    let token = Keypair::new();
+    let token_keypair_file = NamedTempFile::new().unwrap();
+    write_keypair_file(&token, &token_keypair_file);
+    let token_pubkey = token.pubkey();
+    process_test_command(
+        &config, 
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            token_keypair_file.path().to_str().unwrap(),
+            "--transfer-fee-basis-points",
+            &transfer_fee_basis_points.to_string(),
+            "--transfer-fee-maximum-fee",
+            &maximum_fee.to_string()
+        ]
+    ).await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+    let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = test_mint.get_extension::<TransferFeeConfig>().unwrap();
+    assert_eq!(
+        u16::from(extension.older_transfer_fee.transfer_fee_basis_points),
+        transfer_fee_basis_points
+    );
+    assert_eq!(
+        u64::from(extension.older_transfer_fee.maximum_fee),
+        (maximum_fee * i32::pow(10,decimal) as f64) as u64
+    );
+    assert_eq!(
+        u16::from(extension.newer_transfer_fee.transfer_fee_basis_points),
+        transfer_fee_basis_points
+    );
+    assert_eq!(
+        u64::from(extension.newer_transfer_fee.maximum_fee),
+        (maximum_fee * i32::pow(10, decimal) as f64) as u64
     );
 }
 

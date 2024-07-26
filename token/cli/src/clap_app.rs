@@ -763,10 +763,33 @@ pub fn app<'a, 'b>(
                         .value_names(&["FEE_IN_BASIS_POINTS", "MAXIMUM_FEE"])
                         .takes_value(true)
                         .number_of_values(2)
+                        .hidden(true)
                         .help(
                             "Add a transfer fee to the mint. \
                             The mint authority can set the fee and withdraw collected fees.",
                         ),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_basis_points")
+                        .long("transfer-fee-basis-points")
+                        .value_names(&["FEE_IN_BASIS_POINTS"])
+                        .takes_value(true)
+                        .number_of_values(1)
+                        .help(
+                            "Add transfer fee to the mint. \
+                            The mint authority can set the fee.",
+                        ),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_maximum_fee")
+                        .long("transfer-fee-maximum-fee")
+                        .value_names(&["MAXIMUM_FEE"])
+                        .takes_value(true)
+                        .number_of_values(1)
+                        .help(
+                            "Add a UI amount transfer fee to the mint. \
+                            The mint authority can set the fee and collected fee"
+                        )
                 )
                 .arg(
                     Arg::with_name("enable_permanent_delegate")
