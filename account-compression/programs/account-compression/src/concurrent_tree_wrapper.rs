@@ -63,3 +63,31 @@ pub fn merkle_tree_prove_leaf(
 ) -> Result<Box<ChangeLogEvent>> {
     merkle_tree_apply_fn!(header, tree_id, tree_bytes, prove_leaf, args)
 }
+
+pub fn merkle_tree_initialize(
+    header: &ConcurrentMerkleTreeHeader,
+    tree_id: Pubkey,
+    tree_bytes: &mut [u8],
+) -> Result<Box<ChangeLogEvent>> {
+    merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, initialize,)
+}
+
+pub fn tree_bytes_unititialized(tree_bytes: &[u8]) -> bool {
+    tree_bytes.iter().all(|&x| x == 0)
+}
+
+pub fn assert_tree_is_empty(
+    header: &ConcurrentMerkleTreeHeader,
+    tree_id: Pubkey,
+    tree_bytes: &mut [u8],
+) -> Result<()> {
+    // If the tree is batch initialized and not finalized yet, we can treat it as empty.
+    // Before the tree is finalized, the tree_bytes will be all 0 as only the header will be
+    // initialized at that point, so we may skip the deserialization.
+    if header.get_is_batch_initialized() && tree_bytes_unititialized(tree_bytes) {
+        return Ok(());
+    }
+    // check the tree is empty
+    merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, prove_tree_is_empty,)?;
+    Ok(())
+}
