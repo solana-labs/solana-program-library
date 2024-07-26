@@ -166,10 +166,13 @@ pub mod spl_account_compression {
             Clock::get()?.slot,
         );
         header.serialize(&mut header_bytes)?;
+
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
         let id = ctx.accounts.merkle_tree.key();
-        let change_log_event = merkle_tree_apply_fn_mut!(header, id, tree_bytes, initialize,)?;
+
+        let change_log_event = merkle_tree_initialize_empty(&header, id, tree_bytes)?;
+
         wrap_event(
             &AccountCompressionEvent::ChangeLog(*change_log_event),
             &ctx.accounts.noop,
