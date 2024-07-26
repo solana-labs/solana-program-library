@@ -267,7 +267,7 @@ pub mod spl_account_compression {
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
         // ensure the tree is not initialized, the hacky way
         require!(
-            tree_bytes.iter().all(|&x| x == 0),
+            tree_bytes_unititialized(tree_bytes),
             AccountCompressionError::TreeAlreadyInitialized
         );
         set_canopy_leaf_nodes(
@@ -567,11 +567,8 @@ pub mod spl_account_compression {
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
 
-        // Check if the tree is either empty or is batch initialized and not finalized yet.
-        if !header.get_is_batch_initialized() || !tree_bytes.iter().all(|&x| x == 0) {
-            let id = ctx.accounts.merkle_tree.key();
-            merkle_tree_apply_fn_mut!(header, id, tree_bytes, prove_tree_is_empty,)?;
-        }
+        let id = ctx.accounts.merkle_tree.key();
+        assert_tree_is_empty(&header, id, tree_bytes)?;
 
         // Close merkle tree account
         // 1. Move lamports
