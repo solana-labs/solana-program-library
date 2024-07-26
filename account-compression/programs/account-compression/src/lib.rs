@@ -382,7 +382,7 @@ pub mod spl_account_compression {
         let id = ctx.accounts.merkle_tree.key();
         let merkle_tree_size = merkle_tree_get_size(&header)?;
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
-        let change_log_event = merkle_tree_apply_fn_mut!(header, id, tree_bytes, append, leaf)?;
+        let change_log_event = merkle_tree_append_leaf(&header, id, tree_bytes, &leaf)?;
         update_canopy(
             canopy_bytes,
             header.get_max_depth(),

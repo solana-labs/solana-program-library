@@ -63,3 +63,13 @@ pub fn merkle_tree_prove_leaf(
 ) -> Result<Box<ChangeLogEvent>> {
     merkle_tree_apply_fn!(header, tree_id, tree_bytes, prove_leaf, args)
 }
+
+#[inline(never)]
+pub fn merkle_tree_append_leaf(
+    header: &ConcurrentMerkleTreeHeader,
+    tree_id: Pubkey,
+    tree_bytes: &mut [u8],
+    args: &[u8; 32],
+) -> Result<Box<ChangeLogEvent>> {
+    merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, append, *args)
+}
