@@ -2485,9 +2485,9 @@ where
             .await
             .map_err(TokenError::Client)?;
 
-        // A closure that constructs a vector of instructions needed to create and write to record
-        // accounts. The closure is defined as a convenience function to be fed into the function
-        // `calculate_record_max_chunk_size`.
+        // A closure that constructs a vector of instructions needed to create and write
+        // to record accounts. The closure is defined as a convenience function
+        // to be fed into the function `calculate_record_max_chunk_size`.
         let create_record_instructions = |first_instruction: bool, bytes: &[u8], offset: u64| {
             let mut ixs = vec![];
             if first_instruction {
