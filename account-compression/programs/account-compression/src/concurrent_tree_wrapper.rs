@@ -64,6 +64,7 @@ pub fn merkle_tree_prove_leaf(
     merkle_tree_apply_fn!(header, tree_id, tree_bytes, prove_leaf, args)
 }
 
+#[inline(never)]
 pub fn merkle_tree_append_leaf(
     header: &ConcurrentMerkleTreeHeader,
     tree_id: Pubkey,
