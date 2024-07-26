@@ -42,7 +42,13 @@ pub struct TestContext {
 
 impl TestContext {
     pub async fn new() -> Self {
-        let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
+        let mut program_test =
+            ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
+        program_test.add_program(
+            "spl_record",
+            spl_record::id(),
+            processor!(spl_record::processor::process_instruction),
+        );
         let context = program_test.start_with_context().await;
         let context = Arc::new(Mutex::new(context));
 

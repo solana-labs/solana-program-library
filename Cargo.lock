@@ -7595,6 +7595,7 @@ dependencies = [
  "spl-instruction-padding",
  "spl-memo 5.0.0",
  "spl-pod 0.3.0",
+ "spl-record",
  "spl-tlv-account-resolution 0.7.0",
  "spl-token-2022 4.0.1",
  "spl-token-client",
