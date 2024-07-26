@@ -17,6 +17,7 @@ import {
     createReplaceIx,
     createTransferAuthorityIx,
     createVerifyLeafIx,
+    prepareTreeIx,
     ValidDepthSizePair,
 } from '../src';
 import { hash, MerkleTree } from '../src/merkle-tree';
@@ -708,6 +709,30 @@ describe('Account Compression', () => {
                 'Updated on chain root matches root of updated off chain tree',
             );
         });
+
+        it('Should fail to prepare a batch ready tree for an existing tree', async () => {
+            const prepareIx = prepareTreeIx(cmt, payer, DEPTH_SIZE_PAIR);
+            try {
+                await execute(provider, [prepareIx], [payerKeypair]);
+                assert(false, 'Prepare a batch tree should have failed for the existing tree');
+            } catch {}
+        });
+
+        it('Should fail to finalize an existing tree', async () => {
+            const index = offChainTree.leaves.length - 1;
+            const finalizeIx = createFinalizeMerkleTreeWithRootIx(
+                cmt,
+                payer,
+                offChainTree.root,
+                offChainTree.leaves[index].node,
+                index,
+                offChainTree.getProof(index).proof,
+            );
+            try {
+                await execute(provider, [finalizeIx], [payerKeypair]);
+                assert(false, 'Finalize an existing tree should have failed');
+            } catch {}
+        });
     });
 
     describe('Examples transferring authority', () => {
@@ -1021,6 +1046,22 @@ describe('Account Compression', () => {
                 tree.updateLeaf(i, leaf);
                 await execute(provider, [replaceIx, replaceBackIx], [payerKeypair], true, true);
             }
+        });
+
+        it('Should fail to append a canopy node for an existing tree', async () => {
+            [cmtKeypair, offChainTree] = await createTreeOnChain(
+                provider,
+                payerKeypair,
+                0,
+                { maxBufferSize: 8, maxDepth: DEPTH },
+                DEPTH // Store full tree on chain
+            );
+            cmt = cmtKeypair.publicKey;
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32)], 0);
+            try {
+                await execute(provider, [appendIx], [payerKeypair]);
+                assert(false, 'Appending a canopy node for an existing tree should have failed');
+            } catch {}
         });
     });
     describe(`Having created a tree with 8 leaves`, () => {
