@@ -4,8 +4,7 @@ from enum import IntEnum
 from typing import NamedTuple, Dict
 from construct import Bytes, Container, Struct, Float64l, Int32ul, Int64ul  # type: ignore
 
-from solana.publickey import PublicKey
-from solana.utils.helpers import decode_byte_string
+from solders.pubkey import Pubkey
 
 PUBLIC_KEY_LAYOUT = Bytes(32)
 
@@ -14,14 +13,14 @@ class Lockup(NamedTuple):
     """Lockup for a stake account."""
     unix_timestamp: int
     epoch: int
-    custodian: PublicKey
+    custodian: Pubkey
 
     @classmethod
     def decode_container(cls, container: Container):
         return Lockup(
             unix_timestamp=container['unix_timestamp'],
             epoch=container['epoch'],
-            custodian=PublicKey(container['custodian']),
+            custodian=Pubkey(container['custodian']),
         )
 
     def as_bytes_dict(self) -> Dict:
@@ -32,8 +31,8 @@ class Lockup(NamedTuple):
 
 class Authorized(NamedTuple):
     """Define who is authorized to change a stake."""
-    staker: PublicKey
-    withdrawer: PublicKey
+    staker: Pubkey
+    withdrawer: Pubkey
 
     def as_bytes_dict(self) -> Dict:
         return {
@@ -62,9 +61,8 @@ class StakeStake(NamedTuple):
 
     """Stake state."""
     @classmethod
-    def decode(cls, data: str, encoding: str):
-        data_bytes = decode_byte_string(data, encoding)
-        parsed = STAKE_STATE_LAYOUT.parse(data_bytes)
+    def decode(cls, data: bytes):
+        parsed = STAKE_STATE_LAYOUT.parse(data)
         return StakeStake(
             state_type=parsed['state_type'],
             state=parsed['state'],

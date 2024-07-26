@@ -11,7 +11,7 @@ edition = "2021"
 base64 = "0.22.1"
 bytemuck = "1.16.1"
 solana-curve25519 = "2.0.0"
-solana-zk-sdk = "2.0.0"
+solana-zk-sdk = "2.0.3"
 
 [dev-dependencies]
 spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "../proof-generation" }
