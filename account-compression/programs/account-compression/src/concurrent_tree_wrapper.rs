@@ -28,6 +28,16 @@ use {
     anchor_lang::prelude::*,
 };
 
+#[inline(never)]
+pub fn merkle_tree_initialize_empty(
+    header: &ConcurrentMerkleTreeHeader,
+    tree_id: Pubkey,
+    tree_bytes: &mut [u8],
+) -> Result<Box<ChangeLogEvent>> {
+    merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, initialize,)
+}
+
+#[inline(never)]
 pub fn merkle_tree_initialize_with_root(
     header: &ConcurrentMerkleTreeHeader,
     tree_id: Pubkey,
@@ -37,6 +47,7 @@ pub fn merkle_tree_initialize_with_root(
     merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, initialize_with_root, args)
 }
 
+#[inline(never)]
 pub fn merkle_tree_set_leaf(
     header: &ConcurrentMerkleTreeHeader,
     tree_id: Pubkey,
@@ -46,6 +57,7 @@ pub fn merkle_tree_set_leaf(
     merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, set_leaf, args)
 }
 
+#[inline(never)]
 pub fn merkle_tree_fill_empty_or_append(
     header: &ConcurrentMerkleTreeHeader,
     tree_id: Pubkey,
@@ -55,6 +67,7 @@ pub fn merkle_tree_fill_empty_or_append(
     merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, fill_empty_or_append, args)
 }
 
+#[inline(never)]
 pub fn merkle_tree_prove_leaf(
     header: &ConcurrentMerkleTreeHeader,
     tree_id: Pubkey,
