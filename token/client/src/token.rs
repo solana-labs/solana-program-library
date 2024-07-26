@@ -4,8 +4,9 @@ use {
             ProgramClient, ProgramClientError, SendTransaction, SimulateTransaction,
             SimulationResult,
         },
-        proof_generation::transfer_with_fee_split_proof_data,
+        proof_generation::{transfer_with_fee_split_proof_data, ProofAccount},
     },
+    bytemuck::bytes_of,
     futures::{future::join_all, try_join},
     futures_util::TryFutureExt,
     solana_program_test::tokio::time,
@@ -15,9 +16,11 @@ use {
         hash::Hash,
         instruction::{AccountMeta, Instruction},
         message::Message,
+        packet::PACKET_DATA_SIZE,
         program_error::ProgramError,
         program_pack::Pack,
         pubkey::Pubkey,
+        signature::Signature,
         signer::{signers::Signers, Signer, SignerError},
         system_instruction,
         transaction::Transaction,
@@ -28,6 +31,7 @@ use {
             create_associated_token_account, create_associated_token_account_idempotent,
         },
     },
+    spl_record::state::RecordData,
     spl_token_2022::{
         extension::{
             confidential_transfer::{
@@ -51,7 +55,7 @@ use {
             BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsOwned,
         },
         instruction, offchain,
-        proof::ProofLocation,
+        proof::{ProofData, ProofLocation},
         solana_zk_token_sdk::{
             encryption::{
                 auth_encryption::AeKey,
@@ -1892,7 +1896,7 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
-        context_state_account: Option<&Pubkey>,
+        proof_account: Option<&ProofAccount>,
         maximum_pending_balance_credit_counter: Option<u64>,
         elgamal_keypair: &ElGamalKeypair,
         aes_key: &AeKey,
@@ -1906,7 +1910,7 @@ where
         let maximum_pending_balance_credit_counter = maximum_pending_balance_credit_counter
             .unwrap_or(DEFAULT_MAXIMUM_PENDING_BALANCE_CREDIT_COUNTER);
 
-        let proof_data = if context_state_account.is_some() {
+        let proof_data = if proof_account.is_some() {
             None
         } else {
             Some(
@@ -1916,10 +1920,23 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(
+                1.try_into().unwrap(),
+                ProofData::ProofData(proof_data_temp),
+            )
         } else {
-            let context_state_account = context_state_account.unwrap();
-            ProofLocation::ContextStateAccount(context_state_account)
+            match proof_account.unwrap() {
+                ProofAccount::ContextAccount(context_state_account) => {
+                    ProofLocation::ContextStateAccount(context_state_account)
+                }
+                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
+                    1.try_into().unwrap(),
+                    ProofData::RecordAccount(
+                        record_account,
+                        RecordData::WRITABLE_START_INDEX as u32,
+                    ),
+                ),
+            }
         };
 
         let decryptable_balance = aes_key.encrypt(0);
@@ -1969,7 +1986,7 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
-        context_state_account: Option<&Pubkey>,
+        proof_account: Option<&ProofAccount>,
         account_info: Option<EmptyAccountAccountInfo>,
         elgamal_keypair: &ElGamalKeypair,
         signing_keypairs: &S,
@@ -1986,7 +2003,7 @@ where
             EmptyAccountAccountInfo::new(confidential_transfer_account)
         };
 
-        let proof_data = if context_state_account.is_some() {
+        let proof_data = if proof_account.is_some() {
             None
         } else {
             Some(
@@ -1997,10 +2014,23 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(
+                1.try_into().unwrap(),
+                ProofData::ProofData(proof_data_temp),
+            )
         } else {
-            let context_state_account = context_state_account.unwrap();
-            ProofLocation::ContextStateAccount(context_state_account)
+            match proof_account.unwrap() {
+                ProofAccount::ContextAccount(context_state_account) => {
+                    ProofLocation::ContextStateAccount(context_state_account)
+                }
+                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
+                    1.try_into().unwrap(),
+                    ProofData::RecordAccount(
+                        record_account,
+                        RecordData::WRITABLE_START_INDEX as u32,
+                    ),
+                ),
+            }
         };
 
         self.process_ixs(
@@ -2051,7 +2081,7 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
-        context_state_account: Option<&Pubkey>,
+        proof_account: Option<&ProofAccount>,
         withdraw_amount: u64,
         decimals: u8,
         account_info: Option<WithdrawAccountInfo>,
@@ -2071,7 +2101,7 @@ where
             WithdrawAccountInfo::new(confidential_transfer_account)
         };
 
-        let proof_data = if context_state_account.is_some() {
+        let proof_data = if proof_account.is_some() {
             None
         } else {
             Some(
@@ -2082,10 +2112,23 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(
+                1.try_into().unwrap(),
+                ProofData::ProofData(proof_data_temp),
+            )
         } else {
-            let context_state_account = context_state_account.unwrap();
-            ProofLocation::ContextStateAccount(context_state_account)
+            match proof_account.unwrap() {
+                ProofAccount::ContextAccount(context_state_account) => {
+                    ProofLocation::ContextStateAccount(context_state_account)
+                }
+                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
+                    1.try_into().unwrap(),
+                    ProofData::RecordAccount(
+                        record_account,
+                        RecordData::WRITABLE_START_INDEX as u32,
+                    ),
+                ),
+            }
         };
 
         let new_decryptable_available_balance = account_info
@@ -2173,7 +2216,7 @@ where
         source_account: &Pubkey,
         destination_account: &Pubkey,
         source_authority: &Pubkey,
-        context_state_account: Option<&Pubkey>,
+        proof_account: Option<&ProofAccount>,
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
@@ -2194,7 +2237,7 @@ where
             TransferAccountInfo::new(confidential_transfer_account)
         };
 
-        let proof_data = if context_state_account.is_some() {
+        let proof_data = if proof_account.is_some() {
             None
         } else {
             Some(
@@ -2211,10 +2254,23 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(
+                1.try_into().unwrap(),
+                ProofData::ProofData(proof_data_temp),
+            )
         } else {
-            let context_state_account = context_state_account.unwrap();
-            ProofLocation::ContextStateAccount(context_state_account)
+            match proof_account.unwrap() {
+                ProofAccount::ContextAccount(context_state_account) => {
+                    ProofLocation::ContextStateAccount(context_state_account)
+                }
+                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
+                    1.try_into().unwrap(),
+                    ProofData::RecordAccount(
+                        record_account,
+                        RecordData::WRITABLE_START_INDEX as u32,
+                    ),
+                ),
+            }
         };
 
         let new_decryptable_available_balance = account_info
@@ -2403,6 +2459,110 @@ where
             transfer_with_equality_and_ciphertext_validity,
             transfer_with_range_proof
         )
+    }
+
+    /// Create a record account containing zero-knowledge proof needed for a
+    /// confidential transfer.
+    pub async fn confidential_transfer_create_record_account<
+        S: Signer,
+        ZK: Pod + ZkProofData<U>,
+        U: Pod,
+    >(
+        &self,
+        record_account: &Pubkey,
+        record_authority: &Pubkey,
+        proof_data: &ZK,
+        record_account_signer: &S,
+        record_authority_signer: &S,
+    ) -> TokenResult<Vec<T::Output>> {
+        let proof_data = bytes_of(proof_data);
+        let space = proof_data
+            .len()
+            .saturating_add(RecordData::WRITABLE_START_INDEX);
+        let rent = self
+            .client
+            .get_minimum_balance_for_rent_exemption(space)
+            .await
+            .map_err(TokenError::Client)?;
+
+        // A closure that constructs a vector of instructions needed to create and write to record
+        // accounts. The closure is defined as a convenience function to be fed into the function
+        // `calculate_record_max_chunk_size`.
+        let create_record_instructions = |first_instruction: bool, bytes: &[u8], offset: u64| {
+            let mut ixs = vec![];
+            if first_instruction {
+                ixs.push(system_instruction::create_account(
+                    &self.payer.pubkey(),
+                    record_account,
+                    rent,
+                    space as u64,
+                    &spl_record::id(),
+                ));
+                ixs.push(spl_record::instruction::initialize(
+                    record_account,
+                    record_authority,
+                ));
+            }
+            ixs.push(spl_record::instruction::write(
+                record_account,
+                record_authority,
+                offset,
+                bytes,
+            ));
+            ixs
+        };
+        let first_chunk_size = calculate_record_max_chunk_size(create_record_instructions, true);
+        let (first_chunk, rest) = if space <= first_chunk_size {
+            (proof_data, &[] as &[u8])
+        } else {
+            proof_data.split_at(first_chunk_size)
+        };
+
+        let first_ixs = create_record_instructions(true, first_chunk, 0);
+        self.process_ixs(
+            &first_ixs,
+            &[record_account_signer, record_authority_signer],
+        )
+        .await?;
+
+        let subsequent_chunk_size =
+            calculate_record_max_chunk_size(create_record_instructions, false);
+        let mut record_offset = first_chunk_size;
+        let mut ixs_batch = vec![];
+        for chunk in rest.chunks(subsequent_chunk_size) {
+            ixs_batch.push(create_record_instructions(
+                false,
+                chunk,
+                record_offset as u64,
+            ));
+            record_offset = record_offset.saturating_add(chunk.len());
+        }
+
+        let futures = ixs_batch
+            .into_iter()
+            .map(|ixs| async move { self.process_ixs(&ixs, &[record_authority_signer]).await })
+            .collect::<Vec<_>>();
+
+        join_all(futures).await.into_iter().collect()
+    }
+
+    /// Close a record account.
+    pub async fn confidential_transfer_close_record_account<S: Signer>(
+        &self,
+        record_account: &Pubkey,
+        record_authority: &Pubkey,
+        receiver: &Pubkey,
+        record_authority_signer: &S,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[spl_record::instruction::close_account(
+                record_account,
+                record_authority,
+                receiver,
+            )],
+            &[record_authority_signer],
+        )
+        .await
     }
 
     /// Create equality proof context state account for a confidential transfer.
@@ -2750,7 +2910,7 @@ where
         source_account: &Pubkey,
         destination_account: &Pubkey,
         source_authority: &Pubkey,
-        context_state_account: Option<&Pubkey>,
+        proof_account: Option<&ProofAccount>,
         transfer_amount: u64,
         account_info: Option<TransferAccountInfo>,
         source_elgamal_keypair: &ElGamalKeypair,
@@ -2774,7 +2934,7 @@ where
             TransferAccountInfo::new(confidential_transfer_account)
         };
 
-        let proof_data = if context_state_account.is_some() {
+        let proof_data = if proof_account.is_some() {
             None
         } else {
             Some(
@@ -2794,10 +2954,23 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(
+                1.try_into().unwrap(),
+                ProofData::ProofData(proof_data_temp),
+            )
         } else {
-            let context_state_account = context_state_account.unwrap();
-            ProofLocation::ContextStateAccount(context_state_account)
+            match proof_account.unwrap() {
+                ProofAccount::ContextAccount(context_state_account) => {
+                    ProofLocation::ContextStateAccount(context_state_account)
+                }
+                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
+                    1.try_into().unwrap(),
+                    ProofData::RecordAccount(
+                        record_account,
+                        RecordData::WRITABLE_START_INDEX as u32,
+                    ),
+                ),
+            }
         };
 
         let new_decryptable_available_balance = account_info
@@ -3493,7 +3666,7 @@ where
         &self,
         destination_account: &Pubkey,
         withdraw_withheld_authority: &Pubkey,
-        context_state_account: Option<&Pubkey>,
+        proof_account: Option<&ProofAccount>,
         withheld_tokens_info: Option<WithheldTokensInfo>,
         withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
         destination_elgamal_pubkey: &ElGamalPubkey,
@@ -3513,7 +3686,7 @@ where
             WithheldTokensInfo::new(&confidential_transfer_fee_config.withheld_amount)
         };
 
-        let proof_data = if context_state_account.is_some() {
+        let proof_data = if proof_account.is_some() {
             None
         } else {
             Some(
@@ -3527,10 +3700,23 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(
+                1.try_into().unwrap(),
+                ProofData::ProofData(proof_data_temp),
+            )
         } else {
-            let context_state_account = context_state_account.unwrap();
-            ProofLocation::ContextStateAccount(context_state_account)
+            match proof_account.unwrap() {
+                ProofAccount::ContextAccount(context_state_account) => {
+                    ProofLocation::ContextStateAccount(context_state_account)
+                }
+                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
+                    1.try_into().unwrap(),
+                    ProofData::RecordAccount(
+                        record_account,
+                        RecordData::WRITABLE_START_INDEX as u32,
+                    ),
+                ),
+            }
         };
 
         self.process_ixs(
@@ -3554,7 +3740,7 @@ where
         &self,
         destination_account: &Pubkey,
         withdraw_withheld_authority: &Pubkey,
-        context_state_account: Option<&Pubkey>,
+        proof_account: Option<&ProofAccount>,
         withheld_tokens_info: Option<WithheldTokensInfo>,
         withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
         destination_elgamal_pubkey: &ElGamalPubkey,
@@ -3585,7 +3771,7 @@ where
             WithheldTokensInfo::new(&aggregate_withheld_amount.into())
         };
 
-        let proof_data = if context_state_account.is_some() {
+        let proof_data = if proof_account.is_some() {
             None
         } else {
             Some(
@@ -3599,10 +3785,23 @@ where
         };
 
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(1.try_into().unwrap(), proof_data_temp)
+            ProofLocation::InstructionOffset(
+                1.try_into().unwrap(),
+                ProofData::ProofData(proof_data_temp),
+            )
         } else {
-            let context_state_account = context_state_account.unwrap();
-            ProofLocation::ContextStateAccount(context_state_account)
+            match proof_account.unwrap() {
+                ProofAccount::ContextAccount(context_state_account) => {
+                    ProofLocation::ContextStateAccount(context_state_account)
+                }
+                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
+                    1.try_into().unwrap(),
+                    ProofData::RecordAccount(
+                        record_account,
+                        RecordData::WRITABLE_START_INDEX as u32,
+                    ),
+                ),
+            }
         };
 
         self.process_ixs(
@@ -4079,4 +4278,23 @@ where
         ));
         self.process_ixs(&instructions, signing_keypairs).await
     }
+}
+
+/// Calculates the maximum chunk size for a zero-knowledge proof record
+/// instruction to fit inside a single transaction.
+fn calculate_record_max_chunk_size<F>(
+    create_record_instructions: F,
+    first_instruction: bool,
+) -> usize
+where
+    F: Fn(bool, &[u8], u64) -> Vec<Instruction>,
+{
+    let ixs = create_record_instructions(first_instruction, &[], 0);
+    let message = Message::new_with_blockhash(&ixs, Some(&Pubkey::default()), &Hash::default());
+    let tx_size = bincode::serialized_size(&Transaction {
+        signatures: vec![Signature::default(); message.header.num_required_signatures as usize],
+        message,
+    })
+    .unwrap() as usize;
+    PACKET_DATA_SIZE.saturating_sub(tx_size).saturating_sub(1)
 }
