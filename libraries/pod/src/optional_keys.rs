@@ -163,6 +163,14 @@ impl From<OptionalNonZeroElGamalPubkey> for Option<ElGamalPubkey> {
         }
     }
 }
+impl OptionalNonZeroElGamalPubkey {
+    pub fn is_none(&self) -> bool {
+        self.0 == ElGamalPubkey::default()
+    }
+    pub fn is_some(&self) -> bool {
+        self.0 != ElGamalPubkey::default()
+    }
+}
 
 #[cfg(any(feature = "serde-traits", test))]
 const OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN: usize = 32;

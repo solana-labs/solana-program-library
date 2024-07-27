@@ -515,7 +515,7 @@ pub fn verify_transfer_with_fee_proof(
 
 /// Verify and process equality proof for [Transfer] and [TransferWithFee]
 /// instructions.
-fn verify_equality_proof(
+pub fn verify_equality_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<CiphertextCommitmentEqualityProofContext, ProgramError> {
     check_zk_token_proof_program_account(account_info.owner)?;
@@ -533,7 +533,7 @@ fn verify_equality_proof(
 
 /// Verify and process ciphertext validity proof for [Transfer] and
 /// [TransferWithFee] instructions.
-fn verify_ciphertext_validity_proof(
+pub fn verify_ciphertext_validity_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<BatchedGroupedCiphertext2HandlesValidityProofContext, ProgramError> {
     check_zk_token_proof_program_account(account_info.owner)?;
@@ -552,7 +552,7 @@ fn verify_ciphertext_validity_proof(
 }
 
 /// Verify and process range proof for [Transfer] instruction.
-fn verify_transfer_range_proof(
+pub fn verify_transfer_range_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<BatchedRangeProofContext, ProgramError> {
     check_zk_token_proof_program_account(account_info.owner)?;

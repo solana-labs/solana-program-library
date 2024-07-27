@@ -26,6 +26,7 @@ use crate::{
 };
 
 /// The main logic to create the three split proof data for a transfer.
+#[allow(clippy::type_complexity)]
 pub fn transfer_split_proof_data(
     current_available_balance: &ElGamalCiphertext,
     current_decryptable_available_balance: &AeCiphertext,
