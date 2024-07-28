@@ -471,8 +471,6 @@ fn setup_and_initialize_validator_list_with_stake_pool(
     let mut instructions = vec![];
     let mut signers = vec![
         config.fee_payer.as_ref(),
-        // stake_pool_keypair,
-        // validator_list_keypair,
         config.manager.as_ref(),
     ];
 
