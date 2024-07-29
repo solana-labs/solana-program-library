@@ -69,11 +69,11 @@ pub enum ProofLocation<'a, T> {
 }
 
 /// A proof data type to distinguish between proof data included as part of
-/// instruction data and proof data stored in a record account.
+/// zk-token proof instruction data and proof data stored in a record account.
 #[derive(Clone, Copy)]
 pub enum ProofData<'a, T> {
     /// The proof data
-    ProofData(&'a T),
+    InstructionData(&'a T),
     /// The address of a record account containing the proof data and its byte
     /// offset
     RecordAccount(&'a Pubkey, u32),

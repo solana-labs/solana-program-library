@@ -380,7 +380,7 @@ pub fn withdraw_withheld_tokens_from_mint(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::ProofData(data) => {
+            ProofData::InstructionData(data) => {
                 instructions.push(verify_ciphertext_ciphertext_equality(None, data))
             }
             ProofData::RecordAccount(address, offset) => instructions.push(
@@ -491,7 +491,7 @@ pub fn withdraw_withheld_tokens_from_accounts(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::ProofData(data) => {
+            ProofData::InstructionData(data) => {
                 instructions.push(verify_ciphertext_ciphertext_equality(None, data))
             }
             ProofData::RecordAccount(address, offset) => instructions.push(

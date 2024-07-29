@@ -801,7 +801,9 @@ pub fn configure_account(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::ProofData(data) => instructions.push(verify_pubkey_validity(None, data)),
+            ProofData::InstructionData(data) => {
+                instructions.push(verify_pubkey_validity(None, data))
+            }
             ProofData::RecordAccount(address, offset) => instructions.push(
                 ProofInstruction::VerifyPubkeyValidity
                     .encode_verify_proof_from_account(None, address, offset),
@@ -913,7 +915,7 @@ pub fn empty_account(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::ProofData(data) => instructions.push(verify_zero_balance(None, data)),
+            ProofData::InstructionData(data) => instructions.push(verify_zero_balance(None, data)),
             ProofData::RecordAccount(address, offset) => instructions.push(
                 ProofInstruction::VerifyZeroBalance
                     .encode_verify_proof_from_account(None, address, offset),
@@ -1053,7 +1055,7 @@ pub fn withdraw(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::ProofData(data) => instructions.push(verify_withdraw(None, data)),
+            ProofData::InstructionData(data) => instructions.push(verify_withdraw(None, data)),
             ProofData::RecordAccount(address, offset) => instructions.push(
                 ProofInstruction::VerifyWithdraw
                     .encode_verify_proof_from_account(None, address, offset),
@@ -1155,7 +1157,7 @@ pub fn transfer(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::ProofData(data) => instructions.push(verify_transfer(None, data)),
+            ProofData::InstructionData(data) => instructions.push(verify_transfer(None, data)),
             ProofData::RecordAccount(address, offset) => instructions.push(
                 ProofInstruction::VerifyTransfer
                     .encode_verify_proof_from_account(None, address, offset),
@@ -1257,7 +1259,9 @@ pub fn transfer_with_fee(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::ProofData(data) => instructions.push(verify_transfer_with_fee(None, data)),
+            ProofData::InstructionData(data) => {
+                instructions.push(verify_transfer_with_fee(None, data))
+            }
             ProofData::RecordAccount(address, offset) => instructions.push(
                 ProofInstruction::VerifyTransferWithFee
                     .encode_verify_proof_from_account(None, address, offset),

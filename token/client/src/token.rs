@@ -1922,7 +1922,7 @@ where
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
             ProofLocation::InstructionOffset(
                 1.try_into().unwrap(),
-                ProofData::ProofData(proof_data_temp),
+                ProofData::InstructionData(proof_data_temp),
             )
         } else {
             match proof_account.unwrap() {
@@ -2016,7 +2016,7 @@ where
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
             ProofLocation::InstructionOffset(
                 1.try_into().unwrap(),
-                ProofData::ProofData(proof_data_temp),
+                ProofData::InstructionData(proof_data_temp),
             )
         } else {
             match proof_account.unwrap() {
@@ -2114,7 +2114,7 @@ where
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
             ProofLocation::InstructionOffset(
                 1.try_into().unwrap(),
-                ProofData::ProofData(proof_data_temp),
+                ProofData::InstructionData(proof_data_temp),
             )
         } else {
             match proof_account.unwrap() {
@@ -2256,7 +2256,7 @@ where
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
             ProofLocation::InstructionOffset(
                 1.try_into().unwrap(),
-                ProofData::ProofData(proof_data_temp),
+                ProofData::InstructionData(proof_data_temp),
             )
         } else {
             match proof_account.unwrap() {
@@ -2956,7 +2956,7 @@ where
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
             ProofLocation::InstructionOffset(
                 1.try_into().unwrap(),
-                ProofData::ProofData(proof_data_temp),
+                ProofData::InstructionData(proof_data_temp),
             )
         } else {
             match proof_account.unwrap() {
@@ -3702,7 +3702,7 @@ where
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
             ProofLocation::InstructionOffset(
                 1.try_into().unwrap(),
-                ProofData::ProofData(proof_data_temp),
+                ProofData::InstructionData(proof_data_temp),
             )
         } else {
             match proof_account.unwrap() {
@@ -3787,7 +3787,7 @@ where
         let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
             ProofLocation::InstructionOffset(
                 1.try_into().unwrap(),
-                ProofData::ProofData(proof_data_temp),
+                ProofData::InstructionData(proof_data_temp),
             )
         } else {
             match proof_account.unwrap() {
