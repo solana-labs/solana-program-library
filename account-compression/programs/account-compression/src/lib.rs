@@ -195,12 +195,12 @@ pub mod spl_account_compression {
     /// expected flow is `init_empty_merkle_tree`. For the latter case, the canopy should be
     /// filled with the necessary nodes to render the tree usable. Thus we need to prefill the
     /// canopy with the necessary nodes. The expected flow for a tree without canopy is
-    /// `prepare_tree` -> `finalize_merkle_tree_with_root`. The expected flow for a tree with canopy
-    /// is `prepare_tree` -> `append_canopy_nodes` (multiple times until all of the canopy is
-    /// filled) -> `finalize_merkle_tree_with_root`. This instruction initializes the tree header
-    /// while leaving the tree itself uninitialized. This allows distinguishing between an empty
-    /// tree and a tree prepare to be initialized with a root.
-    pub fn prepare_tree(
+    /// `prepare_batch_merkle_tree` -> `init_prepared_tree_with_root`. The expected flow for a tree
+    /// with canopy is `prepare_batch_merkle_tree` -> `append_canopy_nodes` (multiple times
+    /// until all of the canopy is filled) -> `init_prepared_tree_with_root`. This instruction
+    /// initializes the tree header while leaving the tree itself uninitialized. This allows
+    /// distinguishing between an empty tree and a tree prepare to be initialized with a root.
+    pub fn prepare_batch_merkle_tree(
         ctx: Context<Initialize>,
         max_depth: u32,
         max_buffer_size: u32,
@@ -229,19 +229,19 @@ pub mod spl_account_compression {
     }
 
     /// This instruction pre-initializes the canopy with the specified leaf nodes of the canopy.
-    /// This is intended to be used after `prepare_tree` and in conjunction with the
-    /// `finalize_merkle_tree_with_root` instruction that'll finalize the tree initialization.
+    /// This is intended to be used after `prepare_batch_merkle_tree` and in conjunction with the
+    /// `init_prepared_tree_with_root` instruction that'll finalize the tree initialization.
     /// The canopy is used to cache the uppermost nodes of the tree, which allows for a smaller
     /// proof size when updating the tree. The canopy should be filled with the necessary nodes
-    /// before calling `finalize_merkle_tree_with_root`. You may call this instruction multiple
+    /// before calling `init_prepared_tree_with_root`. You may call this instruction multiple
     /// times to fill the canopy with the necessary nodes. The canopy may be filled with the
     /// nodes in any order. The already filled nodes may be replaced with new nodes before calling
-    /// `finalize_merkle_tree_with_root` if the step was done in error.
+    /// `init_prepared_tree_with_root` if the step was done in error.
     /// The canopy should be filled with all the nodes that are to the left of the rightmost
-    /// leaf of the tree before calling `finalize_merkle_tree_with_root`. The canopy should not
+    /// leaf of the tree before calling `init_prepared_tree_with_root`. The canopy should not
     /// contain any nodes to the right of the rightmost leaf of the tree.
     /// This instruction calculates and filles in all the canopy nodes "above" the provided ones.
-    /// The validation of the canopy is done in the `finalize_merkle_tree_with_root` instruction.
+    /// The validation of the canopy is done in the `init_prepared_tree_with_root` instruction.
     pub fn append_canopy_nodes(
         ctx: Context<Modify>,
         start_index: u32,
@@ -279,14 +279,14 @@ pub mod spl_account_compression {
 
     /// Initializes a prepared tree with a root and a rightmost leaf. The rightmost leaf is used to
     /// verify the canopy if the tree has it. Before calling this instruction, the tree should be
-    /// prepared with `prepare_tree` and the canopy should be filled with the necessary nodes with
-    /// `append_canopy_nodes` (if the canopy is used). This method should be used for rolluped
-    /// creation of trees. The indexing of such rollups should be done off-chain. The programs
-    /// calling this instruction should take care of ensuring the indexing is possible. For example,
-    /// staking may be required to ensure the tree creator has some responsibility for what is being
-    /// indexed. If indexing is not possible, there should be a mechanism to penalize the tree
-    /// creator.
-    pub fn finalize_merkle_tree_with_root(
+    /// prepared with `prepare_batch_merkle_tree` and the canopy should be filled with the necessary
+    /// nodes with `append_canopy_nodes` (if the canopy is used). This method should be used for
+    /// rolluped creation of trees. The indexing of such rollups should be done off-chain. The
+    /// programs calling this instruction should take care of ensuring the indexing is possible.
+    /// For example, staking may be required to ensure the tree creator has some responsibility
+    /// for what is being indexed. If indexing is not possible, there should be a mechanism to
+    /// penalize the tree creator.
+    pub fn init_prepared_tree_with_root(
         ctx: Context<Modify>,
         root: [u8; 32],
         rightmost_leaf: [u8; 32],
@@ -301,7 +301,7 @@ pub mod spl_account_compression {
 
         let (header_bytes, rest) =
             merkle_tree_bytes.split_at_mut(CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1);
-        // the header should already be initialized with prepare_tree
+        // the header should already be initialized with prepare_batch_merkle_tree
         let header = ConcurrentMerkleTreeHeader::try_from_slice(header_bytes)?;
         header.assert_valid_authority(&ctx.accounts.authority.key())?;
         header.assert_is_batch_initialized()?;

@@ -92,7 +92,7 @@ pub fn merkle_tree_append_leaf(
 /// lifting with macros. An empty account is a zero'd account. The tree is considered empty if the
 /// tree_bytes are all 0. A regular non-batch initialized tree is initialized early on when the
 /// init_empty_merkle_tree is called. A batch initialized tree stays uninitialized until the
-/// finalize_merkle_tree_with_root is called.
+/// init_prepared_tree_with_root is called.
 pub fn tree_bytes_uninitialized(tree_bytes: &[u8]) -> bool {
     tree_bytes.iter().all(|&x| x == 0)
 }

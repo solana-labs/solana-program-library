@@ -10,21 +10,21 @@ import * as web3 from '@solana/web3.js';
 
 /**
  * @category Instructions
- * @category FinalizeMerkleTreeWithRoot
+ * @category InitPreparedTreeWithRoot
  * @category generated
  */
-export type FinalizeMerkleTreeWithRootInstructionArgs = {
+export type InitPreparedTreeWithRootInstructionArgs = {
     rightmostIndex: number;
     rightmostLeaf: number[] /* size: 32 */;
     root: number[] /* size: 32 */;
 };
 /**
  * @category Instructions
- * @category FinalizeMerkleTreeWithRoot
+ * @category InitPreparedTreeWithRoot
  * @category generated
  */
-export const finalizeMerkleTreeWithRootStruct = new beet.BeetArgsStruct<
-    FinalizeMerkleTreeWithRootInstructionArgs & {
+export const initPreparedTreeWithRootStruct = new beet.BeetArgsStruct<
+    InitPreparedTreeWithRootInstructionArgs & {
         instructionDiscriminator: number[] /* size: 8 */;
     }
 >(
@@ -34,44 +34,44 @@ export const finalizeMerkleTreeWithRootStruct = new beet.BeetArgsStruct<
         ['rightmostLeaf', beet.uniformFixedSizeArray(beet.u8, 32)],
         ['rightmostIndex', beet.u32],
     ],
-    'FinalizeMerkleTreeWithRootInstructionArgs',
+    'InitPreparedTreeWithRootInstructionArgs',
 );
 /**
- * Accounts required by the _finalizeMerkleTreeWithRoot_ instruction
+ * Accounts required by the _initPreparedTreeWithRoot_ instruction
  *
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
  * @property [] noop
  * @category Instructions
- * @category FinalizeMerkleTreeWithRoot
+ * @category InitPreparedTreeWithRoot
  * @category generated
  */
-export type FinalizeMerkleTreeWithRootInstructionAccounts = {
+export type InitPreparedTreeWithRootInstructionAccounts = {
     anchorRemainingAccounts?: web3.AccountMeta[];
     authority: web3.PublicKey;
     merkleTree: web3.PublicKey;
     noop: web3.PublicKey;
 };
 
-export const finalizeMerkleTreeWithRootInstructionDiscriminator = [112, 137, 139, 87, 67, 99, 164, 82];
+export const initPreparedTreeWithRootInstructionDiscriminator = [218, 248, 192, 55, 91, 205, 122, 10];
 
 /**
- * Creates a _FinalizeMerkleTreeWithRoot_ instruction.
+ * Creates a _InitPreparedTreeWithRoot_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category FinalizeMerkleTreeWithRoot
+ * @category InitPreparedTreeWithRoot
  * @category generated
  */
-export function createFinalizeMerkleTreeWithRootInstruction(
-    accounts: FinalizeMerkleTreeWithRootInstructionAccounts,
-    args: FinalizeMerkleTreeWithRootInstructionArgs,
+export function createInitPreparedTreeWithRootInstruction(
+    accounts: InitPreparedTreeWithRootInstructionAccounts,
+    args: InitPreparedTreeWithRootInstructionArgs,
     programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
 ) {
-    const [data] = finalizeMerkleTreeWithRootStruct.serialize({
-        instructionDiscriminator: finalizeMerkleTreeWithRootInstructionDiscriminator,
+    const [data] = initPreparedTreeWithRootStruct.serialize({
+        instructionDiscriminator: initPreparedTreeWithRootInstructionDiscriminator,
         ...args,
     });
     const keys: web3.AccountMeta[] = [
