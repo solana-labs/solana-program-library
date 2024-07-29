@@ -51,7 +51,6 @@ use crate::noop::wrap_event;
 use crate::state::{
     merkle_tree_get_size, ConcurrentMerkleTreeHeader, CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1,
 };
-use crate::zero_copy::ZeroCopy;
 
 /// Exported for Anchor / Solita
 pub use spl_concurrent_merkle_tree::{
@@ -267,7 +266,7 @@ pub mod spl_account_compression {
         let (tree_bytes, canopy_bytes) = rest.split_at_mut(merkle_tree_size);
         // ensure the tree is not initialized, the hacky way
         require!(
-            tree_bytes_unititialized(tree_bytes),
+            tree_bytes_uninitialized(tree_bytes),
             AccountCompressionError::TreeAlreadyInitialized
         );
         set_canopy_leaf_nodes(

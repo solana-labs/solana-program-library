@@ -87,7 +87,13 @@ pub fn merkle_tree_append_leaf(
     merkle_tree_apply_fn_mut!(header, tree_id, tree_bytes, append, *args)
 }
 
-pub fn tree_bytes_unititialized(tree_bytes: &[u8]) -> bool {
+/// Checks whether the tree in not initialized yet without doing the deserialization. A rought
+/// equivalent to deserializing the tree and calling is_initialized() on it without the heavy
+/// lifting with macros. An empty account is a zero'd account. The tree is considered empty if the
+/// tree_bytes are all 0. A regular non-batch initialized tree is initialized early on when the
+/// init_empty_merkle_tree is called. A batch initialized tree stays uninitialized until the
+/// finalize_merkle_tree_with_root is called.
+pub fn tree_bytes_uninitialized(tree_bytes: &[u8]) -> bool {
     tree_bytes.iter().all(|&x| x == 0)
 }
 
@@ -100,7 +106,7 @@ pub fn assert_tree_is_empty(
     // If the tree is batch initialized and not finalized yet, we can treat it as empty.
     // Before the tree is finalized, the tree_bytes will be all 0 as only the header will be
     // initialized at that point, so we may skip the deserialization.
-    if header.get_is_batch_initialized() && tree_bytes_unititialized(tree_bytes) {
+    if header.get_is_batch_initialized() && tree_bytes_uninitialized(tree_bytes) {
         return Ok(());
     }
     // check the tree is empty
