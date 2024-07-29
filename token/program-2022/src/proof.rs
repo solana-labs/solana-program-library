@@ -1,7 +1,6 @@
 //! Helper for processing instruction data from ZK Token proof program
 
 use {
-    crate::check_spl_record_program_account,
     bytemuck::Pod,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -40,7 +39,6 @@ pub fn decode_proof_instruction_context<T: Pod + ZkProofData<U>, U: Pod>(
     // the ZK ElGamal proof program.
     if instruction.data.len() == INSTRUCTION_DATA_LENGTH_WITH_RECORD_ACCOUNT {
         let record_account = next_account_info(account_info_iter)?;
-        check_spl_record_program_account(record_account.owner)?;
 
         // first byte is the proof type
         let start_offset = u32::from_le_bytes(instruction.data[1..].try_into().unwrap()) as usize;

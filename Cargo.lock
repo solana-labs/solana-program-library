@@ -7571,7 +7571,6 @@ dependencies = [
  "solana-zk-token-sdk",
  "spl-memo 5.0.0",
  "spl-pod 0.3.0",
- "spl-record",
  "spl-tlv-account-resolution 0.7.0",
  "spl-token 6.0.0",
  "spl-token-group-interface 0.3.0",
