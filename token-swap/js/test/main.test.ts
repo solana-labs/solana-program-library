@@ -121,7 +121,7 @@ async function getConnection(): Promise<Connection> {
   if (connection) return connection;
 
   const url = 'http://127.0.0.1:8899';
-  connection = new Connection(url, 'recent');
+  connection = new Connection(url, 'processed');
   const version = await connection.getVersion();
 
   console.log('Connection to cluster established:', url, version);

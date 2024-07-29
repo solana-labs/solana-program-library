@@ -12,11 +12,11 @@ from stake_pool.state import ValidatorList, StakeStatus
 async def test_add_remove_validators(async_client, validators, payer, stake_pool_addresses):
     (stake_pool_address, validator_list_address, _) = stake_pool_addresses
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     assert len(validator_list.validators) == len(validators)
     resp = await async_client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
-    stake_rent_exemption = resp['result']
+    stake_rent_exemption = resp.value
     futures = []
     for validator_info in validator_list.validators:
         assert validator_info.vote_account_address in validators
@@ -29,7 +29,7 @@ async def test_add_remove_validators(async_client, validators, payer, stake_pool
     await asyncio.gather(*futures)
 
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     for validator_info in validator_list.validators:
         assert validator_info.status == StakeStatus.DEACTIVATING_VALIDATOR

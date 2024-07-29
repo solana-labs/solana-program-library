@@ -18,7 +18,7 @@ ENDPOINT: str = "http://127.0.0.1:8899"
 async def test_rebalance_this_is_very_slow(async_client, validators, payer, stake_pool_addresses, waiter):
     (stake_pool_address, validator_list_address, _) = stake_pool_addresses
     resp = await async_client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
-    stake_rent_exemption = resp['result']
+    stake_rent_exemption = resp.value
     # With minimum delegation at MINIMUM_DELEGATION + rent-exemption, when
     # decreasing, we'll need rent exemption + minimum delegation delegated to
     # cover all movements
@@ -27,10 +27,10 @@ async def test_rebalance_this_is_very_slow(async_client, validators, payer, stak
     deposit_amount = (increase_amount + stake_rent_exemption) * len(validators)
 
     resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
     total_lamports = stake_pool.total_lamports + deposit_amount
-    token_account = get_associated_token_address(payer.public_key, stake_pool.pool_mint)
+    token_account = get_associated_token_address(payer.pubkey(), stake_pool.pool_mint)
     await deposit_sol(async_client, payer, stake_pool_address, token_account, deposit_amount)
 
     # Test case 1: Increase everywhere
@@ -38,12 +38,12 @@ async def test_rebalance_this_is_very_slow(async_client, validators, payer, stak
 
     # should only have minimum left
     resp = await async_client.get_account_info(stake_pool.reserve_stake, commitment=Confirmed)
-    assert resp['result']['value']['lamports'] == stake_rent_exemption + MINIMUM_RESERVE_LAMPORTS
+    assert resp.value.lamports == stake_rent_exemption + MINIMUM_RESERVE_LAMPORTS
 
     # should all be the same
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     for validator in validator_list.validators:
         assert validator.active_stake_lamports == minimum_amount
         assert validator.transient_stake_lamports == total_lamports / len(validators) - minimum_amount
@@ -56,13 +56,13 @@ async def test_rebalance_this_is_very_slow(async_client, validators, payer, stak
 
     # should still only have minimum left
     resp = await async_client.get_account_info(stake_pool.reserve_stake, commitment=Confirmed)
-    reserve_lamports = resp['result']['value']['lamports']
+    reserve_lamports = resp.value.lamports
     assert reserve_lamports == stake_rent_exemption + MINIMUM_RESERVE_LAMPORTS
 
     # should all be decreasing now
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     for validator in validator_list.validators:
         assert validator.active_stake_lamports == minimum_amount
         assert validator.transient_stake_lamports == max_in_reserve / len(validators)
@@ -74,13 +74,13 @@ async def test_rebalance_this_is_very_slow(async_client, validators, payer, stak
 
     # should still only have minimum left + rent exemptions from increase
     resp = await async_client.get_account_info(stake_pool.reserve_stake, commitment=Confirmed)
-    reserve_lamports = resp['result']['value']['lamports']
+    reserve_lamports = resp.value.lamports
     assert reserve_lamports == stake_rent_exemption + max_in_reserve + MINIMUM_RESERVE_LAMPORTS
 
     # should all be decreased now
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     for validator in validator_list.validators:
         assert validator.active_stake_lamports == minimum_amount
         assert validator.transient_stake_lamports == 0

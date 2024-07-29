@@ -10,7 +10,7 @@ edition = "2021"
 [dependencies]
 bytemuck = "1.16.1"
 solana-curve25519 = "2.0.0"
-solana-zk-sdk = "2.0.0"
+solana-zk-sdk = "2.0.3"
 thiserror = "1.0.63"
 
 [lib]

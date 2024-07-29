@@ -1,9 +1,8 @@
-from solana.publickey import PublicKey
+from solders.pubkey import Pubkey
 from solana.rpc.async_api import AsyncClient
-from solana.rpc.commitment import Confirmed
 
 
-async def airdrop(client: AsyncClient, receiver: PublicKey, lamports: int):
+async def airdrop(client: AsyncClient, receiver: Pubkey, lamports: int):
     print(f"Airdropping {lamports} lamports to {receiver}...")
-    resp = await client.request_airdrop(receiver, lamports, Confirmed)
-    await client.confirm_transaction(resp['result'], Confirmed)
+    resp = await client.request_airdrop(receiver, lamports)
+    await client.confirm_transaction(resp.value)

@@ -5,9 +5,9 @@ from typing import NamedTuple
 
 from construct import Bytes, Struct, Switch, Int8ul, Int32ul, Pass  # type: ignore
 
-from solana.publickey import PublicKey
-from solana.sysvar import SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY
-from solana.transaction import AccountMeta, TransactionInstruction
+from solders.pubkey import Pubkey
+from solders.sysvar import CLOCK, RENT
+from solders.instruction import AccountMeta, Instruction
 
 from vote.constants import VOTE_PROGRAM_ID
 
@@ -17,18 +17,18 @@ PUBLIC_KEY_LAYOUT = Bytes(32)
 class InitializeParams(NamedTuple):
     """Initialize vote account params."""
 
-    vote: PublicKey
+    vote: Pubkey
     """`[w]` Uninitialized vote account"""
-    rent_sysvar: PublicKey
+    rent_sysvar: Pubkey
     """`[]` Rent sysvar."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    node: PublicKey
+    node: Pubkey
     """`[s]` New validator identity."""
 
-    authorized_voter: PublicKey
+    authorized_voter: Pubkey
     """The authorized voter for this vote account."""
-    authorized_withdrawer: PublicKey
+    authorized_withdrawer: Pubkey
     """The authorized withdrawer for this vote account."""
     commission: int
     """Commission, represented as a percentage"""
@@ -73,7 +73,7 @@ INSTRUCTIONS_LAYOUT = Struct(
 )
 
 
-def initialize(params: InitializeParams) -> TransactionInstruction:
+def initialize(params: InitializeParams) -> Instruction:
     """Creates a transaction instruction to initialize a new stake."""
     data = INSTRUCTIONS_LAYOUT.build(
         dict(
@@ -86,13 +86,13 @@ def initialize(params: InitializeParams) -> TransactionInstruction:
             ),
         )
     )
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        program_id=VOTE_PROGRAM_ID,
+        accounts=[
             AccountMeta(pubkey=params.vote, is_signer=False, is_writable=True),
-            AccountMeta(pubkey=params.rent_sysvar or SYSVAR_RENT_PUBKEY, is_signer=False, is_writable=False),
-            AccountMeta(pubkey=params.clock_sysvar or SYSVAR_CLOCK_PUBKEY, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.rent_sysvar or RENT, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.clock_sysvar or CLOCK, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.node, is_signer=True, is_writable=False),
         ],
-        program_id=VOTE_PROGRAM_ID,
         data=data,
     )

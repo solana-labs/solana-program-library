@@ -1,5 +1,5 @@
 import pytest
-from solana.keypair import Keypair
+from solders.keypair import Keypair
 from solana.rpc.commitment import Confirmed
 
 import system.actions
@@ -9,6 +9,6 @@ import system.actions
 async def test_airdrop(async_client):
     manager = Keypair()
     airdrop_lamports = 1_000_000
-    await system.actions.airdrop(async_client, manager.public_key, airdrop_lamports)
-    resp = await async_client.get_balance(manager.public_key, commitment=Confirmed)
-    assert resp['result']['value'] == airdrop_lamports
+    await system.actions.airdrop(async_client, manager.pubkey(), airdrop_lamports)
+    resp = await async_client.get_balance(manager.pubkey(), commitment=Confirmed)
+    assert resp.value == airdrop_lamports

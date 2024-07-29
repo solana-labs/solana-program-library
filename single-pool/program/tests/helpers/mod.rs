@@ -431,7 +431,7 @@ where
     };
 
     // this silly thing is because we can guarantee From<T> has a Debug for T
-    // but TryFrom<T> produces Result<T, E> and E may not have Debug. so we cant
+    // but TryFrom<T> produces Result<T, E> and E may not have Debug. so we can't
     // call unwrap also we use TryFrom because we have to go `instruction
     // error-> program error` because StakeError impls the former but not the
     // latter... and that conversion is merely surjective........

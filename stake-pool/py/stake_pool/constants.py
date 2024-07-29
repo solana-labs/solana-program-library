@@ -2,10 +2,10 @@
 
 from typing import Optional, Tuple
 
-from solana.publickey import PublicKey
+from solders.pubkey import Pubkey
 from stake.constants import MINIMUM_DELEGATION
 
-STAKE_POOL_PROGRAM_ID: PublicKey = PublicKey("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy")
+STAKE_POOL_PROGRAM_ID = Pubkey.from_string("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy")
 """Public key that identifies the SPL Stake Pool program."""
 
 MAX_VALIDATORS_TO_UPDATE: int = 5
@@ -17,40 +17,40 @@ MINIMUM_RESERVE_LAMPORTS: int = 0
 MINIMUM_ACTIVE_STAKE: int = MINIMUM_DELEGATION
 """Minimum active delegated staked required in a stake account"""
 
-METADATA_PROGRAM_ID: PublicKey = PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
+METADATA_PROGRAM_ID = Pubkey.from_string("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
 """Public key that identifies the Metaplex Token Metadata program."""
 
 
 def find_deposit_authority_program_address(
-    program_id: PublicKey,
-    stake_pool_address: PublicKey,
-) -> Tuple[PublicKey, int]:
+    program_id: Pubkey,
+    stake_pool_address: Pubkey,
+) -> Tuple[Pubkey, int]:
     """Generates the deposit authority program address for the stake pool"""
-    return PublicKey.find_program_address(
+    return Pubkey.find_program_address(
         [bytes(stake_pool_address), AUTHORITY_DEPOSIT],
         program_id,
     )
 
 
 def find_withdraw_authority_program_address(
-    program_id: PublicKey,
-    stake_pool_address: PublicKey,
-) -> Tuple[PublicKey, int]:
+    program_id: Pubkey,
+    stake_pool_address: Pubkey,
+) -> Tuple[Pubkey, int]:
     """Generates the withdraw authority program address for the stake pool"""
-    return PublicKey.find_program_address(
+    return Pubkey.find_program_address(
         [bytes(stake_pool_address), AUTHORITY_WITHDRAW],
         program_id,
     )
 
 
 def find_stake_program_address(
-    program_id: PublicKey,
-    vote_account_address: PublicKey,
-    stake_pool_address: PublicKey,
+    program_id: Pubkey,
+    vote_account_address: Pubkey,
+    stake_pool_address: Pubkey,
     seed: Optional[int]
-) -> Tuple[PublicKey, int]:
+) -> Tuple[Pubkey, int]:
     """Generates the stake program address for a validator's vote account"""
-    return PublicKey.find_program_address(
+    return Pubkey.find_program_address(
         [
             bytes(vote_account_address),
             bytes(stake_pool_address),
@@ -61,13 +61,13 @@ def find_stake_program_address(
 
 
 def find_transient_stake_program_address(
-    program_id: PublicKey,
-    vote_account_address: PublicKey,
-    stake_pool_address: PublicKey,
+    program_id: Pubkey,
+    vote_account_address: Pubkey,
+    stake_pool_address: Pubkey,
     seed: int,
-) -> Tuple[PublicKey, int]:
+) -> Tuple[Pubkey, int]:
     """Generates the stake program address for a validator's vote account"""
-    return PublicKey.find_program_address(
+    return Pubkey.find_program_address(
         [
             TRANSIENT_STAKE_SEED_PREFIX,
             bytes(vote_account_address),
@@ -79,13 +79,13 @@ def find_transient_stake_program_address(
 
 
 def find_ephemeral_stake_program_address(
-    program_id: PublicKey,
-    stake_pool_address: PublicKey,
+    program_id: Pubkey,
+    stake_pool_address: Pubkey,
     seed: int
-) -> Tuple[PublicKey, int]:
+) -> Tuple[Pubkey, int]:
 
     """Generates the ephemeral program address for stake pool redelegation"""
-    return PublicKey.find_program_address(
+    return Pubkey.find_program_address(
         [
             EPHEMERAL_STAKE_SEED_PREFIX,
             bytes(stake_pool_address),
@@ -96,10 +96,10 @@ def find_ephemeral_stake_program_address(
 
 
 def find_metadata_account(
-    mint_key: PublicKey
-) -> Tuple[PublicKey, int]:
+    mint_key: Pubkey
+) -> Tuple[Pubkey, int]:
     """Generates the metadata account program address"""
-    return PublicKey.find_program_address(
+    return Pubkey.find_program_address(
         [
             METADATA_SEED_PREFIX,
             bytes(METADATA_PROGRAM_ID),

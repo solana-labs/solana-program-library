@@ -1,13 +1,13 @@
 from typing import Optional, Tuple
 
-from solana.keypair import Keypair
-from solana.publickey import PublicKey
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
 from solana.rpc.types import TxOpts
-from solana.sysvar import SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY, SYSVAR_STAKE_HISTORY_PUBKEY
+from solders.sysvar import CLOCK, RENT, STAKE_HISTORY
 from solana.transaction import Transaction
-import solana.system_program as sys
+import solders.system_program as sys
 
 from spl.token.constants import TOKEN_PROGRAM_ID
 
@@ -31,54 +31,58 @@ from stake.actions import create_stake
 from spl_token.actions import create_mint, create_associated_token_account
 
 
+OPTS = TxOpts(skip_confirmation=False, preflight_commitment=Confirmed)
+
+
 async def create(client: AsyncClient, manager: Keypair,
                  stake_pool: Keypair, validator_list: Keypair,
-                 pool_mint: PublicKey, reserve_stake: PublicKey,
-                 manager_fee_account: PublicKey, fee: Fee, referral_fee: int):
+                 pool_mint: Pubkey, reserve_stake: Pubkey,
+                 manager_fee_account: Pubkey, fee: Fee, referral_fee: int):
     resp = await client.get_minimum_balance_for_rent_exemption(STAKE_POOL_LAYOUT.sizeof())
-    pool_balance = resp['result']
-    txn = Transaction()
+    pool_balance = resp.value
+    txn = Transaction(fee_payer=manager.pubkey())
     txn.add(
         sys.create_account(
             sys.CreateAccountParams(
-                from_pubkey=manager.public_key,
-                new_account_pubkey=stake_pool.public_key,
+                from_pubkey=manager.pubkey(),
+                to_pubkey=stake_pool.pubkey(),
                 lamports=pool_balance,
                 space=STAKE_POOL_LAYOUT.sizeof(),
-                program_id=STAKE_POOL_PROGRAM_ID,
+                owner=STAKE_POOL_PROGRAM_ID,
             )
         )
     )
     max_validators = 2950  # current supported max by the program, go big!
     validator_list_size = ValidatorList.calculate_validator_list_size(max_validators)
     resp = await client.get_minimum_balance_for_rent_exemption(validator_list_size)
-    validator_list_balance = resp['result']
+    validator_list_balance = resp.value
     txn.add(
         sys.create_account(
             sys.CreateAccountParams(
-                from_pubkey=manager.public_key,
-                new_account_pubkey=validator_list.public_key,
+                from_pubkey=manager.pubkey(),
+                to_pubkey=validator_list.pubkey(),
                 lamports=validator_list_balance,
                 space=validator_list_size,
-                program_id=STAKE_POOL_PROGRAM_ID,
+                owner=STAKE_POOL_PROGRAM_ID,
             )
         )
     )
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
     await client.send_transaction(
-        txn, manager, stake_pool, validator_list, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+        txn, manager, stake_pool, validator_list, recent_blockhash=recent_blockhash, opts=OPTS)
 
     (withdraw_authority, seed) = find_withdraw_authority_program_address(
-        STAKE_POOL_PROGRAM_ID, stake_pool.public_key)
-    txn = Transaction()
+        STAKE_POOL_PROGRAM_ID, stake_pool.pubkey())
+    txn = Transaction(fee_payer=manager.pubkey())
     txn.add(
         sp.initialize(
             sp.InitializeParams(
                 program_id=STAKE_POOL_PROGRAM_ID,
-                stake_pool=stake_pool.public_key,
-                manager=manager.public_key,
-                staker=manager.public_key,
+                stake_pool=stake_pool.pubkey(),
+                manager=manager.pubkey(),
+                staker=manager.pubkey(),
                 withdraw_authority=withdraw_authority,
-                validator_list=validator_list.public_key,
+                validator_list=validator_list.pubkey(),
                 reserve_stake=reserve_stake,
                 pool_mint=pool_mint,
                 manager_fee_account=manager_fee_account,
@@ -91,17 +95,17 @@ async def create(client: AsyncClient, manager: Keypair,
             )
         )
     )
-    await client.send_transaction(
-        txn, manager, validator_list, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, manager, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
 async def create_all(
         client: AsyncClient, manager: Keypair, fee: Fee, referral_fee: int
-) -> Tuple[PublicKey, PublicKey, PublicKey]:
+) -> Tuple[Pubkey, Pubkey, Pubkey]:
     stake_pool = Keypair()
     validator_list = Keypair()
     (pool_withdraw_authority, seed) = find_withdraw_authority_program_address(
-        STAKE_POOL_PROGRAM_ID, stake_pool.public_key)
+        STAKE_POOL_PROGRAM_ID, stake_pool.pubkey())
 
     reserve_stake = Keypair()
     await create_stake(client, manager, reserve_stake, pool_withdraw_authority, MINIMUM_RESERVE_LAMPORTS)
@@ -112,26 +116,26 @@ async def create_all(
     manager_fee_account = await create_associated_token_account(
         client,
         manager,
-        manager.public_key,
-        pool_mint.public_key,
+        manager.pubkey(),
+        pool_mint.pubkey(),
     )
 
     fee = Fee(numerator=1, denominator=1000)
     referral_fee = 20
     await create(
-        client, manager, stake_pool, validator_list, pool_mint.public_key,
-        reserve_stake.public_key, manager_fee_account, fee, referral_fee)
-    return (stake_pool.public_key, validator_list.public_key, pool_mint.public_key)
+        client, manager, stake_pool, validator_list, pool_mint.pubkey(),
+        reserve_stake.pubkey(), manager_fee_account, fee, referral_fee)
+    return (stake_pool.pubkey(), validator_list.pubkey(), pool_mint.pubkey())
 
 
 async def add_validator_to_pool(
     client: AsyncClient, staker: Keypair,
-    stake_pool_address: PublicKey, validator: PublicKey
+    stake_pool_address: Pubkey, validator: Pubkey
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
-    txn = Transaction()
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
+    txn = Transaction(fee_payer=staker.pubkey())
     txn.add(
         sp.add_validator_to_pool_with_vote(
             STAKE_POOL_PROGRAM_ID,
@@ -143,22 +147,22 @@ async def add_validator_to_pool(
             None,
         )
     )
-    await client.send_transaction(
-        txn, staker, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, staker, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
 async def remove_validator_from_pool(
     client: AsyncClient, staker: Keypair,
-    stake_pool_address: PublicKey, validator: PublicKey
+    stake_pool_address: Pubkey, validator: Pubkey
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
     resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator)
-    txn = Transaction()
+    txn = Transaction(fee_payer=staker.pubkey())
     txn.add(
         sp.remove_validator_from_pool_with_vote(
             STAKE_POOL_PROGRAM_ID,
@@ -170,22 +174,21 @@ async def remove_validator_from_pool(
             validator_info.transient_seed_suffix,
         )
     )
-    await client.send_transaction(
-        txn, staker,
-        opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, staker, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
 async def deposit_sol(
-    client: AsyncClient, funder: Keypair, stake_pool_address: PublicKey,
-    destination_token_account: PublicKey, amount: int,
+    client: AsyncClient, funder: Keypair, stake_pool_address: Pubkey,
+    destination_token_account: Pubkey, amount: int,
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
 
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
-    txn = Transaction()
+    txn = Transaction(fee_payer=funder.pubkey())
     txn.add(
         sp.deposit_sol(
             sp.DepositSolParams(
@@ -193,47 +196,47 @@ async def deposit_sol(
                 stake_pool=stake_pool_address,
                 withdraw_authority=withdraw_authority,
                 reserve_stake=stake_pool.reserve_stake,
-                funding_account=funder.public_key,
+                funding_account=funder.pubkey(),
                 destination_pool_account=destination_token_account,
                 manager_fee_account=stake_pool.manager_fee_account,
                 referral_pool_account=destination_token_account,
                 pool_mint=stake_pool.pool_mint,
-                system_program_id=sys.SYS_PROGRAM_ID,
+                system_program_id=sys.ID,
                 token_program_id=stake_pool.token_program_id,
                 amount=amount,
                 deposit_authority=None,
             )
         )
     )
-    await client.send_transaction(
-        txn, funder, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, funder, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
 async def withdraw_sol(
-    client: AsyncClient, owner: Keypair, source_token_account: PublicKey,
-    stake_pool_address: PublicKey, destination_system_account: PublicKey, amount: int,
+    client: AsyncClient, owner: Keypair, source_token_account: Pubkey,
+    stake_pool_address: Pubkey, destination_system_account: Pubkey, amount: int,
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
 
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
-    txn = Transaction()
+    txn = Transaction(fee_payer=owner.pubkey())
     txn.add(
         sp.withdraw_sol(
             sp.WithdrawSolParams(
                 program_id=STAKE_POOL_PROGRAM_ID,
                 stake_pool=stake_pool_address,
                 withdraw_authority=withdraw_authority,
-                source_transfer_authority=owner.public_key,
+                source_transfer_authority=owner.pubkey(),
                 source_pool_account=source_token_account,
                 reserve_stake=stake_pool.reserve_stake,
                 destination_system_account=destination_system_account,
                 manager_fee_account=stake_pool.manager_fee_account,
                 pool_mint=stake_pool.pool_mint,
-                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                clock_sysvar=CLOCK,
+                stake_history_sysvar=STAKE_HISTORY,
                 stake_program_id=STAKE_PROGRAM_ID,
                 token_program_id=stake_pool.token_program_id,
                 amount=amount,
@@ -241,25 +244,25 @@ async def withdraw_sol(
             )
         )
     )
-    await client.send_transaction(
-        txn, owner, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, owner, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
 async def deposit_stake(
     client: AsyncClient,
     deposit_stake_authority: Keypair,
-    stake_pool_address: PublicKey,
-    validator_vote: PublicKey,
-    deposit_stake: PublicKey,
-    destination_pool_account: PublicKey,
+    stake_pool_address: Pubkey,
+    validator_vote: Pubkey,
+    deposit_stake: Pubkey,
+    destination_pool_account: Pubkey,
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
 
     resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
 
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
 
@@ -271,13 +274,13 @@ async def deposit_stake(
         validator_info.validator_seed_suffix or None,
     )
 
-    txn = Transaction()
+    txn = Transaction(fee_payer=deposit_stake_authority.pubkey())
     txn.add(
         st.authorize(
             st.AuthorizeParams(
                 stake=deposit_stake,
-                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                authority=deposit_stake_authority.public_key,
+                clock_sysvar=CLOCK,
+                authority=deposit_stake_authority.pubkey(),
                 new_authority=stake_pool.stake_deposit_authority,
                 stake_authorize=StakeAuthorize.STAKER,
             )
@@ -287,8 +290,8 @@ async def deposit_stake(
         st.authorize(
             st.AuthorizeParams(
                 stake=deposit_stake,
-                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                authority=deposit_stake_authority.public_key,
+                clock_sysvar=CLOCK,
+                authority=deposit_stake_authority.pubkey(),
                 new_authority=stake_pool.stake_deposit_authority,
                 stake_authorize=StakeAuthorize.WITHDRAWER,
             )
@@ -309,15 +312,15 @@ async def deposit_stake(
                 manager_fee_account=stake_pool.manager_fee_account,
                 referral_pool_account=destination_pool_account,
                 pool_mint=stake_pool.pool_mint,
-                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                clock_sysvar=CLOCK,
+                stake_history_sysvar=STAKE_HISTORY,
                 token_program_id=stake_pool.token_program_id,
                 stake_program_id=STAKE_PROGRAM_ID,
             )
         )
     )
-    await client.send_transaction(
-        txn, deposit_stake_authority, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, deposit_stake_authority, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
 async def withdraw_stake(
@@ -325,19 +328,19 @@ async def withdraw_stake(
     payer: Keypair,
     source_transfer_authority: Keypair,
     destination_stake: Keypair,
-    stake_pool_address: PublicKey,
-    validator_vote: PublicKey,
-    destination_stake_authority: PublicKey,
-    source_pool_account: PublicKey,
+    stake_pool_address: Pubkey,
+    validator_vote: Pubkey,
+    destination_stake_authority: Pubkey,
+    source_pool_account: Pubkey,
     amount: int,
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
 
     resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
 
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
 
@@ -349,18 +352,18 @@ async def withdraw_stake(
         validator_info.validator_seed_suffix or None,
     )
 
-    resp = await client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
-    stake_rent_exemption = resp['result']
+    rent_resp = await client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
+    stake_rent_exemption = rent_resp.value
 
-    txn = Transaction()
+    txn = Transaction(fee_payer=payer.pubkey())
     txn.add(
         sys.create_account(
             sys.CreateAccountParams(
-                from_pubkey=payer.public_key,
-                new_account_pubkey=destination_stake.public_key,
+                from_pubkey=payer.pubkey(),
+                to_pubkey=destination_stake.pubkey(),
                 lamports=stake_rent_exemption,
                 space=STAKE_LEN,
-                program_id=STAKE_PROGRAM_ID,
+                owner=STAKE_PROGRAM_ID,
             )
         )
     )
@@ -372,13 +375,13 @@ async def withdraw_stake(
                 validator_list=stake_pool.validator_list,
                 withdraw_authority=withdraw_authority,
                 validator_stake=validator_stake,
-                destination_stake=destination_stake.public_key,
+                destination_stake=destination_stake.pubkey(),
                 destination_stake_authority=destination_stake_authority,
-                source_transfer_authority=source_transfer_authority.public_key,
+                source_transfer_authority=source_transfer_authority.pubkey(),
                 source_pool_account=source_pool_account,
                 manager_fee_account=stake_pool.manager_fee_account,
                 pool_mint=stake_pool.pool_mint,
-                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                clock_sysvar=CLOCK,
                 token_program_id=stake_pool.token_program_id,
                 stake_program_id=STAKE_PROGRAM_ID,
                 amount=amount,
@@ -387,18 +390,18 @@ async def withdraw_stake(
     )
     signers = [payer, source_transfer_authority, destination_stake] \
         if payer != source_transfer_authority else [payer, destination_stake]
-    await client.send_transaction(
-        txn, *signers, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, *signers, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
-async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_address: PublicKey):
+async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_address: Pubkey):
     """Create and send all instructions to completely update a stake pool after epoch change."""
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
     resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
     update_list_instructions = []
     validator_chunks = [
@@ -431,8 +434,8 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
                     withdraw_authority=withdraw_authority,
                     validator_list=stake_pool.validator_list,
                     reserve_stake=stake_pool.reserve_stake,
-                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                    clock_sysvar=CLOCK,
+                    stake_history_sysvar=STAKE_HISTORY,
                     stake_program_id=STAKE_PROGRAM_ID,
                     validator_and_transient_stake_pairs=validator_and_transient_stake_pairs,
                     start_index=start_index,
@@ -444,15 +447,16 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
     if update_list_instructions:
         last_instruction = update_list_instructions.pop()
         for update_list_instruction in update_list_instructions:
-            txn = Transaction()
+            txn = Transaction(fee_payer=payer.pubkey())
             txn.add(update_list_instruction)
-            await client.send_transaction(
-                txn, payer, opts=TxOpts(skip_confirmation=True, preflight_commitment=Confirmed))
-        txn = Transaction()
+            recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+            await client.send_transaction(txn, payer, recent_blockhash=recent_blockhash,
+                                          opts=TxOpts(skip_confirmation=True, preflight_commitment=Confirmed))
+        txn = Transaction(fee_payer=payer.pubkey())
         txn.add(last_instruction)
-        await client.send_transaction(
-            txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
-    txn = Transaction()
+        recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+        await client.send_transaction(txn, payer, recent_blockhash=recent_blockhash, opts=OPTS)
+    txn = Transaction(fee_payer=payer.pubkey())
     txn.add(
         sp.update_stake_pool_balance(
             sp.UpdateStakePoolBalanceParams(
@@ -476,26 +480,26 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
             )
         )
     )
-    await client.send_transaction(
-        txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, payer, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
 async def increase_validator_stake(
     client: AsyncClient,
     payer: Keypair,
     staker: Keypair,
-    stake_pool_address: PublicKey,
-    validator_vote: PublicKey,
+    stake_pool_address: Pubkey,
+    validator_vote: Pubkey,
     lamports: int,
     ephemeral_stake_seed: Optional[int] = None
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
 
     resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
@@ -520,7 +524,7 @@ async def increase_validator_stake(
         validator_stake_seed
     )
 
-    txn = Transaction()
+    txn = Transaction(fee_payer=payer.pubkey())
     if ephemeral_stake_seed is not None:
 
         # We assume there is an existing transient account that we will update
@@ -534,18 +538,18 @@ async def increase_validator_stake(
                 sp.IncreaseAdditionalValidatorStakeParams(
                     program_id=STAKE_POOL_PROGRAM_ID,
                     stake_pool=stake_pool_address,
-                    staker=staker.public_key,
+                    staker=staker.pubkey(),
                     withdraw_authority=withdraw_authority,
                     validator_list=stake_pool.validator_list,
                     reserve_stake=stake_pool.reserve_stake,
                     transient_stake=transient_stake,
                     validator_stake=validator_stake,
                     validator_vote=validator_vote,
-                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                    rent_sysvar=SYSVAR_RENT_PUBKEY,
-                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                    clock_sysvar=CLOCK,
+                    rent_sysvar=RENT,
+                    stake_history_sysvar=STAKE_HISTORY,
                     stake_config_sysvar=SYSVAR_STAKE_CONFIG_ID,
-                    system_program_id=sys.SYS_PROGRAM_ID,
+                    system_program_id=sys.ID,
                     stake_program_id=STAKE_PROGRAM_ID,
                     lamports=lamports,
                     transient_stake_seed=transient_stake_seed,
@@ -561,18 +565,18 @@ async def increase_validator_stake(
                 sp.IncreaseValidatorStakeParams(
                     program_id=STAKE_POOL_PROGRAM_ID,
                     stake_pool=stake_pool_address,
-                    staker=staker.public_key,
+                    staker=staker.pubkey(),
                     withdraw_authority=withdraw_authority,
                     validator_list=stake_pool.validator_list,
                     reserve_stake=stake_pool.reserve_stake,
                     transient_stake=transient_stake,
                     validator_stake=validator_stake,
                     validator_vote=validator_vote,
-                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                    rent_sysvar=SYSVAR_RENT_PUBKEY,
-                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                    clock_sysvar=CLOCK,
+                    rent_sysvar=RENT,
+                    stake_history_sysvar=STAKE_HISTORY,
                     stake_config_sysvar=SYSVAR_STAKE_CONFIG_ID,
-                    system_program_id=sys.SYS_PROGRAM_ID,
+                    system_program_id=sys.ID,
                     stake_program_id=STAKE_PROGRAM_ID,
                     lamports=lamports,
                     transient_stake_seed=transient_stake_seed,
@@ -581,26 +585,26 @@ async def increase_validator_stake(
         )
 
     signers = [payer, staker] if payer != staker else [payer]
-    await client.send_transaction(
-        txn, *signers, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, *signers, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
 async def decrease_validator_stake(
     client: AsyncClient,
     payer: Keypair,
     staker: Keypair,
-    stake_pool_address: PublicKey,
-    validator_vote: PublicKey,
+    stake_pool_address: Pubkey,
+    validator_vote: Pubkey,
     lamports: int,
     ephemeral_stake_seed: Optional[int] = None
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
 
     resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
 
     validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
@@ -625,7 +629,7 @@ async def decrease_validator_stake(
         transient_stake_seed,
     )
 
-    txn = Transaction()
+    txn = Transaction(fee_payer=payer.pubkey())
 
     if ephemeral_stake_seed is not None:
 
@@ -640,16 +644,16 @@ async def decrease_validator_stake(
                 sp.DecreaseAdditionalValidatorStakeParams(
                     program_id=STAKE_POOL_PROGRAM_ID,
                     stake_pool=stake_pool_address,
-                    staker=staker.public_key,
+                    staker=staker.pubkey(),
                     withdraw_authority=withdraw_authority,
                     validator_list=stake_pool.validator_list,
                     reserve_stake=stake_pool.reserve_stake,
                     validator_stake=validator_stake,
                     transient_stake=transient_stake,
-                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                    rent_sysvar=SYSVAR_RENT_PUBKEY,
-                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
-                    system_program_id=sys.SYS_PROGRAM_ID,
+                    clock_sysvar=CLOCK,
+                    rent_sysvar=RENT,
+                    stake_history_sysvar=STAKE_HISTORY,
+                    system_program_id=sys.ID,
                     stake_program_id=STAKE_PROGRAM_ID,
                     lamports=lamports,
                     transient_stake_seed=transient_stake_seed,
@@ -666,15 +670,15 @@ async def decrease_validator_stake(
                 sp.DecreaseValidatorStakeWithReserveParams(
                     program_id=STAKE_POOL_PROGRAM_ID,
                     stake_pool=stake_pool_address,
-                    staker=staker.public_key,
+                    staker=staker.pubkey(),
                     withdraw_authority=withdraw_authority,
                     validator_list=stake_pool.validator_list,
                     reserve_stake=stake_pool.reserve_stake,
                     validator_stake=validator_stake,
                     transient_stake=transient_stake,
-                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
-                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
-                    system_program_id=sys.SYS_PROGRAM_ID,
+                    clock_sysvar=CLOCK,
+                    stake_history_sysvar=STAKE_HISTORY,
+                    system_program_id=sys.ID,
                     stake_program_id=STAKE_PROGRAM_ID,
                     lamports=lamports,
                     transient_stake_seed=transient_stake_seed,
@@ -683,20 +687,20 @@ async def decrease_validator_stake(
         )
 
     signers = [payer, staker] if payer != staker else [payer]
-    await client.send_transaction(
-        txn, *signers, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, *signers, recent_blockhash=recent_blockhash, opts=OPTS)
 
 
-async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_address: PublicKey,
+async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_address: Pubkey,
                                 name: str, symbol: str, uri: str):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
 
     (withdraw_authority, _seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
     (token_metadata, _seed) = find_metadata_account(stake_pool.pool_mint)
 
-    txn = Transaction()
+    txn = Transaction(fee_payer=payer.pubkey())
     txn.add(
         sp.create_token_metadata(
             sp.CreateTokenMetadataParams(
@@ -704,31 +708,31 @@ async def create_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
                 stake_pool=stake_pool_address,
                 manager=stake_pool.manager,
                 pool_mint=stake_pool.pool_mint,
-                payer=payer.public_key,
+                payer=payer.pubkey(),
                 name=name,
                 symbol=symbol,
                 uri=uri,
                 withdraw_authority=withdraw_authority,
                 token_metadata=token_metadata,
                 metadata_program_id=METADATA_PROGRAM_ID,
-                system_program_id=sys.SYS_PROGRAM_ID,
+                system_program_id=sys.ID,
             )
         )
     )
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, payer, recent_blockhash=recent_blockhash, opts=OPTS)
 
-    await client.send_transaction(txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
 
-
-async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_address: PublicKey,
+async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_address: Pubkey,
                                 name: str, symbol: str, uri: str):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
 
     (withdraw_authority, _seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
     (token_metadata, _seed) = find_metadata_account(stake_pool.pool_mint)
 
-    txn = Transaction()
+    txn = Transaction(fee_payer=payer.pubkey())
     txn.add(
         sp.update_token_metadata(
             sp.UpdateTokenMetadataParams(
@@ -745,5 +749,5 @@ async def update_token_metadata(client: AsyncClient, payer: Keypair, stake_pool_
             )
         )
     )
-
-    await client.send_transaction(txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    recent_blockhash = (await client.get_latest_blockhash()).value.blockhash
+    await client.send_transaction(txn, payer, recent_blockhash=recent_blockhash, opts=OPTS)

@@ -604,7 +604,7 @@ pub trait BaseStateWithExtensionsMut<S: BaseState>: BaseStateWithExtensions<S> {
         Ok(extension_ref)
     }
 
-    /// Reallocate and overwite the TLV entry for the given variable-length
+    /// Reallocate and overwrite the TLV entry for the given variable-length
     /// extension.
     ///
     /// Returns an error if the extension is not present, or if there is not

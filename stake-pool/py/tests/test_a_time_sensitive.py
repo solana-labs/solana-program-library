@@ -15,16 +15,16 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     (stake_pool_address, validator_list_address, _) = stake_pool_addresses
 
     resp = await async_client.get_minimum_balance_for_rent_exemption(STAKE_LEN)
-    stake_rent_exemption = resp['result']
+    stake_rent_exemption = resp.value
     minimum_amount = MINIMUM_ACTIVE_STAKE + stake_rent_exemption
     increase_amount = MINIMUM_ACTIVE_STAKE * 4
     decrease_amount = increase_amount // 2
     deposit_amount = (increase_amount + stake_rent_exemption) * len(validators)
 
     resp = await async_client.get_account_info(stake_pool_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    stake_pool = StakePool.decode(data[0], data[1])
-    token_account = get_associated_token_address(payer.public_key, stake_pool.pool_mint)
+    data = resp.value.data if resp.value else bytes()
+    stake_pool = StakePool.decode(data)
+    token_account = get_associated_token_address(payer.pubkey(), stake_pool.pool_mint)
     await deposit_sol(async_client, payer, stake_pool_address, token_account, deposit_amount)
 
     # increase to all
@@ -36,8 +36,8 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
 
     # validate the increase is now on the transient account
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     for validator in validator_list.validators:
         assert validator.transient_stake_lamports == increase_amount // 2 + stake_rent_exemption
         assert validator.active_stake_lamports == minimum_amount
@@ -52,8 +52,8 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
 
     # validate the additional increase is now on the transient account
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     for validator in validator_list.validators:
         assert validator.transient_stake_lamports == increase_amount + stake_rent_exemption * 2
         assert validator.active_stake_lamports == minimum_amount
@@ -63,8 +63,8 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     await update_stake_pool(async_client, payer, stake_pool_address)
 
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     for validator in validator_list.validators:
         assert validator.last_update_epoch != 0
         assert validator.transient_stake_lamports == 0
@@ -79,8 +79,8 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
 
     # validate the decrease is now on the transient account
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     for validator in validator_list.validators:
         assert validator.transient_stake_lamports == decrease_amount + stake_rent_exemption
         assert validator.active_stake_lamports == increase_amount - decrease_amount + minimum_amount + \
@@ -96,8 +96,8 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
     await update_stake_pool(async_client, payer, stake_pool_address)
 
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
-    data = resp['result']['value']['data']
-    validator_list = ValidatorList.decode(data[0], data[1])
+    data = resp.value.data if resp.value else bytes()
+    validator_list = ValidatorList.decode(data)
     for validator in validator_list.validators:
         assert validator.transient_stake_lamports == 0
         assert validator.active_stake_lamports == expected_active_stake_lamports

@@ -36,7 +36,7 @@ The next two instructions of the interface deal with these configurations.
 
 ### (Optional) Instruction: `InitializeExtraAccountMetaList`
 
-This instruction does exactly what the name implies: it intializes the
+This instruction does exactly what the name implies: it initializes the
 validation account to store a list of extra required
 [`AccountMeta`](https://docs.rs/solana-program/latest/solana_program/instruction/struct.AccountMeta.html)
 configurations for the `Execute` instruction.

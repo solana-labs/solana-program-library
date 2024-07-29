@@ -16,9 +16,9 @@ num-derive = "0.4"
 num-traits = "0.2"
 serde = "1.0.204"
 serde_derive = "1.0.103"
-solana-program = "2.0.0"
-solana-program-test = "2.0.0"
-solana-sdk = "2.0.0"
+solana-program = "2.0.3"
+solana-program-test = "2.0.3"
+solana-sdk = "2.0.3"
 spl-token = { version = "6.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }

@@ -7,7 +7,7 @@ import {
 } from '@solana/web3.js';
 
 // HERE BE DRAGONS
-// this is all the stuff that shouldnt be in our library once we can import from elsewhere
+// this is all the stuff that shouldn't be in our library once we can import from elsewhere
 
 export const SYSTEM_PROGRAM_ID = address('11111111111111111111111111111111');
 export const STAKE_PROGRAM_ID = address('Stake11111111111111111111111111111111111111');
