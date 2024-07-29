@@ -6,9 +6,9 @@ import {
     createAppendCanopyNodesInstruction,
     createAppendInstruction,
     createCloseEmptyTreeInstruction,
-    createFinalizeMerkleTreeWithRootInstruction,
+    createInitPreparedTreeWithRootInstruction,
     createInitEmptyMerkleTreeInstruction,
-    createPrepareTreeInstruction,
+    createPrepareBatchMerkleTreeInstruction,
     createReplaceLeafInstruction,
     createTransferAuthorityInstruction,
     createVerifyLeafInstruction,
@@ -57,7 +57,7 @@ export function createInitEmptyMerkleTreeIx(
 }
 
 /**
- * Helper function for {@link createPrepareTreeInstruction}
+ * Helper function for {@link createPrepareBatchMerkleTreeInstruction}
  * @param merkleTree
  * @param authority
  * @param depthSizePair
@@ -68,7 +68,7 @@ export function prepareTreeIx(
     authority: PublicKey,
     depthSizePair: ValidDepthSizePair,
 ): TransactionInstruction {
-    return createPrepareTreeInstruction(
+    return createPrepareBatchMerkleTreeInstruction(
         {
             authority: authority,
             merkleTree,
@@ -106,7 +106,7 @@ export function createAppendCanopyNodesIx(
 }
 
 /**
- * Helper function for {@link createFinalizeMerkleTreeWithRootInstruction}
+ * Helper function for {@link createInitPreparedTreeWithRootInstruction}
  * @param merkleTree
  * @param authority
  * @param root
@@ -115,7 +115,7 @@ export function createAppendCanopyNodesIx(
  * @param proof
  * @returns
  */
-export function createFinalizeMerkleTreeWithRootIx(
+export function createInitPreparedTreeWithRootIx(
     merkleTree: PublicKey,
     authority: PublicKey,
     root: ArrayLike<number> | Buffer,
@@ -123,7 +123,7 @@ export function createFinalizeMerkleTreeWithRootIx(
     rightmostIndex: number,
     proof: Buffer[],
 ): TransactionInstruction {
-    return createFinalizeMerkleTreeWithRootInstruction(
+    return createInitPreparedTreeWithRootInstruction(
         {
             anchorRemainingAccounts: proof.map(node => {
                 return {

@@ -10,20 +10,20 @@ import * as web3 from '@solana/web3.js';
 
 /**
  * @category Instructions
- * @category PrepareTree
+ * @category PrepareBatchMerkleTree
  * @category generated
  */
-export type PrepareTreeInstructionArgs = {
+export type PrepareBatchMerkleTreeInstructionArgs = {
     maxBufferSize: number;
     maxDepth: number;
 };
 /**
  * @category Instructions
- * @category PrepareTree
+ * @category PrepareBatchMerkleTree
  * @category generated
  */
-export const prepareTreeStruct = new beet.BeetArgsStruct<
-    PrepareTreeInstructionArgs & {
+export const prepareBatchMerkleTreeStruct = new beet.BeetArgsStruct<
+    PrepareBatchMerkleTreeInstructionArgs & {
         instructionDiscriminator: number[] /* size: 8 */;
     }
 >(
@@ -32,44 +32,44 @@ export const prepareTreeStruct = new beet.BeetArgsStruct<
         ['maxDepth', beet.u32],
         ['maxBufferSize', beet.u32],
     ],
-    'PrepareTreeInstructionArgs',
+    'PrepareBatchMerkleTreeInstructionArgs',
 );
 /**
- * Accounts required by the _prepareTree_ instruction
+ * Accounts required by the _prepareBatchMerkleTree_ instruction
  *
  * @property [_writable_] merkleTree
  * @property [**signer**] authority
  * @property [] noop
  * @category Instructions
- * @category PrepareTree
+ * @category PrepareBatchMerkleTree
  * @category generated
  */
-export type PrepareTreeInstructionAccounts = {
+export type PrepareBatchMerkleTreeInstructionAccounts = {
     anchorRemainingAccounts?: web3.AccountMeta[];
     authority: web3.PublicKey;
     merkleTree: web3.PublicKey;
     noop: web3.PublicKey;
 };
 
-export const prepareTreeInstructionDiscriminator = [41, 56, 189, 77, 58, 12, 142, 71];
+export const prepareBatchMerkleTreeInstructionDiscriminator = [230, 124, 120, 196, 249, 134, 199, 128];
 
 /**
- * Creates a _PrepareTree_ instruction.
+ * Creates a _PrepareBatchMerkleTree_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category PrepareTree
+ * @category PrepareBatchMerkleTree
  * @category generated
  */
-export function createPrepareTreeInstruction(
-    accounts: PrepareTreeInstructionAccounts,
-    args: PrepareTreeInstructionArgs,
+export function createPrepareBatchMerkleTreeInstruction(
+    accounts: PrepareBatchMerkleTreeInstructionAccounts,
+    args: PrepareBatchMerkleTreeInstructionArgs,
     programId = new web3.PublicKey('cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK'),
 ) {
-    const [data] = prepareTreeStruct.serialize({
-        instructionDiscriminator: prepareTreeInstructionDiscriminator,
+    const [data] = prepareBatchMerkleTreeStruct.serialize({
+        instructionDiscriminator: prepareBatchMerkleTreeInstructionDiscriminator,
         ...args,
     });
     const keys: web3.AccountMeta[] = [

@@ -12,7 +12,7 @@ import {
     createAppendIx,
     createCloseEmptyTreeInstruction,
     createCloseEmptyTreeIx,
-    createFinalizeMerkleTreeWithRootIx,
+    createInitPreparedTreeWithRootIx,
     createInitEmptyMerkleTreeIx,
     createReplaceIx,
     createTransferAuthorityIx,
@@ -100,7 +100,7 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
             const canopyDepth = 0;
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -127,7 +127,7 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
 
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 another,
                 root,
@@ -151,7 +151,7 @@ describe('Account Compression', () => {
                 return crypto.randomBytes(32);
             });
 
-            const finalize = createFinalizeMerkleTreeWithRootIx(cmt, payer, root, leaf, leaves.length - 1, proof.proof);
+            const finalize = createInitPreparedTreeWithRootIx(cmt, payer, root, leaf, leaves.length - 1, proof.proof);
 
             try {
                 await execute(provider, [finalize], [payerKeypair]);
@@ -163,7 +163,7 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
 
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -290,7 +290,7 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
 
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -311,7 +311,7 @@ describe('Account Compression', () => {
 
             const appendIx = createAppendCanopyNodesIx(cmt, payer, [merkleTreeRaw.leaves[0].parent!.node!], 0);
             await execute(provider, [appendIx], [payerKeypair]);
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -338,7 +338,7 @@ describe('Account Compression', () => {
                 0,
             );
             await execute(provider, [appendIx], [payerKeypair]);
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -376,7 +376,7 @@ describe('Account Compression', () => {
                 2,
             );
             await execute(provider, [appendIx2], [payerKeypair]);
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -411,7 +411,7 @@ describe('Account Compression', () => {
                 0,
             );
             await execute(provider, [appendIx2], [payerKeypair]);
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -448,7 +448,7 @@ describe('Account Compression', () => {
                 2,
             );
             await execute(provider, [replaceIx], [payerKeypair]);
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -470,7 +470,7 @@ describe('Account Compression', () => {
                 0,
             );
             await execute(provider, [appendIx], [payerKeypair]);
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -571,7 +571,7 @@ describe('Account Compression', () => {
             const root = merkleTreeRaw.root;
             const leaf = leaves[leaves.length - 1];
 
-            const finalize = createFinalizeMerkleTreeWithRootIx(
+            const finalize = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 root,
@@ -720,7 +720,7 @@ describe('Account Compression', () => {
 
         it('Should fail to finalize an existing tree', async () => {
             const index = offChainTree.leaves.length - 1;
-            const finalizeIx = createFinalizeMerkleTreeWithRootIx(
+            const finalizeIx = createInitPreparedTreeWithRootIx(
                 cmt,
                 payer,
                 offChainTree.root,
