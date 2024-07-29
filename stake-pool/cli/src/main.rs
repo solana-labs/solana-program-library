@@ -2,8 +2,6 @@
 mod client;
 mod output;
 
-use spl_associated_token_account::instruction::create_associated_token_account;
-
 use {
     crate::{
         client::*,
@@ -45,13 +43,15 @@ use {
         system_instruction,
         transaction::Transaction,
     },
-    spl_associated_token_account::get_associated_token_address,
+    spl_associated_token_account::{
+        get_associated_token_address, instruction::create_associated_token_account,
+    },
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
         instruction::{FundingType, PreferredValidatorType},
         minimum_delegation,
-        state::{AccountType, Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
+        state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
         MINIMUM_RESERVE_LAMPORTS,
     },
     std::{cmp::Ordering, num::NonZeroU32, process::exit, rc::Rc},
@@ -307,22 +307,27 @@ fn setup_reserve_stake_account(
     if let Ok(account) = reserve_account_info {
         if account.owner == stake::program::id() {
             if account.data.iter().any(|&x| x != 0) {
-                println!("Reserve stake account {} already exists and is initialized", reserve_keypair.pubkey());
+                println!(
+                    "Reserve stake account {} already exists and is initialized",
+                    reserve_keypair.pubkey()
+                );
                 return Ok(());
             } else {
-                let instructions = vec![
-                    stake::instruction::initialize(
-                        &reserve_keypair.pubkey(),
-                        &stake::state::Authorized {
-                            staker: *withdraw_authority,
-                            withdrawer: *withdraw_authority,
-                        },
-                        &stake::state::Lockup::default(),
-                    ),
-                ];
+                let instructions = vec![stake::instruction::initialize(
+                    &reserve_keypair.pubkey(),
+                    &stake::state::Authorized {
+                        staker: *withdraw_authority,
+                        withdrawer: *withdraw_authority,
+                    },
+                    &stake::state::Lockup::default(),
+                )];
                 let signers = vec![config.fee_payer.as_ref()];
-                let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
-                println!("Initializing existing reserve stake account {}", reserve_keypair.pubkey());
+                let transaction =
+                    checked_transaction_with_signers(config, &instructions, &signers)?;
+                println!(
+                    "Initializing existing reserve stake account {}",
+                    reserve_keypair.pubkey()
+                );
                 send_transaction(config, transaction)?;
                 return Ok(());
             }
@@ -350,7 +355,10 @@ fn setup_reserve_stake_account(
     let signers = vec![config.fee_payer.as_ref(), reserve_keypair];
     let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
 
-    println!("Creating and initializing reserve stake account {}", reserve_keypair.pubkey());
+    println!(
+        "Creating and initializing reserve stake account {}",
+        reserve_keypair.pubkey()
+    );
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -366,21 +374,26 @@ fn setup_mint_account(
     if let Ok(account) = mint_account_info {
         if account.owner == spl_token::id() {
             if account.data.iter().any(|&x| x != 0) {
-                println!("Mint account {} already exists and is initialized", mint_keypair.pubkey());
+                println!(
+                    "Mint account {} already exists and is initialized",
+                    mint_keypair.pubkey()
+                );
                 return Ok(());
             } else {
-                let instructions = vec![
-                    spl_token::instruction::initialize_mint(
-                        &spl_token::id(),
-                        &mint_keypair.pubkey(),
-                        withdraw_authority,
-                        None,
-                        default_decimals,
-                    )?,
-                ];
+                let instructions = vec![spl_token::instruction::initialize_mint(
+                    &spl_token::id(),
+                    &mint_keypair.pubkey(),
+                    withdraw_authority,
+                    None,
+                    default_decimals,
+                )?];
                 let signers = vec![config.fee_payer.as_ref()];
-                let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
-                println!("Initializing existing mint account {}", mint_keypair.pubkey());
+                let transaction =
+                    checked_transaction_with_signers(config, &instructions, &signers)?;
+                println!(
+                    "Initializing existing mint account {}",
+                    mint_keypair.pubkey()
+                );
                 send_transaction(config, transaction)?;
                 return Ok(());
             }
@@ -407,7 +420,10 @@ fn setup_mint_account(
     let signers = vec![config.fee_payer.as_ref(), mint_keypair];
     let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
 
-    println!("Creating and initializing mint account {}", mint_keypair.pubkey());
+    println!(
+        "Creating and initializing mint account {}",
+        mint_keypair.pubkey()
+    );
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -432,7 +448,7 @@ fn setup_pool_fee_account(
         mint_pubkey,
         &config.manager.pubkey(),
         &mut instructions,
-        total_rent_free_balances
+        total_rent_free_balances,
     );
 
     println!("Creating pool fee collection account {}", pool_fee_account);
@@ -444,6 +460,7 @@ fn setup_pool_fee_account(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn setup_and_initialize_validator_list_with_stake_pool(
     config: &Config,
     stake_pool_keypair: &Keypair,
@@ -462,24 +479,29 @@ fn setup_and_initialize_validator_list_with_stake_pool(
     validator_list_size: usize,
 ) -> CommandResult {
     let stake_pool_account_info = config.rpc_client.get_account(&stake_pool_keypair.pubkey());
-    let validator_list_account_info = config.rpc_client.get_account(&validator_list_keypair.pubkey());
+    let validator_list_account_info = config
+        .rpc_client
+        .get_account(&validator_list_keypair.pubkey());
 
     let stake_pool_account_lamports = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(get_packed_len::<StakePool>())?;
 
     let mut instructions = vec![];
-    let mut signers = vec![
-        config.fee_payer.as_ref(),
-        config.manager.as_ref(),
-    ];
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
 
     if let Ok(account) = validator_list_account_info {
         if account.owner == spl_stake_pool::id() {
             if account.data.iter().all(|&x| x == 0) {
-                println!("Validator list account {} already exists and is ready to be initialized", validator_list_keypair.pubkey());
+                println!(
+                    "Validator list account {} already exists and is ready to be initialized",
+                    validator_list_keypair.pubkey()
+                );
             } else {
-                println!("Validator list account {} already exists and is initialized", validator_list_keypair.pubkey());
+                println!(
+                    "Validator list account {} already exists and is initialized",
+                    validator_list_keypair.pubkey()
+                );
                 return Ok(());
             }
         }
@@ -496,11 +518,17 @@ fn setup_and_initialize_validator_list_with_stake_pool(
 
     if let Ok(account) = stake_pool_account_info {
         if account.owner == spl_stake_pool::id() {
-            if account.data.len() > 0 && account.data[0] == AccountType::StakePool as u8 {
-                println!("Stake pool account {} already exists and is initialized", stake_pool_keypair.pubkey());
-                return Ok(());
+            if account.data.iter().all(|&x| x == 0) {
+                println!(
+                    "Stake pool account {} already exists but is not initialized",
+                    stake_pool_keypair.pubkey()
+                );
             } else {
-                println!("Stake pool account {} already exists but is not initialized", stake_pool_keypair.pubkey());
+                println!(
+                    "Stake pool account {} already exists and is initialized",
+                    stake_pool_keypair.pubkey()
+                );
+                return Ok(());
             }
         }
     } else {
@@ -511,26 +539,26 @@ fn setup_and_initialize_validator_list_with_stake_pool(
             get_packed_len::<StakePool>() as u64,
             &spl_stake_pool::id(),
         ));
-        instructions.push(spl_stake_pool::instruction::initialize(
-            &spl_stake_pool::id(),
-            &stake_pool_keypair.pubkey(),
-            &config.manager.pubkey(),
-            &config.staker.pubkey(),
-            withdraw_authority,
-            &validator_list_keypair.pubkey(),
-            &reserve_keypair.pubkey(),
-            &mint_keypair.pubkey(),
-            pool_fee_account,
-            &spl_token::id(),
-            deposit_authority.as_ref().map(|x| x.pubkey()),
-            epoch_fee,
-            withdrawal_fee,
-            deposit_fee,
-            referral_fee,
-            max_validators,
-        ));
-        signers.push(stake_pool_keypair);
     }
+    instructions.push(spl_stake_pool::instruction::initialize(
+        &spl_stake_pool::id(),
+        &stake_pool_keypair.pubkey(),
+        &config.manager.pubkey(),
+        &config.staker.pubkey(),
+        withdraw_authority,
+        &validator_list_keypair.pubkey(),
+        &reserve_keypair.pubkey(),
+        &mint_keypair.pubkey(),
+        pool_fee_account,
+        &spl_token::id(),
+        deposit_authority.as_ref().map(|x| x.pubkey()),
+        epoch_fee,
+        withdrawal_fee,
+        deposit_fee,
+        referral_fee,
+        max_validators,
+    ));
+    signers.push(stake_pool_keypair);
 
     if let Some(ref deposit_auth) = deposit_authority {
         signers.push(deposit_auth);
@@ -552,7 +580,6 @@ fn setup_and_initialize_validator_list_with_stake_pool(
 
     Ok(())
 }
-
 
 #[allow(clippy::too_many_arguments)]
 fn command_create_pool(
@@ -614,11 +641,27 @@ fn command_create_pool(
         println!("Stake pool withdraw authority {}", withdraw_authority);
     }
 
-    setup_reserve_stake_account(config, &reserve_keypair, reserve_stake_balance, &withdraw_authority)?;
-    setup_mint_account(config, &mint_keypair, mint_account_balance, &withdraw_authority, default_decimals)?;
-    setup_pool_fee_account(config, &mint_keypair.pubkey(), &mut total_rent_free_balances)?;
+    setup_reserve_stake_account(
+        config,
+        &reserve_keypair,
+        reserve_stake_balance,
+        &withdraw_authority,
+    )?;
+    setup_mint_account(
+        config,
+        &mint_keypair,
+        mint_account_balance,
+        &withdraw_authority,
+        default_decimals,
+    )?;
+    setup_pool_fee_account(
+        config,
+        &mint_keypair.pubkey(),
+        &mut total_rent_free_balances,
+    )?;
 
-    let pool_fee_account = get_associated_token_address(&config.manager.pubkey(), &mint_keypair.pubkey());
+    let pool_fee_account =
+        get_associated_token_address(&config.manager.pubkey(), &mint_keypair.pubkey());
 
     setup_and_initialize_validator_list_with_stake_pool(
         config,
