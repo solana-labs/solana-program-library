@@ -166,7 +166,7 @@
         "verify the canopy if the tree has it. Before calling this instruction, the tree should be",
         "prepared with `prepare_batch_merkle_tree` and the canopy should be filled with the necessary",
         "nodes with `append_canopy_nodes` (if the canopy is used). This method should be used for",
-        "rolluped creation of trees. The indexing of such rollups should be done off-chain. The",
+        "batch creation of trees. The indexing of such batches should be done off-chain. The",
         "programs calling this instruction should take care of ensuring the indexing is possible.",
         "For example, staking may be required to ensure the tree creator has some responsibility",
         "for what is being indexed. If indexing is not possible, there should be a mechanism to",
