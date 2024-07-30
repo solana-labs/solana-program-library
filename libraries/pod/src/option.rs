@@ -98,9 +98,9 @@ impl<T: Nullable> TryFrom<Option<T>> for PodOption<T> {
 
     fn try_from(value: Option<T>) -> Result<Self, Self::Error> {
         match value {
-            Some(value) if value.is_some() => Ok(PodOption(value)),
+            Some(value) if value.is_none() => Err(ProgramError::InvalidArgument),
+            Some(value) => Ok(PodOption(value)),
             None => Ok(PodOption(T::NONE)),
-            _ => Err(ProgramError::InvalidArgument),
         }
     }
 }
@@ -110,9 +110,9 @@ impl<T: Nullable> TryFrom<COption<T>> for PodOption<T> {
 
     fn try_from(value: COption<T>) -> Result<Self, Self::Error> {
         match value {
-            COption::Some(value) if value.is_some() => Ok(PodOption(value)),
+            COption::Some(value) if value.is_none() => Err(ProgramError::InvalidArgument),
+            COption::Some(value) => Ok(PodOption(value)),
             COption::None => Ok(PodOption(T::NONE)),
-            _ => Err(ProgramError::InvalidArgument),
         }
     }
 }
