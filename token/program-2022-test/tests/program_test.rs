@@ -44,6 +44,7 @@ impl TestContext {
     pub async fn new() -> Self {
         let mut program_test =
             ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
+        program_test.prefer_bpf(false);
         program_test.add_program(
             "spl_record",
             spl_record::id(),

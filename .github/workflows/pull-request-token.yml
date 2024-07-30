@@ -3,19 +3,19 @@ name: Token Pull Request
 on:
   pull_request:
     paths:
-    - 'associated-token-account/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token.yml'
-    - '!token/js/**'
+      - "associated-token-account/**"
+      - "token/**"
+      - "ci/*-version.sh"
+      - ".github/workflows/pull-request-token.yml"
+      - "!token/js/**"
   push:
     branches: [master]
     paths:
-    - 'associated-token-account/**'
-    - 'token/**'
-    - 'ci/*-version.sh'
-    - '.github/workflows/pull-request-token.yml'
-    - '!token/js/**'
+      - "associated-token-account/**"
+      - "token/**"
+      - "ci/*-version.sh"
+      - ".github/workflows/pull-request-token.yml"
+      - "!token/js/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -66,9 +66,7 @@ jobs:
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Build and test token
-        run: |
-          cargo build-sbf --manifest-path record/program/Cargo.toml
-          ./ci/cargo-test-sbf.sh token
+        run: ./ci/cargo-test-sbf.sh token
 
       - name: Upload programs
         uses: actions/upload-artifact@v3
@@ -248,7 +246,6 @@ jobs:
         run: |
           cargo build-sbf --manifest-path token/program-2022/Cargo.toml
           cargo build-sbf --manifest-path instruction-padding/program/Cargo.toml
-          cargo build-sbf --manifest-path record/program/Cargo.toml
           ./token/twoxtx-setup.sh
           ./token/twoxtx-solana/cargo-test-sbf --manifest-path token/program-2022-test/Cargo.toml -- --nocapture
 
