@@ -1919,8 +1919,8 @@ where
             )
         };
 
-        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
-        // guaranteed by the previous check
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
         let proof_location =
             Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
                 .unwrap();
@@ -1999,8 +1999,8 @@ where
             )
         };
 
-        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
-        // guaranteed by the previous check
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
         let proof_location =
             Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
                 .unwrap();
@@ -2083,8 +2083,8 @@ where
             )
         };
 
-        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
-        // guaranteed by the previous check
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
         let proof_location =
             Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
                 .unwrap();
@@ -2211,8 +2211,8 @@ where
             )
         };
 
-        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
-        // guaranteed by the previous check
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
         let proof_location =
             Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
                 .unwrap();
@@ -2897,8 +2897,8 @@ where
             )
         };
 
-        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
-        // guaranteed by the previous check
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
         let proof_location =
             Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
                 .unwrap();
@@ -3629,8 +3629,8 @@ where
             )
         };
 
-        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
-        // guaranteed by the previous check
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
         let proof_location =
             Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
                 .unwrap();
@@ -3700,8 +3700,8 @@ where
             )
         };
 
-        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
-        // guaranteed by the previous check
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
+        // which is guaranteed by the previous check
         let proof_location =
             Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
                 .unwrap();
@@ -3788,8 +3788,8 @@ where
         .await
     }
 
-    // Creates `ProofLocation` from proof data and `ProofAccount`. If both `proof_data` and
-    // `proof_account` are `None`, then the result is `None`.
+    // Creates `ProofLocation` from proof data and `ProofAccount`. If both
+    // `proof_data` and `proof_account` are `None`, then the result is `None`.
     fn confidential_transfer_create_proof_location<'a, ZK: ZkProofData<U>, U: Pod>(
         proof_data: Option<&'a ZK>,
         proof_account: Option<&'a ProofAccount>,
