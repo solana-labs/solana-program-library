@@ -1919,25 +1919,11 @@ where
             )
         };
 
-        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(
-                1.try_into().unwrap(),
-                ProofData::InstructionData(proof_data_temp),
-            )
-        } else {
-            match proof_account.unwrap() {
-                ProofAccount::ContextAccount(context_state_account) => {
-                    ProofLocation::ContextStateAccount(context_state_account)
-                }
-                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
-                    1.try_into().unwrap(),
-                    ProofData::RecordAccount(
-                        record_account,
-                        RecordData::WRITABLE_START_INDEX as u32,
-                    ),
-                ),
-            }
-        };
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
+        // guaranteed by the previous check
+        let proof_location =
+            Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
+                .unwrap();
 
         let decryptable_balance = aes_key.encrypt(0);
 
@@ -2013,25 +1999,11 @@ where
             )
         };
 
-        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(
-                1.try_into().unwrap(),
-                ProofData::InstructionData(proof_data_temp),
-            )
-        } else {
-            match proof_account.unwrap() {
-                ProofAccount::ContextAccount(context_state_account) => {
-                    ProofLocation::ContextStateAccount(context_state_account)
-                }
-                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
-                    1.try_into().unwrap(),
-                    ProofData::RecordAccount(
-                        record_account,
-                        RecordData::WRITABLE_START_INDEX as u32,
-                    ),
-                ),
-            }
-        };
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
+        // guaranteed by the previous check
+        let proof_location =
+            Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
+                .unwrap();
 
         self.process_ixs(
             &confidential_transfer::instruction::empty_account(
@@ -2111,25 +2083,11 @@ where
             )
         };
 
-        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(
-                1.try_into().unwrap(),
-                ProofData::InstructionData(proof_data_temp),
-            )
-        } else {
-            match proof_account.unwrap() {
-                ProofAccount::ContextAccount(context_state_account) => {
-                    ProofLocation::ContextStateAccount(context_state_account)
-                }
-                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
-                    1.try_into().unwrap(),
-                    ProofData::RecordAccount(
-                        record_account,
-                        RecordData::WRITABLE_START_INDEX as u32,
-                    ),
-                ),
-            }
-        };
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
+        // guaranteed by the previous check
+        let proof_location =
+            Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
+                .unwrap();
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(withdraw_amount, aes_key)
@@ -2253,25 +2211,11 @@ where
             )
         };
 
-        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(
-                1.try_into().unwrap(),
-                ProofData::InstructionData(proof_data_temp),
-            )
-        } else {
-            match proof_account.unwrap() {
-                ProofAccount::ContextAccount(context_state_account) => {
-                    ProofLocation::ContextStateAccount(context_state_account)
-                }
-                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
-                    1.try_into().unwrap(),
-                    ProofData::RecordAccount(
-                        record_account,
-                        RecordData::WRITABLE_START_INDEX as u32,
-                    ),
-                ),
-            }
-        };
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
+        // guaranteed by the previous check
+        let proof_location =
+            Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
+                .unwrap();
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
@@ -2953,25 +2897,11 @@ where
             )
         };
 
-        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(
-                1.try_into().unwrap(),
-                ProofData::InstructionData(proof_data_temp),
-            )
-        } else {
-            match proof_account.unwrap() {
-                ProofAccount::ContextAccount(context_state_account) => {
-                    ProofLocation::ContextStateAccount(context_state_account)
-                }
-                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
-                    1.try_into().unwrap(),
-                    ProofData::RecordAccount(
-                        record_account,
-                        RecordData::WRITABLE_START_INDEX as u32,
-                    ),
-                ),
-            }
-        };
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
+        // guaranteed by the previous check
+        let proof_location =
+            Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
+                .unwrap();
 
         let new_decryptable_available_balance = account_info
             .new_decryptable_available_balance(transfer_amount, source_aes_key)
@@ -3699,25 +3629,11 @@ where
             )
         };
 
-        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(
-                1.try_into().unwrap(),
-                ProofData::InstructionData(proof_data_temp),
-            )
-        } else {
-            match proof_account.unwrap() {
-                ProofAccount::ContextAccount(context_state_account) => {
-                    ProofLocation::ContextStateAccount(context_state_account)
-                }
-                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
-                    1.try_into().unwrap(),
-                    ProofData::RecordAccount(
-                        record_account,
-                        RecordData::WRITABLE_START_INDEX as u32,
-                    ),
-                ),
-            }
-        };
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
+        // guaranteed by the previous check
+        let proof_location =
+            Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
+                .unwrap();
 
         self.process_ixs(
             &confidential_transfer_fee::instruction::withdraw_withheld_tokens_from_mint(
@@ -3784,25 +3700,11 @@ where
             )
         };
 
-        let proof_location = if let Some(proof_data_temp) = proof_data.as_ref() {
-            ProofLocation::InstructionOffset(
-                1.try_into().unwrap(),
-                ProofData::InstructionData(proof_data_temp),
-            )
-        } else {
-            match proof_account.unwrap() {
-                ProofAccount::ContextAccount(context_state_account) => {
-                    ProofLocation::ContextStateAccount(context_state_account)
-                }
-                ProofAccount::RecordAccount(record_account) => ProofLocation::InstructionOffset(
-                    1.try_into().unwrap(),
-                    ProofData::RecordAccount(
-                        record_account,
-                        RecordData::WRITABLE_START_INDEX as u32,
-                    ),
-                ),
-            }
-        };
+        // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`, which is
+        // guaranteed by the previous check
+        let proof_location =
+            Self::confidential_transfer_create_proof_location(proof_data.as_ref(), proof_account)
+                .unwrap();
 
         self.process_ixs(
             &confidential_transfer_fee::instruction::withdraw_withheld_tokens_from_accounts(
@@ -3884,6 +3786,37 @@ where
             signing_keypairs,
         )
         .await
+    }
+
+    // Creates `ProofLocation` from proof data and `ProofAccount`. If both `proof_data` and
+    // `proof_account` are `None`, then the result is `None`.
+    fn confidential_transfer_create_proof_location<'a, ZK: ZkProofData<U>, U: Pod>(
+        proof_data: Option<&'a ZK>,
+        proof_account: Option<&'a ProofAccount>,
+    ) -> Option<ProofLocation<'a, ZK>> {
+        if let Some(proof_data) = proof_data {
+            Some(ProofLocation::InstructionOffset(
+                1.try_into().unwrap(),
+                ProofData::InstructionData(proof_data),
+            ))
+        } else if let Some(proof_account) = proof_account {
+            match proof_account {
+                ProofAccount::ContextAccount(context_state_account) => {
+                    Some(ProofLocation::ContextStateAccount(context_state_account))
+                }
+                ProofAccount::RecordAccount(record_account) => {
+                    Some(ProofLocation::InstructionOffset(
+                        1.try_into().unwrap(),
+                        ProofData::RecordAccount(
+                            record_account,
+                            RecordData::WRITABLE_START_INDEX as u32,
+                        ),
+                    ))
+                }
+            }
+        } else {
+            None
+        }
     }
 
     pub async fn withdraw_excess_lamports<S: Signers>(
