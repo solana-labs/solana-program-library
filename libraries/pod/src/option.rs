@@ -8,16 +8,25 @@
 
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::{program_option::COption, pubkey::Pubkey},
+    solana_program::{
+        program_error::ProgramError,
+        program_option::COption,
+        pubkey::{Pubkey, PUBKEY_BYTES},
+    },
 };
 
 /// Trait for types that can be `None`.
 ///
 /// This trait is used to indicate that a type can be `None` according to a
 /// specific value.
-pub trait Nullable: Default + Pod {
+pub trait Nullable: PartialEq + Pod + Sized {
+    /// Value that represents `None` for the type.
+    const NONE: Self;
+
     /// Indicates whether the value is `None` or not.
-    fn is_none(&self) -> bool;
+    fn is_none(&self) -> bool {
+        self == &Self::NONE
+    }
 
     /// Indicates whether the value is `Some`` value of type `T`` or not.
     fn is_some(&self) -> bool {
@@ -66,8 +75,16 @@ impl<T: Nullable> PodOption<T> {
     }
 }
 
+/// ## Safety
+///
+/// `PodOption` is a transparent wrapper around a `Pod` type `T` with identical
+/// data representation.
 unsafe impl<T: Nullable> Pod for PodOption<T> {}
 
+/// ## Safety
+///
+/// `PodOption` is a transparent wrapper around a `Pod` type `T` with identical
+/// data representation.
 unsafe impl<T: Nullable> Zeroable for PodOption<T> {}
 
 impl<T: Nullable> From<T> for PodOption<T> {
@@ -76,32 +93,33 @@ impl<T: Nullable> From<T> for PodOption<T> {
     }
 }
 
-impl<T: Nullable> From<Option<T>> for PodOption<T> {
-    fn from(from: Option<T>) -> Self {
-        match from {
-            Some(value) => PodOption(value),
-            None => PodOption(T::default()),
+impl<T: Nullable> TryFrom<Option<T>> for PodOption<T> {
+    type Error = ProgramError;
+
+    fn try_from(value: Option<T>) -> Result<Self, Self::Error> {
+        match value {
+            Some(value) if value.is_none() => Err(ProgramError::InvalidArgument),
+            Some(value) => Ok(PodOption(value)),
+            None => Ok(PodOption(T::NONE)),
         }
     }
 }
 
-impl<T: Nullable> From<COption<T>> for PodOption<T> {
-    fn from(from: COption<T>) -> Self {
-        match from {
-            COption::Some(value) => PodOption(value),
-            COption::None => PodOption(T::default()),
+impl<T: Nullable> TryFrom<COption<T>> for PodOption<T> {
+    type Error = ProgramError;
+
+    fn try_from(value: COption<T>) -> Result<Self, Self::Error> {
+        match value {
+            COption::Some(value) if value.is_none() => Err(ProgramError::InvalidArgument),
+            COption::Some(value) => Ok(PodOption(value)),
+            COption::None => Ok(PodOption(T::NONE)),
         }
     }
 }
 
 /// Implementation of `Nullable` for `Pubkey`.
-///
-/// The implementation assumes that the default value of `Pubkey` represents
-/// the `None` value.
 impl Nullable for Pubkey {
-    fn is_none(&self) -> bool {
-        self == &Pubkey::default()
-    }
+    const NONE: Self = Pubkey::new_from_array([0u8; PUBKEY_BYTES]);
 }
 
 #[cfg(test)]
@@ -126,13 +144,38 @@ mod tests {
         assert_eq!(values[1], PodOption::from(Pubkey::default()));
 
         let option_pubkey = Some(sysvar::ID);
-        let pod_option_pubkey: PodOption<Pubkey> = option_pubkey.into();
+        let pod_option_pubkey: PodOption<Pubkey> = option_pubkey.try_into().unwrap();
         assert_eq!(pod_option_pubkey, PodOption::from(sysvar::ID));
-        assert_eq!(pod_option_pubkey, PodOption::from(option_pubkey));
+        assert_eq!(
+            pod_option_pubkey,
+            PodOption::try_from(option_pubkey).unwrap()
+        );
 
         let coption_pubkey = COption::Some(sysvar::ID);
-        let pod_option_pubkey: PodOption<Pubkey> = coption_pubkey.into();
+        let pod_option_pubkey: PodOption<Pubkey> = coption_pubkey.try_into().unwrap();
         assert_eq!(pod_option_pubkey, PodOption::from(sysvar::ID));
-        assert_eq!(pod_option_pubkey, PodOption::from(coption_pubkey));
+        assert_eq!(
+            pod_option_pubkey,
+            PodOption::try_from(coption_pubkey).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_try_from_option() {
+        let some_pubkey = Some(sysvar::ID);
+        assert_eq!(
+            PodOption::try_from(some_pubkey).unwrap(),
+            PodOption(sysvar::ID)
+        );
+
+        let none_pubkey = None;
+        assert_eq!(
+            PodOption::try_from(none_pubkey).unwrap(),
+            PodOption::from(Pubkey::NONE)
+        );
+
+        let invalid_option = Some(Pubkey::NONE);
+        let err = PodOption::try_from(invalid_option).unwrap_err();
+        assert_eq!(err, ProgramError::InvalidArgument);
     }
 }
