@@ -8,7 +8,11 @@
 
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
+    solana_program::{
+        program_error::ProgramError,
+        program_option::COption,
+        pubkey::{Pubkey, PUBKEY_BYTES},
+    },
 };
 
 /// Trait for types that can be `None`.
@@ -16,18 +20,18 @@ use {
 /// This trait is used to indicate that a type can be `None` according to a
 /// specific value.
 pub trait Nullable: PartialEq + Pod + Sized {
+    /// Value that represents `None` for the type.
+    const NONE: Self;
+
     /// Indicates whether the value is `None` or not.
     fn is_none(&self) -> bool {
-        self == &Self::none()
+        self == &Self::NONE
     }
 
     /// Indicates whether the value is `Some`` value of type `T`` or not.
     fn is_some(&self) -> bool {
         !self.is_none()
     }
-
-    /// Returns the value that represents `None` for the type.
-    fn none() -> Self;
 }
 
 /// A "pod-enabled" type that can be used as an `Option<T>` without
@@ -95,7 +99,7 @@ impl<T: Nullable> TryFrom<Option<T>> for PodOption<T> {
     fn try_from(value: Option<T>) -> Result<Self, Self::Error> {
         match value {
             Some(value) if value.is_some() => Ok(PodOption(value)),
-            None => Ok(PodOption(T::none())),
+            None => Ok(PodOption(T::NONE)),
             _ => Err(ProgramError::InvalidArgument),
         }
     }
@@ -107,20 +111,15 @@ impl<T: Nullable> TryFrom<COption<T>> for PodOption<T> {
     fn try_from(value: COption<T>) -> Result<Self, Self::Error> {
         match value {
             COption::Some(value) if value.is_some() => Ok(PodOption(value)),
-            COption::None => Ok(PodOption(T::none())),
+            COption::None => Ok(PodOption(T::NONE)),
             _ => Err(ProgramError::InvalidArgument),
         }
     }
 }
 
 /// Implementation of `Nullable` for `Pubkey`.
-///
-/// The implementation assumes that the default value of `Pubkey` represents
-/// the `None` value.
 impl Nullable for Pubkey {
-    fn none() -> Self {
-        Pubkey::default()
-    }
+    const NONE: Self = Pubkey::new_from_array([0u8; PUBKEY_BYTES]);
 }
 
 #[cfg(test)]
@@ -172,10 +171,10 @@ mod tests {
         let none_pubkey = None;
         assert_eq!(
             PodOption::try_from(none_pubkey).unwrap(),
-            PodOption::from(Pubkey::none())
+            PodOption::from(Pubkey::NONE)
         );
 
-        let invalid_option = Some(Pubkey::none());
+        let invalid_option = Some(Pubkey::NONE);
         let err = PodOption::try_from(invalid_option).unwrap_err();
         assert_eq!(err, ProgramError::InvalidArgument);
     }
