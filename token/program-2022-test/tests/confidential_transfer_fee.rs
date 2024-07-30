@@ -13,6 +13,7 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
+    spl_record::state::RecordData,
     spl_token_2022::{
         error::TokenError,
         extension::{
@@ -740,7 +741,10 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_record_ac
         .await
         .unwrap();
 
-    let proof_account = ProofAccount::RecordAccount(record_account.pubkey());
+    let proof_account = ProofAccount::RecordAccount(
+        record_account.pubkey(),
+        RecordData::WRITABLE_START_INDEX as u32,
+    );
 
     token
         .confidential_transfer_withdraw_withheld_tokens_from_mint(
@@ -1012,7 +1016,10 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_recor
         .await
         .unwrap();
 
-    let proof_account = ProofAccount::RecordAccount(record_account.pubkey());
+    let proof_account = ProofAccount::RecordAccount(
+        record_account.pubkey(),
+        RecordData::WRITABLE_START_INDEX as u32,
+    );
 
     let fee = transfer_fee_parameters.calculate_fee(100).unwrap();
     let new_decryptable_available_balance = alice_meta.aes_key.encrypt(fee);

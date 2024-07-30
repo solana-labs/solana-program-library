@@ -3804,13 +3804,10 @@ where
                 ProofAccount::ContextAccount(context_state_account) => {
                     Some(ProofLocation::ContextStateAccount(context_state_account))
                 }
-                ProofAccount::RecordAccount(record_account) => {
+                ProofAccount::RecordAccount(record_account, offset) => {
                     Some(ProofLocation::InstructionOffset(
                         1.try_into().unwrap(),
-                        ProofData::RecordAccount(
-                            record_account,
-                            RecordData::WRITABLE_START_INDEX as u32,
-                        ),
+                        ProofData::RecordAccount(record_account, *offset),
                     ))
                 }
             }

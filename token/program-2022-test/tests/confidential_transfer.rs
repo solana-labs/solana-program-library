@@ -15,6 +15,7 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
+    spl_record::state::RecordData,
     spl_token_2022::{
         error::TokenError,
         extension::{
@@ -497,7 +498,10 @@ async fn confidential_transfer_empty_account_with_record() {
         .await
         .unwrap();
 
-    let proof_account = ProofAccount::RecordAccount(record_account.pubkey());
+    let proof_account = ProofAccount::RecordAccount(
+        record_account.pubkey(),
+        RecordData::WRITABLE_START_INDEX as u32,
+    );
 
     token
         .confidential_transfer_empty_account(
@@ -969,7 +973,10 @@ async fn confidential_transfer_withdraw_with_record_account() {
         .await
         .unwrap();
 
-    let proof_account = ProofAccount::RecordAccount(record_account.pubkey());
+    let proof_account = ProofAccount::RecordAccount(
+        record_account.pubkey(),
+        RecordData::WRITABLE_START_INDEX as u32,
+    );
 
     token
         .confidential_transfer_withdraw(
