@@ -692,34 +692,6 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_record_ac
         .await
         .unwrap();
 
-    let new_decryptable_available_balance = alice_meta.aes_key.encrypt(0);
-    token
-        .confidential_transfer_withdraw_withheld_tokens_from_mint(
-            &alice_meta.token_account,
-            &withdraw_withheld_authority.pubkey(),
-            None,
-            None,
-            &withdraw_withheld_authority_elgamal_keypair,
-            alice_meta.elgamal_keypair.pubkey(),
-            &new_decryptable_available_balance.into(),
-            &[&withdraw_withheld_authority],
-        )
-        .await
-        .unwrap();
-
-    // withheld fees are not harvested to mint yet
-    alice_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 0,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-
     token
         .confidential_transfer_harvest_withheld_tokens_to_mint(&[&bob_meta.token_account])
         .await
