@@ -45,7 +45,11 @@ pub fn decode_proof_instruction_context<T: Pod + ZkProofData<U>, U: Pod>(
         let end_offset = start_offset
             .checked_add(std::mem::size_of::<T>())
             .ok_or(ProgramError::InvalidAccountData)?;
-        let raw_proof_data = &record_account.data.borrow()[start_offset..end_offset];
+
+        let record_account_data = record_account.data.borrow();
+        let raw_proof_data = record_account_data
+            .get(start_offset..end_offset)
+            .ok_or(ProgramError::AccountDataTooSmall)?;
 
         bytemuck::try_from_bytes::<T>(raw_proof_data)
             .map(|proof_data| *ZkProofData::context_data(proof_data))
