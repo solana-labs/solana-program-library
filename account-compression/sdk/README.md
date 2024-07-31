@@ -167,7 +167,7 @@ Here are some examples using account compression in the wild:
 
 * Solana Program Library [tests](https://github.com/solana-labs/solana-program-library/tree/master/account-compression/sdk/tests)
 
-* Metaplex Program Library Compressed NFT [tests](https://github.com/metaplex-foundation/metaplex-program-library/tree/master/bubblegum/js/tests)
+* Metaplex Program Library Compressed NFT [tests](https://github.com/metaplex-foundation/mpl-bubblegum/tree/main/clients/js/test)
 
 ## Build from Source
 
