@@ -3472,7 +3472,7 @@ pub async fn process_command<'a>(
             let member_address = value_t!(arg_matches, "member_address", Pubkey).ok();
 
             let transfer_fee = arg_matches.values_of("transfer_fee").map(|mut v| {
-                println_display(config,"transfer_fee flag has been deprecated".to_string());
+                println_display(config,"transfer-fee has been deprecated and will be removed in a future release. Please specify --transfer-fee-basis-points and --transfer-fee-maximum-fee with a UI amount".to_string());
                 (
                     v.next()
                         .unwrap()
@@ -3485,44 +3485,12 @@ pub async fn process_command<'a>(
                 )
             });
 
-            let transfer_fee_basis_point = arg_matches.values_of("transfer_fee_basis_points").map(|mut v| {
-                v.next()
-                    .unwrap()
-                    .parse::<u16>()
-                    .unwrap_or_else(print_error_and_exit)
-            });
-
-            let transfer_fee_maximum_fee = arg_matches.values_of("transfer_fee_maximum_fee").map(|mut v| {
-                v.next()
-                    .unwrap()
-                    .parse::<f64>()
-                    .unwrap_or_else(print_error_and_exit)
-            });
-
-            let transfer_fee = match transfer_fee.is_some() {
-                true => match transfer_fee_basis_point.is_some() || transfer_fee_maximum_fee.is_some() {
-                    true => Err("transfer-fee-basis-point and transfer-fee-maximum-fee flag disable when using transfer-fee flag"),
-                    false => Ok(transfer_fee)
-                },
-                false => match transfer_fee_basis_point.is_some() && transfer_fee_maximum_fee.is_some() {
-                    true => Ok(Some((transfer_fee_basis_point.unwrap(), (transfer_fee_maximum_fee.unwrap() * (u64::pow(10, decimals.into())) as f64) as u64))),
-                    false =>  if transfer_fee_basis_point.is_some() {
-                        Err("Missing transfer_fee_maximum_fee flag")
-                    }else if transfer_fee_maximum_fee.is_some() {
-                        Err("Missing transfer_fee_basis_point")
-                    }else{
-                        Ok(None)
-                    }
-                }
-            };
-
-            let transfer_fee = match transfer_fee {
-                Ok(result) => result,
-                Err(e) => {
-                    eprintln!("{}",e);
-                    exit(1);
-                }
-            };
+            let tranfer_fee_basis_point = value_of::<u16>(arg_matches, "transfer_fee_basis_points");
+            let transfer_fee_maximum_fee = value_of::<f64>(arg_matches, "transfer_fee_maximum_fee")
+                .map(|v| spl_token::ui_amount_to_amount(v, decimals));
+            let transfer_fee = tranfer_fee_basis_point
+                .map(|v| (v, transfer_fee_maximum_fee.unwrap()))
+                .or(transfer_fee);
 
             let (token_signer, token) =
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)

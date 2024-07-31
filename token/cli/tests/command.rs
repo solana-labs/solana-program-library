@@ -124,7 +124,6 @@ async fn main() {
         async_trial!(default_account_state, test_validator, payer),
         async_trial!(transfer_fee, test_validator, payer),
         async_trial!(transfer_fee_basis_point, test_validator, payer),
-        // async_trial!(transfer_fee_maximum_fee, test_validator, payer),
         async_trial!(confidential_transfer, test_validator, payer),
         async_trial!(multisig_transfer, test_validator, payer),
         async_trial!(offline_multisig_transfer_with_nonce, test_validator, payer),
@@ -2535,7 +2534,7 @@ async fn transfer_fee_basis_point(test_validator: &TestValidator, payer: &Keypai
     write_keypair_file(&token, &token_keypair_file);
     let token_pubkey = token.pubkey();
     process_test_command(
-        &config, 
+        &config,
         payer,
         &[
             "spl-token",
@@ -2544,9 +2543,10 @@ async fn transfer_fee_basis_point(test_validator: &TestValidator, payer: &Keypai
             "--transfer-fee-basis-points",
             &transfer_fee_basis_points.to_string(),
             "--transfer-fee-maximum-fee",
-            &maximum_fee.to_string()
-        ]
-    ).await
+            &maximum_fee.to_string(),
+        ],
+    )
+    .await
     .unwrap();
 
     let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
@@ -2558,7 +2558,7 @@ async fn transfer_fee_basis_point(test_validator: &TestValidator, payer: &Keypai
     );
     assert_eq!(
         u64::from(extension.older_transfer_fee.maximum_fee),
-        (maximum_fee * i32::pow(10,decimal) as f64) as u64
+        (maximum_fee * i32::pow(10, decimal) as f64) as u64
     );
     assert_eq!(
         u16::from(extension.newer_transfer_fee.transfer_fee_basis_points),

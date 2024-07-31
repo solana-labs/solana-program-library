@@ -764,6 +764,8 @@ pub fn app<'a, 'b>(
                         .takes_value(true)
                         .number_of_values(2)
                         .hidden(true)
+                        .conflicts_with("transfer_fee_basis_points")
+                        .conflicts_with("transfer_fee_maximum_fee")
                         .help(
                             "Add a transfer fee to the mint. \
                             The mint authority can set the fee and withdraw collected fees.",
@@ -775,6 +777,8 @@ pub fn app<'a, 'b>(
                         .value_names(&["FEE_IN_BASIS_POINTS"])
                         .takes_value(true)
                         .number_of_values(1)
+                        .conflicts_with("transfer_fee")
+                        .requires("transfer_fee_maximum_fee")
                         .help(
                             "Add transfer fee to the mint. \
                             The mint authority can set the fee.",
@@ -786,9 +790,11 @@ pub fn app<'a, 'b>(
                         .value_names(&["MAXIMUM_FEE"])
                         .takes_value(true)
                         .number_of_values(1)
+                        .conflicts_with("transfer_fee")
+                        .requires("transfer_fee_basis_points")
                         .help(
-                            "Add a UI amount transfer fee to the mint. \
-                            The mint authority can set the fee and collected fee"
+                            "Add a UI amount maximum transfer fee to the mint. \
+                            The mint authority can set and collect fees"
                         )
                 )
                 .arg(
