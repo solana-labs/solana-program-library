@@ -13,7 +13,7 @@ use {
         check_program_account,
         extension::confidential_transfer::{ciphertext_extraction::SourceDecryptHandles, *},
         instruction::{encode_instruction, TokenInstruction},
-        proof::{ProofData, ProofLocation},
+        proof::ProofLocation,
     },
     bytemuck::Zeroable, // `Pod` comes from zk_token_proof_instruction
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -90,9 +90,7 @@ pub enum ConfidentialTransferInstruction {
     ///      in the same transaction or context state account if
     ///      `VerifyPubkeyValidityProof` is pre-verified into a context state
     ///      account.
-    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   4. `[signer]` The single source account owner.
+    ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writeable]` The SPL Token account.
@@ -101,10 +99,8 @@ pub enum ConfidentialTransferInstruction {
     ///      in the same transaction or context state account if
     ///      `VerifyPubkeyValidityProof` is pre-verified into a context state
     ///      account.
-    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   4. `[]` The multisig source account owner.
-    ///   5.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   3. `[]` The multisig source account owner.
+    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig
     /// account.
     ///
     /// Data expected by this instruction:
@@ -155,9 +151,7 @@ pub enum ConfidentialTransferInstruction {
     ///      the same transaction or context state account if
     ///      `VerifyZeroBalanceProof` is pre-verified into a context state
     ///      account.
-    ///   2. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   3. `[signer]` The single account owner.
+    ///   2. `[signer]` The single account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
@@ -165,10 +159,8 @@ pub enum ConfidentialTransferInstruction {
     ///      the same transaction or context state account if
     ///      `VerifyZeroBalanceProof` is pre-verified into a context state
     ///      account.
-    ///   2. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   3. `[]` The multisig account owner.
-    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   2. `[]` The multisig account owner.
+    ///   3.. `[signer]` Required M signer accounts for the SPL Token Multisig
     /// account.
     ///
     /// Data expected by this instruction:
@@ -222,9 +214,7 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the
     ///      same transaction or context state account if `VerifyWithdraw` is
     ///      pre-verified into a context state account.
-    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   4. `[signer]` The single source account owner.
+    ///   3. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
@@ -232,10 +222,8 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the
     ///      same transaction or context state account if `VerifyWithdraw` is
     ///      pre-verified into a context state account.
-    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   4. `[]` The multisig  source account owner.
-    ///   5.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   3. `[]` The multisig  source account owner.
+    ///   4.. `[signer]` Required M signer accounts for the SPL Token Multisig
     /// account.
     ///
     /// Data expected by this instruction:
@@ -260,9 +248,7 @@ pub enum ConfidentialTransferInstruction {
     ///      `VerifyTransferWithFee` is included in the same transaction or
     ///      context state account if these proofs are pre-verified into a
     ///      context state account.
-    ///   5. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   6. `[signer]` The single source account owner.
+    ///   5. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   1. `[writable]` The source SPL Token account.
@@ -272,10 +258,8 @@ pub enum ConfidentialTransferInstruction {
     ///      `VerifyTransferWithFee` is included in the same transaction or
     ///      context state account if these proofs are pre-verified into a
     ///      context state account.
-    ///   5. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   6. `[]` The multisig  source account owner.
-    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   5. `[]` The multisig  source account owner.
+    ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig
     /// account.
     ///
     /// Data expected by this instruction:
@@ -731,11 +715,8 @@ pub fn inner_configure_account(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
             proof_instruction_offset.into()
         }
         ProofLocation::ContextStateAccount(context_state_account) => {
@@ -800,16 +781,8 @@ pub fn configure_account(
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
-        match proof_data {
-            ProofData::InstructionData(data) => {
-                instructions.push(verify_pubkey_validity(None, data))
-            }
-            ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyPubkeyValidity
-                    .encode_verify_proof_from_account(None, address, offset),
-            ),
-        };
-    }
+        instructions.push(verify_pubkey_validity(None, proof_data));
+    };
 
     Ok(instructions)
 }
@@ -854,11 +827,8 @@ pub fn inner_empty_account(
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
             proof_instruction_offset.into()
         }
         ProofLocation::ContextStateAccount(context_state_account) => {
@@ -914,13 +884,7 @@ pub fn empty_account(
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
-        match proof_data {
-            ProofData::InstructionData(data) => instructions.push(verify_zero_balance(None, data)),
-            ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyZeroBalance
-                    .encode_verify_proof_from_account(None, address, offset),
-            ),
-        };
+        instructions.push(verify_zero_balance(None, proof_data));
     };
 
     Ok(instructions)
@@ -982,11 +946,8 @@ pub fn inner_withdraw(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
             proof_instruction_offset.into()
         }
         ProofLocation::ContextStateAccount(context_state_account) => {
@@ -1054,13 +1015,7 @@ pub fn withdraw(
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
-        match proof_data {
-            ProofData::InstructionData(data) => instructions.push(verify_withdraw(None, data)),
-            ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyWithdraw
-                    .encode_verify_proof_from_account(None, address, offset),
-            ),
-        };
+        instructions.push(verify_withdraw(None, proof_data));
     };
 
     Ok(instructions)
@@ -1088,11 +1043,8 @@ pub fn inner_transfer(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
             proof_instruction_offset.into()
         }
         ProofLocation::ContextStateAccount(context_state_account) => {
@@ -1156,13 +1108,7 @@ pub fn transfer(
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
-        match proof_data {
-            ProofData::InstructionData(data) => instructions.push(verify_transfer(None, data)),
-            ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyTransfer
-                    .encode_verify_proof_from_account(None, address, offset),
-            ),
-        };
+        instructions.push(verify_transfer(None, proof_data));
     };
 
     Ok(instructions)
@@ -1190,11 +1136,8 @@ pub fn inner_transfer_with_fee(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
             proof_instruction_offset.into()
         }
         ProofLocation::ContextStateAccount(context_state_account) => {
@@ -1258,15 +1201,7 @@ pub fn transfer_with_fee(
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
-        match proof_data {
-            ProofData::InstructionData(data) => {
-                instructions.push(verify_transfer_with_fee(None, data))
-            }
-            ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyTransferWithFee
-                    .encode_verify_proof_from_account(None, address, offset),
-            ),
-        };
+        instructions.push(verify_transfer_with_fee(None, proof_data));
     };
 
     Ok(instructions)

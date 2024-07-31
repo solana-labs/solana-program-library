@@ -69,7 +69,6 @@ use {
     },
     spl_token_client::{
         client::{ProgramRpcClientSendTransaction, RpcClientResponse},
-        proof_generation::ProofAccount,
         token::{ComputeUnitLimit, ExtensionInitializationParams, Token},
     },
     spl_token_group_interface::state::TokenGroup,
@@ -3349,7 +3348,7 @@ async fn command_deposit_withdraw_confidential_tokens(
                 .confidential_transfer_withdraw(
                     &token_account_address,
                     &owner,
-                    Some(&ProofAccount::ContextAccount(context_state_pubkey)),
+                    Some(&context_state_pubkey),
                     amount,
                     decimals,
                     Some(withdraw_account_info),
