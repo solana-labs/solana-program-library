@@ -43,13 +43,11 @@ pub fn verify_configure_account_proof(
         let sysvar_account_info = next_account_info(account_info_iter)?;
         let zkp_instruction =
             get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        Ok(decode_proof_instruction_context::<
+        Ok(*decode_proof_instruction_context::<
             PubkeyValidityData,
             PubkeyValidityProofContext,
         >(
-            account_info_iter,
-            ProofInstruction::VerifyPubkeyValidity,
-            &zkp_instruction,
+            ProofInstruction::VerifyPubkeyValidity, &zkp_instruction
         )?)
     }
 }
@@ -79,13 +77,11 @@ pub fn verify_empty_account_proof(
         let sysvar_account_info = next_account_info(account_info_iter)?;
         let zkp_instruction =
             get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        Ok(decode_proof_instruction_context::<
+        Ok(*decode_proof_instruction_context::<
             ZeroBalanceProofData,
             ZeroBalanceProofContext,
         >(
-            account_info_iter,
-            ProofInstruction::VerifyZeroBalance,
-            &zkp_instruction,
+            ProofInstruction::VerifyZeroBalance, &zkp_instruction
         )?)
     }
 }
@@ -114,13 +110,11 @@ pub fn verify_withdraw_proof(
         let sysvar_account_info = next_account_info(account_info_iter)?;
         let zkp_instruction =
             get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        Ok(decode_proof_instruction_context::<
+        Ok(*decode_proof_instruction_context::<
             WithdrawData,
             WithdrawProofContext,
         >(
-            account_info_iter,
-            ProofInstruction::VerifyWithdraw,
-            &zkp_instruction,
+            ProofInstruction::VerifyWithdraw, &zkp_instruction
         )?)
     }
 }
@@ -265,13 +259,11 @@ pub fn verify_transfer_proof(
         let sysvar_account_info = next_account_info(account_info_iter)?;
         let zkp_instruction =
             get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        let proof_context =
-            (decode_proof_instruction_context::<TransferData, TransferProofContext>(
-                account_info_iter,
-                ProofInstruction::VerifyTransfer,
-                &zkp_instruction,
-            )?)
-            .into();
+        let proof_context = (*decode_proof_instruction_context::<
+            TransferData,
+            TransferProofContext,
+        >(ProofInstruction::VerifyTransfer, &zkp_instruction)?)
+        .into();
 
         Ok(Some(proof_context))
     }
@@ -498,12 +490,10 @@ pub fn verify_transfer_with_fee_proof(
         let sysvar_account_info = next_account_info(account_info_iter)?;
         let zkp_instruction =
             get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        let proof_context =
-            decode_proof_instruction_context::<TransferWithFeeData, TransferWithFeeProofContext>(
-                account_info_iter,
-                ProofInstruction::VerifyTransferWithFee,
-                &zkp_instruction,
-            )?;
+        let proof_context = decode_proof_instruction_context::<
+            TransferWithFeeData,
+            TransferWithFeeProofContext,
+        >(ProofInstruction::VerifyTransferWithFee, &zkp_instruction)?;
 
         let proof_tranfer_fee_basis_points: u16 =
             proof_context.fee_parameters.fee_rate_basis_points.into();
@@ -519,7 +509,7 @@ pub fn verify_transfer_with_fee_proof(
             return Err(TokenError::FeeParametersMismatch.into());
         }
 
-        Ok(Some(proof_context.into()))
+        Ok(Some((*proof_context).into()))
     }
 }
 

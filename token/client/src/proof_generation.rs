@@ -6,7 +6,6 @@
 
 use {
     curve25519_dalek::scalar::Scalar,
-    solana_sdk::pubkey::Pubkey,
     spl_token_2022::{
         error::TokenError,
         extension::confidential_transfer::{
@@ -32,11 +31,6 @@ use {
         },
     },
 };
-
-pub enum ProofAccount {
-    ContextAccount(Pubkey),
-    RecordAccount(Pubkey, u32),
-}
 
 /// The main logic to create the five split proof data for a transfer with fee.
 #[allow(clippy::too_many_arguments)]
