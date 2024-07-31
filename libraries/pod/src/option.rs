@@ -43,6 +43,12 @@ pub trait Nullable: PartialEq + Pod + Sized {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct PodOption<T: Nullable>(T);
 
+impl<T: Nullable> Default for PodOption<T> {
+    fn default() -> Self {
+        Self(T::NONE)
+    }
+}
+
 impl<T: Nullable> PodOption<T> {
     /// Returns the contained value as an `Option`.
     #[inline]
@@ -177,5 +183,11 @@ mod tests {
         let invalid_option = Some(Pubkey::NONE);
         let err = PodOption::try_from(invalid_option).unwrap_err();
         assert_eq!(err, ProgramError::InvalidArgument);
+    }
+
+    #[test]
+    fn test_default() {
+        let def = PodOption::<Pubkey>::default();
+        assert_eq!(def, None.try_into().unwrap());
     }
 }
