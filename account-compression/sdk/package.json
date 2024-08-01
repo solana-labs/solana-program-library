@@ -89,7 +89,7 @@
     "jest-config": "^29.0.1",
     "prettier": "^3.3.3",
     "start-server-and-test": "^2.0.5",
-    "ts-jest": "^29.2.3",
+    "ts-jest": "^29.2.4",
     "ts-jest-resolver": "^2.0.1",
     "ts-node": "^10.9.2",
     "typedoc": "^0.26.5",
