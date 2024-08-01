@@ -45,6 +45,15 @@ pub fn process_instruction_fail(
     Err(ProgramError::InvalidInstructionData)
 }
 
+/// Test program to succeed transfer hook, conforms to transfer-hook-interface
+pub fn process_instruction_success(
+    _program_id: &Pubkey,
+    _accounts: &[AccountInfo],
+    _input: &[u8],
+) -> ProgramResult {
+    Ok(())
+}
+
 /// Test program to check signer / write downgrade for repeated accounts,
 /// conforms to transfer-hook-interface
 pub fn process_instruction_downgrade(
@@ -912,4 +921,62 @@ async fn success_confidential_transfer() {
             .transferring,
         false.into()
     );
+}
+
+#[tokio::test]
+async fn success_without_validation_account() {
+    let authority = Pubkey::new_unique();
+    let program_id = Pubkey::new_unique();
+    let mint = Keypair::new();
+    let mut program_test = ProgramTest::default();
+    program_test.prefer_bpf(false);
+    program_test.add_program(
+        "spl_token_2022",
+        spl_token_2022::id(),
+        processor!(Processor::process),
+    );
+    program_test.add_program(
+        "my_transfer_hook",
+        program_id,
+        processor!(process_instruction_success),
+    );
+    let context = program_test.start_with_context().await;
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+    let mut context = TestContext {
+        context,
+        token_context: None,
+    };
+    context
+        .init_token_with_mint_keypair_and_freeze_authority(
+            mint,
+            vec![ExtensionInitializationParams::TransferHook {
+                authority: Some(authority),
+                program_id: Some(program_id),
+            }],
+            None,
+        )
+        .await
+        .unwrap();
+    let token_context = context.token_context.take().unwrap();
+
+    let amount = 10;
+    let (alice_account, bob_account) =
+        setup_accounts(&token_context, Keypair::new(), Keypair::new(), amount).await;
+
+    // only add the transfer hook program id, nothing else
+    let token = token_context
+        .token
+        .with_transfer_hook_accounts(vec![AccountMeta::new_readonly(program_id, false)]);
+    token
+        .transfer(
+            &alice_account,
+            &bob_account,
+            &token_context.alice.pubkey(),
+            amount,
+            &[&token_context.alice],
+        )
+        .await
+        .unwrap();
+    let destination = token.get_account_info(&bob_account).await.unwrap();
+    assert_eq!(destination.base.amount, amount);
 }
