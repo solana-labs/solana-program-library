@@ -779,6 +779,7 @@ pub fn app<'a, 'b>(
                         .number_of_values(1)
                         .conflicts_with("transfer_fee")
                         .requires("transfer_fee_maximum_fee")
+                        .validator(is_parsable::<u16>)
                         .help(
                             "Add transfer fee to the mint. \
                             The mint authority can set the fee.",
@@ -792,6 +793,7 @@ pub fn app<'a, 'b>(
                         .number_of_values(1)
                         .conflicts_with("transfer_fee")
                         .requires("transfer_fee_basis_points")
+                        .validator(is_amount)
                         .help(
                             "Add a UI amount maximum transfer fee to the mint. \
                             The mint authority can set and collect fees"

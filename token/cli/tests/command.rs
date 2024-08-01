@@ -2531,7 +2531,7 @@ async fn transfer_fee_basis_point(test_validator: &TestValidator, payer: &Keypai
 
     let token = Keypair::new();
     let token_keypair_file = NamedTempFile::new().unwrap();
-    write_keypair_file(&token, &token_keypair_file);
+    write_keypair_file(&token, &token_keypair_file).unwrap();
     let token_pubkey = token.pubkey();
     process_test_command(
         &config,
