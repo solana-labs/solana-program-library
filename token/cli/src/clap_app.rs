@@ -763,10 +763,41 @@ pub fn app<'a, 'b>(
                         .value_names(&["FEE_IN_BASIS_POINTS", "MAXIMUM_FEE"])
                         .takes_value(true)
                         .number_of_values(2)
+                        .hidden(true)
+                        .conflicts_with("transfer_fee_basis_points")
+                        .conflicts_with("transfer_fee_maximum_fee")
                         .help(
                             "Add a transfer fee to the mint. \
                             The mint authority can set the fee and withdraw collected fees.",
                         ),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_basis_points")
+                        .long("transfer-fee-basis-points")
+                        .value_names(&["FEE_IN_BASIS_POINTS"])
+                        .takes_value(true)
+                        .number_of_values(1)
+                        .conflicts_with("transfer_fee")
+                        .requires("transfer_fee_maximum_fee")
+                        .validator(is_parsable::<u16>)
+                        .help(
+                            "Add transfer fee to the mint. \
+                            The mint authority can set the fee.",
+                        ),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_maximum_fee")
+                        .long("transfer-fee-maximum-fee")
+                        .value_names(&["MAXIMUM_FEE"])
+                        .takes_value(true)
+                        .number_of_values(1)
+                        .conflicts_with("transfer_fee")
+                        .requires("transfer_fee_basis_points")
+                        .validator(is_amount)
+                        .help(
+                            "Add a UI amount maximum transfer fee to the mint. \
+                            The mint authority can set and collect fees"
+                        )
                 )
                 .arg(
                     Arg::with_name("enable_permanent_delegate")

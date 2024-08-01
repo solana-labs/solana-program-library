@@ -3473,6 +3473,7 @@ pub async fn process_command<'a>(
             let member_address = value_t!(arg_matches, "member_address", Pubkey).ok();
 
             let transfer_fee = arg_matches.values_of("transfer_fee").map(|mut v| {
+                println_display(config,"transfer-fee has been deprecated and will be removed in a future release. Please specify --transfer-fee-basis-points and --transfer-fee-maximum-fee with a UI amount".to_string());
                 (
                     v.next()
                         .unwrap()
@@ -3484,6 +3485,13 @@ pub async fn process_command<'a>(
                         .unwrap_or_else(print_error_and_exit),
                 )
             });
+
+            let tranfer_fee_basis_point = value_of::<u16>(arg_matches, "transfer_fee_basis_points");
+            let transfer_fee_maximum_fee = value_of::<f64>(arg_matches, "transfer_fee_maximum_fee")
+                .map(|v| spl_token::ui_amount_to_amount(v, decimals));
+            let transfer_fee = tranfer_fee_basis_point
+                .map(|v| (v, transfer_fee_maximum_fee.unwrap()))
+                .or(transfer_fee);
 
             let (token_signer, token) =
                 get_signer(arg_matches, "token_keypair", &mut wallet_manager)
