@@ -1,9 +1,10 @@
+import { Address } from '@solana/addresses';
 import {
-  appendTransactionInstruction,
-  Transaction,
+  appendTransactionMessageInstruction,
+  createTransactionMessage,
   TransactionVersion,
-  Base58EncodedAddress,
-} from '@solana/web3.js';
+  TransactionMessage,
+} from '@solana/transaction-messages';
 
 import {
   findPoolAddress,
@@ -39,24 +40,24 @@ import {
 interface DepositParams {
   rpc: any; // XXX Rpc<???>
   pool: PoolAddress;
-  userWallet: Base58EncodedAddress;
-  userStakeAccount?: Base58EncodedAddress;
+  userWallet: Address;
+  userStakeAccount?: Address;
   depositFromDefaultAccount?: boolean;
-  userTokenAccount?: Base58EncodedAddress;
-  userLamportAccount?: Base58EncodedAddress;
-  userWithdrawAuthority?: Base58EncodedAddress;
+  userTokenAccount?: Address;
+  userLamportAccount?: Address;
+  userWithdrawAuthority?: Address;
 }
 
 interface WithdrawParams {
   rpc: any; // XXX Rpc<???>
   pool: PoolAddress;
-  userWallet: Base58EncodedAddress;
-  userStakeAccount: Base58EncodedAddress;
+  userWallet: Address;
+  userStakeAccount: Address;
   tokenAmount: bigint;
   createStakeAccount?: boolean;
-  userStakeAuthority?: Base58EncodedAddress;
-  userTokenAccount?: Base58EncodedAddress;
-  userTokenAuthority?: Base58EncodedAddress;
+  userStakeAuthority?: Address;
+  userTokenAccount?: Address;
+  userTokenAuthority?: Address;
 }
 
 export const SINGLE_POOL_ACCOUNT_SIZE = 33n;
@@ -76,10 +77,10 @@ export const SinglePoolProgram = {
 export async function initializeTransaction(
   rpc: any, // XXX not exported: Rpc<???>,
   voteAccount: VoteAccountAddress,
-  payer: Base58EncodedAddress,
+  payer: Address,
   skipMetadata = false,
-): Promise<Transaction> {
-  let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
+): Promise<TransactionMessage> {
+  let transaction = createTransactionMessage({ version: 0 });
 
   const pool = await findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccount);
   const [stake, mint, poolRent, stakeRent, mintRent, minimumDelegationObj] = await Promise.all([
@@ -92,7 +93,7 @@ export async function initializeTransaction(
   ]);
   const minimumDelegation = minimumDelegationObj.value;
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     SystemInstruction.transfer({
       from: payer,
       to: pool,
@@ -101,7 +102,7 @@ export async function initializeTransaction(
     transaction,
   );
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     SystemInstruction.transfer({
       from: payer,
       to: stake,
@@ -110,7 +111,7 @@ export async function initializeTransaction(
     transaction,
   );
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     SystemInstruction.transfer({
       from: payer,
       to: mint,
@@ -119,13 +120,13 @@ export async function initializeTransaction(
     transaction,
   );
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     await initializePoolInstruction(voteAccount),
     transaction,
   );
 
   if (!skipMetadata) {
-    transaction = appendTransactionInstruction(
+    transaction = appendTransactionMessageInstruction(
       await createTokenMetadataInstruction(pool, payer),
       transaction,
     );
@@ -136,9 +137,9 @@ export async function initializeTransaction(
 
 export async function reactivatePoolStakeTransaction(
   voteAccount: VoteAccountAddress,
-): Promise<Transaction> {
+): Promise<TransactionMessage> {
   let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     await reactivatePoolStakeInstruction(voteAccount),
     transaction,
   );
@@ -158,7 +159,7 @@ export async function depositTransaction(params: DepositParams) {
     params.depositFromDefaultAccount
       ? await findDefaultDepositAccountAddress(pool, userWallet)
       : params.userStakeAccount
-  ) as Base58EncodedAddress;
+  ) as Address;
 
   let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
 
@@ -176,7 +177,7 @@ export async function depositTransaction(params: DepositParams) {
     userTokenAccount == userAssociatedTokenAccount &&
     (await rpc.getAccountInfo(userAssociatedTokenAccount).send()) == null
   ) {
-    transaction = appendTransactionInstruction(
+    transaction = appendTransactionMessageInstruction(
       TokenInstruction.createAssociatedTokenAccount({
         payer: userWallet,
         associatedAccount: userAssociatedTokenAccount,
@@ -187,7 +188,7 @@ export async function depositTransaction(params: DepositParams) {
     );
   }
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     StakeInstruction.authorize({
       stakeAccount: userStakeAccount,
       authorized: userWithdrawAuthority,
@@ -197,7 +198,7 @@ export async function depositTransaction(params: DepositParams) {
     transaction,
   );
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     StakeInstruction.authorize({
       stakeAccount: userStakeAccount,
       authorized: userWithdrawAuthority,
@@ -207,7 +208,7 @@ export async function depositTransaction(params: DepositParams) {
     transaction,
   );
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     await depositStakeInstruction(pool, userStakeAccount, userTokenAccount, userLamportAccount),
     transaction,
   );
@@ -232,7 +233,7 @@ export async function withdrawTransaction(params: WithdrawParams) {
   const userTokenAuthority = params.userTokenAuthority || userWallet;
 
   if (createStakeAccount) {
-    transaction = appendTransactionInstruction(
+    transaction = appendTransactionMessageInstruction(
       SystemInstruction.createAccount({
         from: userWallet,
         lamports: await rpc.getMinimumBalanceForRentExemption(STAKE_ACCOUNT_SIZE).send(),
@@ -244,7 +245,7 @@ export async function withdrawTransaction(params: WithdrawParams) {
     );
   }
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     TokenInstruction.approve({
       account: userTokenAccount,
       delegate: poolMintAuthority,
@@ -254,7 +255,7 @@ export async function withdrawTransaction(params: WithdrawParams) {
     transaction,
   );
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     await withdrawStakeInstruction(
       pool,
       userStakeAccount,
@@ -270,10 +271,10 @@ export async function withdrawTransaction(params: WithdrawParams) {
 
 export async function createTokenMetadataTransaction(
   pool: PoolAddress,
-  payer: Base58EncodedAddress,
-): Promise<Transaction> {
+  payer: Address,
+): Promise<TransactionMessage> {
   let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     await createTokenMetadataInstruction(pool, payer),
     transaction,
   );
@@ -283,13 +284,13 @@ export async function createTokenMetadataTransaction(
 
 export async function updateTokenMetadataTransaction(
   voteAccount: VoteAccountAddress,
-  authorizedWithdrawer: Base58EncodedAddress,
+  authorizedWithdrawer: Address,
   name: string,
   symbol: string,
   uri?: string,
-): Promise<Transaction> {
+): Promise<TransactionMessage> {
   let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     await updateTokenMetadataInstruction(voteAccount, authorizedWithdrawer, name, symbol, uri),
     transaction,
   );
@@ -300,9 +301,9 @@ export async function updateTokenMetadataTransaction(
 export async function createAndDelegateUserStakeTransaction(
   rpc: any, // XXX not exported: Rpc<???>,
   voteAccount: VoteAccountAddress,
-  userWallet: Base58EncodedAddress,
+  userWallet: Address,
   stakeAmount: bigint,
-): Promise<Transaction> {
+): Promise<TransactionMessage> {
   let transaction = { instructions: [] as any, version: 'legacy' as TransactionVersion };
 
   const pool = await findPoolAddress(SINGLE_POOL_PROGRAM_ID, voteAccount);
@@ -311,7 +312,7 @@ export async function createAndDelegateUserStakeTransaction(
     await rpc.getMinimumBalanceForRentExemption(STAKE_ACCOUNT_SIZE).send(),
   ]);
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     SystemInstruction.createAccountWithSeed({
       base: userWallet,
       from: userWallet,
@@ -324,7 +325,7 @@ export async function createAndDelegateUserStakeTransaction(
     transaction,
   );
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     StakeInstruction.initialize({
       stakeAccount,
       staker: userWallet,
@@ -333,7 +334,7 @@ export async function createAndDelegateUserStakeTransaction(
     transaction,
   );
 
-  transaction = appendTransactionInstruction(
+  transaction = appendTransactionMessageInstruction(
     StakeInstruction.delegate({
       stakeAccount,
       authorized: userWallet,
