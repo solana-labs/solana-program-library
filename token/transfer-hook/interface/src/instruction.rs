@@ -25,9 +25,9 @@ pub enum TransferHookInstruction {
     ///   1. `[]` Token mint
     ///   2. `[]` Destination account
     ///   3. `[]` Source account's owner/delegate
-    ///   4. `[]` Validation account
-    ///   5..5+M `[]` `M` additional accounts, written in validation account
-    ///     data
+    ///   4. `[]` (Optional) Validation account
+    ///   5..5+M `[]` `M` optional additional accounts, written in validation
+    /// account     data
     Execute {
         /// Amount of tokens to transfer
         amount: u64,
@@ -165,9 +165,11 @@ pub fn execute_with_extra_account_metas(
         mint_pubkey,
         destination_pubkey,
         authority_pubkey,
-        validate_state_pubkey,
         amount,
     );
+    instruction
+        .accounts
+        .push(AccountMeta::new_readonly(*validate_state_pubkey, false));
     instruction.accounts.extend_from_slice(additional_accounts);
     instruction
 }
@@ -180,7 +182,6 @@ pub fn execute(
     mint_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
-    validate_state_pubkey: &Pubkey,
     amount: u64,
 ) -> Instruction {
     let data = TransferHookInstruction::Execute { amount }.pack();
@@ -189,7 +190,6 @@ pub fn execute(
         AccountMeta::new_readonly(*mint_pubkey, false),
         AccountMeta::new_readonly(*destination_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
-        AccountMeta::new_readonly(*validate_state_pubkey, false),
     ];
     Instruction {
         program_id: *program_id,

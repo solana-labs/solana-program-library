@@ -85,9 +85,11 @@ where
         mint_pubkey,
         destination_pubkey,
         authority_pubkey,
-        &validate_state_pubkey,
         amount,
     );
+    execute_instruction
+        .accounts
+        .push(AccountMeta::new_readonly(validate_state_pubkey, false));
 
     ExtraAccountMetaList::add_to_instruction::<ExecuteInstruction, _, _>(
         &mut execute_instruction,
