@@ -3,14 +3,12 @@
 use solana_zk_token_sdk::zk_token_elgamal::ops as syscall;
 use {
     crate::{
-        check_program_account, check_zk_token_proof_program_account,
+        check_program_account,
         error::TokenError,
         extension::{
             confidential_transfer::{
                 instruction::{
-                    CiphertextCiphertextEqualityProofContext,
-                    CiphertextCiphertextEqualityProofData, ProofContextState, ProofInstruction,
-                    ProofType,
+                    CiphertextCiphertextEqualityProofContext, CiphertextCiphertextEqualityProofData,
                 },
                 ConfidentialTransferAccount, DecryptableBalance,
             },
@@ -29,7 +27,7 @@ use {
         instruction::{decode_instruction_data, decode_instruction_type},
         pod::{PodAccount, PodMint},
         processor::Processor,
-        proof::decode_proof_instruction_context,
+        proof::verify_and_extract_context,
         solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
     },
     bytemuck::Zeroable,
@@ -39,9 +37,8 @@ use {
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar::instructions::get_instruction_relative,
     },
-    spl_pod::{bytemuck::pod_from_bytes, optional_keys::OptionalNonZeroPubkey},
+    spl_pod::optional_keys::OptionalNonZeroPubkey,
     std::slice::Iter,
 };
 
@@ -177,34 +174,10 @@ fn verify_ciphertext_ciphertext_equality_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
 ) -> Result<CiphertextCiphertextEqualityProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        let context_account_info = next_account_info(account_info_iter)?;
-        // interpret `account_info` as a context state account
-        check_zk_token_proof_program_account(context_account_info.owner)?;
-        let context_state_account_data = context_account_info.data.borrow();
-        let context_state = pod_from_bytes::<
-            ProofContextState<CiphertextCiphertextEqualityProofContext>,
-        >(&context_state_account_data)?;
-
-        if context_state.proof_type != ProofType::CiphertextCiphertextEquality.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        let sysvar_account_info = next_account_info(account_info_iter)?;
-        // interpret `account_info` as a sysvar
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        Ok(decode_proof_instruction_context::<
-            CiphertextCiphertextEqualityProofData,
-            CiphertextCiphertextEqualityProofContext,
-        >(
-            account_info_iter,
-            ProofInstruction::VerifyCiphertextCiphertextEquality,
-            &zkp_instruction,
-        )?)
-    }
+    verify_and_extract_context::<
+        CiphertextCiphertextEqualityProofData,
+        CiphertextCiphertextEqualityProofContext,
+    >(account_info_iter, proof_instruction_offset)
 }
 
 /// Processes a [WithdrawWithheldTokensFromAccounts] instruction.

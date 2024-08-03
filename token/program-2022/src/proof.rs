@@ -1,6 +1,7 @@
 //! Helper for processing instruction data from ZK Token proof program
 
 use {
+    crate::check_zk_token_proof_program_account,
     bytemuck::Pod,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -8,11 +9,15 @@ use {
         msg,
         program_error::ProgramError,
         pubkey::Pubkey,
+        sysvar::instructions::get_instruction_relative,
     },
     solana_zk_token_sdk::{
-        instruction::ZkProofData, zk_token_proof_instruction::ProofInstruction,
+        instruction::{ProofType, ZkProofData},
+        zk_token_proof_instruction::ProofInstruction,
         zk_token_proof_program,
+        zk_token_proof_state::ProofContextState,
     },
+    spl_pod::bytemuck::pod_from_bytes,
     std::{num::NonZeroI8, slice::Iter},
 };
 
@@ -81,6 +86,71 @@ pub enum ProofData<'a, T> {
     /// The address of a record account containing the proof data and its byte
     /// offset
     RecordAccount(&'a Pubkey, u32),
+}
+
+/// Verify zero-knowledge proof and return the corresponding proof context.
+pub fn verify_and_extract_context<T: Pod + ZkProofData<U>, U: Pod>(
+    account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
+    proof_instruction_offset: i64,
+) -> Result<U, ProgramError> {
+    if proof_instruction_offset == 0 {
+        // interpret `account_info` as a context state account
+        let context_state_account_info = next_account_info(account_info_iter)?;
+        check_zk_token_proof_program_account(context_state_account_info.owner)?;
+        let context_state_account_data = context_state_account_info.data.borrow();
+        let context_state = pod_from_bytes::<ProofContextState<U>>(&context_state_account_data)?;
+
+        if context_state.proof_type != T::PROOF_TYPE.into() {
+            return Err(ProgramError::InvalidInstructionData);
+        }
+
+        Ok(context_state.proof_context)
+    } else {
+        // interpret `account_info` as a sysvar
+        let sysvar_account_info = next_account_info(account_info_iter)?;
+        let zkp_instruction =
+            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
+        let expected_proof_type = zk_proof_type_to_instruction(T::PROOF_TYPE)?;
+        Ok(decode_proof_instruction_context::<T, U>(
+            account_info_iter,
+            expected_proof_type,
+            &zkp_instruction,
+        )?)
+    }
+}
+
+fn zk_proof_type_to_instruction(proof_type: ProofType) -> Result<ProofInstruction, ProgramError> {
+    match proof_type {
+        ProofType::ZeroBalance => Ok(ProofInstruction::VerifyZeroBalance),
+        ProofType::Withdraw => Ok(ProofInstruction::VerifyWithdraw),
+        ProofType::CiphertextCiphertextEquality => {
+            Ok(ProofInstruction::VerifyCiphertextCiphertextEquality)
+        }
+        ProofType::Transfer => Ok(ProofInstruction::VerifyTransfer),
+        ProofType::TransferWithFee => Ok(ProofInstruction::VerifyTransferWithFee),
+        ProofType::PubkeyValidity => Ok(ProofInstruction::VerifyPubkeyValidity),
+        ProofType::RangeProofU64 => Ok(ProofInstruction::VerifyRangeProofU64),
+        ProofType::BatchedRangeProofU64 => Ok(ProofInstruction::VerifyBatchedRangeProofU64),
+        ProofType::BatchedRangeProofU128 => Ok(ProofInstruction::VerifyBatchedRangeProofU128),
+        ProofType::BatchedRangeProofU256 => Ok(ProofInstruction::VerifyBatchedRangeProofU256),
+        ProofType::CiphertextCommitmentEquality => {
+            Ok(ProofInstruction::VerifyCiphertextCommitmentEquality)
+        }
+        ProofType::GroupedCiphertext2HandlesValidity => {
+            Ok(ProofInstruction::VerifyGroupedCiphertext2HandlesValidity)
+        }
+        ProofType::BatchedGroupedCiphertext2HandlesValidity => {
+            Ok(ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity)
+        }
+        ProofType::FeeSigma => Ok(ProofInstruction::VerifyFeeSigma),
+        ProofType::GroupedCiphertext3HandlesValidity => {
+            Ok(ProofInstruction::VerifyGroupedCiphertext3HandlesValidity)
+        }
+        ProofType::BatchedGroupedCiphertext3HandlesValidity => {
+            Ok(ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity)
+        }
+        ProofType::Uninitialized => Err(ProgramError::InvalidInstructionData),
+    }
 }
 
 /// Instruction options for when using split context state accounts

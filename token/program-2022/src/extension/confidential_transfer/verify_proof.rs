@@ -5,7 +5,7 @@ use {
             confidential_transfer::{ciphertext_extraction::*, instruction::*, *},
             transfer_fee::TransferFee,
         },
-        proof::decode_proof_instruction_context,
+        proof::{decode_proof_instruction_context, verify_and_extract_context},
     },
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -24,34 +24,10 @@ pub fn verify_configure_account_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
 ) -> Result<PubkeyValidityProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        // interpret `account_info` as a context state account
-        let context_state_account_info = next_account_info(account_info_iter)?;
-        check_zk_token_proof_program_account(context_state_account_info.owner)?;
-        let context_state_account_data = context_state_account_info.data.borrow();
-        let context_state = pod_from_bytes::<ProofContextState<PubkeyValidityProofContext>>(
-            &context_state_account_data,
-        )?;
-
-        if context_state.proof_type != ProofType::PubkeyValidity.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        // interpret `account_info` as a sysvar
-        let sysvar_account_info = next_account_info(account_info_iter)?;
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        Ok(decode_proof_instruction_context::<
-            PubkeyValidityData,
-            PubkeyValidityProofContext,
-        >(
-            account_info_iter,
-            ProofInstruction::VerifyPubkeyValidity,
-            &zkp_instruction,
-        )?)
-    }
+    verify_and_extract_context::<PubkeyValidityData, PubkeyValidityProofContext>(
+        account_info_iter,
+        proof_instruction_offset,
+    )
 }
 
 /// Verify zero-knowledge proof needed for a [EmptyAccount] instruction and
@@ -60,34 +36,10 @@ pub fn verify_empty_account_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
 ) -> Result<ZeroBalanceProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        // interpret `account_info` as a context state account
-        let context_state_account_info = next_account_info(account_info_iter)?;
-        check_zk_token_proof_program_account(context_state_account_info.owner)?;
-        let context_state_account_data = context_state_account_info.data.borrow();
-        let context_state = pod_from_bytes::<ProofContextState<ZeroBalanceProofContext>>(
-            &context_state_account_data,
-        )?;
-
-        if context_state.proof_type != ProofType::ZeroBalance.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        // interpret `account_info` as a sysvar
-        let sysvar_account_info = next_account_info(account_info_iter)?;
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        Ok(decode_proof_instruction_context::<
-            ZeroBalanceProofData,
-            ZeroBalanceProofContext,
-        >(
-            account_info_iter,
-            ProofInstruction::VerifyZeroBalance,
-            &zkp_instruction,
-        )?)
-    }
+    verify_and_extract_context::<ZeroBalanceProofData, ZeroBalanceProofContext>(
+        account_info_iter,
+        proof_instruction_offset,
+    )
 }
 
 /// Verify zero-knowledge proof needed for a [Withdraw] instruction and return
@@ -96,33 +48,10 @@ pub fn verify_withdraw_proof(
     account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
     proof_instruction_offset: i64,
 ) -> Result<WithdrawProofContext, ProgramError> {
-    if proof_instruction_offset == 0 {
-        // interpret `account_info` as a context state account
-        let context_state_account_info = next_account_info(account_info_iter)?;
-        check_zk_token_proof_program_account(context_state_account_info.owner)?;
-        let context_state_account_data = context_state_account_info.data.borrow();
-        let context_state =
-            pod_from_bytes::<ProofContextState<WithdrawProofContext>>(&context_state_account_data)?;
-
-        if context_state.proof_type != ProofType::Withdraw.into() {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        Ok(context_state.proof_context)
-    } else {
-        // interpret `account_info` as a sysvar
-        let sysvar_account_info = next_account_info(account_info_iter)?;
-        let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-        Ok(decode_proof_instruction_context::<
-            WithdrawData,
-            WithdrawProofContext,
-        >(
-            account_info_iter,
-            ProofInstruction::VerifyWithdraw,
-            &zkp_instruction,
-        )?)
-    }
+    verify_and_extract_context::<WithdrawData, WithdrawProofContext>(
+        account_info_iter,
+        proof_instruction_offset,
+    )
 }
 
 /// Verify zero-knowledge proof needed for a [Transfer] instruction without fee
