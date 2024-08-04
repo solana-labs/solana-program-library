@@ -8,7 +8,6 @@ This simple examples defines a zero-copy type with its discriminator.
 
 ```rust
 use {
-    borsh::{BorshSerialize, BorshDeserialize},
     bytemuck::{Pod, Zeroable},
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_type_length_value::{
