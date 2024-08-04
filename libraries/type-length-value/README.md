@@ -45,8 +45,8 @@ impl SplDiscriminate for MyOtherPodValue {
 
 // Account will have two sets of `get_base_len()` (8-byte discriminator and 4-byte length),
 // and enough room for a `MyPodValue` and a `MyOtherPodValue`
-let account_size = TlvState::get_base_len() + std::mem::size_of::<MyPodValue>() + \
-    TlvState::get_base_len() + std::mem::size_of::<MyOtherPodValue>();
+let account_size = TlvStateMut::get_base_len() + std::mem::size_of::<MyPodValue>() + \
+    TlvStateMut::get_base_len() + std::mem::size_of::<MyOtherPodValue>();
 
 // Buffer likely comes from a Solana `solana_program::account_info::AccountInfo`,
 // but this example just uses a vector.
@@ -59,7 +59,7 @@ let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
 // Note: you'll need to provide a boolean whether or not to allow repeating
 // values with the same TLV discriminator.
 // If set to false, this function will error when an existing entry is detected.
-let value = state.init_value::<MyPodValue>(false).unwrap();
+let (value, _) = state.init_value::<MyPodValue>(false).unwrap();
 // Update it in-place
 value.data[0] = 1;
 
