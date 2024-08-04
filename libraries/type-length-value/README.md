@@ -10,7 +10,7 @@ This simple examples defines a zero-copy type with its discriminator.
 use {
     borsh::{BorshSerialize, BorshDeserialize},
     bytemuck::{Pod, Zeroable},
-    spl_discriminator::{ArrayDiscriminator, SplDiscriminate}
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_type_length_value::{
         state::{TlvState, TlvStateBorrowed, TlvStateMut}
     },
