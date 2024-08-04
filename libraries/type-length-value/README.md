@@ -140,7 +140,10 @@ trait on your type.
 ```rust
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    solana_program::borsh::{get_instance_packed_len, try_from_slice_unchecked},
+    solana_program::{
+        borsh1::{get_instance_packed_len, try_from_slice_unchecked},
+        program_error::ProgramError,
+    },
     spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_type_length_value::{
         state::{TlvState, TlvStateMut},
@@ -170,7 +173,7 @@ impl VariableLenPack for MyVariableLenType {
 let initial_data = "This is a pretty cool test!";
 // Allocate exactly the right size for the string, can go bigger if desired
 let tlv_size = 4 + initial_data.len();
-let account_size = TlvState::get_base_len() + tlv_size;
+let account_size = TlvStateMut::get_base_len() + tlv_size;
 
 // Buffer likely comes from a Solana `solana_program::account_info::AccountInfo`,
 // but this example just uses a vector.
@@ -183,7 +186,7 @@ let _ = state.alloc::<MyVariableLenType>(tlv_size, false).unwrap();
 let my_variable_len = MyVariableLenType {
     data: initial_data.to_string()
 };
-state.pack_variable_len_value(&my_variable_len).unwrap();
+state.pack_first_variable_len_value(&my_variable_len).unwrap();
 let deser = state.get_first_variable_len_value::<MyVariableLenType>().unwrap();
 assert_eq!(deser, my_variable_len);
 ```
