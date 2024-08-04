@@ -141,6 +141,7 @@ trait on your type.
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::borsh::{get_instance_packed_len, try_from_slice_unchecked},
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_type_length_value::{
         state::{TlvState, TlvStateMut},
         variable_len_pack::VariableLenPack
