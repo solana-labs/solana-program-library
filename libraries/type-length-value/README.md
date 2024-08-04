@@ -45,40 +45,46 @@ impl SplDiscriminate for MyOtherPodValue {
 
 // Account will have two sets of `get_base_len()` (8-byte discriminator and 4-byte length),
 // and enough room for a `MyPodValue` and a `MyOtherPodValue`
-let account_size = TlvStateMut::get_base_len() + std::mem::size_of::<MyPodValue>() + \
-    TlvStateMut::get_base_len() + std::mem::size_of::<MyOtherPodValue>();
+let account_size = TlvStateMut::get_base_len()
+    + std::mem::size_of::<MyPodValue>()
+    + TlvStateMut::get_base_len()
+    + std::mem::size_of::<MyOtherPodValue>()
+    + TlvStateMut::get_base_len()
+    + std::mem::size_of::<MyOtherPodValue>()
 
 // Buffer likely comes from a Solana `solana_program::account_info::AccountInfo`,
 // but this example just uses a vector.
 let mut buffer = vec![0; account_size];
 
-// Unpack the base buffer as a TLV structure
-let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
-
-// Init and write default value
-// Note: you'll need to provide a boolean whether or not to allow repeating
-// values with the same TLV discriminator.
-// If set to false, this function will error when an existing entry is detected.
-let (value, _) = state.init_value::<MyPodValue>(false).unwrap();
-// Update it in-place
-value.data[0] = 1;
-
-// Init and write another default value
-// This time, we're going to allow repeating values.
-let other_value1 = state.init_value::<MyOtherPodValue>(true).unwrap();
-assert_eq!(other_value1.data, 10);
-// Update it in-place
-other_value1.data = 2;
-
-// Let's do it again, since we can now have repeating values!
-let other_value2 = state.init_value::<MyOtherPodValue>(true).unwrap();
-assert_eq!(other_value2.data, 10);
-// Update it in-place
-other_value2.data = 4;
-
-// Later on, to work with it again, since we did _not_ allow repeating entries,
-// we can just get the first value we encounter.
-let value = state.get_first_value_mut::<MyPodValue>().unwrap();
+{
+    // Unpack the base buffer as a TLV structure
+    let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+    
+    // Init and write default value
+    // Note: you'll need to provide a boolean whether or not to allow repeating
+    // values with the same TLV discriminator.
+    // If set to false, this function will error when an existing entry is detected.
+    let (value, _) = state.init_value::<MyPodValue>(false).unwrap();
+    // Update it in-place
+    value.data[0] = 1;
+    
+    // Init and write another default value
+    // This time, we're going to allow repeating values.
+    let (other_value1, _) = state.init_value::<MyOtherPodValue>(true).unwrap();
+    assert_eq!(other_value1.data, 10);
+    // Update it in-place
+    other_value1.data = 2;
+    
+    // Let's do it again, since we can now have repeating values!
+    let (other_value2, _) = state.init_value::<MyOtherPodValue>(true).unwrap();
+    assert_eq!(other_value2.data, 10);
+    // Update it in-place
+    other_value2.data = 4;
+    
+    // Later on, to work with it again, since we did _not_ allow repeating entries,
+    // we can just get the first value we encounter.
+    let value = state.get_first_value_mut::<MyPodValue>().unwrap();
+}
 
 // Or fetch it from an immutable buffer
 let state = TlvStateBorrowed::unpack(&buffer).unwrap();
@@ -86,8 +92,8 @@ let value1 = state.get_first_value::<MyOtherPodValue>().unwrap();
 
 // Since we used repeating entries for `MyOtherPodValue`, we can grab either one by
 // its entry number
-let value1 = state.get_value_with_repetition::<MyOtherPodValue>(1).unwrap();
-let value2 = state.get_value_with_repetition::<MyOtherPodValue>(2).unwrap();
+let value1 = state.get_value_with_repetition::<MyOtherPodValue>(0).unwrap();
+let value2 = state.get_value_with_repetition::<MyOtherPodValue>(1).unwrap();
 
 ```
 
