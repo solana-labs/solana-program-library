@@ -8,9 +8,8 @@ This simple examples defines a zero-copy type with its discriminator.
 
 ```rust
 use {
-    borsh::{BorshSerialize, BorshDeserialize},
     bytemuck::{Pod, Zeroable},
-    spl_discriminator::{ArrayDiscriminator, SplDiscriminate}
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_type_length_value::{
         state::{TlvState, TlvStateBorrowed, TlvStateMut}
     },
@@ -45,40 +44,46 @@ impl SplDiscriminate for MyOtherPodValue {
 
 // Account will have two sets of `get_base_len()` (8-byte discriminator and 4-byte length),
 // and enough room for a `MyPodValue` and a `MyOtherPodValue`
-let account_size = TlvState::get_base_len() + std::mem::size_of::<MyPodValue>() + \
-    TlvState::get_base_len() + std::mem::size_of::<MyOtherPodValue>();
+let account_size = TlvStateMut::get_base_len()
+    + std::mem::size_of::<MyPodValue>()
+    + TlvStateMut::get_base_len()
+    + std::mem::size_of::<MyOtherPodValue>()
+    + TlvStateMut::get_base_len()
+    + std::mem::size_of::<MyOtherPodValue>()
 
 // Buffer likely comes from a Solana `solana_program::account_info::AccountInfo`,
 // but this example just uses a vector.
 let mut buffer = vec![0; account_size];
 
-// Unpack the base buffer as a TLV structure
-let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
-
-// Init and write default value
-// Note: you'll need to provide a boolean whether or not to allow repeating
-// values with the same TLV discriminator.
-// If set to false, this function will error when an existing entry is detected.
-let value = state.init_value::<MyPodValue>(false).unwrap();
-// Update it in-place
-value.data[0] = 1;
-
-// Init and write another default value
-// This time, we're going to allow repeating values.
-let other_value1 = state.init_value::<MyOtherPodValue>(true).unwrap();
-assert_eq!(other_value1.data, 10);
-// Update it in-place
-other_value1.data = 2;
-
-// Let's do it again, since we can now have repeating values!
-let other_value2 = state.init_value::<MyOtherPodValue>(true).unwrap();
-assert_eq!(other_value2.data, 10);
-// Update it in-place
-other_value2.data = 4;
-
-// Later on, to work with it again, since we did _not_ allow repeating entries,
-// we can just get the first value we encounter.
-let value = state.get_first_value_mut::<MyPodValue>().unwrap();
+{
+    // Unpack the base buffer as a TLV structure
+    let mut state = TlvStateMut::unpack(&mut buffer).unwrap();
+    
+    // Init and write default value
+    // Note: you'll need to provide a boolean whether or not to allow repeating
+    // values with the same TLV discriminator.
+    // If set to false, this function will error when an existing entry is detected.
+    let (value, _) = state.init_value::<MyPodValue>(false).unwrap();
+    // Update it in-place
+    value.data[0] = 1;
+    
+    // Init and write another default value
+    // This time, we're going to allow repeating values.
+    let (other_value1, _) = state.init_value::<MyOtherPodValue>(true).unwrap();
+    assert_eq!(other_value1.data, 10);
+    // Update it in-place
+    other_value1.data = 2;
+    
+    // Let's do it again, since we can now have repeating values!
+    let (other_value2, _) = state.init_value::<MyOtherPodValue>(true).unwrap();
+    assert_eq!(other_value2.data, 10);
+    // Update it in-place
+    other_value2.data = 4;
+    
+    // Later on, to work with it again, we can just get the first value we
+    // encounter, because we did _not_ allow repeating entries for `MyPodValue`.
+    let value = state.get_first_value_mut::<MyPodValue>().unwrap();
+}
 
 // Or fetch it from an immutable buffer
 let state = TlvStateBorrowed::unpack(&buffer).unwrap();
@@ -86,8 +91,8 @@ let value1 = state.get_first_value::<MyOtherPodValue>().unwrap();
 
 // Since we used repeating entries for `MyOtherPodValue`, we can grab either one by
 // its entry number
-let value1 = state.get_value_with_repetition::<MyOtherPodValue>(1).unwrap();
-let value2 = state.get_value_with_repetition::<MyOtherPodValue>(2).unwrap();
+let value1 = state.get_value_with_repetition::<MyOtherPodValue>(0).unwrap();
+let value2 = state.get_value_with_repetition::<MyOtherPodValue>(1).unwrap();
 
 ```
 
@@ -95,7 +100,7 @@ let value2 = state.get_value_with_repetition::<MyOtherPodValue>(2).unwrap();
 
 The Solana blockchain exposes slabs of bytes to on-chain programs, allowing program
 writers to interpret these bytes and change them however they wish. Currently,
-programs interpret account bytes as being only of one type. For example, an token
+programs interpret account bytes as being only of one type. For example, a token
 mint account is only ever a token mint, an AMM pool account is only ever an AMM pool,
 a token metadata account can only hold token metadata, etc.
 
@@ -135,7 +140,11 @@ trait on your type.
 ```rust
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    solana_program::borsh::{get_instance_packed_len, try_from_slice_unchecked},
+    solana_program::{
+        borsh1::{get_instance_packed_len, try_from_slice_unchecked},
+        program_error::ProgramError,
+    },
+    spl_discriminator::{ArrayDiscriminator, SplDiscriminate},
     spl_type_length_value::{
         state::{TlvState, TlvStateMut},
         variable_len_pack::VariableLenPack
@@ -164,7 +173,7 @@ impl VariableLenPack for MyVariableLenType {
 let initial_data = "This is a pretty cool test!";
 // Allocate exactly the right size for the string, can go bigger if desired
 let tlv_size = 4 + initial_data.len();
-let account_size = TlvState::get_base_len() + tlv_size;
+let account_size = TlvStateMut::get_base_len() + tlv_size;
 
 // Buffer likely comes from a Solana `solana_program::account_info::AccountInfo`,
 // but this example just uses a vector.
@@ -177,7 +186,7 @@ let _ = state.alloc::<MyVariableLenType>(tlv_size, false).unwrap();
 let my_variable_len = MyVariableLenType {
     data: initial_data.to_string()
 };
-state.pack_variable_len_value(&my_variable_len).unwrap();
+state.pack_first_variable_len_value(&my_variable_len).unwrap();
 let deser = state.get_first_variable_len_value::<MyVariableLenType>().unwrap();
 assert_eq!(deser, my_variable_len);
 ```
