@@ -46,7 +46,7 @@ describe('interestBearingMint', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const interestBearingMintConfigState = getInterestBearingMintConfigState(mintInfo);
@@ -67,7 +67,7 @@ describe('interestBearingMint', () => {
             TEST_UPDATE_RATE,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfoUpdatedRate = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const updatedRateConfigState = getInterestBearingMintConfigState(mintInfoUpdatedRate);
@@ -91,7 +91,7 @@ describe('interestBearingMint', () => {
             null,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const rateConfigState = getInterestBearingMintConfigState(mintInfo);

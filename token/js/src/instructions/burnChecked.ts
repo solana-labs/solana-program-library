@@ -46,7 +46,7 @@ export function createBurnCheckedInstruction(
     amount: number | bigint,
     decimals: number,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -54,7 +54,7 @@ export function createBurnCheckedInstruction(
             { pubkey: mint, isSigner: false, isWritable: true },
         ],
         owner,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(burnCheckedInstructionData.span);
@@ -64,7 +64,7 @@ export function createBurnCheckedInstruction(
             amount: BigInt(amount),
             decimals,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -96,7 +96,7 @@ export interface DecodedBurnCheckedInstruction {
  */
 export function decodeBurnCheckedInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedBurnCheckedInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== burnCheckedInstructionData.span) throw new TokenInvalidInstructionDataError();

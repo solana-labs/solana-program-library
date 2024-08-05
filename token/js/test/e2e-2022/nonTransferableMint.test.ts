@@ -46,7 +46,7 @@ describe('nonTransferable', () => {
                 programId: TEST_PROGRAM_ID,
             }),
             createInitializeNonTransferableMintInstruction(mint, TEST_PROGRAM_ID),
-            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID)
+            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
@@ -71,7 +71,7 @@ describe('nonTransferable', () => {
                 programId: TEST_PROGRAM_ID,
             }),
             createInitializeImmutableOwnerInstruction(source, TEST_PROGRAM_ID),
-            createInitializeAccountInstruction(source, mint, owner.publicKey, TEST_PROGRAM_ID)
+            createInitializeAccountInstruction(source, mint, owner.publicKey, TEST_PROGRAM_ID),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, sourceKeypair], undefined);
 
@@ -86,7 +86,7 @@ describe('nonTransferable', () => {
                 programId: TEST_PROGRAM_ID,
             }),
             createInitializeImmutableOwnerInstruction(destination, TEST_PROGRAM_ID),
-            createInitializeAccountInstruction(destination, mint, owner.publicKey, TEST_PROGRAM_ID)
+            createInitializeAccountInstruction(destination, mint, owner.publicKey, TEST_PROGRAM_ID),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, destinationKeypair], undefined);
 

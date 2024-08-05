@@ -26,12 +26,12 @@ export async function freezeAccount(
     authority: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
     const transaction = new Transaction().add(
-        createFreezeAccountInstruction(account, mint, authorityPublicKey, multiSigners, programId)
+        createFreezeAccountInstruction(account, mint, authorityPublicKey, multiSigners, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

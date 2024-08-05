@@ -29,7 +29,7 @@ export async function setAuthority(
     newAuthority: PublicKey | null,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [currentAuthorityPublicKey, signers] = getSigners(currentAuthority, multiSigners);
 
@@ -40,8 +40,8 @@ export async function setAuthority(
             authorityType,
             newAuthority,
             multiSigners,
-            programId
-        )
+            programId,
+        ),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

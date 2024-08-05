@@ -21,7 +21,7 @@ describe('SPL Token 2022 MetadataPointer Extension', () => {
             mint,
             authority,
             metadataAddress,
-            TOKEN_2022_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID,
         );
         expect(instruction).to.deep.equal(
             new TransactionInstruction({
@@ -35,7 +35,7 @@ describe('SPL Token 2022 MetadataPointer Extension', () => {
                     AUTHORITY_ADDRESS_BYTES,
                     METADATA_ADDRESS_BYTES,
                 ]),
-            })
+            }),
         );
     });
     it('can create UpdateMetadataPointerInstruction', () => {
@@ -57,7 +57,7 @@ describe('SPL Token 2022 MetadataPointer Extension', () => {
                     ]),
                     METADATA_ADDRESS_BYTES,
                 ]),
-            })
+            }),
         );
     });
     it('can create UpdateMetadataPointerInstruction to none', () => {
@@ -79,7 +79,7 @@ describe('SPL Token 2022 MetadataPointer Extension', () => {
                     ]),
                     NULL_OPTIONAL_NONZERO_PUBKEY_BYTES,
                 ]),
-            })
+            }),
         );
     });
     it('can get state with authority and metadata address', async () => {

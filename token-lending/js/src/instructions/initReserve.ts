@@ -30,7 +30,7 @@ export const initReserveInstruction = (
     lendingMarket: PublicKey,
     lendingMarketAuthority: PublicKey,
     lendingMarketOwner: PublicKey,
-    transferAuthority: PublicKey
+    transferAuthority: PublicKey,
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode(
@@ -39,7 +39,7 @@ export const initReserveInstruction = (
             liquidityAmount: BigInt(liquidityAmount),
             config,
         },
-        data
+        data,
     );
 
     const keys = [

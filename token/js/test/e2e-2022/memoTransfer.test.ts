@@ -49,7 +49,7 @@ describe('memoTransfer', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         source = await createAccount(
@@ -59,7 +59,7 @@ describe('memoTransfer', () => {
             owner.publicKey,
             undefined, // uses ATA by default
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const destinationKeypair = Keypair.generate();
@@ -76,7 +76,7 @@ describe('memoTransfer', () => {
                 programId: TEST_PROGRAM_ID,
             }),
             createInitializeAccountInstruction(destination, mint, owner.publicKey, TEST_PROGRAM_ID),
-            createEnableRequiredMemoTransfersInstruction(destination, owner.publicKey, [], TEST_PROGRAM_ID)
+            createEnableRequiredMemoTransfersInstruction(destination, owner.publicKey, [], TEST_PROGRAM_ID),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, owner, destinationKeypair], undefined);
@@ -89,7 +89,7 @@ describe('memoTransfer', () => {
             TRANSFER_AMOUNT * 10,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
     it('fails without memo when enabled', async () => {
@@ -112,7 +112,7 @@ describe('memoTransfer', () => {
     it('works with memo when enabled', async () => {
         const transaction = new Transaction().add(
             createMemoInstruction('transfer with a memo', [payer.publicKey, owner.publicKey]),
-            createTransferInstruction(source, destination, owner.publicKey, TRANSFER_AMOUNT, [], TEST_PROGRAM_ID)
+            createTransferInstruction(source, destination, owner.publicKey, TRANSFER_AMOUNT, [], TEST_PROGRAM_ID),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, owner], {
             preflightCommitment: 'confirmed',

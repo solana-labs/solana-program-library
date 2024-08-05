@@ -20,10 +20,10 @@ describe('SPL Token 2022 Metadata Extension', () => {
             } as TokenMetadata);
 
             expect(() => updateTokenMetadata(input, 'mint', 'string')).to.throw(
-                'Cannot update mint via this instruction'
+                'Cannot update mint via this instruction',
             );
             expect(() => updateTokenMetadata(input, 'updateAuthority', 'string')).to.throw(
-                'Cannot update updateAuthority via this instruction'
+                'Cannot update updateAuthority via this instruction',
             );
         });
         it('can update name', async () => {

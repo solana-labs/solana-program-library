@@ -50,7 +50,7 @@ describe('Account Compression', () => {
 
         await provider.connection.confirmTransaction(
             await provider.connection.requestAirdrop(payer, 1e10),
-            'confirmed'
+            'confirmed',
         );
     });
 
@@ -71,7 +71,7 @@ describe('Account Compression', () => {
 
             assert(
                 Buffer.from(onChainRoot).equals(offChainTree.root),
-                'Updated on chain root matches root of updated off chain tree'
+                'Updated on chain root matches root of updated off chain tree',
             );
         });
         it('Verify proof works for that leaf', async () => {
@@ -90,7 +90,7 @@ describe('Account Compression', () => {
 
             assert(
                 Buffer.from(onChainRoot).equals(offChainTree.root),
-                'Updated on chain root matches root of updated off chain tree'
+                'Updated on chain root matches root of updated off chain tree',
             );
         });
         it('Verify leaf fails when proof fails', async () => {
@@ -121,7 +121,7 @@ describe('Account Compression', () => {
 
             assert(
                 Buffer.from(onChainRoot).equals(offChainTree.root),
-                'Updated on chain root matches root of updated off chain tree'
+                'Updated on chain root matches root of updated off chain tree',
             );
         });
         it('Replace that leaf', async () => {
@@ -140,7 +140,7 @@ describe('Account Compression', () => {
 
             assert(
                 Buffer.from(onChainRoot).equals(offChainTree.root),
-                'Updated on chain root matches root of updated off chain tree'
+                'Updated on chain root matches root of updated off chain tree',
             );
         });
 
@@ -159,7 +159,7 @@ describe('Account Compression', () => {
 
             assert(
                 Buffer.from(onChainRoot).equals(offChainTree.root),
-                'Updated on chain root matches root of updated off chain tree'
+                'Updated on chain root matches root of updated off chain tree',
             );
         });
     });
@@ -172,7 +172,7 @@ describe('Account Compression', () => {
 
         beforeEach(async () => {
             await provider.connection.confirmTransaction(
-                await (connection as Connection).requestAirdrop(authority, 1e10)
+                await (connection as Connection).requestAirdrop(authority, 1e10),
             );
             [cmtKeypair, offChainTree] = await createTreeOnChain(provider, authorityKeypair, 1, DEPTH_SIZE_PAIR);
             cmt = cmtKeypair.publicKey;
@@ -196,7 +196,7 @@ describe('Account Compression', () => {
 
             assert(
                 splCMT.getAuthority().equals(randomSigner),
-                `Upon transferring authority, authority should be ${randomSigner.toString()}, but was instead updated to ${splCMT.getAuthority()}`
+                `Upon transferring authority, authority should be ${randomSigner.toString()}, but was instead updated to ${splCMT.getAuthority()}`,
             );
 
             // Attempting to replace with new authority now works
@@ -245,7 +245,7 @@ describe('Account Compression', () => {
 
             assert(
                 Buffer.from(onChainRoot).equals(offChainTree.root),
-                'Updated on chain root does not match root of updated off chain tree'
+                'Updated on chain root does not match root of updated off chain tree',
             );
         });
         it('Empty all of the leaves and close the tree', async () => {
@@ -283,7 +283,7 @@ describe('Account Compression', () => {
             const finalLamports = payerInfo!.lamports;
             assert(
                 finalLamports === payerLamports + treeLamports - 5000,
-                'Expected payer to have received the lamports from the closed tree account'
+                'Expected payer to have received the lamports from the closed tree account',
             );
 
             treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
@@ -349,7 +349,7 @@ describe('Account Compression', () => {
 
             assert(
                 splCMT.getCurrentBufferIndex() === 0,
-                "CMT updated its active index after attacker's transaction, when it shouldn't have done anything"
+                "CMT updated its active index after attacker's transaction, when it shouldn't have done anything",
             );
         });
     });
@@ -361,7 +361,7 @@ describe('Account Compression', () => {
                 payerKeypair,
                 2 ** DEPTH,
                 { maxBufferSize: 8, maxDepth: DEPTH },
-                DEPTH // Store full tree on chain
+                DEPTH, // Store full tree on chain
             );
             cmt = cmtKeypair.publicKey;
 
@@ -391,7 +391,7 @@ describe('Account Compression', () => {
                 payerKeypair,
                 0,
                 { maxBufferSize: 8, maxDepth: DEPTH },
-                DEPTH // Store full tree on chain
+                DEPTH, // Store full tree on chain
             );
             cmt = cmtKeypair.publicKey;
 

@@ -20,7 +20,7 @@ export async function uiAmountToAmount(
     payer: Signer,
     mint: PublicKey,
     amount: string,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<bigint | TransactionError | null> {
     const transaction = new Transaction().add(createUiAmountToAmountInstruction(mint, amount, programId));
     const { returnData, err } = (await connection.simulateTransaction(transaction, [payer], false)).value;

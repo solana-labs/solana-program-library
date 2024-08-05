@@ -23,7 +23,7 @@ export const liquidateObligationInstruction = (
     obligation: PublicKey,
     lendingMarket: PublicKey,
     lendingMarketAuthority: PublicKey,
-    transferAuthority: PublicKey
+    transferAuthority: PublicKey,
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode(
@@ -31,7 +31,7 @@ export const liquidateObligationInstruction = (
             instruction: LendingInstruction.LiquidateObligation,
             liquidityAmount: BigInt(liquidityAmount),
         },
-        data
+        data,
     );
 
     const keys = [

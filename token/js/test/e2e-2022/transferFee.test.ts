@@ -50,7 +50,7 @@ describe('transferFee', () => {
 
     async function setupTransferFeeMint(
         transferFeeConfigAuthority: PublicKey | null,
-        withdrawWithheldAuthority: PublicKey | null
+        withdrawWithheldAuthority: PublicKey | null,
     ) {
         const mintKeypair = Keypair.generate();
         mint = mintKeypair.publicKey;
@@ -71,9 +71,9 @@ describe('transferFee', () => {
                 withdrawWithheldAuthority,
                 FEE_BASIS_POINTS,
                 MAX_FEE,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             ),
-            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID)
+            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID),
         );
         await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
     }
@@ -95,7 +95,7 @@ describe('transferFee', () => {
                 owner.publicKey,
                 undefined,
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             await mintTo(
                 connection,
@@ -106,7 +106,7 @@ describe('transferFee', () => {
                 MINT_AMOUNT,
                 [],
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
 
             const accountKeypair = Keypair.generate();
@@ -117,7 +117,7 @@ describe('transferFee', () => {
                 owner.publicKey,
                 accountKeypair,
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
 
             await transferChecked(
@@ -131,7 +131,7 @@ describe('transferFee', () => {
                 TEST_TOKEN_DECIMALS,
                 [],
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
         });
         it('initializes', async () => {
@@ -168,7 +168,7 @@ describe('transferFee', () => {
                 FEE,
                 [],
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             const accountInfo = await getAccount(connection, destinationAccount, undefined, TEST_PROGRAM_ID);
             const transferFeeAmount = getTransferFeeAmount(accountInfo);
@@ -187,7 +187,7 @@ describe('transferFee', () => {
                 [],
                 [destinationAccount],
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             const accountInfo = await getAccount(connection, destinationAccount, undefined, TEST_PROGRAM_ID);
             expect(accountInfo.amount).to.eql(TRANSFER_AMOUNT);
@@ -204,7 +204,7 @@ describe('transferFee', () => {
                 mint,
                 [destinationAccount],
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             const accountInfo = await getAccount(connection, destinationAccount, undefined, TEST_PROGRAM_ID);
             const transferFeeAmount = getTransferFeeAmount(accountInfo);
@@ -226,7 +226,7 @@ describe('transferFee', () => {
                 mint,
                 [destinationAccount],
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             await withdrawWithheldTokensFromMint(
                 connection,
@@ -236,7 +236,7 @@ describe('transferFee', () => {
                 withdrawWithheldAuthority,
                 [],
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             const accountInfo = await getAccount(connection, destinationAccount, undefined, TEST_PROGRAM_ID);
             expect(accountInfo.amount).to.eql(TRANSFER_AMOUNT);
@@ -262,7 +262,7 @@ describe('transferFee', () => {
                 null,
                 [],
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
             const transferFeeConfig = getTransferFeeConfig(mintInfo);
@@ -281,7 +281,7 @@ describe('transferFee', () => {
                 null,
                 [],
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
             const transferFeeConfig = getTransferFeeConfig(mintInfo);
@@ -303,7 +303,7 @@ describe('transferFee', () => {
                 UPDATED_FEE_BASIS_POINTS,
                 UPDATED_MAX_FEE,
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
             const transferFeeConfig = getTransferFeeConfig(mintInfo);

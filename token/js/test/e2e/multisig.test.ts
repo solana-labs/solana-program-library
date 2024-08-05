@@ -51,7 +51,7 @@ describe('multisig', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
     beforeEach(async () => {
@@ -63,7 +63,7 @@ describe('multisig', () => {
             multisig,
             Keypair.generate(),
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         account2 = await createAccount(
             connection,
@@ -72,7 +72,7 @@ describe('multisig', () => {
             multisig,
             Keypair.generate(),
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         amount = BigInt(1000);
         await mintTo(connection, payer, mint, account1, mintAuthority, amount, [], undefined, TEST_PROGRAM_ID);
@@ -110,7 +110,7 @@ describe('multisig', () => {
             newOwner,
             signers,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const accountInfo = await getAccount(connection, account1, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.owner).to.eql(newOwner);

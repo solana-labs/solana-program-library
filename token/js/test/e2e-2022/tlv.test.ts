@@ -47,7 +47,7 @@ describe('tlv test', () => {
                 TEST_TOKEN_DECIMALS,
                 mintKeypair,
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
 
             const transaction = new Transaction().add(
@@ -58,7 +58,7 @@ describe('tlv test', () => {
                     lamports,
                     programId: TEST_PROGRAM_ID,
                 }),
-                createInitializeAccountInstruction(account, mint, owner.publicKey, TEST_PROGRAM_ID)
+                createInitializeAccountInstruction(account, mint, owner.publicKey, TEST_PROGRAM_ID),
             );
 
             await sendAndConfirmTransaction(connection, transaction, [payer, accountKeypair], undefined);
@@ -80,11 +80,11 @@ describe('tlv test', () => {
                             expect(
                                 getExtensionData(extension, accountInfo.tlvData),
                                 `account parse test failed: found ${ExtensionType[extension]}, but should not have. \
-                                test case: no extensions, ${i} extra bytes`
+                                test case: no extensions, ${i} extra bytes`,
                             ).to.be.null;
                         }
                         return Promise.resolve(undefined);
-                    })
+                    }),
             );
         }
 

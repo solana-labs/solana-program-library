@@ -35,7 +35,7 @@ export function createThawAccountInstruction(
     mint: PublicKey,
     authority: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -43,7 +43,7 @@ export function createThawAccountInstruction(
             { pubkey: mint, isSigner: false, isWritable: false },
         ],
         authority,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(thawAccountInstructionData.span);
@@ -76,7 +76,7 @@ export interface DecodedThawAccountInstruction {
  */
 export function decodeThawAccountInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedThawAccountInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== thawAccountInstructionData.span) throw new TokenInvalidInstructionDataError();

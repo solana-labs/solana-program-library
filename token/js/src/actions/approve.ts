@@ -28,12 +28,12 @@ export async function approve(
     amount: number | bigint,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createApproveInstruction(account, delegate, ownerPublicKey, amount, multiSigners, programId)
+        createApproveInstruction(account, delegate, ownerPublicKey, amount, multiSigners, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

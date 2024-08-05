@@ -32,7 +32,7 @@ export function createInitializeAccountInstruction(
     account: PublicKey,
     mint: PublicKey,
     owner: PublicKey,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = [
         { pubkey: account, isSigner: false, isWritable: true },
@@ -71,7 +71,7 @@ export interface DecodedInitializeAccountInstruction {
  */
 export function decodeInitializeAccountInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedInitializeAccountInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== initializeAccountInstructionData.span) throw new TokenInvalidInstructionDataError();

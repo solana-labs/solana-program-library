@@ -37,10 +37,8 @@
     "build:program": "cargo build-sbf --manifest-path=../program/Cargo.toml",
     "test:js": "mocha test",
     "test": "start-server-and-test 'solana-test-validator --bpf-program SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw ../../target/deploy/spl_token_swap.so --reset --quiet' http://127.0.0.1:8899/health test:js",
-    "lint": "npm run pretty && eslint --max-warnings 0 .",
-    "lint:fix": "npm run pretty:fix && eslint . --fix",
-    "pretty": "prettier --check '{*,**/*}.{ts,tsx,js,jsx,json}'",
-    "pretty:fix": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'"
+    "lint": "eslint --max-warnings 0 .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [],
   "dependencies": {
@@ -61,11 +59,8 @@
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.0",
     "eslint-plugin-import": "^2.29.1",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-require-extensions": "^0.1.1",
     "mocha": "^10.7.0",
-    "prettier": "^3.3.3",
     "start-server-and-test": "^2.0.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"

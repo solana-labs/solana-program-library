@@ -6,6 +6,7 @@ source ./ci/solana-version.sh install
 
 set -x
 pnpm install
+pnpm format
 pnpm build
 
 cd token/js

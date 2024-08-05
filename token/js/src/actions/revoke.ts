@@ -24,12 +24,12 @@ export async function revoke(
     owner: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createRevokeInstruction(account, ownerPublicKey, multiSigners, programId)
+        createRevokeInstruction(account, ownerPublicKey, multiSigners, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

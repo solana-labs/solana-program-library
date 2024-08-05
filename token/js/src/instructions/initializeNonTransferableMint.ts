@@ -25,7 +25,7 @@ export const initializeNonTransferableMintInstructionData = struct<InitializeNon
  */
 export function createInitializeNonTransferableMintInstruction(
     mint: PublicKey,
-    programId: PublicKey
+    programId: PublicKey,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -37,7 +37,7 @@ export function createInitializeNonTransferableMintInstruction(
         {
             instruction: TokenInstruction.InitializeNonTransferableMint,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });

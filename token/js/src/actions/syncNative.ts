@@ -19,7 +19,7 @@ export async function syncNative(
     payer: Signer,
     account: PublicKey,
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const transaction = new Transaction().add(createSyncNativeInstruction(account, programId));
 

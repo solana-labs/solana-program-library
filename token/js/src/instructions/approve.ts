@@ -39,7 +39,7 @@ export function createApproveInstruction(
     owner: PublicKey,
     amount: number | bigint,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -47,7 +47,7 @@ export function createApproveInstruction(
             { pubkey: delegate, isSigner: false, isWritable: false },
         ],
         owner,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(approveInstructionData.span);
@@ -56,7 +56,7 @@ export function createApproveInstruction(
             instruction: TokenInstruction.Approve,
             amount: BigInt(amount),
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -87,7 +87,7 @@ export interface DecodedApproveInstruction {
  */
 export function decodeApproveInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedApproveInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== approveInstructionData.span) throw new TokenInvalidInstructionDataError();

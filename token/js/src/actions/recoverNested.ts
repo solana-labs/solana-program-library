@@ -26,14 +26,14 @@ export async function recoverNested(
     nestedMint: PublicKey,
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const ownerAssociatedToken = getAssociatedTokenAddressSync(
         mint,
         owner.publicKey,
         false,
         programId,
-        associatedTokenProgramId
+        associatedTokenProgramId,
     );
 
     const destinationAssociatedToken = getAssociatedTokenAddressSync(
@@ -41,7 +41,7 @@ export async function recoverNested(
         owner.publicKey,
         false,
         programId,
-        associatedTokenProgramId
+        associatedTokenProgramId,
     );
 
     const nestedAssociatedToken = getAssociatedTokenAddressSync(
@@ -49,7 +49,7 @@ export async function recoverNested(
         ownerAssociatedToken,
         true,
         programId,
-        associatedTokenProgramId
+        associatedTokenProgramId,
     );
 
     const transaction = new Transaction().add(
@@ -61,8 +61,8 @@ export async function recoverNested(
             mint,
             owner.publicKey,
             programId,
-            associatedTokenProgramId
-        )
+            associatedTokenProgramId,
+        ),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, owner], confirmOptions);

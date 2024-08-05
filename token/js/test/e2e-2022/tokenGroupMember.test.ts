@@ -64,18 +64,18 @@ describe('tokenGroupMember', async () => {
                     groupMint.publicKey,
                     groupUpdateAuthority.publicKey,
                     groupMint.publicKey,
-                    TEST_PROGRAM_ID
+                    TEST_PROGRAM_ID,
                 ),
                 createInitializeMintInstruction(
                     groupMint.publicKey,
                     TEST_TOKEN_DECIMALS,
                     groupMintAuthority.publicKey,
                     null,
-                    TEST_PROGRAM_ID
-                )
+                    TEST_PROGRAM_ID,
+                ),
             ),
             [payer, groupMint],
-            undefined
+            undefined,
         );
         await tokenGroupInitializeGroupWithRentTransfer(
             connection,
@@ -86,7 +86,7 @@ describe('tokenGroupMember', async () => {
             3,
             [payer, groupMintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         // Create the member mint.
@@ -104,18 +104,18 @@ describe('tokenGroupMember', async () => {
                     memberMint.publicKey,
                     memberUpdateAuthority.publicKey,
                     memberMint.publicKey,
-                    TEST_PROGRAM_ID
+                    TEST_PROGRAM_ID,
                 ),
                 createInitializeMintInstruction(
                     memberMint.publicKey,
                     TEST_TOKEN_DECIMALS,
                     memberMintAuthority.publicKey,
                     null,
-                    TEST_PROGRAM_ID
-                )
+                    TEST_PROGRAM_ID,
+                ),
             ),
             [payer, memberMint],
-            undefined
+            undefined,
         );
     });
 
@@ -135,7 +135,7 @@ describe('tokenGroupMember', async () => {
             groupUpdateAuthority.publicKey,
             [memberMintAuthority, groupUpdateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const mintInfo = await getMint(connection, memberMint.publicKey, undefined, TEST_PROGRAM_ID);

@@ -39,7 +39,7 @@ export function createMintToInstruction(
     authority: PublicKey,
     amount: number | bigint,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -47,7 +47,7 @@ export function createMintToInstruction(
             { pubkey: destination, isSigner: false, isWritable: true },
         ],
         authority,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(mintToInstructionData.span);
@@ -56,7 +56,7 @@ export function createMintToInstruction(
             instruction: TokenInstruction.MintTo,
             amount: BigInt(amount),
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -87,7 +87,7 @@ export interface DecodedMintToInstruction {
  */
 export function decodeMintToInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedMintToInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== mintToInstructionData.span) throw new TokenInvalidInstructionDataError();

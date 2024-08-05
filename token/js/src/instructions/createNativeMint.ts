@@ -26,7 +26,7 @@ export const createNativeMintInstructionData = struct<CreateNativeMintInstructio
 export function createCreateNativeMintInstruction(
     payer: PublicKey,
     nativeMintId = NATIVE_MINT_2022,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();

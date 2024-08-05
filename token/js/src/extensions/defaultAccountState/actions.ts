@@ -26,7 +26,7 @@ export async function initializeDefaultAccountState(
     mint: PublicKey,
     state: AccountState,
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const transaction = new Transaction().add(createInitializeDefaultAccountStateInstruction(mint, state, programId));
 
@@ -55,12 +55,12 @@ export async function updateDefaultAccountState(
     freezeAuthority: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [freezeAuthorityPublicKey, signers] = getSigners(freezeAuthority, multiSigners);
 
     const transaction = new Transaction().add(
-        createUpdateDefaultAccountStateInstruction(mint, state, freezeAuthorityPublicKey, signers, programId)
+        createUpdateDefaultAccountStateInstruction(mint, state, freezeAuthorityPublicKey, signers, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

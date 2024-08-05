@@ -15,7 +15,7 @@ function checkPackUnpack<T extends object>(
     instruction: TransactionInstruction,
     discriminator: Uint8Array,
     decoder: Decoder<T>,
-    values: T
+    values: T,
 ) {
     expect(instruction.data.subarray(0, 8)).to.deep.equal(discriminator);
     const unpacked = decoder.decode(instruction.data.subarray(8));
@@ -45,7 +45,7 @@ describe('Token Group Instructions', () => {
                 ['updateAuthority', fixDecoderSize(getBytesDecoder(), 32)],
                 ['maxSize', getU32Decoder()],
             ]),
-            { updateAuthority: Uint8Array.from(updateAuthority.toBuffer()), maxSize }
+            { updateAuthority: Uint8Array.from(updateAuthority.toBuffer()), maxSize },
         );
     });
 
@@ -59,7 +59,7 @@ describe('Token Group Instructions', () => {
             }),
             splDiscriminate('spl_token_group_interface:update_group_max_size'),
             getStructDecoder([['maxSize', getU32Decoder()]]),
-            { maxSize }
+            { maxSize },
         );
     });
 
@@ -73,7 +73,7 @@ describe('Token Group Instructions', () => {
             }),
             splDiscriminate('spl_token_group_interface:update_authority'),
             getStructDecoder([['newAuthority', fixDecoderSize(getBytesDecoder(), 32)]]),
-            { newAuthority: Uint8Array.from(PublicKey.default.toBuffer()) }
+            { newAuthority: Uint8Array.from(PublicKey.default.toBuffer()) },
         );
     });
 
@@ -95,7 +95,7 @@ describe('Token Group Instructions', () => {
             }),
             splDiscriminate('spl_token_group_interface:initialize_member'),
             getStructDecoder([]),
-            {}
+            {},
         );
     });
 });

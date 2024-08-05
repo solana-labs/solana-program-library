@@ -39,7 +39,7 @@ export async function transferCheckedWithFee(
     fee: bigint,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
@@ -53,8 +53,8 @@ export async function transferCheckedWithFee(
             decimals,
             fee,
             multiSigners,
-            programId
-        )
+            programId,
+        ),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -82,12 +82,12 @@ export async function withdrawWithheldTokensFromMint(
     authority: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
     const transaction = new Transaction().add(
-        createWithdrawWithheldTokensFromMintInstruction(mint, destination, authorityPublicKey, signers, programId)
+        createWithdrawWithheldTokensFromMintInstruction(mint, destination, authorityPublicKey, signers, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -117,7 +117,7 @@ export async function withdrawWithheldTokensFromAccounts(
     multiSigners: Signer[],
     sources: PublicKey[],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
@@ -128,8 +128,8 @@ export async function withdrawWithheldTokensFromAccounts(
             authorityPublicKey,
             signers,
             sources,
-            programId
-        )
+            programId,
+        ),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -153,7 +153,7 @@ export async function harvestWithheldTokensToMint(
     mint: PublicKey,
     sources: PublicKey[],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const transaction = new Transaction().add(createHarvestWithheldTokensToMintInstruction(mint, sources, programId));
 
@@ -184,7 +184,7 @@ export async function setTransferFee(
     transferFeeBasisPoints: number,
     maximumFee: bigint,
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
@@ -195,8 +195,8 @@ export async function setTransferFee(
             signers,
             transferFeeBasisPoints,
             maximumFee,
-            programId
-        )
+            programId,
+        ),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

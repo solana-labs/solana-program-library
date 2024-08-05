@@ -33,7 +33,7 @@ export function createRevokeInstruction(
     account: PublicKey,
     owner: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners([{ pubkey: account, isSigner: false, isWritable: true }], owner, multiSigners);
 
@@ -66,7 +66,7 @@ export interface DecodedRevokeInstruction {
  */
 export function decodeRevokeInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedRevokeInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== revokeInstructionData.span) throw new TokenInvalidInstructionDataError();

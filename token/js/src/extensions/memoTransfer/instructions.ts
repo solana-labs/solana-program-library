@@ -37,7 +37,7 @@ export function createEnableRequiredMemoTransfersInstruction(
     account: PublicKey,
     authority: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     return createMemoTransferInstruction(MemoTransferInstruction.Enable, account, authority, multiSigners, programId);
 }
@@ -56,7 +56,7 @@ export function createDisableRequiredMemoTransfersInstruction(
     account: PublicKey,
     authority: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     return createMemoTransferInstruction(MemoTransferInstruction.Disable, account, authority, multiSigners, programId);
 }
@@ -66,7 +66,7 @@ function createMemoTransferInstruction(
     account: PublicKey,
     authority: PublicKey,
     multiSigners: (Signer | PublicKey)[],
-    programId: PublicKey
+    programId: PublicKey,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -79,7 +79,7 @@ function createMemoTransferInstruction(
             instruction: TokenInstruction.MemoTransferExtension,
             memoTransferInstruction,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });

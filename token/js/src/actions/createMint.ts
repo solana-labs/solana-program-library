@@ -26,7 +26,7 @@ export async function createMint(
     decimals: number,
     keypair = Keypair.generate(),
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<PublicKey> {
     const lamports = await getMinimumBalanceForRentExemptMint(connection);
 
@@ -38,7 +38,7 @@ export async function createMint(
             lamports,
             programId,
         }),
-        createInitializeMint2Instruction(keypair.publicKey, decimals, mintAuthority, freezeAuthority, programId)
+        createInitializeMint2Instruction(keypair.publicKey, decimals, mintAuthority, freezeAuthority, programId),
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer, keypair], confirmOptions);

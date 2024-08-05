@@ -24,7 +24,7 @@ import { createInterestBearingMint, updateRateInterestBearingMint, TOKEN_2022_PR
         decimals,
         mintKeypair,
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 
     const updateRate = 50;
@@ -36,6 +36,6 @@ import { createInterestBearingMint, updateRateInterestBearingMint, TOKEN_2022_PR
         updateRate,
         [],
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 })();

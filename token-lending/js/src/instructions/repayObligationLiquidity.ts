@@ -19,7 +19,7 @@ export const repayObligationLiquidityInstruction = (
     repayReserve: PublicKey,
     obligation: PublicKey,
     lendingMarket: PublicKey,
-    transferAuthority: PublicKey
+    transferAuthority: PublicKey,
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode(
@@ -27,7 +27,7 @@ export const repayObligationLiquidityInstruction = (
             instruction: LendingInstruction.RepayObligationLiquidity,
             liquidityAmount: BigInt(liquidityAmount),
         },
-        data
+        data,
     );
 
     const keys = [

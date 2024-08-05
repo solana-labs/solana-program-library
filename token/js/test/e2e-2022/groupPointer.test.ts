@@ -51,15 +51,15 @@ describe('Group pointer', () => {
                 mint.publicKey,
                 mintAuthority.publicKey,
                 groupAddress,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             ),
             createInitializeMintInstruction(
                 mint.publicKey,
                 TEST_TOKEN_DECIMALS,
                 mintAuthority.publicKey,
                 null,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mint], undefined);
@@ -83,8 +83,8 @@ describe('Group pointer', () => {
                 mintAuthority.publicKey,
                 newGroupAddress,
                 undefined,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintAuthority], undefined);
 
@@ -106,8 +106,8 @@ describe('Group pointer', () => {
                 AuthorityType.GroupPointer,
                 newAuthority,
                 [],
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintAuthority], undefined);
 
@@ -128,8 +128,8 @@ describe('Group pointer', () => {
                 AuthorityType.GroupPointer,
                 null,
                 [],
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintAuthority], undefined);
 

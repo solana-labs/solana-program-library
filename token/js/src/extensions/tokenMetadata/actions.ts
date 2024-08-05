@@ -21,7 +21,7 @@ async function getAdditionalRentForNewMetadata(
     connection: Connection,
     address: PublicKey,
     tokenMetadata: TokenMetadata,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<number> {
     const info = await connection.getAccountInfo(address);
     if (!info) {
@@ -34,7 +34,7 @@ async function getAdditionalRentForNewMetadata(
         address,
         ExtensionType.TokenMetadata,
         extensionLen,
-        programId
+        programId,
     );
 
     if (newAccountLen <= info.data.length) {
@@ -51,7 +51,7 @@ async function getAdditionalRentForUpdatedMetadata(
     address: PublicKey,
     field: string | Field,
     value: string,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<number> {
     const info = await connection.getAccountInfo(address);
     if (!info) {
@@ -72,7 +72,7 @@ async function getAdditionalRentForUpdatedMetadata(
         address,
         ExtensionType.TokenMetadata,
         extensionLen,
-        programId
+        programId,
     );
 
     if (newAccountLen <= info.data.length) {
@@ -112,7 +112,7 @@ export async function tokenMetadataInitialize(
     uri: string,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
 
@@ -126,7 +126,7 @@ export async function tokenMetadataInitialize(
             name,
             symbol,
             uri,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -161,7 +161,7 @@ export async function tokenMetadataInitializeWithRentTransfer(
     uri: string,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
 
@@ -178,7 +178,7 @@ export async function tokenMetadataInitializeWithRentTransfer(
             uri,
             additionalMetadata: [],
         },
-        programId
+        programId,
     );
 
     if (lamports > 0) {
@@ -195,7 +195,7 @@ export async function tokenMetadataInitializeWithRentTransfer(
             name,
             symbol,
             uri,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -229,7 +229,7 @@ export async function tokenMetadataUpdateField(
     value: string,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [updateAuthorityPublicKey, signers] = getSigners(updateAuthority, multiSigners);
 
@@ -240,7 +240,7 @@ export async function tokenMetadataUpdateField(
             updateAuthority: updateAuthorityPublicKey,
             field,
             value,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -275,7 +275,7 @@ export async function tokenMetadataUpdateFieldWithRentTransfer(
     value: string,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [updateAuthorityPublicKey, signers] = getSigners(updateAuthority, multiSigners);
 
@@ -294,7 +294,7 @@ export async function tokenMetadataUpdateFieldWithRentTransfer(
             updateAuthority: updateAuthorityPublicKey,
             field,
             value,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -326,7 +326,7 @@ export async function tokenMetadataRemoveKey(
     idempotent: boolean,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [updateAuthorityPublicKey, signers] = getSigners(updateAuthority, multiSigners);
 
@@ -337,7 +337,7 @@ export async function tokenMetadataRemoveKey(
             updateAuthority: updateAuthorityPublicKey,
             key,
             idempotent,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -365,7 +365,7 @@ export async function tokenMetadataUpdateAuthority(
     newAuthority: PublicKey | null,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [updateAuthorityPublicKey, signers] = getSigners(updateAuthority, multiSigners);
 
@@ -375,7 +375,7 @@ export async function tokenMetadataUpdateAuthority(
             metadata: mint,
             oldAuthority: updateAuthorityPublicKey,
             newAuthority,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

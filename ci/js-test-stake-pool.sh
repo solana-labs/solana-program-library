@@ -4,6 +4,7 @@ set -ex
 cd "$(dirname "$0")/.."
 
 pnpm install
+pnpm format
 pnpm build
 
 cd stake-pool/js

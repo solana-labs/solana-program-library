@@ -23,7 +23,7 @@ export const LendingMarketLayout = struct<LendingMarket>(
         publicKey('oracleProgramId'),
         blob(128, 'padding'),
     ],
-    'lendingMarket'
+    'lendingMarket',
 );
 
 export const LENDING_MARKET_SIZE = LendingMarketLayout.span;

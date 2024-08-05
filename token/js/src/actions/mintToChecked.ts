@@ -30,12 +30,20 @@ export async function mintToChecked(
     decimals: number,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
     const transaction = new Transaction().add(
-        createMintToCheckedInstruction(mint, destination, authorityPublicKey, amount, decimals, multiSigners, programId)
+        createMintToCheckedInstruction(
+            mint,
+            destination,
+            authorityPublicKey,
+            amount,
+            decimals,
+            multiSigners,
+            programId,
+        ),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

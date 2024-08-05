@@ -35,7 +35,7 @@ export function createCloseAccountInstruction(
     destination: PublicKey,
     authority: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -43,7 +43,7 @@ export function createCloseAccountInstruction(
             { pubkey: destination, isSigner: false, isWritable: true },
         ],
         authority,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(closeAccountInstructionData.span);
@@ -76,7 +76,7 @@ export interface DecodedCloseAccountInstruction {
  */
 export function decodeCloseAccountInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedCloseAccountInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== closeAccountInstructionData.span) throw new TokenInvalidInstructionDataError();

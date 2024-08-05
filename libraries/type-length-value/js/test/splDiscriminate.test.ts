@@ -10,7 +10,7 @@ describe('splDiscrimintor', () => {
         'test-namespace:this-is-a-test:with-a-longer-name',
     ];
 
-    const testExpectedBytes = testVectors.map((x) => {
+    const testExpectedBytes = testVectors.map(x => {
         return createHash('sha256').update(x).digest();
     });
 

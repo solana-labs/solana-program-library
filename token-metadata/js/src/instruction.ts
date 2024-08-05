@@ -71,8 +71,8 @@ export function createInitializeInstruction(args: InitializeInstructionArgs): Tr
                     ['name', getStringEncoder()],
                     ['symbol', getStringEncoder()],
                     ['uri', getStringEncoder()],
-                ])
-            ).encode({ name, symbol, uri })
+                ]),
+            ).encode({ name, symbol, uri }),
         ),
     });
 }
@@ -103,8 +103,8 @@ export function createUpdateFieldInstruction(args: UpdateFieldInstruction): Tran
                 getStructEncoder([
                     ['field', getDataEnumCodec(getFieldCodec())],
                     ['value', getStringEncoder()],
-                ])
-            ).encode({ field: getFieldConfig(field), value })
+                ]),
+            ).encode({ field: getFieldConfig(field), value }),
         ),
     });
 }
@@ -131,8 +131,8 @@ export function createRemoveKeyInstruction(args: RemoveKeyInstructionArgs) {
                 getStructEncoder([
                     ['idempotent', getBooleanEncoder()],
                     ['key', getStringEncoder()],
-                ])
-            ).encode({ idempotent, key })
+                ]),
+            ).encode({ idempotent, key }),
         ),
     });
 }
@@ -156,8 +156,8 @@ export function createUpdateAuthorityInstruction(args: UpdateAuthorityInstructio
         data: Buffer.from(
             getInstructionEncoder(
                 splDiscriminate('spl_token_metadata_interface:update_the_authority'),
-                getStructEncoder([['newAuthority', getPublicKeyEncoder()]])
-            ).encode({ newAuthority: newAuthority ?? SystemProgram.programId })
+                getStructEncoder([['newAuthority', getPublicKeyEncoder()]]),
+            ).encode({ newAuthority: newAuthority ?? SystemProgram.programId }),
         ),
     });
 }
@@ -180,8 +180,8 @@ export function createEmitInstruction(args: EmitInstructionArgs): TransactionIns
                 getStructEncoder([
                     ['start', getOptionEncoder(getU64Encoder())],
                     ['end', getOptionEncoder(getU64Encoder())],
-                ])
-            ).encode({ start: start ?? null, end: end ?? null })
+                ]),
+            ).encode({ start: start ?? null, end: end ?? null }),
         ),
     });
 }

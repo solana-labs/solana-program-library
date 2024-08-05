@@ -46,7 +46,7 @@ import {
             programId: TOKEN_2022_PROGRAM_ID,
         }),
         createInitializePermanentDelegateInstruction(mint, permanentDelegate.publicKey, TOKEN_2022_PROGRAM_ID),
-        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
+        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID),
     );
     await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
 
@@ -59,7 +59,7 @@ import {
         owner.publicKey,
         undefined,
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
     await mintTo(
         connection,
@@ -70,7 +70,7 @@ import {
         mintAmount,
         [],
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 
     const accountKeypair = Keypair.generate();
@@ -81,7 +81,7 @@ import {
         owner.publicKey,
         accountKeypair,
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 
     // Transfer by signing with the permanent delegate
@@ -96,6 +96,6 @@ import {
         decimals,
         [],
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 })();

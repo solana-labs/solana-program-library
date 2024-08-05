@@ -20,7 +20,7 @@ export function createAssociatedTokenAccountInstruction(
     owner: PublicKey,
     mint: PublicKey,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     return buildAssociatedTokenAccountInstruction(
         payer,
@@ -29,7 +29,7 @@ export function createAssociatedTokenAccountInstruction(
         mint,
         Buffer.alloc(0),
         programId,
-        associatedTokenProgramId
+        associatedTokenProgramId,
     );
 }
 
@@ -51,7 +51,7 @@ export function createAssociatedTokenAccountIdempotentInstruction(
     owner: PublicKey,
     mint: PublicKey,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     return buildAssociatedTokenAccountInstruction(
         payer,
@@ -60,7 +60,7 @@ export function createAssociatedTokenAccountIdempotentInstruction(
         mint,
         Buffer.from([1]),
         programId,
-        associatedTokenProgramId
+        associatedTokenProgramId,
     );
 }
 
@@ -71,7 +71,7 @@ function buildAssociatedTokenAccountInstruction(
     mint: PublicKey,
     instructionData: Buffer,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = [
         { pubkey: payer, isSigner: true, isWritable: true },
@@ -111,7 +111,7 @@ export function createRecoverNestedInstruction(
     ownerMint: PublicKey,
     owner: PublicKey,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = [
         { pubkey: nestedAssociatedToken, isSigner: false, isWritable: true },

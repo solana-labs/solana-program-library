@@ -32,7 +32,7 @@ describe('createMint', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
@@ -62,7 +62,7 @@ describe('createAccount', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     }),
         it('auxiliary token account', async () => {
@@ -74,7 +74,7 @@ describe('createAccount', () => {
                 owner.publicKey,
                 Keypair.generate(),
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
             expect(accountInfo.mint).to.eql(mint);
@@ -96,7 +96,7 @@ describe('createAccount', () => {
                 owner.publicKey,
                 Keypair.generate(),
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             expect(account2).to.not.eql(account);
         }),
@@ -107,7 +107,7 @@ describe('createAccount', () => {
                 owner.publicKey,
                 false,
                 TEST_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
+                ASSOCIATED_TOKEN_PROGRAM_ID,
             );
 
             // associated account shouldn't exist
@@ -123,7 +123,7 @@ describe('createAccount', () => {
                 undefined,
                 undefined,
                 TEST_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
+                ASSOCIATED_TOKEN_PROGRAM_ID,
             );
             expect(createdAccountInfo.mint).to.eql(mint);
             expect(createdAccountInfo.owner).to.eql(owner.publicKey);
@@ -146,7 +146,7 @@ describe('createAccount', () => {
                 undefined,
                 undefined,
                 TEST_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
+                ASSOCIATED_TOKEN_PROGRAM_ID,
             );
 
             expect(createdAccountInfo).to.eql(accountInfo);
@@ -158,7 +158,7 @@ describe('createAccount', () => {
                 owner.publicKey,
                 false,
                 TEST_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
+                ASSOCIATED_TOKEN_PROGRAM_ID,
             );
 
             // associated account shouldn't exist
@@ -172,7 +172,7 @@ describe('createAccount', () => {
                 owner.publicKey,
                 undefined, // uses ATA by default
                 undefined,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             );
             expect(createdAddress).to.eql(associatedAddress);
 
@@ -191,8 +191,8 @@ describe('createAccount', () => {
                     owner.publicKey,
                     undefined, // uses ATA by default
                     undefined,
-                    TEST_PROGRAM_ID
-                )
+                    TEST_PROGRAM_ID,
+                ),
             ).to.be.rejected;
 
             // when creating again but with idempotent mode, TX should not throw error
@@ -203,8 +203,8 @@ describe('createAccount', () => {
                     mint,
                     owner.publicKey,
                     undefined,
-                    TEST_PROGRAM_ID
-                )
+                    TEST_PROGRAM_ID,
+                ),
             ).to.be.fulfilled;
         });
 });

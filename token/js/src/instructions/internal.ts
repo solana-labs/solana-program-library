@@ -5,7 +5,7 @@ import { PublicKey } from '@solana/web3.js';
 export function addSigners(
     keys: AccountMeta[],
     ownerOrAuthority: PublicKey,
-    multiSigners: (Signer | PublicKey)[]
+    multiSigners: (Signer | PublicKey)[],
 ): AccountMeta[] {
     if (multiSigners.length) {
         keys.push({ pubkey: ownerOrAuthority, isSigner: false, isWritable: false });

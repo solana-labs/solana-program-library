@@ -97,7 +97,7 @@ export async function getAccount(
     connection: Connection,
     address: PublicKey,
     commitment?: Commitment,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<Account> {
     const info = await connection.getAccountInfo(address, commitment);
     return unpackAccount(address, info, programId);
@@ -117,7 +117,7 @@ export async function getMultipleAccounts(
     connection: Connection,
     addresses: PublicKey[],
     commitment?: Commitment,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<Account[]> {
     const infos = await connection.getMultipleAccountsInfo(addresses, commitment);
     return addresses.map((address, i) => unpackAccount(address, infos[i], programId));
@@ -132,7 +132,7 @@ export async function getMultipleAccounts(
  */
 export async function getMinimumBalanceForRentExemptAccount(
     connection: Connection,
-    commitment?: Commitment
+    commitment?: Commitment,
 ): Promise<number> {
     return await getMinimumBalanceForRentExemptAccountWithExtensions(connection, [], commitment);
 }
@@ -147,7 +147,7 @@ export async function getMinimumBalanceForRentExemptAccount(
 export async function getMinimumBalanceForRentExemptAccountWithExtensions(
     connection: Connection,
     extensions: ExtensionType[],
-    commitment?: Commitment
+    commitment?: Commitment,
 ): Promise<number> {
     const accountLen = getAccountLen(extensions);
     return await connection.getMinimumBalanceForRentExemption(accountLen, commitment);
@@ -165,7 +165,7 @@ export async function getMinimumBalanceForRentExemptAccountWithExtensions(
 export function unpackAccount(
     address: PublicKey,
     info: AccountInfo<Buffer> | null,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Account {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
