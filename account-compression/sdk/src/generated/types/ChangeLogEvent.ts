@@ -48,4 +48,4 @@ export const changeLogEventBeet = beet.dataEnum<ChangeLogEventRecord>([
             'ChangeLogEventRecord["V1"]',
         ),
     ],
-]) as beet.FixableBeet<ChangeLogEvent>;
+]) as beet.FixableBeet<ChangeLogEvent, ChangeLogEvent>;

@@ -65,9 +65,14 @@ pub struct ConcurrentMerkleTreeHeaderDataV1 {
     /// Provides a lower-bound on what slot to start (re-)building a tree from.
     creation_slot: u64,
 
+    /// A flag indicating whether the tree has been initialized with a root.
+    /// This field was added together with the `finalize_tree_with_root` instruction.
+    /// It takes 1 byte of space taken from the previous padding for existing accounts.
+    is_batch_initialized: bool,
+
     /// Needs padding for the account to be 8-byte aligned
     /// 8-byte alignment is necessary to zero-copy the SPL ConcurrentMerkleTree
-    _padding: [u8; 6],
+    _padding: [u8; 5],
 }
 
 #[repr(C)]
@@ -95,6 +100,24 @@ impl ConcurrentMerkleTreeHeader {
                 header.max_depth = max_depth;
                 header.authority = *authority;
                 header.creation_slot = creation_slot;
+                // is_batch_initialized is left false by default
+            }
+        }
+    }
+
+    /// Initializes the header with the given parameters and sets the `is_batch_initialized` flag to
+    /// true.
+    pub fn initialize_batched(
+        &mut self,
+        max_depth: u32,
+        max_buffer_size: u32,
+        authority: &Pubkey,
+        creation_slot: u64,
+    ) {
+        self.initialize(max_depth, max_buffer_size, authority, creation_slot);
+        match self.header {
+            ConcurrentMerkleTreeHeaderData::V1(ref mut header) => {
+                header.is_batch_initialized = true;
             }
         }
     }
@@ -114,6 +137,12 @@ impl ConcurrentMerkleTreeHeader {
     pub fn get_creation_slot(&self) -> u64 {
         match &self.header {
             ConcurrentMerkleTreeHeaderData::V1(header) => header.creation_slot,
+        }
+    }
+
+    pub fn get_is_batch_initialized(&self) -> bool {
+        match &self.header {
+            ConcurrentMerkleTreeHeaderData::V1(header) => header.is_batch_initialized,
         }
     }
 
@@ -155,6 +184,18 @@ impl ConcurrentMerkleTreeHeader {
         }
         Ok(())
     }
+
+    pub fn assert_is_batch_initialized(&self) -> Result<()> {
+        match &self.header {
+            ConcurrentMerkleTreeHeaderData::V1(header) => {
+                require!(
+                    header.is_batch_initialized,
+                    AccountCompressionError::BatchNotInitialized
+                );
+            }
+        }
+        Ok(())
+    }
 }
 
 pub fn merkle_tree_get_size(header: &ConcurrentMerkleTreeHeader) -> Result<usize> {
@@ -166,10 +207,10 @@ pub fn merkle_tree_get_size(header: &ConcurrentMerkleTreeHeader) -> Result<usize
         (7, 16) => Ok(size_of::<ConcurrentMerkleTree<7, 16>>()),
         (8, 16) => Ok(size_of::<ConcurrentMerkleTree<8, 16>>()),
         (9, 16) => Ok(size_of::<ConcurrentMerkleTree<9, 16>>()),
-        (10, 32)=> Ok(size_of::<ConcurrentMerkleTree<10, 32>>()),
-        (11, 32)=> Ok(size_of::<ConcurrentMerkleTree<11, 32>>()),
-        (12, 32)=> Ok(size_of::<ConcurrentMerkleTree<12, 32>>()),
-        (13, 32)=> Ok(size_of::<ConcurrentMerkleTree<13, 32>>()),
+        (10, 32) => Ok(size_of::<ConcurrentMerkleTree<10, 32>>()),
+        (11, 32) => Ok(size_of::<ConcurrentMerkleTree<11, 32>>()),
+        (12, 32) => Ok(size_of::<ConcurrentMerkleTree<12, 32>>()),
+        (13, 32) => Ok(size_of::<ConcurrentMerkleTree<13, 32>>()),
         (14, 64) => Ok(size_of::<ConcurrentMerkleTree<14, 64>>()),
         (14, 256) => Ok(size_of::<ConcurrentMerkleTree<14, 256>>()),
         (14, 1024) => Ok(size_of::<ConcurrentMerkleTree<14, 1024>>()),
