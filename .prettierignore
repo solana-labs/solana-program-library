@@ -1,0 +1,11 @@
+docs
+lib
+test-ledger
+node_modules
+dist
+generated
+.mypy_cache
+*.yml
+*.yaml
+*.md
+*.json
