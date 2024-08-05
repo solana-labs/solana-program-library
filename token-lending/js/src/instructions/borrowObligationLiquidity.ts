@@ -22,7 +22,7 @@ export const borrowObligationLiquidityInstruction = (
     lendingMarket: PublicKey,
     lendingMarketAuthority: PublicKey,
     obligationOwner: PublicKey,
-    hostFeeReceiver?: PublicKey
+    hostFeeReceiver?: PublicKey,
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode(
@@ -30,7 +30,7 @@ export const borrowObligationLiquidityInstruction = (
             instruction: LendingInstruction.BorrowObligationLiquidity,
             liquidityAmount: BigInt(liquidityAmount),
         },
-        data
+        data,
     );
 
     const keys = [

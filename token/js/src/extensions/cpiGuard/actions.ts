@@ -24,12 +24,12 @@ export async function enableCpiGuard(
     owner: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createEnableCpiGuardInstruction(account, ownerPublicKey, signers, programId)
+        createEnableCpiGuardInstruction(account, ownerPublicKey, signers, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -55,12 +55,12 @@ export async function disableCpiGuard(
     owner: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createDisableCpiGuardInstruction(account, ownerPublicKey, signers, programId)
+        createDisableCpiGuardInstruction(account, ownerPublicKey, signers, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

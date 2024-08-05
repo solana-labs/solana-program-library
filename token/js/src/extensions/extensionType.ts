@@ -215,7 +215,7 @@ export function getAccountTypeOfMintType(e: ExtensionType): ExtensionType {
 function getLen(
     extensionTypes: ExtensionType[],
     baseSize: number,
-    variableLengthExtensions: { [E in ExtensionType]?: number } = {}
+    variableLengthExtensions: { [E in ExtensionType]?: number } = {},
 ): number {
     if (extensionTypes.length === 0 && Object.keys(variableLengthExtensions).length === 0) {
         return baseSize;
@@ -225,7 +225,7 @@ function getLen(
             ACCOUNT_TYPE_SIZE +
             extensionTypes
                 .filter((element, i) => i === extensionTypes.indexOf(element))
-                .map((element) => addTypeAndLengthToLen(getTypeLen(element)))
+                .map(element => addTypeAndLengthToLen(getTypeLen(element)))
                 .reduce((a, b) => a + b, 0) +
             Object.entries(variableLengthExtensions)
                 .map(([extension, len]) => {
@@ -245,7 +245,7 @@ function getLen(
 
 export function getMintLen(
     extensionTypes: ExtensionType[],
-    variableLengthExtensions: { [E in ExtensionType]?: number } = {}
+    variableLengthExtensions: { [E in ExtensionType]?: number } = {},
 ): number {
     return getLen(extensionTypes, MINT_SIZE, variableLengthExtensions);
 }
@@ -292,7 +292,7 @@ export function getNewAccountLenForExtensionLen(
     address: PublicKey,
     extensionType: ExtensionType,
     extensionLen: number,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): number {
     const mint = unpackMint(address, info, programId);
     const extensionData = getExtensionData(extensionType, mint.tlvData);

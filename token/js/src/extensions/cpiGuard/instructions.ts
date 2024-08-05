@@ -34,7 +34,7 @@ export function createEnableCpiGuardInstruction(
     account: PublicKey,
     authority: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     return createCpiGuardInstruction(CpiGuardInstruction.Enable, account, authority, multiSigners, programId);
 }
@@ -53,7 +53,7 @@ export function createDisableCpiGuardInstruction(
     account: PublicKey,
     authority: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     return createCpiGuardInstruction(CpiGuardInstruction.Disable, account, authority, multiSigners, programId);
 }
@@ -63,7 +63,7 @@ function createCpiGuardInstruction(
     account: PublicKey,
     authority: PublicKey,
     multiSigners: (Signer | PublicKey)[],
-    programId: PublicKey
+    programId: PublicKey,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -76,7 +76,7 @@ function createCpiGuardInstruction(
             instruction: TokenInstruction.CpiGuardExtension,
             cpiGuardInstruction,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });

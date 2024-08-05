@@ -42,7 +42,7 @@ describe('transfer', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
     beforeEach(async () => {
@@ -54,7 +54,7 @@ describe('transfer', () => {
             owner1.publicKey,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         owner2 = Keypair.generate();
         account2 = await createAccount(
@@ -64,7 +64,7 @@ describe('transfer', () => {
             owner2.publicKey,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         amount = BigInt(1000);
         await mintTo(connection, payer, mint, account1, mintAuthority, amount, [], undefined, TEST_PROGRAM_ID);
@@ -91,7 +91,7 @@ describe('transfer', () => {
             TEST_TOKEN_DECIMALS,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const destAccountInfo = await getAccount(connection, account2, undefined, TEST_PROGRAM_ID);
@@ -111,8 +111,8 @@ describe('transfer', () => {
                 TEST_TOKEN_DECIMALS - 1,
                 [],
                 undefined,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         ).to.be.rejected;
     });
     it('approveRevoke', async () => {
@@ -127,7 +127,7 @@ describe('transfer', () => {
             delegatedAmount,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const approvedAccountInfo = await getAccount(connection, account1, undefined, TEST_PROGRAM_ID);
         expect(approvedAccountInfo.delegatedAmount).to.eql(delegatedAmount);
@@ -151,7 +151,7 @@ describe('transfer', () => {
             TEST_TOKEN_DECIMALS,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const transferAmount = delegatedAmount - BigInt(1);
         await transfer(connection, payer, account1, account2, delegate, transferAmount, [], undefined, TEST_PROGRAM_ID);

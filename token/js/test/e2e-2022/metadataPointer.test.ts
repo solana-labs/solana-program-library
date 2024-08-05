@@ -49,15 +49,15 @@ describe('Metadata pointer', () => {
                 mint.publicKey,
                 mintAuthority.publicKey,
                 metadataAddress,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             ),
             createInitializeMintInstruction(
                 mint.publicKey,
                 TEST_TOKEN_DECIMALS,
                 mintAuthority.publicKey,
                 null,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mint], undefined);
@@ -81,8 +81,8 @@ describe('Metadata pointer', () => {
                 mintAuthority.publicKey,
                 newMetadataAddress,
                 undefined,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintAuthority], undefined);
 

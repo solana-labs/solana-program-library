@@ -23,7 +23,7 @@ export async function execute(
     instructions: TransactionInstruction[],
     signers: Signer[],
     skipPreflight = false,
-    verbose = false
+    verbose = false,
 ): Promise<string> {
     let tx = new Transaction();
     instructions.map(ix => {
@@ -38,7 +38,7 @@ export async function execute(
     } catch (e) {
         if (e instanceof SendTransactionError) {
             console.log('Tx error!', e.logs);
-	}
+        }
         throw e;
     }
 
@@ -54,7 +54,7 @@ export async function createTreeOnChain(
     payer: Keypair,
     numLeaves: number,
     depthSizePair: ValidDepthSizePair,
-    canopyDepth = 0
+    canopyDepth = 0,
 ): Promise<[Keypair, MerkleTree]> {
     const cmtKeypair = Keypair.generate();
 
@@ -69,7 +69,7 @@ export async function createTreeOnChain(
         cmtKeypair.publicKey,
         payer.publicKey,
         depthSizePair,
-        canopyDepth
+        canopyDepth,
     );
 
     const ixs = [allocAccountIx, createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair)];
@@ -97,7 +97,7 @@ export async function createEmptyTreeOnChain(
     provider: AnchorProvider,
     payer: Keypair,
     depthSizePair: ValidDepthSizePair,
-    canopyDepth = 0
+    canopyDepth = 0,
 ): Promise<Keypair> {
     const cmtKeypair = Keypair.generate();
     const allocAccountIx = await createAllocTreeIx(
@@ -105,7 +105,7 @@ export async function createEmptyTreeOnChain(
         cmtKeypair.publicKey,
         payer.publicKey,
         depthSizePair,
-        canopyDepth
+        canopyDepth,
     );
 
     const ixs = [allocAccountIx, createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair)];

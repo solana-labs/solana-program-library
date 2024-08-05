@@ -32,7 +32,7 @@ import {
         decimals,
         undefined,
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 
     const owner = Keypair.generate();
@@ -43,7 +43,7 @@ import {
         owner.publicKey,
         undefined,
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 
     const extensions = [ExtensionType.MemoTransfer];
@@ -54,9 +54,9 @@ import {
             extensions,
             owner.publicKey,
             undefined,
-            TOKEN_2022_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID,
         ),
-        createEnableRequiredMemoTransfersInstruction(account, owner.publicKey, [], TOKEN_2022_PROGRAM_ID)
+        createEnableRequiredMemoTransfersInstruction(account, owner.publicKey, [], TOKEN_2022_PROGRAM_ID),
     );
     await sendAndConfirmTransaction(connection, transaction, [payer, owner], undefined);
 })();

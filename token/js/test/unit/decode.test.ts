@@ -11,7 +11,7 @@ describe('spl-token-2022 instructions', () => {
         const ix = createInitializeMintCloseAuthorityInstruction(
             Keypair.generate().publicKey,
             Keypair.generate().publicKey,
-            TOKEN_2022_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID,
         );
         expect(ix.programId).to.eql(TOKEN_2022_PROGRAM_ID);
         expect(ix.keys).to.have.length(1);
@@ -20,7 +20,7 @@ describe('spl-token-2022 instructions', () => {
         const ix = createInitializePermanentDelegateInstruction(
             Keypair.generate().publicKey,
             Keypair.generate().publicKey,
-            TOKEN_2022_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID,
         );
         expect(ix.programId).to.eql(TOKEN_2022_PROGRAM_ID);
         expect(ix.keys).to.have.length(1);

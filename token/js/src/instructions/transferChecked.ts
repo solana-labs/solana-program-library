@@ -48,7 +48,7 @@ export function createTransferCheckedInstruction(
     amount: number | bigint,
     decimals: number,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -57,7 +57,7 @@ export function createTransferCheckedInstruction(
             { pubkey: destination, isSigner: false, isWritable: true },
         ],
         owner,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(transferCheckedInstructionData.span);
@@ -67,7 +67,7 @@ export function createTransferCheckedInstruction(
             amount: BigInt(amount),
             decimals,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -100,7 +100,7 @@ export interface DecodedTransferCheckedInstruction {
  */
 export function decodeTransferCheckedInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedTransferCheckedInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== transferCheckedInstructionData.span) throw new TokenInvalidInstructionDataError();

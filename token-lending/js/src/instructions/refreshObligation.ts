@@ -12,7 +12,7 @@ const DataLayout = struct<Data>([u8('instruction')]);
 export const refreshObligationInstruction = (
     obligation: PublicKey,
     depositReserves: PublicKey[],
-    borrowReserves: PublicKey[]
+    borrowReserves: PublicKey[],
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode({ instruction: LendingInstruction.RefreshObligation }, data);

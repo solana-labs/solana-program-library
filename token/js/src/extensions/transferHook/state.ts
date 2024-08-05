@@ -111,7 +111,7 @@ export async function resolveExtraAccountMeta(
     extraMeta: ExtraAccountMeta,
     previousMetas: AccountMeta[],
     instructionData: Buffer,
-    transferHookProgramId: PublicKey
+    transferHookProgramId: PublicKey,
 ): Promise<AccountMeta> {
     if (extraMeta.discriminator === 0) {
         return {

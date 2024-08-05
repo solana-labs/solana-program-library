@@ -24,7 +24,7 @@ export async function createMultisig(
     m: number,
     keypair = Keypair.generate(),
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<PublicKey> {
     const lamports = await getMinimumBalanceForRentExemptMultisig(connection);
 
@@ -36,7 +36,7 @@ export async function createMultisig(
             lamports,
             programId,
         }),
-        createInitializeMultisigInstruction(keypair.publicKey, signers, m, programId)
+        createInitializeMultisigInstruction(keypair.publicKey, signers, m, programId),
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer, keypair], confirmOptions);

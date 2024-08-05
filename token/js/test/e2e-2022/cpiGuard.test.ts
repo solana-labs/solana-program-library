@@ -47,7 +47,7 @@ describe('cpiGuard', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const transaction = new Transaction().add(
@@ -58,7 +58,7 @@ describe('cpiGuard', () => {
                 lamports,
                 programId: TEST_PROGRAM_ID,
             }),
-            createInitializeAccountInstruction(account, mint, owner.publicKey, TEST_PROGRAM_ID)
+            createInitializeAccountInstruction(account, mint, owner.publicKey, TEST_PROGRAM_ID),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, accountKeypair], undefined);
@@ -71,7 +71,7 @@ describe('cpiGuard', () => {
         expect(cpiGuard).to.be.null;
 
         let transaction = new Transaction().add(
-            createEnableCpiGuardInstruction(account, owner.publicKey, [], TEST_PROGRAM_ID)
+            createEnableCpiGuardInstruction(account, owner.publicKey, [], TEST_PROGRAM_ID),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, owner], undefined);
 
@@ -84,7 +84,7 @@ describe('cpiGuard', () => {
         }
 
         transaction = new Transaction().add(
-            createDisableCpiGuardInstruction(account, owner.publicKey, [], TEST_PROGRAM_ID)
+            createDisableCpiGuardInstruction(account, owner.publicKey, [], TEST_PROGRAM_ID),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, owner], undefined);
 

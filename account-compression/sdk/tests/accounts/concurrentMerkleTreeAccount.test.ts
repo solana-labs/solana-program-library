@@ -14,22 +14,22 @@ function assertCMTProperties(
     expectedMaxBufferSize: number,
     expectedAuthority: PublicKey,
     expectedRoot: Buffer,
-    expectedCanopyDepth?: number
+    expectedCanopyDepth?: number,
 ) {
     assert(
         onChainCMT.getMaxDepth() === expectedMaxDepth,
-        `Max depth does not match ${onChainCMT.getMaxDepth()}, expected ${expectedMaxDepth}`
+        `Max depth does not match ${onChainCMT.getMaxDepth()}, expected ${expectedMaxDepth}`,
     );
     assert(
         onChainCMT.getMaxBufferSize() === expectedMaxBufferSize,
-        `Max buffer size does not match ${onChainCMT.getMaxBufferSize()}, expected ${expectedMaxBufferSize}`
+        `Max buffer size does not match ${onChainCMT.getMaxBufferSize()}, expected ${expectedMaxBufferSize}`,
     );
     assert(onChainCMT.getAuthority().equals(expectedAuthority), 'Failed to write auth pubkey');
     assert(onChainCMT.getCurrentRoot().equals(expectedRoot), 'On chain root does not match root passed in instruction');
     if (expectedCanopyDepth) {
         assert(
             onChainCMT.getCanopyDepth() === expectedCanopyDepth,
-            'On chain canopy depth does not match expected canopy depth'
+            'On chain canopy depth does not match expected canopy depth',
         );
     }
 }
@@ -57,7 +57,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
 
         await provider.connection.confirmTransaction(
             await provider.connection.requestAirdrop(payer, 1e10),
-            'confirmed'
+            'confirmed',
         );
     });
 
@@ -76,7 +76,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
             const cmt = await ConcurrentMerkleTreeAccount.fromAccountAddress(
                 connection,
                 cmtKeypair.publicKey,
-                'confirmed'
+                'confirmed',
             );
 
             await assertCMTProperties(cmt, MAX_DEPTH, MAX_SIZE, payer, offChainTree.root);
@@ -97,7 +97,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
                 const cmt = await ConcurrentMerkleTreeAccount.fromAccountAddress(
                     connection,
                     cmtKeypair.publicKey,
-                    'confirmed'
+                    'confirmed',
                 );
 
                 // Verify it was initialized correctly
@@ -106,7 +106,7 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
                     depthSizePair.maxDepth,
                     depthSizePair.maxBufferSize,
                     payer,
-                    emptyNode(depthSizePair.maxDepth)
+                    emptyNode(depthSizePair.maxDepth),
                 );
             }
         });
@@ -129,12 +129,12 @@ describe('ConcurrentMerkleTreeAccount tests', () => {
                     provider,
                     payerKeypair,
                     { maxBufferSize, maxDepth },
-                    canopyDepth
+                    canopyDepth,
                 );
                 const cmt = await ConcurrentMerkleTreeAccount.fromAccountAddress(
                     connection,
                     cmtKeypair.publicKey,
-                    'confirmed'
+                    'confirmed',
                 );
 
                 // Verify it was initialized correctly

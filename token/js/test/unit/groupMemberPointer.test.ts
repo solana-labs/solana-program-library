@@ -21,7 +21,7 @@ describe('SPL Token 2022 GroupMemberPointer Extension', () => {
             mint,
             authority,
             memberAddress,
-            TOKEN_2022_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID,
         );
         expect(instruction).to.deep.equal(
             new TransactionInstruction({
@@ -35,7 +35,7 @@ describe('SPL Token 2022 GroupMemberPointer Extension', () => {
                     AUTHORITY_ADDRESS_BYTES,
                     GROUP_MEMBER_ADDRESS_BYTES,
                 ]),
-            })
+            }),
         );
     });
     it('can create UpdateGroupMemberPointerInstruction', () => {
@@ -57,7 +57,7 @@ describe('SPL Token 2022 GroupMemberPointer Extension', () => {
                     ]),
                     GROUP_MEMBER_ADDRESS_BYTES,
                 ]),
-            })
+            }),
         );
     });
     it('can create UpdateGroupMemberPointerInstruction to none', () => {
@@ -79,7 +79,7 @@ describe('SPL Token 2022 GroupMemberPointer Extension', () => {
                     ]),
                     NULL_OPTIONAL_NONZERO_PUBKEY_BYTES,
                 ]),
-            })
+            }),
         );
     });
     it('can get state with authority and group address', async () => {

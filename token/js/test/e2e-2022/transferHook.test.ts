@@ -51,14 +51,14 @@ describe('transferHook', () => {
             payer.publicKey,
             false,
             TEST_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
+            ASSOCIATED_TOKEN_PROGRAM_ID,
         );
         destinationAta = getAssociatedTokenAddressSync(
             mint,
             destinationAuthority,
             false,
             TEST_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
+            ASSOCIATED_TOKEN_PROGRAM_ID,
         );
         const mintLen = getMintLen(EXTENSIONS);
         const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
@@ -74,9 +74,9 @@ describe('transferHook', () => {
                 mint,
                 transferHookAuthority.publicKey,
                 TRANSFER_HOOK_TEST_PROGRAM_ID,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             ),
-            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, payer.publicKey, null, TEST_PROGRAM_ID)
+            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, payer.publicKey, null, TEST_PROGRAM_ID),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
@@ -100,7 +100,7 @@ describe('transferHook', () => {
             transferHookAuthority,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const transferHook = getTransferHook(mintInfo);
@@ -120,7 +120,7 @@ describe('transferHook', () => {
             null,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const transferHook = getTransferHook(mintInfo);
@@ -157,7 +157,7 @@ describe('transferHook', () => {
                 ],
             },
             data,
-            8
+            8,
         );
 
         const initExtraAccountMetaInstruction = new TransactionInstruction({
@@ -179,7 +179,7 @@ describe('transferHook', () => {
                 payer.publicKey,
                 mint,
                 TEST_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
+                ASSOCIATED_TOKEN_PROGRAM_ID,
             ),
             createMintToCheckedInstruction(
                 mint,
@@ -188,8 +188,8 @@ describe('transferHook', () => {
                 5 * 10 ** TEST_TOKEN_DECIMALS,
                 TEST_TOKEN_DECIMALS,
                 [],
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
 
         await sendAndConfirmTransaction(connection, setupTransaction, [payer]);
@@ -201,7 +201,7 @@ describe('transferHook', () => {
             destinationAuthority,
             undefined,
             TEST_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
+            ASSOCIATED_TOKEN_PROGRAM_ID,
         );
 
         await transferCheckedWithTransferHook(
@@ -215,7 +215,7 @@ describe('transferHook', () => {
             TEST_TOKEN_DECIMALS,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
 });

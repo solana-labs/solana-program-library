@@ -29,7 +29,7 @@ export async function createWrappedNativeAccount(
     keypair?: Keypair,
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID,
-    nativeMint = NATIVE_MINT
+    nativeMint = NATIVE_MINT,
 ): Promise<PublicKey> {
     // If the amount provided is explicitly 0 or NaN, just create the account without funding it
     if (!amount) return await createAccount(connection, payer, nativeMint, owner, keypair, confirmOptions, programId);
@@ -41,7 +41,7 @@ export async function createWrappedNativeAccount(
             owner,
             false,
             programId,
-            ASSOCIATED_TOKEN_PROGRAM_ID
+            ASSOCIATED_TOKEN_PROGRAM_ID,
         );
 
         const transaction = new Transaction().add(
@@ -51,14 +51,14 @@ export async function createWrappedNativeAccount(
                 owner,
                 nativeMint,
                 programId,
-                ASSOCIATED_TOKEN_PROGRAM_ID
+                ASSOCIATED_TOKEN_PROGRAM_ID,
             ),
             SystemProgram.transfer({
                 fromPubkey: payer.publicKey,
                 toPubkey: associatedToken,
                 lamports: amount,
             }),
-            createSyncNativeInstruction(associatedToken, programId)
+            createSyncNativeInstruction(associatedToken, programId),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer], confirmOptions);
@@ -82,7 +82,7 @@ export async function createWrappedNativeAccount(
             toPubkey: keypair.publicKey,
             lamports: amount,
         }),
-        createInitializeAccountInstruction(keypair.publicKey, nativeMint, owner, programId)
+        createInitializeAccountInstruction(keypair.publicKey, nativeMint, owner, programId),
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer, keypair], confirmOptions);

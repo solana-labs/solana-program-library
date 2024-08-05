@@ -48,7 +48,7 @@ describe('permanentDelegate', () => {
                 programId: TEST_PROGRAM_ID,
             }),
             createInitializePermanentDelegateInstruction(mint, permanentDelegate.publicKey, TEST_PROGRAM_ID),
-            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID)
+            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
@@ -74,7 +74,7 @@ describe('permanentDelegate', () => {
             owner2.publicKey,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         account = await createAccount(connection, payer, mint, owner1.publicKey, undefined, undefined, TEST_PROGRAM_ID);
         await mintTo(connection, payer, mint, account, mintAuthority, 5, [], undefined, TEST_PROGRAM_ID);
@@ -89,7 +89,7 @@ describe('permanentDelegate', () => {
             0,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const source_info = await connection.getTokenAccountBalance(account);
         const destination_info = await connection.getTokenAccountBalance(destination);
@@ -112,7 +112,7 @@ describe('permanentDelegate', () => {
             null,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const permanentDelegateConfig = getPermanentDelegate(mintInfo);

@@ -30,12 +30,12 @@ export async function burnChecked(
     decimals: number,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createBurnCheckedInstruction(account, mint, ownerPublicKey, amount, decimals, multiSigners, programId)
+        createBurnCheckedInstruction(account, mint, ownerPublicKey, amount, decimals, multiSigners, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

@@ -19,7 +19,7 @@ describe('transferFee', () => {
                 transferFeeConfigAuthority,
                 withdrawWithheldAuthority,
                 100,
-                100n
+                100n,
             );
             const decoded = decodeInitializeTransferFeeConfigInstructionUnchecked(instruction);
             expect(decoded.data.transferFeeConfigAuthority).to.eql(transferFeeConfigAuthority);
@@ -35,7 +35,7 @@ describe('transferFee', () => {
                 null,
                 withdrawWithheldAuthority,
                 100,
-                100n
+                100n,
             );
             const decoded = decodeInitializeTransferFeeConfigInstructionUnchecked(instruction);
             expect(decoded.data.transferFeeConfigAuthority).to.eql(null);
@@ -51,7 +51,7 @@ describe('transferFee', () => {
                 transferFeeConfigAuthority,
                 null,
                 100,
-                100n
+                100n,
             );
             const decoded = decodeInitializeTransferFeeConfigInstructionUnchecked(instruction);
             expect(decoded.data.transferFeeConfigAuthority).to.eql(transferFeeConfigAuthority);

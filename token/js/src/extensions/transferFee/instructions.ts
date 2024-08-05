@@ -63,7 +63,7 @@ export function createInitializeTransferFeeConfigInstruction(
     withdrawWithheldAuthority: PublicKey | null,
     transferFeeBasisPoints: number,
     maximumFee: bigint,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -80,7 +80,7 @@ export function createInitializeTransferFeeConfigInstruction(
             transferFeeBasisPoints: transferFeeBasisPoints,
             maximumFee: maximumFee,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -112,7 +112,7 @@ export interface DecodedInitializeTransferFeeConfigInstruction {
  */
 export function decodeInitializeTransferFeeConfigInstruction(
     instruction: TransactionInstruction,
-    programId: PublicKey
+    programId: PublicKey,
 ): DecodedInitializeTransferFeeConfigInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== initializeTransferFeeConfigInstructionData.span)
@@ -232,7 +232,7 @@ export function createTransferCheckedWithFeeInstruction(
     decimals: number,
     fee: bigint,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -246,7 +246,7 @@ export function createTransferCheckedWithFeeInstruction(
             decimals,
             fee,
         },
-        data
+        data,
     );
     const keys = addSigners(
         [
@@ -255,7 +255,7 @@ export function createTransferCheckedWithFeeInstruction(
             { pubkey: destination, isSigner: false, isWritable: true },
         ],
         authority,
-        multiSigners
+        multiSigners,
     );
     return new TransactionInstruction({ keys, programId, data });
 }
@@ -289,7 +289,7 @@ export interface DecodedTransferCheckedWithFeeInstruction {
  */
 export function decodeTransferCheckedWithFeeInstruction(
     instruction: TransactionInstruction,
-    programId: PublicKey
+    programId: PublicKey,
 ): DecodedTransferCheckedWithFeeInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== transferCheckedWithFeeInstructionData.span)
@@ -399,7 +399,7 @@ export function createWithdrawWithheldTokensFromMintInstruction(
     destination: PublicKey,
     authority: PublicKey,
     signers: (Signer | PublicKey)[] = [],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -410,7 +410,7 @@ export function createWithdrawWithheldTokensFromMintInstruction(
             instruction: TokenInstruction.TransferFeeExtension,
             transferFeeInstruction: TransferFeeInstruction.WithdrawWithheldTokensFromMint,
         },
-        data
+        data,
     );
     const keys = addSigners(
         [
@@ -418,7 +418,7 @@ export function createWithdrawWithheldTokensFromMintInstruction(
             { pubkey: destination, isSigner: false, isWritable: true },
         ],
         authority,
-        signers
+        signers,
     );
     return new TransactionInstruction({ keys, programId, data });
 }
@@ -448,7 +448,7 @@ export interface DecodedWithdrawWithheldTokensFromMintInstruction {
  */
 export function decodeWithdrawWithheldTokensFromMintInstruction(
     instruction: TransactionInstruction,
-    programId: PublicKey
+    programId: PublicKey,
 ): DecodedWithdrawWithheldTokensFromMintInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== withdrawWithheldTokensFromMintInstructionData.span)
@@ -553,7 +553,7 @@ export function createWithdrawWithheldTokensFromAccountsInstruction(
     authority: PublicKey,
     signers: (Signer | PublicKey)[],
     sources: PublicKey[],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -565,7 +565,7 @@ export function createWithdrawWithheldTokensFromAccountsInstruction(
             transferFeeInstruction: TransferFeeInstruction.WithdrawWithheldTokensFromAccounts,
             numTokenAccounts: sources.length,
         },
-        data
+        data,
     );
     const keys = addSigners(
         [
@@ -573,7 +573,7 @@ export function createWithdrawWithheldTokensFromAccountsInstruction(
             { pubkey: destination, isSigner: false, isWritable: true },
         ],
         authority,
-        signers
+        signers,
     );
     for (const source of sources) {
         keys.push({ pubkey: source, isSigner: false, isWritable: true });
@@ -608,7 +608,7 @@ export interface DecodedWithdrawWithheldTokensFromAccountsInstruction {
  */
 export function decodeWithdrawWithheldTokensFromAccountsInstruction(
     instruction: TransactionInstruction,
-    programId: PublicKey
+    programId: PublicKey,
 ): DecodedWithdrawWithheldTokensFromAccountsInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== withdrawWithheldTokensFromAccountsInstructionData.span)
@@ -717,7 +717,7 @@ export const harvestWithheldTokensToMintInstructionData = struct<HarvestWithheld
 export function createHarvestWithheldTokensToMintInstruction(
     mint: PublicKey,
     sources: PublicKey[],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -728,7 +728,7 @@ export function createHarvestWithheldTokensToMintInstruction(
             instruction: TokenInstruction.TransferFeeExtension,
             transferFeeInstruction: TransferFeeInstruction.HarvestWithheldTokensToMint,
         },
-        data
+        data,
     );
     const keys: AccountMeta[] = [];
     keys.push({ pubkey: mint, isSigner: false, isWritable: true });
@@ -761,7 +761,7 @@ export interface DecodedHarvestWithheldTokensToMintInstruction {
  */
 export function decodeHarvestWithheldTokensToMintInstruction(
     instruction: TransactionInstruction,
-    programId: PublicKey
+    programId: PublicKey,
 ): DecodedHarvestWithheldTokensToMintInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== harvestWithheldTokensToMintInstructionData.span)
@@ -861,7 +861,7 @@ export function createSetTransferFeeInstruction(
     signers: (Signer | PublicKey)[],
     transferFeeBasisPoints: number,
     maximumFee: bigint,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -875,7 +875,7 @@ export function createSetTransferFeeInstruction(
             transferFeeBasisPoints: transferFeeBasisPoints,
             maximumFee: maximumFee,
         },
-        data
+        data,
     );
     const keys = addSigners([{ pubkey: mint, isSigner: false, isWritable: true }], authority, signers);
 
@@ -908,7 +908,7 @@ export interface DecodedSetTransferFeeInstruction {
  */
 export function decodeSetTransferFeeInstruction(
     instruction: TransactionInstruction,
-    programId: PublicKey
+    programId: PublicKey,
 ): DecodedSetTransferFeeInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== setTransferFeeInstructionData.span) throw new TokenInvalidInstructionDataError();

@@ -35,7 +35,7 @@ export async function createInterestBearingMint(
     decimals: number,
     keypair = Keypair.generate(),
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<PublicKey> {
     const mintLen = getMintLen([ExtensionType.InterestBearingConfig]);
     const lamports = await connection.getMinimumBalanceForRentExemption(mintLen);
@@ -48,7 +48,7 @@ export async function createInterestBearingMint(
             programId,
         }),
         createInitializeInterestBearingMintInstruction(keypair.publicKey, rateAuthority, rate, programId),
-        createInitializeMintInstruction(keypair.publicKey, decimals, mintAuthority, freezeAuthority, programId)
+        createInitializeMintInstruction(keypair.publicKey, decimals, mintAuthority, freezeAuthority, programId),
     );
     await sendAndConfirmTransaction(connection, transaction, [payer, keypair], confirmOptions);
     return keypair.publicKey;
@@ -76,11 +76,11 @@ export async function updateRateInterestBearingMint(
     rate: number,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<string> {
     const [rateAuthorityPublicKey, signers] = getSigners(rateAuthority, multiSigners);
     const transaction = new Transaction().add(
-        createUpdateRateInterestBearingMintInstruction(mint, rateAuthorityPublicKey, rate, signers, programId)
+        createUpdateRateInterestBearingMintInstruction(mint, rateAuthorityPublicKey, rate, signers, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, rateAuthority, ...signers], confirmOptions);

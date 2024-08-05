@@ -79,7 +79,7 @@ export type DecodedInstruction =
 /** TODO: docs */
 export function decodeInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedInstruction {
     if (!instruction.data.length) throw new TokenInvalidInstructionDataError();
 
@@ -122,14 +122,14 @@ export function isInitializeMintInstruction(decoded: DecodedInstruction): decode
 
 /** TODO: docs */
 export function isInitializeAccountInstruction(
-    decoded: DecodedInstruction
+    decoded: DecodedInstruction,
 ): decoded is DecodedInitializeAccountInstruction {
     return decoded.data.instruction === TokenInstruction.InitializeAccount;
 }
 
 /** TODO: docs */
 export function isInitializeMultisigInstruction(
-    decoded: DecodedInstruction
+    decoded: DecodedInstruction,
 ): decoded is DecodedInitializeMultisigInstruction {
     return decoded.data.instruction === TokenInstruction.InitializeMultisig;
 }
@@ -181,7 +181,7 @@ export function isThawAccountInstruction(decoded: DecodedInstruction): decoded i
 
 /** TODO: docs */
 export function isTransferCheckedInstruction(
-    decoded: DecodedInstruction
+    decoded: DecodedInstruction,
 ): decoded is DecodedTransferCheckedInstruction {
     return decoded.data.instruction === TokenInstruction.TransferChecked;
 }
@@ -203,7 +203,7 @@ export function isBurnCheckedInstruction(decoded: DecodedInstruction): decoded i
 
 /** TODO: docs */
 export function isInitializeAccount2Instruction(
-    decoded: DecodedInstruction
+    decoded: DecodedInstruction,
 ): decoded is DecodedInitializeAccount2Instruction {
     return decoded.data.instruction === TokenInstruction.InitializeAccount2;
 }
@@ -215,7 +215,7 @@ export function isSyncNativeInstruction(decoded: DecodedInstruction): decoded is
 
 /** TODO: docs */
 export function isInitializeAccount3Instruction(
-    decoded: DecodedInstruction
+    decoded: DecodedInstruction,
 ): decoded is DecodedInitializeAccount3Instruction {
     return decoded.data.instruction === TokenInstruction.InitializeAccount3;
 }
@@ -229,21 +229,21 @@ export function isInitializeAccount3Instruction(
 
 /** TODO: docs */
 export function isInitializeMint2Instruction(
-    decoded: DecodedInstruction
+    decoded: DecodedInstruction,
 ): decoded is DecodedInitializeMint2Instruction {
     return decoded.data.instruction === TokenInstruction.InitializeMint2;
 }
 
 /** TODO: docs */
 export function isAmountToUiAmountInstruction(
-    decoded: DecodedInstruction
+    decoded: DecodedInstruction,
 ): decoded is DecodedAmountToUiAmountInstruction {
     return decoded.data.instruction === TokenInstruction.AmountToUiAmount;
 }
 
 /** TODO: docs */
 export function isUiamountToAmountInstruction(
-    decoded: DecodedInstruction
+    decoded: DecodedInstruction,
 ): decoded is DecodedUiAmountToAmountInstruction {
     return decoded.data.instruction === TokenInstruction.UiAmountToAmount;
 }

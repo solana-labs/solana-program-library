@@ -49,7 +49,7 @@ export interface ObligationDataFlat {
 /** @internal */
 export const ObligationCollateralLayout = struct<ObligationCollateral>(
     [publicKey('depositReserve'), u64('depositedAmount'), decimal('marketValue')],
-    'collateral'
+    'collateral',
 );
 
 /** @internal */
@@ -60,7 +60,7 @@ export const ObligationLiquidityLayout = struct<ObligationLiquidity>(
         decimal('borrowedAmountWads'),
         decimal('marketValue'),
     ],
-    'liquidity'
+    'liquidity',
 );
 
 /** @internal */
@@ -78,7 +78,7 @@ export const ObligationLayout = struct<ObligationDataFlat>(
         u8('borrowsLen'),
         blob(ObligationCollateralLayout.span + 9 * ObligationLiquidityLayout.span, 'dataFlat'),
     ],
-    'obligation'
+    'obligation',
 );
 
 export const OBLIGATION_SIZE = ObligationLayout.span;

@@ -51,8 +51,8 @@ import {
             decimals,
             mintAuthority.publicKey,
             freezeAuthority.publicKey,
-            TOKEN_2022_PROGRAM_ID
-        )
+            TOKEN_2022_PROGRAM_ID,
+        ),
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
@@ -65,6 +65,6 @@ import {
         freezeAuthority,
         [],
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 })();

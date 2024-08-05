@@ -37,7 +37,7 @@ export const initializePermanentDelegateInstructionData = struct<InitializePerma
 export function createInitializePermanentDelegateInstruction(
     mint: PublicKey,
     permanentDelegate: PublicKey | null,
-    programId: PublicKey
+    programId: PublicKey,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -50,7 +50,7 @@ export function createInitializePermanentDelegateInstruction(
             instruction: TokenInstruction.InitializePermanentDelegate,
             delegate: permanentDelegate || new PublicKey(0),
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -78,7 +78,7 @@ export interface DecodedInitializePermanentDelegateInstruction {
  */
 export function decodeInitializePermanentDelegateInstruction(
     instruction: TransactionInstruction,
-    programId: PublicKey
+    programId: PublicKey,
 ): DecodedInitializePermanentDelegateInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== initializePermanentDelegateInstructionData.span)

@@ -63,7 +63,7 @@ import {
             mint.publicKey,
             payer.publicKey,
             mint.publicKey,
-            TOKEN_2022_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID,
         ),
         createInitializeMintInstruction(mint.publicKey, decimals, payer.publicKey, null, TOKEN_2022_PROGRAM_ID),
         createInitializeInstruction({
@@ -102,7 +102,7 @@ import {
             updateAuthority: payer.publicKey,
             key: 'new-field',
             idempotent: true, // If false the operation will fail if the field does not exist in the metadata
-        })
+        }),
     );
     const sig = await sendAndConfirmTransaction(connection, mintTransaction, [payer, mint]);
     console.log('Signature:', sig);

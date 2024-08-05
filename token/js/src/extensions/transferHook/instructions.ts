@@ -46,7 +46,7 @@ export function createInitializeTransferHookInstruction(
     mint: PublicKey,
     authority: PublicKey,
     transferHookProgramId: PublicKey,
-    programId: PublicKey
+    programId: PublicKey,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -61,7 +61,7 @@ export function createInitializeTransferHookInstruction(
             authority,
             transferHookProgramId,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -97,7 +97,7 @@ export function createUpdateTransferHookInstruction(
     authority: PublicKey,
     transferHookProgramId: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -111,7 +111,7 @@ export function createUpdateTransferHookInstruction(
             transferHookInstruction: TransferHookInstruction.Update,
             transferHookProgramId,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -119,7 +119,7 @@ export function createUpdateTransferHookInstruction(
 
 function deEscalateAccountMeta(accountMeta: AccountMeta, accountMetas: AccountMeta[]): AccountMeta {
     const maybeHighestPrivileges = accountMetas
-        .filter((x) => x.pubkey.equals(accountMeta.pubkey))
+        .filter(x => x.pubkey.equals(accountMeta.pubkey))
         .reduce<{ isSigner: boolean; isWritable: boolean } | undefined>((acc, x) => {
             if (!acc) return { isSigner: x.isSigner, isWritable: x.isWritable };
             return { isSigner: acc.isSigner || x.isSigner, isWritable: acc.isWritable || x.isWritable };
@@ -156,9 +156,9 @@ export function createExecuteInstruction(
     destination: PublicKey,
     owner: PublicKey,
     validateStatePubkey: PublicKey,
-    amount: bigint
+    amount: bigint,
 ): TransactionInstruction {
-    const keys = [source, mint, destination, owner, validateStatePubkey].map((pubkey) => ({
+    const keys = [source, mint, destination, owner, validateStatePubkey].map(pubkey => ({
         pubkey,
         isSigner: false,
         isWritable: false,
@@ -195,7 +195,7 @@ export async function addExtraAccountMetasForExecute(
     destination: PublicKey,
     owner: PublicKey,
     amount: number | bigint,
-    commitment?: Commitment
+    commitment?: Commitment,
 ) {
     const validateStatePubkey = getExtraAccountMetaAddress(mint, programId);
     const validateStateAccount = await connection.getAccountInfo(validateStatePubkey, commitment);
@@ -205,7 +205,7 @@ export async function addExtraAccountMetasForExecute(
     const validateStateData = getExtraAccountMetas(validateStateAccount);
 
     // Check to make sure the provided keys are in the instruction
-    if (![source, mint, destination, owner].every((key) => instruction.keys.some((meta) => meta.pubkey.equals(key)))) {
+    if (![source, mint, destination, owner].every(key => instruction.keys.some(meta => meta.pubkey.equals(key)))) {
         throw new Error('Missing required account in instruction');
     }
 
@@ -216,7 +216,7 @@ export async function addExtraAccountMetasForExecute(
         destination,
         owner,
         validateStatePubkey,
-        BigInt(amount)
+        BigInt(amount),
     );
 
     for (const extraAccountMeta of validateStateData) {
@@ -227,10 +227,10 @@ export async function addExtraAccountMetasForExecute(
                     extraAccountMeta,
                     executeInstruction.keys,
                     executeInstruction.data,
-                    executeInstruction.programId
+                    executeInstruction.programId,
                 ),
-                executeInstruction.keys
-            )
+                executeInstruction.keys,
+            ),
         );
     }
 
@@ -268,7 +268,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
     decimals: number,
     multiSigners: (Signer | PublicKey)[] = [],
     commitment?: Commitment,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ) {
     const instruction = createTransferCheckedInstruction(
         source,
@@ -278,7 +278,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
         amount,
         decimals,
         multiSigners,
-        programId
+        programId,
     );
 
     const mintInfo = await getMint(connection, mint, commitment, programId);
@@ -294,7 +294,7 @@ export async function createTransferCheckedWithTransferHookInstruction(
             destination,
             owner,
             amount,
-            commitment
+            commitment,
         );
     }
 
@@ -329,7 +329,7 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
     fee: bigint,
     multiSigners: (Signer | PublicKey)[] = [],
     commitment?: Commitment,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ) {
     const instruction = createTransferCheckedWithFeeInstruction(
         source,
@@ -340,7 +340,7 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
         decimals,
         fee,
         multiSigners,
-        programId
+        programId,
     );
 
     const mintInfo = await getMint(connection, mint, commitment, programId);
@@ -356,7 +356,7 @@ export async function createTransferCheckedWithFeeAndTransferHookInstruction(
             destination,
             owner,
             amount,
-            commitment
+            commitment,
         );
     }
 

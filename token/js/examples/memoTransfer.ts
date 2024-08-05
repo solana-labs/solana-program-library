@@ -39,7 +39,7 @@ import {
         decimals,
         undefined,
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 
     const accountLen = getAccountLen([ExtensionType.MemoTransfer]);
@@ -57,7 +57,7 @@ import {
             programId: TOKEN_2022_PROGRAM_ID,
         }),
         createInitializeAccountInstruction(destination, mint, owner.publicKey, TOKEN_2022_PROGRAM_ID),
-        createEnableRequiredMemoTransfersInstruction(destination, owner.publicKey, [], TOKEN_2022_PROGRAM_ID)
+        createEnableRequiredMemoTransfersInstruction(destination, owner.publicKey, [], TOKEN_2022_PROGRAM_ID),
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer, owner, destinationKeypair], undefined);
@@ -72,13 +72,13 @@ import {
         mint,
         payer.publicKey,
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
     await mintTo(connection, payer, mint, sourceTokenAccount, mintAuthority, 100, [], undefined, TOKEN_2022_PROGRAM_ID);
 
     const transferTransaction = new Transaction().add(
         createMemoInstruction('Hello, memo-transfer!', [payer.publicKey]),
-        createTransferInstruction(sourceTokenAccount, destination, payer.publicKey, 100, [], TOKEN_2022_PROGRAM_ID)
+        createTransferInstruction(sourceTokenAccount, destination, payer.publicKey, 100, [], TOKEN_2022_PROGRAM_ID),
     );
     await sendAndConfirmTransaction(connection, transferTransaction, [payer], undefined);
 })();

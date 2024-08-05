@@ -63,19 +63,19 @@ export const ReserveLiquidityLayout = struct<ReserveLiquidity>(
         decimal('cumulativeBorrowRateWads'),
         decimal('marketPrice'),
     ],
-    'liquidity'
+    'liquidity',
 );
 
 /** @internal */
 export const ReserveCollateralLayout = struct<ReserveCollateral>(
     [publicKey('mintPubkey'), u64('mintTotalSupply'), publicKey('supplyPubkey')],
-    'collateral'
+    'collateral',
 );
 
 /** @internal */
 export const ReserveFeesLayout = struct<ReserveFees>(
     [u64('borrowFeeWad'), u64('flashLoanFeeWad'), u8('hostFeePercentage')],
-    'fees'
+    'fees',
 );
 
 /** @internal */
@@ -90,7 +90,7 @@ export const ReserveConfigLayout = struct<ReserveConfig>(
         u8('maxBorrowRate'),
         ReserveFeesLayout,
     ],
-    'config'
+    'config',
 );
 
 /** @internal */

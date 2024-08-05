@@ -52,7 +52,7 @@ import {
             programId: TOKEN_2022_PROGRAM_ID,
         }),
         createInitializeTransferHookInstruction(mint, payer.publicKey, transferHookPogramId, TOKEN_2022_PROGRAM_ID),
-        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
+        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID),
     );
     await sendAndConfirmTransaction(connection, mintTransaction, [payer, mintKeypair], undefined);
 
@@ -64,7 +64,7 @@ import {
         payer.publicKey,
         [],
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 
     const senderAta = getAssociatedTokenAddressSync(
@@ -72,14 +72,14 @@ import {
         sender.publicKey,
         false,
         TOKEN_2022_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
+        ASSOCIATED_TOKEN_PROGRAM_ID,
     );
     const recipientAta = getAssociatedTokenAddressSync(
         mint,
         recipient.publicKey,
         false,
         TOKEN_2022_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
+        ASSOCIATED_TOKEN_PROGRAM_ID,
     );
 
     await transferCheckedWithTransferHook(
@@ -93,6 +93,6 @@ import {
         9,
         [],
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 })();

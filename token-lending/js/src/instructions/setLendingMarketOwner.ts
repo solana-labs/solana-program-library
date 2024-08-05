@@ -14,7 +14,7 @@ const DataLayout = struct<Data>([u8('instruction'), publicKey('newOwner')]);
 export const setLendingMarketOwnerInstruction = (
     newOwner: PublicKey,
     lendingMarket: PublicKey,
-    currentOwner: PublicKey
+    currentOwner: PublicKey,
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode(
@@ -22,7 +22,7 @@ export const setLendingMarketOwnerInstruction = (
             instruction: LendingInstruction.SetLendingMarketOwner,
             newOwner,
         },
-        data
+        data,
     );
 
     const keys = [

@@ -35,7 +35,7 @@ import {
         decimals,
         undefined,
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 
     const accountLen = getAccountLen([ExtensionType.CpiGuard]);
@@ -53,7 +53,7 @@ import {
             programId: TOKEN_2022_PROGRAM_ID,
         }),
         createInitializeAccountInstruction(destination, mint, owner.publicKey, TOKEN_2022_PROGRAM_ID),
-        createEnableCpiGuardInstruction(destination, owner.publicKey, [], TOKEN_2022_PROGRAM_ID)
+        createEnableCpiGuardInstruction(destination, owner.publicKey, [], TOKEN_2022_PROGRAM_ID),
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer, owner, destinationKeypair], undefined);

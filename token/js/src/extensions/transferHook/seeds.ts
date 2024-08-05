@@ -60,7 +60,7 @@ function unpackSeedAccountKey(seeds: Uint8Array, previousMetas: AccountMeta[]): 
 async function unpackSeedAccountData(
     seeds: Uint8Array,
     previousMetas: AccountMeta[],
-    connection: Connection
+    connection: Connection,
 ): Promise<Seed> {
     if (seeds.length < 3) {
         throw new TokenTransferHookInvalidSeed();
@@ -87,7 +87,7 @@ async function unpackFirstSeed(
     seeds: Uint8Array,
     previousMetas: AccountMeta[],
     instructionData: Buffer,
-    connection: Connection
+    connection: Connection,
 ): Promise<Seed | null> {
     const [discriminator, ...rest] = seeds;
     const remaining = new Uint8Array(rest);
@@ -111,7 +111,7 @@ export async function unpackSeeds(
     seeds: Uint8Array,
     previousMetas: AccountMeta[],
     instructionData: Buffer,
-    connection: Connection
+    connection: Connection,
 ): Promise<Buffer[]> {
     const unpackedSeeds: Buffer[] = [];
     let i = 0;

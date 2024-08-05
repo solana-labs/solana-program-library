@@ -46,7 +46,7 @@ export function createMintToCheckedInstruction(
     amount: number | bigint,
     decimals: number,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -54,7 +54,7 @@ export function createMintToCheckedInstruction(
             { pubkey: destination, isSigner: false, isWritable: true },
         ],
         authority,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(mintToCheckedInstructionData.span);
@@ -64,7 +64,7 @@ export function createMintToCheckedInstruction(
             amount: BigInt(amount),
             decimals,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -96,7 +96,7 @@ export interface DecodedMintToCheckedInstruction {
  */
 export function decodeMintToCheckedInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedMintToCheckedInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== mintToCheckedInstructionData.span) throw new TokenInvalidInstructionDataError();

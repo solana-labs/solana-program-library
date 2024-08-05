@@ -37,7 +37,7 @@ export function createInitializeMultisigInstruction(
     account: PublicKey,
     signers: (Signer | PublicKey)[],
     m: number,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = [
         { pubkey: account, isSigner: false, isWritable: true },
@@ -57,7 +57,7 @@ export function createInitializeMultisigInstruction(
             instruction: TokenInstruction.InitializeMultisig,
             m,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -87,7 +87,7 @@ export interface DecodedInitializeMultisigInstruction {
  */
 export function decodeInitializeMultisigInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedInitializeMultisigInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== initializeMultisigInstructionData.span)

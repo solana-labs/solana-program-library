@@ -41,7 +41,7 @@ describe('native', () => {
             undefined,
             undefined,
             TEST_PROGRAM_ID,
-            nativeMint
+            nativeMint,
         );
     });
     it('works', async () => {
@@ -66,9 +66,9 @@ describe('native', () => {
                     fromPubkey: payer.publicKey,
                     toPubkey: account,
                     lamports: additionalLamports,
-                })
+                }),
             ),
-            [payer]
+            [payer],
         );
 
         // no change in the amount

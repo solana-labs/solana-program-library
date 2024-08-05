@@ -30,10 +30,10 @@ export async function initializeTransferHook(
     authority: PublicKey,
     transferHookProgramId: PublicKey,
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const transaction = new Transaction().add(
-        createInitializeTransferHookInstruction(mint, authority, transferHookProgramId, programId)
+        createInitializeTransferHookInstruction(mint, authority, transferHookProgramId, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer], confirmOptions);
@@ -61,12 +61,12 @@ export async function updateTransferHook(
     authority: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
     const transaction = new Transaction().add(
-        createUpdateTransferHookInstruction(mint, authorityPublicKey, transferHookProgramId, signers, programId)
+        createUpdateTransferHookInstruction(mint, authorityPublicKey, transferHookProgramId, signers, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -100,7 +100,7 @@ export async function transferCheckedWithTransferHook(
     decimals: number,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
@@ -115,8 +115,8 @@ export async function transferCheckedWithTransferHook(
             decimals,
             signers,
             confirmOptions?.commitment,
-            programId
-        )
+            programId,
+        ),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -152,7 +152,7 @@ export async function transferCheckedWithFeeAndTransferHook(
     fee: bigint,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
@@ -168,8 +168,8 @@ export async function transferCheckedWithFeeAndTransferHook(
             fee,
             signers,
             confirmOptions?.commitment,
-            programId
-        )
+            programId,
+        ),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

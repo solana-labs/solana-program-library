@@ -28,12 +28,12 @@ export async function burn(
     amount: number | bigint,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createBurnInstruction(account, mint, ownerPublicKey, amount, multiSigners, programId)
+        createBurnInstruction(account, mint, ownerPublicKey, amount, multiSigners, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

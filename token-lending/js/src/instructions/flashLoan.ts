@@ -22,7 +22,7 @@ export const flashLoanInstruction = (
     lendingMarket: PublicKey,
     lendingMarketAuthority: PublicKey,
     flashLoanProgram: PublicKey,
-    transferAuthority: PublicKey
+    transferAuthority: PublicKey,
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode(
@@ -30,7 +30,7 @@ export const flashLoanInstruction = (
             instruction: LendingInstruction.FlashLoan,
             liquidityAmount: BigInt(liquidityAmount),
         },
-        data
+        data,
     );
 
     const keys = [

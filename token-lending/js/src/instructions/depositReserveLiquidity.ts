@@ -21,7 +21,7 @@ export const depositReserveLiquidityInstruction = (
     reserveCollateralMint: PublicKey,
     lendingMarket: PublicKey,
     lendingMarketAuthority: PublicKey,
-    transferAuthority: PublicKey
+    transferAuthority: PublicKey,
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode(
@@ -29,7 +29,7 @@ export const depositReserveLiquidityInstruction = (
             instruction: LendingInstruction.DepositReserveLiquidity,
             liquidityAmount: BigInt(liquidityAmount),
         },
-        data
+        data,
     );
 
     const keys = [

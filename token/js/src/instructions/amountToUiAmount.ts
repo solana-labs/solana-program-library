@@ -35,7 +35,7 @@ export const amountToUiAmountInstructionData = struct<AmountToUiAmountInstructio
 export function createAmountToUiAmountInstruction(
     mint: PublicKey,
     amount: number | bigint,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = [{ pubkey: mint, isSigner: false, isWritable: false }];
 
@@ -45,7 +45,7 @@ export function createAmountToUiAmountInstruction(
             instruction: TokenInstruction.AmountToUiAmount,
             amount: BigInt(amount),
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -73,7 +73,7 @@ export interface DecodedAmountToUiAmountInstruction {
  */
 export function decodeAmountToUiAmountInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedAmountToUiAmountInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== amountToUiAmountInstructionData.span) throw new TokenInvalidInstructionDataError();

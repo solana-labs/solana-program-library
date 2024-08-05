@@ -31,7 +31,7 @@ describe('setAuthority', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
     beforeEach(async () => {
@@ -43,7 +43,7 @@ describe('setAuthority', () => {
             owner.publicKey,
             Keypair.generate(),
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
     it('AccountOwner', async () => {
@@ -57,7 +57,7 @@ describe('setAuthority', () => {
             newOwner.publicKey,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.owner).to.eql(newOwner.publicKey);
@@ -70,7 +70,7 @@ describe('setAuthority', () => {
             owner.publicKey,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         expect(
             setAuthority(
@@ -82,8 +82,8 @@ describe('setAuthority', () => {
                 owner.publicKey,
                 [],
                 undefined,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         ).to.be.rejected;
     });
     it('MintAuthority', async () => {
@@ -96,7 +96,7 @@ describe('setAuthority', () => {
             null,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         expect(mintInfo.mintAuthority).to.be.null;
@@ -112,7 +112,7 @@ describe('setAuthority', () => {
             closeAuthority.publicKey,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.closeAuthority).to.eql(closeAuthority.publicKey);
@@ -127,7 +127,7 @@ describe('setAuthority', () => {
             null,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         expect(mintInfo.freezeAuthority).to.be.null;

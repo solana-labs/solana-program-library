@@ -50,8 +50,8 @@ describe('defaultAccountState', () => {
                 TEST_TOKEN_DECIMALS,
                 mintAuthority.publicKey,
                 freezeAuthority.publicKey,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
@@ -71,7 +71,7 @@ describe('defaultAccountState', () => {
             owner.publicKey,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.isFrozen).to.be.true;
@@ -86,7 +86,7 @@ describe('defaultAccountState', () => {
             freezeAuthority,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const owner = Keypair.generate();
         const account = await createAccount(
@@ -96,7 +96,7 @@ describe('defaultAccountState', () => {
             owner.publicKey,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.isFrozen).to.be.false;

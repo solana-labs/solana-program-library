@@ -24,7 +24,7 @@ export async function createAssociatedTokenAccount(
     owner: PublicKey,
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): Promise<PublicKey> {
     const associatedToken = getAssociatedTokenAddressSync(mint, owner, false, programId, associatedTokenProgramId);
 
@@ -35,8 +35,8 @@ export async function createAssociatedTokenAccount(
             owner,
             mint,
             programId,
-            associatedTokenProgramId
-        )
+            associatedTokenProgramId,
+        ),
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer], confirmOptions);

@@ -76,7 +76,7 @@ export async function getMint(
     connection: Connection,
     address: PublicKey,
     commitment?: Commitment,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<Mint> {
     const info = await connection.getAccountInfo(address, commitment);
     return unpackMint(address, info, programId);
@@ -125,7 +125,7 @@ export function unpackMint(address: PublicKey, info: AccountInfo<Buffer> | null,
  */
 export async function getMinimumBalanceForRentExemptMint(
     connection: Connection,
-    commitment?: Commitment
+    commitment?: Commitment,
 ): Promise<number> {
     return await getMinimumBalanceForRentExemptMintWithExtensions(connection, [], commitment);
 }
@@ -141,7 +141,7 @@ export async function getMinimumBalanceForRentExemptMint(
 export async function getMinimumBalanceForRentExemptMintWithExtensions(
     connection: Connection,
     extensions: ExtensionType[],
-    commitment?: Commitment
+    commitment?: Commitment,
 ): Promise<number> {
     const mintLen = getMintLen(extensions);
     return await connection.getMinimumBalanceForRentExemption(mintLen, commitment);
@@ -164,13 +164,13 @@ export async function getAssociatedTokenAddress(
     owner: PublicKey,
     allowOwnerOffCurve = false,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): Promise<PublicKey> {
     if (!allowOwnerOffCurve && !PublicKey.isOnCurve(owner.toBuffer())) throw new TokenOwnerOffCurveError();
 
     const [address] = await PublicKey.findProgramAddress(
         [owner.toBuffer(), programId.toBuffer(), mint.toBuffer()],
-        associatedTokenProgramId
+        associatedTokenProgramId,
     );
 
     return address;
@@ -192,13 +192,13 @@ export function getAssociatedTokenAddressSync(
     owner: PublicKey,
     allowOwnerOffCurve = false,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): PublicKey {
     if (!allowOwnerOffCurve && !PublicKey.isOnCurve(owner.toBuffer())) throw new TokenOwnerOffCurveError();
 
     const [address] = PublicKey.findProgramAddressSync(
         [owner.toBuffer(), programId.toBuffer(), mint.toBuffer()],
-        associatedTokenProgramId
+        associatedTokenProgramId,
     );
 
     return address;

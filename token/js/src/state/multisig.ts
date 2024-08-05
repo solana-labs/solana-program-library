@@ -66,7 +66,7 @@ export async function getMultisig(
     connection: Connection,
     address: PublicKey,
     commitment?: Commitment,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<Multisig> {
     const info = await connection.getAccountInfo(address, commitment);
     return unpackMultisig(address, info, programId);
@@ -84,7 +84,7 @@ export async function getMultisig(
 export function unpackMultisig(
     address: PublicKey,
     info: AccountInfo<Buffer> | null,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Multisig {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
@@ -104,7 +104,7 @@ export function unpackMultisig(
  */
 export async function getMinimumBalanceForRentExemptMultisig(
     connection: Connection,
-    commitment?: Commitment
+    commitment?: Commitment,
 ): Promise<number> {
     return await connection.getMinimumBalanceForRentExemption(MULTISIG_SIZE, commitment);
 }

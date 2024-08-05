@@ -39,8 +39,8 @@ describe('initialize mint', () => {
                 TEST_TOKEN_DECIMALS,
                 mintAuthority,
                 freezeAuthority,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair]);
         const mintInfo = await getMint(connection, mintKeypair.publicKey, undefined, TEST_PROGRAM_ID);
@@ -65,8 +65,8 @@ describe('initialize mint', () => {
                 TEST_TOKEN_DECIMALS,
                 mintAuthority,
                 null,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair]);
         const mintInfo = await getMint(connection, mintKeypair.publicKey, undefined, TEST_PROGRAM_ID);
@@ -104,8 +104,8 @@ describe('initialize mint 2', () => {
                 TEST_TOKEN_DECIMALS,
                 mintAuthority,
                 freezeAuthority,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair]);
         const mintInfo = await getMint(connection, mintKeypair.publicKey, undefined, TEST_PROGRAM_ID);
@@ -130,8 +130,8 @@ describe('initialize mint 2', () => {
                 TEST_TOKEN_DECIMALS,
                 mintAuthority,
                 null,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair]);
         const mintInfo = await getMint(connection, mintKeypair.publicKey, undefined, TEST_PROGRAM_ID);
