@@ -80,8 +80,8 @@ let mut buffer = vec![0; account_size];
     // Update it in-place
     other_value2.data = 4;
     
-    // Later on, to work with it again, since we did _not_ allow repeating entries,
-    // we can just get the first value we encounter.
+    // Later on, to work with it again, we can just get the first value we
+    // encounter, because we did _not_ allow repeating entries for `MyPodValue`.
     let value = state.get_first_value_mut::<MyPodValue>().unwrap();
 }
 
