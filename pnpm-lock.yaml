@@ -280,8 +280,8 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0(eslint@8.57.0)
       eslint-plugin-functional:
-        specifier: ^7.0.0
-        version: 7.0.0(eslint@8.57.0)(typescript@5.5.4)
+        specifier: ^7.0.1
+        version: 7.0.1(eslint@8.57.0)(typescript@5.5.4)
       eslint-plugin-import:
         specifier: ^2.29.1
         version: 2.29.1(@typescript-eslint/parser@7.18.0)(eslint@8.57.0)
@@ -4558,8 +4558,8 @@ packages:
       ignore: 5.2.4
     dev: true
 
-  /eslint-plugin-functional@7.0.0(eslint@8.57.0)(typescript@5.5.4):
-    resolution: {integrity: sha512-j3ZISQBQDs8rjRfMeEKtXb/wg+PV7NXfxshgIq/XR8j8SBlt64nzT6RTO58sJ3nMP5R/DRypofIoW4wMYsGhAQ==}
+  /eslint-plugin-functional@7.0.1(eslint@8.57.0)(typescript@5.5.4):
+    resolution: {integrity: sha512-naT4A+NiYb5TIweR4ibK3SYN+r1Iqd6rWv3VAnLiyWl0zfYxz9hzNsRAPdREOe1aqwMXasdOZQ1nPqvZKC50ZQ==}
     engines: {node: '>=v18.18.0'}
     peerDependencies:
       eslint: ^9.0.0
