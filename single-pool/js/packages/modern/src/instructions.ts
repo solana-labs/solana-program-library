@@ -1,6 +1,5 @@
+import { getAddressCodec, Address } from '@solana/addresses';
 import {
-  getAddressCodec,
-  Base58EncodedAddress,
   ReadonlySignerAccount,
   ReadonlyAccount,
   IInstructionWithAccounts,
@@ -9,7 +8,7 @@ import {
   WritableSignerAccount,
   IInstruction,
   AccountRole,
-} from '@solana/web3.js';
+} from '@solana/instructions';
 
 import {
   PoolMintAuthorityAddress,
@@ -84,9 +83,9 @@ type DepositStakeInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
       WritableAccount<PoolMintAddress>,
       ReadonlyAccount<PoolStakeAuthorityAddress>,
       ReadonlyAccount<PoolMintAuthorityAddress>,
-      WritableAccount<Base58EncodedAddress>, // user stake
-      WritableAccount<Base58EncodedAddress>, // user token
-      WritableAccount<Base58EncodedAddress>, // user lamport
+      WritableAccount<Address>, // user stake
+      WritableAccount<Address>, // user token
+      WritableAccount<Address>, // user lamport
       ReadonlyAccount<typeof SYSVAR_CLOCK_ID>,
       ReadonlyAccount<typeof SYSVAR_STAKE_HISTORY_ID>,
       ReadonlyAccount<typeof TOKEN_PROGRAM_ID>,
@@ -103,8 +102,8 @@ type WithdrawStakeInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID> &
       WritableAccount<PoolMintAddress>,
       ReadonlyAccount<PoolStakeAuthorityAddress>,
       ReadonlyAccount<PoolMintAuthorityAddress>,
-      WritableAccount<Base58EncodedAddress>, // user stake
-      WritableAccount<Base58EncodedAddress>, // user token
+      WritableAccount<Address>, // user stake
+      WritableAccount<Address>, // user token
       ReadonlyAccount<typeof SYSVAR_CLOCK_ID>,
       ReadonlyAccount<typeof TOKEN_PROGRAM_ID>,
       ReadonlyAccount<typeof STAKE_PROGRAM_ID>,
@@ -119,8 +118,8 @@ type CreateTokenMetadataInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID
       ReadonlyAccount<PoolMintAddress>,
       ReadonlyAccount<PoolMintAuthorityAddress>,
       ReadonlyAccount<PoolMplAuthorityAddress>,
-      WritableSignerAccount<Base58EncodedAddress>, // mpl payer
-      WritableAccount<Base58EncodedAddress>, // mpl account
+      WritableSignerAccount<Address>, // mpl payer
+      WritableAccount<Address>, // mpl account
       ReadonlyAccount<typeof MPL_METADATA_PROGRAM_ID>,
       ReadonlyAccount<typeof SYSTEM_PROGRAM_ID>,
     ]
@@ -133,8 +132,8 @@ type UpdateTokenMetadataInstruction = IInstruction<typeof SINGLE_POOL_PROGRAM_ID
       ReadonlyAccount<VoteAccountAddress>,
       ReadonlyAccount<PoolAddress>,
       ReadonlyAccount<PoolMplAuthorityAddress>,
-      ReadonlySignerAccount<Base58EncodedAddress>, // authorized withdrawer
-      WritableAccount<Base58EncodedAddress>, // mpl account
+      ReadonlySignerAccount<Address>, // authorized withdrawer
+      WritableAccount<Address>, // mpl account
       ReadonlyAccount<typeof MPL_METADATA_PROGRAM_ID>,
     ]
   > &
@@ -223,9 +222,9 @@ export async function reactivatePoolStakeInstruction(
 
 export async function depositStakeInstruction(
   pool: PoolAddress,
-  userStakeAccount: Base58EncodedAddress,
-  userTokenAccount: Base58EncodedAddress,
-  userLamportAccount: Base58EncodedAddress,
+  userStakeAccount: Address,
+  userTokenAccount: Address,
+  userLamportAccount: Address,
 ): Promise<DepositStakeInstruction> {
   const programAddress = SINGLE_POOL_PROGRAM_ID;
   const [stake, mint, stakeAuthority, mintAuthority] = await Promise.all([
@@ -259,9 +258,9 @@ export async function depositStakeInstruction(
 
 export async function withdrawStakeInstruction(
   pool: PoolAddress,
-  userStakeAccount: Base58EncodedAddress,
-  userStakeAuthority: Base58EncodedAddress,
-  userTokenAccount: Base58EncodedAddress,
+  userStakeAccount: Address,
+  userStakeAuthority: Address,
+  userTokenAccount: Address,
   tokenAmount: bigint,
 ): Promise<WithdrawStakeInstruction> {
   const programAddress = SINGLE_POOL_PROGRAM_ID;
@@ -272,10 +271,10 @@ export async function withdrawStakeInstruction(
     findPoolMintAuthorityAddress(programAddress, pool),
   ]);
 
-  const { serialize } = getAddressCodec();
+  const { encode } = getAddressCodec();
   const data = new Uint8Array([
     SinglePoolInstructionType.WithdrawStake,
-    ...serialize(userStakeAuthority),
+    ...encode(userStakeAuthority),
     ...u64(tokenAmount),
   ]);
 
@@ -299,7 +298,7 @@ export async function withdrawStakeInstruction(
 
 export async function createTokenMetadataInstruction(
   pool: PoolAddress,
-  payer: Base58EncodedAddress,
+  payer: Address,
 ): Promise<CreateTokenMetadataInstruction> {
   const programAddress = SINGLE_POOL_PROGRAM_ID;
   const mint = await findPoolMintAddress(programAddress, pool);
@@ -329,7 +328,7 @@ export async function createTokenMetadataInstruction(
 
 export async function updateTokenMetadataInstruction(
   voteAccount: VoteAccountAddress,
-  authorizedWithdrawer: Base58EncodedAddress,
+  authorizedWithdrawer: Address,
   tokenName: string,
   tokenSymbol: string,
   tokenUri?: string,
