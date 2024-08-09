@@ -13,45 +13,6 @@ use {
     std::slice::Iter,
 };
 
-/// Verify zero-knowledge proof needed for a [ConfigureAccount] instruction and
-/// return the corresponding proof context.
-pub fn verify_configure_account_proof(
-    account_info_iter: &mut Iter<AccountInfo>,
-    proof_instruction_offset: i64,
-) -> Result<PubkeyValidityProofContext, ProgramError> {
-    verify_and_extract_context::<PubkeyValidityData, PubkeyValidityProofContext>(
-        account_info_iter,
-        proof_instruction_offset,
-        None,
-    )
-}
-
-/// Verify zero-knowledge proof needed for a [EmptyAccount] instruction and
-/// return the corresponding proof context.
-pub fn verify_empty_account_proof(
-    account_info_iter: &mut Iter<AccountInfo>,
-    proof_instruction_offset: i64,
-) -> Result<ZeroBalanceProofContext, ProgramError> {
-    verify_and_extract_context::<ZeroBalanceProofData, ZeroBalanceProofContext>(
-        account_info_iter,
-        proof_instruction_offset,
-        None,
-    )
-}
-
-/// Verify zero-knowledge proof needed for a [Withdraw] instruction and return
-/// the corresponding proof context.
-pub fn verify_withdraw_proof(
-    account_info_iter: &mut Iter<AccountInfo>,
-    proof_instruction_offset: i64,
-) -> Result<WithdrawProofContext, ProgramError> {
-    verify_and_extract_context::<WithdrawData, WithdrawProofContext>(
-        account_info_iter,
-        proof_instruction_offset,
-        None,
-    )
-}
-
 /// Verify zero-knowledge proof needed for a [Transfer] instruction without fee
 /// and return the corresponding proof context.
 #[cfg(feature = "zk-ops")]

@@ -39,7 +39,6 @@ use {
         pubkey::Pubkey,
     },
     spl_pod::optional_keys::OptionalNonZeroPubkey,
-    std::slice::Iter,
 };
 
 /// Processes an [InitializeConfidentialTransferFeeConfig] instruction.
@@ -77,8 +76,10 @@ fn process_withdraw_withheld_tokens_from_mint(
 
     // zero-knowledge proof certifies that the exact withheld amount is credited to
     // the destination account.
-    let proof_context =
-        verify_ciphertext_ciphertext_equality_proof(account_info_iter, proof_instruction_offset)?;
+    let proof_context = verify_and_extract_context::<
+        CiphertextCiphertextEqualityProofData,
+        CiphertextCiphertextEqualityProofContext,
+    >(account_info_iter, proof_instruction_offset, None)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -167,19 +168,6 @@ fn process_withdraw_withheld_tokens_from_mint(
     Ok(())
 }
 
-/// Verify zero-knowledge proof needed for a [WithdrawWithheldTokensFromMint]
-/// instruction or a `[WithdrawWithheldTokensFromAccounts]` and return the
-/// corresponding proof context.
-fn verify_ciphertext_ciphertext_equality_proof(
-    account_info_iter: &mut Iter<AccountInfo>,
-    proof_instruction_offset: i64,
-) -> Result<CiphertextCiphertextEqualityProofContext, ProgramError> {
-    verify_and_extract_context::<
-        CiphertextCiphertextEqualityProofData,
-        CiphertextCiphertextEqualityProofContext,
-    >(account_info_iter, proof_instruction_offset, None)
-}
-
 /// Processes a [WithdrawWithheldTokensFromAccounts] instruction.
 #[cfg(feature = "zk-ops")]
 fn process_withdraw_withheld_tokens_from_accounts(
@@ -195,8 +183,10 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     // zero-knowledge proof certifies that the exact aggregate withheld amount is
     // credited to the destination account.
-    let proof_context =
-        verify_ciphertext_ciphertext_equality_proof(account_info_iter, proof_instruction_offset)?;
+    let proof_context = verify_and_extract_context::<
+        CiphertextCiphertextEqualityProofData,
+        CiphertextCiphertextEqualityProofContext,
+    >(account_info_iter, proof_instruction_offset, None)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
