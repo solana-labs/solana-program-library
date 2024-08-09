@@ -2,7 +2,6 @@ use {
     crate::{
         error::TokenError,
         extension::confidential_transfer::{
-            ciphertext_extraction::SourceDecryptHandles,
             split_proof_generation::transfer_split_proof_data, ConfidentialTransferAccount,
             DecryptableBalance, EncryptedBalance, PENDING_BALANCE_LO_BIT_LENGTH,
         },
@@ -17,7 +16,7 @@ use {
             transfer::{FeeParameters, TransferData, TransferWithFeeData},
             withdraw::WithdrawData,
             zero_balance::ZeroBalanceProofData,
-            BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU128Data,
+            BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
             CiphertextCommitmentEqualityProofData,
         },
     },
@@ -284,9 +283,8 @@ impl TransferAccountInfo {
     ) -> Result<
         (
             CiphertextCommitmentEqualityProofData,
-            BatchedGroupedCiphertext2HandlesValidityProofData,
+            BatchedGroupedCiphertext3HandlesValidityProofData,
             BatchedRangeProofU128Data,
-            SourceDecryptHandles,
         ),
         TokenError,
     > {
