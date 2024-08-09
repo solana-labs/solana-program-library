@@ -92,6 +92,7 @@ async fn main() {
     // maybe come up with a way to do this through a some macro tag on the function?
     let tests = vec![
         async_trial!(create_token_default, test_validator, payer),
+        async_trial!(create_token_2022, test_validator, payer),
         async_trial!(create_token_interest_bearing, test_validator, payer),
         async_trial!(set_interest_rate, test_validator, payer),
         async_trial!(supply, test_validator, payer),
@@ -494,6 +495,43 @@ async fn create_token_default(test_validator: &TestValidator, payer: &Keypair) {
         let account = config.rpc_client.get_account(&mint).await.unwrap();
         assert_eq!(account.owner, *program_id);
     }
+}
+
+async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
+    let mut wallet_manager = None;
+    let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
+    let mut multisigner_ids = Vec::new();
+
+    let args = &[
+        "spl-token",
+        CommandName::CreateToken.into(),
+        "--program-2022",
+    ];
+
+    let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
+    let minimum_signers_help = minimum_signers_help_string();
+    let multisig_member_help = multisig_member_help_string();
+
+    let app_matches = app(
+        &default_decimals,
+        &minimum_signers_help,
+        &multisig_member_help,
+    )
+    .get_matches_from(args);
+
+    let config = Config::new_with_clients_and_ws_url(
+        &app_matches,
+        &mut wallet_manager,
+        &mut bulk_signers,
+        &mut multisigner_ids,
+        config.rpc_client.clone(),
+        config.program_client.clone(),
+        config.websocket_url.clone(),
+    )
+    .await;
+
+    assert_eq!(config.program_id, spl_token_2022::ID);
 }
 
 async fn create_token_interest_bearing(test_validator: &TestValidator, payer: &Keypair) {
