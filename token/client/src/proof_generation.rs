@@ -126,8 +126,8 @@ pub fn transfer_with_fee_split_proof_data(
     )
     .map_err(|_| TokenError::ProofGeneration)?;
 
-    // encrypt the transfer amount under the source, destination and auditor ElGamal public
-    // key
+    // encrypt the transfer amount under the source, destination and auditor ElGamal
+    // public key
     let transfer_amount_destination_auditor_ciphertext_lo = GroupedElGamal::encrypt_with(
         [
             source_elgamal_keypair.pubkey(),

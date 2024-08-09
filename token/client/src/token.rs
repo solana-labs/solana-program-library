@@ -2212,7 +2212,8 @@ where
             )
             .map_err(|_| TokenError::ProofGeneration)?;
 
-        // if proof accounts are none, then proof data must be included as instruction data
+        // if proof accounts are none, then proof data must be included as instruction
+        // data
         let equality_proof_data = equality_proof_account
             .is_none()
             .then_some(equality_proof_data);
@@ -2380,7 +2381,8 @@ where
         .await
     }
 
-    /// Create an equality proof context state account for a confidential transfer.
+    /// Create an equality proof context state account for a confidential
+    /// transfer.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_proof_context_state_for_transfer<S: Signer>(
         &self,
@@ -2695,7 +2697,8 @@ where
         self.process_ixs(&instructions, signing_keypairs).await
     }
 
-    /// Create equality proof context state accounts for a confidential transfer with fee.
+    /// Create equality proof context state accounts for a confidential transfer
+    /// with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_equality_proof_context_state_for_transfer_with_fee<S: Signer>(
         &self,
@@ -2777,7 +2780,8 @@ where
         .await
     }
 
-    /// Create a fee sigma proof context state account for a confidential transfer with fee.
+    /// Create a fee sigma proof context state account for a confidential
+    /// transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_fee_sigma_proof_context_state_for_transfer_with_fee<S: Signer>(
         &self,
@@ -2816,8 +2820,8 @@ where
         .await
     }
 
-    /// Create a fee ciphertext validity proof context state account for a confidential transfer
-    /// with fee.
+    /// Create a fee ciphertext validity proof context state account for a
+    /// confidential transfer with fee.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_fee_ciphertext_validity_proof_context_state_for_transfer_with_fee<
         S: Signer,

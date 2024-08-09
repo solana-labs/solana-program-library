@@ -245,8 +245,8 @@ impl TransferProofContextInfo {
             commitment: new_source_commitment,
         } = equality_proof_context;
 
-        // The ciphertext validity proof context consists of the source ElGamal public key,
-        // destination ElGamal
+        // The ciphertext validity proof context consists of the source ElGamal public
+        // key, destination ElGamal
         // public key, auditor ElGamal public key, and the transfer amount
         // ciphertexts. All of these fields should be returned as part of
         // `TransferProofContextInfo`. In addition, the commitments pertaining
