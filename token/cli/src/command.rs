@@ -41,7 +41,6 @@ use {
                 account_info::{
                     ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
                 },
-                instruction::TransferSplitContextStateAccounts,
                 ConfidentialTransferAccount, ConfidentialTransferMint,
             },
             confidential_transfer_fee::ConfidentialTransferFeeConfig,
@@ -1567,6 +1566,7 @@ async fn command_transfer(
             });
 
             let context_state_authority = config.fee_payer()?;
+            let context_state_authority_pubkey = context_state_authority.pubkey();
             let equality_proof_context_state_account = Keypair::new();
             let equality_proof_pubkey = equality_proof_context_state_account.pubkey();
             let ciphertext_validity_proof_context_state_account = Keypair::new();
@@ -1575,91 +1575,90 @@ async fn command_transfer(
             let range_proof_context_state_account = Keypair::new();
             let range_proof_pubkey = range_proof_context_state_account.pubkey();
 
-            let transfer_context_state_accounts = TransferSplitContextStateAccounts {
-                equality_proof: &equality_proof_pubkey,
-                ciphertext_validity_proof: &ciphertext_validity_proof_pubkey,
-                range_proof: &range_proof_pubkey,
-                authority: &context_state_authority.pubkey(),
-                no_op_on_uninitialized_split_context_state: false,
-                close_split_context_state_accounts: None,
-            };
-
             let state = token.get_account_info(&sender).await.unwrap();
             let extension = state
                 .get_extension::<ConfidentialTransferAccount>()
                 .unwrap();
             let transfer_account_info = TransferAccountInfo::new(extension);
 
-            let (
-                equality_proof_data,
-                ciphertext_validity_proof_data,
-                range_proof_data,
-                source_decrypt_handles,
-            ) = transfer_account_info
-                .generate_split_transfer_proof_data(
-                    transfer_balance,
-                    &args.sender_elgamal_keypair,
-                    &args.sender_aes_key,
-                    &recipient_elgamal_pubkey,
-                    auditor_elgamal_pubkey.as_ref(),
-                )
-                .unwrap();
+            let (equality_proof_data, ciphertext_validity_proof_data, range_proof_data) =
+                transfer_account_info
+                    .generate_split_transfer_proof_data(
+                        transfer_balance,
+                        &args.sender_elgamal_keypair,
+                        &args.sender_aes_key,
+                        &recipient_elgamal_pubkey,
+                        auditor_elgamal_pubkey.as_ref(),
+                    )
+                    .unwrap();
 
             // setup proofs
             let _ = try_join!(
                 token.create_range_proof_context_state_for_transfer(
-                    transfer_context_state_accounts,
+                    &range_proof_pubkey,
+                    &context_state_authority_pubkey,
                     &range_proof_data,
                     &range_proof_context_state_account,
                 ),
                 token.create_equality_proof_context_state_for_transfer(
-                    transfer_context_state_accounts,
+                    &equality_proof_pubkey,
+                    &context_state_authority_pubkey,
                     &equality_proof_data,
                     &equality_proof_context_state_account,
                 ),
                 token.create_ciphertext_validity_proof_context_state_for_transfer(
-                    transfer_context_state_accounts,
+                    &ciphertext_validity_proof_pubkey,
+                    &context_state_authority_pubkey,
                     &ciphertext_validity_proof_data,
                     &ciphertext_validity_proof_context_state_account,
                 )
             )?;
 
             // do the transfer
+            let equality_proof_context_proof_account =
+                ProofAccount::ContextAccount(equality_proof_pubkey);
+            let ciphertext_validity_proof_context_proof_account =
+                ProofAccount::ContextAccount(ciphertext_validity_proof_pubkey);
+            let range_proof_context_proof_account =
+                ProofAccount::ContextAccount(range_proof_pubkey);
+
             let transfer_result = token
-                .confidential_transfer_transfer_with_split_proofs(
+                .confidential_transfer_transfer(
                     &sender,
                     &recipient_token_account,
                     &sender_owner,
-                    transfer_context_state_accounts,
+                    Some(&equality_proof_context_proof_account),
+                    Some(&ciphertext_validity_proof_context_proof_account),
+                    Some(&range_proof_context_proof_account),
                     transfer_balance,
                     Some(transfer_account_info),
+                    &args.sender_elgamal_keypair,
                     &args.sender_aes_key,
-                    &source_decrypt_handles,
+                    &recipient_elgamal_pubkey,
+                    auditor_elgamal_pubkey.as_ref(),
                     &bulk_signers,
                 )
                 .await?;
 
             // close context state accounts
-            let context_state_authority_pubkey = context_state_authority.pubkey();
-            let close_context_state_signers = &[context_state_authority];
             let _ = try_join!(
                 token.confidential_transfer_close_context_state(
                     &equality_proof_pubkey,
                     &sender,
                     &context_state_authority_pubkey,
-                    close_context_state_signers,
+                    &context_state_authority,
                 ),
                 token.confidential_transfer_close_context_state(
                     &ciphertext_validity_proof_pubkey,
                     &sender,
                     &context_state_authority_pubkey,
-                    close_context_state_signers,
+                    &context_state_authority,
                 ),
                 token.confidential_transfer_close_context_state(
                     &range_proof_pubkey,
                     &sender,
                     &context_state_authority_pubkey,
-                    close_context_state_signers,
+                    &context_state_authority,
                 ),
             )?;
 
@@ -3361,13 +3360,12 @@ async fn command_deposit_withdraw_confidential_tokens(
 
             // close context state account
             let context_state_authority_pubkey = context_state_authority.pubkey();
-            let close_context_state_signers = &[context_state_authority];
             token
                 .confidential_transfer_close_context_state(
                     &context_state_pubkey,
                     &token_account_address,
                     &context_state_authority_pubkey,
-                    close_context_state_signers,
+                    &context_state_authority,
                 )
                 .await?
         }
