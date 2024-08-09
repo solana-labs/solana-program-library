@@ -854,6 +854,8 @@ async fn success_confidential_transfer() {
             &bob_meta.token_account,
             &alice.pubkey(),
             None,
+            None,
+            None,
             amount,
             None,
             &alice_meta.elgamal_keypair,
