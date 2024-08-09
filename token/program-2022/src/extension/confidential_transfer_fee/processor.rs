@@ -171,13 +171,13 @@ fn process_withdraw_withheld_tokens_from_mint(
 /// instruction or a `[WithdrawWithheldTokensFromAccounts]` and return the
 /// corresponding proof context.
 fn verify_ciphertext_ciphertext_equality_proof(
-    account_info_iter: &mut Iter<'_, AccountInfo<'_>>,
+    account_info_iter: &mut Iter<AccountInfo>,
     proof_instruction_offset: i64,
 ) -> Result<CiphertextCiphertextEqualityProofContext, ProgramError> {
     verify_and_extract_context::<
         CiphertextCiphertextEqualityProofData,
         CiphertextCiphertextEqualityProofContext,
-    >(account_info_iter, proof_instruction_offset)
+    >(account_info_iter, proof_instruction_offset, None)
 }
 
 /// Processes a [WithdrawWithheldTokensFromAccounts] instruction.

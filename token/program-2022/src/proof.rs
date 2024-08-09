@@ -77,6 +77,16 @@ pub enum ProofLocation<'a, T> {
     ContextStateAccount(&'a Pubkey),
 }
 
+impl<'a, T> ProofLocation<'a, T> {
+    /// Returns true if the proof location is an instruction offset
+    pub fn is_instruction_offset(&self) -> bool {
+        match self {
+            Self::InstructionOffset(_, _) => true,
+            Self::ContextStateAccount(_) => false,
+        }
+    }
+}
+
 /// A proof data type to distinguish between proof data included as part of
 /// zk-token proof instruction data and proof data stored in a record account.
 #[derive(Clone, Copy)]
@@ -90,9 +100,9 @@ pub enum ProofData<'a, T> {
 
 /// Verify zero-knowledge proof and return the corresponding proof context.
 pub fn verify_and_extract_context<'a, T: Pod + ZkProofData<U>, U: Pod>(
-    account_info_iter: &mut Iter<'a, AccountInfo<'a>>,
+    account_info_iter: &mut Iter<'_, AccountInfo<'a>>,
     proof_instruction_offset: i64,
-    sysvar_account_info: Option<&'a AccountInfo<'a>>,
+    sysvar_account_info: Option<&'_ AccountInfo<'a>>,
 ) -> Result<U, ProgramError> {
     if proof_instruction_offset == 0 {
         // interpret `account_info` as a context state account
@@ -114,7 +124,7 @@ pub fn verify_and_extract_context<'a, T: Pod + ZkProofData<U>, U: Pod>(
             next_account_info(account_info_iter)?
         };
         let zkp_instruction =
-            get_instruction_relative(proof_instruction_offset, &sysvar_account_info)?;
+            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
         let expected_proof_type = zk_proof_type_to_instruction(T::PROOF_TYPE)?;
         Ok(decode_proof_instruction_context::<T, U>(
             account_info_iter,

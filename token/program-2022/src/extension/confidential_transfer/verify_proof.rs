@@ -15,8 +15,8 @@ use {
 
 /// Verify zero-knowledge proof needed for a [ConfigureAccount] instruction and
 /// return the corresponding proof context.
-pub fn verify_configure_account_proof<'a>(
-    account_info_iter: &mut Iter<'a, AccountInfo<'a>>,
+pub fn verify_configure_account_proof(
+    account_info_iter: &mut Iter<AccountInfo>,
     proof_instruction_offset: i64,
 ) -> Result<PubkeyValidityProofContext, ProgramError> {
     verify_and_extract_context::<PubkeyValidityData, PubkeyValidityProofContext>(
@@ -28,8 +28,8 @@ pub fn verify_configure_account_proof<'a>(
 
 /// Verify zero-knowledge proof needed for a [EmptyAccount] instruction and
 /// return the corresponding proof context.
-pub fn verify_empty_account_proof<'a>(
-    account_info_iter: &mut Iter<'a, AccountInfo<'a>>,
+pub fn verify_empty_account_proof(
+    account_info_iter: &mut Iter<AccountInfo>,
     proof_instruction_offset: i64,
 ) -> Result<ZeroBalanceProofContext, ProgramError> {
     verify_and_extract_context::<ZeroBalanceProofData, ZeroBalanceProofContext>(
@@ -41,8 +41,8 @@ pub fn verify_empty_account_proof<'a>(
 
 /// Verify zero-knowledge proof needed for a [Withdraw] instruction and return
 /// the corresponding proof context.
-pub fn verify_withdraw_proof<'a>(
-    account_info_iter: &mut Iter<'a, AccountInfo<'a>>,
+pub fn verify_withdraw_proof(
+    account_info_iter: &mut Iter<AccountInfo>,
     proof_instruction_offset: i64,
 ) -> Result<WithdrawProofContext, ProgramError> {
     verify_and_extract_context::<WithdrawData, WithdrawProofContext>(
@@ -55,12 +55,11 @@ pub fn verify_withdraw_proof<'a>(
 /// Verify zero-knowledge proof needed for a [Transfer] instruction without fee
 /// and return the corresponding proof context.
 #[cfg(feature = "zk-ops")]
-pub fn verify_transfer_proof<'a>(
-    account_info_iter: &mut Iter<'a, AccountInfo<'a>>,
+pub fn verify_transfer_proof(
+    account_info_iter: &mut Iter<AccountInfo>,
     equality_proof_instruction_offset: i64,
     ciphertext_validity_proof_instruction_offset: i64,
     range_proof_instruction_offset: i64,
-    source_decrypt_handles: &SourceDecryptHandles,
 ) -> Result<TransferProofContextInfo, ProgramError> {
     let sysvar_account_info = if equality_proof_instruction_offset != 0
         || ciphertext_validity_proof_instruction_offset != 0
@@ -81,18 +80,18 @@ pub fn verify_transfer_proof<'a>(
     )?;
 
     let ciphertext_validity_proof_context = verify_and_extract_context::<
-        BatchedGroupedCiphertext2HandlesValidityProofData,
-        BatchedGroupedCiphertext2HandlesValidityProofContext,
+        BatchedGroupedCiphertext3HandlesValidityProofData,
+        BatchedGroupedCiphertext3HandlesValidityProofContext,
     >(
         account_info_iter,
-        equality_proof_instruction_offset,
+        ciphertext_validity_proof_instruction_offset,
         sysvar_account_info,
     )?;
 
     let range_proof_context =
         verify_and_extract_context::<BatchedRangeProofU128Data, BatchedRangeProofContext>(
             account_info_iter,
-            equality_proof_instruction_offset,
+            range_proof_instruction_offset,
             sysvar_account_info,
         )?;
 
@@ -103,7 +102,6 @@ pub fn verify_transfer_proof<'a>(
         &equality_proof_context,
         &ciphertext_validity_proof_context,
         &range_proof_context,
-        source_decrypt_handles,
     )?;
 
     Ok(transfer_proof_context)
@@ -112,14 +110,14 @@ pub fn verify_transfer_proof<'a>(
 /// Verify zero-knowledge proof needed for a [Transfer] instruction with fee and
 /// return the corresponding proof context.
 #[cfg(feature = "zk-ops")]
-pub fn verify_transfer_with_fee_proof<'a>(
-    account_info_iter: &mut Iter<'a, AccountInfo<'a>>,
+#[allow(clippy::too_many_arguments)]
+pub fn verify_transfer_with_fee_proof(
+    account_info_iter: &mut Iter<AccountInfo>,
     equality_proof_instruction_offset: i64,
     transfer_amount_ciphertext_validity_proof_instruction_offset: i64,
     fee_sigma_proof_instruction_offset: i64,
     fee_ciphertext_validity_proof_instruction_offset: i64,
     range_proof_instruction_offset: i64,
-    source_decrypt_handles: &SourceDecryptHandles,
     fee_parameters: &TransferFee,
 ) -> Result<TransferWithFeeProofContextInfo, ProgramError> {
     let sysvar_account_info = if equality_proof_instruction_offset != 0
@@ -143,18 +141,18 @@ pub fn verify_transfer_with_fee_proof<'a>(
     )?;
 
     let transfer_amount_ciphertext_validity_proof_context = verify_and_extract_context::<
-        BatchedGroupedCiphertext2HandlesValidityProofData,
-        BatchedGroupedCiphertext2HandlesValidityProofContext,
+        BatchedGroupedCiphertext3HandlesValidityProofData,
+        BatchedGroupedCiphertext3HandlesValidityProofContext,
     >(
         account_info_iter,
-        equality_proof_instruction_offset,
+        transfer_amount_ciphertext_validity_proof_instruction_offset,
         sysvar_account_info,
     )?;
 
     let fee_sigma_proof_context =
         verify_and_extract_context::<FeeSigmaProofData, FeeSigmaProofContext>(
             account_info_iter,
-            equality_proof_instruction_offset,
+            fee_sigma_proof_instruction_offset,
             sysvar_account_info,
         )?;
 
@@ -163,14 +161,14 @@ pub fn verify_transfer_with_fee_proof<'a>(
         BatchedGroupedCiphertext2HandlesValidityProofContext,
     >(
         account_info_iter,
-        equality_proof_instruction_offset,
+        fee_ciphertext_validity_proof_instruction_offset,
         sysvar_account_info,
     )?;
 
     let range_proof_context =
         verify_and_extract_context::<BatchedRangeProofU256Data, BatchedRangeProofContext>(
             account_info_iter,
-            equality_proof_instruction_offset,
+            range_proof_instruction_offset,
             sysvar_account_info,
         )?;
 
@@ -186,7 +184,6 @@ pub fn verify_transfer_with_fee_proof<'a>(
         &fee_sigma_proof_context,
         &fee_ciphertext_validity_proof_context,
         &range_proof_context,
-        source_decrypt_handles,
         fee_parameters,
     )?;
 

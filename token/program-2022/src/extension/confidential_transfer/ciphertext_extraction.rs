@@ -15,7 +15,8 @@ use crate::{
         },
         instruction::{
             transfer::{TransferProofContext, TransferWithFeeProofContext},
-            BatchedGroupedCiphertext2HandlesValidityProofContext, BatchedRangeProofContext,
+            BatchedGroupedCiphertext2HandlesValidityProofContext,
+            BatchedGroupedCiphertext3HandlesValidityProofContext, BatchedRangeProofContext,
             CiphertextCommitmentEqualityProofContext, FeeSigmaProofContext,
         },
         zk_token_elgamal::pod::{
@@ -35,14 +36,35 @@ use {
 /// A grouped ciphertext with 2 handles consists of the following 32-bytes
 /// components that are serialized in order:
 ///   1. The `commitment` component that encodes the fee amount.
+///   2. The `decryption handle` component with respect to the destination
+///      public key.
+///   3. The `decryption handle` component with respect to the withdraw withheld
+///      authority public key.
+///
+/// The fee commitment component consists of the first 32-byte.
+pub(crate) fn extract_commitment_from_grouped_ciphertext_2_handles(
+    transfer_amount_ciphertext: &GroupedElGamalCiphertext2Handles,
+) -> PedersenCommitment {
+    let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
+    let transfer_amount_commitment_bytes =
+        transfer_amount_ciphertext_bytes[..32].try_into().unwrap();
+    PedersenCommitment(transfer_amount_commitment_bytes)
+}
+
+/// Extract the commitment component from a grouped ciphertext with 3 handles.
+///
+/// A grouped ciphertext with 3 handles consists of the following 32-bytes
+/// components that are serialized in order:
+///   1. The `commitment` component that encodes the fee amount.
+///   2. The `source handle` component with respect to the source public key.
 ///   3. The `decryption handle` component with respect to the destination
 ///      public key.
 ///   4. The `decryption handle` component with respect to the withdraw withheld
 ///      authority public key.
 ///
 /// The fee commitment component consists of the first 32-byte.
-pub(crate) fn extract_commitment_from_grouped_ciphertext(
-    transfer_amount_ciphertext: &GroupedElGamalCiphertext2Handles,
+pub(crate) fn extract_commitment_from_grouped_ciphertext_3_handles(
+    transfer_amount_ciphertext: &GroupedElGamalCiphertext3Handles,
 ) -> PedersenCommitment {
     let transfer_amount_ciphertext_bytes = bytemuck::bytes_of(transfer_amount_ciphertext);
     let transfer_amount_commitment_bytes =
@@ -160,24 +182,6 @@ pub(crate) fn fee_amount_withdraw_withheld_authority_ciphertext(
     ElGamalCiphertext(destination_ciphertext_bytes)
 }
 
-#[cfg(feature = "zk-ops")]
-pub(crate) fn transfer_amount_encryption_from_decrypt_handle(
-    source_decrypt_handle: &DecryptHandle,
-    grouped_ciphertext: &GroupedElGamalCiphertext2Handles,
-) -> TransferAmountCiphertext {
-    let source_decrypt_handle_bytes = bytemuck::bytes_of(source_decrypt_handle);
-    let grouped_ciphertext_bytes = bytemuck::bytes_of(grouped_ciphertext);
-
-    let mut transfer_amount_ciphertext_bytes = [0u8; 128];
-    transfer_amount_ciphertext_bytes[..32].copy_from_slice(&grouped_ciphertext_bytes[..32]);
-    transfer_amount_ciphertext_bytes[32..64].copy_from_slice(source_decrypt_handle_bytes);
-    transfer_amount_ciphertext_bytes[64..128].copy_from_slice(&grouped_ciphertext_bytes[32..96]);
-
-    TransferAmountCiphertext(GroupedElGamalCiphertext3Handles(
-        transfer_amount_ciphertext_bytes,
-    ))
-}
-
 /// The transfer public keys associated with a transfer.
 #[cfg(feature = "zk-ops")]
 pub struct TransferPubkeysInfo {
@@ -227,9 +231,8 @@ impl TransferProofContextInfo {
     /// their consistency.
     pub fn verify_and_extract(
         equality_proof_context: &CiphertextCommitmentEqualityProofContext,
-        ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
+        ciphertext_validity_proof_context: &BatchedGroupedCiphertext3HandlesValidityProofContext,
         range_proof_context: &BatchedRangeProofContext,
-        source_decrypt_handles: &SourceDecryptHandles,
     ) -> Result<Self, ProgramError> {
         // The equality proof context consists of the source ElGamal public key, the new
         // source available balance ciphertext, and the new source available
@@ -237,23 +240,29 @@ impl TransferProofContextInfo {
         // of `TransferProofContextInfo` and the commitment should be checked
         // with range proof for consistency.
         let CiphertextCommitmentEqualityProofContext {
-            pubkey: source_pubkey,
+            pubkey: source_pubkey_from_equality_proof,
             ciphertext: new_source_ciphertext,
             commitment: new_source_commitment,
         } = equality_proof_context;
 
-        // The ciphertext validity proof context consists of the destination ElGamal
+        // The ciphertext validity proof context consists of the source ElGamal public key,
+        // destination ElGamal
         // public key, auditor ElGamal public key, and the transfer amount
         // ciphertexts. All of these fields should be returned as part of
         // `TransferProofContextInfo`. In addition, the commitments pertaining
         // to the transfer amount ciphertexts should be checked with range proof for
         // consistency.
-        let BatchedGroupedCiphertext2HandlesValidityProofContext {
+        let BatchedGroupedCiphertext3HandlesValidityProofContext {
+            source_pubkey: source_pubkey_from_ciphertext_validity_proof,
             destination_pubkey,
             auditor_pubkey,
             grouped_ciphertext_lo: transfer_amount_ciphertext_lo,
             grouped_ciphertext_hi: transfer_amount_ciphertext_hi,
         } = ciphertext_validity_proof_context;
+
+        if source_pubkey_from_equality_proof != source_pubkey_from_ciphertext_validity_proof {
+            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+        }
 
         // The range proof context consists of the Pedersen commitments and bit-lengths
         // for which the range proof is proved. The commitments must consist of
@@ -269,9 +278,9 @@ impl TransferProofContextInfo {
         // check that the range proof was created for the correct set of Pedersen
         // commitments
         let transfer_amount_commitment_lo =
-            extract_commitment_from_grouped_ciphertext(transfer_amount_ciphertext_lo);
+            extract_commitment_from_grouped_ciphertext_3_handles(transfer_amount_ciphertext_lo);
         let transfer_amount_commitment_hi =
-            extract_commitment_from_grouped_ciphertext(transfer_amount_ciphertext_hi);
+            extract_commitment_from_grouped_ciphertext_3_handles(transfer_amount_ciphertext_hi);
 
         let expected_commitments = [
             *new_source_commitment,
@@ -310,24 +319,14 @@ impl TransferProofContextInfo {
         }
 
         let transfer_pubkeys = TransferPubkeysInfo {
-            source: *source_pubkey,
+            source: *source_pubkey_from_equality_proof,
             destination: *destination_pubkey,
             auditor: *auditor_pubkey,
         };
 
-        let transfer_amount_ciphertext_lo = transfer_amount_encryption_from_decrypt_handle(
-            &source_decrypt_handles.lo,
-            transfer_amount_ciphertext_lo,
-        );
-
-        let transfer_amount_ciphertext_hi = transfer_amount_encryption_from_decrypt_handle(
-            &source_decrypt_handles.hi,
-            transfer_amount_ciphertext_hi,
-        );
-
         Ok(Self {
-            ciphertext_lo: transfer_amount_ciphertext_lo,
-            ciphertext_hi: transfer_amount_ciphertext_hi,
+            ciphertext_lo: TransferAmountCiphertext(*transfer_amount_ciphertext_lo),
+            ciphertext_hi: TransferAmountCiphertext(*transfer_amount_ciphertext_hi),
             transfer_pubkeys,
             new_source_ciphertext: *new_source_ciphertext,
         })
@@ -397,11 +396,10 @@ impl TransferWithFeeProofContextInfo {
     /// their consistency.
     pub fn verify_and_extract(
         equality_proof_context: &CiphertextCommitmentEqualityProofContext,
-        transfer_amount_ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
+        transfer_amount_ciphertext_validity_proof_context: &BatchedGroupedCiphertext3HandlesValidityProofContext,
         fee_sigma_proof_context: &FeeSigmaProofContext,
         fee_ciphertext_validity_proof_context: &BatchedGroupedCiphertext2HandlesValidityProofContext,
         range_proof_context: &BatchedRangeProofContext,
-        source_decrypt_handles: &SourceDecryptHandles,
         fee_parameters: &TransferFee,
     ) -> Result<Self, ProgramError> {
         // The equality proof context consists of the source ElGamal public key, the new
@@ -410,7 +408,7 @@ impl TransferWithFeeProofContextInfo {
         // of `TransferWithFeeProofContextInfo` and the commitment should be
         // checked with range proof for consistency.
         let CiphertextCommitmentEqualityProofContext {
-            pubkey: source_pubkey,
+            pubkey: source_pubkey_from_equality_proof,
             ciphertext: new_source_ciphertext,
             commitment: new_source_commitment,
         } = equality_proof_context;
@@ -421,12 +419,17 @@ impl TransferWithFeeProofContextInfo {
         // as part of `TransferWithFeeProofContextInfo`. In addition, the
         // commitments pertaining to the transfer amount ciphertexts should be
         // checked with range proof for consistency.
-        let BatchedGroupedCiphertext2HandlesValidityProofContext {
+        let BatchedGroupedCiphertext3HandlesValidityProofContext {
+            source_pubkey: source_pubkey_from_ciphertext_validity_proof,
             destination_pubkey,
             auditor_pubkey,
             grouped_ciphertext_lo: transfer_amount_ciphertext_lo,
             grouped_ciphertext_hi: transfer_amount_ciphertext_hi,
         } = transfer_amount_ciphertext_validity_proof_context;
+
+        if source_pubkey_from_equality_proof != source_pubkey_from_ciphertext_validity_proof {
+            return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
+        }
 
         // The fee sigma proof context consists of the fee commitment, delta commitment,
         // claimed commitment, and max fee. The fee and claimed commitment
@@ -485,12 +488,14 @@ impl TransferWithFeeProofContextInfo {
         // check that the range proof was created for the correct set of Pedersen
         // commitments
         let transfer_amount_commitment_lo =
-            extract_commitment_from_grouped_ciphertext(transfer_amount_ciphertext_lo);
+            extract_commitment_from_grouped_ciphertext_3_handles(transfer_amount_ciphertext_lo);
         let transfer_amount_commitment_hi =
-            extract_commitment_from_grouped_ciphertext(transfer_amount_ciphertext_hi);
+            extract_commitment_from_grouped_ciphertext_3_handles(transfer_amount_ciphertext_hi);
 
-        let fee_commitment_lo = extract_commitment_from_grouped_ciphertext(fee_ciphertext_lo);
-        let fee_commitment_hi = extract_commitment_from_grouped_ciphertext(fee_ciphertext_hi);
+        let fee_commitment_lo =
+            extract_commitment_from_grouped_ciphertext_2_handles(fee_ciphertext_lo);
+        let fee_commitment_hi =
+            extract_commitment_from_grouped_ciphertext_2_handles(fee_ciphertext_hi);
 
         const MAX_FEE_BASIS_POINTS: u64 = 10_000;
         let max_fee_basis_points_scalar = u64_to_scalar(MAX_FEE_BASIS_POINTS);
@@ -567,25 +572,15 @@ impl TransferWithFeeProofContextInfo {
 
         // create transfer with fee proof context info and return
         let transfer_with_fee_pubkeys = TransferWithFeePubkeysInfo {
-            source: *source_pubkey,
+            source: *source_pubkey_from_equality_proof,
             destination: *destination_pubkey,
             auditor: *auditor_pubkey,
             withdraw_withheld_authority: *withdraw_withheld_authority_pubkey,
         };
 
-        let transfer_amount_ciphertext_lo = transfer_amount_encryption_from_decrypt_handle(
-            &source_decrypt_handles.lo,
-            transfer_amount_ciphertext_lo,
-        );
-
-        let transfer_amount_ciphertext_hi = transfer_amount_encryption_from_decrypt_handle(
-            &source_decrypt_handles.hi,
-            transfer_amount_ciphertext_hi,
-        );
-
         Ok(Self {
-            ciphertext_lo: transfer_amount_ciphertext_lo,
-            ciphertext_hi: transfer_amount_ciphertext_hi,
+            ciphertext_lo: TransferAmountCiphertext(*transfer_amount_ciphertext_lo),
+            ciphertext_hi: TransferAmountCiphertext(*transfer_amount_ciphertext_hi),
             transfer_with_fee_pubkeys,
             new_source_ciphertext: *new_source_ciphertext,
             fee_ciphertext_lo: FeeEncryption(*fee_ciphertext_lo),

@@ -11,7 +11,7 @@ use {
 use {
     crate::{
         check_program_account,
-        extension::confidential_transfer::{ciphertext_extraction::SourceDecryptHandles, *},
+        extension::confidential_transfer::*,
         instruction::{encode_instruction, TokenInstruction},
         proof::{ProofData, ProofLocation},
     },
@@ -244,11 +244,14 @@ pub enum ConfidentialTransferInstruction {
 
     /// Transfer tokens confidentially.
     ///
-    /// In order for this instruction to be successfully processed, it must be
-    /// accompanied by either the `VerifyTransfer` or
-    /// `VerifyTransferWithFee` instruction of the `zk_token_proof`
-    /// program in the same transaction or the address of a context state
-    /// account for the proof must be provided.
+    /// In order for this instruction to be successfully processed, it must be accompanied by
+    /// the following list of `zk_token_proof` program instructions:
+    /// - `VerifyCiphertextCommitmentEqualityProof`
+    /// - `VerifyBatchedGroupedCiphertext3HandlesValidityProof`
+    /// - `VerifyBatchedRangeProofU128`
+    /// These instructions can be accompanied in the same transaction or can be pre-verified into a
+    /// context state account, in which case, only their context state account addresses need to be
+    /// provided.
     ///
     /// Fails if the associated mint is extended as `NonTransferable`.
     ///
@@ -256,26 +259,24 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
-    ///   4. `[]` Instructions sysvar if `VerifyTransfer` or
-    ///      `VerifyTransferWithFee` is included in the same transaction or
-    ///      context state account if these proofs are pre-verified into a
-    ///      context state account.
-    ///   5. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   6. `[signer]` The single source account owner.
+    ///   4. `[]` (Optional) Instructions sysvar if at least one of the `zk_token_proof`
+    ///      instructions are included in the same transaction.
+    ///   5. `[]` (Optional) Equality proof record account or context state account.
+    ///   6. `[]` (Optional) Ciphertext validity proof record account or context state account.
+    ///   7. `[]` (Optional) Range proof record account or context state account.
+    ///   8. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
-    ///   4. `[]` Instructions sysvar if `VerifyTransfer` or
-    ///      `VerifyTransferWithFee` is included in the same transaction or
-    ///      context state account if these proofs are pre-verified into a
-    ///      context state account.
-    ///   5. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   6. `[]` The multisig  source account owner.
-    ///   7.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   4. `[]` (Optional) Instructions sysvar if at least one of the `zk_token_proof`
+    ///      instructions are included in the same transaction.
+    ///   5. `[]` (Optional) Equality proof record account or context state account.
+    ///   6. `[]` (Optional) Ciphertext validity proof record account or context state account.
+    ///   7. `[]` (Optional) Range proof record account or context state account.
+    ///   8. `[]` The multisig  source account owner.
+    ///   9.. `[signer]` Required M signer accounts for the SPL Token Multisig
     /// account.
     ///
     /// Data expected by this instruction:
@@ -395,59 +396,53 @@ pub enum ConfidentialTransferInstruction {
     ///   None
     DisableNonConfidentialCredits,
 
-    /// Transfer tokens confidentially with zero-knowledge proofs that are split
-    /// into smaller components.
+    /// Transfer tokens confidentially with fee.
     ///
-    /// In order for this instruction to be successfully processed, it must be
-    /// accompanied by suitable zero-knowledge proof context accounts listed
-    /// below.
+    /// In order for this instruction to be successfully processed, it must be accompanied by the
+    /// following list of `zk_token_proof` program instructions:
+    /// - `VerifyCiphertextCommitmentEqualityProof`
+    /// - `VerifyBatchedGroupedCiphertext3HandlesValidityProof` (transfer amount ciphertext)
+    /// - `FeeSigmaProof`
+    /// - `VerifyBatchedGroupedCiphertext2HandlesValidityProof` (fee ciphertext)
+    /// - `VerifyBatchedRangeProofU256`
+    /// These instructions can be accompanied in the same transaction or can be pre-verified into a
+    /// context state account, in which case, only their context state account addresses need to be
+    /// provided.
     ///
     /// The same restrictions for the `Transfer` applies to
-    /// `TransferWithSplitProofs`. Namely, the instruction fails if the
+    /// `TransferWithFee`. Namely, the instruction fails if the
     /// associated mint is extended as `NonTransferable`.
     ///
     ///   * Transfer without fee
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
-    ///   4. `[]` Context state account for
-    ///      `VerifyCiphertextCommitmentEqualityProof`.
-    ///   5. `[]` Context state account for
-    ///      `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
-    ///   6. `[]` Context state account for `VerifyBatchedRangeProofU128`.
-    ///   If `close_split_context_state_on_execution` is set, all context state
-    ///     accounts must be `writable` and the following sequence
-    ///     of accounts that are marked with asterisk are needed:
-    ///   7*. `[]` The destination account for lamports from the context state
-    ///      accounts.
-    ///   8*. `[signer]` The context state account owner.
-    ///   9*. `[]` The zk token proof program.
+    ///   4. `[]` (Optional) Instructions sysvar if at least one of the `zk_token_proof`
+    ///      instructions are included in the same transaction.
+    ///   5. `[]` (Optional) Equality proof record account or context state account.
+    ///   6. `[]` (Optional) Transfer amount ciphertext validity proof record account or context state account.
+    ///   7. `[]` (Optional) Fee sigma proof record account or context state account.
+    ///   8. `[]` (Optional) Fee ciphertext validity proof record account or context state account.
+    ///   9. `[]` (Optional) Range proof record account or context state account.
     ///   10. `[signer]` The source account owner.
     ///
     ///   * Transfer with fee
     ///   1. `[writable]` The source SPL Token account.
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
-    ///   4. `[]` Context state account for
-    ///      `VerifyCiphertextCommitmentEqualityProof`.
-    ///   5. `[]` Context state account for
-    ///      `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
-    ///   6. `[]` Context state account for `VerifyFeeSigmaProof`.
-    ///   7. `[]` Context state account for
-    ///      `VerifyBatchedGroupedCiphertext2HandlesValidityProof`.
-    ///   8. `[]` Context state account for `VerifyBatchedRangeProofU256`.
-    ///   If `close_split_context_state_on_execution` is set, all context state
-    ///     accounts must be  `writable` and the following sequence
-    ///     of accounts that are marked with asterisk are needed:
-    ///   9*. `[]` The destination account for lamports from the context state
-    ///       accounts.
-    ///   10*. `[signer]` The context state account owner.
-    ///   11*. `[]` The zk token proof program.
-    ///   12. `[signer]` The source account owner.
+    ///   4. `[]` (Optional) Instructions sysvar if at least one of the `zk_token_proof`
+    ///      instructions are included in the same transaction.
+    ///   5. `[]` (Optional) Equality proof record account or context state account.
+    ///   6. `[]` (Optional) Transfer amount ciphertext validity proof record account or context state account.
+    ///   7. `[]` (Optional) Fee sigma proof record account or context state account.
+    ///   8. `[]` (Optional) Fee ciphertext validity proof record account or context state account.
+    ///   9. `[]` (Optional) Range proof record account or context state account.
+    ///   10. `[]` The multisig  source account owner.
+    ///   11.. `[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
-    ///   `TransferWithSplitProofsInstructionData`
-    TransferWithSplitProofs,
+    ///   `TransferWithFeeProofsInstructionData`
+    TransferWithFee,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::InitializeMint`
@@ -550,10 +545,18 @@ pub struct TransferInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_source_decryptable_available_balance: DecryptableBalance,
-    /// Relative location of the `ProofInstruction::VerifyTransfer` instruction
+    /// Relative location of the `ProofInstruction::VerifyCiphertextCommitmentEqualityProof` instruction
     /// to the `Transfer` instruction in the transaction. If the offset is
     /// `0`, then use a context state account for the proof.
-    pub proof_instruction_offset: i8,
+    pub equality_proof_instruction_offset: i8,
+    /// Relative location of the `ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidityProof` instruction
+    /// to the `Transfer` instruction in the transaction. If the offset is
+    /// `0`, then use a context state account for the proof.
+    pub ciphertext_validity_proof_instruction_offset: i8,
+    /// Relative location of the `ProofInstruction::BatchedRangeProofU128Data` instruction
+    /// to the `Transfer` instruction in the transaction. If the offset is
+    /// `0`, then use a context state account for the proof.
+    pub range_proof_instruction_offset: i8,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::ApplyPendingBalance`
@@ -571,89 +574,34 @@ pub struct ApplyPendingBalanceData {
     pub new_decryptable_available_balance: DecryptableBalance,
 }
 
-/// Data expected by `ConfidentialTransferInstruction::TransferWithSplitProofs`
+/// Data expected by `ConfidentialTransferInstruction::TransferWithFee`
 #[cfg_attr(feature = "serde-traits", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 #[repr(C)]
-pub struct TransferWithSplitProofsInstructionData {
+pub struct TransferWithFeeInstructionData {
     /// The new source decryptable balance if the transfer succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_source_decryptable_available_balance: DecryptableBalance,
-    /// If true, execute no op when an associated context state account is not
-    /// initialized. Otherwise, fail on an uninitialized context state
-    /// account.
-    pub no_op_on_uninitialized_split_context_state: PodBool,
-    /// Close associated context states after a complete execution of the
-    /// transfer instruction.
-    pub close_split_context_state_on_execution: PodBool,
-    /// The ElGamal decryption handle pertaining to the low and high bits of the
-    /// transfer amount. This field is used when the transfer proofs are
-    /// split and verified as smaller components.
-    ///
-    /// NOTE: This field is to be removed in the next Solana upgrade.
-    pub source_decrypt_handles: SourceDecryptHandles,
-}
-
-/// Type for split transfer (without fee) instruction proof context state
-/// account addresses intended to be used as parameters to functions.
-#[derive(Clone, Copy)]
-pub struct TransferSplitContextStateAccounts<'a> {
-    /// The context state account address for an equality proof needed for a
-    /// transfer.
-    pub equality_proof: &'a Pubkey,
-    /// The context state account address for a ciphertext validity proof needed
-    /// for a transfer.
-    pub ciphertext_validity_proof: &'a Pubkey,
-    /// The context state account address for a range proof needed for a
-    /// transfer.
-    pub range_proof: &'a Pubkey,
-    /// The context state accounts authority
-    pub authority: &'a Pubkey,
-    /// No op if an associated split proof context state account is not
-    /// initialized.
-    pub no_op_on_uninitialized_split_context_state: bool,
-    /// Accounts needed if `close_split_context_state_on_execution` flag is
-    /// enabled.
-    pub close_split_context_state_accounts: Option<CloseSplitContextStateAccounts<'a>>,
-}
-
-/// Type for split transfer (with fee) instruction proof context state account
-/// addresses intended to be used as parameters to functions.
-#[derive(Clone, Copy)]
-pub struct TransferWithFeeSplitContextStateAccounts<'a> {
-    /// The context state account address for an equality proof needed for a
-    /// transfer with fee.
-    pub equality_proof: &'a Pubkey,
-    /// The context state account address for a transfer amount ciphertext
-    /// validity proof needed for a transfer with fee.
-    pub transfer_amount_ciphertext_validity_proof: &'a Pubkey,
-    /// The context state account address for a fee sigma proof needed for a
-    /// transfer with fee.
-    pub fee_sigma_proof: &'a Pubkey,
-    /// The context state account address for a fee ciphertext validity proof
-    /// needed for a transfer with fee.
-    pub fee_ciphertext_validity_proof: &'a Pubkey,
-    /// The context state account address for a range proof needed for a
-    /// transfer with fee.
-    pub range_proof: &'a Pubkey,
-    /// The context state accounts authority
-    pub authority: &'a Pubkey,
-    /// No op if an associated split proof context state account is not
-    /// initialized.
-    pub no_op_on_uninitialized_split_context_state: bool,
-    /// Accounts needed if `close_split_context_state_on_execution` flag is
-    /// enabled.
-    pub close_split_context_state_accounts: Option<CloseSplitContextStateAccounts<'a>>,
-}
-
-/// Accounts needed if `close_split_context_state_on_execution` flag is enabled
-/// on a transfer.
-#[derive(Clone, Copy)]
-pub struct CloseSplitContextStateAccounts<'a> {
-    /// The lamport destination account.
-    pub lamport_destination: &'a Pubkey,
-    /// The ZK Token proof program.
-    pub zk_token_proof_program: &'a Pubkey,
+    /// Relative location of the `ProofInstruction::VerifyCiphertextCommitmentEqualityProof` instruction
+    /// to the `TransferWithFee` instruction in the transaction. If the offset is
+    /// `0`, then use a context state account for the proof.
+    pub equality_proof_instruction_offset: i8,
+    /// Relative location of the `ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidityProof` instruction
+    /// to the `TransferWithFee` instruction in the transaction. If the offset is
+    /// `0`, then use a context state account for the proof.
+    pub transfer_amount_ciphertext_validity_proof_instruction_offset: i8,
+    /// Relative location of the `ProofInstruction::VerifyFeeSigmaProof` instruction
+    /// to the `TransferWithFee` instruction in the transaction. If the offset is
+    /// `0`, then use a context state account for the proof.
+    pub fee_sigma_proof_instruction_offset: i8,
+    /// Relative location of the `ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidityProof` instruction
+    /// to the `TransferWithFee` instruction in the transaction. If the offset is
+    /// `0`, then use a context state account for the proof.
+    pub fee_ciphertext_validity_proof_instruction_offset: i8,
+    /// Relative location of the `ProofInstruction::BatchedRangeProofU256Data` instruction
+    /// to the `TransferWithFee` instruction in the transaction. If the offset is
+    /// `0`, then use a context state account for the proof.
+    pub range_proof_instruction_offset: i8,
 }
 
 /// Create a `InitializeMint` instruction
@@ -1066,7 +1014,7 @@ pub fn withdraw(
     Ok(instructions)
 }
 
-/// Create a inner `Transfer` instruction
+/// Create an inner `Transfer` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
@@ -1078,7 +1026,11 @@ pub fn inner_transfer(
     new_source_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<TransferData>,
+    equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
+    ciphertext_validity_proof_data_location: ProofLocation<
+        BatchedGroupedCiphertext3HandlesValidityProofData,
+    >,
+    range_proof_data_location: ProofLocation<BatchedRangeProofU128Data>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -1087,9 +1039,43 @@ pub fn inner_transfer(
         AccountMeta::new(*destination_token_account, false),
     ];
 
-    let proof_instruction_offset = match proof_data_location {
+    // if at least one of the proof locations is an instruction offset, sysvar account is needed
+    if equality_proof_data_location.is_instruction_offset()
+        || ciphertext_validity_proof_data_location.is_instruction_offset()
+        || range_proof_data_location.is_instruction_offset()
+    {
+        accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+    }
+
+    let equality_proof_instruction_offset = match equality_proof_data_location {
         ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
-            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            if let ProofData::RecordAccount(record_address, _) = proof_data {
+                accounts.push(AccountMeta::new_readonly(*record_address, false));
+            }
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    let ciphertext_validity_proof_instruction_offset = match ciphertext_validity_proof_data_location
+    {
+        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+            if let ProofData::RecordAccount(record_address, _) = proof_data {
+                accounts.push(AccountMeta::new_readonly(*record_address, false));
+            }
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    let range_proof_instruction_offset = match range_proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
             if let ProofData::RecordAccount(record_address, _) = proof_data {
                 accounts.push(AccountMeta::new_readonly(*record_address, false));
             }
@@ -1106,10 +1092,6 @@ pub fn inner_transfer(
         multisig_signers.is_empty(),
     ));
 
-    for multisig_signer in multisig_signers.iter() {
-        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
-    }
-
     Ok(encode_instruction(
         token_program_id,
         accounts,
@@ -1117,62 +1099,16 @@ pub fn inner_transfer(
         ConfidentialTransferInstruction::Transfer,
         &TransferInstructionData {
             new_source_decryptable_available_balance,
-            proof_instruction_offset,
+            equality_proof_instruction_offset,
+            ciphertext_validity_proof_instruction_offset,
+            range_proof_instruction_offset,
         },
     ))
 }
 
-/// Create a `Transfer` instruction with regular (no-fee) proof
+/// Create a `Transfer` instruction
 #[allow(clippy::too_many_arguments)]
 pub fn transfer(
-    token_program_id: &Pubkey,
-    source_token_account: &Pubkey,
-    mint: &Pubkey,
-    destination_token_account: &Pubkey,
-    new_source_decryptable_available_balance: AeCiphertext,
-    authority: &Pubkey,
-    multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<TransferData>,
-) -> Result<Vec<Instruction>, ProgramError> {
-    let mut instructions = vec![inner_transfer(
-        token_program_id,
-        source_token_account,
-        mint,
-        destination_token_account,
-        new_source_decryptable_available_balance.into(),
-        authority,
-        multisig_signers,
-        proof_data_location,
-    )?];
-
-    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
-        proof_data_location
-    {
-        // This constructor appends the proof instruction right after the `Transfer`
-        // instruction. This means that the proof instruction offset must be
-        // always be 1. To use an arbitrary proof instruction offset, use the
-        // `inner_transfer` constructor.
-        let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 1 {
-            return Err(TokenError::InvalidProofInstructionOffset.into());
-        }
-        match proof_data {
-            ProofData::InstructionData(data) => instructions.push(verify_transfer(None, data)),
-            ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyTransfer
-                    .encode_verify_proof_from_account(None, address, offset),
-            ),
-        };
-    };
-
-    Ok(instructions)
-}
-
-/// Create a inner `Transfer` instruction with fee
-///
-/// This instruction is suitable for use with a cross-program `invoke`
-#[allow(clippy::too_many_arguments)]
-pub fn inner_transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
     mint: &Pubkey,
@@ -1180,94 +1116,80 @@ pub fn inner_transfer_with_fee(
     new_source_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<TransferWithFeeData>,
-) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*source_token_account, false),
-        AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new(*destination_token_account, false),
-    ];
-
-    let proof_instruction_offset = match proof_data_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
-            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
-            if let ProofData::RecordAccount(record_address, _) = proof_data {
-                accounts.push(AccountMeta::new_readonly(*record_address, false));
-            }
-            proof_instruction_offset.into()
-        }
-        ProofLocation::ContextStateAccount(context_state_account) => {
-            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
-            0
-        }
-    };
-
-    accounts.push(AccountMeta::new_readonly(
-        *authority,
-        multisig_signers.is_empty(),
-    ));
-
-    for multisig_signer in multisig_signers.iter() {
-        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
-    }
-
-    Ok(encode_instruction(
-        token_program_id,
-        accounts,
-        TokenInstruction::ConfidentialTransferExtension,
-        ConfidentialTransferInstruction::Transfer,
-        &TransferInstructionData {
-            new_source_decryptable_available_balance,
-            proof_instruction_offset,
-        },
-    ))
-}
-
-/// Create a `Transfer` instruction with fee proof
-#[allow(clippy::too_many_arguments)]
-pub fn transfer_with_fee(
-    token_program_id: &Pubkey,
-    source_token_account: &Pubkey,
-    mint: &Pubkey,
-    destination_token_account: &Pubkey,
-    new_source_decryptable_available_balance: AeCiphertext,
-    authority: &Pubkey,
-    multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<TransferWithFeeData>,
+    equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
+    ciphertext_validity_proof_data_location: ProofLocation<
+        BatchedGroupedCiphertext3HandlesValidityProofData,
+    >,
+    range_proof_data_location: ProofLocation<BatchedRangeProofU128Data>,
 ) -> Result<Vec<Instruction>, ProgramError> {
-    let mut instructions = vec![inner_transfer_with_fee(
+    let mut instructions = vec![inner_transfer(
         token_program_id,
         source_token_account,
-        destination_token_account,
         mint,
-        new_source_decryptable_available_balance.into(),
+        destination_token_account,
+        new_source_decryptable_available_balance,
         authority,
         multisig_signers,
-        proof_data_location,
+        equality_proof_data_location,
+        ciphertext_validity_proof_data_location,
+        range_proof_data_location,
     )?];
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
-        proof_data_location
+        equality_proof_data_location
     {
-        // This constructor appends the proof instruction right after the
-        // `TransferWithFee` instruction. This means that the proof instruction
-        // offset must be always be 1. To use an arbitrary proof instruction
-        // offset, use the `inner_transfer_with_fee` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => {
-                instructions.push(verify_transfer_with_fee(None, data))
-            }
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyCiphertextCommitmentEquality
+                    .encode_verify_proof(None, data),
+            ),
             ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyTransferWithFee
+                ProofInstruction::VerifyCiphertextCommitmentEquality
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
-    };
+    }
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        ciphertext_validity_proof_data_location
+    {
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 2 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        match proof_data {
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity
+                    .encode_verify_proof(None, data),
+            ),
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
+    }
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        range_proof_data_location
+    {
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 3 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        match proof_data {
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyBatchedRangeProofU128.encode_verify_proof(None, data),
+            ),
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyBatchedRangeProofU128
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
+    }
 
     Ok(instructions)
 }
@@ -1414,17 +1336,27 @@ pub fn disable_non_confidential_credits(
     )
 }
 
-/// Create a `TransferWithSplitProof` instruction without fee
+/// Create an inner `TransferWithFee` instruction
+///
+/// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
-pub fn transfer_with_split_proofs(
+pub fn inner_transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
     mint: &Pubkey,
     destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
-    source_account_authority: &Pubkey,
-    context_accounts: TransferSplitContextStateAccounts,
-    source_decrypt_handles: &SourceDecryptHandles,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+    equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
+    transfer_amount_ciphertext_validity_proof_data_location: ProofLocation<
+        BatchedGroupedCiphertext3HandlesValidityProofData,
+    >,
+    fee_sigma_proof_data_location: ProofLocation<FeeSigmaProofData>,
+    fee_ciphertext_validity_proof_data_location: ProofLocation<
+        BatchedGroupedCiphertext2HandlesValidityProofData,
+    >,
+    range_proof_data_location: ProofLocation<BatchedRangeProofU256Data>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -1433,151 +1365,231 @@ pub fn transfer_with_split_proofs(
         AccountMeta::new(*destination_token_account, false),
     ];
 
-    let close_split_context_state_on_execution =
-        if let Some(close_split_context_state_on_execution_accounts) =
-            context_accounts.close_split_context_state_accounts
-        {
-            // If `close_split_context_state_accounts` is set, then all context state
-            // accounts must be `writable`.
-            accounts.push(AccountMeta::new(*context_accounts.equality_proof, false));
-            accounts.push(AccountMeta::new(
-                *context_accounts.ciphertext_validity_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new(*context_accounts.range_proof, false));
-            accounts.push(AccountMeta::new(
-                *close_split_context_state_on_execution_accounts.lamport_destination,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(*context_accounts.authority, true));
-            accounts.push(AccountMeta::new_readonly(
-                *close_split_context_state_on_execution_accounts.zk_token_proof_program,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
-            true
-        } else {
-            // If `close_split_context_state_accounts` is not set, then context state
-            // accounts can be read-only.
-            accounts.push(AccountMeta::new_readonly(
-                *context_accounts.equality_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(
-                *context_accounts.ciphertext_validity_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(
-                *context_accounts.range_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
+    // if at least one of the proof locations is an instruction offset, sysvar account is needed
+    if equality_proof_data_location.is_instruction_offset()
+        || transfer_amount_ciphertext_validity_proof_data_location.is_instruction_offset()
+        || fee_sigma_proof_data_location.is_instruction_offset()
+        || fee_ciphertext_validity_proof_data_location.is_instruction_offset()
+        || range_proof_data_location.is_instruction_offset()
+    {
+        accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+    }
 
-            false
+    let equality_proof_instruction_offset = match equality_proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+            if let ProofData::RecordAccount(record_address, _) = proof_data {
+                accounts.push(AccountMeta::new_readonly(*record_address, false));
+            }
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    let transfer_amount_ciphertext_validity_proof_instruction_offset =
+        match transfer_amount_ciphertext_validity_proof_data_location {
+            ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+                if let ProofData::RecordAccount(record_address, _) = proof_data {
+                    accounts.push(AccountMeta::new_readonly(*record_address, false));
+                }
+                proof_instruction_offset.into()
+            }
+            ProofLocation::ContextStateAccount(context_state_account) => {
+                accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+                0
+            }
         };
+
+    let fee_sigma_proof_instruction_offset = match fee_sigma_proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+            if let ProofData::RecordAccount(record_address, _) = proof_data {
+                accounts.push(AccountMeta::new_readonly(*record_address, false));
+            }
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    let fee_ciphertext_validity_proof_instruction_offset =
+        match fee_ciphertext_validity_proof_data_location {
+            ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+                if let ProofData::RecordAccount(record_address, _) = proof_data {
+                    accounts.push(AccountMeta::new_readonly(*record_address, false));
+                }
+                proof_instruction_offset.into()
+            }
+            ProofLocation::ContextStateAccount(context_state_account) => {
+                accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+                0
+            }
+        };
+
+    let range_proof_instruction_offset = match range_proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
+            if let ProofData::RecordAccount(record_address, _) = proof_data {
+                accounts.push(AccountMeta::new_readonly(*record_address, false));
+            }
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    accounts.push(AccountMeta::new_readonly(
+        *authority,
+        multisig_signers.is_empty(),
+    ));
 
     Ok(encode_instruction(
         token_program_id,
         accounts,
         TokenInstruction::ConfidentialTransferExtension,
-        ConfidentialTransferInstruction::TransferWithSplitProofs,
-        &TransferWithSplitProofsInstructionData {
+        ConfidentialTransferInstruction::TransferWithFee,
+        &TransferWithFeeInstructionData {
             new_source_decryptable_available_balance,
-            no_op_on_uninitialized_split_context_state: context_accounts
-                .no_op_on_uninitialized_split_context_state
-                .into(),
-            close_split_context_state_on_execution: close_split_context_state_on_execution.into(),
-            source_decrypt_handles: *source_decrypt_handles,
+            equality_proof_instruction_offset,
+            transfer_amount_ciphertext_validity_proof_instruction_offset,
+            fee_sigma_proof_instruction_offset,
+            fee_ciphertext_validity_proof_instruction_offset,
+            range_proof_instruction_offset,
         },
     ))
 }
 
-/// Create a `TransferWithSplitProof` instruction with fee
+/// Create a `TransferWithFee` instruction
 #[allow(clippy::too_many_arguments)]
-pub fn transfer_with_fee_and_split_proofs(
+pub fn transfer_with_fee(
     token_program_id: &Pubkey,
     source_token_account: &Pubkey,
     mint: &Pubkey,
     destination_token_account: &Pubkey,
     new_source_decryptable_available_balance: DecryptableBalance,
-    source_account_authority: &Pubkey,
-    context_accounts: TransferWithFeeSplitContextStateAccounts,
-    source_decrypt_handles: &SourceDecryptHandles,
-) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*source_token_account, false),
-        AccountMeta::new_readonly(*mint, false),
-        AccountMeta::new(*destination_token_account, false),
-    ];
-
-    let close_split_context_state_on_execution =
-        if let Some(close_split_context_state_on_execution_accounts) =
-            context_accounts.close_split_context_state_accounts
-        {
-            // If `close_split_context_state_accounts` is set, then all context state
-            // accounts must be `writable`.
-            accounts.push(AccountMeta::new(*context_accounts.equality_proof, false));
-            accounts.push(AccountMeta::new(
-                *context_accounts.transfer_amount_ciphertext_validity_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new(*context_accounts.fee_sigma_proof, false));
-            accounts.push(AccountMeta::new(
-                *context_accounts.fee_ciphertext_validity_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new(*context_accounts.range_proof, false));
-            accounts.push(AccountMeta::new(
-                *close_split_context_state_on_execution_accounts.lamport_destination,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(*context_accounts.authority, true));
-            accounts.push(AccountMeta::new_readonly(
-                *close_split_context_state_on_execution_accounts.zk_token_proof_program,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
-            true
-        } else {
-            // If `close_split_context_state_accounts` is not set, then context state
-            // accounts can be read-only.
-            accounts.push(AccountMeta::new_readonly(
-                *context_accounts.equality_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(
-                *context_accounts.transfer_amount_ciphertext_validity_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(
-                *context_accounts.fee_sigma_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(
-                *context_accounts.fee_ciphertext_validity_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(
-                *context_accounts.range_proof,
-                false,
-            ));
-            accounts.push(AccountMeta::new_readonly(*source_account_authority, true));
-            false
-        };
-
-    Ok(encode_instruction(
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+    equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
+    transfer_amount_ciphertext_validity_proof_data_location: ProofLocation<
+        BatchedGroupedCiphertext3HandlesValidityProofData,
+    >,
+    fee_sigma_proof_data_location: ProofLocation<FeeSigmaProofData>,
+    fee_ciphertext_validity_proof_data_location: ProofLocation<
+        BatchedGroupedCiphertext2HandlesValidityProofData,
+    >,
+    range_proof_data_location: ProofLocation<BatchedRangeProofU256Data>,
+) -> Result<Vec<Instruction>, ProgramError> {
+    let mut instructions = vec![inner_transfer_with_fee(
         token_program_id,
-        accounts,
-        TokenInstruction::ConfidentialTransferExtension,
-        ConfidentialTransferInstruction::TransferWithSplitProofs,
-        &TransferWithSplitProofsInstructionData {
-            new_source_decryptable_available_balance,
-            no_op_on_uninitialized_split_context_state: context_accounts
-                .no_op_on_uninitialized_split_context_state
-                .into(),
-            close_split_context_state_on_execution: close_split_context_state_on_execution.into(),
-            source_decrypt_handles: *source_decrypt_handles,
-        },
-    ))
+        source_token_account,
+        mint,
+        destination_token_account,
+        new_source_decryptable_available_balance,
+        authority,
+        multisig_signers,
+        equality_proof_data_location,
+        transfer_amount_ciphertext_validity_proof_data_location,
+        fee_sigma_proof_data_location,
+        fee_ciphertext_validity_proof_data_location,
+        range_proof_data_location,
+    )?];
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        equality_proof_data_location
+    {
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 1 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        match proof_data {
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyCiphertextCommitmentEquality
+                    .encode_verify_proof(None, data),
+            ),
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyCiphertextCommitmentEquality
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
+    }
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        transfer_amount_ciphertext_validity_proof_data_location
+    {
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 2 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        match proof_data {
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity
+                    .encode_verify_proof(None, data),
+            ),
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
+    }
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        fee_sigma_proof_data_location
+    {
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 3 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        match proof_data {
+            ProofData::InstructionData(data) => {
+                instructions.push(ProofInstruction::VerifyFeeSigma.encode_verify_proof(None, data))
+            }
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyFeeSigma
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
+    }
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        fee_ciphertext_validity_proof_data_location
+    {
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 4 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        match proof_data {
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity
+                    .encode_verify_proof(None, data),
+            ),
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
+    }
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        range_proof_data_location
+    {
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != 5 {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        match proof_data {
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyBatchedRangeProofU256.encode_verify_proof(None, data),
+            ),
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyBatchedRangeProofU256
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
+    }
+
+    Ok(instructions)
 }
