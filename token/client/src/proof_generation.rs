@@ -10,13 +10,13 @@ use {
     spl_token_2022::{
         error::TokenError,
         extension::confidential_transfer::{
-            ciphertext_extraction::{transfer_amount_source_ciphertext, SourceDecryptHandles},
+            ciphertext_extraction::transfer_amount_source_ciphertext,
             processor::verify_and_split_deposit_amount,
         },
         solana_zk_token_sdk::{
             encryption::{
                 auth_encryption::{AeCiphertext, AeKey},
-                elgamal::{DecryptHandle, ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
+                elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
                 grouped_elgamal::GroupedElGamal,
                 pedersen::{Pedersen, PedersenCommitment, PedersenOpening},
             },
@@ -25,7 +25,8 @@ use {
                     try_combine_lo_hi_commitments, try_combine_lo_hi_openings, FeeEncryption,
                     FeeParameters, TransferAmountCiphertext,
                 },
-                BatchedGroupedCiphertext2HandlesValidityProofData, BatchedRangeProofU256Data,
+                BatchedGroupedCiphertext2HandlesValidityProofData,
+                BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU256Data,
                 CiphertextCommitmentEqualityProofData, FeeSigmaProofData,
             },
             zk_token_elgamal::ops::subtract_with_lo_hi,
@@ -53,11 +54,10 @@ pub fn transfer_with_fee_split_proof_data(
 ) -> Result<
     (
         CiphertextCommitmentEqualityProofData,
-        BatchedGroupedCiphertext2HandlesValidityProofData,
+        BatchedGroupedCiphertext3HandlesValidityProofData,
         FeeSigmaProofData,
         BatchedGroupedCiphertext2HandlesValidityProofData,
         BatchedRangeProofU256Data,
-        SourceDecryptHandles,
     ),
     TokenError,
 > {
@@ -126,33 +126,31 @@ pub fn transfer_with_fee_split_proof_data(
     )
     .map_err(|_| TokenError::ProofGeneration)?;
 
-    // create source decrypt handle
-    let source_decrypt_handle_lo =
-        DecryptHandle::new(source_elgamal_keypair.pubkey(), &transfer_amount_opening_lo);
-    let source_decrypt_handle_hi =
-        DecryptHandle::new(source_elgamal_keypair.pubkey(), &transfer_amount_opening_hi);
-
-    let source_decrypt_handles = SourceDecryptHandles {
-        lo: source_decrypt_handle_lo.into(),
-        hi: source_decrypt_handle_hi.into(),
-    };
-
-    // encrypt the transfer amount under the destination and auditor ElGamal public
+    // encrypt the transfer amount under the source, destination and auditor ElGamal public
     // key
     let transfer_amount_destination_auditor_ciphertext_lo = GroupedElGamal::encrypt_with(
-        [destination_elgamal_pubkey, auditor_elgamal_pubkey],
+        [
+            source_elgamal_keypair.pubkey(),
+            destination_elgamal_pubkey,
+            auditor_elgamal_pubkey,
+        ],
         transfer_amount_lo,
         &transfer_amount_opening_lo,
     );
     let transfer_amount_destination_auditor_ciphertext_hi = GroupedElGamal::encrypt_with(
-        [destination_elgamal_pubkey, auditor_elgamal_pubkey],
+        [
+            source_elgamal_keypair.pubkey(),
+            destination_elgamal_pubkey,
+            auditor_elgamal_pubkey,
+        ],
         transfer_amount_hi,
         &transfer_amount_opening_hi,
     );
 
     // generate transfer amount ciphertext validity data
     let transfer_amount_ciphertext_validity_proof_data =
-        BatchedGroupedCiphertext2HandlesValidityProofData::new(
+        BatchedGroupedCiphertext3HandlesValidityProofData::new(
+            source_elgamal_keypair.pubkey(),
             destination_elgamal_pubkey,
             auditor_elgamal_pubkey,
             &transfer_amount_destination_auditor_ciphertext_lo,
@@ -332,7 +330,6 @@ pub fn transfer_with_fee_split_proof_data(
         fee_sigma_proof_data,
         fee_ciphertext_validity_proof_data,
         range_proof_data,
-        source_decrypt_handles,
     ))
 }
 
