@@ -13,9 +13,7 @@ use {
         inline_mpl_token_metadata::{self, pda::find_metadata_account},
         state::{Fee, FeeType, StakePool, ValidatorList, ValidatorStakeInfo},
         MAX_VALIDATORS_TO_UPDATE,
-    },
-    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{
+    }, borsh::{BorshDeserialize, BorshSchema, BorshSerialize}, solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
@@ -1321,6 +1319,40 @@ pub fn decrease_validator_stake_with_vote(
         lamports,
         transient_stake_seed,
     )
+}
+
+/// Create a `IncreaseAdditionalValidatorStake` instruction given an existing
+/// stake pool, valiator list and vote account
+pub fn increase_additional_validator_stake_with_list(
+    program_id: &Pubkey,
+    stake_pool: &StakePool,
+    validator_list: &ValidatorList,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+    lamports: u64,
+    ephemeral_stake_seed: u64,
+) -> Instruction {
+    let validators = validator_list.find(vote_account_address).ok_or(ProgramError::InvalidInstructionData).unwrap();
+    let transient_stake_seed = u64::from(validators.transient_seed_suffix);
+    let validator_stake_seed = NonZeroU32::new(validators.validator_seed_suffix.into());
+    increase_additional_validator_stake_with_vote(program_id, stake_pool, stake_pool_address, vote_account_address, lamports, validator_stake_seed, transient_stake_seed, ephemeral_stake_seed)
+}
+
+/// Create a `DecreaseAdditionalValidatorStake` instruction given an existing
+/// stake pool, valiator list and vote account
+pub fn decrease_additional_validator_stake_with_list(
+    program_id: &Pubkey,
+    stake_pool: &StakePool,
+    validator_list: &ValidatorList,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+    lamports: u64,
+    ephemeral_stake_seed: u64,
+) -> Instruction {
+    let validators = validator_list.find(vote_account_address).ok_or(ProgramError::InvalidInstructionData).unwrap();
+    let transient_stake_seed = u64::from(validators.transient_seed_suffix);
+    let validator_stake_seed = NonZeroU32::new(validators.validator_seed_suffix.into());
+    decrease_additional_validator_stake_with_vote(program_id, stake_pool, stake_pool_address, vote_account_address, lamports, validator_stake_seed, transient_stake_seed, ephemeral_stake_seed)
 }
 
 /// Create a `DecreaseAdditionalValidatorStake` instruction given an existing
