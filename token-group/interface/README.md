@@ -95,7 +95,7 @@ For a group:
 
 ```rust
 type OptionalNonZeroPubkey = Pubkey; // if all zeroes, interpreted as `None`
-type PodU32 = [u8; 4];
+type PodU64 = [u8; 8];
 type Pubkey = [u8; 32];
 
 /// Type discriminant: [214, 15, 63, 132, 49, 119, 209, 40]
@@ -107,9 +107,9 @@ pub struct TokenGroup {
     /// belongs to a particular mint
     pub mint: Pubkey,
     /// The current number of group members
-    pub size: PodU32,
+    pub size: PodU64,
     /// The maximum number of group members
-    pub max_size: PodU32,
+    pub max_size: PodU64,
 }
 ```
 
@@ -125,7 +125,7 @@ pub struct TokenGroupMember {
     /// The pubkey of the `TokenGroup`
     pub group: Pubkey,
     /// The member number
-    pub member_number: PodU32,
+    pub member_number: PodU64,
 }
 ```
 
