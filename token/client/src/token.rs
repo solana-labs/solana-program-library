@@ -3505,7 +3505,7 @@ where
         &self,
         mint_authority: &Pubkey,
         update_authority: &Pubkey,
-        max_size: u32,
+        max_size: u64,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.process_ixs(
@@ -3547,7 +3547,7 @@ where
         payer: &Pubkey,
         mint_authority: &Pubkey,
         update_authority: &Pubkey,
-        max_size: u32,
+        max_size: u64,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let additional_lamports = self
@@ -3576,7 +3576,7 @@ where
     pub async fn token_group_update_max_size<S: Signers>(
         &self,
         update_authority: &Pubkey,
-        new_max_size: u32,
+        new_max_size: u64,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.process_ixs(
