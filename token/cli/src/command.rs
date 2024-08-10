@@ -648,7 +648,7 @@ async fn command_initialize_group(
     token_pubkey: Pubkey,
     mint_authority: Pubkey,
     update_authority: Pubkey,
-    max_size: u32,
+    max_size: u64,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = token_client_from_config(config, &token_pubkey, None)?;
@@ -679,7 +679,7 @@ async fn command_update_group_max_size(
     config: &Config<'_>,
     token_pubkey: Pubkey,
     update_authority: Pubkey,
-    new_max_size: u32,
+    new_max_size: u64,
     bulk_signers: Vec<Arc<dyn Signer>>,
 ) -> CommandResult {
     let token = token_client_from_config(config, &token_pubkey, None)?;
@@ -3637,7 +3637,7 @@ pub async fn process_command<'a>(
             let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let max_size = value_t_or_exit!(arg_matches, "max_size", u32);
+            let max_size = value_t_or_exit!(arg_matches, "max_size", u64);
             let (mint_authority_signer, mint_authority) =
                 config.signer_or_default(arg_matches, "mint_authority", &mut wallet_manager);
             let update_authority =
@@ -3658,7 +3658,7 @@ pub async fn process_command<'a>(
             let token_pubkey = pubkey_of_signer(arg_matches, "token", &mut wallet_manager)
                 .unwrap()
                 .unwrap();
-            let new_max_size = value_t_or_exit!(arg_matches, "new_max_size", u32);
+            let new_max_size = value_t_or_exit!(arg_matches, "new_max_size", u64);
             let (update_authority_signer, update_authority) =
                 config.signer_or_default(arg_matches, "update_authority", &mut wallet_manager);
             let bulk_signers = vec![update_authority_signer];
