@@ -460,7 +460,7 @@ pub enum ConfidentialTransferInstruction {
     ///   11.. `[signer]` Required M signer accounts for the SPL Token Multisig
     ///
     /// Data expected by this instruction:
-    ///   `TransferWithFeeProofsInstructionData`
+    ///   `TransferWithFeeInstructionData`
     TransferWithFee,
 }
 
