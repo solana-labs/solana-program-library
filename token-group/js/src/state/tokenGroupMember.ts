@@ -1,11 +1,11 @@
 import { PublicKey } from '@solana/web3.js';
 import type { ReadonlyUint8Array } from '@solana/codecs';
-import { fixCodecSize, getBytesCodec, getStructCodec, getU32Codec } from '@solana/codecs';
+import { fixCodecSize, getBytesCodec, getStructCodec, getU64Codec } from '@solana/codecs';
 
 const tokenGroupMemberCodec = getStructCodec([
     ['mint', fixCodecSize(getBytesCodec(), 32)],
     ['group', fixCodecSize(getBytesCodec(), 32)],
-    ['memberNumber', getU32Codec()],
+    ['memberNumber', getU64Codec()],
 ]);
 
 export const TOKEN_GROUP_MEMBER_SIZE = tokenGroupMemberCodec.fixedSize;
@@ -16,7 +16,7 @@ export interface TokenGroupMember {
     /** The pubkey of the `TokenGroup` */
     group: PublicKey;
     /** The member number */
-    memberNumber: number;
+    memberNumber: bigint;
 }
 
 // Pack TokenGroupMember into byte slab
