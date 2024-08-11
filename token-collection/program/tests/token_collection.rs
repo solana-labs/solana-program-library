@@ -325,7 +325,7 @@ async fn test_token_collection() {
         .data;
     let state = TlvStateBorrowed::unpack(&buffer).unwrap();
     let collection = state.get_first_value::<TokenGroup>().unwrap();
-    assert_eq!(u32::from(collection.size), 3);
+    assert_eq!(u64::from(collection.size), 3);
 
     // The "Snakes" collection should have 2 members
     let buffer = context
@@ -337,7 +337,7 @@ async fn test_token_collection() {
         .data;
     let state = TlvStateBorrowed::unpack(&buffer).unwrap();
     let collection = state.get_first_value::<TokenGroup>().unwrap();
-    assert_eq!(u32::from(collection.size), 2);
+    assert_eq!(u64::from(collection.size), 2);
 
     // The "Python" should be a member of 2 collections
     let buffer = context
