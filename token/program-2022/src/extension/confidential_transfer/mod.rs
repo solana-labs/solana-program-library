@@ -7,7 +7,6 @@ use {
     solana_program::entrypoint::ProgramResult,
     solana_zk_token_sdk::zk_token_elgamal::pod::{AeCiphertext, ElGamalCiphertext, ElGamalPubkey},
     spl_pod::{
-        bytemuck::pod_from_bytes,
         optional_keys::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
         primitives::{PodBool, PodU64},
     },
