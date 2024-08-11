@@ -83,7 +83,7 @@ describe('tokenGroupMember', async () => {
             groupMint.publicKey,
             groupMintAuthority.publicKey,
             groupUpdateAuthority.publicKey,
-            3,
+            BigInt(3),
             [payer, groupMintAuthority],
             undefined,
             TEST_PROGRAM_ID,
