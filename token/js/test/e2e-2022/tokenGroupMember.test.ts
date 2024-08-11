@@ -123,7 +123,7 @@ describe('tokenGroupMember', async () => {
         const tokenGroupMember = {
             mint: memberMint.publicKey,
             group: groupMint.publicKey,
-            memberNumber: 1,
+            memberNumber: BigInt(1),
         };
 
         await tokenGroupMemberInitializeWithRentTransfer(

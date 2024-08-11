@@ -233,8 +233,8 @@ describe('tokenGroup', async () => {
         expect(group).to.deep.equal({
             updateAuthority: newUpdateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         });
     });
 });
