@@ -111,7 +111,7 @@ pub fn verify_transfer_with_fee_proof(
     )?;
 
     let fee_sigma_proof_context =
-        verify_and_extract_context::<FeeSigmaProofData, FeeSigmaProofContext>(
+        verify_and_extract_context::<PercentageWithCapProofData, PercentageWithCapProofContext>(
             account_info_iter,
             fee_sigma_proof_instruction_offset,
             sysvar_account_info,

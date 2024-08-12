@@ -1,8 +1,7 @@
-#[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
-pub use solana_zk_token_sdk::{
-    zk_token_proof_instruction::*, zk_token_proof_state::ProofContextState,
+pub use solana_zk_sdk::zk_elgamal_proof_program::{
+    instruction::ProofInstruction, proof_data::*, state::ProofContextState,
 };
+
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::aeciphertext_fromstr,
@@ -638,7 +637,7 @@ pub fn initialize_mint(
     mint: &Pubkey,
     authority: Option<Pubkey>,
     auto_approve_new_accounts: bool,
-    auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+    auditor_elgamal_pubkey: Option<PodElGamalPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -663,7 +662,7 @@ pub fn update_mint(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     auto_approve_new_accounts: bool,
-    auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+    auditor_elgamal_pubkey: Option<PodElGamalPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -693,11 +692,11 @@ pub fn inner_configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    decryptable_zero_balance: AeCiphertext,
+    decryptable_zero_balance: PodAeCiphertext,
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<PubkeyValidityData>,
+    proof_data_location: ProofLocation<PubkeyValidityProofData>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
 
@@ -748,11 +747,11 @@ pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    decryptable_zero_balance: AeCiphertext,
+    decryptable_zero_balance: PodAeCiphertext,
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<PubkeyValidityData>,
+    proof_data_location: ProofLocation<PubkeyValidityProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     let mut instructions = vec![inner_configure_account(
         token_program_id,
@@ -777,9 +776,8 @@ pub fn configure_account(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => {
-                instructions.push(verify_pubkey_validity(None, data))
-            }
+            ProofData::InstructionData(data) => instructions
+                .push(ProofInstruction::VerifyPubkeyValidity.encode_verify_proof(None, data)),
             ProofData::RecordAccount(address, offset) => instructions.push(
                 ProofInstruction::VerifyPubkeyValidity
                     .encode_verify_proof_from_account(None, address, offset),
@@ -824,7 +822,7 @@ pub fn inner_empty_account(
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<ZeroBalanceProofData>,
+    proof_data_location: ProofLocation<ZeroCiphertextProofData>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
@@ -869,7 +867,7 @@ pub fn empty_account(
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<ZeroBalanceProofData>,
+    proof_data_location: ProofLocation<ZeroCiphertextProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     let mut instructions = vec![inner_empty_account(
         token_program_id,
@@ -891,9 +889,10 @@ pub fn empty_account(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => instructions.push(verify_zero_balance(None, data)),
+            ProofData::InstructionData(data) => instructions
+                .push(ProofInstruction::VerifyZeroCiphertext.encode_verify_proof(None, data)),
             ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyZeroBalance
+                ProofInstruction::VerifyZeroCiphertext
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
@@ -1002,7 +1001,7 @@ pub fn withdraw(
     mint: &Pubkey,
     amount: u64,
     decimals: u8,
-    new_decryptable_available_balance: AeCiphertext,
+    new_decryptable_available_balance: PodAeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data_location: ProofLocation<WithdrawData>,
@@ -1261,7 +1260,7 @@ pub fn apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     pending_balance_instructions: u64,
-    new_decryptable_available_balance: AeCiphertext,
+    new_decryptable_available_balance: PodAeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
@@ -1381,7 +1380,7 @@ pub fn inner_transfer_with_fee(
     transfer_amount_ciphertext_validity_proof_data_location: ProofLocation<
         BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
-    fee_sigma_proof_data_location: ProofLocation<FeeSigmaProofData>,
+    fee_sigma_proof_data_location: ProofLocation<PercentageWithCapProofData>,
     fee_ciphertext_validity_proof_data_location: ProofLocation<
         BatchedGroupedCiphertext2HandlesValidityProofData,
     >,
@@ -1507,7 +1506,7 @@ pub fn transfer_with_fee(
     transfer_amount_ciphertext_validity_proof_data_location: ProofLocation<
         BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
-    fee_sigma_proof_data_location: ProofLocation<FeeSigmaProofData>,
+    fee_sigma_proof_data_location: ProofLocation<PercentageWithCapProofData>,
     fee_ciphertext_validity_proof_data_location: ProofLocation<
         BatchedGroupedCiphertext2HandlesValidityProofData,
     >,
@@ -1574,11 +1573,10 @@ pub fn transfer_with_fee(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => {
-                instructions.push(ProofInstruction::VerifyFeeSigma.encode_verify_proof(None, data))
-            }
+            ProofData::InstructionData(data) => instructions
+                .push(ProofInstruction::VerifyPercentageWithCap.encode_verify_proof(None, data)),
             ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyFeeSigma
+                ProofInstruction::VerifyPercentageWithCap
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };

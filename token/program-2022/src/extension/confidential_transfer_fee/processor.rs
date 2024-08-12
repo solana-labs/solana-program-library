@@ -28,7 +28,7 @@ use {
         pod::{PodAccount, PodMint},
         processor::Processor,
         proof::verify_and_extract_context,
-        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
+        solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey,
     },
     bytemuck::Zeroable,
     solana_program::{
@@ -45,7 +45,7 @@ use {
 fn process_initialize_confidential_transfer_fee_config(
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
-    withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
+    withdraw_withheld_authority_elgamal_pubkey: &PodElGamalPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -134,20 +134,19 @@ fn process_withdraw_withheld_tokens_from_mint(
 
     // Check that the withdraw authority ElGamal public key associated with the mint
     // is consistent with what was actually used to generate the zkp.
-    if proof_context.source_pubkey
+    if proof_context.first_pubkey
         != confidential_transfer_fee_config.withdraw_withheld_authority_elgamal_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Check that the ElGamal public key associated with the destination account is
     // consistent with what was actually used to generate the zkp.
-    if proof_context.destination_pubkey != destination_confidential_transfer_account.elgamal_pubkey
-    {
+    if proof_context.second_pubkey != destination_confidential_transfer_account.elgamal_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Check that the withheld amount ciphertext is consistent with the ciphertext
     // data that was actually used to generate the zkp.
-    if proof_context.source_ciphertext != confidential_transfer_fee_config.withheld_amount {
+    if proof_context.first_ciphertext != confidential_transfer_fee_config.withheld_amount {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
@@ -155,7 +154,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     // destination ElGamal pubkey. Add this amount to the available balance.
     destination_confidential_transfer_account.available_balance = syscall::add(
         &destination_confidential_transfer_account.available_balance,
-        &proof_context.destination_ciphertext,
+        &proof_context.second_ciphertext,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
@@ -266,20 +265,19 @@ fn process_withdraw_withheld_tokens_from_accounts(
     // mint is consistent with what was actually used to generate the zkp.
     let confidential_transfer_fee_config =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
-    if proof_context.source_pubkey
+    if proof_context.first_pubkey
         != confidential_transfer_fee_config.withdraw_withheld_authority_elgamal_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Checks that the ElGamal public key associated with the destination account is
     // consistent with what was actually used to generate the zkp.
-    if proof_context.destination_pubkey != destination_confidential_transfer_account.elgamal_pubkey
-    {
+    if proof_context.second_pubkey != destination_confidential_transfer_account.elgamal_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Checks that the withheld amount ciphertext is consistent with the ciphertext
     // data that was actually used to generate the zkp.
-    if proof_context.source_ciphertext != aggregate_withheld_amount {
+    if proof_context.first_ciphertext != aggregate_withheld_amount {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
@@ -288,7 +286,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
     // available balance.
     destination_confidential_transfer_account.available_balance = syscall::add(
         &destination_confidential_transfer_account.available_balance,
-        &proof_context.destination_ciphertext,
+        &proof_context.second_ciphertext,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 

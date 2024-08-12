@@ -102,11 +102,10 @@ fn process_configure_account(
     let mint_info = next_account_info(account_info_iter)?;
 
     // zero-knowledge proof certifies that the supplied ElGamal public key is valid
-    let proof_context = verify_and_extract_context::<PubkeyValidityData, PubkeyValidityProofContext>(
-        account_info_iter,
-        proof_instruction_offset,
-        None,
-    )?;
+    let proof_context = verify_and_extract_context::<
+        PubkeyValidityProofData,
+        PubkeyValidityProofContext,
+    >(account_info_iter, proof_instruction_offset, None)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -210,11 +209,10 @@ fn process_empty_account(
 
     // zero-knowledge proof certifies that the available balance ciphertext holds
     // the balance of 0.
-    let proof_context = verify_and_extract_context::<ZeroBalanceProofData, ZeroBalanceProofContext>(
-        account_info_iter,
-        proof_instruction_offset,
-        None,
-    )?;
+    let proof_context = verify_and_extract_context::<
+        ZeroCiphertextProofData,
+        ZeroCiphertextProofContext,
+    >(account_info_iter, proof_instruction_offset, None)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();

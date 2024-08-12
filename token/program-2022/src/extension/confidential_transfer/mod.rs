@@ -5,7 +5,10 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod::{AeCiphertext, ElGamalCiphertext, ElGamalPubkey},
+    solana_zk_sdk::encryption::pod::{
+        auth_encryption::PodAeCiphertext,
+        elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
+    },
     spl_pod::{
         optional_keys::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
         primitives::{PodBool, PodU64},
@@ -48,9 +51,9 @@ pub mod account_info;
 pub mod ciphertext_extraction;
 
 /// ElGamal ciphertext containing an account balance
-pub type EncryptedBalance = ElGamalCiphertext;
+pub type EncryptedBalance = PodElGamalCiphertext;
 /// Authenticated encryption containing an account balance
-pub type DecryptableBalance = AeCiphertext;
+pub type DecryptableBalance = PodAeCiphertext;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
@@ -89,7 +92,7 @@ pub struct ConfidentialTransferAccount {
     pub approved: PodBool,
 
     /// The public key associated with ElGamal encryption
-    pub elgamal_pubkey: ElGamalPubkey,
+    pub elgamal_pubkey: PodElGamalPubkey,
 
     /// The low 16 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance_lo: EncryptedBalance,
