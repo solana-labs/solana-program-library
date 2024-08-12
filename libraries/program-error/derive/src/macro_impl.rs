@@ -1,13 +1,13 @@
 //! The actual token generator for the macro
 
 use {
-    crate::parser::SplProgramErrorArgs,
+    crate::parser::{SolanaProgram, SplProgramErrorArgs},
     proc_macro2::Span,
     quote::quote,
     sha2::{Digest, Sha256},
     syn::{
         punctuated::Punctuated, token::Comma, Expr, ExprLit, Ident, ItemEnum, Lit, LitInt, LitStr,
-        Path, Token, Variant,
+        Token, Variant,
     },
 };
 
@@ -36,15 +36,12 @@ pub enum MacroType {
 impl MacroType {
     /// Generates the corresponding tokens based on variant selection
     pub fn generate_tokens(&mut self) -> proc_macro2::TokenStream {
-        let default_solana_program_crate_path =
-            Ident::new("solana_program", Span::call_site()).into();
+        let default_solana_program = SolanaProgram::default();
         match self {
-            Self::IntoProgramError { ident } => {
-                into_program_error(ident, &default_solana_program_crate_path)
-            }
-            Self::DecodeError { ident } => decode_error(ident, &default_solana_program_crate_path),
+            Self::IntoProgramError { ident } => into_program_error(ident, &default_solana_program),
+            Self::DecodeError { ident } => decode_error(ident, &default_solana_program),
             Self::PrintProgramError { ident, variants } => {
-                print_program_error(ident, variants, &default_solana_program_crate_path)
+                print_program_error(ident, variants, &default_solana_program)
             }
             Self::SplProgramError { args, item_enum } => spl_program_error(args, item_enum),
         }
@@ -54,25 +51,33 @@ impl MacroType {
 /// Builds the implementation of
 /// `Into<solana_program::program_error::ProgramError>` More specifically,
 /// implements `From<Self> for solana_program::program_error::ProgramError`
-pub fn into_program_error(ident: &Ident, solana_program_crate: &Path) -> proc_macro2::TokenStream {
-    quote! {
+pub fn into_program_error(
+    ident: &Ident,
+    solana_program_crate: &SolanaProgram,
+) -> proc_macro2::TokenStream {
+    let this_impl = quote! {
         impl From<#ident> for #solana_program_crate::program_error::ProgramError {
             fn from(e: #ident) -> Self {
                 #solana_program_crate::program_error::ProgramError::Custom(e as u32)
             }
         }
-    }
+    };
+    solana_program_crate.wrap(this_impl)
 }
 
 /// Builds the implementation of `solana_program::decode_error::DecodeError<T>`
-pub fn decode_error(ident: &Ident, solana_program_crate: &Path) -> proc_macro2::TokenStream {
-    quote! {
+pub fn decode_error(
+    ident: &Ident,
+    solana_program_crate: &SolanaProgram,
+) -> proc_macro2::TokenStream {
+    let this_impl = quote! {
         impl<T> #solana_program_crate::decode_error::DecodeError<T> for #ident {
             fn type_of() -> &'static str {
                 stringify!(#ident)
             }
         }
-    }
+    };
+    solana_program_crate.wrap(this_impl)
 }
 
 /// Builds the implementation of
@@ -80,7 +85,7 @@ pub fn decode_error(ident: &Ident, solana_program_crate: &Path) -> proc_macro2::
 pub fn print_program_error(
     ident: &Ident,
     variants: &Punctuated<Variant, Comma>,
-    solana_program_crate: &Path,
+    solana_program_crate: &SolanaProgram,
 ) -> proc_macro2::TokenStream {
     let ppe_match_arms = variants.iter().map(|variant| {
         let variant_ident = &variant.ident;
@@ -92,7 +97,7 @@ pub fn print_program_error(
             }
         }
     });
-    quote! {
+    let this_impl = quote! {
         impl #solana_program_crate::program_error::PrintProgramError for #ident {
             fn print<E>(&self)
             where
@@ -107,7 +112,8 @@ pub fn print_program_error(
                 }
             }
         }
-    }
+    };
+    solana_program_crate.wrap(this_impl)
 }
 
 /// Helper to parse out the string literal from the `#[error(..)]` attribute
@@ -135,9 +141,9 @@ pub fn spl_program_error(
 
     let ident = &item_enum.ident;
     let variants = &item_enum.variants;
-    let into_program_error = into_program_error(ident, &args.solana_program_crate);
-    let decode_error = decode_error(ident, &args.solana_program_crate);
-    let print_program_error = print_program_error(ident, variants, &args.solana_program_crate);
+    let into_program_error = into_program_error(ident, &args.import);
+    let decode_error = decode_error(ident, &args.import);
+    let print_program_error = print_program_error(ident, variants, &args.import);
 
     quote! {
         #[repr(u32)]
