@@ -7,6 +7,7 @@ use {
     solana_program::entrypoint::ProgramResult,
     solana_zk_sdk::encryption::pod::elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
     spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool},
+    spl_token_confidential_transfer_proof_extraction::encryption::PodFeeCiphertext,
 };
 
 /// Confidential transfer fee extension instructions
@@ -21,7 +22,7 @@ pub mod processor;
 pub mod account_info;
 
 /// ElGamal ciphertext containing a transfer fee
-pub type EncryptedFee = FeeEncryption;
+pub type EncryptedFee = PodFeeCiphertext;
 /// ElGamal ciphertext containing a withheld fee in an account
 pub type EncryptedWithheldAmount = PodElGamalCiphertext;
 

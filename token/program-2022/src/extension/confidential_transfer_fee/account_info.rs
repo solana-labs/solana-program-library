@@ -1,12 +1,12 @@
 use {
     crate::{error::TokenError, extension::confidential_transfer_fee::EncryptedWithheldAmount},
     bytemuck::{Pod, Zeroable},
-    solana_zk_token_sdk::{
+    solana_zk_sdk::{
         encryption::{
             elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
             pedersen::PedersenOpening,
         },
-        instruction::ciphertext_ciphertext_equality::CiphertextCiphertextEqualityProofData,
+        zk_elgamal_proof_program::proof_data::ciphertext_ciphertext_equality::CiphertextCiphertextEqualityProofData,
     },
 };
 
