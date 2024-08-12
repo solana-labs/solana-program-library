@@ -101,7 +101,7 @@ impl Parse for SplProgramErrorArgParser {
                     _comma,
                 })
             }
-            "solana_program_crate" => {
+            "solana_program" => {
                 let _equals_sign = input.parse::<Token![=]>()?;
                 let value = input.parse::<LitStr>()?;
                 let _comma: Option<Comma> = input.parse().unwrap_or(None);
@@ -111,10 +111,7 @@ impl Parse for SplProgramErrorArgParser {
                     _comma,
                 })
             }
-            _ => {
-                Err(input
-                    .error("Expected argument 'hash_error_code_start' or 'solana_program_crate'"))
-            }
+            _ => Err(input.error("Expected argument 'hash_error_code_start' or 'solana_program'")),
         }
     }
 }

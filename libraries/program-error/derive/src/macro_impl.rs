@@ -51,33 +51,27 @@ impl MacroType {
 /// Builds the implementation of
 /// `Into<solana_program::program_error::ProgramError>` More specifically,
 /// implements `From<Self> for solana_program::program_error::ProgramError`
-pub fn into_program_error(
-    ident: &Ident,
-    solana_program_crate: &SolanaProgram,
-) -> proc_macro2::TokenStream {
+pub fn into_program_error(ident: &Ident, import: &SolanaProgram) -> proc_macro2::TokenStream {
     let this_impl = quote! {
-        impl From<#ident> for #solana_program_crate::program_error::ProgramError {
+        impl From<#ident> for #import::program_error::ProgramError {
             fn from(e: #ident) -> Self {
-                #solana_program_crate::program_error::ProgramError::Custom(e as u32)
+                #import::program_error::ProgramError::Custom(e as u32)
             }
         }
     };
-    solana_program_crate.wrap(this_impl)
+    import.wrap(this_impl)
 }
 
 /// Builds the implementation of `solana_program::decode_error::DecodeError<T>`
-pub fn decode_error(
-    ident: &Ident,
-    solana_program_crate: &SolanaProgram,
-) -> proc_macro2::TokenStream {
+pub fn decode_error(ident: &Ident, import: &SolanaProgram) -> proc_macro2::TokenStream {
     let this_impl = quote! {
-        impl<T> #solana_program_crate::decode_error::DecodeError<T> for #ident {
+        impl<T> #import::decode_error::DecodeError<T> for #ident {
             fn type_of() -> &'static str {
                 stringify!(#ident)
             }
         }
     };
-    solana_program_crate.wrap(this_impl)
+    import.wrap(this_impl)
 }
 
 /// Builds the implementation of
@@ -85,7 +79,7 @@ pub fn decode_error(
 pub fn print_program_error(
     ident: &Ident,
     variants: &Punctuated<Variant, Comma>,
-    solana_program_crate: &SolanaProgram,
+    import: &SolanaProgram,
 ) -> proc_macro2::TokenStream {
     let ppe_match_arms = variants.iter().map(|variant| {
         let variant_ident = &variant.ident;
@@ -93,18 +87,18 @@ pub fn print_program_error(
             .unwrap_or_else(|| String::from("Unknown custom program error"));
         quote! {
             #ident::#variant_ident => {
-                #solana_program_crate::msg!(#error_msg)
+                #import::msg!(#error_msg)
             }
         }
     });
     let this_impl = quote! {
-        impl #solana_program_crate::program_error::PrintProgramError for #ident {
+        impl #import::program_error::PrintProgramError for #ident {
             fn print<E>(&self)
             where
                 E: 'static
                     + std::error::Error
-                    + #solana_program_crate::decode_error::DecodeError<E>
-                    + #solana_program_crate::program_error::PrintProgramError
+                    + #import::decode_error::DecodeError<E>
+                    + #import::program_error::PrintProgramError
                     + num_traits::FromPrimitive,
             {
                 match self {
@@ -113,7 +107,7 @@ pub fn print_program_error(
             }
         }
     };
-    solana_program_crate.wrap(this_impl)
+    import.wrap(this_impl)
 }
 
 /// Helper to parse out the string literal from the `#[error(..)]` attribute

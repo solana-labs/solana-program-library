@@ -74,7 +74,7 @@ fn test_library_error_codes() {
 }
 
 /// Example error with solana_program crate set
-#[spl_program_error(solana_program_crate = "solana_program")]
+#[spl_program_error(solana_program = "solana_program")]
 enum ExampleSolanaProgramCrateError {
     /// This is a very informative error
     #[error("This is a very informative error")]
