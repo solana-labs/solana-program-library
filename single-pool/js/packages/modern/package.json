@@ -22,6 +22,8 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@solana/web3.js": "=2.0.0-experimental.21e994f"
+    "@solana/addresses": "2.0.0-rc.1",
+    "@solana/instructions": "2.0.0-rc.1",
+    "@solana/transaction-messages": "2.0.0-rc.1"
   }
 }

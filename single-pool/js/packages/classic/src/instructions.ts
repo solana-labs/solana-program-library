@@ -1,4 +1,4 @@
-import type { Base58EncodedAddress } from '@solana/addresses';
+import type { Address } from '@solana/addresses';
 import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import type { PoolAddress, VoteAccountAddress } from '@solana/spl-single-pool';
 import { SinglePoolInstruction as PoolInstructionModern } from '@solana/spl-single-pool';
@@ -28,9 +28,9 @@ export class SinglePoolInstruction {
   ): Promise<TransactionInstruction> {
     const instruction = await PoolInstructionModern.depositStake(
       pool.toBase58() as PoolAddress,
-      userStakeAccount.toBase58() as Base58EncodedAddress,
-      userTokenAccount.toBase58() as Base58EncodedAddress,
-      userLamportAccount.toBase58() as Base58EncodedAddress,
+      userStakeAccount.toBase58() as Address,
+      userTokenAccount.toBase58() as Address,
+      userLamportAccount.toBase58() as Address,
     );
     return modernInstructionToLegacy(instruction);
   }
@@ -44,9 +44,9 @@ export class SinglePoolInstruction {
   ): Promise<TransactionInstruction> {
     const instruction = await PoolInstructionModern.withdrawStake(
       pool.toBase58() as PoolAddress,
-      userStakeAccount.toBase58() as Base58EncodedAddress,
-      userStakeAuthority.toBase58() as Base58EncodedAddress,
-      userTokenAccount.toBase58() as Base58EncodedAddress,
+      userStakeAccount.toBase58() as Address,
+      userStakeAuthority.toBase58() as Address,
+      userTokenAccount.toBase58() as Address,
       BigInt(tokenAmount),
     );
     return modernInstructionToLegacy(instruction);
@@ -58,7 +58,7 @@ export class SinglePoolInstruction {
   ): Promise<TransactionInstruction> {
     const instruction = await PoolInstructionModern.createTokenMetadata(
       pool.toBase58() as PoolAddress,
-      payer.toBase58() as Base58EncodedAddress,
+      payer.toBase58() as Address,
     );
     return modernInstructionToLegacy(instruction);
   }
@@ -72,7 +72,7 @@ export class SinglePoolInstruction {
   ): Promise<TransactionInstruction> {
     const instruction = await PoolInstructionModern.updateTokenMetadata(
       voteAccount.toBase58() as VoteAccountAddress,
-      authorizedWithdrawer.toBase58() as Base58EncodedAddress,
+      authorizedWithdrawer.toBase58() as Address,
       tokenName,
       tokenSymbol,
       tokenUri,

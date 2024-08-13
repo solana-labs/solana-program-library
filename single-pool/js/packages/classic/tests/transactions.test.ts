@@ -14,7 +14,6 @@ import {
   getVoteAccountAddressForPool,
   findDefaultDepositAccountAddress,
   MPL_METADATA_PROGRAM_ID,
-  SinglePoolProgram,
   findPoolAddress,
   findPoolStakeAddress,
   findPoolMintAddress,
