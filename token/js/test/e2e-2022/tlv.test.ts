@@ -31,7 +31,7 @@ describe('tlv test', () => {
     });
 
     // test that the parser gracefully handles accounts with arbitrary extra bytes
-    it('parse account with extra bytes', async () => {
+    it('parses account with extra bytes', async () => {
         const initTestAccount = async (extraBytes: number) => {
             const mintKeypair = Keypair.generate();
             const accountKeypair = Keypair.generate();
