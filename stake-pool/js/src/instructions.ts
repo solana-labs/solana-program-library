@@ -90,6 +90,7 @@ export function tokenMetadataLayout(
  * @internal
  */
 export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
   [type in StakePoolInstructionType]: InstructionType;
 } = Object.freeze({
   AddValidatorToPool: {
