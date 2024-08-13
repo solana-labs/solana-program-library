@@ -72,3 +72,20 @@ fn test_library_error_codes() {
         first_error_as_u32 + 3,
     );
 }
+
+/// Example error with solana_program crate set
+#[spl_program_error(solana_program = "solana_program")]
+enum ExampleSolanaProgramCrateError {
+    /// This is a very informative error
+    #[error("This is a very informative error")]
+    VeryInformativeError,
+    /// This is a super important error
+    #[error("This is a super important error")]
+    SuperImportantError,
+}
+
+/// Tests that all macros compile
+#[test]
+fn test_macros_compile_with_solana_program_crate() {
+    let _ = ExampleSolanaProgramCrateError::VeryInformativeError;
+}
