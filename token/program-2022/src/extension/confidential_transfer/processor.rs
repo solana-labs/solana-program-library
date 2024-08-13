@@ -359,7 +359,8 @@ fn process_withdraw(
     amount: u64,
     expected_decimals: u8,
     new_decryptable_available_balance: DecryptableBalance,
-    proof_instruction_offset: i64,
+    equality_proof_instruction_offset: i64,
+    range_proof_instruction_offset: i64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
@@ -367,10 +368,10 @@ fn process_withdraw(
 
     // zero-knowledge proof certifies that the account has enough available balance
     // to withdraw the amount.
-    let proof_context = verify_and_extract_context::<WithdrawData, WithdrawProofContext>(
+    let proof_context = verify_withdraw_proof(
         account_info_iter,
-        proof_instruction_offset,
-        None,
+        equality_proof_instruction_offset,
+        range_proof_instruction_offset,
     )?;
 
     let authority_info = next_account_info(account_info_iter)?;
@@ -421,7 +422,7 @@ fn process_withdraw(
     // Check that the encryption public key associated with the confidential
     // extension is consistent with the public key that was actually used to
     // generate the zkp.
-    if confidential_transfer_account.elgamal_pubkey != proof_context.pubkey {
+    if confidential_transfer_account.elgamal_pubkey != proof_context.source_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
@@ -436,7 +437,8 @@ fn process_withdraw(
     }
     // Check that the final available balance ciphertext is consistent with the
     // actual ciphertext for which the zero-knowledge proof was generated for.
-    if confidential_transfer_account.available_balance != proof_context.final_ciphertext {
+    if confidential_transfer_account.available_balance != proof_context.remaining_balance_ciphertext
+    {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
@@ -1139,7 +1141,8 @@ pub(crate) fn process_instruction(
                     data.amount.into(),
                     data.decimals,
                     data.new_decryptable_available_balance,
-                    data.proof_instruction_offset as i64,
+                    data.equality_proof_instruction_offset as i64,
+                    data.range_proof_instruction_offset as i64,
                 )
             }
             #[cfg(not(feature = "zk-ops"))]

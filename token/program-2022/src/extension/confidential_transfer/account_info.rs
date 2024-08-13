@@ -15,8 +15,10 @@ use {
         zk_elgamal_proof_program::proof_data::ZeroCiphertextProofData,
     },
     spl_pod::primitives::PodU64,
-    spl_token_confidential_transfer_proof_generation::transfer::{
-        transfer_split_proof_data, TransferProofData,
+    spl_token_confidential_transfer_proof_generation::{
+        transfer::{transfer_split_proof_data, TransferProofData},
+        transfer_with_fee::{transfer_with_fee_split_proof_data, TransferWithFeeProofData},
+        withdraw::{withdraw_proof_data, WithdrawProofData},
     },
 };
 
@@ -176,20 +178,20 @@ impl WithdrawAccountInfo {
         withdraw_amount: u64,
         elgamal_keypair: &ElGamalKeypair,
         aes_key: &AeKey,
-    ) -> Result<WithdrawData, TokenError> {
+    ) -> Result<WithdrawProofData, TokenError> {
         let current_available_balance = self
             .available_balance
             .try_into()
             .map_err(|_| TokenError::MalformedCiphertext)?;
         let current_decrypted_available_balance = self.decrypted_available_balance(aes_key)?;
 
-        WithdrawData::new(
+        withdraw_proof_data(
+            &current_available_balance,
+            current_decrypted_available_balance,
             withdraw_amount,
             elgamal_keypair,
-            current_decrypted_available_balance,
-            &current_available_balance,
         )
-        .map_err(|_| TokenError::ProofGeneration)
+        .map_err(|e| -> TokenError { e.into() })
     }
 
     /// Update the decryptable available balance.
@@ -264,6 +266,43 @@ impl TransferAccountInfo {
             aes_key,
             destination_elgamal_pubkey,
             auditor_elgamal_pubkey,
+        )
+        .map_err(|e| -> TokenError { e.into() })
+    }
+
+    /// Create a transfer proof data that is split into equality, ciphertext validity (transfer
+    /// amount), percentage-with-cap, ciphertext validity (fee), and range proofs.
+    pub fn generate_split_transfer_with_fee_proof_data(
+        &self,
+        transfer_amount: u64,
+        source_elgamal_keypair: &ElGamalKeypair,
+        aes_key: &AeKey,
+        destination_elgamal_pubkey: &ElGamalPubkey,
+        auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
+        withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
+        fee_rate_basis_points: u16,
+        maximum_fee: u64,
+    ) -> Result<TransferWithFeeProofData, TokenError> {
+        let current_available_balance = self
+            .available_balance
+            .try_into()
+            .map_err(|_| TokenError::MalformedCiphertext)?;
+        let current_decryptable_available_balance = self
+            .decryptable_available_balance
+            .try_into()
+            .map_err(|_| TokenError::MalformedCiphertext)?;
+
+        transfer_with_fee_split_proof_data(
+            &current_available_balance,
+            &current_decryptable_available_balance,
+            transfer_amount,
+            source_elgamal_keypair,
+            aes_key,
+            destination_elgamal_pubkey,
+            auditor_elgamal_pubkey,
+            withdraw_withheld_authority_elgamal_pubkey,
+            fee_rate_basis_points,
+            maximum_fee,
         )
         .map_err(|e| -> TokenError { e.into() })
     }

@@ -137,7 +137,6 @@ pub fn verify_and_extract_context<'a, T: Pod + ZkProofData<U>, U: Pod>(
 fn zk_proof_type_to_instruction(proof_type: ProofType) -> Result<ProofInstruction, ProgramError> {
     match proof_type {
         ProofType::ZeroCiphertext => Ok(ProofInstruction::VerifyZeroCiphertext),
-        ProofType::Withdraw => Ok(ProofInstruction::VerifyWithdraw),
         ProofType::CiphertextCiphertextEquality => {
             Ok(ProofInstruction::VerifyCiphertextCiphertextEquality)
         }
