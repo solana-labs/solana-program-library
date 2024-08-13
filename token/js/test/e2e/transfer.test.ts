@@ -113,7 +113,7 @@ describe('transfer', () => {
                 undefined,
                 TEST_PROGRAM_ID,
             ),
-        ).to.be.rejected;
+        ).to.be.rejectedWith(Error);
     });
     it('approveRevoke', async () => {
         const delegate = Keypair.generate();
@@ -135,7 +135,7 @@ describe('transfer', () => {
         await revoke(connection, payer, account1, owner1, [], undefined, TEST_PROGRAM_ID);
         const revokedAccountInfo = await getAccount(connection, account1, undefined, TEST_PROGRAM_ID);
         expect(revokedAccountInfo.delegatedAmount).to.eql(BigInt(0));
-        expect(revokedAccountInfo.delegate).to.be.null;
+        expect(revokedAccountInfo.delegate).to.equal(null);
     });
     it('delegateTransfer', async () => {
         const delegate = Keypair.generate();
@@ -158,7 +158,8 @@ describe('transfer', () => {
         const accountInfo = await getAccount(connection, account1, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.delegatedAmount).to.eql(delegatedAmount - transferAmount);
         expect(accountInfo.delegate).to.eql(delegate.publicKey);
-        expect(transfer(connection, payer, account1, account2, delegate, BigInt(2), [], undefined, TEST_PROGRAM_ID)).to
-            .be.rejected;
+        expect(
+            transfer(connection, payer, account1, account2, delegate, BigInt(2), [], undefined, TEST_PROGRAM_ID),
+        ).to.be.rejectedWith(Error);
     });
 });

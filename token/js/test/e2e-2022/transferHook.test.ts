@@ -84,7 +84,7 @@ describe('transferHook', () => {
     it('is initialized', async () => {
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const transferHook = getTransferHook(mintInfo);
-        expect(transferHook).to.not.be.null;
+        expect(transferHook).to.not.equal(null);
         if (transferHook !== null) {
             expect(transferHook.authority).to.eql(transferHookAuthority.publicKey);
             expect(transferHook.programId).to.eql(TRANSFER_HOOK_TEST_PROGRAM_ID);
@@ -104,7 +104,7 @@ describe('transferHook', () => {
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const transferHook = getTransferHook(mintInfo);
-        expect(transferHook).to.not.be.null;
+        expect(transferHook).to.not.equal(null);
         if (transferHook !== null) {
             expect(transferHook.authority).to.eql(transferHookAuthority.publicKey);
             expect(transferHook.programId).to.eql(newTransferHookProgramId);
@@ -124,7 +124,7 @@ describe('transferHook', () => {
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const transferHook = getTransferHook(mintInfo);
-        expect(transferHook).to.not.be.null;
+        expect(transferHook).to.not.equal(null);
         if (transferHook !== null) {
             expect(transferHook.authority).to.eql(PublicKey.default);
         }

@@ -84,7 +84,7 @@ describe('setAuthority', () => {
                 undefined,
                 TEST_PROGRAM_ID,
             ),
-        ).to.be.rejected;
+        ).to.be.rejectedWith(Error);
     });
     it('MintAuthority', async () => {
         await setAuthority(
@@ -99,7 +99,7 @@ describe('setAuthority', () => {
             TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
-        expect(mintInfo.mintAuthority).to.be.null;
+        expect(mintInfo.mintAuthority).to.equal(null);
     });
     it('CloseAuthority', async () => {
         const closeAuthority = Keypair.generate();
@@ -130,6 +130,6 @@ describe('setAuthority', () => {
             TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
-        expect(mintInfo.freezeAuthority).to.be.null;
+        expect(mintInfo.freezeAuthority).to.equal(null);
     });
 });

@@ -47,7 +47,7 @@ describe('initialize mint', () => {
         expect(mintInfo.mintAuthority).to.eql(mintAuthority);
         expect(mintInfo.supply).to.eql(BigInt(0));
         expect(mintInfo.decimals).to.eql(TEST_TOKEN_DECIMALS);
-        expect(mintInfo.isInitialized).to.be.true;
+        expect(mintInfo.isInitialized).to.equal(true);
         expect(mintInfo.freezeAuthority).to.eql(freezeAuthority);
     });
     it('works with null freeze authority', async () => {
@@ -73,8 +73,8 @@ describe('initialize mint', () => {
         expect(mintInfo.mintAuthority).to.eql(mintAuthority);
         expect(mintInfo.supply).to.eql(BigInt(0));
         expect(mintInfo.decimals).to.eql(TEST_TOKEN_DECIMALS);
-        expect(mintInfo.isInitialized).to.be.true;
-        expect(mintInfo.freezeAuthority).to.be.null;
+        expect(mintInfo.isInitialized).to.equal(true);
+        expect(mintInfo.freezeAuthority).to.equal(null);
     });
 });
 describe('initialize mint 2', () => {
@@ -112,7 +112,7 @@ describe('initialize mint 2', () => {
         expect(mintInfo.mintAuthority).to.eql(mintAuthority);
         expect(mintInfo.supply).to.eql(BigInt(0));
         expect(mintInfo.decimals).to.eql(TEST_TOKEN_DECIMALS);
-        expect(mintInfo.isInitialized).to.be.true;
+        expect(mintInfo.isInitialized).to.equal(true);
         expect(mintInfo.freezeAuthority).to.eql(freezeAuthority);
     });
     it('works with null freeze authority', async () => {
@@ -138,7 +138,7 @@ describe('initialize mint 2', () => {
         expect(mintInfo.mintAuthority).to.eql(mintAuthority);
         expect(mintInfo.supply).to.eql(BigInt(0));
         expect(mintInfo.decimals).to.eql(TEST_TOKEN_DECIMALS);
-        expect(mintInfo.isInitialized).to.be.true;
-        expect(mintInfo.freezeAuthority).to.be.null;
+        expect(mintInfo.isInitialized).to.equal(true);
+        expect(mintInfo.freezeAuthority).to.equal(null);
     });
 });

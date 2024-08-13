@@ -59,7 +59,7 @@ describe('defaultAccountState', () => {
     it('defaults to frozen', async () => {
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const defaultAccountState = getDefaultAccountState(mintInfo);
-        expect(defaultAccountState).to.not.be.null;
+        expect(defaultAccountState).to.not.equal(null);
         if (defaultAccountState !== null) {
             expect(defaultAccountState.state).to.eql(TEST_STATE);
         }
@@ -74,8 +74,8 @@ describe('defaultAccountState', () => {
             TEST_PROGRAM_ID,
         );
         const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
-        expect(accountInfo.isFrozen).to.be.true;
-        expect(accountInfo.isInitialized).to.be.true;
+        expect(accountInfo.isFrozen).to.equal(true);
+        expect(accountInfo.isInitialized).to.equal(true);
     });
     it('defaults to initialized after update', async () => {
         await updateDefaultAccountState(
@@ -99,7 +99,7 @@ describe('defaultAccountState', () => {
             TEST_PROGRAM_ID,
         );
         const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
-        expect(accountInfo.isFrozen).to.be.false;
-        expect(accountInfo.isInitialized).to.be.true;
+        expect(accountInfo.isFrozen).to.equal(false);
+        expect(accountInfo.isInitialized).to.equal(true);
     });
 });

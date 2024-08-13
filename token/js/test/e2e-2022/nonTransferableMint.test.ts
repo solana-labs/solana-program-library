@@ -54,7 +54,7 @@ describe('nonTransferable', () => {
     it('fails transfer', async () => {
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const nonTransferable = getNonTransferable(mintInfo);
-        expect(nonTransferable).to.not.be.null;
+        expect(nonTransferable).to.not.equal(null);
 
         const owner = Keypair.generate();
         const accountLen = getAccountLen([ExtensionType.ImmutableOwner, ExtensionType.NonTransferableAccount]);
@@ -93,7 +93,8 @@ describe('nonTransferable', () => {
         const amount = BigInt(1000);
         await mintTo(connection, payer, mint, source, mintAuthority, amount, [], undefined, TEST_PROGRAM_ID);
 
-        expect(transfer(connection, payer, source, destination, owner, amount, [], undefined, TEST_PROGRAM_ID)).to.be
-            .rejected;
+        expect(
+            transfer(connection, payer, source, destination, owner, amount, [], undefined, TEST_PROGRAM_ID),
+        ).to.be.rejectedWith(Error);
     });
 });

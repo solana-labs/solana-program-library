@@ -298,7 +298,7 @@ describe('Account Compression', () => {
             try {
                 await execute(provider, [ix], [payerKeypair]);
                 assert(false, 'Closing a tree account before it is empty should ALWAYS error');
-            } catch (e) {}
+            } catch {}
         });
     });
 
@@ -343,7 +343,7 @@ describe('Account Compression', () => {
             try {
                 await execute(provider, [replaceIx], [payerKeypair]);
                 assert(false, 'Attacker was able to successfully write fake existence of a leaf');
-            } catch (e) {}
+            } catch {}
 
             const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt);
 
@@ -503,7 +503,7 @@ describe('Account Compression', () => {
             try {
                 await execute(provider, [replaceIx], [payerKeypair]);
                 throw Error('This replace instruction should have failed because the leaf index is OOB');
-            } catch (_e) {}
+            } catch {}
         });
     });
 });

@@ -92,7 +92,7 @@ describe('tlvData', () => {
         type[0] = 2;
         expect(tlv.firstBytes(type)).to.be.deep.equal(Buffer.from([1, 2]));
         type[0] = 3;
-        expect(tlv.firstBytes(type)).to.be.null;
+        expect(tlv.firstBytes(type)).to.equal(null);
     };
 
     it('should get the entries individually', () => {

@@ -134,7 +134,7 @@ describe('transferHook', () => {
                 lamports: 0,
             };
             const parsedExtraAccounts = getExtraAccountMetas(accountInfo);
-            expect(parsedExtraAccounts).to.not.be.null;
+            expect(parsedExtraAccounts).to.not.equal(null);
             if (parsedExtraAccounts == null) {
                 return;
             }
@@ -146,18 +146,18 @@ describe('transferHook', () => {
 
             expect(parsedExtraAccounts[0].discriminator).to.eql(0);
             expect(parsedExtraAccounts[0].addressConfig).to.eql(plainAccount.toBuffer());
-            expect(parsedExtraAccounts[0].isSigner).to.be.false;
-            expect(parsedExtraAccounts[0].isWritable).to.be.false;
+            expect(parsedExtraAccounts[0].isSigner).to.equal(false);
+            expect(parsedExtraAccounts[0].isWritable).to.equal(false);
 
             expect(parsedExtraAccounts[1].discriminator).to.eql(1);
             expect(parsedExtraAccounts[1].addressConfig).to.eql(addressConfig);
-            expect(parsedExtraAccounts[1].isSigner).to.be.true;
-            expect(parsedExtraAccounts[1].isWritable).to.be.false;
+            expect(parsedExtraAccounts[1].isSigner).to.equal(true);
+            expect(parsedExtraAccounts[1].isWritable).to.equal(false);
 
             expect(parsedExtraAccounts[2].discriminator).to.eql(128);
             expect(parsedExtraAccounts[2].addressConfig).to.eql(addressConfig);
-            expect(parsedExtraAccounts[2].isSigner).to.be.false;
-            expect(parsedExtraAccounts[2].isWritable).to.be.true;
+            expect(parsedExtraAccounts[2].isSigner).to.equal(false);
+            expect(parsedExtraAccounts[2].isWritable).to.equal(true);
         });
 
         it('can resolve extra metas', async () => {
@@ -170,8 +170,8 @@ describe('transferHook', () => {
             );
 
             expect(resolvedPlainAccount.pubkey).to.eql(plainAccount);
-            expect(resolvedPlainAccount.isSigner).to.be.false;
-            expect(resolvedPlainAccount.isWritable).to.be.false;
+            expect(resolvedPlainAccount.isSigner).to.equal(false);
+            expect(resolvedPlainAccount.isWritable).to.equal(false);
 
             const resolvedPdaAccount = await resolveExtraAccountMeta(
                 connection,
@@ -182,8 +182,8 @@ describe('transferHook', () => {
             );
 
             expect(resolvedPdaAccount.pubkey).to.eql(pdaPublicKey);
-            expect(resolvedPdaAccount.isSigner).to.be.true;
-            expect(resolvedPdaAccount.isWritable).to.be.false;
+            expect(resolvedPdaAccount.isSigner).to.equal(true);
+            expect(resolvedPdaAccount.isWritable).to.equal(false);
 
             const resolvedPdaAccountWithProgramId = await resolveExtraAccountMeta(
                 connection,
@@ -194,8 +194,8 @@ describe('transferHook', () => {
             );
 
             expect(resolvedPdaAccountWithProgramId.pubkey).to.eql(pdaPublicKeyWithProgramId);
-            expect(resolvedPdaAccountWithProgramId.isSigner).to.be.false;
-            expect(resolvedPdaAccountWithProgramId.isWritable).to.be.true;
+            expect(resolvedPdaAccountWithProgramId.isSigner).to.equal(false);
+            expect(resolvedPdaAccountWithProgramId.isWritable).to.equal(true);
         });
     });
 
