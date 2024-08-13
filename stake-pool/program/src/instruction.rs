@@ -1323,6 +1323,62 @@ pub fn decrease_validator_stake_with_vote(
     )
 }
 
+/// Create a `IncreaseAdditionalValidatorStake` instruction given an existing
+/// stake pool, valiator list and vote account
+pub fn increase_additional_validator_stake_with_list(
+    program_id: &Pubkey,
+    stake_pool: &StakePool,
+    validator_list: &ValidatorList,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+    lamports: u64,
+    ephemeral_stake_seed: u64,
+) -> Result<Instruction, ProgramError> {
+    let validator_info = validator_list
+        .find(vote_account_address)
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    let transient_stake_seed = u64::from(validator_info.transient_seed_suffix);
+    let validator_stake_seed = NonZeroU32::new(validator_info.validator_seed_suffix.into());
+    Ok(increase_additional_validator_stake_with_vote(
+        program_id,
+        stake_pool,
+        stake_pool_address,
+        vote_account_address,
+        lamports,
+        validator_stake_seed,
+        transient_stake_seed,
+        ephemeral_stake_seed,
+    ))
+}
+
+/// Create a `DecreaseAdditionalValidatorStake` instruction given an existing
+/// stake pool, valiator list and vote account
+pub fn decrease_additional_validator_stake_with_list(
+    program_id: &Pubkey,
+    stake_pool: &StakePool,
+    validator_list: &ValidatorList,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+    lamports: u64,
+    ephemeral_stake_seed: u64,
+) -> Result<Instruction, ProgramError> {
+    let validator_info = validator_list
+        .find(vote_account_address)
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    let transient_stake_seed = u64::from(validator_info.transient_seed_suffix);
+    let validator_stake_seed = NonZeroU32::new(validator_info.validator_seed_suffix.into());
+    Ok(decrease_additional_validator_stake_with_vote(
+        program_id,
+        stake_pool,
+        stake_pool_address,
+        vote_account_address,
+        lamports,
+        validator_stake_seed,
+        transient_stake_seed,
+        ephemeral_stake_seed,
+    ))
+}
+
 /// Create a `DecreaseAdditionalValidatorStake` instruction given an existing
 /// stake pool and vote account
 pub fn decrease_additional_validator_stake_with_vote(
