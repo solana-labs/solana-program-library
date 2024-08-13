@@ -46,7 +46,7 @@ describe('reallocate', () => {
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, owner], undefined);
         const info = await connection.getAccountInfo(account);
-        expect(info).to.not.be.null;
+        expect(info).to.not.equal(null);
         if (info !== null) {
             const expectedAccountLen = getAccountLen(EXTENSIONS);
             expect(info.data.length).to.eql(expectedAccountLen);

@@ -61,6 +61,6 @@ describe('mint', () => {
 
         expect(
             mintToChecked(connection, payer, mint, account, mintAuthority, amount, 1, [], undefined, TEST_PROGRAM_ID),
-        ).to.be.rejected;
+        ).to.be.rejectedWith(Error);
     });
 });

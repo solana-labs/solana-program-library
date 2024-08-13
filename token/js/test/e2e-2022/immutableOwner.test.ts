@@ -73,6 +73,6 @@ describe('immutableOwner', () => {
                 undefined,
                 TEST_PROGRAM_ID,
             ),
-        ).to.be.rejected;
+        ).to.be.rejectedWith(Error);
     });
 });

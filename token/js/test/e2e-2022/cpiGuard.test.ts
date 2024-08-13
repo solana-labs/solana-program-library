@@ -68,7 +68,7 @@ describe('cpiGuard', () => {
         let accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         let cpiGuard = getCpiGuard(accountInfo);
 
-        expect(cpiGuard).to.be.null;
+        expect(cpiGuard).to.equal(null);
 
         let transaction = new Transaction().add(
             createEnableCpiGuardInstruction(account, owner.publicKey, [], TEST_PROGRAM_ID),
@@ -78,9 +78,9 @@ describe('cpiGuard', () => {
         accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         cpiGuard = getCpiGuard(accountInfo);
 
-        expect(cpiGuard).to.not.be.null;
+        expect(cpiGuard).to.not.equal(null);
         if (cpiGuard !== null) {
-            expect(cpiGuard.lockCpi).to.be.true;
+            expect(cpiGuard.lockCpi).to.equal(true);
         }
 
         transaction = new Transaction().add(
@@ -91,9 +91,9 @@ describe('cpiGuard', () => {
         accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         cpiGuard = getCpiGuard(accountInfo);
 
-        expect(cpiGuard).to.not.be.null;
+        expect(cpiGuard).to.not.equal(null);
         if (cpiGuard !== null) {
-            expect(cpiGuard.lockCpi).to.be.false;
+            expect(cpiGuard.lockCpi).to.equal(false);
         }
     });
 
@@ -101,16 +101,16 @@ describe('cpiGuard', () => {
         let accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         let cpiGuard = getCpiGuard(accountInfo);
 
-        expect(cpiGuard).to.be.null;
+        expect(cpiGuard).to.equal(null);
 
         await enableCpiGuard(connection, payer, account, owner, [], undefined, TEST_PROGRAM_ID);
 
         accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         cpiGuard = getCpiGuard(accountInfo);
 
-        expect(cpiGuard).to.not.be.null;
+        expect(cpiGuard).to.not.equal(null);
         if (cpiGuard !== null) {
-            expect(cpiGuard.lockCpi).to.be.true;
+            expect(cpiGuard.lockCpi).to.equal(true);
         }
 
         await disableCpiGuard(connection, payer, account, owner, [], undefined, TEST_PROGRAM_ID);
@@ -118,9 +118,9 @@ describe('cpiGuard', () => {
         accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         cpiGuard = getCpiGuard(accountInfo);
 
-        expect(cpiGuard).to.not.be.null;
+        expect(cpiGuard).to.not.equal(null);
         if (cpiGuard !== null) {
-            expect(cpiGuard.lockCpi).to.be.false;
+            expect(cpiGuard.lockCpi).to.equal(false);
         }
     });
 });

@@ -97,26 +97,26 @@ describe('recoverNested', () => {
             undefined,
             TEST_PROGRAM_ID,
         );
-    }),
-        it('success', async () => {
-            // create destination associated token
-            const destinationAssociatedToken = await createAssociatedTokenAccount(
-                connection,
-                payer,
-                nestedMint,
-                owner.publicKey,
-                undefined,
-                TEST_PROGRAM_ID,
-            );
+    });
+    it('success', async () => {
+        // create destination associated token
+        const destinationAssociatedToken = await createAssociatedTokenAccount(
+            connection,
+            payer,
+            nestedMint,
+            owner.publicKey,
+            undefined,
+            TEST_PROGRAM_ID,
+        );
 
-            await recoverNested(connection, payer, owner, mint, nestedMint, undefined, TEST_PROGRAM_ID);
+        await recoverNested(connection, payer, owner, mint, nestedMint, undefined, TEST_PROGRAM_ID);
 
-            expect(await connection.getAccountInfo(nestedAssociatedToken)).to.be.null;
+        expect(await connection.getAccountInfo(nestedAssociatedToken)).to.equal(null);
 
-            const accountInfo = await getAccount(connection, destinationAssociatedToken, undefined, TEST_PROGRAM_ID);
-            expect(accountInfo).to.not.be.null;
-            expect(accountInfo.mint).to.eql(nestedMint);
-            expect(accountInfo.owner).to.eql(owner.publicKey);
-            expect(accountInfo.amount).to.eql(BigInt(nestedMintAmount));
-        });
+        const accountInfo = await getAccount(connection, destinationAssociatedToken, undefined, TEST_PROGRAM_ID);
+        expect(accountInfo).to.not.equal(null);
+        expect(accountInfo.mint).to.eql(nestedMint);
+        expect(accountInfo.owner).to.eql(owner.publicKey);
+        expect(accountInfo.amount).to.eql(BigInt(nestedMintAmount));
+    });
 });

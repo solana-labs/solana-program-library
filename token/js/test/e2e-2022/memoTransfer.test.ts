@@ -95,19 +95,21 @@ describe('memoTransfer', () => {
     it('fails without memo when enabled', async () => {
         const accountInfo = await getAccount(connection, destination, undefined, TEST_PROGRAM_ID);
         const memoTransfer = getMemoTransfer(accountInfo);
-        expect(memoTransfer).to.not.be.null;
+        expect(memoTransfer).to.not.equal(null);
         if (memoTransfer !== null) {
-            expect(memoTransfer.requireIncomingTransferMemos).to.be.true;
+            expect(memoTransfer.requireIncomingTransferMemos).to.equal(true);
         }
-        expect(transfer(connection, payer, source, destination, owner, TRANSFER_AMOUNT, [], undefined, TEST_PROGRAM_ID))
-            .to.be.rejected;
+        expect(
+            transfer(connection, payer, source, destination, owner, TRANSFER_AMOUNT, [], undefined, TEST_PROGRAM_ID),
+        ).to.be.rejectedWith(Error);
     });
     it('works without memo when disabled', async () => {
         await disableRequiredMemoTransfers(connection, payer, destination, owner, [], undefined, TEST_PROGRAM_ID);
         await transfer(connection, payer, source, destination, owner, TRANSFER_AMOUNT, [], undefined, TEST_PROGRAM_ID);
         await enableRequiredMemoTransfers(connection, payer, destination, owner, [], undefined, TEST_PROGRAM_ID);
-        expect(transfer(connection, payer, source, destination, owner, TRANSFER_AMOUNT, [], undefined, TEST_PROGRAM_ID))
-            .to.be.rejected;
+        expect(
+            transfer(connection, payer, source, destination, owner, TRANSFER_AMOUNT, [], undefined, TEST_PROGRAM_ID),
+        ).to.be.rejectedWith(Error);
     });
     it('works with memo when enabled', async () => {
         const transaction = new Transaction().add(
