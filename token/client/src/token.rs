@@ -1,12 +1,8 @@
 use {
-    crate::{
-        client::{
-            ProgramClient, ProgramClientError, SendTransaction, SimulateTransaction,
-            SimulationResult,
-        },
-        proof_generation::{transfer_with_fee_split_proof_data, ProofAccount},
+    crate::client::{
+        ProgramClient, ProgramClientError, SendTransaction, SimulateTransaction, SimulationResult,
     },
-    bytemuck::bytes_of,
+    bytemuck::{bytes_of, Pod},
     futures::future::join_all,
     futures_util::TryFutureExt,
     solana_program_test::tokio::time,
@@ -52,18 +48,24 @@ use {
         },
         instruction, offchain,
         proof::{ProofData, ProofLocation},
-        solana_zk_token_sdk::{
+        solana_zk_sdk::{
             encryption::{
                 auth_encryption::AeKey,
                 elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey, ElGamalSecretKey},
+                pod::elgamal::PodElGamalPubkey,
             },
-            instruction::*,
-            zk_token_elgamal::pod::ElGamalPubkey as PodElGamalPubkey,
-            zk_token_proof_instruction::{self, ContextStateInfo, ProofInstruction},
-            zk_token_proof_program,
-            zk_token_proof_state::ProofContextState,
+            zk_elgamal_proof_program::{
+                self,
+                instruction::{close_context_state, ContextStateInfo, ProofInstruction},
+                proof_data::*,
+                state::ProofContextState,
+            },
         },
         state::{Account, AccountState, Mint, Multisig},
+    },
+    spl_token_confidential_transfer_proof_generation::{
+        transfer::TransferProofData, transfer_with_fee::TransferWithFeeProofData,
+        withdraw::WithdrawProofData,
     },
     spl_token_group_interface::state::{TokenGroup, TokenGroupMember},
     spl_token_metadata_interface::state::{Field, TokenMetadata},
@@ -337,6 +339,11 @@ pub enum ComputeUnitLimit {
     Default,
     Simulated,
     Static(u32),
+}
+
+pub enum ProofAccount {
+    ContextAccount(Pubkey),
+    RecordAccount(Pubkey, u32),
 }
 
 pub struct Token<T> {
@@ -1910,7 +1917,7 @@ where
             None
         } else {
             Some(
-                confidential_transfer::instruction::PubkeyValidityData::new(elgamal_keypair)
+                confidential_transfer::instruction::PubkeyValidityProofData::new(elgamal_keypair)
                     .map_err(|_| TokenError::ProofGeneration)?,
             )
         };
@@ -1931,7 +1938,7 @@ where
                 &self.program_id,
                 account,
                 &self.pubkey,
-                decryptable_balance,
+                decryptable_balance.into(),
                 maximum_pending_balance_credit_counter,
                 authority,
                 &multisig_signers,
@@ -2055,7 +2062,8 @@ where
         &self,
         account: &Pubkey,
         authority: &Pubkey,
-        proof_account: Option<&ProofAccount>,
+        equality_proof_account: Option<&ProofAccount>,
+        range_proof_account: Option<&ProofAccount>,
         withdraw_amount: u64,
         decimals: u8,
         account_info: Option<WithdrawAccountInfo>,
@@ -2075,22 +2083,32 @@ where
             WithdrawAccountInfo::new(confidential_transfer_account)
         };
 
-        let proof_data = if proof_account.is_some() {
-            None
-        } else {
-            Some(
-                account_info
-                    .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
-                    .map_err(|_| TokenError::ProofGeneration)?,
-            )
-        };
+        let WithdrawProofData {
+            equality_proof_data,
+            range_proof_data,
+        } = account_info
+            .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
+            .map_err(|_| TokenError::ProofGeneration)?;
+
+        // if proof accounts are none, then proof data must be included as instruction data
+        let equality_proof_data = equality_proof_account
+            .is_none()
+            .then_some(equality_proof_data);
+        let range_proof_data = range_proof_account.is_none().then_some(range_proof_data);
 
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
         // which is guaranteed by the previous check
-        let proof_location = Self::confidential_transfer_create_proof_location(
-            proof_data.as_ref(),
-            proof_account,
+        let equality_proof_location = Self::confidential_transfer_create_proof_location(
+            equality_proof_data.as_ref(),
+            equality_proof_account,
             1,
+        )
+        .unwrap();
+
+        let range_proof_location = Self::confidential_transfer_create_proof_location(
+            range_proof_data.as_ref(),
+            range_proof_account,
+            2,
         )
         .unwrap();
 
@@ -2105,71 +2123,15 @@ where
                 &self.pubkey,
                 withdraw_amount,
                 decimals,
-                new_decryptable_available_balance,
+                new_decryptable_available_balance.into(),
                 authority,
                 &multisig_signers,
-                proof_location,
+                equality_proof_location,
+                range_proof_location,
             )?,
             signing_keypairs,
         )
         .await
-    }
-
-    /// Create withdraw proof context state account for a confidential transfer
-    /// withdraw instruction.
-    pub async fn create_withdraw_proof_context_state<S: Signer>(
-        &self,
-        context_state_account: &Pubkey,
-        context_state_authority: &Pubkey,
-        withdraw_proof_data: &WithdrawData,
-        withdraw_proof_signer: &S,
-    ) -> TokenResult<T::Output> {
-        // create withdraw proof context state
-        let instruction_type = ProofInstruction::VerifyWithdraw;
-        let space = size_of::<ProofContextState<WithdrawProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-
-        let withdraw_proof_context_state_info = ContextStateInfo {
-            context_state_account,
-            context_state_authority,
-        };
-
-        self.process_ixs(
-            &[system_instruction::create_account(
-                &self.payer.pubkey(),
-                context_state_account,
-                rent,
-                space as u64,
-                &zk_token_proof_program::id(),
-            )],
-            &[withdraw_proof_signer],
-        )
-        .await?;
-
-        // This instruction is right at the transaction size limit, so we cannot
-        // add any other instructions to it
-        let blockhash = self
-            .client
-            .get_latest_blockhash()
-            .await
-            .map_err(TokenError::Client)?;
-
-        let transaction = Transaction::new_signed_with_payer(
-            &[instruction_type
-                .encode_verify_proof(Some(withdraw_proof_context_state_info), withdraw_proof_data)],
-            Some(&self.payer.pubkey()),
-            &[self.payer.as_ref()],
-            blockhash,
-        );
-
-        self.client
-            .send_transaction(&transaction)
-            .await
-            .map_err(TokenError::Client)
     }
 
     /// Transfer tokens confidentially
@@ -2202,7 +2164,11 @@ where
             TransferAccountInfo::new(confidential_transfer_account)
         };
 
-        let (equality_proof_data, ciphertext_validity_proof_data, range_proof_data) = account_info
+        let TransferProofData {
+            equality_proof_data,
+            ciphertext_validity_proof_data,
+            range_proof_data,
+        } = account_info
             .generate_split_transfer_proof_data(
                 transfer_amount,
                 source_elgamal_keypair,
@@ -2412,7 +2378,7 @@ where
                     context_state_account,
                     rent,
                     space as u64,
-                    &zk_token_proof_program::id(),
+                    &zk_elgamal_proof_program::id(),
                 ),
                 instruction_type.encode_verify_proof(
                     Some(equality_proof_context_state_info),
@@ -2455,7 +2421,7 @@ where
                     context_state_account,
                     rent,
                     space as u64,
-                    &zk_token_proof_program::id(),
+                    &zk_elgamal_proof_program::id(),
                 ),
                 instruction_type.encode_verify_proof(
                     Some(ciphertext_validity_proof_context_state_info),
@@ -2492,7 +2458,7 @@ where
                 context_state_account,
                 rent,
                 space as u64,
-                &zk_token_proof_program::id(),
+                &zk_elgamal_proof_program::id(),
             )],
             &[range_proof_keypair],
         )
@@ -2534,7 +2500,7 @@ where
         };
 
         self.process_ixs(
-            &[zk_token_proof_instruction::close_context_state(
+            &[close_context_state(
                 context_state_info,
                 lamport_destination_account,
             )],
@@ -2578,38 +2544,24 @@ where
             TransferAccountInfo::new(confidential_transfer_account)
         };
 
-        let current_source_available_balance = account_info
-            .available_balance
-            .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
-        let current_decryptable_available_balance = account_info
-            .decryptable_available_balance
-            .try_into()
-            .map_err(|_| TokenError::AccountDecryption)?;
-
-        let fee_parameters = FeeParameters {
-            fee_rate_basis_points,
-            maximum_fee,
-        };
-
-        let (
+        let TransferWithFeeProofData {
             equality_proof_data,
             transfer_amount_ciphertext_validity_proof_data,
-            fee_sigma_proof_data,
+            percentage_with_cap_proof_data,
             fee_ciphertext_validity_proof_data,
             range_proof_data,
-        ) = transfer_with_fee_split_proof_data(
-            &current_source_available_balance,
-            &current_decryptable_available_balance,
-            transfer_amount,
-            source_elgamal_keypair,
-            source_aes_key,
-            destination_elgamal_pubkey,
-            auditor_elgamal_pubkey,
-            withdraw_withheld_authority_elgamal_pubkey,
-            &fee_parameters,
-        )
-        .map_err(|_| TokenError::ProofGeneration)?;
+        } = account_info
+            .generate_split_transfer_with_fee_proof_data(
+                transfer_amount,
+                source_elgamal_keypair,
+                source_aes_key,
+                destination_elgamal_pubkey,
+                auditor_elgamal_pubkey,
+                withdraw_withheld_authority_elgamal_pubkey,
+                fee_rate_basis_points,
+                maximum_fee,
+            )
+            .map_err(|_| TokenError::ProofGeneration)?;
 
         let equality_proof_data = equality_proof_account
             .is_none()
@@ -2620,7 +2572,7 @@ where
                 .then_some(transfer_amount_ciphertext_validity_proof_data);
         let fee_sigma_proof_data = fee_sigma_proof_account
             .is_none()
-            .then_some(fee_sigma_proof_data);
+            .then_some(percentage_with_cap_proof_data);
         let fee_ciphertext_validity_proof_data = fee_ciphertext_validity_proof_account
             .is_none()
             .then_some(fee_ciphertext_validity_proof_data);
@@ -2725,7 +2677,7 @@ where
                     context_state_account,
                     rent,
                     space as u64,
-                    &zk_token_proof_program::id(),
+                    &zk_elgamal_proof_program::id(),
                 ),
                 instruction_type.encode_verify_proof(
                     Some(equality_proof_context_state_info),
@@ -2768,7 +2720,7 @@ where
                     context_state_account,
                     rent,
                     space as u64,
-                    &zk_token_proof_program::id(),
+                    &zk_elgamal_proof_program::id(),
                 ),
                 instruction_type.encode_verify_proof(
                     Some(transfer_amount_ciphertext_validity_proof_context_state_info),
@@ -2787,11 +2739,11 @@ where
         &self,
         context_state_account: &Pubkey,
         context_state_authority: &Pubkey,
-        fee_sigma_proof_data: &FeeSigmaProofData,
+        fee_sigma_proof_data: &PercentageWithCapProofData,
         signing_keypair: &S,
     ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyFeeSigma;
-        let space = size_of::<ProofContextState<FeeSigmaProofContext>>();
+        let instruction_type = ProofInstruction::VerifyPercentageWithCap;
+        let space = size_of::<ProofContextState<PercentageWithCapProofContext>>();
         let rent = self
             .client
             .get_minimum_balance_for_rent_exemption(space)
@@ -2808,7 +2760,7 @@ where
                     context_state_account,
                     rent,
                     space as u64,
-                    &zk_token_proof_program::id(),
+                    &zk_elgamal_proof_program::id(),
                 ),
                 instruction_type.encode_verify_proof(
                     Some(fee_sigma_proof_context_state_info),
@@ -2851,7 +2803,7 @@ where
                     context_state_account,
                     rent,
                     space as u64,
-                    &zk_token_proof_program::id(),
+                    &zk_elgamal_proof_program::id(),
                 ),
                 instruction_type.encode_verify_proof(
                     Some(fee_ciphertext_validity_proof_context_state_info),
@@ -2890,7 +2842,7 @@ where
                     context_state_account,
                     rent,
                     space as u64,
-                    &zk_token_proof_program::id(),
+                    &zk_elgamal_proof_program::id(),
                 ),
                 instruction_type
                     .encode_verify_proof(Some(range_proof_context_state_info), range_proof_data),
@@ -2933,7 +2885,7 @@ where
                 &self.program_id,
                 account,
                 expected_pending_balance_credit_counter,
-                new_decryptable_available_balance,
+                new_decryptable_available_balance.into(),
                 authority,
                 &multisig_signers,
             )?],
