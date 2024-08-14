@@ -47,7 +47,7 @@ use {
             BaseStateWithExtensions, Extension, ExtensionType, StateWithExtensionsOwned,
         },
         instruction, offchain,
-        proof::{ProofData, ProofLocation},
+        proof::{zk_proof_type_to_instruction, ProofData, ProofLocation},
         solana_zk_sdk::{
             encryption::{
                 auth_encryption::AeKey,
@@ -56,7 +56,7 @@ use {
             },
             zk_elgamal_proof_program::{
                 self,
-                instruction::{close_context_state, ContextStateInfo, ProofInstruction},
+                instruction::{close_context_state, ContextStateInfo},
                 proof_data::*,
                 state::ProofContextState,
             },
@@ -2347,26 +2347,28 @@ where
         .await
     }
 
-    /// Create an equality proof context state account for a confidential
-    /// transfer.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn create_equality_proof_context_state_for_transfer<S: Signer>(
+    /// Create a context state account containing zero-knowledge proof needed for a confidential
+    /// transfer instruction.
+    pub async fn confidential_transfer_create_context_state_account<
+        S: Signer,
+        ZK: Pod + ZkProofData<U>,
+        U: Pod,
+    >(
         &self,
         context_state_account: &Pubkey,
         context_state_authority: &Pubkey,
-        equality_proof_data: &CiphertextCommitmentEqualityProofData,
-        equality_proof_signer: &S,
+        proof_data: &ZK,
+        signer: &S,
     ) -> TokenResult<T::Output> {
-        // create equality proof context state
-        let instruction_type = ProofInstruction::VerifyCiphertextCommitmentEquality;
-        let space = size_of::<ProofContextState<CiphertextCommitmentEqualityProofContext>>();
+        let instruction_type = zk_proof_type_to_instruction(ZK::PROOF_TYPE)?;
+        let space = size_of::<ProofContextState<U>>();
         let rent = self
             .client
             .get_minimum_balance_for_rent_exemption(space)
             .await
             .map_err(TokenError::Client)?;
 
-        let equality_proof_context_state_info = ContextStateInfo {
+        let context_state_info = ContextStateInfo {
             context_state_account,
             context_state_authority,
         };
@@ -2380,110 +2382,11 @@ where
                     space as u64,
                     &zk_elgamal_proof_program::id(),
                 ),
-                instruction_type.encode_verify_proof(
-                    Some(equality_proof_context_state_info),
-                    equality_proof_data,
-                ),
+                instruction_type.encode_verify_proof(Some(context_state_info), proof_data),
             ],
-            &[equality_proof_signer],
+            &[signer],
         )
         .await
-    }
-
-    /// Create a ciphertext validity proof context state account for a
-    /// confidential transfer.
-    pub async fn create_ciphertext_validity_proof_context_state_for_transfer<S: Signer>(
-        &self,
-        context_state_account: &Pubkey,
-        context_state_authority: &Pubkey,
-        ciphertext_validity_proof_data: &BatchedGroupedCiphertext3HandlesValidityProofData,
-        ciphertext_validity_proof_signer: &S,
-    ) -> TokenResult<T::Output> {
-        // create ciphertext validity proof context state
-        let instruction_type = ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity;
-        let space =
-            size_of::<ProofContextState<BatchedGroupedCiphertext3HandlesValidityProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-
-        let ciphertext_validity_proof_context_state_info = ContextStateInfo {
-            context_state_account,
-            context_state_authority,
-        };
-
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    context_state_account,
-                    rent,
-                    space as u64,
-                    &zk_elgamal_proof_program::id(),
-                ),
-                instruction_type.encode_verify_proof(
-                    Some(ciphertext_validity_proof_context_state_info),
-                    ciphertext_validity_proof_data,
-                ),
-            ],
-            &[ciphertext_validity_proof_signer],
-        )
-        .await
-    }
-
-    /// Create a range proof context state account for a confidential transfer.
-    pub async fn create_range_proof_context_state_for_transfer<S: Signer>(
-        &self,
-        context_state_account: &Pubkey,
-        context_state_authority: &Pubkey,
-        range_proof_data: &BatchedRangeProofU128Data,
-        range_proof_keypair: &S,
-    ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyBatchedRangeProofU128;
-        let space = size_of::<ProofContextState<BatchedRangeProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-        let range_proof_context_state_info = ContextStateInfo {
-            context_state_account,
-            context_state_authority,
-        };
-        self.process_ixs(
-            &[system_instruction::create_account(
-                &self.payer.pubkey(),
-                context_state_account,
-                rent,
-                space as u64,
-                &zk_elgamal_proof_program::id(),
-            )],
-            &[range_proof_keypair],
-        )
-        .await?;
-
-        // This instruction is right at the transaction size limit, but in the
-        // future it might be able to support the transfer too
-        let blockhash = self
-            .client
-            .get_latest_blockhash()
-            .await
-            .map_err(TokenError::Client)?;
-
-        let transaction = Transaction::new_signed_with_payer(
-            &[instruction_type
-                .encode_verify_proof(Some(range_proof_context_state_info), range_proof_data)],
-            Some(&self.payer.pubkey()),
-            &[self.payer.as_ref()],
-            blockhash,
-        );
-
-        self.client
-            .send_transaction(&transaction)
-            .await
-            .map_err(TokenError::Client)
     }
 
     /// Close a ZK Token proof program context state
@@ -2647,209 +2550,6 @@ where
         .await
         .map_err(|_| TokenError::AccountNotFound)?;
         self.process_ixs(&instructions, signing_keypairs).await
-    }
-
-    /// Create equality proof context state accounts for a confidential transfer
-    /// with fee.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn create_equality_proof_context_state_for_transfer_with_fee<S: Signer>(
-        &self,
-        context_state_account: &Pubkey,
-        context_state_authority: &Pubkey,
-        equality_proof_data: &CiphertextCommitmentEqualityProofData,
-        signing_keypair: &S,
-    ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyCiphertextCommitmentEquality;
-        let space = size_of::<ProofContextState<CiphertextCommitmentEqualityProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-        let equality_proof_context_state_info = ContextStateInfo {
-            context_state_account,
-            context_state_authority,
-        };
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    context_state_account,
-                    rent,
-                    space as u64,
-                    &zk_elgamal_proof_program::id(),
-                ),
-                instruction_type.encode_verify_proof(
-                    Some(equality_proof_context_state_info),
-                    equality_proof_data,
-                ),
-            ],
-            &[signing_keypair],
-        )
-        .await
-    }
-
-    /// Create a transfer amount ciphertext validity proof context state account
-    /// for a confidential transfer with fee.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn create_transfer_amount_ciphertext_validity_proof_context_state_for_transfer_with_fee<
-        S: Signer,
-    >(
-        &self,
-        context_state_account: &Pubkey,
-        context_state_authority: &Pubkey,
-        transfer_amount_ciphertext_validity_proof_data: &BatchedGroupedCiphertext3HandlesValidityProofData,
-        signing_keypair: &S,
-    ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity;
-        let space =
-            size_of::<ProofContextState<BatchedGroupedCiphertext3HandlesValidityProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-        let transfer_amount_ciphertext_validity_proof_context_state_info = ContextStateInfo {
-            context_state_account,
-            context_state_authority,
-        };
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    context_state_account,
-                    rent,
-                    space as u64,
-                    &zk_elgamal_proof_program::id(),
-                ),
-                instruction_type.encode_verify_proof(
-                    Some(transfer_amount_ciphertext_validity_proof_context_state_info),
-                    transfer_amount_ciphertext_validity_proof_data,
-                ),
-            ],
-            &[signing_keypair],
-        )
-        .await
-    }
-
-    /// Create a fee sigma proof context state account for a confidential
-    /// transfer with fee.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn create_fee_sigma_proof_context_state_for_transfer_with_fee<S: Signer>(
-        &self,
-        context_state_account: &Pubkey,
-        context_state_authority: &Pubkey,
-        fee_sigma_proof_data: &PercentageWithCapProofData,
-        signing_keypair: &S,
-    ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyPercentageWithCap;
-        let space = size_of::<ProofContextState<PercentageWithCapProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-        let fee_sigma_proof_context_state_info = ContextStateInfo {
-            context_state_account,
-            context_state_authority,
-        };
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    context_state_account,
-                    rent,
-                    space as u64,
-                    &zk_elgamal_proof_program::id(),
-                ),
-                instruction_type.encode_verify_proof(
-                    Some(fee_sigma_proof_context_state_info),
-                    fee_sigma_proof_data,
-                ),
-            ],
-            &[signing_keypair],
-        )
-        .await
-    }
-
-    /// Create a fee ciphertext validity proof context state account for a
-    /// confidential transfer with fee.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn create_fee_ciphertext_validity_proof_context_state_for_transfer_with_fee<
-        S: Signer,
-    >(
-        &self,
-        context_state_account: &Pubkey,
-        context_state_authority: &Pubkey,
-        fee_ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
-        signing_keypair: &S,
-    ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity;
-        let space =
-            size_of::<ProofContextState<BatchedGroupedCiphertext2HandlesValidityProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-        let fee_ciphertext_validity_proof_context_state_info = ContextStateInfo {
-            context_state_account,
-            context_state_authority,
-        };
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    context_state_account,
-                    rent,
-                    space as u64,
-                    &zk_elgamal_proof_program::id(),
-                ),
-                instruction_type.encode_verify_proof(
-                    Some(fee_ciphertext_validity_proof_context_state_info),
-                    fee_ciphertext_validity_proof_data,
-                ),
-            ],
-            &[signing_keypair],
-        )
-        .await
-    }
-
-    /// Create a range proof context state for a confidential transfer with fee.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn create_range_proof_context_state_for_transfer_with_fee<S: Signer>(
-        &self,
-        context_state_account: &Pubkey,
-        context_state_authority: &Pubkey,
-        range_proof_data: &BatchedRangeProofU256Data,
-        signing_keypair: &S,
-    ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyBatchedRangeProofU256;
-        let space = size_of::<ProofContextState<BatchedRangeProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-        let range_proof_context_state_info = ContextStateInfo {
-            context_state_account,
-            context_state_authority,
-        };
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    context_state_account,
-                    rent,
-                    space as u64,
-                    &zk_elgamal_proof_program::id(),
-                ),
-                instruction_type
-                    .encode_verify_proof(Some(range_proof_context_state_info), range_proof_data),
-            ],
-            &[signing_keypair],
-        )
-        .await
     }
 
     /// Applies the confidential transfer pending balance to the available

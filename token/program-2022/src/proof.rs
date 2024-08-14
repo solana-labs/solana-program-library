@@ -134,7 +134,11 @@ pub fn verify_and_extract_context<'a, T: Pod + ZkProofData<U>, U: Pod>(
     }
 }
 
-fn zk_proof_type_to_instruction(proof_type: ProofType) -> Result<ProofInstruction, ProgramError> {
+/// Converts a zk proof type to a corresponding ZK ElGamal proof program instruction that verifies
+/// the proof.
+pub fn zk_proof_type_to_instruction(
+    proof_type: ProofType,
+) -> Result<ProofInstruction, ProgramError> {
     match proof_type {
         ProofType::ZeroCiphertext => Ok(ProofInstruction::VerifyZeroCiphertext),
         ProofType::CiphertextCiphertextEquality => {
