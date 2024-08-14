@@ -1047,11 +1047,13 @@ pub fn withdraw(
         range_proof_data_location,
     )?];
 
+    let mut expected_instruction_offset = 1;
+
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         equality_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 1 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1064,13 +1066,15 @@ pub fn withdraw(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+
+        expected_instruction_offset += 1;
     };
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         range_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 2 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1212,11 +1216,13 @@ pub fn transfer(
         range_proof_data_location,
     )?];
 
+    let mut expected_instruction_offset = 1;
+
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         equality_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 1 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1229,13 +1235,15 @@ pub fn transfer(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         ciphertext_validity_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 2 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1248,13 +1256,15 @@ pub fn transfer(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         range_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 3 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1580,11 +1590,13 @@ pub fn transfer_with_fee(
         range_proof_data_location,
     )?];
 
+    let mut expected_instruction_offset = 1;
+
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         equality_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 1 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1597,13 +1609,14 @@ pub fn transfer_with_fee(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         transfer_amount_ciphertext_validity_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 2 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1616,13 +1629,14 @@ pub fn transfer_with_fee(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         fee_sigma_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 3 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1633,13 +1647,14 @@ pub fn transfer_with_fee(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         fee_ciphertext_validity_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 4 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1652,13 +1667,14 @@ pub fn transfer_with_fee(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         range_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 5 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
