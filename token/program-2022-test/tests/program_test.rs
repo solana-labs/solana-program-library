@@ -13,7 +13,7 @@ use {
         },
         id, native_mint,
         processor::Processor,
-        solana_zk_token_sdk::encryption::{auth_encryption::*, elgamal::*},
+        solana_zk_sdk::encryption::{auth_encryption::*, elgamal::*},
     },
     spl_token_client::{
         client::{
@@ -326,23 +326,23 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         assert_eq!(
-            extension
-                .pending_balance_lo
-                .decrypt(self.elgamal_keypair.secret())
+            self.elgamal_keypair
+                .secret()
+                .decrypt_u32(&extension.pending_balance_lo.try_into().unwrap())
                 .unwrap(),
             expected.pending_balance_lo,
         );
         assert_eq!(
-            extension
-                .pending_balance_hi
-                .decrypt(self.elgamal_keypair.secret())
+            self.elgamal_keypair
+                .secret()
+                .decrypt_u32(&extension.pending_balance_hi.try_into().unwrap())
                 .unwrap(),
             expected.pending_balance_hi,
         );
         assert_eq!(
-            extension
-                .available_balance
-                .decrypt(self.elgamal_keypair.secret())
+            self.elgamal_keypair
+                .secret()
+                .decrypt_u32(&extension.available_balance.try_into().unwrap())
                 .unwrap(),
             expected.available_balance,
         );

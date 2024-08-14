@@ -7591,6 +7591,7 @@ version = "0.0.1"
 dependencies = [
  "async-trait",
  "borsh 1.5.1",
+ "bytemuck",
  "futures-util",
  "solana-program",
  "solana-program-test",
@@ -7603,6 +7604,7 @@ dependencies = [
  "spl-tlv-account-resolution 0.7.0",
  "spl-token-2022 4.0.1",
  "spl-token-client",
+ "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.3.0",
  "spl-token-metadata-interface 0.4.0",
  "spl-transfer-hook-example",
@@ -7670,6 +7672,7 @@ dependencies = [
  "spl-record",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
+ "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.3.0",
  "spl-token-metadata-interface 0.4.0",
  "spl-transfer-hook-interface 0.7.0",
