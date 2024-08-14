@@ -6,7 +6,7 @@ const tokenGroupCodec = getStructCodec([
     ['updateAuthority', fixCodecSize(getBytesCodec(), 32)],
     ['mint', fixCodecSize(getBytesCodec(), 32)],
     ['size', getU32Codec()],
-    ['maxSize', getU32Codec()],
+    ['maxSize', getU64Codec()],
 ]);
 
 export const TOKEN_GROUP_SIZE = tokenGroupCodec.fixedSize;
