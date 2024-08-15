@@ -1,13 +1,16 @@
 #![cfg(feature = "serde-traits")]
 
 use {
+    base64::{engine::general_purpose::STANDARD, Engine},
     solana_program::program_option::COption,
     solana_sdk::pubkey::Pubkey,
     spl_pod::optional_keys::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
     spl_token_2022::{
         extension::confidential_transfer,
         instruction,
-        solana_zk_token_sdk::zk_token_elgamal::pod::{AeCiphertext, ElGamalPubkey},
+        solana_zk_sdk::encryption::pod::{
+            auth_encryption::PodAeCiphertext, elgamal::PodElGamalPubkey,
+        },
     },
     std::str::FromStr,
 };
@@ -51,10 +54,12 @@ fn serde_instruction_optional_nonzero_pubkeys_podbool() {
         Some(Pubkey::from_str("4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM").unwrap());
     let authority: OptionalNonZeroPubkey = authority_option.try_into().unwrap();
 
-    let elgamal_pubkey_pod_option: Option<ElGamalPubkey> = Some(ElGamalPubkey([
+    let pubkey_string = STANDARD.encode([
         162, 23, 108, 36, 130, 143, 18, 219, 196, 134, 242, 145, 179, 49, 229, 193, 74, 64, 3, 158,
         68, 235, 124, 88, 247, 144, 164, 254, 228, 12, 173, 85,
-    ]));
+    ]);
+    let elgamal_pubkey_pod_option = Some(FromStr::from_str(&pubkey_string).unwrap());
+
     let auditor_elgamal_pubkey: OptionalNonZeroElGamalPubkey =
         elgamal_pubkey_pod_option.try_into().unwrap();
 
@@ -105,10 +110,11 @@ fn serde_instruction_optional_nonzero_pubkeys_podbool_with_none() {
 
 #[test]
 fn serde_instruction_decryptable_balance_podu64() {
-    let decryptable_zero_balance = AeCiphertext([
+    let ciphertext_string = STANDARD.encode([
         56, 22, 102, 48, 112, 106, 58, 25, 25, 244, 194, 217, 73, 137, 73, 38, 24, 26, 36, 25, 235,
         234, 68, 181, 11, 82, 170, 163, 89, 205, 113, 160, 55, 16, 35, 151,
     ]);
+    let decryptable_zero_balance = FromStr::from_str(&ciphertext_string).unwrap();
 
     let inst = confidential_transfer::instruction::ConfigureAccountInstructionData {
         decryptable_zero_balance,
@@ -131,10 +137,11 @@ fn serde_instruction_decryptable_balance_podu64() {
 fn serde_instruction_elgamal_pubkey() {
     use spl_token_2022::extension::confidential_transfer_fee::instruction::InitializeConfidentialTransferFeeConfigData;
 
-    let withdraw_withheld_authority_elgamal_pubkey = ElGamalPubkey([
+    let pubkey_string = STANDARD.encode([
         162, 23, 108, 36, 130, 143, 18, 219, 196, 134, 242, 145, 179, 49, 229, 193, 74, 64, 3, 158,
         68, 235, 124, 88, 247, 144, 164, 254, 228, 12, 173, 85,
     ]);
+    let withdraw_withheld_authority_elgamal_pubkey = FromStr::from_str(&pubkey_string).unwrap();
 
     let inst = InitializeConfidentialTransferFeeConfigData {
         authority: OptionalNonZeroPubkey::default(),

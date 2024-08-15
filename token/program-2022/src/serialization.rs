@@ -6,22 +6,6 @@ use {
     serde::de::Error,
 };
 
-/// helper function to convert base64 encoded string into a bytes array
-fn base64_to_bytes<const N: usize, E: Error>(v: &str) -> Result<[u8; N], E> {
-    let bytes = BASE64_STANDARD.decode(v).map_err(Error::custom)?;
-
-    if bytes.len() != N {
-        return Err(Error::custom(format!(
-            "Length of base64 decoded bytes is not {}",
-            N
-        )));
-    }
-
-    let mut array = [0; N];
-    array.copy_from_slice(&bytes[0..N]);
-    Ok(array)
-}
-
 /// helper function to ser/deser COption wrapped values
 pub mod coption_fromstr {
     use {
@@ -106,14 +90,12 @@ pub mod aeciphertext_fromstr {
             de::{Error, Visitor},
             Deserializer, Serializer,
         },
-        solana_zk_token_sdk::zk_token_elgamal::pod::AeCiphertext,
-        std::fmt,
+        solana_zk_sdk::encryption::pod::auth_encryption::PodAeCiphertext,
+        std::{fmt, str::FromStr},
     };
 
-    const AE_CIPHERTEXT_LEN: usize = 36;
-
     /// serialize AeCiphertext values supporting Display trait
-    pub fn serialize<S>(x: &AeCiphertext, s: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(x: &PodAeCiphertext, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -123,7 +105,7 @@ pub mod aeciphertext_fromstr {
     struct AeCiphertextVisitor;
 
     impl<'de> Visitor<'de> for AeCiphertextVisitor {
-        type Value = AeCiphertext;
+        type Value = PodAeCiphertext;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("a FromStr type")
@@ -133,13 +115,12 @@ pub mod aeciphertext_fromstr {
         where
             E: Error,
         {
-            let array = super::base64_to_bytes::<AE_CIPHERTEXT_LEN, E>(v)?;
-            Ok(AeCiphertext(array))
+            FromStr::from_str(v).map_err(Error::custom)
         }
     }
 
     /// deserialize AeCiphertext values from str
-    pub fn deserialize<'de, D>(d: D) -> Result<AeCiphertext, D::Error>
+    pub fn deserialize<'de, D>(d: D) -> Result<PodAeCiphertext, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -154,14 +135,12 @@ pub mod elgamalpubkey_fromstr {
             de::{Error, Visitor},
             Deserializer, Serializer,
         },
-        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
-        std::fmt,
+        solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey,
+        std::{fmt, str::FromStr},
     };
 
-    const ELGAMAL_PUBKEY_LEN: usize = 32;
-
     /// serialize ElGamalPubkey values supporting Display trait
-    pub fn serialize<S>(x: &ElGamalPubkey, s: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(x: &PodElGamalPubkey, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -171,7 +150,7 @@ pub mod elgamalpubkey_fromstr {
     struct ElGamalPubkeyVisitor;
 
     impl<'de> Visitor<'de> for ElGamalPubkeyVisitor {
-        type Value = ElGamalPubkey;
+        type Value = PodElGamalPubkey;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("a FromStr type")
@@ -181,65 +160,15 @@ pub mod elgamalpubkey_fromstr {
         where
             E: Error,
         {
-            let array = super::base64_to_bytes::<ELGAMAL_PUBKEY_LEN, E>(v)?;
-            Ok(ElGamalPubkey(array))
+            FromStr::from_str(v).map_err(Error::custom)
         }
     }
 
     /// deserialize ElGamalPubkey values from str
-    pub fn deserialize<'de, D>(d: D) -> Result<ElGamalPubkey, D::Error>
+    pub fn deserialize<'de, D>(d: D) -> Result<PodElGamalPubkey, D::Error>
     where
         D: Deserializer<'de>,
     {
         d.deserialize_str(ElGamalPubkeyVisitor)
-    }
-}
-
-/// helper to ser/deser pod::DecryptHandle values
-pub mod decrypthandle_fromstr {
-    use {
-        base64::{prelude::BASE64_STANDARD, Engine},
-        serde::{
-            de::{Error, Visitor},
-            Deserializer, Serializer,
-        },
-        solana_zk_token_sdk::zk_token_elgamal::pod::DecryptHandle,
-        std::fmt,
-    };
-
-    const DECRYPT_HANDLE_LEN: usize = 32;
-
-    /// Serialize a decrypt handle as a base64 string
-    pub fn serialize<S>(x: &DecryptHandle, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        s.serialize_str(&BASE64_STANDARD.encode(x.0))
-    }
-
-    struct DecryptHandleVisitor;
-
-    impl<'de> Visitor<'de> for DecryptHandleVisitor {
-        type Value = DecryptHandle;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a FromStr type")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: Error,
-        {
-            let array = super::base64_to_bytes::<DECRYPT_HANDLE_LEN, E>(v)?;
-            Ok(DecryptHandle(array))
-        }
-    }
-
-    /// Deserialize a DecryptHandle from a base64 string
-    pub fn deserialize<'de, D>(d: D) -> Result<DecryptHandle, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        d.deserialize_str(DecryptHandleVisitor)
     }
 }
