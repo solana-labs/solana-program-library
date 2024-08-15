@@ -28,7 +28,13 @@ export async function createAssociatedTokenAccount(
     associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
     allowOwnerOffCurve = false,
 ): Promise<PublicKey> {
-    const associatedToken = getAssociatedTokenAddressSync(mint, owner, allowOwnerOffCurve, programId, associatedTokenProgramId);
+    const associatedToken = getAssociatedTokenAddressSync(
+        mint,
+        owner,
+        allowOwnerOffCurve,
+        programId,
+        associatedTokenProgramId,
+    );
 
     const transaction = new Transaction().add(
         createAssociatedTokenAccountInstruction(
