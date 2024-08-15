@@ -72,7 +72,7 @@
     "@typescript-eslint/eslint-plugin": "^8.1.0",
     "@typescript-eslint/parser": "^8.1.0",
     "eslint": "^8.57.0",
-    "eslint-config-turbo": "^2.0.12",
+    "eslint-config-turbo": "^2.0.13",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jest": "^28.8.0",
     "eslint-plugin-mocha": "^10.5.0",
