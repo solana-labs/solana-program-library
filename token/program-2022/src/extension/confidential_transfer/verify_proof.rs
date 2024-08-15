@@ -15,8 +15,8 @@ use {
     std::slice::Iter,
 };
 
-/// Verify zero-knowledge proofs needed for a [Withdraw] instruction and return the corresponding
-/// proof context.
+/// Verify zero-knowledge proofs needed for a [Withdraw] instruction and return
+/// the corresponding proof context.
 #[cfg(feature = "zk-ops")]
 pub fn verify_withdraw_proof(
     account_info_iter: &mut Iter<AccountInfo>,

@@ -270,8 +270,9 @@ impl TransferAccountInfo {
         .map_err(|e| -> TokenError { e.into() })
     }
 
-    /// Create a transfer proof data that is split into equality, ciphertext validity (transfer
-    /// amount), percentage-with-cap, ciphertext validity (fee), and range proofs.
+    /// Create a transfer proof data that is split into equality, ciphertext
+    /// validity (transfer amount), percentage-with-cap, ciphertext validity
+    /// (fee), and range proofs.
     pub fn generate_split_transfer_with_fee_proof_data(
         &self,
         transfer_amount: u64,

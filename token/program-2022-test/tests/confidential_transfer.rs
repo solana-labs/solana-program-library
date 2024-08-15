@@ -1131,8 +1131,8 @@ async fn confidential_transfer_withdraw_with_option(option: ConfidentialTransfer
 //     let account_info = WithdrawAccountInfo::new(extension);
 //
 //     let withdraw_proof = account_info
-//         .generate_proof_data(42, &alice_meta.elgamal_keypair, &alice_meta.aes_key)
-//         .unwrap();
+//         .generate_proof_data(42, &alice_meta.elgamal_keypair,
+// &alice_meta.aes_key)         .unwrap();
 //
 //     let record_account = Keypair::new();
 //     let record_account_authority = Keypair::new();
@@ -3126,10 +3126,11 @@ async fn confidential_transfer_empty_account_with_proof_context() {
 //         let extension = state
 //             .get_extension::<ConfidentialTransferAccount>()
 //             .unwrap();
-//         let current_ciphertext = extension.available_balance.try_into().unwrap();
+//         let current_ciphertext =
+// extension.available_balance.try_into().unwrap();
 //
-//         let proof_data = confidential_transfer::instruction::WithdrawData::new(
-//             0,
+//         let proof_data =
+// confidential_transfer::instruction::WithdrawData::new(             0,
 //             &alice_meta.elgamal_keypair,
 //             42,
 //             &current_ciphertext,
@@ -3147,8 +3148,8 @@ async fn confidential_transfer_empty_account_with_proof_context() {
 //                 space as u64,
 //                 &zk_elgamal_proof_program::id(),
 //             ),
-//             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-//         ];
+//             instruction_type.encode_verify_proof(Some(context_state_info),
+// &proof_data),         ];
 //
 //         let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
 //         let tx = Transaction::new_signed_with_payer(
@@ -3178,12 +3179,13 @@ async fn confidential_transfer_empty_account_with_proof_context() {
 //         .unwrap();
 //
 //     // attempt to create an account with a wrong proof type context state
-//     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
-//     let context_state_account = Keypair::new();
+//     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None,
+// false, false).await;     let context_state_account = Keypair::new();
 //
 //     {
 //         let context_state_authority = Keypair::new();
-//         let space = size_of::<ProofContextState<PubkeyValidityProofContext>>();
+//         let space =
+// size_of::<ProofContextState<PubkeyValidityProofContext>>();
 //
 //         let instruction_type = ProofInstruction::VerifyPubkeyValidity;
 //
@@ -3193,8 +3195,9 @@ async fn confidential_transfer_empty_account_with_proof_context() {
 //         };
 //
 //         let proof_data =
-//             confidential_transfer::instruction::PubkeyValidityData::new(&bob_meta.elgamal_keypair)
-//                 .unwrap();
+//
+// confidential_transfer::instruction::PubkeyValidityData::new(&bob_meta.
+// elgamal_keypair)                 .unwrap();
 //
 //         let mut ctx = context.context.lock().await;
 //         let rent = ctx.banks_client.get_rent().await.unwrap();
@@ -3207,8 +3210,8 @@ async fn confidential_transfer_empty_account_with_proof_context() {
 //                 space as u64,
 //                 &zk_elgamal_proof_program::id(),
 //             ),
-//             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-//         ];
+//             instruction_type.encode_verify_proof(Some(context_state_info),
+// &proof_data),         ];
 //
 //         let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
 //         let tx = Transaction::new_signed_with_payer(
@@ -3240,7 +3243,7 @@ async fn confidential_transfer_empty_account_with_proof_context() {
 //     assert_eq!(
 //         err,
 //         TokenClientError::Client(Box::new(TransportError::TransactionError(
-//             TransactionError::InstructionError(0, InstructionError::InvalidArgument,)
-//         )))
+//             TransactionError::InstructionError(0,
+// InstructionError::InvalidArgument,)         )))
 //     );
 // }

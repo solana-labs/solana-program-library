@@ -1,7 +1,6 @@
 pub use solana_zk_sdk::zk_elgamal_proof_program::{
     instruction::ProofInstruction, proof_data::*, state::ProofContextState,
 };
-
 #[cfg(feature = "serde-traits")]
 use {
     crate::serialization::aeciphertext_fromstr,
@@ -205,13 +204,14 @@ pub enum ConfidentialTransferInstruction {
     /// Withdraw SPL Tokens from the available balance of a confidential token
     /// account.
     ///
-    /// In order for this instruction to be successfully processed, it must be accompanied by the
-    /// following list of `zk_elgamal_proof` program instructions:
+    /// In order for this instruction to be successfully processed, it must be
+    /// accompanied by the following list of `zk_elgamal_proof` program
+    /// instructions:
     /// - `VerifyCiphertextCommitmentEquality`
     /// - `VerifyBatchedRangeProofU64`
-    /// These instructions can be accompanied in the same transaction or can be pre-verified into a
-    /// context state account, in which case, only their context state account address need to be
-    /// provided.
+    /// These instructions can be accompanied in the same transaction or can be
+    /// pre-verified into a context state account, in which case, only their
+    /// context state account address need to be provided.
     ///
     /// Fails if the source or destination accounts are frozen.
     /// Fails if the associated mint is extended as `NonTransferable`.
@@ -221,19 +221,25 @@ pub enum ConfidentialTransferInstruction {
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` (Optional) Instructions sysvar if at least one of the `zk_elgamal_proof`
-    ///      instructions are included in the same transaction.
-    ///   3. `[]` (Optional) Equality proof record account or context state account.
-    ///   4. `[]` (Optional) Range proof record account or context state account.
+    ///   2. `[]` (Optional) Instructions sysvar if at least one of the
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
+    ///   3. `[]` (Optional) Equality proof record account or context state
+    ///      account.
+    ///   4. `[]` (Optional) Range proof record account or context state
+    ///      account.
     ///   5. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` (Optional) Instructions sysvar if at least one of the `zk_elgamal_proof`
-    ///      instructions are included in the same transaction.
-    ///   3. `[]` (Optional) Equality proof record account or context state account.
-    ///   4. `[]` (Optional) Range proof record account or context state account.
+    ///   2. `[]` (Optional) Instructions sysvar if at least one of the
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
+    ///   3. `[]` (Optional) Equality proof record account or context state
+    ///      account.
+    ///   4. `[]` (Optional) Range proof record account or context state
+    ///      account.
     ///   5. `[]` The multisig  source account owner.
     ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig
     /// account.
@@ -549,13 +555,14 @@ pub struct WithdrawInstructionData {
     /// The new decryptable balance if the withdrawal succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
-    /// Relative location of the `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
+    /// Relative location of the
+    /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `Withdraw` instruction in the transaction. If the offset is
     /// `0`, then use a context state account for the proof.
     pub equality_proof_instruction_offset: i8,
-    /// Relative location of the `ProofInstruction::BatchedRangeProofU64` instruction
-    /// to the `Withdraw` instruction in the transaction. If the offset is
-    /// `0`, then use a context state account for the proof.
+    /// Relative location of the `ProofInstruction::BatchedRangeProofU64`
+    /// instruction to the `Withdraw` instruction in the transaction. If the
+    /// offset is `0`, then use a context state account for the proof.
     pub range_proof_instruction_offset: i8,
 }
 

@@ -2090,7 +2090,8 @@ where
             .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
             .map_err(|_| TokenError::ProofGeneration)?;
 
-        // if proof accounts are none, then proof data must be included as instruction data
+        // if proof accounts are none, then proof data must be included as instruction
+        // data
         let equality_proof_data = equality_proof_account
             .is_none()
             .then_some(equality_proof_data);
@@ -2347,8 +2348,8 @@ where
         .await
     }
 
-    /// Create a context state account containing zero-knowledge proof needed for a confidential
-    /// transfer instruction.
+    /// Create a context state account containing zero-knowledge proof needed
+    /// for a confidential transfer instruction.
     pub async fn confidential_transfer_create_context_state_account<
         S: Signer,
         ZK: Pod + ZkProofData<U>,
