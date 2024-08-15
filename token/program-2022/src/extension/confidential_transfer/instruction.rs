@@ -746,7 +746,7 @@ pub fn inner_configure_account(
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ConfigureAccount,
         &ConfigureAccountInstructionData {
-            decryptable_zero_balance: decryptable_zero_balance.into(),
+            decryptable_zero_balance,
             maximum_pending_balance_credit_counter: maximum_pending_balance_credit_counter.into(),
             proof_instruction_offset,
         },
@@ -1047,7 +1047,7 @@ pub fn withdraw(
         mint,
         amount,
         decimals,
-        new_decryptable_available_balance.into(),
+        new_decryptable_available_balance,
         authority,
         multisig_signers,
         equality_proof_data_location,
@@ -1334,7 +1334,7 @@ pub fn apply_pending_balance(
         token_program_id,
         token_account,
         pending_balance_instructions,
-        new_decryptable_available_balance.into(),
+        new_decryptable_available_balance,
         authority,
         multisig_signers,
     ) // calls check_program_account

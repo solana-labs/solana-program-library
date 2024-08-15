@@ -739,6 +739,7 @@ async fn confidential_transfer_deposit() {
     assert_eq!(extension.actual_pending_balance_credit_counter, 2.into());
 }
 
+#[allow(clippy::too_many_arguments)]
 #[cfg(feature = "zk-ops")]
 async fn withdraw_with_option<S: Signers>(
     token: &Token<ProgramBanksClientProcessTransaction>,
