@@ -878,6 +878,7 @@ async fn withdraw_with_option<S: Signers>(
                     &equality_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &equality_proof_data,
+                    false,
                     &equality_proof_context_account,
                 )
                 .await
@@ -891,6 +892,7 @@ async fn withdraw_with_option<S: Signers>(
                     &range_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &range_proof_data,
+                    false,
                     &range_proof_context_account,
                 )
                 .await
@@ -1404,6 +1406,7 @@ async fn confidential_transfer_with_option<S: Signers>(
                     &equality_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &equality_proof_data,
+                    false,
                     &equality_proof_context_account,
                 )
                 .await
@@ -1417,6 +1420,7 @@ async fn confidential_transfer_with_option<S: Signers>(
                     &ciphertext_validity_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &ciphertext_validity_proof_data,
+                    false,
                     &ciphertext_validity_proof_context_account,
                 )
                 .await
@@ -1430,6 +1434,7 @@ async fn confidential_transfer_with_option<S: Signers>(
                     &range_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &range_proof_data,
+                    false,
                     &range_proof_context_account,
                 )
                 .await
@@ -2026,6 +2031,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     &equality_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &equality_proof_data,
+                    false,
                     &equality_proof_context_account,
                 )
                 .await
@@ -2039,6 +2045,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     &transfer_amount_ciphertext_validity_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &transfer_amount_ciphertext_validity_proof_data,
+                    false,
                     &transfer_amount_ciphertext_validity_proof_context_account,
                 )
                 .await
@@ -2054,6 +2061,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     &percentage_with_cap_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &percentage_with_cap_proof_data,
+                    false,
                     &percentage_with_cap_proof_context_account,
                 )
                 .await
@@ -2067,6 +2075,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     &fee_ciphertext_validity_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &fee_ciphertext_validity_proof_data,
+                    false,
                     &fee_ciphertext_validity_proof_context_account,
                 )
                 .await
@@ -2081,6 +2090,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                     &range_proof_context_account.pubkey(),
                     &context_account_authority.pubkey(),
                     &range_proof_data,
+                    false,
                     &range_proof_context_account,
                 )
                 .await

@@ -5,9 +5,9 @@
 use {
     base64::{prelude::BASE64_STANDARD, Engine},
     clap::ArgMatches,
-    spl_token_2022::solana_zk_token_sdk::{
-        encryption::elgamal::{ElGamalKeypair, ElGamalPubkey},
-        zk_token_elgamal::pod::ElGamalPubkey as PodElGamalPubkey,
+    spl_token_2022::solana_zk_sdk::encryption::{
+        elgamal::{ElGamalKeypair, ElGamalPubkey},
+        pod::elgamal::PodElGamalPubkey,
     },
 };
 

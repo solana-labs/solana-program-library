@@ -2358,6 +2358,7 @@ where
         context_state_account: &Pubkey,
         context_state_authority: &Pubkey,
         proof_data: &ZK,
+        split_instruction: bool,
         signer: &S,
     ) -> TokenResult<T::Output> {
         let instruction_type = zk_proof_type_to_instruction(ZK::PROOF_TYPE)?;
@@ -2373,20 +2374,54 @@ where
             context_state_authority,
         };
 
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
+        // Some proof instructions are right at the transaction size limit, but in the
+        // future it might be able to support the transfer too
+        if split_instruction {
+            self.process_ixs(
+                &[system_instruction::create_account(
                     &self.payer.pubkey(),
                     context_state_account,
                     rent,
                     space as u64,
                     &zk_elgamal_proof_program::id(),
-                ),
-                instruction_type.encode_verify_proof(Some(context_state_info), proof_data),
-            ],
-            &[signer],
-        )
-        .await
+                )],
+                &[signer],
+            )
+            .await?;
+
+            let blockhash = self
+                .client
+                .get_latest_blockhash()
+                .await
+                .map_err(TokenError::Client)?;
+
+            let transaction = Transaction::new_signed_with_payer(
+                &[instruction_type.encode_verify_proof(Some(context_state_info), proof_data)],
+                Some(&self.payer.pubkey()),
+                &[self.payer.as_ref()],
+                blockhash,
+            );
+
+            self.client
+                .send_transaction(&transaction)
+                .await
+                .map_err(TokenError::Client)
+        } else {
+            self.process_ixs(
+                &[
+                    system_instruction::create_account(
+                        &self.payer.pubkey(),
+                        context_state_account,
+                        rent,
+                        space as u64,
+                        &zk_elgamal_proof_program::id(),
+                    ),
+                    instruction_type.encode_verify_proof(Some(context_state_info), proof_data),
+                ],
+                &[signer],
+            )
+            .await
+        }
     }
 
     /// Close a ZK Token proof program context state
