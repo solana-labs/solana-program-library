@@ -2,6 +2,7 @@
 
 mod program_test;
 use {
+    bytemuck::Zeroable,
     program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
@@ -26,18 +27,21 @@ use {
             BaseStateWithExtensions, ExtensionType,
         },
         instruction,
-        solana_zk_token_sdk::{
-            encryption::{auth_encryption::*, elgamal::*},
-            zk_token_elgamal::pod::{self, Zeroable},
-            zk_token_proof_instruction::*,
-            zk_token_proof_program,
-            zk_token_proof_state::ProofContextState,
+        solana_zk_sdk::{
+            encryption::{auth_encryption::*, elgamal::*, pod::elgamal::PodElGamalCiphertext},
+            zk_elgamal_proof_program::{
+                self,
+                instruction::{ContextStateInfo, ProofInstruction},
+                proof_data::CiphertextCiphertextEqualityProofContext,
+                state::ProofContextState,
+            },
         },
     },
     spl_token_client::{
         client::{SendTransaction, SimulateTransaction},
-        proof_generation::ProofAccount,
-        token::{ExtensionInitializationParams, Token, TokenError as TokenClientError},
+        token::{
+            ExtensionInitializationParams, ProofAccount, Token, TokenError as TokenClientError,
+        },
     },
     std::{convert::TryInto, mem::size_of},
 };
@@ -148,23 +152,23 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         assert_eq!(
-            extension
-                .pending_balance_lo
-                .decrypt(self.elgamal_keypair.secret())
+            self.elgamal_keypair
+                .secret()
+                .decrypt_u32(&extension.pending_balance_lo.try_into().unwrap())
                 .unwrap(),
             expected.pending_balance_lo,
         );
         assert_eq!(
-            extension
-                .pending_balance_hi
-                .decrypt(self.elgamal_keypair.secret())
+            self.elgamal_keypair
+                .secret()
+                .decrypt_u32(&extension.pending_balance_hi.try_into().unwrap())
                 .unwrap(),
             expected.pending_balance_hi,
         );
         assert_eq!(
-            extension
-                .available_balance
-                .decrypt(self.elgamal_keypair.secret())
+            self.elgamal_keypair
+                .secret()
+                .decrypt_u32(&extension.available_balance.try_into().unwrap())
                 .unwrap(),
             expected.available_balance,
         );
@@ -197,10 +201,12 @@ async fn check_withheld_amount_in_mint<T>(
     let extension = state
         .get_extension::<ConfidentialTransferFeeConfig>()
         .unwrap();
-    let decrypted_amount = extension
-        .withheld_amount
-        .decrypt(withdraw_withheld_authority_elgamal_keypair.secret())
+
+    let decrypted_amount = withdraw_withheld_authority_elgamal_keypair
+        .secret()
+        .decrypt_u32(&extension.withheld_amount.try_into().unwrap())
         .unwrap();
+
     assert_eq!(decrypted_amount, expected);
 }
 
@@ -579,7 +585,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
     let extension = state
         .get_extension::<ConfidentialTransferFeeAmount>()
         .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
+    assert_eq!(extension.withheld_amount, PodElGamalCiphertext::zeroed());
 
     // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint`
     // instruction data
@@ -713,7 +719,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_record_ac
     let extension = state
         .get_extension::<ConfidentialTransferFeeAmount>()
         .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
+    assert_eq!(extension.withheld_amount, PodElGamalCiphertext::zeroed());
 
     // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint`
     // instruction data
@@ -915,7 +921,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts() {
     let extension = state
         .get_extension::<ConfidentialTransferFeeAmount>()
         .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
+    assert_eq!(extension.withheld_amount, PodElGamalCiphertext::zeroed());
 }
 
 #[cfg(feature = "zk-ops")]
@@ -1085,7 +1091,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_recor
     let extension = state
         .get_extension::<ConfidentialTransferFeeAmount>()
         .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
+    assert_eq!(extension.withheld_amount, PodElGamalCiphertext::zeroed());
 }
 
 #[cfg(feature = "zk-ops")]
@@ -1212,7 +1218,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_proof_con
                 &context_state_account.pubkey(),
                 rent.minimum_balance(space),
                 space as u64,
-                &zk_token_proof_program::id(),
+                &zk_elgamal_proof_program::id(),
             ),
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
@@ -1386,7 +1392,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_proof
                 &context_state_account.pubkey(),
                 rent.minimum_balance(space),
                 space as u64,
-                &zk_token_proof_program::id(),
+                &zk_elgamal_proof_program::id(),
             ),
             instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
         ];
@@ -1451,7 +1457,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_proof
     let extension = state
         .get_extension::<ConfidentialTransferFeeAmount>()
         .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
+    assert_eq!(extension.withheld_amount, PodElGamalCiphertext::zeroed());
 }
 
 #[cfg(feature = "zk-ops")]
@@ -1590,7 +1596,7 @@ async fn confidential_transfer_harvest_withheld_tokens_to_mint() {
     let extension = state
         .get_extension::<ConfidentialTransferFeeAmount>()
         .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
+    assert_eq!(extension.withheld_amount, PodElGamalCiphertext::zeroed());
 
     // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint`
     // instruction data

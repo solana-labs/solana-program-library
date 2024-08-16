@@ -1,6 +1,6 @@
 // Remove feature once zk ops syscalls are enabled on all networks
 #[cfg(feature = "zk-ops")]
-use solana_zk_token_sdk::zk_token_elgamal::ops as syscall;
+use spl_token_confidential_transfer_ciphertext_arithmetic as ciphertext_arithmetic;
 use {
     crate::{
         check_program_account,
@@ -28,7 +28,7 @@ use {
         pod::{PodAccount, PodMint},
         processor::Processor,
         proof::verify_and_extract_context,
-        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
+        solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey,
     },
     bytemuck::Zeroable,
     solana_program::{
@@ -45,7 +45,7 @@ use {
 fn process_initialize_confidential_transfer_fee_config(
     accounts: &[AccountInfo],
     authority: &OptionalNonZeroPubkey,
-    withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
+    withdraw_withheld_authority_elgamal_pubkey: &PodElGamalPubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -134,28 +134,27 @@ fn process_withdraw_withheld_tokens_from_mint(
 
     // Check that the withdraw authority ElGamal public key associated with the mint
     // is consistent with what was actually used to generate the zkp.
-    if proof_context.source_pubkey
+    if proof_context.first_pubkey
         != confidential_transfer_fee_config.withdraw_withheld_authority_elgamal_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Check that the ElGamal public key associated with the destination account is
     // consistent with what was actually used to generate the zkp.
-    if proof_context.destination_pubkey != destination_confidential_transfer_account.elgamal_pubkey
-    {
+    if proof_context.second_pubkey != destination_confidential_transfer_account.elgamal_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Check that the withheld amount ciphertext is consistent with the ciphertext
     // data that was actually used to generate the zkp.
-    if proof_context.source_ciphertext != confidential_transfer_fee_config.withheld_amount {
+    if proof_context.first_ciphertext != confidential_transfer_fee_config.withheld_amount {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
     // The proof data contains the mint withheld amount encrypted under the
     // destination ElGamal pubkey. Add this amount to the available balance.
-    destination_confidential_transfer_account.available_balance = syscall::add(
+    destination_confidential_transfer_account.available_balance = ciphertext_arithmetic::add(
         &destination_confidential_transfer_account.available_balance,
-        &proof_context.destination_ciphertext,
+        &proof_context.second_ciphertext,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
@@ -232,7 +231,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
                 .get_extension_mut::<ConfidentialTransferFeeAmount>()
                 .map_err(|_| TokenError::InvalidState)?;
 
-            aggregate_withheld_amount = syscall::add(
+            aggregate_withheld_amount = ciphertext_arithmetic::add(
                 &aggregate_withheld_amount,
                 &destination_confidential_transfer_fee_amount.withheld_amount,
             )
@@ -243,9 +242,11 @@ fn process_withdraw_withheld_tokens_from_accounts(
         } else {
             match harvest_from_account(mint_account_info.key, account_info) {
                 Ok(encrypted_withheld_amount) => {
-                    aggregate_withheld_amount =
-                        syscall::add(&aggregate_withheld_amount, &encrypted_withheld_amount)
-                            .ok_or(ProgramError::InvalidInstructionData)?;
+                    aggregate_withheld_amount = ciphertext_arithmetic::add(
+                        &aggregate_withheld_amount,
+                        &encrypted_withheld_amount,
+                    )
+                    .ok_or(ProgramError::InvalidInstructionData)?;
                 }
                 Err(e) => {
                     msg!("Error harvesting from {}: {}", account_info.key, e);
@@ -266,29 +267,28 @@ fn process_withdraw_withheld_tokens_from_accounts(
     // mint is consistent with what was actually used to generate the zkp.
     let confidential_transfer_fee_config =
         mint.get_extension_mut::<ConfidentialTransferFeeConfig>()?;
-    if proof_context.source_pubkey
+    if proof_context.first_pubkey
         != confidential_transfer_fee_config.withdraw_withheld_authority_elgamal_pubkey
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Checks that the ElGamal public key associated with the destination account is
     // consistent with what was actually used to generate the zkp.
-    if proof_context.destination_pubkey != destination_confidential_transfer_account.elgamal_pubkey
-    {
+    if proof_context.second_pubkey != destination_confidential_transfer_account.elgamal_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
     // Checks that the withheld amount ciphertext is consistent with the ciphertext
     // data that was actually used to generate the zkp.
-    if proof_context.source_ciphertext != aggregate_withheld_amount {
+    if proof_context.first_ciphertext != aggregate_withheld_amount {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
     // The proof data contains the mint withheld amount encrypted under the
     // destination ElGamal pubkey. This amount is added to the destination
     // available balance.
-    destination_confidential_transfer_account.available_balance = syscall::add(
+    destination_confidential_transfer_account.available_balance = ciphertext_arithmetic::add(
         &destination_confidential_transfer_account.available_balance,
-        &proof_context.destination_ciphertext,
+        &proof_context.second_ciphertext,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
@@ -345,7 +345,7 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
     for token_account_info in token_account_infos {
         match harvest_from_account(mint_account_info.key, token_account_info) {
             Ok(withheld_amount) => {
-                let new_mint_withheld_amount = syscall::add(
+                let new_mint_withheld_amount = ciphertext_arithmetic::add(
                     &confidential_transfer_fee_mint.withheld_amount,
                     &withheld_amount,
                 )

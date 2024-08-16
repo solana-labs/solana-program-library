@@ -11,11 +11,11 @@ use {
         pubkey::Pubkey,
         sysvar::instructions::get_instruction_relative,
     },
-    solana_zk_token_sdk::{
-        instruction::{ProofType, ZkProofData},
-        zk_token_proof_instruction::ProofInstruction,
-        zk_token_proof_program,
-        zk_token_proof_state::ProofContextState,
+    solana_zk_sdk::zk_elgamal_proof_program::{
+        self,
+        instruction::ProofInstruction,
+        proof_data::{ProofType, ZkProofData},
+        state::ProofContextState,
     },
     spl_pod::bytemuck::pod_from_bytes,
     std::{num::NonZeroI8, slice::Iter},
@@ -32,7 +32,7 @@ pub fn decode_proof_instruction_context<T: Pod + ZkProofData<U>, U: Pod>(
     expected: ProofInstruction,
     instruction: &Instruction,
 ) -> Result<U, ProgramError> {
-    if instruction.program_id != zk_token_proof_program::id()
+    if instruction.program_id != zk_elgamal_proof_program::id()
         || ProofInstruction::instruction_type(&instruction.data) != Some(expected)
     {
         msg!("Unexpected proof instruction");
@@ -134,17 +134,17 @@ pub fn verify_and_extract_context<'a, T: Pod + ZkProofData<U>, U: Pod>(
     }
 }
 
-fn zk_proof_type_to_instruction(proof_type: ProofType) -> Result<ProofInstruction, ProgramError> {
+/// Converts a zk proof type to a corresponding ZK ElGamal proof program
+/// instruction that verifies the proof.
+pub fn zk_proof_type_to_instruction(
+    proof_type: ProofType,
+) -> Result<ProofInstruction, ProgramError> {
     match proof_type {
-        ProofType::ZeroBalance => Ok(ProofInstruction::VerifyZeroBalance),
-        ProofType::Withdraw => Ok(ProofInstruction::VerifyWithdraw),
+        ProofType::ZeroCiphertext => Ok(ProofInstruction::VerifyZeroCiphertext),
         ProofType::CiphertextCiphertextEquality => {
             Ok(ProofInstruction::VerifyCiphertextCiphertextEquality)
         }
-        ProofType::Transfer => Ok(ProofInstruction::VerifyTransfer),
-        ProofType::TransferWithFee => Ok(ProofInstruction::VerifyTransferWithFee),
         ProofType::PubkeyValidity => Ok(ProofInstruction::VerifyPubkeyValidity),
-        ProofType::RangeProofU64 => Ok(ProofInstruction::VerifyRangeProofU64),
         ProofType::BatchedRangeProofU64 => Ok(ProofInstruction::VerifyBatchedRangeProofU64),
         ProofType::BatchedRangeProofU128 => Ok(ProofInstruction::VerifyBatchedRangeProofU128),
         ProofType::BatchedRangeProofU256 => Ok(ProofInstruction::VerifyBatchedRangeProofU256),
@@ -157,7 +157,7 @@ fn zk_proof_type_to_instruction(proof_type: ProofType) -> Result<ProofInstructio
         ProofType::BatchedGroupedCiphertext2HandlesValidity => {
             Ok(ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity)
         }
-        ProofType::FeeSigma => Ok(ProofInstruction::VerifyFeeSigma),
+        ProofType::PercentageWithCap => Ok(ProofInstruction::VerifyPercentageWithCap),
         ProofType::GroupedCiphertext3HandlesValidity => {
             Ok(ProofInstruction::VerifyGroupedCiphertext3HandlesValidity)
         }

@@ -32,7 +32,7 @@ use {
             BaseStateWithExtensions, StateWithExtensionsOwned,
         },
         instruction::create_native_mint,
-        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
+        solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey,
         state::{Account, AccountState, Mint, Multisig},
     },
     spl_token_cli::{
@@ -2609,7 +2609,7 @@ async fn transfer_fee_basis_point(test_validator: &TestValidator, payer: &Keypai
 }
 
 async fn confidential_transfer(test_validator: &TestValidator, payer: &Keypair) {
-    use spl_token_2022::solana_zk_token_sdk::encryption::elgamal::ElGamalKeypair;
+    use spl_token_2022::solana_zk_sdk::encryption::elgamal::ElGamalKeypair;
 
     let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
 
@@ -2650,13 +2650,13 @@ async fn confidential_transfer(test_validator: &TestValidator, payer: &Keypair) 
         auto_approve,
     );
     assert_eq!(
-        Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
+        Option::<PodElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
         None,
     );
 
     // update confidential transfer mint settings
     let auditor_keypair = ElGamalKeypair::new_rand();
-    let auditor_pubkey: ElGamalPubkey = (*auditor_keypair.pubkey()).into();
+    let auditor_pubkey: PodElGamalPubkey = (*auditor_keypair.pubkey()).into();
     let new_auto_approve = true;
 
     process_test_command(
@@ -2686,7 +2686,7 @@ async fn confidential_transfer(test_validator: &TestValidator, payer: &Keypair) 
         new_auto_approve,
     );
     assert_eq!(
-        Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
+        Option::<PodElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
         Some(auditor_pubkey),
     );
 
@@ -2946,7 +2946,7 @@ async fn confidential_transfer_with_fee(test_validator: &TestValidator, payer: &
         auto_approve,
     );
     assert_eq!(
-        Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
+        Option::<PodElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
         None,
     );
 

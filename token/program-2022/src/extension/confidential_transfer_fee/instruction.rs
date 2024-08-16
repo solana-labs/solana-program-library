@@ -8,15 +8,13 @@ use {
         check_program_account,
         error::TokenError,
         extension::confidential_transfer::{
-            instruction::{
-                verify_ciphertext_ciphertext_equality, CiphertextCiphertextEqualityProofData,
-            },
-            DecryptableBalance,
+            instruction::CiphertextCiphertextEqualityProofData, DecryptableBalance,
         },
         instruction::{encode_instruction, TokenInstruction},
         proof::{ProofData, ProofLocation},
-        solana_zk_token_sdk::{
-            zk_token_elgamal::pod::ElGamalPubkey, zk_token_proof_instruction::ProofInstruction,
+        solana_zk_sdk::{
+            encryption::pod::elgamal::PodElGamalPubkey,
+            zk_elgamal_proof_program::instruction::ProofInstruction,
         },
     },
     bytemuck::{Pod, Zeroable},
@@ -233,7 +231,7 @@ pub struct InitializeConfidentialTransferFeeConfigData {
 
     /// ElGamal public key used to encrypt withheld fees.
     #[cfg_attr(feature = "serde-traits", serde(with = "elgamalpubkey_fromstr"))]
-    pub withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
+    pub withdraw_withheld_authority_elgamal_pubkey: PodElGamalPubkey,
 }
 
 /// Data expected by
@@ -277,7 +275,7 @@ pub fn initialize_confidential_transfer_fee_config(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: Option<Pubkey>,
-    withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
+    withdraw_withheld_authority_elgamal_pubkey: PodElGamalPubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -380,9 +378,10 @@ pub fn withdraw_withheld_tokens_from_mint(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => {
-                instructions.push(verify_ciphertext_ciphertext_equality(None, data))
-            }
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyCiphertextCiphertextEquality
+                    .encode_verify_proof(None, data),
+            ),
             ProofData::RecordAccount(address, offset) => instructions.push(
                 ProofInstruction::VerifyCiphertextCiphertextEquality
                     .encode_verify_proof_from_account(None, address, offset),
@@ -491,9 +490,10 @@ pub fn withdraw_withheld_tokens_from_accounts(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => {
-                instructions.push(verify_ciphertext_ciphertext_equality(None, data))
-            }
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyCiphertextCiphertextEquality
+                    .encode_verify_proof(None, data),
+            ),
             ProofData::RecordAccount(address, offset) => instructions.push(
                 ProofInstruction::VerifyCiphertextCiphertextEquality
                     .encode_verify_proof_from_account(None, address, offset),

@@ -12,4 +12,6 @@ pub enum TokenProofExtractionError {
     FeeParametersMismatch,
     #[error("Curve arithmetic failed")]
     CurveArithmetic,
+    #[error("Ciphertext extraction failed")]
+    CiphertextExtraction,
 }

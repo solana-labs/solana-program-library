@@ -2,14 +2,14 @@
 #[cfg(feature = "zk-ops")]
 use {
     crate::extension::non_transferable::NonTransferableAccount,
-    solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
+    spl_token_confidential_transfer_ciphertext_arithmetic as ciphertext_arithmetic,
 };
 use {
     crate::{
         check_program_account,
         error::TokenError,
         extension::{
-            confidential_transfer::{ciphertext_extraction::*, instruction::*, verify_proof::*, *},
+            confidential_transfer::{instruction::*, verify_proof::*, *},
             confidential_transfer_fee::{
                 ConfidentialTransferFeeAmount, ConfidentialTransferFeeConfig,
                 EncryptedWithheldAmount,
@@ -32,6 +32,9 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
         sysvar::Sysvar,
+    },
+    spl_token_confidential_transfer_proof_extraction::{
+        transfer::TransferProofContext, transfer_with_fee::TransferWithFeeProofContext,
     },
 };
 
@@ -102,11 +105,10 @@ fn process_configure_account(
     let mint_info = next_account_info(account_info_iter)?;
 
     // zero-knowledge proof certifies that the supplied ElGamal public key is valid
-    let proof_context = verify_and_extract_context::<PubkeyValidityData, PubkeyValidityProofContext>(
-        account_info_iter,
-        proof_instruction_offset,
-        None,
-    )?;
+    let proof_context = verify_and_extract_context::<
+        PubkeyValidityProofData,
+        PubkeyValidityProofContext,
+    >(account_info_iter, proof_instruction_offset, None)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -210,11 +212,10 @@ fn process_empty_account(
 
     // zero-knowledge proof certifies that the available balance ciphertext holds
     // the balance of 0.
-    let proof_context = verify_and_extract_context::<ZeroBalanceProofData, ZeroBalanceProofContext>(
-        account_info_iter,
-        proof_instruction_offset,
-        None,
-    )?;
+    let proof_context = verify_and_extract_context::<
+        ZeroCiphertextProofData,
+        ZeroCiphertextProofContext,
+    >(account_info_iter, proof_instruction_offset, None)?;
 
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
@@ -319,14 +320,18 @@ fn process_deposit(
     // Prevent unnecessary ciphertext arithmetic syscalls if `amount_lo` or
     // `amount_hi` is zero
     if amount_lo > 0 {
-        confidential_transfer_account.pending_balance_lo =
-            syscall::add_to(&confidential_transfer_account.pending_balance_lo, amount_lo)
-                .ok_or(TokenError::CiphertextArithmeticFailed)?;
+        confidential_transfer_account.pending_balance_lo = ciphertext_arithmetic::add_to(
+            &confidential_transfer_account.pending_balance_lo,
+            amount_lo,
+        )
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
     if amount_hi > 0 {
-        confidential_transfer_account.pending_balance_hi =
-            syscall::add_to(&confidential_transfer_account.pending_balance_hi, amount_hi)
-                .ok_or(TokenError::CiphertextArithmeticFailed)?;
+        confidential_transfer_account.pending_balance_hi = ciphertext_arithmetic::add_to(
+            &confidential_transfer_account.pending_balance_hi,
+            amount_hi,
+        )
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
 
     confidential_transfer_account.increment_pending_balance_credit_counter()?;
@@ -354,7 +359,8 @@ fn process_withdraw(
     amount: u64,
     expected_decimals: u8,
     new_decryptable_available_balance: DecryptableBalance,
-    proof_instruction_offset: i64,
+    equality_proof_instruction_offset: i64,
+    range_proof_instruction_offset: i64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
@@ -362,10 +368,10 @@ fn process_withdraw(
 
     // zero-knowledge proof certifies that the account has enough available balance
     // to withdraw the amount.
-    let proof_context = verify_and_extract_context::<WithdrawData, WithdrawProofContext>(
+    let proof_context = verify_withdraw_proof(
         account_info_iter,
-        proof_instruction_offset,
-        None,
+        equality_proof_instruction_offset,
+        range_proof_instruction_offset,
     )?;
 
     let authority_info = next_account_info(account_info_iter)?;
@@ -416,20 +422,23 @@ fn process_withdraw(
     // Check that the encryption public key associated with the confidential
     // extension is consistent with the public key that was actually used to
     // generate the zkp.
-    if confidential_transfer_account.elgamal_pubkey != proof_context.pubkey {
+    if confidential_transfer_account.elgamal_pubkey != proof_context.source_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
     // Prevent unnecessary ciphertext arithmetic syscalls if the withdraw amount is
     // zero
     if amount > 0 {
-        confidential_transfer_account.available_balance =
-            syscall::subtract_from(&confidential_transfer_account.available_balance, amount)
-                .ok_or(TokenError::CiphertextArithmeticFailed)?;
+        confidential_transfer_account.available_balance = ciphertext_arithmetic::subtract_from(
+            &confidential_transfer_account.available_balance,
+            amount,
+        )
+        .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
     // Check that the final available balance ciphertext is consistent with the
     // actual ciphertext for which the zero-knowledge proof was generated for.
-    if confidential_transfer_account.available_balance != proof_context.final_ciphertext {
+    if confidential_transfer_account.available_balance != proof_context.remaining_balance_ciphertext
+    {
         return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
     }
 
@@ -632,7 +641,7 @@ fn process_source_for_transfer(
     mint_info: &AccountInfo,
     authority_info: &AccountInfo,
     signers: &[AccountInfo],
-    proof_context: &TransferProofContextInfo,
+    proof_context: &TransferProofContext,
     new_source_decryptable_available_balance: DecryptableBalance,
 ) -> ProgramResult {
     check_program_account(source_account_info.owner)?;
@@ -672,10 +681,16 @@ fn process_source_for_transfer(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let source_transfer_amount_lo = transfer_amount_source_ciphertext(&proof_context.ciphertext_lo);
-    let source_transfer_amount_hi = transfer_amount_source_ciphertext(&proof_context.ciphertext_hi);
+    let source_transfer_amount_lo = proof_context
+        .ciphertext_lo
+        .try_extract_ciphertext(0)
+        .map_err(|e| -> TokenError { e.into() })?;
+    let source_transfer_amount_hi = proof_context
+        .ciphertext_hi
+        .try_extract_ciphertext(0)
+        .map_err(|e| -> TokenError { e.into() })?;
 
-    let new_source_available_balance = syscall::subtract_with_lo_hi(
+    let new_source_available_balance = ciphertext_arithmetic::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
         &source_transfer_amount_lo,
         &source_transfer_amount_hi,
@@ -699,7 +714,7 @@ fn process_source_for_transfer(
 fn process_destination_for_transfer(
     destination_account_info: &AccountInfo,
     mint_info: &AccountInfo,
-    proof_context: &TransferProofContextInfo,
+    proof_context: &TransferProofContext,
 ) -> ProgramResult {
     check_program_account(destination_account_info.owner)?;
     let destination_token_account_data = &mut destination_account_info.data.borrow_mut();
@@ -728,18 +743,22 @@ fn process_destination_for_transfer(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let destination_ciphertext_lo =
-        transfer_amount_destination_ciphertext(&proof_context.ciphertext_lo);
-    let destination_ciphertext_hi =
-        transfer_amount_destination_ciphertext(&proof_context.ciphertext_hi);
+    let destination_ciphertext_lo = proof_context
+        .ciphertext_lo
+        .try_extract_ciphertext(1)
+        .map_err(|e| -> TokenError { e.into() })?;
+    let destination_ciphertext_hi = proof_context
+        .ciphertext_hi
+        .try_extract_ciphertext(1)
+        .map_err(|e| -> TokenError { e.into() })?;
 
-    destination_confidential_transfer_account.pending_balance_lo = syscall::add(
+    destination_confidential_transfer_account.pending_balance_lo = ciphertext_arithmetic::add(
         &destination_confidential_transfer_account.pending_balance_lo,
         &destination_ciphertext_lo,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
-    destination_confidential_transfer_account.pending_balance_hi = syscall::add(
+    destination_confidential_transfer_account.pending_balance_hi = ciphertext_arithmetic::add(
         &destination_confidential_transfer_account.pending_balance_hi,
         &destination_ciphertext_hi,
     )
@@ -758,7 +777,7 @@ fn process_source_for_transfer_with_fee(
     mint_info: &AccountInfo,
     authority_info: &AccountInfo,
     signers: &[AccountInfo],
-    proof_context: &TransferWithFeeProofContextInfo,
+    proof_context: &TransferWithFeeProofContext,
     new_source_decryptable_available_balance: DecryptableBalance,
 ) -> ProgramResult {
     check_program_account(source_account_info.owner)?;
@@ -800,10 +819,16 @@ fn process_source_for_transfer_with_fee(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let source_transfer_amount_lo = transfer_amount_source_ciphertext(&proof_context.ciphertext_lo);
-    let source_transfer_amount_hi = transfer_amount_source_ciphertext(&proof_context.ciphertext_hi);
+    let source_transfer_amount_lo = proof_context
+        .ciphertext_lo
+        .try_extract_ciphertext(0)
+        .map_err(|e| -> TokenError { e.into() })?;
+    let source_transfer_amount_hi = proof_context
+        .ciphertext_hi
+        .try_extract_ciphertext(0)
+        .map_err(|e| -> TokenError { e.into() })?;
 
-    let new_source_available_balance = syscall::subtract_with_lo_hi(
+    let new_source_available_balance = ciphertext_arithmetic::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
         &source_transfer_amount_lo,
         &source_transfer_amount_hi,
@@ -827,7 +852,7 @@ fn process_source_for_transfer_with_fee(
 fn process_destination_for_transfer_with_fee(
     destination_account_info: &AccountInfo,
     mint_info: &AccountInfo,
-    proof_context: &TransferWithFeeProofContextInfo,
+    proof_context: &TransferWithFeeProofContext,
     is_self_transfer: bool,
 ) -> ProgramResult {
     check_program_account(destination_account_info.owner)?;
@@ -857,18 +882,22 @@ fn process_destination_for_transfer_with_fee(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let destination_transfer_amount_lo =
-        transfer_amount_destination_ciphertext(&proof_context.ciphertext_lo);
-    let destination_transfer_amount_hi =
-        transfer_amount_destination_ciphertext(&proof_context.ciphertext_hi);
+    let destination_transfer_amount_lo = proof_context
+        .ciphertext_lo
+        .try_extract_ciphertext(1)
+        .map_err(|e| -> TokenError { e.into() })?;
+    let destination_transfer_amount_hi = proof_context
+        .ciphertext_hi
+        .try_extract_ciphertext(1)
+        .map_err(|e| -> TokenError { e.into() })?;
 
-    destination_confidential_transfer_account.pending_balance_lo = syscall::add(
+    destination_confidential_transfer_account.pending_balance_lo = ciphertext_arithmetic::add(
         &destination_confidential_transfer_account.pending_balance_lo,
         &destination_transfer_amount_lo,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
-    destination_confidential_transfer_account.pending_balance_hi = syscall::add(
+    destination_confidential_transfer_account.pending_balance_hi = ciphertext_arithmetic::add(
         &destination_confidential_transfer_account.pending_balance_hi,
         &destination_transfer_amount_hi,
     )
@@ -880,40 +909,51 @@ fn process_destination_for_transfer_with_fee(
     if !is_self_transfer {
         // Decode lo and hi fee amounts encrypted under the destination encryption
         // public key
-        let destination_fee_lo =
-            fee_amount_destination_ciphertext(&proof_context.fee_ciphertext_lo);
-        let destination_fee_hi =
-            fee_amount_destination_ciphertext(&proof_context.fee_ciphertext_hi);
+        let destination_fee_lo = proof_context
+            .fee_ciphertext_lo
+            .try_extract_ciphertext(0)
+            .map_err(|e| -> TokenError { e.into() })?;
+        let destination_fee_hi = proof_context
+            .fee_ciphertext_hi
+            .try_extract_ciphertext(0)
+            .map_err(|e| -> TokenError { e.into() })?;
 
         // Subtract the fee amount from the destination pending balance
-        destination_confidential_transfer_account.pending_balance_lo = syscall::subtract(
-            &destination_confidential_transfer_account.pending_balance_lo,
-            &destination_fee_lo,
-        )
-        .ok_or(TokenError::CiphertextArithmeticFailed)?;
-        destination_confidential_transfer_account.pending_balance_hi = syscall::subtract(
-            &destination_confidential_transfer_account.pending_balance_hi,
-            &destination_fee_hi,
-        )
-        .ok_or(TokenError::CiphertextArithmeticFailed)?;
+        destination_confidential_transfer_account.pending_balance_lo =
+            ciphertext_arithmetic::subtract(
+                &destination_confidential_transfer_account.pending_balance_lo,
+                &destination_fee_lo,
+            )
+            .ok_or(TokenError::CiphertextArithmeticFailed)?;
+        destination_confidential_transfer_account.pending_balance_hi =
+            ciphertext_arithmetic::subtract(
+                &destination_confidential_transfer_account.pending_balance_hi,
+                &destination_fee_hi,
+            )
+            .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
         // Decode lo and hi fee amounts encrypted under the withdraw authority
         // encryption public key
-        let withdraw_withheld_authority_fee_lo =
-            fee_amount_withdraw_withheld_authority_ciphertext(&proof_context.fee_ciphertext_lo);
-        let withdraw_withheld_authority_fee_hi =
-            fee_amount_withdraw_withheld_authority_ciphertext(&proof_context.fee_ciphertext_hi);
+        let withdraw_withheld_authority_fee_lo = proof_context
+            .fee_ciphertext_lo
+            .try_extract_ciphertext(1)
+            .map_err(|e| -> TokenError { e.into() })?;
+        let withdraw_withheld_authority_fee_hi = proof_context
+            .fee_ciphertext_hi
+            .try_extract_ciphertext(1)
+            .map_err(|e| -> TokenError { e.into() })?;
 
         let destination_confidential_transfer_fee_amount =
             destination_token_account.get_extension_mut::<ConfidentialTransferFeeAmount>()?;
 
         // Add the fee amount to the destination withheld fee
-        destination_confidential_transfer_fee_amount.withheld_amount = syscall::add_with_lo_hi(
-            &destination_confidential_transfer_fee_amount.withheld_amount,
-            &withdraw_withheld_authority_fee_lo,
-            &withdraw_withheld_authority_fee_hi,
-        )
-        .ok_or(TokenError::CiphertextArithmeticFailed)?;
+        destination_confidential_transfer_fee_amount.withheld_amount =
+            ciphertext_arithmetic::add_with_lo_hi(
+                &destination_confidential_transfer_fee_amount.withheld_amount,
+                &withdraw_withheld_authority_fee_lo,
+                &withdraw_withheld_authority_fee_hi,
+            )
+            .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
 
     Ok(())
@@ -949,7 +989,7 @@ fn process_apply_pending_balance(
     let confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
-    confidential_transfer_account.available_balance = syscall::add_with_lo_hi(
+    confidential_transfer_account.available_balance = ciphertext_arithmetic::add_with_lo_hi(
         &confidential_transfer_account.available_balance,
         &confidential_transfer_account.pending_balance_lo,
         &confidential_transfer_account.pending_balance_hi,
@@ -1101,7 +1141,8 @@ pub(crate) fn process_instruction(
                     data.amount.into(),
                     data.decimals,
                     data.new_decryptable_available_balance,
-                    data.proof_instruction_offset as i64,
+                    data.equality_proof_instruction_offset as i64,
+                    data.range_proof_instruction_offset as i64,
                 )
             }
             #[cfg(not(feature = "zk-ops"))]

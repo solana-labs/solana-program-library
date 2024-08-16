@@ -5,7 +5,10 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod::{AeCiphertext, ElGamalCiphertext, ElGamalPubkey},
+    solana_zk_sdk::encryption::pod::{
+        auth_encryption::PodAeCiphertext,
+        elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
+    },
     spl_pod::{
         optional_keys::{OptionalNonZeroElGamalPubkey, OptionalNonZeroPubkey},
         primitives::{PodBool, PodU64},
@@ -30,27 +33,14 @@ pub mod processor;
 /// Transfer Extension
 pub mod verify_proof;
 
-/// Helper functions to generate split zero-knowledge proofs for confidential
-/// transfers in the Confidential Transfer Extension.
-///
-/// The logic in this submodule should belong to the `solana-zk-token-sdk` and
-/// will be removed with the next upgrade to the Solana program.
-#[cfg(not(target_os = "solana"))]
-pub mod split_proof_generation;
-
 /// Confidential Transfer Extension account information needed for instructions
 #[cfg(not(target_os = "solana"))]
 pub mod account_info;
 
-/// Ciphertext extraction and proof related helper logic
-///
-/// This submodule should be removed with the next upgrade to the Solana program
-pub mod ciphertext_extraction;
-
 /// ElGamal ciphertext containing an account balance
-pub type EncryptedBalance = ElGamalCiphertext;
+pub type EncryptedBalance = PodElGamalCiphertext;
 /// Authenticated encryption containing an account balance
-pub type DecryptableBalance = AeCiphertext;
+pub type DecryptableBalance = PodAeCiphertext;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
@@ -89,7 +79,7 @@ pub struct ConfidentialTransferAccount {
     pub approved: PodBool,
 
     /// The public key associated with ElGamal encryption
-    pub elgamal_pubkey: ElGamalPubkey,
+    pub elgamal_pubkey: PodElGamalPubkey,
 
     /// The low 16 bits of the pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance_lo: EncryptedBalance,

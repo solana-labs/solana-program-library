@@ -5,8 +5,9 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     solana_program::entrypoint::ProgramResult,
-    solana_zk_token_sdk::zk_token_elgamal::pod::{ElGamalCiphertext, ElGamalPubkey, FeeEncryption},
+    solana_zk_sdk::encryption::pod::elgamal::{PodElGamalCiphertext, PodElGamalPubkey},
     spl_pod::{optional_keys::OptionalNonZeroPubkey, primitives::PodBool},
+    spl_token_confidential_transfer_proof_extraction::encryption::PodFeeCiphertext,
 };
 
 /// Confidential transfer fee extension instructions
@@ -21,9 +22,9 @@ pub mod processor;
 pub mod account_info;
 
 /// ElGamal ciphertext containing a transfer fee
-pub type EncryptedFee = FeeEncryption;
+pub type EncryptedFee = PodFeeCiphertext;
 /// ElGamal ciphertext containing a withheld fee in an account
-pub type EncryptedWithheldAmount = ElGamalCiphertext;
+pub type EncryptedWithheldAmount = PodElGamalCiphertext;
 
 /// Confidential transfer fee extension data for mints
 #[repr(C)]
@@ -38,7 +39,7 @@ pub struct ConfidentialTransferFeeConfig {
     /// key has the ability to decode any withheld fee amount that are
     /// associated with accounts. When combined with the fee parameters, the
     /// withheld fee amounts can reveal information about transfer amounts.
-    pub withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
+    pub withdraw_withheld_authority_elgamal_pubkey: PodElGamalPubkey,
 
     /// If `false`, the harvest of withheld tokens to mint is rejected.
     pub harvest_to_mint_enabled: PodBool,

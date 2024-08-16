@@ -1,7 +1,5 @@
-#[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::encryption::auth_encryption::AeCiphertext;
-pub use solana_zk_token_sdk::{
-    zk_token_proof_instruction::*, zk_token_proof_state::ProofContextState,
+pub use solana_zk_sdk::zk_elgamal_proof_program::{
+    instruction::ProofInstruction, proof_data::*, state::ProofContextState,
 };
 #[cfg(feature = "serde-traits")]
 use {
@@ -206,36 +204,44 @@ pub enum ConfidentialTransferInstruction {
     /// Withdraw SPL Tokens from the available balance of a confidential token
     /// account.
     ///
+    /// In order for this instruction to be successfully processed, it must be
+    /// accompanied by the following list of `zk_elgamal_proof` program
+    /// instructions:
+    /// - `VerifyCiphertextCommitmentEquality`
+    /// - `VerifyBatchedRangeProofU64`
+    /// These instructions can be accompanied in the same transaction or can be
+    /// pre-verified into a context state account, in which case, only their
+    /// context state account address need to be provided.
+    ///
     /// Fails if the source or destination accounts are frozen.
     /// Fails if the associated mint is extended as `NonTransferable`.
-    ///
-    /// In order for this instruction to be successfully processed, it must be
-    /// accompanied by the `VerifyWithdraw` instruction of the
-    /// `zk_token_proof` program in the same transaction or the address of a
-    /// context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the
-    ///      same transaction or context state account if `VerifyWithdraw` is
-    ///      pre-verified into a context state account.
-    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   4. `[signer]` The single source account owner.
+    ///   2. `[]` (Optional) Instructions sysvar if at least one of the
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
+    ///   3. `[]` (Optional) Equality proof record account or context state
+    ///      account.
+    ///   4. `[]` (Optional) Range proof record account or context state
+    ///      account.
+    ///   5. `[signer]` The single source account owner.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
     ///   1. `[]` The token mint.
-    ///   2. `[]` Instructions sysvar if `VerifyWithdraw` is included in the
-    ///      same transaction or context state account if `VerifyWithdraw` is
-    ///      pre-verified into a context state account.
-    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
-    ///      read from a record account.
-    ///   4. `[]` The multisig  source account owner.
-    ///   5.. `[signer]` Required M signer accounts for the SPL Token Multisig
+    ///   2. `[]` (Optional) Instructions sysvar if at least one of the
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
+    ///   3. `[]` (Optional) Equality proof record account or context state
+    ///      account.
+    ///   4. `[]` (Optional) Range proof record account or context state
+    ///      account.
+    ///   5. `[]` The multisig  source account owner.
+    ///   6.. `[signer]` Required M signer accounts for the SPL Token Multisig
     /// account.
     ///
     /// Data expected by this instruction:
@@ -549,10 +555,15 @@ pub struct WithdrawInstructionData {
     /// The new decryptable balance if the withdrawal succeeds
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_decryptable_available_balance: DecryptableBalance,
-    /// Relative location of the `ProofInstruction::VerifyWithdraw` instruction
+    /// Relative location of the
+    /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `Withdraw` instruction in the transaction. If the offset is
     /// `0`, then use a context state account for the proof.
-    pub proof_instruction_offset: i8,
+    pub equality_proof_instruction_offset: i8,
+    /// Relative location of the `ProofInstruction::BatchedRangeProofU64`
+    /// instruction to the `Withdraw` instruction in the transaction. If the
+    /// offset is `0`, then use a context state account for the proof.
+    pub range_proof_instruction_offset: i8,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::Transfer`
@@ -638,7 +649,7 @@ pub fn initialize_mint(
     mint: &Pubkey,
     authority: Option<Pubkey>,
     auto_approve_new_accounts: bool,
-    auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+    auditor_elgamal_pubkey: Option<PodElGamalPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -663,7 +674,7 @@ pub fn update_mint(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     auto_approve_new_accounts: bool,
-    auditor_elgamal_pubkey: Option<ElGamalPubkey>,
+    auditor_elgamal_pubkey: Option<PodElGamalPubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -693,11 +704,11 @@ pub fn inner_configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    decryptable_zero_balance: AeCiphertext,
+    decryptable_zero_balance: PodAeCiphertext,
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<PubkeyValidityData>,
+    proof_data_location: ProofLocation<PubkeyValidityProofData>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
 
@@ -735,7 +746,7 @@ pub fn inner_configure_account(
         TokenInstruction::ConfidentialTransferExtension,
         ConfidentialTransferInstruction::ConfigureAccount,
         &ConfigureAccountInstructionData {
-            decryptable_zero_balance: decryptable_zero_balance.into(),
+            decryptable_zero_balance,
             maximum_pending_balance_credit_counter: maximum_pending_balance_credit_counter.into(),
             proof_instruction_offset,
         },
@@ -748,11 +759,11 @@ pub fn configure_account(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     mint: &Pubkey,
-    decryptable_zero_balance: AeCiphertext,
+    decryptable_zero_balance: PodAeCiphertext,
     maximum_pending_balance_credit_counter: u64,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<PubkeyValidityData>,
+    proof_data_location: ProofLocation<PubkeyValidityProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     let mut instructions = vec![inner_configure_account(
         token_program_id,
@@ -777,9 +788,8 @@ pub fn configure_account(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => {
-                instructions.push(verify_pubkey_validity(None, data))
-            }
+            ProofData::InstructionData(data) => instructions
+                .push(ProofInstruction::VerifyPubkeyValidity.encode_verify_proof(None, data)),
             ProofData::RecordAccount(address, offset) => instructions.push(
                 ProofInstruction::VerifyPubkeyValidity
                     .encode_verify_proof_from_account(None, address, offset),
@@ -824,7 +834,7 @@ pub fn inner_empty_account(
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<ZeroBalanceProofData>,
+    proof_data_location: ProofLocation<ZeroCiphertextProofData>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
@@ -869,7 +879,7 @@ pub fn empty_account(
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<ZeroBalanceProofData>,
+    proof_data_location: ProofLocation<ZeroCiphertextProofData>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     let mut instructions = vec![inner_empty_account(
         token_program_id,
@@ -891,9 +901,10 @@ pub fn empty_account(
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => instructions.push(verify_zero_balance(None, data)),
+            ProofData::InstructionData(data) => instructions
+                .push(ProofInstruction::VerifyZeroCiphertext.encode_verify_proof(None, data)),
             ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyZeroBalance
+                ProofInstruction::VerifyZeroCiphertext
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
@@ -949,7 +960,8 @@ pub fn inner_withdraw(
     new_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<WithdrawData>,
+    equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
+    range_proof_data_location: ProofLocation<BatchedRangeProofU64Data>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
@@ -957,9 +969,29 @@ pub fn inner_withdraw(
         AccountMeta::new_readonly(*mint, false),
     ];
 
-    let proof_instruction_offset = match proof_data_location {
+    // if at least one of the proof locations is an instruction offset, sysvar
+    // account is needed
+    if equality_proof_data_location.is_instruction_offset()
+        || range_proof_data_location.is_instruction_offset()
+    {
+        accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+    }
+
+    let equality_proof_instruction_offset = match equality_proof_data_location {
         ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
-            accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            if let ProofData::RecordAccount(record_address, _) = proof_data {
+                accounts.push(AccountMeta::new_readonly(*record_address, false));
+            }
+            proof_instruction_offset.into()
+        }
+        ProofLocation::ContextStateAccount(context_state_account) => {
+            accounts.push(AccountMeta::new_readonly(*context_state_account, false));
+            0
+        }
+    };
+
+    let range_proof_instruction_offset = match range_proof_data_location {
+        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
             if let ProofData::RecordAccount(record_address, _) = proof_data {
                 accounts.push(AccountMeta::new_readonly(*record_address, false));
             }
@@ -989,7 +1021,8 @@ pub fn inner_withdraw(
             amount: amount.into(),
             decimals,
             new_decryptable_available_balance,
-            proof_instruction_offset,
+            equality_proof_instruction_offset,
+            range_proof_instruction_offset,
         },
     ))
 }
@@ -1002,10 +1035,11 @@ pub fn withdraw(
     mint: &Pubkey,
     amount: u64,
     decimals: u8,
-    new_decryptable_available_balance: AeCiphertext,
+    new_decryptable_available_balance: PodAeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-    proof_data_location: ProofLocation<WithdrawData>,
+    equality_proof_data_location: ProofLocation<CiphertextCommitmentEqualityProofData>,
+    range_proof_data_location: ProofLocation<BatchedRangeProofU64Data>,
 ) -> Result<Vec<Instruction>, ProgramError> {
     let mut instructions = vec![inner_withdraw(
         token_program_id,
@@ -1013,27 +1047,48 @@ pub fn withdraw(
         mint,
         amount,
         decimals,
-        new_decryptable_available_balance.into(),
+        new_decryptable_available_balance,
         authority,
         multisig_signers,
-        proof_data_location,
+        equality_proof_data_location,
+        range_proof_data_location,
     )?];
 
+    let mut expected_instruction_offset = 1;
+
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
-        proof_data_location
+        equality_proof_data_location
     {
-        // This constructor appends the proof instruction right after the `Withdraw`
-        // instruction. This means that the proof instruction offset must be
-        // always be 1. To use an arbitrary proof instruction offset, use the
-        // `inner_withdraw` constructor.
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 1 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => instructions.push(verify_withdraw(None, data)),
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyCiphertextCommitmentEquality
+                    .encode_verify_proof(None, data),
+            ),
             ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyWithdraw
+                ProofInstruction::VerifyCiphertextCommitmentEquality
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
+
+        expected_instruction_offset += 1;
+    };
+
+    if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
+        range_proof_data_location
+    {
+        let proof_instruction_offset: i8 = proof_instruction_offset.into();
+        if proof_instruction_offset != expected_instruction_offset {
+            return Err(TokenError::InvalidProofInstructionOffset.into());
+        }
+        match proof_data {
+            ProofData::InstructionData(data) => instructions
+                .push(ProofInstruction::VerifyBatchedRangeProofU64.encode_verify_proof(None, data)),
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyBatchedRangeProofU64
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
@@ -1121,6 +1176,10 @@ pub fn inner_transfer(
         multisig_signers.is_empty(),
     ));
 
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
+
     Ok(encode_instruction(
         token_program_id,
         accounts,
@@ -1164,11 +1223,13 @@ pub fn transfer(
         range_proof_data_location,
     )?];
 
+    let mut expected_instruction_offset = 1;
+
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         equality_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 1 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1181,13 +1242,15 @@ pub fn transfer(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         ciphertext_validity_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 2 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1200,13 +1263,15 @@ pub fn transfer(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         range_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 3 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1261,7 +1326,7 @@ pub fn apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     pending_balance_instructions: u64,
-    new_decryptable_available_balance: AeCiphertext,
+    new_decryptable_available_balance: PodAeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
@@ -1269,7 +1334,7 @@ pub fn apply_pending_balance(
         token_program_id,
         token_account,
         pending_balance_instructions,
-        new_decryptable_available_balance.into(),
+        new_decryptable_available_balance,
         authority,
         multisig_signers,
     ) // calls check_program_account
@@ -1381,7 +1446,7 @@ pub fn inner_transfer_with_fee(
     transfer_amount_ciphertext_validity_proof_data_location: ProofLocation<
         BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
-    fee_sigma_proof_data_location: ProofLocation<FeeSigmaProofData>,
+    fee_sigma_proof_data_location: ProofLocation<PercentageWithCapProofData>,
     fee_ciphertext_validity_proof_data_location: ProofLocation<
         BatchedGroupedCiphertext2HandlesValidityProofData,
     >,
@@ -1477,6 +1542,10 @@ pub fn inner_transfer_with_fee(
         multisig_signers.is_empty(),
     ));
 
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
+
     Ok(encode_instruction(
         token_program_id,
         accounts,
@@ -1507,7 +1576,7 @@ pub fn transfer_with_fee(
     transfer_amount_ciphertext_validity_proof_data_location: ProofLocation<
         BatchedGroupedCiphertext3HandlesValidityProofData,
     >,
-    fee_sigma_proof_data_location: ProofLocation<FeeSigmaProofData>,
+    fee_sigma_proof_data_location: ProofLocation<PercentageWithCapProofData>,
     fee_ciphertext_validity_proof_data_location: ProofLocation<
         BatchedGroupedCiphertext2HandlesValidityProofData,
     >,
@@ -1528,11 +1597,13 @@ pub fn transfer_with_fee(
         range_proof_data_location,
     )?];
 
+    let mut expected_instruction_offset = 1;
+
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         equality_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 1 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1545,13 +1616,14 @@ pub fn transfer_with_fee(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         transfer_amount_ciphertext_validity_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 2 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1564,31 +1636,32 @@ pub fn transfer_with_fee(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         fee_sigma_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 3 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
-            ProofData::InstructionData(data) => {
-                instructions.push(ProofInstruction::VerifyFeeSigma.encode_verify_proof(None, data))
-            }
+            ProofData::InstructionData(data) => instructions
+                .push(ProofInstruction::VerifyPercentageWithCap.encode_verify_proof(None, data)),
             ProofData::RecordAccount(address, offset) => instructions.push(
-                ProofInstruction::VerifyFeeSigma
+                ProofInstruction::VerifyPercentageWithCap
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         fee_ciphertext_validity_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 4 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
@@ -1601,13 +1674,14 @@ pub fn transfer_with_fee(
                     .encode_verify_proof_from_account(None, address, offset),
             ),
         };
+        expected_instruction_offset += 1;
     }
 
     if let ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) =
         range_proof_data_location
     {
         let proof_instruction_offset: i8 = proof_instruction_offset.into();
-        if proof_instruction_offset != 5 {
+        if proof_instruction_offset != expected_instruction_offset {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
         match proof_data {
