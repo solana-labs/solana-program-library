@@ -282,10 +282,13 @@ mod tests {
 
     const OPTIONAL_NONZERO_ELGAMAL_PUBKEY_LEN: usize = 32;
 
-    // Unfortunately, the `solana-zk-sdk` does not exporse a constructor interface
+    // Unfortunately, the `solana-zk-sdk` does not expose a constructor interface
     // to construct `PodRistrettoPoint` from bytes. As a work-around, encode the
     // bytes as base64 string and then convert the string to a
     // `PodElGamalCiphertext`.
+    //
+    // The constructor will be added (and this function removed) with
+    // `solana-zk-sdk` 2.1.
     fn elgamal_pubkey_from_bytes(bytes: &[u8]) -> PodElGamalPubkey {
         let string = BASE64_STANDARD.encode(bytes);
         std::str::FromStr::from_str(&string).unwrap()
