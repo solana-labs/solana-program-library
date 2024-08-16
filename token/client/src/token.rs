@@ -2359,7 +2359,7 @@ where
         context_state_account: &Pubkey,
         context_state_authority: &Pubkey,
         proof_data: &ZK,
-        split_instruction: bool,
+        split_account_creation_and_proof_verification: bool,
         signer: &S,
     ) -> TokenResult<T::Output> {
         let instruction_type = zk_proof_type_to_instruction(ZK::PROOF_TYPE)?;
@@ -2377,7 +2377,7 @@ where
 
         // Some proof instructions are right at the transaction size limit, but in the
         // future it might be able to support the transfer too
-        if split_instruction {
+        if split_account_creation_and_proof_verification {
             self.process_ixs(
                 &[system_instruction::create_account(
                     &self.payer.pubkey(),
