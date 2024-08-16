@@ -2271,6 +2271,13 @@ pub fn app<'a, 'b>(
                 )
                 .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
+                .group(
+                    ArgGroup::with_name("source_or_mint")
+                        .arg("source")
+                        .arg("include_mint")
+                        .multiple(true)
+                        .required(true)
+                )
         )
         .subcommand(
             SubCommand::with_name(CommandName::SetTransferFee.into())
