@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Updates a crate's version (major, minor, or patch) and subsequently updates
 # all dependencies on that crate in the workspace.
