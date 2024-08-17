@@ -12,8 +12,7 @@ use {
         pubkey::Pubkey,
         signature::Signer,
         signer::{keypair::Keypair, signers::Signers},
-        system_instruction,
-        transaction::{Transaction, TransactionError},
+        transaction::TransactionError,
         transport::TransportError,
     },
     spl_record::state::RecordData,
@@ -21,7 +20,6 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{
-                self,
                 account_info::{EmptyAccountAccountInfo, TransferAccountInfo, WithdrawAccountInfo},
                 ConfidentialTransferAccount, MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
             },
@@ -29,12 +27,7 @@ use {
         },
         solana_zk_sdk::{
             encryption::{auth_encryption::*, elgamal::*, pod::elgamal::PodElGamalCiphertext},
-            zk_elgamal_proof_program::{
-                self,
-                instruction::{ContextStateInfo, ProofInstruction},
-                proof_data::*,
-                state::ProofContextState,
-            },
+            zk_elgamal_proof_program::proof_data::*,
         },
     },
     spl_token_client::{
@@ -48,7 +41,7 @@ use {
         transfer::TransferProofData, transfer_with_fee::TransferWithFeeProofData,
         withdraw::WithdrawProofData,
     },
-    std::{convert::TryInto, mem::size_of},
+    std::convert::TryInto,
 };
 
 #[cfg(feature = "zk-ops")]
