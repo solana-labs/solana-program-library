@@ -13,7 +13,7 @@ use {
         instruction::{encode_instruction, TokenInstruction},
         proof::{ProofData, ProofLocation},
     },
-    bytemuck::Zeroable, // `Pod` comes from zk_token_proof_instruction
+    bytemuck::Zeroable,
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -75,8 +75,8 @@ pub enum ConfidentialTransferInstruction {
     /// `DisableNonConfidentialCredits` instructions to disable.
     ///
     /// In order for this instruction to be successfully processed, it must be
-    /// accompanied by the `VerifyPubkeyValidityProof` instruction of the
-    /// `zk_token_proof` program in the same transaction or the address of a
+    /// accompanied by the `VerifyPubkeyValidity` instruction of the
+    /// `zk_elgamal_proof` program in the same transaction or the address of a
     /// context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
@@ -84,9 +84,9 @@ pub enum ConfidentialTransferInstruction {
     ///   * Single owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidityProof` is included
-    ///      in the same transaction or context state account if
-    ///      `VerifyPubkeyValidityProof` is pre-verified into a context state
+    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in
+    ///      the same transaction or context state account if
+    ///      `VerifyPubkeyValidity` is pre-verified into a context state
     ///      account.
     ///   3. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
@@ -95,9 +95,9 @@ pub enum ConfidentialTransferInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writeable]` The SPL Token account.
     ///   1. `[]` The corresponding SPL Token mint.
-    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidityProof` is included
-    ///      in the same transaction or context state account if
-    ///      `VerifyPubkeyValidityProof` is pre-verified into a context state
+    ///   2. `[]` Instructions sysvar if `VerifyPubkeyValidity` is included in
+    ///      the same transaction or context state account if
+    ///      `VerifyPubkeyValidity` is pre-verified into a context state
     ///      account.
     ///   3. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
@@ -143,15 +143,15 @@ pub enum ConfidentialTransferInstruction {
     /// token account.
     ///
     /// In order for this instruction to be successfully processed, it must be
-    /// accompanied by the `VerifyZeroBalanceProof` instruction of the
-    /// `zk_token_proof` program in the same transaction or the address of a
+    /// accompanied by the `VerifyZeroCiphertext` instruction of the
+    /// `zk_elgamal_proof` program in the same transaction or the address of a
     /// context state account for the proof must be provided.
     ///
     ///   * Single owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar if `VerifyZeroBalanceProof` is included in
+    ///   1. `[]` Instructions sysvar if `VerifyZeroCiphertext` is included in
     ///      the same transaction or context state account if
-    ///      `VerifyZeroBalanceProof` is pre-verified into a context state
+    ///      `VerifyZeroCiphertext` is pre-verified into a context state
     ///      account.
     ///   2. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
@@ -159,9 +159,9 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The SPL Token account.
-    ///   1. `[]` Instructions sysvar if `VerifyZeroBalanceProof` is included in
+    ///   1. `[]` Instructions sysvar if `VerifyZeroCiphertext` is included in
     ///      the same transaction or context state account if
-    ///      `VerifyZeroBalanceProof` is pre-verified into a context state
+    ///      `VerifyZeroCiphertext` is pre-verified into a context state
     ///      account.
     ///   2. `[]` (Optional) Record account if the accompanying proof is to be
     ///      read from a record account.
@@ -251,10 +251,10 @@ pub enum ConfidentialTransferInstruction {
     /// Transfer tokens confidentially.
     ///
     /// In order for this instruction to be successfully processed, it must be
-    /// accompanied by the following list of `zk_token_proof` program
+    /// accompanied by the following list of `zk_elgamal_proof` program
     /// instructions:
-    /// - `VerifyCiphertextCommitmentEqualityProof`
-    /// - `VerifyBatchedGroupedCiphertext3HandlesValidityProof`
+    /// - `VerifyCiphertextCommitmentEquality`
+    /// - `VerifyBatchedGroupedCiphertext3HandlesValidity`
     /// - `VerifyBatchedRangeProofU128`
     /// These instructions can be accompanied in the same transaction or can be
     /// pre-verified into a context state account, in which case, only their
@@ -267,7 +267,8 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
     ///   4. `[]` (Optional) Instructions sysvar if at least one of the
-    ///      `zk_token_proof` instructions are included in the same transaction.
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
     ///   5. `[]` (Optional) Equality proof record account or context state
     ///      account.
     ///   6. `[]` (Optional) Ciphertext validity proof record account or context
@@ -281,7 +282,8 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
     ///   4. `[]` (Optional) Instructions sysvar if at least one of the
-    ///      `zk_token_proof` instructions are included in the same transaction.
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
     ///   5. `[]` (Optional) Equality proof record account or context state
     ///      account.
     ///   6. `[]` (Optional) Ciphertext validity proof record account or context
@@ -412,13 +414,13 @@ pub enum ConfidentialTransferInstruction {
     /// Transfer tokens confidentially with fee.
     ///
     /// In order for this instruction to be successfully processed, it must be
-    /// accompanied by the following list of `zk_token_proof` program
+    /// accompanied by the following list of `zk_elgamal_proof` program
     /// instructions:
-    /// - `VerifyCiphertextCommitmentEqualityProof`
-    /// - `VerifyBatchedGroupedCiphertext3HandlesValidityProof` (transfer amount
+    /// - `VerifyCiphertextCommitmentEquality`
+    /// - `VerifyBatchedGroupedCiphertext3HandlesValidity` (transfer amount
     ///   ciphertext)
-    /// - `FeeSigmaProof`
-    /// - `VerifyBatchedGroupedCiphertext2HandlesValidityProof` (fee ciphertext)
+    /// - `VerifyPercentageWithFee`
+    /// - `VerifyBatchedGroupedCiphertext2HandlesValidity` (fee ciphertext)
     /// - `VerifyBatchedRangeProofU256`
     /// These instructions can be accompanied in the same transaction or can be
     /// pre-verified into a context state account, in which case, only their
@@ -433,7 +435,8 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
     ///   4. `[]` (Optional) Instructions sysvar if at least one of the
-    ///      `zk_token_proof` instructions are included in the same transaction.
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
     ///   5. `[]` (Optional) Equality proof record account or context state
     ///      account.
     ///   6. `[]` (Optional) Transfer amount ciphertext validity proof record
@@ -451,7 +454,8 @@ pub enum ConfidentialTransferInstruction {
     ///   2. `[]` The token mint.
     ///   3. `[writable]` The destination SPL Token account.
     ///   4. `[]` (Optional) Instructions sysvar if at least one of the
-    ///      `zk_token_proof` instructions are included in the same transaction.
+    ///      `zk_elgamal_proof` instructions are included in the same
+    ///      transaction.
     ///   5. `[]` (Optional) Equality proof record account or context state
     ///      account.
     ///   6. `[]` (Optional) Transfer amount ciphertext validity proof record
@@ -511,7 +515,7 @@ pub struct ConfigureAccountInstructionData {
     /// The maximum number of despots and transfers that an account can receiver
     /// before the `ApplyPendingBalance` is executed
     pub maximum_pending_balance_credit_counter: PodU64,
-    /// Relative location of the `ProofInstruction::ZeroBalanceProof`
+    /// Relative location of the `ProofInstruction::ZeroCiphertextProof`
     /// instruction to the `ConfigureAccount` instruction in the
     /// transaction. If the offset is `0`, then use a context state account
     /// for the proof.
@@ -576,12 +580,12 @@ pub struct TransferInstructionData {
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_source_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the
-    /// `ProofInstruction::VerifyCiphertextCommitmentEqualityProof` instruction
+    /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `Transfer` instruction in the transaction. If the offset is
     /// `0`, then use a context state account for the proof.
     pub equality_proof_instruction_offset: i8,
     /// Relative location of the
-    /// `ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidityProof`
+    /// `ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity`
     /// instruction to the `Transfer` instruction in the transaction. If the
     /// offset is `0`, then use a context state account for the proof.
     pub ciphertext_validity_proof_instruction_offset: i8,
@@ -615,23 +619,23 @@ pub struct TransferWithFeeInstructionData {
     #[cfg_attr(feature = "serde-traits", serde(with = "aeciphertext_fromstr"))]
     pub new_source_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the
-    /// `ProofInstruction::VerifyCiphertextCommitmentEqualityProof` instruction
+    /// `ProofInstruction::VerifyCiphertextCommitmentEquality` instruction
     /// to the `TransferWithFee` instruction in the transaction. If the offset
     /// is `0`, then use a context state account for the proof.
     pub equality_proof_instruction_offset: i8,
     /// Relative location of the
-    /// `ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidityProof`
+    /// `ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity`
     /// instruction to the `TransferWithFee` instruction in the transaction.
     /// If the offset is `0`, then use a context state account for the
     /// proof.
     pub transfer_amount_ciphertext_validity_proof_instruction_offset: i8,
-    /// Relative location of the `ProofInstruction::VerifyFeeSigmaProof`
+    /// Relative location of the `ProofInstruction::VerifyPercentageWithFee`
     /// instruction to the `TransferWithFee` instruction in the transaction.
     /// If the offset is `0`, then use a context state account for the
     /// proof.
     pub fee_sigma_proof_instruction_offset: i8,
     /// Relative location of the
-    /// `ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidityProof`
+    /// `ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity`
     /// instruction to the `TransferWithFee` instruction in the transaction.
     /// If the offset is `0`, then use a context state account for the
     /// proof.
