@@ -4,7 +4,8 @@ mod program_test;
 use {
     bytemuck::Zeroable,
     program_test::{
-        ConfidentialTokenAccountBalances, ConfidentialTokenAccountMeta, TestContext, TokenContext,
+        ConfidentialTokenAccountBalances, ConfidentialTokenAccountMeta, ConfidentialTransferOption,
+        TestContext, TokenContext,
     },
     solana_program_test::tokio,
     solana_sdk::{
@@ -1280,13 +1281,6 @@ async fn confidential_transfer_withdraw_with_option(option: ConfidentialTransfer
             },
         )
         .await;
-}
-
-#[derive(Clone, Copy)]
-pub enum ConfidentialTransferOption {
-    InstructionData,
-    RecordAccount,
-    ContextStateAccount,
 }
 
 #[allow(clippy::too_many_arguments)]
