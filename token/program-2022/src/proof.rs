@@ -1,7 +1,7 @@
 //! Helper for processing instruction data from ZK ElGamal proof program
 
 use {
-    crate::check_zk_token_proof_program_account,
+    crate::check_zk_elgamal_proof_program_account,
     bytemuck::Pod,
     solana_program::{
         account_info::{next_account_info, AccountInfo},
@@ -107,7 +107,7 @@ pub fn verify_and_extract_context<'a, T: Pod + ZkProofData<U>, U: Pod>(
     if proof_instruction_offset == 0 {
         // interpret `account_info` as a context state account
         let context_state_account_info = next_account_info(account_info_iter)?;
-        check_zk_token_proof_program_account(context_state_account_info.owner)?;
+        check_zk_elgamal_proof_program_account(context_state_account_info.owner)?;
         let context_state_account_data = context_state_account_info.data.borrow();
         let context_state = pod_from_bytes::<ProofContextState<U>>(&context_state_account_data)?;
 
