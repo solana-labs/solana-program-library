@@ -362,3 +362,10 @@ pub(crate) struct ConfidentialTokenAccountBalances {
     pub(crate) available_balance: u64,
     pub(crate) decryptable_available_balance: u64,
 }
+
+#[derive(Clone, Copy)]
+pub enum ConfidentialTransferOption {
+    InstructionData,
+    RecordAccount,
+    ContextStateAccount,
+}
