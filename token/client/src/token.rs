@@ -2083,19 +2083,26 @@ where
             WithdrawAccountInfo::new(confidential_transfer_account)
         };
 
-        let WithdrawProofData {
-            equality_proof_data,
-            range_proof_data,
-        } = account_info
-            .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
-            .map_err(|_| TokenError::ProofGeneration)?;
+        let (equality_proof_data, range_proof_data) =
+            if equality_proof_account.is_some() && range_proof_account.is_some() {
+                (None, None)
+            } else {
+                let WithdrawProofData {
+                    equality_proof_data,
+                    range_proof_data,
+                } = account_info
+                    .generate_proof_data(withdraw_amount, elgamal_keypair, aes_key)
+                    .map_err(|_| TokenError::ProofGeneration)?;
 
-        // if proof accounts are none, then proof data must be included as instruction
-        // data
-        let equality_proof_data = equality_proof_account
-            .is_none()
-            .then_some(equality_proof_data);
-        let range_proof_data = range_proof_account.is_none().then_some(range_proof_data);
+                // if proof accounts are none, then proof data must be included as instruction
+                // data
+                let equality_proof_data = equality_proof_account
+                    .is_none()
+                    .then_some(equality_proof_data);
+                let range_proof_data = range_proof_account.is_none().then_some(range_proof_data);
+
+                (equality_proof_data, range_proof_data)
+            };
 
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
         // which is guaranteed by the previous check
@@ -2165,29 +2172,46 @@ where
             TransferAccountInfo::new(confidential_transfer_account)
         };
 
-        let TransferProofData {
-            equality_proof_data,
-            ciphertext_validity_proof_data,
-            range_proof_data,
-        } = account_info
-            .generate_split_transfer_proof_data(
-                transfer_amount,
-                source_elgamal_keypair,
-                source_aes_key,
-                destination_elgamal_pubkey,
-                auditor_elgamal_pubkey,
-            )
-            .map_err(|_| TokenError::ProofGeneration)?;
+        let (equality_proof_data, ciphertext_validity_proof_data, range_proof_data) = if [
+            equality_proof_account,
+            ciphertext_validity_proof_account,
+            range_proof_account,
+        ]
+        .iter()
+        .all(|proof_account| proof_account.is_some())
+        {
+            (None, None, None)
+        } else {
+            let TransferProofData {
+                equality_proof_data,
+                ciphertext_validity_proof_data,
+                range_proof_data,
+            } = account_info
+                .generate_split_transfer_proof_data(
+                    transfer_amount,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                )
+                .map_err(|_| TokenError::ProofGeneration)?;
 
-        // if proof accounts are none, then proof data must be included as instruction
-        // data
-        let equality_proof_data = equality_proof_account
-            .is_none()
-            .then_some(equality_proof_data);
-        let ciphertext_validity_proof_data = ciphertext_validity_proof_account
-            .is_none()
-            .then_some(ciphertext_validity_proof_data);
-        let range_proof_data = range_proof_account.is_none().then_some(range_proof_data);
+            // if proof accounts are none, then proof data must be included as instruction
+            // data
+            let equality_proof_data = equality_proof_account
+                .is_none()
+                .then_some(equality_proof_data);
+            let ciphertext_validity_proof_data = ciphertext_validity_proof_account
+                .is_none()
+                .then_some(ciphertext_validity_proof_data);
+            let range_proof_data = range_proof_account.is_none().then_some(range_proof_data);
+
+            (
+                equality_proof_data,
+                ciphertext_validity_proof_data,
+                range_proof_data,
+            )
+        };
 
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
         // which is guaranteed by the previous check
@@ -2457,7 +2481,7 @@ where
         source_authority: &Pubkey,
         equality_proof_account: Option<&ProofAccount>,
         transfer_amount_ciphertext_validity_proof_account: Option<&ProofAccount>,
-        fee_sigma_proof_account: Option<&ProofAccount>,
+        percentage_with_cap_proof_account: Option<&ProofAccount>,
         fee_ciphertext_validity_proof_account: Option<&ProofAccount>,
         range_proof_account: Option<&ProofAccount>,
         transfer_amount: u64,
@@ -2483,39 +2507,67 @@ where
             TransferAccountInfo::new(confidential_transfer_account)
         };
 
-        let TransferWithFeeProofData {
+        let (
             equality_proof_data,
             transfer_amount_ciphertext_validity_proof_data,
             percentage_with_cap_proof_data,
             fee_ciphertext_validity_proof_data,
             range_proof_data,
-        } = account_info
-            .generate_split_transfer_with_fee_proof_data(
-                transfer_amount,
-                source_elgamal_keypair,
-                source_aes_key,
-                destination_elgamal_pubkey,
-                auditor_elgamal_pubkey,
-                withdraw_withheld_authority_elgamal_pubkey,
-                fee_rate_basis_points,
-                maximum_fee,
-            )
-            .map_err(|_| TokenError::ProofGeneration)?;
+        ) = if [
+            equality_proof_account,
+            transfer_amount_ciphertext_validity_proof_account,
+            percentage_with_cap_proof_account,
+            fee_ciphertext_validity_proof_account,
+            range_proof_account,
+        ]
+        .iter()
+        .all(|proof_account| proof_account.is_some())
+        {
+            // is all proofs come from accounts, then skip proof generation
+            (None, None, None, None, None)
+        } else {
+            let TransferWithFeeProofData {
+                equality_proof_data,
+                transfer_amount_ciphertext_validity_proof_data,
+                percentage_with_cap_proof_data,
+                fee_ciphertext_validity_proof_data,
+                range_proof_data,
+            } = account_info
+                .generate_split_transfer_with_fee_proof_data(
+                    transfer_amount,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                    withdraw_withheld_authority_elgamal_pubkey,
+                    fee_rate_basis_points,
+                    maximum_fee,
+                )
+                .map_err(|_| TokenError::ProofGeneration)?;
 
-        let equality_proof_data = equality_proof_account
-            .is_none()
-            .then_some(equality_proof_data);
-        let transfer_amount_ciphertext_validity_proof_data =
-            transfer_amount_ciphertext_validity_proof_account
+            let equality_proof_data = equality_proof_account
                 .is_none()
-                .then_some(transfer_amount_ciphertext_validity_proof_data);
-        let fee_sigma_proof_data = fee_sigma_proof_account
-            .is_none()
-            .then_some(percentage_with_cap_proof_data);
-        let fee_ciphertext_validity_proof_data = fee_ciphertext_validity_proof_account
-            .is_none()
-            .then_some(fee_ciphertext_validity_proof_data);
-        let range_proof_data = range_proof_account.is_none().then_some(range_proof_data);
+                .then_some(equality_proof_data);
+            let transfer_amount_ciphertext_validity_proof_data =
+                transfer_amount_ciphertext_validity_proof_account
+                    .is_none()
+                    .then_some(transfer_amount_ciphertext_validity_proof_data);
+            let percentage_with_cap_proof_data = percentage_with_cap_proof_account
+                .is_none()
+                .then_some(percentage_with_cap_proof_data);
+            let fee_ciphertext_validity_proof_data = fee_ciphertext_validity_proof_account
+                .is_none()
+                .then_some(fee_ciphertext_validity_proof_data);
+            let range_proof_data = range_proof_account.is_none().then_some(range_proof_data);
+
+            (
+                equality_proof_data,
+                transfer_amount_ciphertext_validity_proof_data,
+                percentage_with_cap_proof_data,
+                fee_ciphertext_validity_proof_data,
+                range_proof_data,
+            )
+        };
 
         // cannot panic as long as either `proof_data` or `proof_account` is `Some(..)`,
         // which is guaranteed by the previous check
@@ -2533,8 +2585,8 @@ where
             )
             .unwrap();
         let fee_sigma_proof_location = Self::confidential_transfer_create_proof_location(
-            fee_sigma_proof_data.as_ref(),
-            fee_sigma_proof_account,
+            percentage_with_cap_proof_data.as_ref(),
+            percentage_with_cap_proof_account,
             3,
         )
         .unwrap();
