@@ -18,7 +18,7 @@
     "test": "sed -i '1s/.*/{ \"type\": \"module\",/' package.json && NODE_OPTIONS='--loader=tsx' ava ; ret=$?; sed -i '1s/.*/{/' package.json && exit $ret"
   },
   "devDependencies": {
-    "@types/node": "^22.3.0",
+    "@types/node": "^22.4.1",
     "@ava/typescript": "^5.0.0",
     "@typescript-eslint/eslint-plugin": "^8.1.0",
     "ava": "^6.1.3",
