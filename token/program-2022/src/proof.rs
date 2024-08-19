@@ -1,4 +1,4 @@
-//! Helper for processing instruction data from ZK Token proof program
+//! Helper for processing instruction data from ZK ElGamal proof program
 
 use {
     crate::check_zk_token_proof_program_account,

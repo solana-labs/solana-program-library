@@ -61,7 +61,7 @@ pub enum ConfidentialTransferFeeInstruction {
     ///
     /// In order for this instruction to be successfully processed, it must be
     /// accompanied by the `VerifyCiphertextCiphertextEquality` instruction
-    /// of the `zk_token_proof` program in the same transaction or the
+    /// of the `zk_elgamal_proof` program in the same transaction or the
     /// address of a context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
@@ -126,7 +126,7 @@ pub enum ConfidentialTransferFeeInstruction {
     ///
     /// In order for this instruction to be successfully processed, it must be
     /// accompanied by the `VerifyWithdrawWithheldTokens` instruction of the
-    /// `zk_token_proof` program in the same transaction or the address of a
+    /// `zk_elgamal_proof` program in the same transaction or the address of a
     /// context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
