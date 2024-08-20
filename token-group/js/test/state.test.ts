@@ -16,16 +16,16 @@ describe('Token Group State', () => {
             checkPackUnpack({
                 mint: new PublicKey('44444444444444444444444444444444444444444444'),
                 updateAuthority: new PublicKey('55555555555555555555555555555555555555555555'),
-                size: 10,
-                maxSize: 20,
+                size: BigInt(10),
+                maxSize: BigInt(20),
             });
         });
 
         it('Can pack and unpack TokenGroup without updateAuthoritygroup', () => {
             checkPackUnpack({
                 mint: new PublicKey('44444444444444444444444444444444444444444444'),
-                size: 10,
-                maxSize: 20,
+                size: BigInt(10),
+                maxSize: BigInt(20),
             });
         });
     });
@@ -40,7 +40,7 @@ describe('Token Group State', () => {
             checkPackUnpack({
                 mint: new PublicKey('55555555555555555555555555555555555555555555'),
                 group: new PublicKey('66666666666666666666666666666666666666666666'),
-                memberNumber: 8,
+                memberNumber: BigInt(8),
             });
         });
     });

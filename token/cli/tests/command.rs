@@ -4151,7 +4151,7 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
     let account = config.rpc_client.get_account(&mint).await.unwrap();
     let group_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
     let extension = group_mint_state.get_extension::<TokenGroup>().unwrap();
-    assert_eq!(u32::from(extension.size), 1);
+    assert_eq!(u64::from(extension.size), 1);
 
     let account = config.rpc_client.get_account(&member_mint).await.unwrap();
     let member_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
@@ -4160,7 +4160,7 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
         .unwrap();
     assert_eq!(extension.group, mint);
     assert_eq!(extension.mint, member_mint);
-    assert_eq!(u32::from(extension.member_number), 1);
+    assert_eq!(u64::from(extension.member_number), 1);
 
     // update authority
     process_test_command(

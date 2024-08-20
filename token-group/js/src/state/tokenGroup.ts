@@ -1,12 +1,12 @@
 import { PublicKey } from '@solana/web3.js';
 import type { ReadonlyUint8Array } from '@solana/codecs';
-import { fixCodecSize, getBytesCodec, getStructCodec, getU32Codec } from '@solana/codecs';
+import { fixCodecSize, getBytesCodec, getStructCodec, getU64Codec } from '@solana/codecs';
 
 const tokenGroupCodec = getStructCodec([
     ['updateAuthority', fixCodecSize(getBytesCodec(), 32)],
     ['mint', fixCodecSize(getBytesCodec(), 32)],
-    ['size', getU32Codec()],
-    ['maxSize', getU32Codec()],
+    ['size', getU64Codec()],
+    ['maxSize', getU64Codec()],
 ]);
 
 export const TOKEN_GROUP_SIZE = tokenGroupCodec.fixedSize;
@@ -17,9 +17,9 @@ export interface TokenGroup {
     /** The associated mint, used to counter spoofing to be sure that group belongs to a particular mint */
     mint: PublicKey;
     /** The current number of group members */
-    size: number;
+    size: bigint;
     /** The maximum number of group members */
-    maxSize: number;
+    maxSize: bigint;
 }
 
 // Checks if all elements in the array are 0

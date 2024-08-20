@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import type { Decoder } from '@solana/codecs';
-import { fixDecoderSize, getBytesDecoder, getStructDecoder, getU32Decoder } from '@solana/codecs';
+import { fixDecoderSize, getBytesDecoder, getStructDecoder, getU64Decoder } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
 import { PublicKey, type TransactionInstruction } from '@solana/web3.js';
 
@@ -28,7 +28,7 @@ describe('Token Group Instructions', () => {
     const updateAuthority = new PublicKey('44444444444444444444444444444444444444444444');
     const mint = new PublicKey('55555555555555555555555555555555555555555555');
     const mintAuthority = new PublicKey('66666666666666666666666666666666666666666666');
-    const maxSize = 100;
+    const maxSize = BigInt(100);
 
     it('Can create InitializeGroup Instruction', () => {
         checkPackUnpack(
@@ -43,7 +43,7 @@ describe('Token Group Instructions', () => {
             splDiscriminate('spl_token_group_interface:initialize_token_group'),
             getStructDecoder([
                 ['updateAuthority', fixDecoderSize(getBytesDecoder(), 32)],
-                ['maxSize', getU32Decoder()],
+                ['maxSize', getU64Decoder()],
             ]),
             { updateAuthority: Uint8Array.from(updateAuthority.toBuffer()), maxSize },
         );
@@ -58,7 +58,7 @@ describe('Token Group Instructions', () => {
                 maxSize,
             }),
             splDiscriminate('spl_token_group_interface:update_group_max_size'),
-            getStructDecoder([['maxSize', getU32Decoder()]]),
+            getStructDecoder([['maxSize', getU64Decoder()]]),
             { maxSize },
         );
     });

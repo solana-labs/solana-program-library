@@ -76,8 +76,8 @@ describe('tokenGroup', async () => {
         const tokenGroup = {
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         };
 
         // Transfer the required amount for rent exemption
@@ -112,8 +112,8 @@ describe('tokenGroup', async () => {
         const tokenGroup = {
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         };
 
         await tokenGroupInitializeGroupWithRentTransfer(
@@ -137,8 +137,8 @@ describe('tokenGroup', async () => {
         const tokenGroup = {
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         };
 
         // Transfer the required amount for rent exemption
@@ -169,7 +169,7 @@ describe('tokenGroup', async () => {
             payer,
             mint.publicKey,
             updateAuthority.publicKey,
-            20,
+            BigInt(20),
             [updateAuthority],
             undefined,
             TEST_PROGRAM_ID,
@@ -180,8 +180,8 @@ describe('tokenGroup', async () => {
         expect(group).to.deep.equal({
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 20,
+            size: BigInt(0),
+            maxSize: BigInt(20),
         });
     });
 
@@ -189,8 +189,8 @@ describe('tokenGroup', async () => {
         const tokenGroup = {
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         };
 
         // Transfer the required amount for rent exemption
@@ -233,8 +233,8 @@ describe('tokenGroup', async () => {
         expect(group).to.deep.equal({
             updateAuthority: newUpdateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         });
     });
 });

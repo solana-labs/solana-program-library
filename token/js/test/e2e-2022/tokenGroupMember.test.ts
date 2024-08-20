@@ -83,7 +83,7 @@ describe('tokenGroupMember', async () => {
             groupMint.publicKey,
             groupMintAuthority.publicKey,
             groupUpdateAuthority.publicKey,
-            3,
+            BigInt(3),
             [payer, groupMintAuthority],
             undefined,
             TEST_PROGRAM_ID,
@@ -123,7 +123,7 @@ describe('tokenGroupMember', async () => {
         const tokenGroupMember = {
             mint: memberMint.publicKey,
             group: groupMint.publicKey,
-            memberNumber: 1,
+            memberNumber: BigInt(1),
         };
 
         await tokenGroupMemberInitializeWithRentTransfer(
