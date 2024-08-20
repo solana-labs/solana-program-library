@@ -3,7 +3,7 @@
 pub use spl_transfer_hook_interface::offchain::{AccountDataResult, AccountFetchError};
 use {
     crate::{
-        extension::{transfer_hook, StateWithExtensions},
+        extension::{transfer_fee, transfer_hook, StateWithExtensions},
         state::Mint,
     },
     solana_program::{instruction::Instruction, program_error::ProgramError, pubkey::Pubkey},
