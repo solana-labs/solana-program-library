@@ -46,11 +46,11 @@
     "@solana/buffer-layout-utils": "^0.2.0"
   },
   "peerDependencies": {
-    "@solana/web3.js": "^1.95.2"
+    "@solana/web3.js": "^1.95.3"
   },
   "devDependencies": {
     "@solana/spl-token": "0.4.6",
-    "@solana/web3.js": "^1.95.2",
+    "@solana/web3.js": "^1.95.3",
     "@types/bn.js": "^5.1.0",
     "@types/chai-as-promised": "^7.1.4",
     "@types/chai": "^4.3.17",
