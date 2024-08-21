@@ -536,7 +536,7 @@ async fn withdraw_withheld_tokens_from_mint_with_option<S: Signers>(
                     &record_account.pubkey(),
                     &record_account_authority.pubkey(),
                     destination_account,
-                    &record_account_authority,
+                    &[&record_account_authority],
                 )
                 .await
                 .unwrap();
@@ -566,7 +566,7 @@ async fn withdraw_withheld_tokens_from_mint_with_option<S: Signers>(
                     &context_account_authority.pubkey(),
                     &equality_proof,
                     false,
-                    &context_account,
+                    &[&context_account],
                 )
                 .await
                 .unwrap();
@@ -591,7 +591,7 @@ async fn withdraw_withheld_tokens_from_mint_with_option<S: Signers>(
                     &context_account.pubkey(),
                     destination_account,
                     &context_account_authority.pubkey(),
-                    &context_account_authority,
+                    &[&context_account_authority],
                 )
                 .await
                 .unwrap();
@@ -861,7 +861,7 @@ async fn withdraw_withheld_tokens_from_accounts_with_option<S: Signers>(
                     &record_account.pubkey(),
                     &record_account_authority.pubkey(),
                     destination_account,
-                    &record_account_authority,
+                    &[&record_account_authority],
                 )
                 .await
                 .unwrap();
@@ -891,7 +891,7 @@ async fn withdraw_withheld_tokens_from_accounts_with_option<S: Signers>(
                     &context_account_authority.pubkey(),
                     &equality_proof,
                     false,
-                    &context_account,
+                    &[&context_account],
                 )
                 .await
                 .unwrap();
@@ -917,7 +917,7 @@ async fn withdraw_withheld_tokens_from_accounts_with_option<S: Signers>(
                     &context_account.pubkey(),
                     destination_account,
                     &context_account_authority.pubkey(),
-                    &context_account_authority,
+                    &[&context_account_authority],
                 )
                 .await
                 .unwrap();
