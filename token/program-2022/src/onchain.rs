@@ -80,7 +80,8 @@ pub fn invoke_transfer_checked<'a>(
 }
 
 /// Helper to CPI into token-2022 on-chain, looking through the additional
-/// account infos to create the proper instruction with the proper account infos
+/// account infos to create the proper instruction with the fee
+/// and proper account infos
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_transfer_checked_with_fee<'a>(
     token_program_id: &Pubkey,
