@@ -534,8 +534,8 @@ async fn withdraw_withheld_tokens_from_mint_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     destination_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -859,8 +859,8 @@ async fn withdraw_withheld_tokens_from_accounts_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     destination_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await

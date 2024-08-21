@@ -110,8 +110,8 @@ async fn configure_account_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &pubkey_validity_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -637,8 +637,8 @@ async fn empty_account_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &zero_ciphertext_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -1054,8 +1054,8 @@ async fn withdraw_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &equality_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -1064,8 +1064,8 @@ async fn withdraw_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &range_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -1426,8 +1426,8 @@ async fn confidential_transfer_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &equality_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -1436,8 +1436,8 @@ async fn confidential_transfer_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &ciphertext_validity_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -1446,8 +1446,8 @@ async fn confidential_transfer_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &range_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -2024,8 +2024,8 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &equality_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -2034,8 +2034,8 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &transfer_amount_ciphertext_validity_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -2044,8 +2044,8 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &fee_sigma_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -2054,8 +2054,8 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &fee_ciphertext_validity_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await
@@ -2064,8 +2064,8 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
             token
                 .confidential_transfer_close_record_account(
                     &range_proof_record_account.pubkey(),
-                    &record_account_authority.pubkey(),
                     source_account,
+                    &record_account_authority.pubkey(),
                     &[&record_account_authority],
                 )
                 .await

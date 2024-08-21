@@ -2355,15 +2355,15 @@ where
     pub async fn confidential_transfer_close_record_account<S: Signers>(
         &self,
         record_account: &Pubkey,
-        record_authority: &Pubkey,
-        receiver: &Pubkey,
+        lamport_destination_account: &Pubkey,
+        record_account_authority: &Pubkey,
         signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[spl_record::instruction::close_account(
                 record_account,
-                record_authority,
-                receiver,
+                record_account_authority,
+                lamport_destination_account,
             )],
             signing_keypairs,
         )
