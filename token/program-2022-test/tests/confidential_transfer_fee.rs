@@ -587,7 +587,7 @@ async fn withdraw_withheld_tokens_from_mint_with_option<S: Signers>(
                 .await;
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &context_account.pubkey(),
                     destination_account,
                     &context_account_authority.pubkey(),
@@ -913,7 +913,7 @@ async fn withdraw_withheld_tokens_from_accounts_with_option<S: Signers>(
                 .await;
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &context_account.pubkey(),
                     destination_account,
                     &context_account_authority.pubkey(),

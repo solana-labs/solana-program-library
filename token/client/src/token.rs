@@ -2448,7 +2448,7 @@ where
     }
 
     /// Close a ZK Token proof program context state
-    pub async fn confidential_transfer_close_context_state<S: Signers>(
+    pub async fn confidential_transfer_close_context_state_account<S: Signers>(
         &self,
         context_state_account: &Pubkey,
         lamport_destination_account: &Pubkey,

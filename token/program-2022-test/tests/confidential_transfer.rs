@@ -152,7 +152,7 @@ async fn configure_account_with_option<S: Signers>(
                 .await;
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &pubkey_validity_proof_context_account.pubkey(),
                     account,
                     &context_account_authority.pubkey(),
@@ -685,7 +685,7 @@ async fn empty_account_with_option<S: Signers>(
                 .await;
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &zero_ciphertext_proof_context_account.pubkey(),
                     account,
                     &context_account_authority.pubkey(),
@@ -1135,7 +1135,7 @@ async fn withdraw_with_option<S: Signers>(
                 .await;
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &equality_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
@@ -1145,7 +1145,7 @@ async fn withdraw_with_option<S: Signers>(
                 .unwrap();
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &range_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
@@ -1548,7 +1548,7 @@ async fn confidential_transfer_with_option<S: Signers>(
                 .await;
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &equality_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
@@ -1558,7 +1558,7 @@ async fn confidential_transfer_with_option<S: Signers>(
                 .unwrap();
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &ciphertext_validity_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
@@ -1568,7 +1568,7 @@ async fn confidential_transfer_with_option<S: Signers>(
                 .unwrap();
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &range_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
@@ -2209,7 +2209,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                 .await;
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &equality_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
@@ -2219,7 +2219,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                 .unwrap();
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &transfer_amount_ciphertext_validity_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
@@ -2229,7 +2229,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                 .unwrap();
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &percentage_with_cap_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
@@ -2239,7 +2239,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                 .unwrap();
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &fee_ciphertext_validity_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
@@ -2249,7 +2249,7 @@ async fn confidential_transfer_with_fee_with_option<S: Signers>(
                 .unwrap();
 
             token
-                .confidential_transfer_close_context_state(
+                .confidential_transfer_close_context_state_account(
                     &range_proof_context_account.pubkey(),
                     source_account,
                     &context_account_authority.pubkey(),
