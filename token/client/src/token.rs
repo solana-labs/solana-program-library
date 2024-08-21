@@ -2271,7 +2271,8 @@ where
     /// Create a record account containing zero-knowledge proof needed for a
     /// confidential transfer.
     pub async fn confidential_transfer_create_record_account<
-        S: Signer,
+        S1: Signer,
+        S2: Signer,
         ZK: Pod + ZkProofData<U>,
         U: Pod,
     >(
@@ -2279,8 +2280,8 @@ where
         record_account: &Pubkey,
         record_authority: &Pubkey,
         proof_data: &ZK,
-        record_account_signer: &S,
-        record_authority_signer: &S,
+        record_account_signer: &S1,
+        record_authority_signer: &S2,
     ) -> TokenResult<Vec<T::Output>> {
         let proof_data = bytes_of(proof_data);
         let space = proof_data
@@ -2326,11 +2327,8 @@ where
         };
 
         let first_ixs = create_record_instructions(true, first_chunk, 0);
-        self.process_ixs(
-            &first_ixs,
-            &[record_account_signer, record_authority_signer],
-        )
-        .await?;
+        let first_ixs_signers: [&dyn Signer; 2] = [record_account_signer, record_authority_signer];
+        self.process_ixs(&first_ixs, &first_ixs_signers).await?;
 
         let subsequent_chunk_size =
             calculate_record_max_chunk_size(create_record_instructions, false);
@@ -2354,12 +2352,12 @@ where
     }
 
     /// Close a record account.
-    pub async fn confidential_transfer_close_record_account<S: Signer>(
+    pub async fn confidential_transfer_close_record_account<S: Signers>(
         &self,
         record_account: &Pubkey,
         record_authority: &Pubkey,
         receiver: &Pubkey,
-        record_authority_signer: &S,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[spl_record::instruction::close_account(
@@ -2367,7 +2365,7 @@ where
                 record_authority,
                 receiver,
             )],
-            &[record_authority_signer],
+            signing_keypairs,
         )
         .await
     }
@@ -2375,7 +2373,7 @@ where
     /// Create a context state account containing zero-knowledge proof needed
     /// for a confidential transfer instruction.
     pub async fn confidential_transfer_create_context_state_account<
-        S: Signer,
+        S: Signers,
         ZK: Pod + ZkProofData<U>,
         U: Pod,
     >(
@@ -2384,7 +2382,7 @@ where
         context_state_authority: &Pubkey,
         proof_data: &ZK,
         split_account_creation_and_proof_verification: bool,
-        signer: &S,
+        signing_keypairs: &S,
     ) -> TokenResult<T::Output> {
         let instruction_type = zk_proof_type_to_instruction(ZK::PROOF_TYPE)?;
         let space = size_of::<ProofContextState<U>>();
@@ -2410,7 +2408,7 @@ where
                     space as u64,
                     &zk_elgamal_proof_program::id(),
                 )],
-                &[signer],
+                signing_keypairs,
             )
             .await?;
 
@@ -2443,14 +2441,14 @@ where
                     ),
                     instruction_type.encode_verify_proof(Some(context_state_info), proof_data),
                 ],
-                &[signer],
+                signing_keypairs,
             )
             .await
         }
     }
 
     /// Close a ZK Token proof program context state
-    pub async fn confidential_transfer_close_context_state<S: Signer>(
+    pub async fn confidential_transfer_close_context_state<S: Signers>(
         &self,
         context_state_account: &Pubkey,
         lamport_destination_account: &Pubkey,
@@ -2467,7 +2465,7 @@ where
                 context_state_info,
                 lamport_destination_account,
             )],
-            &[signing_keypairs],
+            signing_keypairs,
         )
         .await
     }
