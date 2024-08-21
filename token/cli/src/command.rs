@@ -1604,27 +1604,32 @@ async fn command_transfer(
                 .unwrap();
 
             // setup proofs
+            let create_range_proof_context_signer = &[&range_proof_context_state_account];
+            let create_equality_proof_context_signer = &[&equality_proof_context_state_account];
+            let create_ciphertext_validity_proof_context_signer =
+                &[&ciphertext_validity_proof_context_state_account];
+
             let _ = try_join!(
                 token.confidential_transfer_create_context_state_account(
                     &range_proof_pubkey,
                     &context_state_authority_pubkey,
                     &range_proof_data,
                     true,
-                    &range_proof_context_state_account,
+                    create_range_proof_context_signer
                 ),
                 token.confidential_transfer_create_context_state_account(
                     &equality_proof_pubkey,
                     &context_state_authority_pubkey,
                     &equality_proof_data,
                     false,
-                    &equality_proof_context_state_account,
+                    create_equality_proof_context_signer
                 ),
                 token.confidential_transfer_create_context_state_account(
                     &ciphertext_validity_proof_pubkey,
                     &context_state_authority_pubkey,
                     &ciphertext_validity_proof_data,
                     false,
-                    &ciphertext_validity_proof_context_state_account,
+                    create_ciphertext_validity_proof_context_signer
                 )
             )?;
 
@@ -1655,24 +1660,25 @@ async fn command_transfer(
                 .await?;
 
             // close context state accounts
+            let close_context_state_signer = &[&context_state_authority];
             let _ = try_join!(
                 token.confidential_transfer_close_context_state(
                     &equality_proof_pubkey,
                     &sender,
                     &context_state_authority_pubkey,
-                    &context_state_authority,
+                    close_context_state_signer
                 ),
                 token.confidential_transfer_close_context_state(
                     &ciphertext_validity_proof_pubkey,
                     &sender,
                     &context_state_authority_pubkey,
-                    &context_state_authority,
+                    close_context_state_signer
                 ),
                 token.confidential_transfer_close_context_state(
                     &range_proof_pubkey,
                     &sender,
                     &context_state_authority_pubkey,
-                    &context_state_authority,
+                    close_context_state_signer
                 ),
             )?;
 
@@ -3353,6 +3359,8 @@ async fn command_deposit_withdraw_confidential_tokens(
 
             // set up context state accounts
             let context_state_authority_pubkey = context_state_authority.pubkey();
+            let create_equality_proof_signer = &[&equality_proof_context_state_keypair];
+            let create_range_proof_signer = &[&range_proof_context_state_keypair];
 
             let _ = try_join!(
                 token.confidential_transfer_create_context_state_account(
@@ -3360,14 +3368,14 @@ async fn command_deposit_withdraw_confidential_tokens(
                     &context_state_authority_pubkey,
                     &equality_proof_data,
                     false,
-                    &equality_proof_context_state_keypair,
+                    create_equality_proof_signer
                 ),
                 token.confidential_transfer_create_context_state_account(
                     &range_proof_context_state_pubkey,
                     &context_state_authority_pubkey,
                     &range_proof_data,
                     true,
-                    &range_proof_context_state_keypair,
+                    create_range_proof_signer,
                 )
             )?;
 
@@ -3392,18 +3400,19 @@ async fn command_deposit_withdraw_confidential_tokens(
                 .await?;
 
             // close context state account
+            let close_context_state_signer = &[&context_state_authority];
             let _ = try_join!(
                 token.confidential_transfer_close_context_state(
                     &equality_proof_context_state_pubkey,
                     &token_account_address,
                     &context_state_authority_pubkey,
-                    &context_state_authority,
+                    close_context_state_signer
                 ),
                 token.confidential_transfer_close_context_state(
                     &range_proof_context_state_pubkey,
                     &token_account_address,
                     &context_state_authority_pubkey,
-                    &context_state_authority,
+                    close_context_state_signer
                 )
             )?;
 
