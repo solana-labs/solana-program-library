@@ -966,6 +966,150 @@ async fn success_transfers_using_onchain_helper() {
 }
 
 #[tokio::test]
+async fn success_transfers_with_fee_using_onchain_helper() {
+    let authority = Pubkey::new_unique();
+    let program_id = Pubkey::new_unique();
+    let mint_a_keypair = Keypair::new();
+    let mint_a = mint_a_keypair.pubkey();
+    let mint_b_keypair = Keypair::new();
+    let mint_b = mint_b_keypair.pubkey();
+    let amount = 10;
+
+    let transfer_fee_config_authority = Keypair::new();
+    let withdraw_withheld_authority = Keypair::new();
+    let transfer_fee_basis_points = TEST_FEE_BASIS_POINTS;
+    let maximum_fee = TEST_MAXIMUM_FEE;
+
+    let swap_program_id = Pubkey::new_unique();
+    let mut program_test = setup_program_test(&program_id);
+    program_test.add_program(
+        "my_swap",
+        swap_program_id,
+        processor!(process_instruction_swap),
+    );
+    add_validation_account(&mut program_test, &mint_a, &program_id);
+    add_validation_account(&mut program_test, &mint_b, &program_id);
+
+    let context = program_test.start_with_context().await;
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+    let mut context_a = TestContext {
+        context: context.clone(),
+        token_context: None,
+    };
+    context_a
+        .init_token_with_mint_keypair_and_freeze_authority(
+            mint_a_keypair,
+            vec![
+                ExtensionInitializationParams::TransferHook {
+                    authority: Some(authority),
+                    program_id: Some(program_id),
+                },
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+                    withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+                    transfer_fee_basis_points,
+                    maximum_fee,
+                },
+            ],
+            None,
+        )
+        .await
+        .unwrap();
+    let token_a_context = context_a.token_context.unwrap();
+    let (source_a_account, destination_a_account) =
+        setup_accounts(&token_a_context, Keypair::new(), Keypair::new(), amount).await;
+    let authority_a = token_a_context.alice;
+    let token_a = token_a_context.token;
+    let mut context_b = TestContext {
+        context,
+        token_context: None,
+    };
+    context_b
+        .init_token_with_mint_keypair_and_freeze_authority(
+            mint_b_keypair,
+            vec![
+                ExtensionInitializationParams::TransferHook {
+                    authority: Some(authority),
+                    program_id: Some(program_id),
+                },
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+                    withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+                    transfer_fee_basis_points,
+                    maximum_fee,
+                },
+            ],
+            None,
+        )
+        .await
+        .unwrap();
+    let token_b_context = context_b.token_context.unwrap();
+    let (source_b_account, destination_b_account) =
+        setup_accounts(&token_b_context, Keypair::new(), Keypair::new(), amount).await;
+    let authority_b = token_b_context.alice;
+    let account_metas = vec![
+        AccountMeta::new(source_a_account, false),
+        AccountMeta::new_readonly(mint_a, false),
+        AccountMeta::new(destination_a_account, false),
+        AccountMeta::new_readonly(authority_a.pubkey(), true),
+        AccountMeta::new_readonly(spl_token_2022::id(), false),
+        AccountMeta::new(source_b_account, false),
+        AccountMeta::new_readonly(mint_b, false),
+        AccountMeta::new(destination_b_account, false),
+        AccountMeta::new_readonly(authority_b.pubkey(), true),
+        AccountMeta::new_readonly(spl_token_2022::id(), false),
+    ];
+
+    let mut instruction = Instruction::new_with_bytes(swap_program_id, &[], account_metas);
+
+    add_extra_account_metas_for_execute(
+        &mut instruction,
+        &program_id,
+        &source_a_account,
+        &mint_a,
+        &destination_a_account,
+        &authority_a.pubkey(),
+        amount,
+        |address| {
+            token_a.get_account(address).map_ok_or_else(
+                |e| match e {
+                    TokenClientError::AccountNotFound => Ok(None),
+                    _ => Err(offchain::AccountFetchError::from(e)),
+                },
+                |acc| Ok(Some(acc.data)),
+            )
+        },
+    )
+    .await
+    .unwrap();
+    add_extra_account_metas_for_execute(
+        &mut instruction,
+        &program_id,
+        &source_b_account,
+        &mint_b,
+        &destination_b_account,
+        &authority_b.pubkey(),
+        amount,
+        |address| {
+            token_a.get_account(address).map_ok_or_else(
+                |e| match e {
+                    TokenClientError::AccountNotFound => Ok(None),
+                    _ => Err(offchain::AccountFetchError::from(e)),
+                },
+                |acc| Ok(Some(acc.data)),
+            )
+        },
+    )
+    .await
+    .unwrap();
+
+    token_a
+        .process_ixs(&[instruction], &[&authority_a, &authority_b])
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn success_confidential_transfer() {
     let authority = Keypair::new();
     let program_id = Pubkey::new_unique();
