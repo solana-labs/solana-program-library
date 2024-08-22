@@ -13,6 +13,7 @@ use {
         entrypoint::ProgramResult,
         instruction::{AccountMeta, Instruction, InstructionError},
         program_error::ProgramError,
+        program_option::COption,
         pubkey::Pubkey,
         signature::Signer,
         signer::keypair::Keypair,
@@ -23,6 +24,7 @@ use {
     spl_token_2022::{
         error::TokenError,
         extension::{
+            transfer_fee::{TransferFee, TransferFeeAmount, TransferFeeConfig},
             transfer_hook::{TransferHook, TransferHookAccount},
             BaseStateWithExtensions,
         },
@@ -35,6 +37,9 @@ use {
     },
     std::{convert::TryInto, sync::Arc},
 };
+
+const TEST_MAXIMUM_FEE: u64 = 10_000_000;
+const TEST_FEE_BASIS_POINTS: u16 = 250;
 
 /// Test program to fail transfer hook, conforms to transfer-hook-interface
 pub fn process_instruction_fail(
@@ -259,6 +264,63 @@ async fn setup(mint: Keypair, program_id: &Pubkey, authority: &Pubkey) -> TestCo
         .await
         .unwrap();
     context
+}
+
+async fn setup_with_fee(mint: Keypair, program_id: &Pubkey, authority: &Pubkey) -> TestContext {
+    let mut program_test = setup_program_test(program_id);
+
+    let transfer_fee_config_authority = Keypair::new();
+    let withdraw_withheld_authority = Keypair::new();
+    let transfer_fee_basis_points = TEST_FEE_BASIS_POINTS;
+    let maximum_fee = TEST_MAXIMUM_FEE;
+    add_validation_account(&mut program_test, &mint.pubkey(), program_id);
+
+    let context = program_test.start_with_context().await;
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+
+    let mut context = TestContext {
+        context,
+        token_context: None,
+    };
+    context
+        .init_token_with_mint_keypair_and_freeze_authority(
+            mint,
+            vec![
+                ExtensionInitializationParams::TransferHook {
+                    authority: Some(*authority),
+                    program_id: Some(*program_id),
+                },
+                ExtensionInitializationParams::TransferFeeConfig {
+                    transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+                    withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+                    transfer_fee_basis_points,
+                    maximum_fee,
+                },
+            ],
+            None,
+        )
+        .await
+        .unwrap();
+    context
+}
+
+fn test_transfer_fee() -> TransferFee {
+    TransferFee {
+        epoch: 0.into(),
+        transfer_fee_basis_points: TEST_FEE_BASIS_POINTS.into(),
+        maximum_fee: TEST_MAXIMUM_FEE.into(),
+    }
+}
+
+fn test_transfer_fee_config() -> TransferFeeConfig {
+    let transfer_fee = test_transfer_fee();
+    TransferFeeConfig {
+        transfer_fee_config_authority: COption::Some(Pubkey::new_unique()).try_into().unwrap(),
+        withdraw_withheld_authority: COption::Some(Pubkey::new_unique()).try_into().unwrap(),
+        withheld_amount: 0.into(),
+        older_transfer_fee: transfer_fee,
+        newer_transfer_fee: transfer_fee,
+    }
 }
 
 async fn setup_with_confidential_transfers(
@@ -542,6 +604,88 @@ async fn success_transfer() {
         .unwrap();
     assert_eq!(
         source
+            .get_extension::<TransferHookAccount>()
+            .unwrap()
+            .transferring,
+        false.into()
+    );
+}
+
+#[tokio::test]
+async fn success_transfer_with_fee() {
+    let authority = Keypair::new();
+    let program_id = Pubkey::new_unique();
+    let mint_keypair = Keypair::new();
+
+    let maximum_fee = TEST_MAXIMUM_FEE;
+    let alice_amount = maximum_fee * 100;
+    let transfer_amount = maximum_fee;
+
+    let token_context = setup_with_fee(mint_keypair, &program_id, &authority.pubkey())
+        .await
+        .token_context
+        .take()
+        .unwrap();
+
+    let (alice_account, bob_account) =
+        setup_accounts(&token_context, Keypair::new(), Keypair::new(), alice_amount).await;
+
+    let transfer_fee_config = test_transfer_fee_config();
+    let fee = transfer_fee_config
+        .calculate_epoch_fee(0, transfer_amount)
+        .unwrap();
+
+    token_context
+        .token
+        .transfer_with_fee(
+            &alice_account,
+            &bob_account,
+            &token_context.alice.pubkey(),
+            transfer_amount,
+            fee,
+            &[&token_context.alice],
+        )
+        .await
+        .unwrap();
+
+    // Get the accounts' state after the transfer
+    let alice_state = token_context
+        .token
+        .get_account_info(&alice_account)
+        .await
+        .unwrap();
+    let bob_state = token_context
+        .token
+        .get_account_info(&bob_account)
+        .await
+        .unwrap();
+
+    // Check that the correct amount was deducted from Alice's account
+    assert_eq!(alice_state.base.amount, alice_amount - transfer_amount);
+
+    // Check the there are no tokens withheld in Alice's account
+    let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+
+    // Check the fee tokens are withheld in Bobs's account
+    let extension = bob_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, fee.into());
+
+    // Check that the correct amount was added to Bobs's account
+    assert_eq!(bob_state.base.amount, transfer_amount - fee);
+
+    // the example program checks that the transferring flag was set to true,
+    // so make sure that it was correctly unset by the token program
+    assert_eq!(
+        bob_state
+            .get_extension::<TransferHookAccount>()
+            .unwrap()
+            .transferring,
+        false.into()
+    );
+
+    assert_eq!(
+        alice_state
             .get_extension::<TransferHookAccount>()
             .unwrap()
             .transferring,
