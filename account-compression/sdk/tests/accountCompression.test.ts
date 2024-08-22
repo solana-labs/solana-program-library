@@ -179,7 +179,7 @@ describe('Account Compression', () => {
                 assert(false, 'Double finalizing should have failed');
             } catch {}
         });
-        
+
         it('Should be able to close a prepared tree', async () => {
             let payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
             let treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed')!;
@@ -189,12 +189,12 @@ describe('Account Compression', () => {
 
             const closeIx = createCloseEmptyTreeIx(cmt, payer, payer);
             await execute(provider, [closeIx], [payerKeypair]);
-            
+
             payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
             const finalLamports = payerInfo!.lamports;
             assert(
                 finalLamports === payerLamports + treeLamports - 5000,
-                'Expected payer to have received the lamports from the closed tree account'
+                'Expected payer to have received the lamports from the closed tree account',
             );
 
             treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
@@ -499,7 +499,7 @@ describe('Account Compression', () => {
         });
         it('Should be able to close a prepared tree after setting the canopy', async () => {
             const merkleTreeRaw = new MerkleTree(leaves);
-            
+
             const appendIx = createAppendCanopyNodesIx(
                 cmt,
                 payer,
@@ -518,12 +518,12 @@ describe('Account Compression', () => {
 
             const closeIx = createCloseEmptyTreeIx(cmt, payer, payer);
             await execute(provider, [closeIx], [payerKeypair]);
-            
+
             payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
             const finalLamports = payerInfo!.lamports;
             assert(
                 finalLamports === payerLamports + treeLamports - 5000,
-                'Expected payer to have received the lamports from the closed tree account'
+                'Expected payer to have received the lamports from the closed tree account',
             );
 
             treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
@@ -565,7 +565,7 @@ describe('Account Compression', () => {
                 'confirmed',
             );
         });
-        
+
         it('Should be able to finalize an empty tree with empty canopy and close it afterwards', async () => {
             const merkleTreeRaw = new MerkleTree(leaves);
             const root = merkleTreeRaw.root;
@@ -588,12 +588,12 @@ describe('Account Compression', () => {
 
             const closeIx = createCloseEmptyTreeIx(cmt, payer, payer);
             await execute(provider, [closeIx], [payerKeypair]);
-            
+
             payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
             const finalLamports = payerInfo!.lamports;
             assert(
                 finalLamports === payerLamports + treeLamports - 5000,
-                'Expected payer to have received the lamports from the closed tree account'
+                'Expected payer to have received the lamports from the closed tree account',
             );
 
             treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
@@ -1054,7 +1054,7 @@ describe('Account Compression', () => {
                 payerKeypair,
                 0,
                 { maxBufferSize: 8, maxDepth: DEPTH },
-                DEPTH // Store full tree on chain
+                DEPTH, // Store full tree on chain
             );
             cmt = cmtKeypair.publicKey;
             const appendIx = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32)], 0);
