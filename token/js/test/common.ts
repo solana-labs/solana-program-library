@@ -5,6 +5,7 @@ import { TOKEN_PROGRAM_ID } from '../src';
 export async function newAccountWithLamports(connection: Connection, lamports = 1000000): Promise<Signer> {
     const account = Keypair.generate();
     const signature = await connection.requestAirdrop(account.publicKey, lamports);
+    // TODO: use deprecated method
     await connection.confirmTransaction(signature);
     return account;
 }

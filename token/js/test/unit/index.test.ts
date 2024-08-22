@@ -3,6 +3,7 @@ import { expect, use } from 'chai';
 import {
     ASSOCIATED_TOKEN_PROGRAM_ID,
     createAssociatedTokenAccountInstruction,
+    createAssociatedTokenAccountIdempotentInstructionWithDerivation,
     createReallocateInstruction,
     createInitializeMintInstruction,
     createInitializeMint2Instruction,
@@ -23,8 +24,10 @@ import {
     createAmountToUiAmountInstruction,
     createUiAmountToAmountInstruction,
     getMintLen,
+    createAssociatedTokenAccountIdempotentInstruction,
 } from '../../src';
 import chaiAsPromised from 'chai-as-promised';
+import { generateKeyPairSync } from 'crypto';
 use(chaiAsPromised);
 
 describe('spl-token instructions', () => {
@@ -166,6 +169,37 @@ describe('spl-associated-token-account instructions', () => {
         );
         expect(ix.programId).to.eql(ASSOCIATED_TOKEN_PROGRAM_ID);
         expect(ix.keys).to.have.length(6);
+    });
+
+    it('create idempotent', () => {
+        const ix = createAssociatedTokenAccountIdempotentInstruction(
+            Keypair.generate().publicKey,
+            Keypair.generate().publicKey,
+            Keypair.generate().publicKey,
+            Keypair.generate().publicKey,
+        );
+        expect(ix.programId).to.eql(ASSOCIATED_TOKEN_PROGRAM_ID);
+        expect(ix.keys).to.have.length(6);
+    });
+
+    it('create idempotent with derivation', () => {
+        const ix = createAssociatedTokenAccountIdempotentInstructionWithDerivation(
+            Keypair.generate().publicKey,
+            Keypair.generate().publicKey,
+            Keypair.generate().publicKey,
+        );
+        expect(ix.programId).to.eql(ASSOCIATED_TOKEN_PROGRAM_ID);
+        expect(ix.keys).to.have.length(6);
+    });
+
+    it('create idempotent with derivation same without', () => {
+        const payer = Keypair.generate().publicKey;
+        const owner = Keypair.generate().publicKey;
+        const mint = Keypair.generate().publicKey;
+        const associatedToken = getAssociatedTokenAddressSync(mint, owner, true);
+        const ix = createAssociatedTokenAccountIdempotentInstruction(payer, associatedToken, owner, mint);
+        const ixDerivation = createAssociatedTokenAccountIdempotentInstructionWithDerivation(payer, owner, mint);
+        expect(ix).to.deep.eq(ixDerivation);
     });
 });
 
