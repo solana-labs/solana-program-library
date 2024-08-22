@@ -7659,7 +7659,6 @@ dependencies = [
  "async-trait",
  "bincode",
  "bytemuck",
- "curve25519-dalek",
  "futures 0.3.30",
  "futures-util",
  "solana-banks-interface",
