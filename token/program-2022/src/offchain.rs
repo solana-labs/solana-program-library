@@ -384,4 +384,103 @@ mod tests {
 
         assert_eq!(instruction.accounts, check_metas);
     }
+
+    #[tokio::test]
+    async fn test_create_transfer_checked_with_fee_instruction_with_extra_metas() {
+        let source = Pubkey::new_unique();
+        let destination = Pubkey::new_unique();
+        let authority = Pubkey::new_unique();
+        let amount = 100u64;
+        let fee = 1u64;
+
+        let validate_state_pubkey =
+            get_extra_account_metas_address(&MINT_PUBKEY, &TRANSFER_HOOK_PROGRAM_ID);
+        let extra_meta_3_pubkey = Pubkey::find_program_address(
+            &[
+                source.as_ref(),
+                destination.as_ref(),
+                validate_state_pubkey.as_ref(),
+            ],
+            &TRANSFER_HOOK_PROGRAM_ID,
+        )
+        .0;
+        let extra_meta_4_pubkey = Pubkey::find_program_address(
+            &[
+                amount.to_le_bytes().as_ref(),
+                destination.as_ref(),
+                EXTRA_META_1.as_ref(),
+                extra_meta_3_pubkey.as_ref(),
+            ],
+            &TRANSFER_HOOK_PROGRAM_ID,
+        )
+        .0;
+
+        let instruction = create_transfer_checked_with_fee_instruction_with_extra_metas(
+            &crate::id(),
+            &source,
+            &MINT_PUBKEY,
+            &destination,
+            &authority,
+            &[],
+            amount,
+            DECIMALS,
+            fee,
+            mock_fetch_account_data_fn,
+        )
+        .await
+        .unwrap();
+
+        let check_metas = [
+            AccountMeta::new(source, false),
+            AccountMeta::new_readonly(MINT_PUBKEY, false),
+            AccountMeta::new(destination, false),
+            AccountMeta::new_readonly(authority, true),
+            AccountMeta::new_readonly(EXTRA_META_1, true),
+            AccountMeta::new_readonly(EXTRA_META_2, true),
+            AccountMeta::new(extra_meta_3_pubkey, false),
+            AccountMeta::new(extra_meta_4_pubkey, false),
+            AccountMeta::new_readonly(TRANSFER_HOOK_PROGRAM_ID, false),
+            AccountMeta::new_readonly(validate_state_pubkey, false),
+        ];
+
+        assert_eq!(instruction.accounts, check_metas);
+
+        // With additional signers
+        let signer_1 = Pubkey::new_unique();
+        let signer_2 = Pubkey::new_unique();
+        let signer_3 = Pubkey::new_unique();
+
+        let instruction = create_transfer_checked_with_fee_instruction_with_extra_metas(
+            &crate::id(),
+            &source,
+            &MINT_PUBKEY,
+            &destination,
+            &authority,
+            &[&signer_1, &signer_2, &signer_3],
+            amount,
+            DECIMALS,
+            fee,
+            mock_fetch_account_data_fn,
+        )
+        .await
+        .unwrap();
+
+        let check_metas = [
+            AccountMeta::new(source, false),
+            AccountMeta::new_readonly(MINT_PUBKEY, false),
+            AccountMeta::new(destination, false),
+            AccountMeta::new_readonly(authority, false), // False because of additional signers
+            AccountMeta::new_readonly(signer_1, true),
+            AccountMeta::new_readonly(signer_2, true),
+            AccountMeta::new_readonly(signer_3, true),
+            AccountMeta::new_readonly(EXTRA_META_1, true),
+            AccountMeta::new_readonly(EXTRA_META_2, true),
+            AccountMeta::new(extra_meta_3_pubkey, false),
+            AccountMeta::new(extra_meta_4_pubkey, false),
+            AccountMeta::new_readonly(TRANSFER_HOOK_PROGRAM_ID, false),
+            AccountMeta::new_readonly(validate_state_pubkey, false),
+        ];
+
+        assert_eq!(instruction.accounts, check_metas);
+    }
 }
