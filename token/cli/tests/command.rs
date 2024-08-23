@@ -139,6 +139,7 @@ async fn main() {
         async_trial!(group_pointer, test_validator, payer),
         async_trial!(group_member_pointer, test_validator, payer),
         async_trial!(transfer_hook, test_validator, payer),
+        async_trial!(transfer_hook_with_transfer_fee, test_validator, payer),
         async_trial!(metadata, test_validator, payer),
         async_trial!(group, test_validator, payer),
         async_trial!(confidential_transfer_with_fee, test_validator, payer),
@@ -3870,6 +3871,107 @@ async fn transfer_hook(test_validator: &TestValidator, payer: &Keypair) {
     let extension = mint_state.get_extension::<TransferHook>().unwrap();
 
     assert_eq!(extension.program_id, None.try_into().unwrap());
+}
+
+async fn transfer_hook_with_transfer_fee(test_validator: &TestValidator, payer: &Keypair) {
+    let program_id = spl_token_2022::id();
+    let mut config = test_config_with_default_signer(test_validator, payer, &program_id);
+    let transfer_hook_program_id = Pubkey::new_unique();
+
+    let transfer_fee_basis_points = 100;
+    let maximum_fee: u64 = 10_000_000_000;
+
+    let result = process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            "--program-id",
+            &program_id.to_string(),
+            "--transfer-hook",
+            &transfer_hook_program_id.to_string(),
+            "--transfer-fee",
+            &transfer_fee_basis_points.to_string(),
+            &maximum_fee.to_string(),
+        ],
+    )
+    .await;
+
+    // Check that the transfer-hook extension is correctly configured
+    let value: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+    let mint = Pubkey::from_str(value["commandOutput"]["address"].as_str().unwrap()).unwrap();
+    let account = config.rpc_client.get_account(&mint).await.unwrap();
+    let mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = mint_state.get_extension::<TransferHook>().unwrap();
+    assert_eq!(
+        extension.program_id,
+        Some(transfer_hook_program_id).try_into().unwrap()
+    );
+
+    // Check that the transfer-fee extension is correctly configured
+    let extension = mint_state.get_extension::<TransferFeeConfig>().unwrap();
+    assert_eq!(
+        u16::from(extension.older_transfer_fee.transfer_fee_basis_points),
+        transfer_fee_basis_points
+    );
+    assert_eq!(
+        u64::from(extension.older_transfer_fee.maximum_fee),
+        maximum_fee
+    );
+    assert_eq!(
+        u16::from(extension.newer_transfer_fee.transfer_fee_basis_points),
+        transfer_fee_basis_points
+    );
+    assert_eq!(
+        u64::from(extension.newer_transfer_fee.maximum_fee),
+        maximum_fee
+    );
+
+    // Make sure that parsing transfer hook accounts and expected-fee works
+    let blockhash = Hash::default();
+    let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = Arc::new(
+        ProgramOfflineClient::new(blockhash, ProgramRpcClientSendTransaction),
+    );
+    config.program_client = program_client;
+
+    let _result = exec_test_cmd(
+        &config,
+        &[
+            "spl-token",
+            CommandName::Transfer.into(),
+            &mint.to_string(),
+            "100",
+            &Pubkey::new_unique().to_string(),
+            "--blockhash",
+            &blockhash.to_string(),
+            "--nonce",
+            &Pubkey::new_unique().to_string(),
+            "--nonce-authority",
+            &Pubkey::new_unique().to_string(),
+            "--sign-only",
+            "--mint-decimals",
+            &format!("{}", TEST_DECIMALS),
+            "--from",
+            &Pubkey::new_unique().to_string(),
+            "--owner",
+            &Pubkey::new_unique().to_string(),
+            "--transfer-hook-account",
+            &format!("{}:readonly", Pubkey::new_unique()),
+            "--transfer-hook-account",
+            &format!("{}:writable", Pubkey::new_unique()),
+            "--transfer-hook-account",
+            &format!("{}:readonly-signer", Pubkey::new_unique()),
+            "--transfer-hook-account",
+            &format!("{}:writable-signer", Pubkey::new_unique()),
+            "--expected-fee",
+            "1",
+            "--program-id",
+            &program_id.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
 }
 
 async fn metadata(test_validator: &TestValidator, payer: &Keypair) {
