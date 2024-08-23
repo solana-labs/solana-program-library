@@ -35,7 +35,7 @@ fi
 # Get the new version.
 new_version=$(readCargoVariable version "Cargo.toml")
 package_name=$(readCargoVariable name "Cargo.toml")
-tag_name="$(echo $package_name | sed 's/solana-jonc-program-counter-//')"
+tag_name="$(echo $package_name | sed 's/spl-//')"
 new_git_tag="${tag_name}@v${new_version}"
 
 # Expose the new version to CI if needed.
