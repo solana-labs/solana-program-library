@@ -3,6 +3,7 @@ import { expect, use } from 'chai';
 import {
     ASSOCIATED_TOKEN_PROGRAM_ID,
     createAssociatedTokenAccountInstruction,
+    createAssociatedTokenAccountIdempotentInstruction,
     createAssociatedTokenAccountIdempotentInstructionWithDerivation,
     createReallocateInstruction,
     createInitializeMintInstruction,
@@ -24,10 +25,8 @@ import {
     createAmountToUiAmountInstruction,
     createUiAmountToAmountInstruction,
     getMintLen,
-    createAssociatedTokenAccountIdempotentInstruction,
 } from '../../src';
 import chaiAsPromised from 'chai-as-promised';
-import { generateKeyPairSync } from 'crypto';
 use(chaiAsPromised);
 
 describe('spl-token instructions', () => {
@@ -198,7 +197,7 @@ describe('spl-associated-token-account instructions', () => {
         const mint = Keypair.generate().publicKey;
         const associatedToken = getAssociatedTokenAddressSync(mint, owner, true);
         const ix = createAssociatedTokenAccountIdempotentInstruction(payer, associatedToken, owner, mint);
-        const ixDerivation = createAssociatedTokenAccountIdempotentInstructionWithDerivation(payer, owner, mint);
+        const ixDerivation = createAssociatedTokenAccountIdempotentInstructionWithDerivation(payer,  owner, mint);
         expect(ix).to.deep.eq(ixDerivation);
     });
 });
