@@ -197,7 +197,7 @@ describe('spl-associated-token-account instructions', () => {
         const mint = Keypair.generate().publicKey;
         const associatedToken = getAssociatedTokenAddressSync(mint, owner, true);
         const ix = createAssociatedTokenAccountIdempotentInstruction(payer, associatedToken, owner, mint);
-        const ixDerivation = createAssociatedTokenAccountIdempotentInstructionWithDerivation(payer,  owner, mint);
+        const ixDerivation = createAssociatedTokenAccountIdempotentInstructionWithDerivation(payer, owner, mint);
         expect(ix).to.deep.eq(ixDerivation);
     });
 });

@@ -1,7 +1,7 @@
 import type { PublicKey } from '@solana/web3.js';
 import { SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
-import { getAssociatedTokenAddressSync } from '../state/mint.js';
+import { getAssociatedTokenAddressSync } from '../state';
 
 /**
  * Construct a CreateAssociatedTokenAccount instruction
