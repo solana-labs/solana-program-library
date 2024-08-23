@@ -1,6 +1,7 @@
 import type { PublicKey } from '@solana/web3.js';
 import { SystemProgram, TransactionInstruction } from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants.js';
+import { getAssociatedTokenAddressSync } from '../state/mint.js';
 
 /**
  * Construct a CreateAssociatedTokenAccount instruction
@@ -59,6 +60,38 @@ export function createAssociatedTokenAccountIdempotentInstruction(
         owner,
         mint,
         Buffer.from([1]),
+        programId,
+        associatedTokenProgramId,
+    );
+}
+
+/**
+ * Derive the associated token account and construct a CreateAssociatedTokenAccountIdempotent instruction
+ *
+ * @param payer                    Payer of the initialization fees
+ * @param owner                    Owner of the new account
+ * @param mint                     Token mint account
+ * @param allowOwnerOffCurve       Allow the owner account to be a PDA (Program Derived Address)
+ * @param programId                SPL Token program account
+ * @param associatedTokenProgramId SPL Associated Token program account
+ *
+ * @return Instruction to add to a transaction
+ */
+export function createAssociatedTokenAccountIdempotentInstructionWithDerivation(
+    payer: PublicKey,
+    owner: PublicKey,
+    mint: PublicKey,
+    allowOwnerOffCurve = true,
+    programId = TOKEN_PROGRAM_ID,
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
+) {
+    const associatedToken = getAssociatedTokenAddressSync(mint, owner, allowOwnerOffCurve);
+
+    return createAssociatedTokenAccountIdempotentInstruction(
+        payer,
+        associatedToken,
+        owner,
+        mint,
         programId,
         associatedTokenProgramId,
     );
