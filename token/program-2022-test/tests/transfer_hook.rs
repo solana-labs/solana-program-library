@@ -356,25 +356,6 @@ async fn setup_with_fee(mint: Keypair, program_id: &Pubkey, authority: &Pubkey) 
     context
 }
 
-fn test_transfer_fee() -> TransferFee {
-    TransferFee {
-        epoch: 0.into(),
-        transfer_fee_basis_points: TEST_FEE_BASIS_POINTS.into(),
-        maximum_fee: TEST_MAXIMUM_FEE.into(),
-    }
-}
-
-fn test_transfer_fee_config() -> TransferFeeConfig {
-    let transfer_fee = test_transfer_fee();
-    TransferFeeConfig {
-        transfer_fee_config_authority: COption::Some(Pubkey::new_unique()).try_into().unwrap(),
-        withdraw_withheld_authority: COption::Some(Pubkey::new_unique()).try_into().unwrap(),
-        withheld_amount: 0.into(),
-        older_transfer_fee: transfer_fee,
-        newer_transfer_fee: transfer_fee,
-    }
-}
-
 async fn setup_with_confidential_transfers(
     mint: Keypair,
     program_id: &Pubkey,
@@ -682,7 +663,18 @@ async fn success_transfer_with_fee() {
     let (alice_account, bob_account) =
         setup_accounts(&token_context, Keypair::new(), Keypair::new(), alice_amount).await;
 
-    let transfer_fee_config = test_transfer_fee_config();
+    let transfer_fee = TransferFee {
+        epoch: 0.into(),
+        transfer_fee_basis_points: TEST_FEE_BASIS_POINTS.into(),
+        maximum_fee: TEST_MAXIMUM_FEE.into(),
+    };
+    let transfer_fee_config = TransferFeeConfig {
+        transfer_fee_config_authority: COption::Some(Pubkey::new_unique()).try_into().unwrap(),
+        withdraw_withheld_authority: COption::Some(Pubkey::new_unique()).try_into().unwrap(),
+        withheld_amount: 0.into(),
+        older_transfer_fee: transfer_fee,
+        newer_transfer_fee: transfer_fee,
+    };
     let fee = transfer_fee_config
         .calculate_epoch_fee(0, transfer_amount)
         .unwrap();
