@@ -39,7 +39,7 @@ use {
 };
 
 const TEST_MAXIMUM_FEE: u64 = 10_000_000;
-const TEST_FEE_BASIS_POINTS: u16 = 250;
+const TEST_FEE_BASIS_POINTS: u16 = 100;
 
 /// Test program to fail transfer hook, conforms to transfer-hook-interface
 pub fn process_instruction_fail(
@@ -138,6 +138,58 @@ pub fn process_instruction_swap(
         remaining_accounts,
         1,
         9,
+        &[],
+    )?;
+
+    Ok(())
+}
+
+// Test program to transfer two types of tokens with transfer hooks at once with
+// fees
+pub fn process_instruction_swap_with_fee(
+    _program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    _input: &[u8],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let source_a_account_info = next_account_info(account_info_iter)?;
+    let mint_a_info = next_account_info(account_info_iter)?;
+    let destination_a_account_info = next_account_info(account_info_iter)?;
+    let authority_a_info = next_account_info(account_info_iter)?;
+    let token_program_a_info = next_account_info(account_info_iter)?;
+
+    let source_b_account_info = next_account_info(account_info_iter)?;
+    let mint_b_info = next_account_info(account_info_iter)?;
+    let destination_b_account_info = next_account_info(account_info_iter)?;
+    let authority_b_info = next_account_info(account_info_iter)?;
+    let token_program_b_info = next_account_info(account_info_iter)?;
+
+    let remaining_accounts = account_info_iter.as_slice();
+
+    onchain::invoke_transfer_checked_with_fee(
+        token_program_a_info.key,
+        source_a_account_info.clone(),
+        mint_a_info.clone(),
+        destination_a_account_info.clone(),
+        authority_a_info.clone(),
+        remaining_accounts,
+        1_000_000_000,
+        9,
+        10_000_000,
+        &[],
+    )?;
+
+    onchain::invoke_transfer_checked_with_fee(
+        token_program_b_info.key,
+        source_b_account_info.clone(),
+        mint_b_info.clone(),
+        destination_b_account_info.clone(),
+        authority_b_info.clone(),
+        remaining_accounts,
+        1_000_000_000,
+        9,
+        10_000_000,
         &[],
     )?;
 
@@ -973,7 +1025,7 @@ async fn success_transfers_with_fee_using_onchain_helper() {
     let mint_a = mint_a_keypair.pubkey();
     let mint_b_keypair = Keypair::new();
     let mint_b = mint_b_keypair.pubkey();
-    let amount = 10;
+    let amount = 10_000_000_000;
 
     let transfer_fee_config_authority = Keypair::new();
     let withdraw_withheld_authority = Keypair::new();
@@ -985,7 +1037,7 @@ async fn success_transfers_with_fee_using_onchain_helper() {
     program_test.add_program(
         "my_swap",
         swap_program_id,
-        processor!(process_instruction_swap),
+        processor!(process_instruction_swap_with_fee),
     );
     add_validation_account(&mut program_test, &mint_a, &program_id);
     add_validation_account(&mut program_test, &mint_b, &program_id);
