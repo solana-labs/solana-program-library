@@ -52,7 +52,7 @@
     },
     "devDependencies": {
         "@solana/web3.js": "^1.95.3",
-        "@types/chai": "^4.3.17",
+        "@types/chai": "^4.3.18",
         "@types/jest": "^29.5.12",
         "@types/node": "^22.5.0",
         "@types/node-fetch": "^2.6.11",
