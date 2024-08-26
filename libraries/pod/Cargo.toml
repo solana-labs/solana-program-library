@@ -15,7 +15,7 @@ borsh = ["dep:borsh"]
 borsh = { version = "1.5.1", optional = true }
 bytemuck = { version = "1.17.0" }
 bytemuck_derive = { version = "1.7.1" }
-serde = { version = "1.0.208", optional = true }
+serde = { version = "1.0.209", optional = true }
 solana-program = "2.0.3"
 solana-zk-sdk = "2.0.3"
 spl-program-error = { version = "0.5.0", path = "../program-error" }
