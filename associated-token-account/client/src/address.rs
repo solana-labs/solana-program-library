@@ -1,10 +1,6 @@
-//! Convention for associating token accounts with a user wallet
-#![deny(missing_docs)]
-#![forbid(unsafe_code)]
+//! Address derivation functions
 
 use solana_program::pubkey::Pubkey;
-
-solana_program::declare_id!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
 /// Derives the associated token account address and bump seed
 /// for the given wallet address, token mint and token program id
@@ -31,7 +27,7 @@ pub fn get_associated_token_address(
     get_associated_token_address_with_program_id(
         wallet_address,
         token_mint_address,
-        &solana_inline_spl::spl_token::ID,
+        &solana_inline_spl::token::ID,
     )
 }
 
@@ -45,7 +41,7 @@ pub fn get_associated_token_address_with_program_id(
     get_associated_token_address_and_bump_seed(
         wallet_address,
         token_mint_address,
-        &solana_inline_spl::spl_associated_token_account::ID,
+        &crate::id(),
         token_program_id,
     )
     .0

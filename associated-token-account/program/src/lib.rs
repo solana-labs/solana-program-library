@@ -17,12 +17,11 @@ use solana_program::{
     sysvar,
 };
 
-
 // Export current SDK types for downstream users building with a different SDK
 // version
-pub use {solana_program, spl_associated_token_address::{id, ID, check_id}};
-#[deprecated(since = "4.1.0", note = "Use `spl-associated-token-address` crate instead.")]
-pub use spl_associated_token_address::{get_associated_token_address, get_associated_token_address_with_program_id};
+pub use {solana_program, spl_associated_token_account_client::{id, ID, check_id}};
+#[deprecated(since = "4.1.0", note = "Use `spl-associated-token-account-client` crate instead.")]
+pub use spl_associated_token_account_client::{get_associated_token_address, get_associated_token_address_with_program_id};
 
 /// Create an associated token account for the given wallet address and token
 /// mint
