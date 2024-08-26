@@ -12,7 +12,6 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-assert_matches = "1.5.0"
 borsh = "1.5.1"
 num-derive = "0.4"
 num-traits = "0.2"

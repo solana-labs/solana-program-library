@@ -18,6 +18,10 @@ pub fn get_associated_token_address_and_bump_seed(
     )
 }
 
+mod inline_spl_token {
+    solana_program::declare_id!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+}
+
 /// Derives the associated token account address for the given wallet address
 /// and token mint
 pub fn get_associated_token_address(
@@ -27,7 +31,7 @@ pub fn get_associated_token_address(
     get_associated_token_address_with_program_id(
         wallet_address,
         token_mint_address,
-        &solana_inline_spl::token::ID,
+        &inline_spl_token::ID,
     )
 }
 
