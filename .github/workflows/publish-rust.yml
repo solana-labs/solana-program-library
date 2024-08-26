@@ -1,0 +1,203 @@
+name: Publish Rust Crate
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_path:
+        description: Path to directory with package to release
+        required: true
+        type: string
+      level:
+        description: Level
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - rc
+          - beta
+          - alpha
+          - release
+          - version
+      version:
+        description: Version (used with level "version")
+        required: false
+        type: string
+      dry_run:
+        description: Dry run
+        required: true
+        default: true
+        type: boolean
+      create_release:
+        description: Create a GitHub release
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_NIGHTLY=$rust_nightly" >> $GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY }}
+          components: rustfmt
+
+      - name: Run fmt
+        run: ./cargo-nightly fmt --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_NIGHTLY=$rust_nightly" >> $GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY }}
+          components: clippy
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-clippy-
+
+      - name: Install dependencies
+        run: ./ci/install-build-deps.sh
+
+      - name: Run clippy
+        run: ./cargo-nightly clippy -Zunstable-options --workspace --all-targets --features test-sbf -- --deny=warnings --deny=clippy::arithmetic_side_effects
+
+  cargo-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove unneeded packages for more space
+        run: bash ./ci/warning/purge-ubuntu-runner.sh
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/rustfilt
+          key: cargo-sbf-bins-${{ runner.os }}
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/solana
+          key: solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+          ./ci/install-program-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Build and test
+        run: ./ci/cargo-build-test.sh
+
+  publish_crate:
+    name: Publish crate
+    runs-on: ubuntu-latest
+    needs: [rustfmt, clippy, cargo-build-test]
+    permissions:
+      contents: write
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-publish-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-publish-
+
+      - name: Install Cargo Release
+        run: which cargo-release || cargo install cargo-release
+
+      - name: Ensure CARGO_REGISTRY_TOKEN variable is set
+        env:
+          token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        if: ${{ env.token == '' }}
+        run: |
+          echo "The CARGO_REGISTRY_TOKEN secret variable is not set"
+          echo "Go to \"Settings\" -> \"Secrets and variables\" -> \"Actions\" -> \"New repository secret\"."
+          exit 1
+
+      - name: Set Git Author
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Publish Crate
+        id: publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ "${{ inputs.level }}" == "version" ]; then
+            LEVEL=${{ inputs.version }}
+          else
+            LEVEL=${{ inputs.level }}
+          fi
+
+          if [ "${{ inputs.dry_run }}" == "true" ]; then
+            OPTIONS="--dry-run"
+          else
+            OPTIONS=""
+          fi
+
+          ./ci/publish-rust.sh "${{ inputs.package_path }}" $LEVEL $OPTIONS
+
+      - name: Push Commit and Tag
+        if: github.event.inputs.dry_run != 'true'
+        run: git push origin --follow-tags
+
+      - name: Create GitHub release
+        if: github.event.inputs.create_release == 'true' && github.event.inputs.dry_run != 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.publish.outputs.new_git_tag }}
