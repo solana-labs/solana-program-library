@@ -52,6 +52,7 @@ pub fn get_associated_token_address_with_program_id(
 }
 
 /// For internal use only.
+#[doc(hidden)]
 pub fn get_associated_token_address_and_bump_seed_internal(
     wallet_address: &Pubkey,
     token_mint_address: &Pubkey,
