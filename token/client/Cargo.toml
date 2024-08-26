@@ -19,11 +19,6 @@ solana-program-test = "2.0.3"
 solana-rpc-client = "2.0.3"
 solana-rpc-client-api = "2.0.3"
 solana-sdk = "2.0.3"
-# We never want the entrypoint for ATA, but we want the entrypoint for token when
-# testing token
-spl-associated-token-account = { version = "4.0.0", path = "../../associated-token-account/program", features = [
-  "no-entrypoint",
-] }
 spl-associated-token-account-client = { version = "1.0.0", path = "../../associated-token-account/client" }
 spl-memo = { version = "5.0", path = "../../memo/program", features = [
   "no-entrypoint",

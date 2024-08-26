@@ -7677,7 +7677,6 @@ dependencies = [
  "solana-rpc-client",
  "solana-rpc-client-api",
  "solana-sdk",
- "spl-associated-token-account 4.0.0",
  "spl-associated-token-account-client",
  "spl-memo 5.0.0",
  "spl-record",
