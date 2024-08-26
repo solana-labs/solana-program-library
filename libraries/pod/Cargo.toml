@@ -21,7 +21,7 @@ solana-zk-sdk = "2.0.3"
 spl-program-error = { version = "0.5.0", path = "../program-error" }
 
 [dev-dependencies]
-serde_json = "1.0.125"
+serde_json = "1.0.127"
 base64 = { version = "0.22.1" }
 
 [lib]

@@ -22,7 +22,7 @@ spl-pod = { version = "0.3.0", path = "../../libraries/pod", features = [
 ] }
 
 [dev-dependencies]
-serde_json = "1.0.125"
+serde_json = "1.0.127"
 
 [lib]
 crate-type = ["cdylib", "lib"]
