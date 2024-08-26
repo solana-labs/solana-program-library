@@ -51,7 +51,7 @@
     },
     "devDependencies": {
         "@solana/web3.js": "^1.95.3",
-        "@types/chai": "^4.3.17",
+        "@types/chai": "^4.3.18",
         "@types/mocha": "^10.0.7",
         "@types/node": "^22.5.0",
         "@typescript-eslint/eslint-plugin": "^8.2.0",
