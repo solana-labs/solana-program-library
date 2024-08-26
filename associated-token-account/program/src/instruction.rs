@@ -1,10 +1,9 @@
 //! Program instructions
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-pub use spl_associated_token_account_client::intruction::*;
+pub use spl_associated_token_account_client::instruction::*;
 
 /// Instructions supported by the AssociatedTokenAccount program
-#[deprecated(since = "4.1.0", note = "Use instructions in `spl-associated-token-account-client` crate instead.")]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum AssociatedTokenAccountInstruction {
     /// Creates an associated token account for the given wallet address and

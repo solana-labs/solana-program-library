@@ -22,9 +22,9 @@ use {
         transaction::Transaction,
     },
     spl_associated_token_account::instruction::{
-            create_associated_token_account, create_associated_token_account_idempotent,
+        create_associated_token_account, create_associated_token_account_idempotent,
     },
-    spl_associated_token_address::get_associated_token_address_with_program_id,
+    spl_associated_token_account_client::address::get_associated_token_address_with_program_id,
     spl_record::state::RecordData,
     spl_token_2022::{
         extension::{

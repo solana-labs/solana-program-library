@@ -1,9 +1,10 @@
 //! Instruction creators for the program
 use {
-    crate::{id, address::get_associated_token_address_with_program_id},
+    crate::{address::get_associated_token_address_with_program_id, id},
     solana_program::{
         instruction::{AccountMeta, Instruction},
-        pubkey::Pubkey, system_program,
+        pubkey::Pubkey,
+        system_program,
     },
 };
 

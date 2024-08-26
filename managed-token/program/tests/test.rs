@@ -11,7 +11,7 @@ use {
         transaction::Transaction,
     },
     spl_associated_token_account::instruction::create_associated_token_account,
-    spl_associated_token_address::get_associated_token_address,
+    spl_associated_token_account_client::address::get_associated_token_address,
     spl_managed_token::instruction::*,
     spl_token::state::Account as TokenAccount,
 };

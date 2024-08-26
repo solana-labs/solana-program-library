@@ -12,7 +12,7 @@ use {
     solana_program_test::*,
     solana_sdk::{program_pack::Pack, signature::Signer, transaction::Transaction},
     spl_associated_token_account::instruction::create_associated_token_account,
-    spl_associated_token_address::get_associated_token_address,
+    spl_associated_token_account_client::address::get_associated_token_address,
     spl_token::state::Account,
 };
 

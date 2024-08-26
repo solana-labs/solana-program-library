@@ -5,7 +5,6 @@ use {
         program_error::ProgramError,
         system_program,
     },
-    spl_associated_token_address::ASSOCIATED_TOKEN_PROGRAM_ID,
 };
 
 pub struct InitializeMint<'a, 'info> {
@@ -117,7 +116,7 @@ impl<'a, 'info> InitializeAccount<'a, 'info> {
             "Invalid key supplied for System Program",
         )?;
         assert_with_msg(
-            ctx.associated_token_program.key == &ASSOCIATED_TOKEN_PROGRAM_ID,
+            ctx.associated_token_program.key == &spl_associated_token_account_client::id(),
             ProgramError::InvalidInstructionData,
             "Invalid key supplied for Associataed Token Program",
         )?;
