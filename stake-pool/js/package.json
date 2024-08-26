@@ -71,7 +71,7 @@
     "rimraf": "^6.0.1",
     "rollup": "^4.21.0",
     "rollup-plugin-dts": "^6.1.1",
-    "ts-jest": "^29.2.4",
+    "ts-jest": "^29.2.5",
     "typescript": "^5.5.4"
   },
   "jest": {
