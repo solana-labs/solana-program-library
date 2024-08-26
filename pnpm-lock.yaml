@@ -280,8 +280,8 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0(eslint@8.57.0)
       eslint-plugin-functional:
-        specifier: ^7.0.1
-        version: 7.0.1(eslint@8.57.0)(typescript@5.5.4)
+        specifier: ^7.0.2
+        version: 7.0.2(eslint@8.57.0)(typescript@5.5.4)
       eslint-plugin-import:
         specifier: ^2.29.1
         version: 2.29.1(@typescript-eslint/parser@8.2.0)(eslint@8.57.0)
@@ -4499,8 +4499,8 @@ packages:
       ignore: 5.2.4
     dev: true
 
-  /eslint-plugin-functional@7.0.1(eslint@8.57.0)(typescript@5.5.4):
-    resolution: {integrity: sha512-naT4A+NiYb5TIweR4ibK3SYN+r1Iqd6rWv3VAnLiyWl0zfYxz9hzNsRAPdREOe1aqwMXasdOZQ1nPqvZKC50ZQ==}
+  /eslint-plugin-functional@7.0.2(eslint@8.57.0)(typescript@5.5.4):
+    resolution: {integrity: sha512-IBriPyU3Uc1EieU5YVyiqrwHzw2yl4bRW58Xf5RP8x3pf80MoqObgfNu9DERwSIgvFOm93jdalUITc96Ysnx7g==}
     engines: {node: '>=v18.18.0'}
     peerDependencies:
       eslint: ^9.0.0
@@ -4509,7 +4509,7 @@ packages:
       typescript:
         optional: true
     dependencies:
-      '@typescript-eslint/utils': 8.0.0(eslint@8.57.0)(typescript@5.5.4)
+      '@typescript-eslint/utils': 8.2.0(eslint@8.57.0)(typescript@5.5.4)
       deepmerge-ts: 7.1.0
       escape-string-regexp: 5.0.0
       eslint: 8.57.0
