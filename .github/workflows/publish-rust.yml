@@ -142,6 +142,11 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
 
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_STABLE }}
