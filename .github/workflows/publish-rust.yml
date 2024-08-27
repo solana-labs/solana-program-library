@@ -207,8 +207,11 @@ jobs:
         if: github.event.inputs.create_release == 'true'
         uses: orhun/git-cliff-action@v3
         with:
-          config: ci/cliff.toml
-          args: "${{ steps.publish.outputs.old_git_tag }}"..master --include-path "${{ inputs.package_path }}/**" --github-repo "${{ github.repository }}"
+          config: "ci/cliff.toml"
+          args: |
+            "${{ steps.publish.outputs.old_git_tag }}"..master
+            --include-path "${{ inputs.package_path }}/**"
+            --github-repo "${{ github.repository }}"
         env:
           OUTPUT: TEMP_CHANGELOG.md
           GITHUB_REPO: ${{ github.repository }}
