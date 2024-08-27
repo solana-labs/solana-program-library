@@ -18,7 +18,7 @@ solana-logger = "2.0.3"
 solana-remote-wallet = "2.0.3"
 solana-sdk = "2.0.3"
 spl-tlv-account-resolution = { version = "0.7.0" , path = "../../../libraries/tlv-account-resolution", features = ["serde-traits"] }
-spl-transfer-hook-interface = { version = "0.7.0", path = "../interface" }
+spl-transfer-hook-interface = { version = "0.8.0", path = "../interface" }
 strum = "0.26"
 strum_macros = "0.26"
 tokio = { version = "1", features = ["full"] }
