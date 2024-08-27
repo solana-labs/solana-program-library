@@ -38,7 +38,7 @@ spl-token-2022 = { version = "4.0.0", path = "../program-2022", features = [
 spl-token-client = { version = "0.11.0", path = "../client" }
 spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "../confidential-transfer/proof-generation" }
 spl-token-metadata-interface = { version = "0.4.0", path = "../../token-metadata/interface" }
-spl-token-group-interface = { version = "0.3.0", path = "../../token-group/interface" }
+spl-token-group-interface = { version = "0.4.0", path = "../../token-group/interface" }
 spl-memo = { version = "5.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
