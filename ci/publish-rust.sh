@@ -36,7 +36,7 @@ fi
 new_version=$(readCargoVariable version "Cargo.toml")
 package_name=$(readCargoVariable name "Cargo.toml")
 tag_name="$(echo $package_name | sed 's/spl-//')"
-new_git_tag="${tag_name}@v${new_version}"
+new_git_tag="${tag_name}-v${new_version}"
 
 # Expose the new version to CI if needed.
 if [[ -n $CI ]]; then
