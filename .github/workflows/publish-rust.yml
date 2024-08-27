@@ -204,6 +204,7 @@ jobs:
         run: git push origin --follow-tags
 
       - name: Generate a changelog
+        if: github.event.inputs.create_release == 'true'
         uses: orhun/git-cliff-action@v3
         with:
           config: ci/cliff.toml
