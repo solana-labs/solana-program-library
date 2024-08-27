@@ -17,11 +17,11 @@ use {
     },
     spl_associated_token_account::{
         error::AssociatedTokenAccountError,
-        get_associated_token_address_with_program_id,
         instruction::{
             create_associated_token_account, create_associated_token_account_idempotent,
         },
     },
+    spl_associated_token_account_client::address::get_associated_token_address_with_program_id,
     spl_token_2022::{
         extension::ExtensionType,
         instruction::initialize_account,

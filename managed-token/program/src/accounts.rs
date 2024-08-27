@@ -116,7 +116,7 @@ impl<'a, 'info> InitializeAccount<'a, 'info> {
             "Invalid key supplied for System Program",
         )?;
         assert_with_msg(
-            ctx.associated_token_program.key == &spl_associated_token_account::id(),
+            ctx.associated_token_program.key == &spl_associated_token_account_client::program::id(),
             ProgramError::InvalidInstructionData,
             "Invalid key supplied for Associataed Token Program",
         )?;

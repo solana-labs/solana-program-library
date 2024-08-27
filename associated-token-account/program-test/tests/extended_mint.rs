@@ -13,9 +13,8 @@ use {
         signer::keypair::Keypair,
         transaction::{Transaction, TransactionError},
     },
-    spl_associated_token_account::{
-        get_associated_token_address_with_program_id, instruction::create_associated_token_account,
-    },
+    spl_associated_token_account::instruction::create_associated_token_account,
+    spl_associated_token_account_client::address::get_associated_token_address_with_program_id,
     spl_token_2022::{
         error::TokenError,
         extension::{

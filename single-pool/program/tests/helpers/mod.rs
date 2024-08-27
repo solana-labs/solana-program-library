@@ -17,7 +17,7 @@ use {
         self, vote_instruction,
         vote_state::{VoteInit, VoteState},
     },
-    spl_associated_token_account as atoken,
+    spl_associated_token_account_client::address as atoken,
     spl_single_pool::{
         find_pool_address, find_pool_mint_address, find_pool_mint_authority_address,
         find_pool_mpl_authority_address, find_pool_stake_address,

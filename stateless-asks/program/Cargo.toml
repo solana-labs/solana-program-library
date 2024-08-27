@@ -16,9 +16,7 @@ solana-program = "2.0.3"
 spl-token = { version = "6.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-spl-associated-token-account = { version = "4.0.0", path = "../../associated-token-account/program", features = [
-  "no-entrypoint",
-] }
+spl-associated-token-account-client = { version = "1.0.0", path = "../../associated-token-account/client" }
 thiserror = "1.0"
 
 [dev-dependencies]
