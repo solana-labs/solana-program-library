@@ -20,6 +20,9 @@ DRY_RUN=$3
 # Go to the directory
 cd "${PACKAGE_PATH}"
 
+# Get the old version, used with git-cliff
+old_version=$(readCargoVariable version "Cargo.toml")
+
 # Publish the new version.
 if [[ -n ${DRY_RUN} ]]; then
   cargo release ${LEVEL}
@@ -36,11 +39,15 @@ fi
 new_version=$(readCargoVariable version "Cargo.toml")
 package_name=$(readCargoVariable name "Cargo.toml")
 tag_name="$(echo $package_name | sed 's/spl-//')"
-new_git_tag="${tag_name}@v${new_version}"
+new_git_tag="${tag_name}-v${new_version}"
+old_git_tag="${tag_name}-v${old_version}"
+release_title="SPL ${tag_name} - v${new_version}"
 
 # Expose the new version to CI if needed.
 if [[ -n $CI ]]; then
   echo "new_git_tag=${new_git_tag}" >> $GITHUB_OUTPUT
+  echo "old_git_tag=${old_git_tag}" >> $GITHUB_OUTPUT
+  echo "release_title=${release_title}" >> $GITHUB_OUTPUT
 fi
 
 # Soft reset the last commit so we can create our own commit and tag.
