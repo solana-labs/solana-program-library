@@ -7928,7 +7928,6 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-associated-token-account 4.0.0",
  "spl-associated-token-account-client",
  "spl-token 6.0.0",
  "spl-token-2022 4.0.1",
