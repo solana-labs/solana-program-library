@@ -17,7 +17,7 @@ solana-program = "2.0.3"
 spl-discriminator = { version = "0.3.0", path = "../../libraries/discriminator" }
 spl-program-error = { version = "0.5.0", path = "../../libraries/program-error" }
 spl-type-length-value = { version = "0.5.0", path = "../../libraries/type-length-value" }
-spl-pod = { version = "0.3.0", path = "../../libraries/pod", features = [
+spl-pod = { version = "0.3.2", path = "../../libraries/pod", features = [
   "borsh",
 ] }
 

@@ -27,7 +27,7 @@ spl-associated-token-account = { version = "4.0.0", path = "../../associated-tok
 spl-memo = { version = "5.0.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
-spl-pod = { version = "0.3.0", path = "../../libraries/pod" }
+spl-pod = { version = "0.3.2", path = "../../libraries/pod" }
 spl-record = { version = "0.2.0", path = "../../record/program", features = [
     "no-entrypoint",
 ]}
