@@ -16,7 +16,7 @@ num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.3"
 solana-program = "2.0.3"
-spl-token-2022 = { version = "4.0.0", path = "../../token/program-2022", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "5.0.0", path = "../../token/program-2022", features = ["no-entrypoint"] }
 thiserror = "1.0"
 
 [dev-dependencies]
