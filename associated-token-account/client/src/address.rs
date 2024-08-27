@@ -45,7 +45,7 @@ pub fn get_associated_token_address_with_program_id(
     get_associated_token_address_and_bump_seed(
         wallet_address,
         token_mint_address,
-        &crate::id(),
+        &crate::program::id(),
         token_program_id,
     )
     .0

@@ -127,7 +127,7 @@ pub fn create_initialize_account_instruction(
             AccountMeta::new_readonly(freeze_authority, false),
             AccountMeta::new_readonly(*mint, false),
             AccountMeta::new_readonly(system_program::id(), false),
-            AccountMeta::new_readonly(spl_associated_token_account_client::id(), false),
+            AccountMeta::new_readonly(spl_associated_token_account_client::program::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: borsh::to_vec(&ManagedTokenInstruction::InitializeAccount)?,

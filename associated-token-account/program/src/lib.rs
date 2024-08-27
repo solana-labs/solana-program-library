@@ -25,7 +25,7 @@ pub use spl_associated_token_account_client::address::{
 };
 // Export current SDK types for downstream users building with a different SDK
 // version
-pub use spl_associated_token_account_client::{check_id, id, ID};
+pub use spl_associated_token_account_client::program::{check_id, id, ID};
 
 /// Create an associated token account for the given wallet address and token
 /// mint
