@@ -14,7 +14,7 @@ header = """
 body = """
 {% for group, commits in commits | group_by(attribute="group") %}\
     {% for commit in commits %}
-        - {% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message | upper_first | trim }}\
+        - {{ commit.message | upper_first | split(pat="\n") | first | trim }}\
         {% if commit.github.username %} by @{{ commit.github.username }}{%- endif %}\
     {% endfor %}\
 {% endfor %}
