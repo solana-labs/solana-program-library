@@ -30,7 +30,7 @@ solana-vote-program = "2.0.3"
 spl-token = { version = "6.0", path = "../../token/program", features = [
   "no-entrypoint",
 ] }
-spl-token-client = { version = "0.11.0", path = "../../token/client" }
+spl-token-client = { version = "0.12.0", path = "../../token/client" }
 spl-single-pool = { version = "1.0.0", path = "../program", features = [
   "no-entrypoint",
 ] }
