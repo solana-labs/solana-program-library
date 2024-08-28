@@ -1,6 +1,6 @@
 [package]
 name = "spl-token-2022"
-version = "4.0.1"
+version = "5.0.0"
 description = "Solana Program Library Token 2022"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -18,7 +18,7 @@ zk-ops = []
 
 [dependencies]
 arrayref = "0.3.8"
-bytemuck = { version = "1.17.0", features = ["derive"] }
+bytemuck = { version = "1.17.1", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.3"

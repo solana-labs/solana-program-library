@@ -923,9 +923,9 @@ checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
 name = "bytemuck"
-version = "1.17.0"
+version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fd4c6dcc3b0aea2f5c0b4b82c2b15fe39ddbc76041a310848f4706edf76bb31"
+checksum = "773d90827bc3feecfb67fab12e24de0749aad83c74b9504ecde46237b5cd24e2"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -6849,7 +6849,7 @@ dependencies = [
  "solana-program",
  "spl-associated-token-account-client",
  "spl-token 6.0.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "thiserror",
 ]
 
@@ -6886,7 +6886,7 @@ dependencies = [
  "spl-associated-token-account 4.0.0",
  "spl-associated-token-account-client",
  "spl-token 6.0.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
 ]
 
 [[package]]
@@ -7440,7 +7440,7 @@ dependencies = [
  "spl-math",
  "spl-pod 0.3.2",
  "spl-token 6.0.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "test-case",
  "thiserror",
 ]
@@ -7562,7 +7562,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-2022"
-version = "4.0.1"
+version = "5.0.0"
 dependencies = [
  "arrayref",
  "base64 0.22.1",
@@ -7612,7 +7612,7 @@ dependencies = [
  "spl-pod 0.3.2",
  "spl-record",
  "spl-tlv-account-resolution 0.7.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.0",
@@ -7650,7 +7650,7 @@ dependencies = [
  "spl-associated-token-account-client",
  "spl-memo 5.0.0",
  "spl-token 6.0.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.0",
@@ -7681,7 +7681,7 @@ dependencies = [
  "spl-memo 5.0.0",
  "spl-record",
  "spl-token 6.0.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.0",
  "spl-token-metadata-interface 0.4.0",
@@ -7699,7 +7699,7 @@ dependencies = [
  "spl-discriminator 0.3.0",
  "spl-pod 0.3.2",
  "spl-program-error 0.5.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-token-group-example",
  "spl-token-group-interface 0.4.0",
@@ -7758,7 +7758,7 @@ dependencies = [
  "solana-sdk",
  "spl-discriminator 0.3.0",
  "spl-pod 0.3.2",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-token-group-interface 0.4.0",
  "spl-token-metadata-interface 0.4.0",
@@ -7831,7 +7831,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-pod 0.3.2",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-token-metadata-interface 0.4.0",
  "spl-type-length-value 0.5.0",
@@ -7881,7 +7881,7 @@ dependencies = [
  "solana-sdk",
  "spl-math",
  "spl-token 6.0.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "test-case",
  "thiserror",
 ]
@@ -7909,7 +7909,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-token 6.0.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-token-client",
  "test-case",
  "thiserror",
@@ -7930,7 +7930,7 @@ dependencies = [
  "solana-test-validator",
  "spl-associated-token-account-client",
  "spl-token 6.0.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-token-upgrade",
  "tokio",
@@ -7946,7 +7946,7 @@ dependencies = [
  "solana-program",
  "spl-associated-token-account 4.0.0",
  "spl-token 6.0.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "thiserror",
 ]
 
@@ -7967,7 +7967,7 @@ dependencies = [
  "solana-sdk",
  "solana-test-validator",
  "spl-tlv-account-resolution 0.7.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-transfer-hook-example",
  "spl-transfer-hook-interface 0.8.0",
@@ -7985,7 +7985,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-tlv-account-resolution 0.7.0",
- "spl-token-2022 4.0.1",
+ "spl-token-2022 5.0.0",
  "spl-transfer-hook-interface 0.8.0",
  "spl-type-length-value 0.5.0",
 ]
