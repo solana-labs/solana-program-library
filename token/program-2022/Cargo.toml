@@ -18,7 +18,7 @@ zk-ops = []
 
 [dependencies]
 arrayref = "0.3.8"
-bytemuck = { version = "1.17.0", features = ["derive"] }
+bytemuck = { version = "1.17.1", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.3"
