@@ -153,6 +153,9 @@ jobs:
         with:
           toolchain: ${{ env.RUST_STABLE }}
 
+      - name: Install dependencies
+        run: ./ci/install-build-deps.sh
+
       - uses: actions/cache@v4
         with:
           path: |
