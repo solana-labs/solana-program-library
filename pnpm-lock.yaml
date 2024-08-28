@@ -698,11 +698,11 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       '@solana/spl-token-group':
-        specifier: ^0.0.5
+        specifier: ^0.0.6
         version: link:../../token-group/js
       '@solana/spl-token-metadata':
-        specifier: ^0.1.3
-        version: 0.1.4(@solana/web3.js@1.95.3)(fastestsmallesttextencoderdecoder@1.0.22)
+        specifier: ^0.1.5
+        version: link:../../token-metadata/js
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
