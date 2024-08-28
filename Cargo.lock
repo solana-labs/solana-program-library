@@ -7590,7 +7590,7 @@ dependencies = [
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.1",
  "spl-token-metadata-interface 0.5.0",
- "spl-transfer-hook-interface 0.8.0",
+ "spl-transfer-hook-interface 0.8.1",
  "spl-type-length-value 0.5.0",
  "thiserror",
 ]
@@ -7618,7 +7618,7 @@ dependencies = [
  "spl-token-group-interface 0.4.1",
  "spl-token-metadata-interface 0.5.0",
  "spl-transfer-hook-example",
- "spl-transfer-hook-interface 0.8.0",
+ "spl-transfer-hook-interface 0.8.1",
  "test-case",
  "walkdir",
 ]
@@ -7685,7 +7685,7 @@ dependencies = [
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.1",
  "spl-token-metadata-interface 0.5.0",
- "spl-transfer-hook-interface 0.8.0",
+ "spl-transfer-hook-interface 0.8.1",
  "thiserror",
 ]
 
@@ -7970,7 +7970,7 @@ dependencies = [
  "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-transfer-hook-example",
- "spl-transfer-hook-interface 0.8.0",
+ "spl-transfer-hook-interface 0.8.1",
  "strum 0.26.3",
  "strum_macros 0.26.4",
  "tokio",
@@ -7986,7 +7986,7 @@ dependencies = [
  "solana-sdk",
  "spl-tlv-account-resolution 0.8.0",
  "spl-token-2022 5.0.0",
- "spl-transfer-hook-interface 0.8.0",
+ "spl-transfer-hook-interface 0.8.1",
  "spl-type-length-value 0.5.0",
 ]
 
@@ -8008,7 +8008,7 @@ dependencies = [
 
 [[package]]
 name = "spl-transfer-hook-interface"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "arrayref",
  "bytemuck",
