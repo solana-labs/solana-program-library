@@ -7275,7 +7275,7 @@ dependencies = [
 
 [[package]]
 name = "spl-pod"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "base64 0.22.1",
  "borsh 1.5.1",
@@ -7347,7 +7347,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "thiserror",
 ]
 
@@ -7438,7 +7438,7 @@ dependencies = [
  "solana-security-txt",
  "solana-vote-program",
  "spl-math",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-token 6.0.0",
  "spl-token-2022 5.0.0",
  "test-case",
@@ -7484,7 +7484,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-discriminator 0.3.0",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
  "spl-type-length-value 0.5.0",
 ]
@@ -7582,7 +7582,7 @@ dependencies = [
  "solana-security-txt",
  "solana-zk-sdk",
  "spl-memo 5.0.0",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-tlv-account-resolution 0.7.0",
  "spl-token 6.0.0",
  "spl-token-confidential-transfer-ciphertext-arithmetic",
@@ -7609,7 +7609,7 @@ dependencies = [
  "spl-associated-token-account 4.0.0",
  "spl-instruction-padding",
  "spl-memo 5.0.0",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-record",
  "spl-tlv-account-resolution 0.7.0",
  "spl-token-2022 5.0.0",
@@ -7697,7 +7697,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-discriminator 0.3.0",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
  "spl-token-2022 5.0.0",
  "spl-token-client",
@@ -7757,7 +7757,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-discriminator 0.3.0",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-token-group-interface 0.4.0",
@@ -7785,7 +7785,7 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "spl-discriminator 0.3.0",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
  "spl-type-length-value 0.5.0",
 ]
@@ -7830,7 +7830,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-token-metadata-interface 0.4.0",
@@ -7847,7 +7847,7 @@ dependencies = [
  "serde_json",
  "solana-program",
  "spl-discriminator 0.3.0",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
  "spl-type-length-value 0.5.0",
 ]
@@ -8014,7 +8014,7 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "spl-discriminator 0.3.0",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
  "spl-tlv-account-resolution 0.7.0",
  "spl-type-length-value 0.5.0",
@@ -8028,7 +8028,7 @@ dependencies = [
  "bytemuck",
  "solana-program",
  "spl-discriminator 0.3.0",
- "spl-pod 0.3.2",
+ "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
  "spl-type-length-value-derive",
 ]

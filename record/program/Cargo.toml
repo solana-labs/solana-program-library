@@ -17,7 +17,7 @@ num-derive = "0.4"
 num-traits = "0.2"
 solana-program = "2.0.3"
 thiserror = "1.0"
-spl-pod = { version = "0.3.2", path = "../../libraries/pod" }
+spl-pod = { version = "0.4.0", path = "../../libraries/pod" }
 
 [dev-dependencies]
 solana-program-test = "2.0.3"
