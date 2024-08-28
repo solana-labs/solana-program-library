@@ -656,8 +656,8 @@ importers:
         specifier: ^4.3.18
         version: 4.3.18
       '@types/chai-as-promised':
-        specifier: ^7.1.4
-        version: 7.1.8
+        specifier: ^8.0.0
+        version: 8.0.0
       '@types/mocha':
         specifier: ^10.0.7
         version: 10.0.7
@@ -720,8 +720,8 @@ importers:
         specifier: ^4.3.18
         version: 4.3.18
       '@types/chai-as-promised':
-        specifier: ^7.1.4
-        version: 7.1.8
+        specifier: ^8.0.0
+        version: 8.0.0
       '@types/mocha':
         specifier: ^10.0.7
         version: 10.0.7
@@ -2638,8 +2638,8 @@ packages:
       '@types/node': 22.5.1
     dev: true
 
-  /@types/chai-as-promised@7.1.8:
-    resolution: {integrity: sha512-ThlRVIJhr69FLlh6IctTXFkmhtP3NpMZ2QGq69StYLyKZFp/HOp1VdKZj7RvfNWYYcJ1xlbLGLLWj1UvP5u/Gw==}
+  /@types/chai-as-promised@8.0.0:
+    resolution: {integrity: sha512-YbYaXFqJwSABp9OXQTVrPPmstZgNjkRieWVd/xAl5Yc/e5+F44bXLeQggpvm0sjsS1bg+2Y5cwU+rquwwD2dXA==}
     dependencies:
       '@types/chai': 4.3.18
     dev: true
