@@ -12,7 +12,7 @@ no-entrypoint = []
 test-sbf = []
 
 [dependencies]
-bytemuck = { version = "1.17.0", features = ["derive"] }
+bytemuck = { version = "1.17.1", features = ["derive"] }
 num_enum = "0.7"
 solana-program = "2.0.3"
 spl-associated-token-account = { version = "4.0.0", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
