@@ -23,7 +23,7 @@ spl-associated-token-account-client = { version = "1.0.0", path = "../../associa
 spl-memo = { version = "5.0", path = "../../memo/program", features = [
   "no-entrypoint",
 ] }
-spl-record = { version = "0.2.0", path = "../../record/program", features = ["no-entrypoint"] }
+spl-record = { version = "0.2.1", path = "../../record/program", features = ["no-entrypoint"] }
 spl-token = { version = "6.0", path = "../program", features = [
   "no-entrypoint",
 ] }
