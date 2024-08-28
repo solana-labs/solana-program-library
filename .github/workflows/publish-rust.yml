@@ -141,6 +141,8 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # get the whole history for git-cliff
 
       - name: Set env vars
         run: |
@@ -201,8 +203,23 @@ jobs:
         if: github.event.inputs.dry_run != 'true'
         run: git push origin --follow-tags
 
+      - name: Generate a changelog
+        if: github.event.inputs.create_release == 'true'
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: "ci/cliff.toml"
+          args: |
+            "${{ steps.publish.outputs.old_git_tag }}"..master
+            --include-path "${{ inputs.package_path }}/**"
+            --github-repo "${{ github.repository }}"
+        env:
+          OUTPUT: TEMP_CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
       - name: Create GitHub release
         if: github.event.inputs.create_release == 'true' && github.event.inputs.dry_run != 'true'
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.publish.outputs.new_git_tag }}
+          bodyFile: TEMP_CHANGELOG.md
+          name: ${{ steps.publish.outputs.release_title }}
