@@ -7474,6 +7474,20 @@ dependencies = [
 [[package]]
 name = "spl-tlv-account-resolution"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37a75a5f0fcc58126693ed78a17042e9dc53f07e357d6be91789f7d62aff61a4"
+dependencies = [
+ "bytemuck",
+ "solana-program",
+ "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-pod 0.3.0",
+ "spl-program-error 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-type-length-value 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "spl-tlv-account-resolution"
+version = "0.8.0"
 dependencies = [
  "bytemuck",
  "futures 0.3.30",
@@ -7487,20 +7501,6 @@ dependencies = [
  "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
  "spl-type-length-value 0.5.0",
-]
-
-[[package]]
-name = "spl-tlv-account-resolution"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37a75a5f0fcc58126693ed78a17042e9dc53f07e357d6be91789f7d62aff61a4"
-dependencies = [
- "bytemuck",
- "solana-program",
- "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-pod 0.3.0",
- "spl-program-error 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-type-length-value 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -7583,7 +7583,7 @@ dependencies = [
  "solana-zk-sdk",
  "spl-memo 5.0.0",
  "spl-pod 0.4.0",
- "spl-tlv-account-resolution 0.7.0",
+ "spl-tlv-account-resolution 0.8.0",
  "spl-token 6.0.0",
  "spl-token-confidential-transfer-ciphertext-arithmetic",
  "spl-token-confidential-transfer-proof-extraction",
@@ -7611,7 +7611,7 @@ dependencies = [
  "spl-memo 5.0.0",
  "spl-pod 0.4.0",
  "spl-record",
- "spl-tlv-account-resolution 0.7.0",
+ "spl-tlv-account-resolution 0.8.0",
  "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-token-confidential-transfer-proof-generation",
@@ -7966,7 +7966,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-test-validator",
- "spl-tlv-account-resolution 0.7.0",
+ "spl-tlv-account-resolution 0.8.0",
  "spl-token-2022 5.0.0",
  "spl-token-client",
  "spl-transfer-hook-example",
@@ -7984,7 +7984,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-tlv-account-resolution 0.7.0",
+ "spl-tlv-account-resolution 0.8.0",
  "spl-token-2022 5.0.0",
  "spl-transfer-hook-interface 0.8.0",
  "spl-type-length-value 0.5.0",
@@ -8002,7 +8002,7 @@ dependencies = [
  "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-tlv-account-resolution 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-tlv-account-resolution 0.7.0",
  "spl-type-length-value 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -8016,7 +8016,7 @@ dependencies = [
  "spl-discriminator 0.3.0",
  "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
- "spl-tlv-account-resolution 0.7.0",
+ "spl-tlv-account-resolution 0.8.0",
  "spl-type-length-value 0.5.0",
  "tokio",
 ]
