@@ -29,7 +29,7 @@ spl-memo = { version = "5.0", path = "../../memo/program", features = [ "no-entr
 spl-token = { version = "6.0",  path = "../program", features = ["no-entrypoint"] }
 spl-token-confidential-transfer-ciphertext-arithmetic = { version = "0.1.0", path = "../confidential-transfer/ciphertext-arithmetic" }
 spl-token-confidential-transfer-proof-extraction = { version = "0.1.0", path = "../confidential-transfer/proof-extraction" }
-spl-token-group-interface = { version = "0.4.0", path = "../../token-group/interface" }
+spl-token-group-interface = { version = "0.4.1", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.5.0", path = "../../token-metadata/interface" }
 spl-transfer-hook-interface = { version = "0.8.0", path = "../transfer-hook/interface" }
 spl-type-length-value = { version = "0.5.0", path = "../../libraries/type-length-value" }
