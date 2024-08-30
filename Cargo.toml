@@ -1,6 +1,13 @@
 [profile.dev]
 split-debuginfo = "unpacked"
 
+# The curve25519-dalek crate uses the `simd` backend by default in v4 if
+# possible, which has very slow performance on some platforms with opt-level 0,
+# which is the default for `dev` and `test` builds. This slowdown causes
+# certain interactions in the solana-test-validator, such as verifying ZK
+# proofs in transactions, to take much more than 400ms, creating problems in
+# the test environment. To give better performance in the solana-test-validator
+# during tests and dev builds, override the opt-level to 3 for the crate.
 [profile.dev.package.curve25519-dalek]
 opt-level = 3
 
