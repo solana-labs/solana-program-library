@@ -1,6 +1,9 @@
 [profile.dev]
 split-debuginfo = "unpacked"
 
+[profile.dev.package.curve25519-dalek]
+opt-level = 3
+
 [workspace]
 members = [
   "associated-token-account/client",
