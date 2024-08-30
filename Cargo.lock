@@ -6544,7 +6544,7 @@ dependencies = [
  "serde_json",
  "solana-account-decoder",
  "solana-sdk",
- "spl-associated-token-account 4.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-associated-token-account 4.0.0",
  "spl-memo 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-token 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-token-2022 4.0.0",
@@ -6842,20 +6842,6 @@ checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
 [[package]]
 name = "spl-associated-token-account"
 version = "4.0.0"
-dependencies = [
- "borsh 1.5.1",
- "num-derive",
- "num-traits",
- "solana-program",
- "spl-associated-token-account-client",
- "spl-token 6.0.0",
- "spl-token-2022 5.0.1",
- "thiserror",
-]
-
-[[package]]
-name = "spl-associated-token-account"
-version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68034596cf4804880d265f834af1ff2f821ad5293e41fa0f8f59086c181fc38e"
 dependencies = [
@@ -6866,6 +6852,20 @@ dependencies = [
  "solana-program",
  "spl-token 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-token-2022 4.0.0",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-associated-token-account"
+version = "5.0.0"
+dependencies = [
+ "borsh 1.5.1",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "spl-associated-token-account-client",
+ "spl-token 6.0.0",
+ "spl-token-2022 5.0.1",
  "thiserror",
 ]
 
@@ -6883,7 +6883,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-account 5.0.0",
  "spl-associated-token-account-client",
  "spl-token 6.0.0",
  "spl-token-2022 5.0.1",
@@ -7198,7 +7198,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-account 5.0.0",
  "spl-associated-token-account-client",
  "spl-token 6.0.0",
  "thiserror",
@@ -7378,7 +7378,7 @@ dependencies = [
  "solana-sdk",
  "solana-security-txt",
  "solana-vote-program",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-account 5.0.0",
  "spl-associated-token-account-client",
  "spl-token 6.0.0",
  "test-case",
@@ -7465,7 +7465,7 @@ dependencies = [
  "solana-program",
  "solana-remote-wallet",
  "solana-sdk",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-account 5.0.0",
  "spl-associated-token-account-client",
  "spl-stake-pool",
  "spl-token 6.0.0",
@@ -7606,7 +7606,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-account 5.0.0",
  "spl-instruction-padding",
  "spl-memo 5.0.0",
  "spl-pod 0.4.0",
@@ -7944,7 +7944,7 @@ dependencies = [
  "bytemuck",
  "num_enum",
  "solana-program",
- "spl-associated-token-account 4.0.0",
+ "spl-associated-token-account 5.0.0",
  "spl-token 6.0.0",
  "spl-token-2022 5.0.1",
  "thiserror",
