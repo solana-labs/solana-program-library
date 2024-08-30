@@ -10,6 +10,10 @@ to maximize censorship resistance and rewards.
 | --- | --- |
 | Stake Pool Program | `SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy` |
 
+NOTE: The devnet deployment of the program still uses v0.6.4, and is not suitable
+for testing. For testing, it is recommended to use testnet, a local test validator,
+or deploy your own version for devnet.
+
 ## Getting Started
 
 To get started with stake pools:
