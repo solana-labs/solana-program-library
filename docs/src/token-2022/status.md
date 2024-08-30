@@ -6,7 +6,7 @@ All clusters have the latest program deployed **without confidential transfer
 functionality**.
 
 The program with confidential transfer functionality will be deployed once
-Solana v1.17 reaches mainnet-beta with the appropriate syscalls enabled.
+Agave v2.0 reaches mainnet-beta with the appropriate cluster features enabled.
 
 ## Timeline
 
@@ -15,33 +15,22 @@ Here is the general program timeline and rough ETAs:
 | Issue                       | ETA                            |
 | --------------------------- | ------------------------------ |
 | Mainnet recommendation      | Winter 2024 (depends on v1.17) |
-| More ZK features            | Spring 2024 (depends on v1.18) |
-| Freeze program              | 2024                           |
+| Token group extension       | Summer 2024                    |
+| Confidential transfers      | Autumn 2024 (depends on v2.0)  |
+| Freeze program              | 2025                           |
 
 More information: https://github.com/orgs/solana-labs/projects/34
 
 ## Remaining items
 
-### v1.17 with curve syscalls
+### v2.0 with ZK ElGamal Proof Program
 
-In order to use confidential tokens, the cluster must run at least version 1.17
-with the elliptic curve operations syscalls enabled.
+In order to use confidential tokens, the cluster must run at least version 2.0
+with the ZK ElGamal Proof Program enabled.
 
-More information: https://github.com/solana-labs/solana/issues/29612
-
-### Zero-knowledge proof split
-
-In order to use confidential tokens, the cluster must run at least version 1.17
-with the ZK Token proof program enabled.
-
-More information: https://github.com/solana-labs/solana/pull/32613
+More information: https://github.com/anza-xyz/agave/issues/1966
 
 ## Future work
-
-### Confidential transfers with fee
-
-Due to the transaction size limit, it is not possible to do confidential transfers
-with a fee. We plan to include that capability with Solana 1.18.
 
 ### Wallets
 
