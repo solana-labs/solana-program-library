@@ -7482,7 +7482,7 @@ dependencies = [
  "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-type-length-value 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-type-length-value 0.5.0",
 ]
 
 [[package]]
@@ -7500,7 +7500,7 @@ dependencies = [
  "spl-discriminator 0.3.0",
  "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
 ]
 
 [[package]]
@@ -7556,7 +7556,7 @@ dependencies = [
  "spl-token-group-interface 0.3.0",
  "spl-token-metadata-interface 0.4.0",
  "spl-transfer-hook-interface 0.7.0",
- "spl-type-length-value 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-type-length-value 0.5.0",
  "thiserror",
 ]
 
@@ -7591,7 +7591,7 @@ dependencies = [
  "spl-token-group-interface 0.4.1",
  "spl-token-metadata-interface 0.5.0",
  "spl-transfer-hook-interface 0.8.1",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
  "thiserror",
 ]
 
@@ -7704,7 +7704,7 @@ dependencies = [
  "spl-token-group-example",
  "spl-token-group-interface 0.4.1",
  "spl-token-metadata-interface 0.5.0",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
 ]
 
 [[package]]
@@ -7762,7 +7762,7 @@ dependencies = [
  "spl-token-client",
  "spl-token-group-interface 0.4.1",
  "spl-token-metadata-interface 0.5.0",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
 ]
 
 [[package]]
@@ -7787,7 +7787,7 @@ dependencies = [
  "spl-discriminator 0.3.0",
  "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
 ]
 
 [[package]]
@@ -7834,7 +7834,7 @@ dependencies = [
  "spl-token-2022 5.0.1",
  "spl-token-client",
  "spl-token-metadata-interface 0.5.0",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
  "test-case",
 ]
 
@@ -7849,7 +7849,7 @@ dependencies = [
  "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-type-length-value 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-type-length-value 0.5.0",
 ]
 
 [[package]]
@@ -7863,7 +7863,7 @@ dependencies = [
  "spl-discriminator 0.3.0",
  "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
 ]
 
 [[package]]
@@ -7987,7 +7987,7 @@ dependencies = [
  "spl-tlv-account-resolution 0.8.0",
  "spl-token-2022 5.0.1",
  "spl-transfer-hook-interface 0.8.1",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
 ]
 
 [[package]]
@@ -8003,7 +8003,7 @@ dependencies = [
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-tlv-account-resolution 0.7.0",
- "spl-type-length-value 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-type-length-value 0.5.0",
 ]
 
 [[package]]
@@ -8017,20 +8017,8 @@ dependencies = [
  "spl-pod 0.4.0",
  "spl-program-error 0.5.0",
  "spl-tlv-account-resolution 0.8.0",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
  "tokio",
-]
-
-[[package]]
-name = "spl-type-length-value"
-version = "0.5.0"
-dependencies = [
- "bytemuck",
- "solana-program",
- "spl-discriminator 0.3.0",
- "spl-pod 0.4.0",
- "spl-program-error 0.5.0",
- "spl-type-length-value-derive",
 ]
 
 [[package]]
@@ -8044,6 +8032,18 @@ dependencies = [
  "spl-discriminator 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-pod 0.3.0",
  "spl-program-error 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "spl-type-length-value"
+version = "0.6.0"
+dependencies = [
+ "bytemuck",
+ "solana-program",
+ "spl-discriminator 0.3.0",
+ "spl-pod 0.4.0",
+ "spl-program-error 0.5.0",
+ "spl-type-length-value-derive",
 ]
 
 [[package]]
@@ -8062,7 +8062,7 @@ dependencies = [
  "borsh 1.5.1",
  "solana-program",
  "spl-discriminator 0.3.0",
- "spl-type-length-value 0.5.0",
+ "spl-type-length-value 0.6.0",
 ]
 
 [[package]]

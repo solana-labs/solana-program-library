@@ -18,7 +18,7 @@ solana-program = "2.0.3"
 spl-discriminator = { version = "0.3.0", path = "../discriminator" }
 spl-program-error = { version = "0.5.0", path = "../program-error" }
 spl-pod = { version = "0.4.0", path = "../pod" }
-spl-type-length-value = { version = "0.5.0", path = "../type-length-value" }
+spl-type-length-value = { version = "0.6.0", path = "../type-length-value" }
 
 [dev-dependencies]
 futures = "0.3.30"
