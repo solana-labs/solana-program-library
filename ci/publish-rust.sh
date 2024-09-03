@@ -22,12 +22,14 @@ cd "${PACKAGE_PATH}"
 
 # Get the old version, used with git-cliff
 old_version=$(readCargoVariable version "Cargo.toml")
+package_name=$(readCargoVariable name "Cargo.toml")
+tag_name="$(echo $package_name | sed 's/spl-//')"
 
-# Publish the new version.
+# Publish the new version, commit the repo change, tag it, and push it all.
 if [[ -n ${DRY_RUN} ]]; then
   cargo release ${LEVEL}
 else
-  cargo release ${LEVEL} --no-push --no-tag --no-confirm --execute
+  cargo release ${LEVEL} --tag-name "${tag_name}-v{{version}}" --no-confirm --execute
 fi
 
 # Stop here if this is a dry run.
@@ -37,8 +39,6 @@ fi
 
 # Get the new version.
 new_version=$(readCargoVariable version "Cargo.toml")
-package_name=$(readCargoVariable name "Cargo.toml")
-tag_name="$(echo $package_name | sed 's/spl-//')"
 new_git_tag="${tag_name}-v${new_version}"
 old_git_tag="${tag_name}-v${old_version}"
 release_title="SPL ${tag_name} - v${new_version}"
@@ -49,12 +49,3 @@ if [[ -n $CI ]]; then
   echo "old_git_tag=${old_git_tag}" >> $GITHUB_OUTPUT
   echo "release_title=${release_title}" >> $GITHUB_OUTPUT
 fi
-
-# Soft reset the last commit so we can create our own commit and tag.
-git reset --soft HEAD~1
-
-# Commit the new version.
-git commit -am "Publish ${tag_name} v${new_version}"
-
-# Tag the new version.
-git tag -a ${new_git_tag} -m "${tag_name} v${new_version}"

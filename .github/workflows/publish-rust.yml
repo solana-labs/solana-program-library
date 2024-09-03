@@ -205,10 +205,6 @@ jobs:
 
           ./ci/publish-rust.sh "${{ inputs.package_path }}" $LEVEL $OPTIONS
 
-      - name: Push Commit and Tag
-        if: github.event.inputs.dry_run != 'true'
-        run: git push origin --follow-tags
-
       - name: Generate a changelog
         if: github.event.inputs.create_release == 'true'
         uses: orhun/git-cliff-action@v3
