@@ -121,7 +121,7 @@ jobs:
           key: pip-stake-pool-${{ hashFiles('stake-pool/py/requirements.txt') }}
 
       - name: Download programs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: stake-pool-programs
           path: target/deploy
