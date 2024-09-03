@@ -183,6 +183,9 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
+      - name: Rebase
+        run: git pull --rebase origin
+
       - name: Publish Crate
         id: publish
         env:
