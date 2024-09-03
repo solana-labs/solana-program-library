@@ -35,7 +35,7 @@ spl-token = { version = "6.0", path = "../program", features = [
 spl-token-2022 = { version = "5.0.2", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
-spl-token-client = { version = "0.12.0", path = "../client" }
+spl-token-client = { version = "0.12.1", path = "../client" }
 spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "../confidential-transfer/proof-generation" }
 spl-token-metadata-interface = { version = "0.5.1", path = "../../token-metadata/interface" }
 spl-token-group-interface = { version = "0.4.2", path = "../../token-group/interface" }
