@@ -7589,7 +7589,7 @@ dependencies = [
  "spl-token-confidential-transfer-proof-extraction",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.1",
- "spl-token-metadata-interface 0.5.0",
+ "spl-token-metadata-interface 0.5.1",
  "spl-transfer-hook-interface 0.8.1",
  "spl-type-length-value 0.6.0",
  "thiserror",
@@ -7616,7 +7616,7 @@ dependencies = [
  "spl-token-client",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.1",
- "spl-token-metadata-interface 0.5.0",
+ "spl-token-metadata-interface 0.5.1",
  "spl-transfer-hook-example",
  "spl-transfer-hook-interface 0.8.1",
  "test-case",
@@ -7654,7 +7654,7 @@ dependencies = [
  "spl-token-client",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.1",
- "spl-token-metadata-interface 0.5.0",
+ "spl-token-metadata-interface 0.5.1",
  "strum 0.26.3",
  "strum_macros 0.26.4",
  "tempfile",
@@ -7684,7 +7684,7 @@ dependencies = [
  "spl-token-2022 5.0.1",
  "spl-token-confidential-transfer-proof-generation",
  "spl-token-group-interface 0.4.1",
- "spl-token-metadata-interface 0.5.0",
+ "spl-token-metadata-interface 0.5.1",
  "spl-transfer-hook-interface 0.8.1",
  "thiserror",
 ]
@@ -7703,7 +7703,7 @@ dependencies = [
  "spl-token-client",
  "spl-token-group-example",
  "spl-token-group-interface 0.4.1",
- "spl-token-metadata-interface 0.5.0",
+ "spl-token-metadata-interface 0.5.1",
  "spl-type-length-value 0.6.0",
 ]
 
@@ -7761,7 +7761,7 @@ dependencies = [
  "spl-token-2022 5.0.1",
  "spl-token-client",
  "spl-token-group-interface 0.4.1",
- "spl-token-metadata-interface 0.5.0",
+ "spl-token-metadata-interface 0.5.1",
  "spl-type-length-value 0.6.0",
 ]
 
@@ -7833,7 +7833,7 @@ dependencies = [
  "spl-pod 0.4.0",
  "spl-token-2022 5.0.1",
  "spl-token-client",
- "spl-token-metadata-interface 0.5.0",
+ "spl-token-metadata-interface 0.5.1",
  "spl-type-length-value 0.6.0",
  "test-case",
 ]
@@ -7854,7 +7854,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-metadata-interface"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "borsh 1.5.1",
  "serde",
