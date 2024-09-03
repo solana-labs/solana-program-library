@@ -209,7 +209,7 @@ jobs:
           path: "target/deploy/*.so"
           if-no-files-found: error
 
-  cargo-test-sbf-twoxtx:
+  cargo-test-sbf-token-2022:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -242,12 +242,11 @@ jobs:
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Build and test token-2022 twoxtx (TEMPORARY)
+      - name: Build and test token-2022
         run: |
           cargo build-sbf --manifest-path token/program-2022/Cargo.toml
           cargo build-sbf --manifest-path instruction-padding/program/Cargo.toml
-          ./token/twoxtx-setup.sh
-          ./token/twoxtx-solana/cargo-test-sbf --manifest-path token/program-2022-test/Cargo.toml -- --nocapture
+          ./ci/cargo-test-sbf.sh token/program-2022-test
 
   js-test:
     runs-on: ubuntu-latest
