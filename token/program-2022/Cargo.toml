@@ -32,7 +32,7 @@ spl-token-confidential-transfer-proof-extraction = { version = "0.1.0", path = "
 spl-token-group-interface = { version = "0.4.1", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.5.0", path = "../../token-metadata/interface" }
 spl-transfer-hook-interface = { version = "0.8.1", path = "../transfer-hook/interface" }
-spl-type-length-value = { version = "0.5.0", path = "../../libraries/type-length-value" }
+spl-type-length-value = { version = "0.6.0", path = "../../libraries/type-length-value" }
 spl-pod = { version = "0.4.0", path = "../../libraries/pod" }
 thiserror = "1.0"
 serde = { version = "1.0.209", optional = true }

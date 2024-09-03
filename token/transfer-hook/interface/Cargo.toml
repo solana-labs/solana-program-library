@@ -14,7 +14,7 @@ solana-program = "2.0.3"
 spl-discriminator = { version = "0.3.0" , path = "../../../libraries/discriminator" }
 spl-program-error = { version = "0.5.0" , path = "../../../libraries/program-error" }
 spl-tlv-account-resolution = { version = "0.8.0", path = "../../../libraries/tlv-account-resolution" }
-spl-type-length-value = { version = "0.5.0" , path = "../../../libraries/type-length-value" }
+spl-type-length-value = { version = "0.6.0", path = "../../../libraries/type-length-value" }
 spl-pod = { version = "0.4.0", path = "../../../libraries/pod" }
 
 [lib]
