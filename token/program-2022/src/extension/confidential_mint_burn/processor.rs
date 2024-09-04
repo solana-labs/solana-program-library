@@ -343,8 +343,8 @@ fn process_confidential_burn(
 
     let new_source_available_balance = ciphertext_arithmetic::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
-        &source_transfer_amount_lo,
-        &source_transfer_amount_hi,
+        source_transfer_amount_lo,
+        source_transfer_amount_hi,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
