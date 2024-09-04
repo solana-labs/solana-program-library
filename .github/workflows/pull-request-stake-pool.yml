@@ -79,7 +79,7 @@ jobs:
         run: ./ci/cargo-test-sbf.sh stake-pool
 
       - name: Upload programs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: stake-pool-programs
           path: "target/deploy/*.so"
@@ -121,7 +121,7 @@ jobs:
           key: pip-stake-pool-${{ hashFiles('stake-pool/py/requirements.txt') }}
 
       - name: Download programs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: stake-pool-programs
           path: target/deploy
