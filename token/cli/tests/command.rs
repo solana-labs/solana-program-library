@@ -14,7 +14,7 @@ use {
         transaction::Transaction,
     },
     solana_test_validator::{TestValidator, TestValidatorGenesis, UpgradeableProgramInfo},
-    spl_associated_token_account::get_associated_token_address_with_program_id,
+    spl_associated_token_account_client::address::get_associated_token_address_with_program_id,
     spl_token_2022::{
         extension::{
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
@@ -167,7 +167,7 @@ async fn new_validator_for_test() -> (TestValidator, Keypair) {
             upgrade_authority: Pubkey::new_unique(),
         },
         UpgradeableProgramInfo {
-            program_id: spl_associated_token_account::id(),
+            program_id: spl_associated_token_account_client::program::id(),
             loader: bpf_loader_upgradeable::id(),
             program_path: PathBuf::from("../../target/deploy/spl_associated_token_account.so"),
             upgrade_authority: Pubkey::new_unique(),

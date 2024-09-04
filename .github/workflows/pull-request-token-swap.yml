@@ -80,13 +80,6 @@ jobs:
         run: |
           mv target/deploy-production/spl_token_swap.so target/deploy/spl_token_swap_production.so
 
-      - name: Upload programs
-        uses: actions/upload-artifact@v3
-        with:
-          name: token-swap-programs
-          path: "target/deploy/*.so"
-          if-no-files-found: error
-
   js-test:
     runs-on: ubuntu-latest
     env:

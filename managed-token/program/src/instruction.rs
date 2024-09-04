@@ -8,7 +8,7 @@ use {
         pubkey::Pubkey,
         system_program,
     },
-    spl_associated_token_account::get_associated_token_address,
+    spl_associated_token_account_client::address::get_associated_token_address,
 };
 
 #[derive(Debug, Clone, ShankInstruction, BorshSerialize, BorshDeserialize)]
@@ -127,7 +127,7 @@ pub fn create_initialize_account_instruction(
             AccountMeta::new_readonly(freeze_authority, false),
             AccountMeta::new_readonly(*mint, false),
             AccountMeta::new_readonly(system_program::id(), false),
-            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
+            AccountMeta::new_readonly(spl_associated_token_account_client::program::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: borsh::to_vec(&ManagedTokenInstruction::InitializeAccount)?,

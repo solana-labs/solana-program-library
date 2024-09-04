@@ -7,7 +7,7 @@ use {
         program_pack::{IsInitialized, Pack},
         pubkey::Pubkey,
     },
-    spl_associated_token_account::get_associated_token_address,
+    spl_associated_token_account_client::address::get_associated_token_address,
     spl_token::{self, state::Account},
 };
 

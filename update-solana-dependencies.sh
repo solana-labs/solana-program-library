@@ -31,8 +31,10 @@ crates=(
   solana-cli-config
   solana-cli-output
   solana-client
+  solana-compute-budget
   solana-connection-cache
   solana-core
+  solana-curve25519
   solana-entry
   solana-faucet
   solana-frozen-abi
@@ -55,8 +57,10 @@ crates=(
   solana-compute-budget-program
   solana-config-program
   solana-stake-program
+  solana-system-program
   solana-vote-program
   solana-zk-token-proof-program
+  solana-zk-elgamal-proof-program
   solana-pubsub-client
   solana-quic-client
   solana-rayon-threadlimit

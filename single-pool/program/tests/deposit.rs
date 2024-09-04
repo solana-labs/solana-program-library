@@ -12,7 +12,7 @@ use {
         stake::state::{Authorized, Lockup},
         transaction::Transaction,
     },
-    spl_associated_token_account as atoken,
+    spl_associated_token_account_client::address as atoken,
     spl_single_pool::{
         error::SinglePoolError, find_default_deposit_account_address, id, instruction,
     },

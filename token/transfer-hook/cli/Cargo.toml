@@ -17,19 +17,19 @@ solana-client = "2.0.3"
 solana-logger = "2.0.3"
 solana-remote-wallet = "2.0.3"
 solana-sdk = "2.0.3"
-spl-tlv-account-resolution = { version = "0.7.0" , path = "../../../libraries/tlv-account-resolution", features = ["serde-traits"] }
-spl-transfer-hook-interface = { version = "0.7.0", path = "../interface" }
+spl-tlv-account-resolution = { version = "0.8.1", path = "../../../libraries/tlv-account-resolution", features = ["serde-traits"] }
+spl-transfer-hook-interface = { version = "0.8.2", path = "../interface" }
 strum = "0.26"
 strum_macros = "0.26"
 tokio = { version = "1", features = ["full"] }
-serde = { version = "1.0.208", features = ["derive"] }
-serde_json = "1.0.125"
+serde = { version = "1.0.209", features = ["derive"] }
+serde_json = "1.0.127"
 serde_yaml = "0.9.34"
 
 [dev-dependencies]
 solana-test-validator = "2.0.3"
-spl-token-2022 = { version = "4.0.0", path = "../../program-2022", features = ["no-entrypoint"] }
-spl-token-client = { version = "0.11.0", path = "../../client" }
+spl-token-2022 = { version = "5.0.2", path = "../../program-2022", features = ["no-entrypoint"] }
+spl-token-client = { version = "0.12.1", path = "../../client" }
 spl-transfer-hook-example = { version = "0.6.0", path = "../example" }
 
 [[bin]]

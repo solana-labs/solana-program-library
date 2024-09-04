@@ -16,67 +16,16 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar,
 };
-
-solana_program::declare_id!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
-
-pub(crate) fn get_associated_token_address_and_bump_seed(
-    wallet_address: &Pubkey,
-    token_mint_address: &Pubkey,
-    program_id: &Pubkey,
-    token_program_id: &Pubkey,
-) -> (Pubkey, u8) {
-    get_associated_token_address_and_bump_seed_internal(
-        wallet_address,
-        token_mint_address,
-        program_id,
-        token_program_id,
-    )
-}
-
-/// Derives the associated token account address for the given wallet address
-/// and token mint
-pub fn get_associated_token_address(
-    wallet_address: &Pubkey,
-    token_mint_address: &Pubkey,
-) -> Pubkey {
-    get_associated_token_address_with_program_id(
-        wallet_address,
-        token_mint_address,
-        &spl_token::id(),
-    )
-}
-
-/// Derives the associated token account address for the given wallet address,
-/// token mint and token program id
-pub fn get_associated_token_address_with_program_id(
-    wallet_address: &Pubkey,
-    token_mint_address: &Pubkey,
-    token_program_id: &Pubkey,
-) -> Pubkey {
-    get_associated_token_address_and_bump_seed(
-        wallet_address,
-        token_mint_address,
-        &id(),
-        token_program_id,
-    )
-    .0
-}
-
-fn get_associated_token_address_and_bump_seed_internal(
-    wallet_address: &Pubkey,
-    token_mint_address: &Pubkey,
-    program_id: &Pubkey,
-    token_program_id: &Pubkey,
-) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[
-            &wallet_address.to_bytes(),
-            &token_program_id.to_bytes(),
-            &token_mint_address.to_bytes(),
-        ],
-        program_id,
-    )
-}
+#[deprecated(
+    since = "4.1.0",
+    note = "Use `spl-associated-token-account-client` crate instead."
+)]
+pub use spl_associated_token_account_client::address::{
+    get_associated_token_address, get_associated_token_address_with_program_id,
+};
+// Export current SDK types for downstream users building with a different SDK
+// version
+pub use spl_associated_token_account_client::program::{check_id, id, ID};
 
 /// Create an associated token account for the given wallet address and token
 /// mint

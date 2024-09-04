@@ -18,17 +18,17 @@ bytemuck = "1.17"
 num-derive = "0.4"
 num-traits = "0.2"
 num_enum = "0.7.3"
-serde = "1.0.208"
+serde = "1.0.209"
 serde_derive = "1.0.103"
 solana-program = "2.0.3"
 solana-security-txt = "1.1.1"
 spl-math = { version = "0.2", path = "../../libraries/math", features = [
   "no-entrypoint",
 ] }
-spl-pod = { version = "0.3.0", path = "../../libraries/pod", features = [
+spl-pod = { version = "0.4.0", path = "../../libraries/pod", features = [
   "borsh",
 ] }
-spl-token-2022 = { version = "4.0.0", path = "../../token/program-2022", features = [
+spl-token-2022 = { version = "5.0.2", path = "../../token/program-2022", features = [
   "no-entrypoint",
 ] }
 thiserror = "1.0"

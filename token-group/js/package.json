@@ -1,7 +1,7 @@
 {
     "name": "@solana/spl-token-group",
     "description": "SPL Token Group Interface JS API",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "author": "Solana Labs Maintainers <maintainers@solanalabs.com>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
@@ -51,11 +51,11 @@
     },
     "devDependencies": {
         "@solana/web3.js": "^1.95.3",
-        "@types/chai": "^4.3.17",
+        "@types/chai": "^4.3.19",
         "@types/mocha": "^10.0.7",
-        "@types/node": "^22.5.0",
-        "@typescript-eslint/eslint-plugin": "^8.2.0",
-        "@typescript-eslint/parser": "^8.2.0",
+        "@types/node": "^22.5.2",
+        "@typescript-eslint/eslint-plugin": "^8.4.0",
+        "@typescript-eslint/parser": "^8.4.0",
         "chai": "^5.1.1",
         "eslint": "^8.57.0",
         "eslint-plugin-require-extensions": "^0.1.1",
@@ -63,7 +63,7 @@
         "mocha": "^10.7.3",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
-        "tslib": "^2.6.3",
+        "tslib": "^2.7.0",
         "typedoc": "^0.26.6",
         "typescript": "^5.5.4"
     }
