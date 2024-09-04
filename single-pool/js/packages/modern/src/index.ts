@@ -1,4 +1,4 @@
-import { getAddressCodec } from '@solana/web3.js';
+import { getAddressCodec } from '@solana/addresses';
 
 import { PoolAddress, VoteAccountAddress } from './addresses.js';
 
@@ -15,5 +15,5 @@ export async function getVoteAccountAddressForPool(
   if (!(poolAccount && poolAccount.data[0] === 1)) {
     throw 'invalid pool address';
   }
-  return getAddressCodec().deserialize(poolAccount.data.slice(1))[0] as VoteAccountAddress;
+  return getAddressCodec().decode(poolAccount.data.slice(1)) as VoteAccountAddress;
 }

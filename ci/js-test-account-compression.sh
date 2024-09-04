@@ -5,8 +5,9 @@ cd "$(dirname "$0")/.."
 source ./ci/solana-version.sh install
 
 set -x
-cd account-compression/sdk
 pnpm install
+pnpm format
+cd account-compression/sdk
 pnpm build
 pnpm build:program
 pnpm lint

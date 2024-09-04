@@ -13,7 +13,7 @@ const DataLayout = struct<Data>([u8('instruction')]);
 export const initObligationInstruction = (
     obligation: PublicKey,
     lendingMarket: PublicKey,
-    obligationOwner: PublicKey
+    obligationOwner: PublicKey,
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode({ instruction: LendingInstruction.InitObligation }, data);

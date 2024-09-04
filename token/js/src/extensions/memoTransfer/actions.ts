@@ -27,12 +27,12 @@ export async function enableRequiredMemoTransfers(
     owner: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createEnableRequiredMemoTransfersInstruction(account, ownerPublicKey, signers, programId)
+        createEnableRequiredMemoTransfersInstruction(account, ownerPublicKey, signers, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -58,12 +58,12 @@ export async function disableRequiredMemoTransfers(
     owner: Signer | PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createDisableRequiredMemoTransfersInstruction(account, ownerPublicKey, signers, programId)
+        createDisableRequiredMemoTransfersInstruction(account, ownerPublicKey, signers, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

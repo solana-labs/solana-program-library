@@ -32,7 +32,7 @@ use {
             BaseStateWithExtensions, StateWithExtensionsOwned,
         },
         instruction::create_native_mint,
-        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
+        solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey,
         state::{Account, AccountState, Mint, Multisig},
     },
     spl_token_cli::{
@@ -92,6 +92,7 @@ async fn main() {
     // maybe come up with a way to do this through a some macro tag on the function?
     let tests = vec![
         async_trial!(create_token_default, test_validator, payer),
+        async_trial!(create_token_2022, test_validator, payer),
         async_trial!(create_token_interest_bearing, test_validator, payer),
         async_trial!(set_interest_rate, test_validator, payer),
         async_trial!(supply, test_validator, payer),
@@ -123,6 +124,7 @@ async fn main() {
         async_trial!(non_transferable, test_validator, payer),
         async_trial!(default_account_state, test_validator, payer),
         async_trial!(transfer_fee, test_validator, payer),
+        async_trial!(transfer_fee_basis_point, test_validator, payer),
         async_trial!(confidential_transfer, test_validator, payer),
         async_trial!(multisig_transfer, test_validator, payer),
         async_trial!(offline_multisig_transfer_with_nonce, test_validator, payer),
@@ -493,6 +495,43 @@ async fn create_token_default(test_validator: &TestValidator, payer: &Keypair) {
         let account = config.rpc_client.get_account(&mint).await.unwrap();
         assert_eq!(account.owner, *program_id);
     }
+}
+
+async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
+    let mut wallet_manager = None;
+    let mut bulk_signers: Vec<Arc<dyn Signer>> = Vec::new();
+    let mut multisigner_ids = Vec::new();
+
+    let args = &[
+        "spl-token",
+        CommandName::CreateToken.into(),
+        "--program-2022",
+    ];
+
+    let default_decimals = format!("{}", spl_token_2022::native_mint::DECIMALS);
+    let minimum_signers_help = minimum_signers_help_string();
+    let multisig_member_help = multisig_member_help_string();
+
+    let app_matches = app(
+        &default_decimals,
+        &minimum_signers_help,
+        &multisig_member_help,
+    )
+    .get_matches_from(args);
+
+    let config = Config::new_with_clients_and_ws_url(
+        &app_matches,
+        &mut wallet_manager,
+        &mut bulk_signers,
+        &mut multisigner_ids,
+        config.rpc_client.clone(),
+        config.program_client.clone(),
+        config.websocket_url.clone(),
+    )
+    .await;
+
+    assert_eq!(config.program_id, spl_token_2022::ID);
 }
 
 async fn create_token_interest_bearing(test_validator: &TestValidator, payer: &Keypair) {
@@ -2521,8 +2560,56 @@ async fn transfer_fee(test_validator: &TestValidator, payer: &Keypair) {
     );
 }
 
+async fn transfer_fee_basis_point(test_validator: &TestValidator, payer: &Keypair) {
+    let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
+
+    let transfer_fee_basis_points = 100;
+    let maximum_fee = 1.2;
+    let decimal = 9;
+
+    let token = Keypair::new();
+    let token_keypair_file = NamedTempFile::new().unwrap();
+    write_keypair_file(&token, &token_keypair_file).unwrap();
+    let token_pubkey = token.pubkey();
+    process_test_command(
+        &config,
+        payer,
+        &[
+            "spl-token",
+            CommandName::CreateToken.into(),
+            token_keypair_file.path().to_str().unwrap(),
+            "--transfer-fee-basis-points",
+            &transfer_fee_basis_points.to_string(),
+            "--transfer-fee-maximum-fee",
+            &maximum_fee.to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+
+    let account = config.rpc_client.get_account(&token_pubkey).await.unwrap();
+    let test_mint = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
+    let extension = test_mint.get_extension::<TransferFeeConfig>().unwrap();
+    assert_eq!(
+        u16::from(extension.older_transfer_fee.transfer_fee_basis_points),
+        transfer_fee_basis_points
+    );
+    assert_eq!(
+        u64::from(extension.older_transfer_fee.maximum_fee),
+        (maximum_fee * i32::pow(10, decimal) as f64) as u64
+    );
+    assert_eq!(
+        u16::from(extension.newer_transfer_fee.transfer_fee_basis_points),
+        transfer_fee_basis_points
+    );
+    assert_eq!(
+        u64::from(extension.newer_transfer_fee.maximum_fee),
+        (maximum_fee * i32::pow(10, decimal) as f64) as u64
+    );
+}
+
 async fn confidential_transfer(test_validator: &TestValidator, payer: &Keypair) {
-    use spl_token_2022::solana_zk_token_sdk::encryption::elgamal::ElGamalKeypair;
+    use spl_token_2022::solana_zk_sdk::encryption::elgamal::ElGamalKeypair;
 
     let config = test_config_with_default_signer(test_validator, payer, &spl_token_2022::id());
 
@@ -2563,13 +2650,13 @@ async fn confidential_transfer(test_validator: &TestValidator, payer: &Keypair) 
         auto_approve,
     );
     assert_eq!(
-        Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
+        Option::<PodElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
         None,
     );
 
     // update confidential transfer mint settings
     let auditor_keypair = ElGamalKeypair::new_rand();
-    let auditor_pubkey: ElGamalPubkey = (*auditor_keypair.pubkey()).into();
+    let auditor_pubkey: PodElGamalPubkey = (*auditor_keypair.pubkey()).into();
     let new_auto_approve = true;
 
     process_test_command(
@@ -2599,7 +2686,7 @@ async fn confidential_transfer(test_validator: &TestValidator, payer: &Keypair) 
         new_auto_approve,
     );
     assert_eq!(
-        Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
+        Option::<PodElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
         Some(auditor_pubkey),
     );
 
@@ -2859,7 +2946,7 @@ async fn confidential_transfer_with_fee(test_validator: &TestValidator, payer: &
         auto_approve,
     );
     assert_eq!(
-        Option::<ElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
+        Option::<PodElGamalPubkey>::from(extension.auditor_elgamal_pubkey),
         None,
     );
 
@@ -4064,7 +4151,7 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
     let account = config.rpc_client.get_account(&mint).await.unwrap();
     let group_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
     let extension = group_mint_state.get_extension::<TokenGroup>().unwrap();
-    assert_eq!(u32::from(extension.size), 1);
+    assert_eq!(u64::from(extension.size), 1);
 
     let account = config.rpc_client.get_account(&member_mint).await.unwrap();
     let member_mint_state = StateWithExtensionsOwned::<Mint>::unpack(account.data).unwrap();
@@ -4073,7 +4160,7 @@ async fn group(test_validator: &TestValidator, payer: &Keypair) {
         .unwrap();
     assert_eq!(extension.group, mint);
     assert_eq!(extension.mint, member_mint);
-    assert_eq!(u32::from(extension.member_number), 1);
+    assert_eq!(u64::from(extension.member_number), 1);
 
     // update authority
     process_test_command(

@@ -14,6 +14,7 @@ import { getAssociatedTokenAddressSync } from '../state/mint.js';
  * @param confirmOptions           Options for confirming the transaction
  * @param programId                SPL Token program account
  * @param associatedTokenProgramId SPL Associated Token program account
+ * @param allowOwnerOffCurve       Allow the owner account to be a PDA (Program Derived Address)
  *
  * @return Address of the new associated token account
  */
@@ -24,9 +25,16 @@ export async function createAssociatedTokenAccount(
     owner: PublicKey,
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
+    allowOwnerOffCurve = false,
 ): Promise<PublicKey> {
-    const associatedToken = getAssociatedTokenAddressSync(mint, owner, false, programId, associatedTokenProgramId);
+    const associatedToken = getAssociatedTokenAddressSync(
+        mint,
+        owner,
+        allowOwnerOffCurve,
+        programId,
+        associatedTokenProgramId,
+    );
 
     const transaction = new Transaction().add(
         createAssociatedTokenAccountInstruction(
@@ -35,8 +43,8 @@ export async function createAssociatedTokenAccount(
             owner,
             mint,
             programId,
-            associatedTokenProgramId
-        )
+            associatedTokenProgramId,
+        ),
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer], confirmOptions);

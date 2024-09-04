@@ -34,7 +34,7 @@ import {
         decimals,
         undefined,
         undefined,
-        TOKEN_2022_PROGRAM_ID
+        TOKEN_2022_PROGRAM_ID,
     );
 
     const accountLen = getAccountLen([ExtensionType.ImmutableOwner]);
@@ -52,7 +52,7 @@ import {
             programId: TOKEN_2022_PROGRAM_ID,
         }),
         createInitializeImmutableOwnerInstruction(account, TOKEN_2022_PROGRAM_ID),
-        createInitializeAccountInstruction(account, mint, owner.publicKey, TOKEN_2022_PROGRAM_ID)
+        createInitializeAccountInstruction(account, mint, owner.publicKey, TOKEN_2022_PROGRAM_ID),
     );
     await sendAndConfirmTransaction(connection, transaction, [payer, accountKeypair], undefined);
 

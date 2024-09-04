@@ -11,7 +11,7 @@ use {
     spl_pod::{
         bytemuck::{pod_bytes_of, pod_from_bytes},
         optional_keys::OptionalNonZeroPubkey,
-        primitives::PodU32,
+        primitives::PodU64,
     },
 };
 
@@ -23,7 +23,7 @@ pub struct InitializeGroup {
     /// Update authority for the group
     pub update_authority: OptionalNonZeroPubkey,
     /// The maximum number of group members
-    pub max_size: PodU32,
+    pub max_size: PodU64,
 }
 
 /// Instruction data for updating the max size of a `Group`
@@ -32,7 +32,7 @@ pub struct InitializeGroup {
 #[discriminator_hash_input("spl_token_group_interface:update_group_max_size")]
 pub struct UpdateGroupMaxSize {
     /// New max size for the group
-    pub max_size: PodU32,
+    pub max_size: PodU64,
 }
 
 /// Instruction data for updating the authority of a `Group`
@@ -155,7 +155,7 @@ pub fn initialize_group(
     mint: &Pubkey,
     mint_authority: &Pubkey,
     update_authority: Option<Pubkey>,
-    max_size: u32,
+    max_size: u64,
 ) -> Instruction {
     let update_authority = OptionalNonZeroPubkey::try_from(update_authority)
         .expect("Failed to deserialize `Option<Pubkey>`");
@@ -180,7 +180,7 @@ pub fn update_group_max_size(
     program_id: &Pubkey,
     group: &Pubkey,
     update_authority: &Pubkey,
-    max_size: u32,
+    max_size: u64,
 ) -> Instruction {
     let data = TokenGroupInstruction::UpdateGroupMaxSize(UpdateGroupMaxSize {
         max_size: max_size.into(),

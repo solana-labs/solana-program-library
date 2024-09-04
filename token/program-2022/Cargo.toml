@@ -1,6 +1,6 @@
 [package]
 name = "spl-token-2022"
-version = "4.0.0"
+version = "4.0.1"
 description = "Solana Program Library Token 2022"
 authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -12,43 +12,44 @@ exclude = ["js/**"]
 no-entrypoint = []
 test-sbf = []
 serde-traits = ["dep:serde", "dep:serde_with", "dep:base64", "spl-pod/serde-traits"]
-default = ["confidential-hook", "token-group", "zk-ops"]
+default = ["zk-ops"]
 # Remove this feature once the underlying syscalls are released on all networks
 zk-ops = []
-# Remove this feature once the token group implementation has been audited
-token-group = []
-# Remove this feature once the confidential transfer hook has been audited
-confidential-hook = []
 
 [dependencies]
-arrayref = "0.3.7"
-bytemuck = { version = "1.16.1", features = ["derive"] }
+arrayref = "0.3.8"
+bytemuck = { version = "1.17.0", features = ["derive"] }
 num-derive = "0.4"
 num-traits = "0.2"
-num_enum = "0.7.2"
-solana-program = "2.0.0"
+num_enum = "0.7.3"
+solana-program = "2.0.3"
 solana-security-txt = "1.1.1"
-solana-zk-token-sdk = "2.0.0"
+solana-zk-sdk = "2.0.3"
 spl-memo = { version = "5.0", path = "../../memo/program", features = [ "no-entrypoint" ] }
 spl-token = { version = "6.0",  path = "../program", features = ["no-entrypoint"] }
+spl-token-confidential-transfer-ciphertext-arithmetic = { version = "0.1.0", path = "../confidential-transfer/ciphertext-arithmetic" }
+spl-token-confidential-transfer-proof-extraction = { version = "0.1.0", path = "../confidential-transfer/proof-extraction" }
 spl-token-group-interface = { version = "0.3.0", path = "../../token-group/interface" }
 spl-token-metadata-interface = { version = "0.4.0", path = "../../token-metadata/interface" }
 spl-transfer-hook-interface = { version = "0.7.0", path = "../transfer-hook/interface" }
 spl-type-length-value = { version = "0.5.0", path = "../../libraries/type-length-value" }
 spl-pod = { version = "0.3.0", path = "../../libraries/pod" }
 thiserror = "1.0"
-serde = { version = "1.0.204", optional = true }
-serde_with = { version = "3.8.3", optional = true }
+serde = { version = "1.0.208", optional = true }
+serde_with = { version = "3.9.0", optional = true }
 base64 = { version = "0.22.1", optional = true }
+
+[target.'cfg(not(target_os = "solana"))'.dependencies]
+spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "../confidential-transfer/proof-generation"}
 
 [dev-dependencies]
 lazy_static = "1.5.0"
 proptest = "1.5"
 serial_test = "3.1.1"
-solana-program-test = "2.0.0"
-solana-sdk = "2.0.0"
+solana-program-test = "2.0.3"
+solana-sdk = "2.0.3"
 spl-tlv-account-resolution = { version = "0.7.0", path = "../../libraries/tlv-account-resolution" }
-serde_json = "1.0.120"
+serde_json = "1.0.125"
 
 [lib]
 crate-type = ["cdylib", "lib"]

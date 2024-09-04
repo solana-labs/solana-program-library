@@ -40,7 +40,7 @@ describe('recoverNested', () => {
             0,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         associatedToken = await createAssociatedTokenAccount(
@@ -49,7 +49,7 @@ describe('recoverNested', () => {
             mint,
             owner.publicKey,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         // nested mint
@@ -63,7 +63,7 @@ describe('recoverNested', () => {
             0,
             nestedMintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         nestedAssociatedToken = getAssociatedTokenAddressSync(
@@ -71,7 +71,7 @@ describe('recoverNested', () => {
             associatedToken,
             true,
             TEST_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
+            ASSOCIATED_TOKEN_PROGRAM_ID,
         );
         const transaction = new Transaction().add(
             createAssociatedTokenAccountInstruction(
@@ -80,8 +80,8 @@ describe('recoverNested', () => {
                 associatedToken,
                 nestedMint,
                 TEST_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
-            )
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer], undefined);
 
@@ -95,28 +95,28 @@ describe('recoverNested', () => {
             nestedMintAmount,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
-    }),
-        it('success', async () => {
-            // create destination associated token
-            const destinationAssociatedToken = await createAssociatedTokenAccount(
-                connection,
-                payer,
-                nestedMint,
-                owner.publicKey,
-                undefined,
-                TEST_PROGRAM_ID
-            );
+    });
+    it('success', async () => {
+        // create destination associated token
+        const destinationAssociatedToken = await createAssociatedTokenAccount(
+            connection,
+            payer,
+            nestedMint,
+            owner.publicKey,
+            undefined,
+            TEST_PROGRAM_ID,
+        );
 
-            await recoverNested(connection, payer, owner, mint, nestedMint, undefined, TEST_PROGRAM_ID);
+        await recoverNested(connection, payer, owner, mint, nestedMint, undefined, TEST_PROGRAM_ID);
 
-            expect(await connection.getAccountInfo(nestedAssociatedToken)).to.be.null;
+        expect(await connection.getAccountInfo(nestedAssociatedToken)).to.equal(null);
 
-            const accountInfo = await getAccount(connection, destinationAssociatedToken, undefined, TEST_PROGRAM_ID);
-            expect(accountInfo).to.not.be.null;
-            expect(accountInfo.mint).to.eql(nestedMint);
-            expect(accountInfo.owner).to.eql(owner.publicKey);
-            expect(accountInfo.amount).to.eql(BigInt(nestedMintAmount));
-        });
+        const accountInfo = await getAccount(connection, destinationAssociatedToken, undefined, TEST_PROGRAM_ID);
+        expect(accountInfo).to.not.equal(null);
+        expect(accountInfo.mint).to.eql(nestedMint);
+        expect(accountInfo.owner).to.eql(owner.publicKey);
+        expect(accountInfo.amount).to.eql(BigInt(nestedMintAmount));
+    });
 });

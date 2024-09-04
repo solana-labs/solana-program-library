@@ -2,21 +2,24 @@
 
 mod program_test;
 use {
-    program_test::{TestContext, TokenContext},
+    bytemuck::Zeroable,
+    program_test::{ConfidentialTransferOption, TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
         instruction::InstructionError,
         pubkey::Pubkey,
         signature::Signer,
-        signer::keypair::Keypair,
-        system_instruction,
-        transaction::{Transaction, TransactionError},
+        signer::{keypair::Keypair, signers::Signers},
+        transaction::TransactionError,
         transport::TransportError,
     },
+    spl_record::state::RecordData,
     spl_token_2022::{
         error::TokenError,
         extension::{
-            confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            confidential_transfer::{
+                ConfidentialTransferAccount, ConfidentialTransferMint, DecryptableBalance,
+            },
             confidential_transfer_fee::{
                 account_info::WithheldTokensInfo, ConfidentialTransferFeeAmount,
                 ConfidentialTransferFeeConfig,
@@ -25,19 +28,18 @@ use {
             BaseStateWithExtensions, ExtensionType,
         },
         instruction,
-        solana_zk_token_sdk::{
-            encryption::{auth_encryption::*, elgamal::*},
-            zk_token_elgamal::pod::{self, Zeroable},
-            zk_token_proof_instruction::*,
-            zk_token_proof_program,
-            zk_token_proof_state::ProofContextState,
+        solana_zk_sdk::encryption::{
+            auth_encryption::*, elgamal::*, pod::elgamal::PodElGamalCiphertext,
         },
     },
     spl_token_client::{
-        client::{SendTransaction, SimulateTransaction},
-        token::{ExtensionInitializationParams, Token, TokenError as TokenClientError},
+        client::{ProgramBanksClientProcessTransaction, SendTransaction, SimulateTransaction},
+        token::{
+            ExtensionInitializationParams, ProofAccount, Token, TokenError as TokenClientError,
+            TokenResult,
+        },
     },
-    std::{convert::TryInto, mem::size_of},
+    std::convert::TryInto,
 };
 
 #[cfg(feature = "zk-ops")]
@@ -146,23 +148,23 @@ impl ConfidentialTokenAccountMeta {
             .unwrap();
 
         assert_eq!(
-            extension
-                .pending_balance_lo
-                .decrypt(self.elgamal_keypair.secret())
+            self.elgamal_keypair
+                .secret()
+                .decrypt_u32(&extension.pending_balance_lo.try_into().unwrap())
                 .unwrap(),
             expected.pending_balance_lo,
         );
         assert_eq!(
-            extension
-                .pending_balance_hi
-                .decrypt(self.elgamal_keypair.secret())
+            self.elgamal_keypair
+                .secret()
+                .decrypt_u32(&extension.pending_balance_hi.try_into().unwrap())
                 .unwrap(),
             expected.pending_balance_hi,
         );
         assert_eq!(
-            extension
-                .available_balance
-                .decrypt(self.elgamal_keypair.secret())
+            self.elgamal_keypair
+                .secret()
+                .decrypt_u32(&extension.available_balance.try_into().unwrap())
                 .unwrap(),
             expected.available_balance,
         );
@@ -195,10 +197,12 @@ async fn check_withheld_amount_in_mint<T>(
     let extension = state
         .get_extension::<ConfidentialTransferFeeConfig>()
         .unwrap();
-    let decrypted_amount = extension
-        .withheld_amount
-        .decrypt(withdraw_withheld_authority_elgamal_keypair.secret())
+
+    let decrypted_amount = withdraw_withheld_authority_elgamal_keypair
+        .secret()
+        .decrypt_u32(&extension.withheld_amount.try_into().unwrap())
         .unwrap();
+
     assert_eq!(decrypted_amount, expected);
 }
 
@@ -454,9 +458,170 @@ async fn confidential_transfer_initialize_and_update_mint() {
     assert_eq!(extension.authority, None.try_into().unwrap());
 }
 
+#[allow(clippy::too_many_arguments)]
+#[cfg(feature = "zk-ops")]
+async fn withdraw_withheld_tokens_from_mint_with_option<S: Signers>(
+    token: &Token<ProgramBanksClientProcessTransaction>,
+    destination_account: &Pubkey,
+    withdraw_withheld_authority: &Pubkey,
+    withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
+    destination_elgamal_pubkey: &ElGamalPubkey,
+    new_decryptable_available_balance: &DecryptableBalance,
+    signing_keypairs: &S,
+    option: ConfidentialTransferOption,
+) -> TokenResult<()> {
+    match option {
+        ConfidentialTransferOption::InstructionData => {
+            token
+                .confidential_transfer_withdraw_withheld_tokens_from_mint(
+                    destination_account,
+                    withdraw_withheld_authority,
+                    None,
+                    None,
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                    new_decryptable_available_balance,
+                    signing_keypairs,
+                )
+                .await
+        }
+        ConfidentialTransferOption::RecordAccount => {
+            let state = token.get_mint_info().await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferFeeConfig>()
+                .unwrap();
+            let account_info = WithheldTokensInfo::new(&extension.withheld_amount);
+
+            let equality_proof = account_info
+                .generate_proof_data(
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                )
+                .unwrap();
+
+            let record_account = Keypair::new();
+            let record_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_record_account(
+                    &record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &equality_proof,
+                    &record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let proof_account = ProofAccount::RecordAccount(
+                record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            let result = token
+                .confidential_transfer_withdraw_withheld_tokens_from_mint(
+                    destination_account,
+                    withdraw_withheld_authority,
+                    Some(&proof_account),
+                    None,
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                    new_decryptable_available_balance,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_record_account(
+                    &record_account.pubkey(),
+                    destination_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+        ConfidentialTransferOption::ContextStateAccount => {
+            let state = token.get_mint_info().await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferFeeConfig>()
+                .unwrap();
+            let account_info = WithheldTokensInfo::new(&extension.withheld_amount);
+
+            let equality_proof = account_info
+                .generate_proof_data(
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                )
+                .unwrap();
+
+            let context_account = Keypair::new();
+            let context_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &equality_proof,
+                    false,
+                    &[&context_account],
+                )
+                .await
+                .unwrap();
+
+            let proof_account = ProofAccount::ContextAccount(context_account.pubkey());
+
+            let result = token
+                .confidential_transfer_withdraw_withheld_tokens_from_mint(
+                    destination_account,
+                    withdraw_withheld_authority,
+                    Some(&proof_account),
+                    None,
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                    new_decryptable_available_balance,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &context_account.pubkey(),
+                    destination_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+    }
+}
+
 #[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
+    confidential_transfer_withdraw_withheld_tokens_from_mint_with_option(
+        ConfidentialTransferOption::InstructionData,
+    )
+    .await;
+    confidential_transfer_withdraw_withheld_tokens_from_mint_with_option(
+        ConfidentialTransferOption::RecordAccount,
+    )
+    .await;
+    confidential_transfer_withdraw_withheld_tokens_from_mint_with_option(
+        ConfidentialTransferOption::ContextStateAccount,
+    )
+    .await;
+}
+
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_option(
+    option: ConfidentialTransferOption,
+) {
     let transfer_fee_authority = Keypair::new();
     let withdraw_withheld_authority = Keypair::new();
 
@@ -518,6 +683,10 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
             &alice_meta.token_account,
             &bob_meta.token_account,
             &alice.pubkey(),
+            None,
+            None,
+            None,
+            None,
             None,
             100,
             None,
@@ -573,7 +742,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
     let extension = state
         .get_extension::<ConfidentialTransferFeeAmount>()
         .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
+    assert_eq!(extension.withheld_amount, PodElGamalCiphertext::zeroed());
 
     // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint`
     // instruction data
@@ -582,19 +751,18 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
 
     check_withheld_amount_in_mint(&token, &withdraw_withheld_authority_elgamal_keypair, fee).await;
 
-    token
-        .confidential_transfer_withdraw_withheld_tokens_from_mint(
-            &alice_meta.token_account,
-            &withdraw_withheld_authority.pubkey(),
-            None,
-            None,
-            &withdraw_withheld_authority_elgamal_keypair,
-            alice_meta.elgamal_keypair.pubkey(),
-            &new_decryptable_available_balance.into(),
-            &[&withdraw_withheld_authority],
-        )
-        .await
-        .unwrap();
+    withdraw_withheld_tokens_from_mint_with_option(
+        &token,
+        &alice_meta.token_account,
+        &withdraw_withheld_authority.pubkey(),
+        &withdraw_withheld_authority_elgamal_keypair,
+        alice_meta.elgamal_keypair.pubkey(),
+        &new_decryptable_available_balance.into(),
+        &[&withdraw_withheld_authority],
+        option,
+    )
+    .await
+    .unwrap();
 
     // withheld fees are withdrawn back to alice's account
     alice_meta
@@ -610,11 +778,176 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_mint() {
         .await;
 
     check_withheld_amount_in_mint(&token, &withdraw_withheld_authority_elgamal_keypair, 0).await;
+}
+
+#[allow(clippy::too_many_arguments)]
+#[cfg(feature = "zk-ops")]
+async fn withdraw_withheld_tokens_from_accounts_with_option<S: Signers>(
+    token: &Token<ProgramBanksClientProcessTransaction>,
+    destination_account: &Pubkey,
+    withdraw_withheld_authority: &Pubkey,
+    withdraw_withheld_authority_elgamal_keypair: &ElGamalKeypair,
+    destination_elgamal_pubkey: &ElGamalPubkey,
+    new_decryptable_available_balance: &DecryptableBalance,
+    signing_keypairs: &S,
+    source: &Pubkey,
+    option: ConfidentialTransferOption,
+) -> TokenResult<()> {
+    match option {
+        ConfidentialTransferOption::InstructionData => {
+            token
+                .confidential_transfer_withdraw_withheld_tokens_from_accounts(
+                    destination_account,
+                    withdraw_withheld_authority,
+                    None,
+                    None,
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                    new_decryptable_available_balance,
+                    &[source],
+                    signing_keypairs,
+                )
+                .await
+        }
+        ConfidentialTransferOption::RecordAccount => {
+            let state = token.get_account_info(source).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferFeeAmount>()
+                .unwrap();
+            let account_info = WithheldTokensInfo::new(&extension.withheld_amount);
+
+            let equality_proof = account_info
+                .generate_proof_data(
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                )
+                .unwrap();
+
+            let record_account = Keypair::new();
+            let record_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_record_account(
+                    &record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &equality_proof,
+                    &record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let proof_account = ProofAccount::RecordAccount(
+                record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            let result = token
+                .confidential_transfer_withdraw_withheld_tokens_from_accounts(
+                    destination_account,
+                    withdraw_withheld_authority,
+                    Some(&proof_account),
+                    None,
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                    new_decryptable_available_balance,
+                    &[source],
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_record_account(
+                    &record_account.pubkey(),
+                    destination_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+        ConfidentialTransferOption::ContextStateAccount => {
+            let state = token.get_account_info(source).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferFeeAmount>()
+                .unwrap();
+            let account_info = WithheldTokensInfo::new(&extension.withheld_amount);
+
+            let equality_proof = account_info
+                .generate_proof_data(
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                )
+                .unwrap();
+
+            let context_account = Keypair::new();
+            let context_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &equality_proof,
+                    false,
+                    &[&context_account],
+                )
+                .await
+                .unwrap();
+
+            let proof_account = ProofAccount::ContextAccount(context_account.pubkey());
+
+            let result = token
+                .confidential_transfer_withdraw_withheld_tokens_from_accounts(
+                    destination_account,
+                    withdraw_withheld_authority,
+                    Some(&proof_account),
+                    None,
+                    withdraw_withheld_authority_elgamal_keypair,
+                    destination_elgamal_pubkey,
+                    new_decryptable_available_balance,
+                    &[source],
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &context_account.pubkey(),
+                    destination_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+    }
 }
 
 #[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn confidential_transfer_withdraw_withheld_tokens_from_accounts() {
+    confidential_transfer_withdraw_withheld_tokens_from_accounts_with_option(
+        ConfidentialTransferOption::InstructionData,
+    )
+    .await;
+    confidential_transfer_withdraw_withheld_tokens_from_accounts_with_option(
+        ConfidentialTransferOption::RecordAccount,
+    )
+    .await;
+    confidential_transfer_withdraw_withheld_tokens_from_accounts_with_option(
+        ConfidentialTransferOption::ContextStateAccount,
+    )
+    .await;
+}
+
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_option(
+    option: ConfidentialTransferOption,
+) {
     let transfer_fee_authority = Keypair::new();
     let withdraw_withheld_authority = Keypair::new();
 
@@ -677,6 +1010,10 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts() {
             &bob_meta.token_account,
             &alice.pubkey(),
             None,
+            None,
+            None,
+            None,
+            None,
             100,
             None,
             &alice_meta.elgamal_keypair,
@@ -693,20 +1030,19 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts() {
 
     let fee = transfer_fee_parameters.calculate_fee(100).unwrap();
     let new_decryptable_available_balance = alice_meta.aes_key.encrypt(fee);
-    token
-        .confidential_transfer_withdraw_withheld_tokens_from_accounts(
-            &alice_meta.token_account,
-            &withdraw_withheld_authority.pubkey(),
-            None,
-            None,
-            &withdraw_withheld_authority_elgamal_keypair,
-            alice_meta.elgamal_keypair.pubkey(),
-            &new_decryptable_available_balance.into(),
-            &[&bob_meta.token_account],
-            &[&withdraw_withheld_authority],
-        )
-        .await
-        .unwrap();
+    withdraw_withheld_tokens_from_accounts_with_option(
+        &token,
+        &alice_meta.token_account,
+        &withdraw_withheld_authority.pubkey(),
+        &withdraw_withheld_authority_elgamal_keypair,
+        alice_meta.elgamal_keypair.pubkey(),
+        &new_decryptable_available_balance.into(),
+        &[&withdraw_withheld_authority],
+        &bob_meta.token_account,
+        option,
+    )
+    .await
+    .unwrap();
 
     alice_meta
         .check_balances(
@@ -739,361 +1075,7 @@ async fn confidential_transfer_withdraw_withheld_tokens_from_accounts() {
     let extension = state
         .get_extension::<ConfidentialTransferFeeAmount>()
         .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
-}
-
-#[cfg(feature = "zk-ops")]
-#[tokio::test]
-async fn confidential_transfer_withdraw_withheld_tokens_from_mint_with_proof_context() {
-    let transfer_fee_authority = Keypair::new();
-    let withdraw_withheld_authority = Keypair::new();
-
-    let confidential_transfer_authority = Keypair::new();
-    let auto_approve_new_accounts = true;
-    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
-    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
-
-    let confidential_transfer_fee_authority = Keypair::new();
-    let withdraw_withheld_authority_elgamal_keypair = ElGamalKeypair::new_rand();
-    let withdraw_withheld_authority_elgamal_pubkey =
-        (*withdraw_withheld_authority_elgamal_keypair.pubkey()).into();
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token,
-        alice,
-        bob,
-        mint_authority,
-        decimals,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_meta =
-        ConfidentialTokenAccountMeta::new(&token, &alice, &mint_authority, 100, decimals).await;
-    let bob_meta =
-        ConfidentialTokenAccountMeta::new(&token, &bob, &mint_authority, 0, decimals).await;
-
-    let transfer_fee_parameters = TransferFee {
-        epoch: 0.into(),
-        maximum_fee: TEST_MAXIMUM_FEE.into(),
-        transfer_fee_basis_points: TEST_FEE_BASIS_POINTS.into(),
-    };
-
-    // Test fee is 2.5% so the withheld fees should be 3
-    token
-        .confidential_transfer_transfer_with_fee(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            None,
-            100,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            withdraw_withheld_authority_elgamal_keypair.pubkey(),
-            transfer_fee_parameters.transfer_fee_basis_points.into(),
-            transfer_fee_parameters.maximum_fee.into(),
-            &[&alice],
-        )
-        .await
-        .unwrap();
-
-    token
-        .confidential_transfer_harvest_withheld_tokens_to_mint(&[&bob_meta.token_account])
-        .await
-        .unwrap();
-
-    let context_state_account = Keypair::new();
-
-    // create context state
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<CiphertextCiphertextEqualityProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyCiphertextCiphertextEquality;
-
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let state = token.get_mint_info().await.unwrap();
-        let extension = state
-            .get_extension::<ConfidentialTransferFeeConfig>()
-            .unwrap();
-        let withheld_tokens_info = WithheldTokensInfo::new(&extension.withheld_amount);
-
-        let proof_data = withheld_tokens_info
-            .generate_proof_data(
-                &withdraw_withheld_authority_elgamal_keypair,
-                alice_meta.elgamal_keypair.pubkey(),
-            )
-            .unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let recent_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            recent_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint`
-    // instruction data
-    let fee = transfer_fee_parameters.calculate_fee(100).unwrap();
-    let new_decryptable_available_balance = alice_meta.aes_key.encrypt(fee);
-    token
-        .confidential_transfer_withdraw_withheld_tokens_from_mint(
-            &alice_meta.token_account,
-            &withdraw_withheld_authority.pubkey(),
-            Some(&context_state_account.pubkey()),
-            None,
-            &withdraw_withheld_authority_elgamal_keypair,
-            alice_meta.elgamal_keypair.pubkey(),
-            &new_decryptable_available_balance.into(),
-            &[&withdraw_withheld_authority],
-        )
-        .await
-        .unwrap();
-
-    // withheld fees are withdrawn back to alice's account
-    alice_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 0,
-                pending_balance_hi: 0,
-                available_balance: 3,
-                decryptable_available_balance: 3,
-            },
-        )
-        .await;
-
-    check_withheld_amount_in_mint(&token, &withdraw_withheld_authority_elgamal_keypair, 0).await;
-}
-
-#[cfg(feature = "zk-ops")]
-#[tokio::test]
-async fn confidential_transfer_withdraw_withheld_tokens_from_accounts_with_proof_context() {
-    let transfer_fee_authority = Keypair::new();
-    let withdraw_withheld_authority = Keypair::new();
-
-    let confidential_transfer_authority = Keypair::new();
-    let auto_approve_new_accounts = true;
-    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
-    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
-
-    let confidential_transfer_fee_authority = Keypair::new();
-    let withdraw_withheld_authority_elgamal_keypair = ElGamalKeypair::new_rand();
-    let withdraw_withheld_authority_elgamal_pubkey =
-        (*withdraw_withheld_authority_elgamal_keypair.pubkey()).into();
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token,
-        alice,
-        bob,
-        mint_authority,
-        decimals,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_meta =
-        ConfidentialTokenAccountMeta::new(&token, &alice, &mint_authority, 100, decimals).await;
-    let bob_meta =
-        ConfidentialTokenAccountMeta::new(&token, &bob, &mint_authority, 0, decimals).await;
-
-    let transfer_fee_parameters = TransferFee {
-        epoch: 0.into(),
-        maximum_fee: TEST_MAXIMUM_FEE.into(),
-        transfer_fee_basis_points: TEST_FEE_BASIS_POINTS.into(),
-    };
-
-    // Test fee is 2.5% so the withheld fees should be 3
-    token
-        .confidential_transfer_transfer_with_fee(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            None,
-            100,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            withdraw_withheld_authority_elgamal_keypair.pubkey(),
-            transfer_fee_parameters.transfer_fee_basis_points.into(),
-            transfer_fee_parameters.maximum_fee.into(),
-            &[&alice],
-        )
-        .await
-        .unwrap();
-
-    let context_state_account = Keypair::new();
-
-    // create context state
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<CiphertextCiphertextEqualityProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyCiphertextCiphertextEquality;
-
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let state = token
-            .get_account_info(&bob_meta.token_account)
-            .await
-            .unwrap();
-        let withheld_amount = state
-            .get_extension::<ConfidentialTransferFeeAmount>()
-            .unwrap()
-            .withheld_amount;
-        let withheld_tokens_info = WithheldTokensInfo::new(&withheld_amount);
-
-        let proof_data = withheld_tokens_info
-            .generate_proof_data(
-                &withdraw_withheld_authority_elgamal_keypair,
-                alice_meta.elgamal_keypair.pubkey(),
-            )
-            .unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let recent_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            recent_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    let fee = transfer_fee_parameters.calculate_fee(100).unwrap();
-    let new_decryptable_available_balance = alice_meta.aes_key.encrypt(fee);
-    token
-        .confidential_transfer_withdraw_withheld_tokens_from_accounts(
-            &alice_meta.token_account,
-            &withdraw_withheld_authority.pubkey(),
-            Some(&context_state_account.pubkey()),
-            None,
-            &withdraw_withheld_authority_elgamal_keypair,
-            alice_meta.elgamal_keypair.pubkey(),
-            &new_decryptable_available_balance.into(),
-            &[&bob_meta.token_account],
-            &[&withdraw_withheld_authority],
-        )
-        .await
-        .unwrap();
-
-    alice_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 0,
-                pending_balance_hi: 0,
-                available_balance: fee,
-                decryptable_available_balance: fee,
-            },
-        )
-        .await;
-
-    bob_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 97,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-
-    let state = token
-        .get_account_info(&bob_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferFeeAmount>()
-        .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
+    assert_eq!(extension.withheld_amount, PodElGamalCiphertext::zeroed());
 }
 
 #[cfg(feature = "zk-ops")]
@@ -1167,6 +1149,10 @@ async fn confidential_transfer_harvest_withheld_tokens_to_mint() {
             &bob_meta.token_account,
             &alice.pubkey(),
             None,
+            None,
+            None,
+            None,
+            None,
             100,
             None,
             &alice_meta.elgamal_keypair,
@@ -1228,7 +1214,7 @@ async fn confidential_transfer_harvest_withheld_tokens_to_mint() {
     let extension = state
         .get_extension::<ConfidentialTransferFeeAmount>()
         .unwrap();
-    assert_eq!(extension.withheld_amount, pod::ElGamalCiphertext::zeroed());
+    assert_eq!(extension.withheld_amount, PodElGamalCiphertext::zeroed());
 
     // calculate and encrypt fee to attach to the `WithdrawWithheldTokensFromMint`
     // instruction data

@@ -28,7 +28,7 @@ describe('reallocate', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         owner = Keypair.generate();
         account = await createAccount(connection, payer, mint, owner.publicKey, undefined, undefined, TEST_PROGRAM_ID);
@@ -41,12 +41,12 @@ describe('reallocate', () => {
                 EXTENSIONS,
                 owner.publicKey,
                 undefined,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, owner], undefined);
         const info = await connection.getAccountInfo(account);
-        expect(info).to.not.be.null;
+        expect(info).to.not.equal(null);
         if (info !== null) {
             const expectedAccountLen = getAccountLen(EXTENSIONS);
             expect(info.data.length).to.eql(expectedAccountLen);

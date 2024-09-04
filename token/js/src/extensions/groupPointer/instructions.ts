@@ -39,7 +39,7 @@ export function createInitializeGroupPointerInstruction(
     mint: PublicKey,
     authority: PublicKey | null,
     groupAddress: PublicKey | null,
-    programId: PublicKey = TOKEN_2022_PROGRAM_ID
+    programId: PublicKey = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -54,7 +54,7 @@ export function createInitializeGroupPointerInstruction(
             authority: authority ?? PublicKey.default,
             groupAddress: groupAddress ?? PublicKey.default,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data: data });
@@ -76,7 +76,7 @@ export function createUpdateGroupPointerInstruction(
     authority: PublicKey,
     groupAddress: PublicKey | null,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId: PublicKey = TOKEN_2022_PROGRAM_ID
+    programId: PublicKey = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -91,7 +91,7 @@ export function createUpdateGroupPointerInstruction(
             groupPointerInstruction: GroupPointerInstruction.Update,
             groupAddress: groupAddress ?? PublicKey.default,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data: data });

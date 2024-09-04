@@ -26,7 +26,7 @@ describe('burn', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
     beforeEach(async () => {
@@ -53,7 +53,7 @@ describe('burn', () => {
             TEST_TOKEN_DECIMALS,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.amount).to.eql(amount - burnAmount);

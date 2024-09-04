@@ -36,14 +36,14 @@ export async function getOrCreateAssociatedTokenAccount(
     commitment?: Commitment,
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID,
-    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+    associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): Promise<Account> {
     const associatedToken = getAssociatedTokenAddressSync(
         mint,
         owner,
         allowOwnerOffCurve,
         programId,
-        associatedTokenProgramId
+        associatedTokenProgramId,
     );
 
     // This is the optimal logic, considering TX fee, client-side computation, RPC roundtrips and guaranteed idempotent.
@@ -65,8 +65,8 @@ export async function getOrCreateAssociatedTokenAccount(
                         owner,
                         mint,
                         programId,
-                        associatedTokenProgramId
-                    )
+                        associatedTokenProgramId,
+                    ),
                 );
 
                 await sendAndConfirmTransaction(connection, transaction, [payer], confirmOptions);

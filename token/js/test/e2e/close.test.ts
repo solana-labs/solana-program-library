@@ -30,7 +30,7 @@ describe('close', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
     beforeEach(async () => {
@@ -41,13 +41,14 @@ describe('close', () => {
     it('failsWithNonZeroAmount', async () => {
         const amount = BigInt(1000);
         await mintTo(connection, payer, mint, account, mintAuthority, amount, [], undefined, TEST_PROGRAM_ID);
-        expect(closeAccount(connection, payer, account, destination, owner, [], undefined, TEST_PROGRAM_ID)).to.be
-            .rejected;
+        expect(
+            closeAccount(connection, payer, account, destination, owner, [], undefined, TEST_PROGRAM_ID),
+        ).to.be.rejectedWith(Error);
     });
     it('works', async () => {
         const accountInfo = await connection.getAccountInfo(account);
         let tokenRentExemptAmount;
-        expect(accountInfo).to.not.be.null;
+        expect(accountInfo).to.not.equal(null);
         if (accountInfo !== null) {
             tokenRentExemptAmount = accountInfo.lamports;
         }
@@ -55,10 +56,10 @@ describe('close', () => {
         await closeAccount(connection, payer, account, destination, owner, [], undefined, TEST_PROGRAM_ID);
 
         const closedInfo = await connection.getAccountInfo(account);
-        expect(closedInfo).to.be.null;
+        expect(closedInfo).to.equal(null);
 
         const destinationInfo = await connection.getAccountInfo(destination);
-        expect(destinationInfo).to.not.be.null;
+        expect(destinationInfo).to.not.equal(null);
         if (destinationInfo !== null) {
             expect(destinationInfo.lamports).to.eql(tokenRentExemptAmount);
         }

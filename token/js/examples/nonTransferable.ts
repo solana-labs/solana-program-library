@@ -39,7 +39,7 @@ import {
             programId: TOKEN_2022_PROGRAM_ID,
         }),
         createInitializeNonTransferableMintInstruction(mint, TOKEN_2022_PROGRAM_ID),
-        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID)
+        createInitializeMintInstruction(mint, decimals, mintAuthority.publicKey, null, TOKEN_2022_PROGRAM_ID),
     );
     await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
 })();

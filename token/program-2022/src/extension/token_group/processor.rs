@@ -205,7 +205,6 @@ pub fn process_initialize_member(_program_id: &Pubkey, accounts: &[AccountInfo])
 }
 
 /// Processes an [Instruction](enum.Instruction.html).
-#[cfg(feature = "token-group")]
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -229,14 +228,4 @@ pub fn process_instruction(
             process_initialize_member(program_id, accounts)
         }
     }
-}
-
-/// Processes an [Instruction](enum.Instruction.html).
-#[cfg(not(feature = "token-group"))]
-pub fn process_instruction(
-    _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-    _instruction: TokenGroupInstruction,
-) -> ProgramResult {
-    Err(TokenError::InvalidInstruction.into())
 }

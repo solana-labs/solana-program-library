@@ -41,7 +41,7 @@ export function updateTokenMetadata(current: TokenMetadata, key: Field | string,
     // Avoid mutating input, make a shallow copy
     const additionalMetadata = [...current.additionalMetadata];
 
-    const i = current.additionalMetadata.findIndex((x) => x[0] === field);
+    const i = current.additionalMetadata.findIndex(x => x[0] === field);
 
     if (i === -1) {
         // Key was not found, add it
@@ -71,7 +71,7 @@ export async function getTokenMetadata(
     connection: Connection,
     address: PublicKey,
     commitment?: Commitment,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TokenMetadata | null> {
     const mintInfo = await getMint(connection, address, commitment, programId);
     const data = getExtensionData(ExtensionType.TokenMetadata, mintInfo.tlvData);

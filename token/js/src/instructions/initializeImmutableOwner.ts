@@ -29,7 +29,7 @@ export const initializeImmutableOwnerInstructionData = struct<InitializeImmutabl
  */
 export function createInitializeImmutableOwnerInstruction(
     account: PublicKey,
-    programId: PublicKey
+    programId: PublicKey,
 ): TransactionInstruction {
     const keys = [{ pubkey: account, isSigner: false, isWritable: true }];
 
@@ -38,7 +38,7 @@ export function createInitializeImmutableOwnerInstruction(
         {
             instruction: TokenInstruction.InitializeImmutableOwner,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -65,7 +65,7 @@ export interface DecodedInitializeImmutableOwnerInstruction {
  */
 export function decodeInitializeImmutableOwnerInstruction(
     instruction: TransactionInstruction,
-    programId: PublicKey
+    programId: PublicKey,
 ): DecodedInitializeImmutableOwnerInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== initializeImmutableOwnerInstructionData.span)

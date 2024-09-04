@@ -5,27 +5,23 @@ use crate::{
     proof::ProofLocation,
 };
 #[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::instruction::{
+use solana_zk_sdk::zk_elgamal_proof_program::proof_data::{
     BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU64Data,
     CiphertextCiphertextEqualityProofData,
 };
 #[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::{
+use solana_zk_sdk::{
     encryption::{
         elgamal::{ElGamalCiphertext, ElGamalKeypair, ElGamalPubkey},
         pedersen::PedersenOpening,
     },
-    zk_token_proof_instruction::{
-        verify_batched_verify_range_proof_u64, verify_ciphertext_ciphertext_equality,
-        ProofInstruction,
-    },
+    zk_elgamal_proof_program::instruction::ProofInstruction,
 };
 #[cfg(not(target_os = "solana"))]
 use {
     super::ConfidentialMintBurn,
     crate::{
         check_program_account,
-        extension::confidential_transfer::instruction::TransferSplitContextStateAccounts,
         instruction::{encode_instruction, TokenInstruction},
     },
     solana_program::{
@@ -33,14 +29,15 @@ use {
         program_error::ProgramError,
         sysvar,
     },
-    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey as PodElGamalPubkey,
 };
+#[cfg(not(target_os = "solana"))]
+use solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey;
 use {
     crate::extension::confidential_transfer::DecryptableBalance,
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::pubkey::Pubkey,
-    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext as PodElGamalCiphertext,
+    solana_zk_sdk::encryption::pod::elgamal::{PodElGamalCiphertext},
     spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
 };
 #[cfg(feature = "serde-traits")]
@@ -268,7 +265,7 @@ pub fn rotate_supply_elgamal(
                 proof_location: 1,
             },
         ),
-        verify_ciphertext_ciphertext_equality(None, &proof_data),
+        ProofInstruction::VerifyCiphertextCiphertextEquality.encode_verify_proof(None, &proof_data),
     ])
 }
 
@@ -291,6 +288,8 @@ pub fn confidential_mint(
     >,
     pedersen_openings: &(PedersenOpening, PedersenOpening),
 ) -> Result<Vec<Instruction>, ProgramError> {
+    use crate::proof::ProofData;
+
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*token_account, false)];
     // we only need write lock to adjust confidential suppy on
@@ -358,14 +357,26 @@ pub fn confidential_mint(
             if proof_instruction_offset != 1 {
                 return Err(TokenError::InvalidProofInstructionOffset.into());
             }
-            instrs.push(verify_batched_verify_range_proof_u64(
-                None,
-                range_proof_data,
-            ));
-            instrs.push(
-                ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity
-                    .encode_verify_proof(None, ciphertext_validity_proof_data),
-            );
+
+            match range_proof_data {
+                ProofData::InstructionData(data) => instrs
+                    .push(ProofInstruction::VerifyBatchedRangeProofU64.encode_verify_proof(None, data)),
+                ProofData::RecordAccount(address, offset) => instrs.push(
+                    ProofInstruction::VerifyBatchedRangeProofU64
+                        .encode_verify_proof_from_account(None, address, offset),
+                ),
+            };
+
+            match ciphertext_validity_proof_data {
+                ProofData::InstructionData(data) => instrs.push(
+                    ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity
+                        .encode_verify_proof(None, data),
+                ),
+                ProofData::RecordAccount(address, offset) => instrs.push(
+                    ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity
+                        .encode_verify_proof_from_account(None, address, offset),
+                ),
+            };
         } else {
             // both proofs have to either be context state or instruction offset
             return Err(ProgramError::InvalidArgument);
@@ -373,6 +384,19 @@ pub fn confidential_mint(
     };
 
     Ok(instrs)
+}
+
+/// Context state accounts used in confidential mint
+#[derive(Clone, Copy)]
+pub struct BurnSplitContextStateAccounts<'a> {
+    /// Location of equality proof
+    pub equality_proof: &'a Pubkey,
+    /// Location of ciphertext validity proof
+    pub ciphertext_validity_proof: &'a Pubkey,
+    /// Location of range proof
+    pub range_proof: &'a Pubkey,
+    /// Authority able to close proof accounts
+    pub authority: &'a Pubkey,
 }
 
 /// Create a `ConfidentialBurn` instruction
@@ -386,7 +410,7 @@ pub fn confidential_burn_with_split_proofs(
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
     burn_amount: u64,
     new_decryptable_available_balance: DecryptableBalance,
-    context_accounts: TransferSplitContextStateAccounts,
+    context_accounts: &BurnSplitContextStateAccounts,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     pedersen_openings: &(PedersenOpening, PedersenOpening),
@@ -417,7 +441,7 @@ pub fn inner_confidential_burn_with_split_proofs(
     supply_elgamal_pubkey: Option<ElGamalPubkey>,
     burn_amount: u64,
     new_decryptable_available_balance: DecryptableBalance,
-    context_accounts: TransferSplitContextStateAccounts,
+    context_accounts: &BurnSplitContextStateAccounts,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     pedersen_openings: &(PedersenOpening, PedersenOpening),

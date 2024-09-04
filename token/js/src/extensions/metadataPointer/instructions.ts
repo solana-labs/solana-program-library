@@ -39,7 +39,7 @@ export function createInitializeMetadataPointerInstruction(
     mint: PublicKey,
     authority: PublicKey | null,
     metadataAddress: PublicKey | null,
-    programId: PublicKey
+    programId: PublicKey,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -54,7 +54,7 @@ export function createInitializeMetadataPointerInstruction(
             authority: authority ?? PublicKey.default,
             metadataAddress: metadataAddress ?? PublicKey.default,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data: data });
@@ -76,7 +76,7 @@ export function createUpdateMetadataPointerInstruction(
     authority: PublicKey,
     metadataAddress: PublicKey | null,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId: PublicKey = TOKEN_2022_PROGRAM_ID
+    programId: PublicKey = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -91,7 +91,7 @@ export function createUpdateMetadataPointerInstruction(
             metadataPointerInstruction: MetadataPointerInstruction.Update,
             metadataAddress: metadataAddress ?? PublicKey.default,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data: data });

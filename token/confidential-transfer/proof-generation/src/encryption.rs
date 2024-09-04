@@ -47,3 +47,42 @@ impl TransferAmountCiphertext {
         self.0.handles.get(2).unwrap()
     }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(C)]
+#[cfg(not(target_os = "solana"))]
+pub struct FeeCiphertext(pub(crate) GroupedElGamalCiphertext<2>);
+
+#[cfg(not(target_os = "solana"))]
+impl FeeCiphertext {
+    pub fn new(
+        amount: u64,
+        destination_pubkey: &ElGamalPubkey,
+        withdraw_withheld_authority_pubkey: &ElGamalPubkey,
+    ) -> (Self, PedersenOpening) {
+        let opening = PedersenOpening::new_rand();
+        let grouped_ciphertext = GroupedElGamal::<2>::encrypt_with(
+            [destination_pubkey, withdraw_withheld_authority_pubkey],
+            amount,
+            &opening,
+        );
+
+        (Self(grouped_ciphertext), opening)
+    }
+
+    pub fn get_commitment(&self) -> &PedersenCommitment {
+        &self.0.commitment
+    }
+
+    pub fn get_destination_handle(&self) -> &DecryptHandle {
+        // `FeeEncryption` is a wrapper for `GroupedElGamalCiphertext<2>`, which holds
+        // exactly two decryption handles.
+        self.0.handles.first().unwrap()
+    }
+
+    pub fn get_withdraw_withheld_authority_handle(&self) -> &DecryptHandle {
+        // `FeeEncryption` is a wrapper for `GroupedElGamalCiphertext<2>`, which holds
+        // exactly two decryption handles.
+        self.0.handles.get(1).unwrap()
+    }
+}

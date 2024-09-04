@@ -39,15 +39,15 @@ describe('initialize mint', () => {
                 TEST_TOKEN_DECIMALS,
                 mintAuthority,
                 freezeAuthority,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair]);
         const mintInfo = await getMint(connection, mintKeypair.publicKey, undefined, TEST_PROGRAM_ID);
         expect(mintInfo.mintAuthority).to.eql(mintAuthority);
         expect(mintInfo.supply).to.eql(BigInt(0));
         expect(mintInfo.decimals).to.eql(TEST_TOKEN_DECIMALS);
-        expect(mintInfo.isInitialized).to.be.true;
+        expect(mintInfo.isInitialized).to.equal(true);
         expect(mintInfo.freezeAuthority).to.eql(freezeAuthority);
     });
     it('works with null freeze authority', async () => {
@@ -65,16 +65,16 @@ describe('initialize mint', () => {
                 TEST_TOKEN_DECIMALS,
                 mintAuthority,
                 null,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair]);
         const mintInfo = await getMint(connection, mintKeypair.publicKey, undefined, TEST_PROGRAM_ID);
         expect(mintInfo.mintAuthority).to.eql(mintAuthority);
         expect(mintInfo.supply).to.eql(BigInt(0));
         expect(mintInfo.decimals).to.eql(TEST_TOKEN_DECIMALS);
-        expect(mintInfo.isInitialized).to.be.true;
-        expect(mintInfo.freezeAuthority).to.be.null;
+        expect(mintInfo.isInitialized).to.equal(true);
+        expect(mintInfo.freezeAuthority).to.equal(null);
     });
 });
 describe('initialize mint 2', () => {
@@ -104,15 +104,15 @@ describe('initialize mint 2', () => {
                 TEST_TOKEN_DECIMALS,
                 mintAuthority,
                 freezeAuthority,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair]);
         const mintInfo = await getMint(connection, mintKeypair.publicKey, undefined, TEST_PROGRAM_ID);
         expect(mintInfo.mintAuthority).to.eql(mintAuthority);
         expect(mintInfo.supply).to.eql(BigInt(0));
         expect(mintInfo.decimals).to.eql(TEST_TOKEN_DECIMALS);
-        expect(mintInfo.isInitialized).to.be.true;
+        expect(mintInfo.isInitialized).to.equal(true);
         expect(mintInfo.freezeAuthority).to.eql(freezeAuthority);
     });
     it('works with null freeze authority', async () => {
@@ -130,15 +130,15 @@ describe('initialize mint 2', () => {
                 TEST_TOKEN_DECIMALS,
                 mintAuthority,
                 null,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair]);
         const mintInfo = await getMint(connection, mintKeypair.publicKey, undefined, TEST_PROGRAM_ID);
         expect(mintInfo.mintAuthority).to.eql(mintAuthority);
         expect(mintInfo.supply).to.eql(BigInt(0));
         expect(mintInfo.decimals).to.eql(TEST_TOKEN_DECIMALS);
-        expect(mintInfo.isInitialized).to.be.true;
-        expect(mintInfo.freezeAuthority).to.be.null;
+        expect(mintInfo.isInitialized).to.equal(true);
+        expect(mintInfo.freezeAuthority).to.equal(null);
     });
 });

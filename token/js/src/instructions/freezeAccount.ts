@@ -35,7 +35,7 @@ export function createFreezeAccountInstruction(
     mint: PublicKey,
     authority: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -43,7 +43,7 @@ export function createFreezeAccountInstruction(
             { pubkey: mint, isSigner: false, isWritable: false },
         ],
         authority,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(freezeAccountInstructionData.span);
@@ -76,7 +76,7 @@ export interface DecodedFreezeAccountInstruction {
  */
 export function decodeFreezeAccountInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedFreezeAccountInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== freezeAccountInstructionData.span) throw new TokenInvalidInstructionDataError();

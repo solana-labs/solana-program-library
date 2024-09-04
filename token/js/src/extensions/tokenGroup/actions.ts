@@ -35,10 +35,10 @@ export async function tokenGroupInitializeGroup(
     mint: PublicKey,
     mintAuthority: PublicKey | Signer,
     updateAuthority: PublicKey | null,
-    maxSize: number,
+    maxSize: bigint,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
 
@@ -50,7 +50,7 @@ export async function tokenGroupInitializeGroup(
             mintAuthority: mintAuthorityPublicKey,
             updateAuthority,
             maxSize,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -79,10 +79,10 @@ export async function tokenGroupInitializeGroupWithRentTransfer(
     mint: PublicKey,
     mintAuthority: PublicKey | Signer,
     updateAuthority: PublicKey | null,
-    maxSize: number,
+    maxSize: bigint,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
 
@@ -101,7 +101,7 @@ export async function tokenGroupInitializeGroupWithRentTransfer(
             mintAuthority: mintAuthorityPublicKey,
             updateAuthority,
             maxSize,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -126,10 +126,10 @@ export async function tokenGroupUpdateGroupMaxSize(
     payer: Signer,
     mint: PublicKey,
     updateAuthority: PublicKey | Signer,
-    maxSize: number,
+    maxSize: bigint,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [updateAuthorityPublicKey, signers] = getSigners(updateAuthority, multiSigners);
 
@@ -139,7 +139,7 @@ export async function tokenGroupUpdateGroupMaxSize(
             group: mint,
             updateAuthority: updateAuthorityPublicKey,
             maxSize,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -167,7 +167,7 @@ export async function tokenGroupUpdateGroupAuthority(
     newAuthority: PublicKey | null,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [updateAuthorityPublicKey, signers] = getSigners(updateAuthority, multiSigners);
 
@@ -177,7 +177,7 @@ export async function tokenGroupUpdateGroupAuthority(
             group: mint,
             currentAuthority: updateAuthorityPublicKey,
             newAuthority,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -210,7 +210,7 @@ export async function tokenGroupMemberInitialize(
     groupUpdateAuthority: PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
 
@@ -222,7 +222,7 @@ export async function tokenGroupMemberInitialize(
             memberMintAuthority: mintAuthorityPublicKey,
             group,
             groupUpdateAuthority,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
@@ -255,7 +255,7 @@ export async function tokenGroupMemberInitializeWithRentTransfer(
     groupUpdateAuthority: PublicKey,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [mintAuthorityPublicKey, signers] = getSigners(mintAuthority, multiSigners);
 
@@ -274,7 +274,7 @@ export async function tokenGroupMemberInitializeWithRentTransfer(
             memberMintAuthority: mintAuthorityPublicKey,
             group,
             groupUpdateAuthority,
-        })
+        }),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

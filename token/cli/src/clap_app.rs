@@ -597,6 +597,14 @@ pub fn app<'a, 'b>(
                 .help("Return information in specified output format"),
         )
         .arg(
+            Arg::with_name("program_2022")
+                .long("program-2022")
+                .takes_value(false)
+                .global(true)
+                .conflicts_with("program_id")
+                .help("Use token extension program token 2022 with program id: TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
+        )
+        .arg(
             Arg::with_name("program_id")
                 .short("p")
                 .long("program-id")
@@ -604,6 +612,7 @@ pub fn app<'a, 'b>(
                 .takes_value(true)
                 .global(true)
                 .validator(is_valid_token_program_id)
+                .conflicts_with("program_2022")
                 .help("SPL Token program id"),
         )
         .arg(
@@ -768,10 +777,41 @@ pub fn app<'a, 'b>(
                         .value_names(&["FEE_IN_BASIS_POINTS", "MAXIMUM_FEE"])
                         .takes_value(true)
                         .number_of_values(2)
+                        .hidden(true)
+                        .conflicts_with("transfer_fee_basis_points")
+                        .conflicts_with("transfer_fee_maximum_fee")
                         .help(
                             "Add a transfer fee to the mint. \
                             The mint authority can set the fee and withdraw collected fees.",
                         ),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_basis_points")
+                        .long("transfer-fee-basis-points")
+                        .value_names(&["FEE_IN_BASIS_POINTS"])
+                        .takes_value(true)
+                        .number_of_values(1)
+                        .conflicts_with("transfer_fee")
+                        .requires("transfer_fee_maximum_fee")
+                        .validator(is_parsable::<u16>)
+                        .help(
+                            "Add transfer fee to the mint. \
+                            The mint authority can set the fee.",
+                        ),
+                )
+                .arg(
+                    Arg::with_name("transfer_fee_maximum_fee")
+                        .long("transfer-fee-maximum-fee")
+                        .value_names(&["MAXIMUM_FEE"])
+                        .takes_value(true)
+                        .number_of_values(1)
+                        .conflicts_with("transfer_fee")
+                        .requires("transfer_fee_basis_points")
+                        .validator(is_amount)
+                        .help(
+                            "Add a UI amount maximum transfer fee to the mint. \
+                            The mint authority can set and collect fees"
+                        )
                 )
                 .arg(
                     Arg::with_name("enable_permanent_delegate")
@@ -2272,6 +2312,13 @@ pub fn app<'a, 'b>(
                 )
                 .arg(owner_address_arg())
                 .arg(multisig_signer_arg())
+                .group(
+                    ArgGroup::with_name("source_or_mint")
+                        .arg("source")
+                        .arg("include_mint")
+                        .multiple(true)
+                        .required(true)
+                )
         )
         .subcommand(
             SubCommand::with_name(CommandName::SetTransferFee.into())

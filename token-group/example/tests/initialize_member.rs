@@ -256,5 +256,5 @@ async fn test_initialize_group_member() {
     let fetched_meta = TlvStateBorrowed::unpack(&member_account.data).unwrap();
     let fetched_group_member_state = fetched_meta.get_first_value::<TokenGroupMember>().unwrap();
     assert_eq!(fetched_group_member_state.group, group.pubkey());
-    assert_eq!(u32::from(fetched_group_member_state.member_number), 1);
+    assert_eq!(u64::from(fetched_group_member_state.member_number), 1);
 }

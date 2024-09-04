@@ -39,7 +39,7 @@ describe('immutableOwner', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         owner = Keypair.generate();
         const accountLen = getAccountLen(EXTENSIONS);
@@ -55,7 +55,7 @@ describe('immutableOwner', () => {
                 programId: TEST_PROGRAM_ID,
             }),
             createInitializeImmutableOwnerInstruction(account, TEST_PROGRAM_ID),
-            createInitializeAccountInstruction(account, mint, owner.publicKey, TEST_PROGRAM_ID)
+            createInitializeAccountInstruction(account, mint, owner.publicKey, TEST_PROGRAM_ID),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer, accountKeypair], undefined);
     });
@@ -71,8 +71,8 @@ describe('immutableOwner', () => {
                 owner.publicKey,
                 [],
                 undefined,
-                TEST_PROGRAM_ID
-            )
-        ).to.be.rejected;
+                TEST_PROGRAM_ID,
+            ),
+        ).to.be.rejectedWith(Error);
     });
 });

@@ -46,11 +46,11 @@ describe('interestBearingMint', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const interestBearingMintConfigState = getInterestBearingMintConfigState(mintInfo);
-        expect(interestBearingMintConfigState).to.not.be.null;
+        expect(interestBearingMintConfigState).to.not.equal(null);
         if (interestBearingMintConfigState !== null) {
             expect(interestBearingMintConfigState.rateAuthority).to.eql(rateAuthority.publicKey);
             expect(interestBearingMintConfigState.preUpdateAverageRate).to.eql(TEST_RATE);
@@ -67,12 +67,12 @@ describe('interestBearingMint', () => {
             TEST_UPDATE_RATE,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfoUpdatedRate = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const updatedRateConfigState = getInterestBearingMintConfigState(mintInfoUpdatedRate);
 
-        expect(updatedRateConfigState).to.not.be.null;
+        expect(updatedRateConfigState).to.not.equal(null);
         if (updatedRateConfigState !== null) {
             expect(updatedRateConfigState.rateAuthority).to.eql(rateAuthority.publicKey);
             expect(updatedRateConfigState.currentRate).to.eql(TEST_UPDATE_RATE);
@@ -91,11 +91,11 @@ describe('interestBearingMint', () => {
             null,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const rateConfigState = getInterestBearingMintConfigState(mintInfo);
-        expect(rateConfigState).to.not.be.null;
+        expect(rateConfigState).to.not.equal(null);
         if (rateConfigState !== null) {
             expect(rateConfigState.rateAuthority).to.eql(PublicKey.default);
         }

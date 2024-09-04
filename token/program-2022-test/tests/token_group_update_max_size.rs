@@ -61,17 +61,17 @@ async fn setup(mint: Keypair, authority: &Pubkey) -> TestContext {
 #[test_case(50, 0, 300_000_000)]
 #[test_case(100_000, 100_000, 300_000_000)]
 #[test_case(100_000_000, 100_000_000, 300_000_000)]
-#[test_case(0, 0, u32::MAX)]
-#[test_case(200_000, 200_000, u32::MAX)]
-#[test_case(300_000_000, 300_000_000, u32::MAX)]
+#[test_case(0, 0, u64::MAX)]
+#[test_case(200_000, 200_000, u64::MAX)]
+#[test_case(300_000_000, 300_000_000, u64::MAX)]
 // Attempts to set lower than size
 #[test_case(5, 5, 4)]
 #[test_case(200_000, 200_000, 50)]
 #[test_case(200_000, 200_000, 100_000)]
 #[test_case(300_000_000, 300_000_000, 50)]
-#[test_case(u32::MAX, u32::MAX, 0)]
+#[test_case(u64::MAX, u64::MAX, 0)]
 #[tokio::test]
-async fn test_update_group_max_size(max_size: u32, size: u32, new_max_size: u32) {
+async fn test_update_group_max_size(max_size: u64, size: u64, new_max_size: u64) {
     let authority = Keypair::new();
     let mint_keypair = Keypair::new();
     let mut test_context = setup(mint_keypair.insecure_clone(), &authority.pubkey()).await;

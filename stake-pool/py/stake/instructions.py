@@ -7,9 +7,9 @@ from construct import Switch  # type: ignore
 from construct import Int32ul, Pass  # type: ignore
 from construct import Bytes, Struct
 
-from solana.publickey import PublicKey
-from solana.sysvar import SYSVAR_RENT_PUBKEY
-from solana.transaction import AccountMeta, TransactionInstruction
+from solders.pubkey import Pubkey
+from solders.sysvar import RENT
+from solders.instruction import AccountMeta, Instruction
 
 from stake.constants import STAKE_PROGRAM_ID
 from stake.state import AUTHORIZED_LAYOUT, LOCKUP_LAYOUT, Authorized, Lockup, StakeAuthorize
@@ -20,7 +20,7 @@ PUBLIC_KEY_LAYOUT = Bytes(32)
 class InitializeParams(NamedTuple):
     """Initialize stake transaction params."""
 
-    stake: PublicKey
+    stake: Pubkey
     """`[w]` Uninitialized stake account."""
     authorized: Authorized
     """Information about the staker and withdrawer keys."""
@@ -31,32 +31,32 @@ class InitializeParams(NamedTuple):
 class DelegateStakeParams(NamedTuple):
     """Initialize stake transaction params."""
 
-    stake: PublicKey
+    stake: Pubkey
     """`[w]` Uninitialized stake account."""
-    vote: PublicKey
+    vote: Pubkey
     """`[]` Vote account to which this stake will be delegated."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    stake_history_sysvar: PublicKey
+    stake_history_sysvar: Pubkey
     """`[]` Stake history sysvar that carries stake warmup/cooldown history."""
-    stake_config_id: PublicKey
+    stake_config_id: Pubkey
     """`[]` Address of config account that carries stake config."""
-    staker: PublicKey
+    staker: Pubkey
     """`[s]` Stake authority."""
 
 
 class AuthorizeParams(NamedTuple):
     """Authorize stake transaction params."""
 
-    stake: PublicKey
+    stake: Pubkey
     """`[w]` Initialized stake account to modify."""
-    clock_sysvar: PublicKey
+    clock_sysvar: Pubkey
     """`[]` Clock sysvar."""
-    authority: PublicKey
+    authority: Pubkey
     """`[s]` Current stake authority."""
 
     # Params
-    new_authority: PublicKey
+    new_authority: Pubkey
     """New authority's public key."""
     stake_authorize: StakeAuthorize
     """Type of authority to modify, staker or withdrawer."""
@@ -116,12 +116,12 @@ INSTRUCTIONS_LAYOUT = Struct(
 )
 
 
-def initialize(params: InitializeParams) -> TransactionInstruction:
+def initialize(params: InitializeParams) -> Instruction:
     """Creates a transaction instruction to initialize a new stake."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake, is_signer=False, is_writable=True),
-            AccountMeta(pubkey=SYSVAR_RENT_PUBKEY, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=RENT, is_signer=False, is_writable=False),
         ],
         program_id=STAKE_PROGRAM_ID,
         data=INSTRUCTIONS_LAYOUT.build(
@@ -136,10 +136,10 @@ def initialize(params: InitializeParams) -> TransactionInstruction:
     )
 
 
-def delegate_stake(params: DelegateStakeParams) -> TransactionInstruction:
+def delegate_stake(params: DelegateStakeParams) -> Instruction:
     """Creates an instruction to delegate a stake account."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.vote, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
@@ -157,10 +157,10 @@ def delegate_stake(params: DelegateStakeParams) -> TransactionInstruction:
     )
 
 
-def authorize(params: AuthorizeParams) -> TransactionInstruction:
+def authorize(params: AuthorizeParams) -> Instruction:
     """Creates an instruction to change the authority on a stake account."""
-    return TransactionInstruction(
-        keys=[
+    return Instruction(
+        accounts=[
             AccountMeta(pubkey=params.stake, is_signer=False, is_writable=True),
             AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.authority, is_signer=True, is_writable=False),

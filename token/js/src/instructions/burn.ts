@@ -39,7 +39,7 @@ export function createBurnInstruction(
     owner: PublicKey,
     amount: number | bigint,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -47,7 +47,7 @@ export function createBurnInstruction(
             { pubkey: mint, isSigner: false, isWritable: true },
         ],
         owner,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(burnInstructionData.span);
@@ -56,7 +56,7 @@ export function createBurnInstruction(
             instruction: TokenInstruction.Burn,
             amount: BigInt(amount),
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -87,7 +87,7 @@ export interface DecodedBurnInstruction {
  */
 export function decodeBurnInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedBurnInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== burnInstructionData.span) throw new TokenInvalidInstructionDataError();

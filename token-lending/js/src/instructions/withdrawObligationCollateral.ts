@@ -20,7 +20,7 @@ export const withdrawObligationCollateralInstruction = (
     obligation: PublicKey,
     lendingMarket: PublicKey,
     lendingMarketAuthority: PublicKey,
-    obligationOwner: PublicKey
+    obligationOwner: PublicKey,
 ): TransactionInstruction => {
     const data = Buffer.alloc(DataLayout.span);
     DataLayout.encode(
@@ -28,7 +28,7 @@ export const withdrawObligationCollateralInstruction = (
             instruction: LendingInstruction.WithdrawObligationCollateral,
             collateralAmount: BigInt(collateralAmount),
         },
-        data
+        data,
     );
 
     const keys = [

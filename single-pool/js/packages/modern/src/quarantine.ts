@@ -1,13 +1,8 @@
-import {
-  address,
-  getAddressCodec,
-  Base58EncodedAddress,
-  AccountRole,
-  getProgramDerivedAddress,
-} from '@solana/web3.js';
+import { address, getAddressCodec, getProgramDerivedAddress, Address } from '@solana/addresses';
+import { AccountRole } from '@solana/instructions';
 
 // HERE BE DRAGONS
-// this is all the stuff that shouldnt be in our library once we can import from elsewhere
+// this is all the stuff that shouldn't be in our library once we can import from elsewhere
 
 export const SYSTEM_PROGRAM_ID = address('11111111111111111111111111111111');
 export const STAKE_PROGRAM_ID = address('Stake11111111111111111111111111111111111111');
@@ -33,18 +28,18 @@ export function u64(n: bigint): Uint8Array {
 
 export class SystemInstruction {
   static createAccount(params: {
-    from: Base58EncodedAddress;
-    newAccount: Base58EncodedAddress;
+    from: Address;
+    newAccount: Address;
     lamports: bigint;
     space: bigint;
-    programAddress: Base58EncodedAddress;
+    programAddress: Address;
   }) {
-    const { serialize } = getAddressCodec();
+    const { encode } = getAddressCodec();
     const data = new Uint8Array([
       ...u32(0),
       ...u64(params.lamports),
       ...u64(params.space),
-      ...serialize(params.programAddress),
+      ...encode(params.programAddress),
     ]);
 
     const accounts = [
@@ -59,11 +54,7 @@ export class SystemInstruction {
     };
   }
 
-  static transfer(params: {
-    from: Base58EncodedAddress;
-    to: Base58EncodedAddress;
-    lamports: bigint;
-  }) {
+  static transfer(params: { from: Address; to: Address; lamports: bigint }) {
     const data = new Uint8Array([...u32(2), ...u64(params.lamports)]);
 
     const accounts = [
@@ -79,23 +70,23 @@ export class SystemInstruction {
   }
 
   static createAccountWithSeed(params: {
-    from: Base58EncodedAddress;
-    newAccount: Base58EncodedAddress;
-    base: Base58EncodedAddress;
+    from: Address;
+    newAccount: Address;
+    base: Address;
     seed: string;
     lamports: bigint;
     space: bigint;
-    programAddress: Base58EncodedAddress;
+    programAddress: Address;
   }) {
-    const { serialize } = getAddressCodec();
+    const { encode } = getAddressCodec();
     const data = new Uint8Array([
       ...u32(3),
-      ...serialize(params.base),
+      ...encode(params.base),
       ...u64(BigInt(params.seed.length)),
       ...new TextEncoder().encode(params.seed),
       ...u64(params.lamports),
       ...u64(params.space),
-      ...serialize(params.programAddress),
+      ...encode(params.programAddress),
     ]);
 
     const accounts = [
@@ -115,12 +106,7 @@ export class SystemInstruction {
 }
 
 export class TokenInstruction {
-  static approve(params: {
-    account: Base58EncodedAddress;
-    delegate: Base58EncodedAddress;
-    owner: Base58EncodedAddress;
-    amount: bigint;
-  }) {
+  static approve(params: { account: Address; delegate: Address; owner: Address; amount: bigint }) {
     const data = new Uint8Array([...u32(4), ...u64(params.amount)]);
 
     const accounts = [
@@ -137,10 +123,10 @@ export class TokenInstruction {
   }
 
   static createAssociatedTokenAccount(params: {
-    payer: Base58EncodedAddress;
-    associatedAccount: Base58EncodedAddress;
-    owner: Base58EncodedAddress;
-    mint: Base58EncodedAddress;
+    payer: Address;
+    associatedAccount: Address;
+    owner: Address;
+    mint: Address;
   }) {
     const data = new Uint8Array([0]);
 
@@ -168,16 +154,12 @@ export enum StakeAuthorizationType {
 
 export class StakeInstruction {
   // idc about doing it right unless this goes in a lib
-  static initialize(params: {
-    stakeAccount: Base58EncodedAddress;
-    staker: Base58EncodedAddress;
-    withdrawer: Base58EncodedAddress;
-  }) {
-    const { serialize } = getAddressCodec();
+  static initialize(params: { stakeAccount: Address; staker: Address; withdrawer: Address }) {
+    const { encode } = getAddressCodec();
     const data = new Uint8Array([
       ...u32(0),
-      ...serialize(params.staker),
-      ...serialize(params.withdrawer),
+      ...encode(params.staker),
+      ...encode(params.withdrawer),
       ...Array(48).fill(0),
     ]);
 
@@ -194,16 +176,16 @@ export class StakeInstruction {
   }
 
   static authorize(params: {
-    stakeAccount: Base58EncodedAddress;
-    authorized: Base58EncodedAddress;
-    newAuthorized: Base58EncodedAddress;
+    stakeAccount: Address;
+    authorized: Address;
+    newAuthorized: Address;
     authorizationType: StakeAuthorizationType;
-    custodian?: Base58EncodedAddress;
+    custodian?: Address;
   }) {
-    const { serialize } = getAddressCodec();
+    const { encode } = getAddressCodec();
     const data = new Uint8Array([
       ...u32(1),
-      ...serialize(params.newAuthorized),
+      ...encode(params.newAuthorized),
       ...u32(params.authorizationType),
     ]);
 
@@ -223,11 +205,7 @@ export class StakeInstruction {
     };
   }
 
-  static delegate(params: {
-    stakeAccount: Base58EncodedAddress;
-    authorized: Base58EncodedAddress;
-    voteAccount: Base58EncodedAddress;
-  }) {
+  static delegate(params: { stakeAccount: Address; authorized: Address; voteAccount: Address }) {
     const data = new Uint8Array(u32(2));
 
     const accounts = [
@@ -247,14 +225,11 @@ export class StakeInstruction {
   }
 }
 
-export async function getAssociatedTokenAddress(
-  mint: Base58EncodedAddress,
-  owner: Base58EncodedAddress,
-) {
-  const { serialize } = getAddressCodec();
+export async function getAssociatedTokenAddress(mint: Address, owner: Address) {
+  const { encode } = getAddressCodec();
   const [pda] = await getProgramDerivedAddress({
     programAddress: ATOKEN_PROGRAM_ID,
-    seeds: [serialize(owner), serialize(TOKEN_PROGRAM_ID), serialize(mint)],
+    seeds: [encode(owner), encode(TOKEN_PROGRAM_ID), encode(mint)],
   });
 
   return pda;

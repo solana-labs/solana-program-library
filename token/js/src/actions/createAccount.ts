@@ -26,7 +26,7 @@ export async function createAccount(
     owner: PublicKey,
     keypair?: Keypair,
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<PublicKey> {
     // If a keypair isn't provided, create the associated token account and return its address
     if (!keypair) return await createAssociatedTokenAccount(connection, payer, mint, owner, confirmOptions, programId);
@@ -44,7 +44,7 @@ export async function createAccount(
             lamports,
             programId,
         }),
-        createInitializeAccountInstruction(keypair.publicKey, mint, owner, programId)
+        createInitializeAccountInstruction(keypair.publicKey, mint, owner, programId),
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer, keypair], confirmOptions);

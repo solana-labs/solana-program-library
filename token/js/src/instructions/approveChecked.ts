@@ -48,7 +48,7 @@ export function createApproveCheckedInstruction(
     amount: number | bigint,
     decimals: number,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners(
         [
@@ -57,7 +57,7 @@ export function createApproveCheckedInstruction(
             { pubkey: delegate, isSigner: false, isWritable: false },
         ],
         owner,
-        multiSigners
+        multiSigners,
     );
 
     const data = Buffer.alloc(approveCheckedInstructionData.span);
@@ -67,7 +67,7 @@ export function createApproveCheckedInstruction(
             amount: BigInt(amount),
             decimals,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -100,7 +100,7 @@ export interface DecodedApproveCheckedInstruction {
  */
 export function decodeApproveCheckedInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedApproveCheckedInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== approveCheckedInstructionData.span) throw new TokenInvalidInstructionDataError();

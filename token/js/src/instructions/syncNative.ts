@@ -56,7 +56,7 @@ export interface DecodedSyncNativeInstruction {
  */
 export function decodeSyncNativeInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedSyncNativeInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== syncNativeInstructionData.span) throw new TokenInvalidInstructionDataError();

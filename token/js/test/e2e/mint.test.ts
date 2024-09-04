@@ -29,7 +29,7 @@ describe('mint', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         owner = Keypair.generate();
         account = await createAccount(connection, payer, mint, owner.publicKey, undefined, undefined, TEST_PROGRAM_ID);
@@ -56,11 +56,11 @@ describe('mint', () => {
             TEST_TOKEN_DECIMALS,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         expect(
-            mintToChecked(connection, payer, mint, account, mintAuthority, amount, 1, [], undefined, TEST_PROGRAM_ID)
-        ).to.be.rejected;
+            mintToChecked(connection, payer, mint, account, mintAuthority, amount, 1, [], undefined, TEST_PROGRAM_ID),
+        ).to.be.rejectedWith(Error);
     });
 });

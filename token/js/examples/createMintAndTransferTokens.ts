@@ -26,7 +26,7 @@ import { createMint, getOrCreateAssociatedTokenAccount, mintTo, transfer } from 
         connection,
         fromWallet,
         mint,
-        fromWallet.publicKey
+        fromWallet.publicKey,
     );
 
     // Get the token account of the toWallet address, and if it does not exist, create it
@@ -40,7 +40,7 @@ import { createMint, getOrCreateAssociatedTokenAccount, mintTo, transfer } from 
         fromTokenAccount.address,
         fromWallet.publicKey,
         1000000000,
-        []
+        [],
     );
     console.log('mint tx:', signature);
 
@@ -52,7 +52,7 @@ import { createMint, getOrCreateAssociatedTokenAccount, mintTo, transfer } from 
         toTokenAccount.address,
         fromWallet.publicKey,
         1000000000,
-        []
+        [],
     );
     console.log('transfer tx:', signature);
 })();

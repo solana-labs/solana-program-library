@@ -44,7 +44,7 @@ export function createInitializeMintInstruction(
     decimals: number,
     mintAuthority: PublicKey,
     freezeAuthority: PublicKey | null,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = [
         { pubkey: mint, isSigner: false, isWritable: true },
@@ -59,7 +59,7 @@ export function createInitializeMintInstruction(
             mintAuthority,
             freezeAuthority,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -90,7 +90,7 @@ export interface DecodedInitializeMintInstruction {
  */
 export function decodeInitializeMintInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedInitializeMintInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== initializeMintInstructionData.span) throw new TokenInvalidInstructionDataError();

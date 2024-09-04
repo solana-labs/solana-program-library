@@ -8,14 +8,14 @@ use {
         check_program_account,
         error::TokenError,
         extension::confidential_transfer::{
-            instruction::{
-                verify_ciphertext_ciphertext_equality, CiphertextCiphertextEqualityProofData,
-            },
-            DecryptableBalance,
+            instruction::CiphertextCiphertextEqualityProofData, DecryptableBalance,
         },
         instruction::{encode_instruction, TokenInstruction},
-        proof::ProofLocation,
-        solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
+        proof::{ProofData, ProofLocation},
+        solana_zk_sdk::{
+            encryption::pod::elgamal::PodElGamalPubkey,
+            zk_elgamal_proof_program::instruction::ProofInstruction,
+        },
     },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -61,7 +61,7 @@ pub enum ConfidentialTransferFeeInstruction {
     ///
     /// In order for this instruction to be successfully processed, it must be
     /// accompanied by the `VerifyCiphertextCiphertextEquality` instruction
-    /// of the `zk_token_proof` program in the same transaction or the
+    /// of the `zk_elgamal_proof` program in the same transaction or the
     /// address of a context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
@@ -75,7 +75,9 @@ pub enum ConfidentialTransferFeeInstruction {
     ///      included in the same transaction or context state account if
     ///      `VerifyCiphertextCiphertextEquality` is pre-verified into a context
     ///      state account.
-    ///   3. `[signer]` The mint's `withdraw_withheld_authority`.
+    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
+    ///      read from a record account.
+    ///   4. `[signer]` The mint's `withdraw_withheld_authority`.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The token mint. Must include the `TransferFeeConfig`
@@ -86,8 +88,10 @@ pub enum ConfidentialTransferFeeInstruction {
     ///      included in the same transaction or context state account if
     ///      `VerifyCiphertextCiphertextEquality` is pre-verified into a context
     ///      state account.
-    ///   3. `[]` The mint's multisig `withdraw_withheld_authority`.
-    ///   4. ..3+M `[signer]` M signer accounts.
+    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
+    ///      read from a record account.
+    ///   4. `[]` The mint's multisig `withdraw_withheld_authority`.
+    ///   5. ..3+M `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
     ///   WithdrawWithheldTokensFromMintData
@@ -122,7 +126,7 @@ pub enum ConfidentialTransferFeeInstruction {
     ///
     /// In order for this instruction to be successfully processed, it must be
     /// accompanied by the `VerifyWithdrawWithheldTokens` instruction of the
-    /// `zk_token_proof` program in the same transaction or the address of a
+    /// `zk_elgamal_proof` program in the same transaction or the address of a
     /// context state account for the proof must be provided.
     ///
     /// Accounts expected by this instruction:
@@ -136,8 +140,10 @@ pub enum ConfidentialTransferFeeInstruction {
     ///      included in the same transaction or context state account if
     ///      `VerifyCiphertextCiphertextEquality` is pre-verified into a context
     ///      state account.
-    ///   3. `[signer]` The mint's `withdraw_withheld_authority`.
-    ///   4. ..3+N `[writable]` The source accounts to withdraw from.
+    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
+    ///      read from a record account.
+    ///   4. `[signer]` The mint's `withdraw_withheld_authority`.
+    ///   5. ..3+N `[writable]` The source accounts to withdraw from.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[]` The token mint. Must include the `TransferFeeConfig`
@@ -148,9 +154,11 @@ pub enum ConfidentialTransferFeeInstruction {
     ///      included in the same transaction or context state account if
     ///      `VerifyCiphertextCiphertextEquality` is pre-verified into a context
     ///      state account.
-    ///   3. `[]` The mint's multisig `withdraw_withheld_authority`.
-    ///   4. ..4+M `[signer]` M signer accounts.
-    ///   4+M+1. ..4+M+N `[writable]` The source accounts to withdraw from.
+    ///   3. `[]` (Optional) Record account if the accompanying proof is to be
+    ///      read from a record account.
+    ///   4. `[]` The mint's multisig `withdraw_withheld_authority`.
+    ///   5. ..5+M `[signer]` M signer accounts.
+    ///   5+M+1. ..5+M+N `[writable]` The source accounts to withdraw from.
     ///
     /// Data expected by this instruction:
     ///   WithdrawWithheldTokensFromAccountsData
@@ -223,7 +231,7 @@ pub struct InitializeConfidentialTransferFeeConfigData {
 
     /// ElGamal public key used to encrypt withheld fees.
     #[cfg_attr(feature = "serde-traits", serde(with = "elgamalpubkey_fromstr"))]
-    pub withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
+    pub withdraw_withheld_authority_elgamal_pubkey: PodElGamalPubkey,
 }
 
 /// Data expected by
@@ -267,7 +275,7 @@ pub fn initialize_confidential_transfer_fee_config(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: Option<Pubkey>,
-    withdraw_withheld_authority_elgamal_pubkey: ElGamalPubkey,
+    withdraw_withheld_authority_elgamal_pubkey: PodElGamalPubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -303,8 +311,11 @@ pub fn inner_withdraw_withheld_tokens_from_mint(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            if let ProofData::RecordAccount(record_address, _) = proof_data {
+                accounts.push(AccountMeta::new_readonly(*record_address, false));
+            }
             proof_instruction_offset.into()
         }
         ProofLocation::ContextStateAccount(context_state_account) => {
@@ -366,7 +377,16 @@ pub fn withdraw_withheld_tokens_from_mint(
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
-        instructions.push(verify_ciphertext_ciphertext_equality(None, proof_data));
+        match proof_data {
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyCiphertextCiphertextEquality
+                    .encode_verify_proof(None, data),
+            ),
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyCiphertextCiphertextEquality
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
     };
 
     Ok(instructions)
@@ -395,8 +415,11 @@ pub fn inner_withdraw_withheld_tokens_from_accounts(
     ];
 
     let proof_instruction_offset = match proof_data_location {
-        ProofLocation::InstructionOffset(proof_instruction_offset, _) => {
+        ProofLocation::InstructionOffset(proof_instruction_offset, proof_data) => {
             accounts.push(AccountMeta::new_readonly(sysvar::instructions::id(), false));
+            if let ProofData::RecordAccount(record_address, _) = proof_data {
+                accounts.push(AccountMeta::new_readonly(*record_address, false));
+            }
             proof_instruction_offset.into()
         }
         ProofLocation::ContextStateAccount(context_state_account) => {
@@ -466,7 +489,16 @@ pub fn withdraw_withheld_tokens_from_accounts(
         if proof_instruction_offset != 1 {
             return Err(TokenError::InvalidProofInstructionOffset.into());
         }
-        instructions.push(verify_ciphertext_ciphertext_equality(None, proof_data));
+        match proof_data {
+            ProofData::InstructionData(data) => instructions.push(
+                ProofInstruction::VerifyCiphertextCiphertextEquality
+                    .encode_verify_proof(None, data),
+            ),
+            ProofData::RecordAccount(address, offset) => instructions.push(
+                ProofInstruction::VerifyCiphertextCiphertextEquality
+                    .encode_verify_proof_from_account(None, address, offset),
+            ),
+        };
     };
 
     Ok(instructions)

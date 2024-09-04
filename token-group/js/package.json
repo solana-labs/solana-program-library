@@ -33,9 +33,8 @@
         "deploy": "npm run deploy:docs",
         "deploy:docs": "npm run docs && gh-pages --dest token-group/js --dist docs --dotfiles",
         "docs": "shx rm -rf docs && typedoc && shx cp .nojekyll docs/",
-        "fmt": "prettier --write '{*,**/*}.{ts,tsx,js,jsx,json}'",
-        "lint": "prettier --check '{*,**/*}.{ts,tsx,js,jsx,json}' && eslint --max-warnings 0 .",
-        "lint:fix": "npm run fmt && eslint --fix .",
+        "lint": "eslint --max-warnings 0 .",
+        "lint:fix": "eslint --fix .",
         "nuke": "shx rm -rf node_modules package-lock.json || true",
         "postbuild": "shx echo '{ \"type\": \"commonjs\" }' > lib/cjs/package.json",
         "reinstall": "npm run nuke && npm install",
@@ -44,31 +43,28 @@
         "watch": "tsc --build --verbose --watch tsconfig.all.json"
     },
     "peerDependencies": {
-        "@solana/web3.js": "^1.94.0"
+        "@solana/web3.js": "^1.95.3"
     },
     "dependencies": {
-        "@solana/codecs": "2.0.0-preview.4",
+        "@solana/codecs": "2.0.0-rc.1",
         "@solana/spl-type-length-value": "0.1.0"
     },
     "devDependencies": {
-        "@solana/web3.js": "^1.94.0",
-        "@types/chai": "^4.3.16",
+        "@solana/web3.js": "^1.95.3",
+        "@types/chai": "^4.3.17",
         "@types/mocha": "^10.0.7",
-        "@types/node": "^20.14.10",
-        "@typescript-eslint/eslint-plugin": "^7.15.0",
-        "@typescript-eslint/parser": "^7.15.0",
+        "@types/node": "^22.5.0",
+        "@typescript-eslint/eslint-plugin": "^8.2.0",
+        "@typescript-eslint/parser": "^8.2.0",
         "chai": "^5.1.1",
         "eslint": "^8.57.0",
-        "eslint-config-prettier": "^9.1.0",
-        "eslint-plugin-prettier": "^5.1.3",
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
-        "mocha": "^10.6.0",
-        "prettier": "^3.3.2",
+        "mocha": "^10.7.3",
         "shx": "^0.3.4",
         "ts-node": "^10.9.2",
         "tslib": "^2.6.3",
-        "typedoc": "^0.26.3",
-        "typescript": "^5.5.3"
+        "typedoc": "^0.26.6",
+        "typescript": "^5.5.4"
     }
 }

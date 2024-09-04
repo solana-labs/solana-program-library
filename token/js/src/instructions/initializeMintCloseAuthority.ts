@@ -36,7 +36,7 @@ export const initializeMintCloseAuthorityInstructionData = struct<InitializeMint
 export function createInitializeMintCloseAuthorityInstruction(
     mint: PublicKey,
     closeAuthority: PublicKey | null,
-    programId: PublicKey
+    programId: PublicKey,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -49,7 +49,7 @@ export function createInitializeMintCloseAuthorityInstruction(
             instruction: TokenInstruction.InitializeMintCloseAuthority,
             closeAuthority,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -77,7 +77,7 @@ export interface DecodedInitializeMintCloseAuthorityInstruction {
  */
 export function decodeInitializeMintCloseAuthorityInstruction(
     instruction: TransactionInstruction,
-    programId: PublicKey
+    programId: PublicKey,
 ): DecodedInitializeMintCloseAuthorityInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== initializeMintCloseAuthorityInstructionData.span)

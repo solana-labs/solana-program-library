@@ -62,15 +62,15 @@ describe('tokenMetadata', async () => {
                 mint.publicKey,
                 updateAuthority.publicKey,
                 mint.publicKey,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             ),
             createInitializeMintInstruction(
                 mint.publicKey,
                 TEST_TOKEN_DECIMALS,
                 mintAuthority.publicKey,
                 null,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mint], undefined);
@@ -97,7 +97,7 @@ describe('tokenMetadata', async () => {
                 fromPubkey: payer.publicKey,
                 toPubkey: mint.publicKey,
                 lamports,
-            })
+            }),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer], undefined);
 
@@ -112,7 +112,7 @@ describe('tokenMetadata', async () => {
             tokenMetadata.uri,
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
@@ -138,7 +138,7 @@ describe('tokenMetadata', async () => {
             'uri',
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
@@ -163,7 +163,7 @@ describe('tokenMetadata', async () => {
             'uri',
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataUpdateField(
             connection,
@@ -174,7 +174,7 @@ describe('tokenMetadata', async () => {
             'TEST',
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
@@ -199,7 +199,7 @@ describe('tokenMetadata', async () => {
             'uri',
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataUpdateFieldWithRentTransfer(
             connection,
@@ -210,7 +210,7 @@ describe('tokenMetadata', async () => {
             'My Shiny New Token Metadata',
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
@@ -235,7 +235,7 @@ describe('tokenMetadata', async () => {
             'uri',
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataUpdateFieldWithRentTransfer(
             connection,
@@ -246,7 +246,7 @@ describe('tokenMetadata', async () => {
             'CUSTOM',
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
@@ -271,7 +271,7 @@ describe('tokenMetadata', async () => {
             'uri',
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataUpdateFieldWithRentTransfer(
             connection,
@@ -282,7 +282,7 @@ describe('tokenMetadata', async () => {
             'CUSTOM',
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataUpdateField(
             connection,
@@ -293,7 +293,7 @@ describe('tokenMetadata', async () => {
             'test',
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
@@ -318,7 +318,7 @@ describe('tokenMetadata', async () => {
             'uri',
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataUpdateFieldWithRentTransfer(
             connection,
@@ -329,7 +329,7 @@ describe('tokenMetadata', async () => {
             'CUSTOM',
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataUpdateFieldWithRentTransfer(
             connection,
@@ -340,7 +340,7 @@ describe('tokenMetadata', async () => {
             'My Shiny Custom Field',
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
@@ -365,7 +365,7 @@ describe('tokenMetadata', async () => {
             'uri',
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataUpdateFieldWithRentTransfer(
             connection,
@@ -376,7 +376,7 @@ describe('tokenMetadata', async () => {
             'CUSTOM',
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataRemoveKey(
             connection,
@@ -387,7 +387,7 @@ describe('tokenMetadata', async () => {
             true,
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
@@ -412,7 +412,7 @@ describe('tokenMetadata', async () => {
             'uri',
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         await tokenMetadataRemoveKey(
             connection,
@@ -423,7 +423,7 @@ describe('tokenMetadata', async () => {
             true,
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
@@ -448,7 +448,7 @@ describe('tokenMetadata', async () => {
             'uri',
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const newAuthority = Keypair.generate().publicKey;
         await tokenMetadataUpdateAuthority(
@@ -459,7 +459,7 @@ describe('tokenMetadata', async () => {
             newAuthority,
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const meta = await getTokenMetadata(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
         expect(meta).to.deep.equal({
@@ -493,11 +493,11 @@ describe('tokenMetadata', async () => {
             tokenMetadata.uri,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const payerKey = payer.publicKey;
-        const recentBlockhash = await connection.getLatestBlockhash().then((res) => res.blockhash);
+        const recentBlockhash = await connection.getLatestBlockhash().then(res => res.blockhash);
         const instructions = [
             createEmitInstruction({
                 programId: TEST_PROGRAM_ID,
@@ -516,7 +516,7 @@ describe('tokenMetadata', async () => {
 
         const returnDataBase64 = (await connection
             .simulateTransaction(tx)
-            .then((res) => res.value.returnData?.data[0])) as string;
+            .then(res => res.value.returnData?.data[0])) as string;
         const returnData = getBase64Encoder().encode(returnDataBase64);
 
         expect(returnData).to.deep.equal(tokenMetadata.updateAuthority.toBuffer());

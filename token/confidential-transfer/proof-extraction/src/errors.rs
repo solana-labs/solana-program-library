@@ -8,4 +8,10 @@ pub enum TokenProofExtractionError {
     PedersenCommitmentMismatch,
     #[error("Range proof length mismatch")]
     RangeProofLengthMismatch,
+    #[error("Fee parameters mismatch")]
+    FeeParametersMismatch,
+    #[error("Curve arithmetic failed")]
+    CurveArithmetic,
+    #[error("Ciphertext extraction failed")]
+    CiphertextExtraction,
 }

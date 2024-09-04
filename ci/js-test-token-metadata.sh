@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 
 set -x
 pnpm install
+pnpm format
 pnpm build
 
 cd token-metadata/js

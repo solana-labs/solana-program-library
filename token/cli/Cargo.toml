@@ -6,7 +6,7 @@ homepage = "https://spl.solana.com/token"
 license = "Apache-2.0"
 name = "spl-token-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "4.0.0"
+version = "4.0.1"
 
 [build-dependencies]
 walkdir = "2"
@@ -16,18 +16,18 @@ base64 = "0.22.1"
 clap = "2.33.3"
 console = "0.15.8"
 futures = "0.3"
-serde = "1.0.204"
+serde = "1.0.208"
 serde_derive = "1.0.103"
-serde_json = "1.0.120"
-solana-account-decoder = "2.0.0"
-solana-clap-utils = "2.0.0"
-solana-cli-config = "2.0.0"
-solana-cli-output = "2.0.0"
-solana-client = "2.0.0"
-solana-logger = "2.0.0"
-solana-remote-wallet = "2.0.0"
-solana-sdk = "2.0.0"
-solana-transaction-status = "2.0.0"
+serde_json = "1.0.125"
+solana-account-decoder = "2.0.3"
+solana-clap-utils = "2.0.3"
+solana-cli-config = "2.0.3"
+solana-cli-output = "2.0.3"
+solana-client = "2.0.3"
+solana-logger = "2.0.3"
+solana-remote-wallet = "2.0.3"
+solana-sdk = "2.0.3"
+solana-transaction-status = "2.0.3"
 spl-token = { version = "6.0", path = "../program", features = [
   "no-entrypoint",
 ] }
@@ -35,6 +35,7 @@ spl-token-2022 = { version = "4.0.0", path = "../program-2022", features = [
   "no-entrypoint",
 ] }
 spl-token-client = { version = "0.11.0", path = "../client" }
+spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "../confidential-transfer/proof-generation" }
 spl-token-metadata-interface = { version = "0.4.0", path = "../../token-metadata/interface" }
 spl-token-group-interface = { version = "0.3.0", path = "../../token-group/interface" }
 spl-associated-token-account = { version = "4.0.0", path = "../../associated-token-account/program", features = [
@@ -45,14 +46,14 @@ spl-memo = { version = "5.0", path = "../../memo/program", features = [
 ] }
 strum = "0.26"
 strum_macros = "0.26"
-tokio = "1.38"
+tokio = "1.39"
 
 [dev-dependencies]
-solana-test-validator = "2.0.0"
-assert_cmd = "2.0.14"
+solana-test-validator = "2.0.3"
+assert_cmd = "2.0.16"
 libtest-mimic = "0.7"
 serial_test = "3.1.1"
-tempfile = "3.10.1"
+tempfile = "3.12.0"
 
 [[bin]]
 name = "spl-token"

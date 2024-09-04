@@ -27,7 +27,7 @@ mod entrypoint;
 use solana_program::{
     entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey, system_program,
 };
-pub use {solana_program, solana_zk_token_sdk};
+pub use {solana_program, solana_zk_sdk};
 
 /// Convert the UI representation of a token amount (using the decimals field
 /// defined in its mint) to the raw amount
@@ -112,10 +112,12 @@ pub fn check_spl_token_program_account(spl_token_program_id: &Pubkey) -> Program
     Ok(())
 }
 
-/// Checks that the supplied program ID is correct for the ZK Token proof
+/// Checks that the supplied program ID is correct for the ZK ElGamal proof
 /// program
-pub fn check_zk_token_proof_program_account(zk_token_proof_program_id: &Pubkey) -> ProgramResult {
-    if zk_token_proof_program_id != &solana_zk_token_sdk::zk_token_proof_program::id() {
+pub fn check_zk_elgamal_proof_program_account(
+    zk_elgamal_proof_program_id: &Pubkey,
+) -> ProgramResult {
+    if zk_elgamal_proof_program_id != &solana_zk_sdk::zk_elgamal_proof_program::id() {
         return Err(ProgramError::IncorrectProgramId);
     }
     Ok(())

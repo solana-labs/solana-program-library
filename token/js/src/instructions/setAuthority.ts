@@ -64,7 +64,7 @@ export function createSetAuthorityInstruction(
     authorityType: AuthorityType,
     newAuthority: PublicKey | null,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): TransactionInstruction {
     const keys = addSigners([{ pubkey: account, isSigner: false, isWritable: true }], currentAuthority, multiSigners);
 
@@ -75,7 +75,7 @@ export function createSetAuthorityInstruction(
             authorityType,
             newAuthority,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -106,7 +106,7 @@ export interface DecodedSetAuthorityInstruction {
  */
 export function decodeSetAuthorityInstruction(
     instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): DecodedSetAuthorityInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
     if (instruction.data.length !== setAuthorityInstructionData.span) throw new TokenInvalidInstructionDataError();

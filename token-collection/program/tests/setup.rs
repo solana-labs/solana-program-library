@@ -89,7 +89,7 @@ pub async fn setup_group(
     mint: &Keypair,
     mint_authority: &Keypair,
     update_authority: Option<Pubkey>,
-    max_size: u32,
+    max_size: u64,
     rent_lamports: u64,
     space: usize,
 ) {

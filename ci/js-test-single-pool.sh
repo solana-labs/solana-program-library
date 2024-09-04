@@ -4,10 +4,10 @@ set -ex
 cd "$(dirname "$0")/.."
 source ./ci/solana-version.sh install
 
-cd single-pool/js
 pnpm install
+pnpm format
 
-cd packages/modern
+cd single-pool/js/packages/modern
 pnpm lint
 pnpm build
 

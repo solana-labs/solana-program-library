@@ -1,8 +1,7 @@
 #[cfg(feature = "zk-ops")]
 use {
-    super::ciphertext_extraction::mint_burn_amount_supply_ciphertext,
     super::verify_proof::validate_auditor_ciphertext, super::verify_proof::verify_burn_proof,
-    solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
+    spl_token_confidential_transfer_ciphertext_arithmetic as ciphertext_arithmetic,
 };
 use {
     crate::{
@@ -10,7 +9,6 @@ use {
         error::TokenError,
         extension::{
             confidential_mint_burn::{
-                ciphertext_extraction::mint_burn_amount_target_ciphertext,
                 instruction::{
                     BurnInstructionData, ConfidentialMintBurnInstruction, InitializeMintData,
                     MintInstructionData, RotateSupplyElGamalData, UpdateAuthorityData,
@@ -35,11 +33,11 @@ use {
         pubkey::Pubkey,
         sysvar::instructions::get_instruction_relative,
     },
-    solana_zk_token_sdk::{
-        instruction::{
+    solana_zk_sdk::zk_elgamal_proof_program::{
+        instruction::ProofInstruction,
+        proof_data::{
             CiphertextCiphertextEqualityProofContext, CiphertextCiphertextEqualityProofData,
         },
-        zk_token_proof_instruction::ProofInstruction,
     },
 };
 
@@ -122,26 +120,27 @@ fn process_rotate_supply_elgamal(
     let equality_proof_instruction =
         get_instruction_relative(data.proof_location as i64, sysvar_account_info)?;
 
-    let proof_context = *decode_proof_instruction_context::<
+    let proof_context = decode_proof_instruction_context::<
         CiphertextCiphertextEqualityProofData,
         CiphertextCiphertextEqualityProofContext,
     >(
+        account_info_iter,
         ProofInstruction::VerifyCiphertextCiphertextEquality,
         &equality_proof_instruction,
     )?;
 
     if !mint
         .supply_elgamal_pubkey
-        .equals(&proof_context.source_pubkey)
+        .equals(&proof_context.first_pubkey)
     {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
-    if mint.confidential_supply != proof_context.source_ciphertext {
+    if mint.confidential_supply != proof_context.first_ciphertext {
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    mint.supply_elgamal_pubkey = Some(proof_context.destination_pubkey).try_into()?;
-    mint.confidential_supply = proof_context.destination_ciphertext;
+    mint.supply_elgamal_pubkey = Some(proof_context.second_pubkey).try_into()?;
+    mint.confidential_supply = proof_context.second_ciphertext;
 
     Ok(())
 }
@@ -220,14 +219,22 @@ fn process_confidential_mint(
         &data.audit_amount_hi,
     )?;
 
-    confidential_transfer_account.pending_balance_lo = syscall::add(
+    confidential_transfer_account.pending_balance_lo = ciphertext_arithmetic::add(
         &confidential_transfer_account.pending_balance_lo,
-        &mint_burn_amount_target_ciphertext(&proof_context.ciphertext_lo),
+        &proof_context
+            .ciphertext_lo
+            .0
+            .try_extract_ciphertext(0)
+            .map_err(|_| ProgramError::InvalidAccountData)?,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
-    confidential_transfer_account.pending_balance_hi = syscall::add(
+    confidential_transfer_account.pending_balance_hi = ciphertext_arithmetic::add(
         &confidential_transfer_account.pending_balance_hi,
-        &mint_burn_amount_target_ciphertext(&proof_context.ciphertext_hi),
+        &proof_context
+            .ciphertext_hi
+            .0
+            .try_extract_ciphertext(0)
+            .map_err(|_| ProgramError::InvalidAccountData)?,
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
 
@@ -237,10 +244,18 @@ fn process_confidential_mint(
     if conf_mint_ext.supply_elgamal_pubkey.is_some() {
         solana_program::log::sol_log("UPDATING SUPPLY");
         let current_supply = conf_mint_ext.confidential_supply;
-        conf_mint_ext.confidential_supply = syscall::add_with_lo_hi(
+        conf_mint_ext.confidential_supply = ciphertext_arithmetic::add_with_lo_hi(
             &current_supply,
-            &mint_burn_amount_supply_ciphertext(&proof_context.ciphertext_lo),
-            &mint_burn_amount_supply_ciphertext(&proof_context.ciphertext_hi),
+            &proof_context
+                .ciphertext_lo
+                .0
+                .try_extract_ciphertext(2)
+                .map_err(|_| ProgramError::InvalidAccountData)?,
+            &proof_context
+                .ciphertext_hi
+                .0
+                .try_extract_ciphertext(2)
+                .map_err(|_| ProgramError::InvalidAccountData)?,
         )
         .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }
@@ -317,11 +332,19 @@ fn process_confidential_burn(
     }
 
     let source_transfer_amount_lo =
-        mint_burn_amount_target_ciphertext(&proof_context.ciphertext_lo);
+        &proof_context
+            .ciphertext_lo
+            .0
+            .try_extract_ciphertext(0)
+            .map_err(|_| ProgramError::InvalidAccountData)?;
     let source_transfer_amount_hi =
-        mint_burn_amount_target_ciphertext(&proof_context.ciphertext_hi);
+        &proof_context
+            .ciphertext_hi
+            .0
+            .try_extract_ciphertext(0)
+            .map_err(|_| ProgramError::InvalidAccountData)?;
 
-    let new_source_available_balance = syscall::subtract_with_lo_hi(
+    let new_source_available_balance = ciphertext_arithmetic::subtract_with_lo_hi(
         &confidential_transfer_account.available_balance,
         &source_transfer_amount_lo,
         &source_transfer_amount_hi,
@@ -348,10 +371,18 @@ fn process_confidential_burn(
     // update supply
     if conf_mint_ext.supply_elgamal_pubkey.is_some() {
         let current_supply = conf_mint_ext.confidential_supply;
-        conf_mint_ext.confidential_supply = syscall::subtract_with_lo_hi(
+        conf_mint_ext.confidential_supply = ciphertext_arithmetic::subtract_with_lo_hi(
             &current_supply,
-            &mint_burn_amount_supply_ciphertext(&proof_context.ciphertext_lo),
-            &mint_burn_amount_supply_ciphertext(&proof_context.ciphertext_hi),
+            &proof_context
+                .ciphertext_lo
+                .0
+                .try_extract_ciphertext(2)
+                .map_err(|_| ProgramError::InvalidAccountData)?,
+            &proof_context
+                .ciphertext_hi
+                .0
+                .try_extract_ciphertext(2)
+                .map_err(|_| ProgramError::InvalidAccountData)?,
         )
         .ok_or(TokenError::CiphertextArithmeticFailed)?;
     }

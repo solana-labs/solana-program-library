@@ -38,7 +38,7 @@ export const defaultAccountStateInstructionData = struct<DefaultAccountStateInst
 export function createInitializeDefaultAccountStateInstruction(
     mint: PublicKey,
     accountState: AccountState,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -51,7 +51,7 @@ export function createInitializeDefaultAccountStateInstruction(
             defaultAccountStateInstruction: DefaultAccountStateInstruction.Initialize,
             accountState,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });
@@ -73,7 +73,7 @@ export function createUpdateDefaultAccountStateInstruction(
     accountState: AccountState,
     freezeAuthority: PublicKey,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ): TransactionInstruction {
     if (!programSupportsExtensions(programId)) {
         throw new TokenUnsupportedInstructionError();
@@ -87,7 +87,7 @@ export function createUpdateDefaultAccountStateInstruction(
             defaultAccountStateInstruction: DefaultAccountStateInstruction.Update,
             accountState,
         },
-        data
+        data,
     );
 
     return new TransactionInstruction({ keys, programId, data });

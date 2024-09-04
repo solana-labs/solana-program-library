@@ -51,7 +51,7 @@ describe('closeMint', () => {
                 programId: TEST_PROGRAM_ID,
             }),
             createInitializeMintCloseAuthorityInstruction(mint, closeAuthority.publicKey, TEST_PROGRAM_ID),
-            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID)
+            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
@@ -62,14 +62,15 @@ describe('closeMint', () => {
         account = await createAccount(connection, payer, mint, owner.publicKey, undefined, undefined, TEST_PROGRAM_ID);
         const amount = BigInt(1000);
         await mintTo(connection, payer, mint, account, mintAuthority, amount, [], undefined, TEST_PROGRAM_ID);
-        expect(closeAccount(connection, payer, mint, destination, closeAuthority, [], undefined, TEST_PROGRAM_ID)).to.be
-            .rejected;
+        expect(
+            closeAccount(connection, payer, mint, destination, closeAuthority, [], undefined, TEST_PROGRAM_ID),
+        ).to.be.rejectedWith(Error);
     });
     it('works', async () => {
         destination = Keypair.generate().publicKey;
         const accountInfo = await connection.getAccountInfo(mint);
         let rentExemptAmount;
-        expect(accountInfo).to.not.be.null;
+        expect(accountInfo).to.not.equal(null);
         if (accountInfo !== null) {
             rentExemptAmount = accountInfo.lamports;
         }
@@ -77,10 +78,10 @@ describe('closeMint', () => {
         await closeAccount(connection, payer, mint, destination, closeAuthority, [], undefined, TEST_PROGRAM_ID);
 
         const closedInfo = await connection.getAccountInfo(mint);
-        expect(closedInfo).to.be.null;
+        expect(closedInfo).to.equal(null);
 
         const destinationInfo = await connection.getAccountInfo(destination);
-        expect(destinationInfo).to.not.be.null;
+        expect(destinationInfo).to.not.equal(null);
         if (destinationInfo !== null) {
             expect(destinationInfo.lamports).to.eql(rentExemptAmount);
         }
@@ -95,11 +96,11 @@ describe('closeMint', () => {
             null,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const mintCloseAuthority = getMintCloseAuthority(mintInfo);
-        expect(mintCloseAuthority).to.not.be.null;
+        expect(mintCloseAuthority).to.not.equal(null);
         if (mintCloseAuthority !== null) {
             expect(mintCloseAuthority.closeAuthority).to.eql(PublicKey.default);
         }

@@ -48,7 +48,7 @@ describe('permanentDelegate', () => {
                 programId: TEST_PROGRAM_ID,
             }),
             createInitializePermanentDelegateInstruction(mint, permanentDelegate.publicKey, TEST_PROGRAM_ID),
-            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID)
+            createInitializeMintInstruction(mint, TEST_TOKEN_DECIMALS, mintAuthority.publicKey, null, TEST_PROGRAM_ID),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mintKeypair], undefined);
@@ -59,7 +59,7 @@ describe('permanentDelegate', () => {
         await mintTo(connection, payer, mint, account, mintAuthority, 5, [], undefined, TEST_PROGRAM_ID);
         await burn(connection, payer, account, mint, permanentDelegate, 2, undefined, undefined, TEST_PROGRAM_ID);
         const info = await connection.getTokenAccountBalance(account);
-        expect(info).to.not.be.null;
+        expect(info).to.not.equal(null);
         if (info !== null) {
             expect(info.value.uiAmount).to.eql(3);
         }
@@ -74,7 +74,7 @@ describe('permanentDelegate', () => {
             owner2.publicKey,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         account = await createAccount(connection, payer, mint, owner1.publicKey, undefined, undefined, TEST_PROGRAM_ID);
         await mintTo(connection, payer, mint, account, mintAuthority, 5, [], undefined, TEST_PROGRAM_ID);
@@ -89,12 +89,12 @@ describe('permanentDelegate', () => {
             0,
             undefined,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const source_info = await connection.getTokenAccountBalance(account);
         const destination_info = await connection.getTokenAccountBalance(destination);
-        expect(source_info).to.not.be.null;
-        expect(destination_info).to.not.be.null;
+        expect(source_info).to.not.equal(null);
+        expect(destination_info).to.not.equal(null);
         if (source_info !== null) {
             expect(source_info.value.uiAmount).to.eql(3);
         }
@@ -112,11 +112,11 @@ describe('permanentDelegate', () => {
             null,
             [],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
         const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         const permanentDelegateConfig = getPermanentDelegate(mintInfo);
-        expect(permanentDelegateConfig).to.not.be.null;
+        expect(permanentDelegateConfig).to.not.equal(null);
         if (permanentDelegateConfig !== null) {
             expect(permanentDelegateConfig.delegate).to.eql(PublicKey.default);
         }

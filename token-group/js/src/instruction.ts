@@ -5,7 +5,7 @@ import {
     getBytesEncoder,
     getStructEncoder,
     getTupleEncoder,
-    getU32Encoder,
+    getU64Encoder,
     transformEncoder,
 } from '@solana/codecs';
 import { splDiscriminate } from '@solana/spl-type-length-value';
@@ -28,7 +28,7 @@ export interface InitializeGroupInstruction {
     mint: PublicKey;
     mintAuthority: PublicKey;
     updateAuthority: PublicKey | null;
-    maxSize: number;
+    maxSize: bigint;
 }
 
 export function createInitializeGroupInstruction(args: InitializeGroupInstruction): TransactionInstruction {
@@ -46,9 +46,9 @@ export function createInitializeGroupInstruction(args: InitializeGroupInstructio
                 splDiscriminate('spl_token_group_interface:initialize_token_group'),
                 getStructEncoder([
                     ['updateAuthority', getPublicKeyEncoder()],
-                    ['maxSize', getU32Encoder()],
-                ])
-            ).encode({ updateAuthority: updateAuthority ?? SystemProgram.programId, maxSize })
+                    ['maxSize', getU64Encoder()],
+                ]),
+            ).encode({ updateAuthority: updateAuthority ?? SystemProgram.programId, maxSize }),
         ),
     });
 }
@@ -57,7 +57,7 @@ export interface UpdateGroupMaxSize {
     programId: PublicKey;
     group: PublicKey;
     updateAuthority: PublicKey;
-    maxSize: number;
+    maxSize: bigint;
 }
 
 export function createUpdateGroupMaxSizeInstruction(args: UpdateGroupMaxSize): TransactionInstruction {
@@ -71,8 +71,8 @@ export function createUpdateGroupMaxSizeInstruction(args: UpdateGroupMaxSize): T
         data: Buffer.from(
             getInstructionEncoder(
                 splDiscriminate('spl_token_group_interface:update_group_max_size'),
-                getStructEncoder([['maxSize', getU32Encoder()]])
-            ).encode({ maxSize })
+                getStructEncoder([['maxSize', getU64Encoder()]]),
+            ).encode({ maxSize }),
         ),
     });
 }
@@ -96,8 +96,8 @@ export function createUpdateGroupAuthorityInstruction(args: UpdateGroupAuthority
         data: Buffer.from(
             getInstructionEncoder(
                 splDiscriminate('spl_token_group_interface:update_authority'),
-                getStructEncoder([['newAuthority', getPublicKeyEncoder()]])
-            ).encode({ newAuthority: newAuthority ?? SystemProgram.programId })
+                getStructEncoder([['newAuthority', getPublicKeyEncoder()]]),
+            ).encode({ newAuthority: newAuthority ?? SystemProgram.programId }),
         ),
     });
 }
@@ -126,8 +126,8 @@ export function createInitializeMemberInstruction(args: InitializeMember): Trans
         data: Buffer.from(
             getInstructionEncoder(
                 splDiscriminate('spl_token_group_interface:initialize_member'),
-                getStructEncoder([])
-            ).encode({})
+                getStructEncoder([]),
+            ).encode({}),
         ),
     });
 }

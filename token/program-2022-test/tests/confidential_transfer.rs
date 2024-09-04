@@ -2,46 +2,47 @@
 
 mod program_test;
 use {
+    bytemuck::Zeroable,
     program_test::{
-        ConfidentialTokenAccountBalances, ConfidentialTokenAccountMeta, TestContext, TokenContext,
+        ConfidentialTokenAccountBalances, ConfidentialTokenAccountMeta, ConfidentialTransferOption,
+        TestContext, TokenContext,
     },
     solana_program_test::tokio,
     solana_sdk::{
         instruction::InstructionError,
         pubkey::Pubkey,
         signature::Signer,
-        signer::keypair::Keypair,
-        system_instruction,
-        transaction::{Transaction, TransactionError},
+        signer::{keypair::Keypair, signers::Signers},
+        transaction::TransactionError,
         transport::TransportError,
     },
+    spl_record::state::RecordData,
     spl_token_2022::{
         error::TokenError,
         extension::{
             confidential_transfer::{
-                self,
-                account_info::TransferAccountInfo,
-                instruction::{
-                    CloseSplitContextStateAccounts, TransferSplitContextStateAccounts,
-                    TransferWithFeeSplitContextStateAccounts,
-                },
+                account_info::{EmptyAccountAccountInfo, TransferAccountInfo, WithdrawAccountInfo},
                 ConfidentialTransferAccount, MAXIMUM_DEPOSIT_TRANSFER_AMOUNT,
             },
             BaseStateWithExtensions, ExtensionType,
         },
-        solana_zk_token_sdk::{
-            encryption::{auth_encryption::*, elgamal::*},
-            zk_token_elgamal::pod::{self, Zeroable},
-            zk_token_proof_instruction::*,
-            zk_token_proof_program,
-            zk_token_proof_state::ProofContextState,
+        solana_zk_sdk::{
+            encryption::{auth_encryption::*, elgamal::*, pod::elgamal::PodElGamalCiphertext},
+            zk_elgamal_proof_program::proof_data::*,
         },
     },
     spl_token_client::{
-        proof_generation::transfer_with_fee_split_proof_data,
-        token::{ComputeUnitLimit, ExtensionInitializationParams, TokenError as TokenClientError},
+        client::ProgramBanksClientProcessTransaction,
+        token::{
+            ExtensionInitializationParams, ProofAccount, Token, TokenError as TokenClientError,
+            TokenResult,
+        },
     },
-    std::{convert::TryInto, mem::size_of},
+    spl_token_confidential_transfer_proof_generation::{
+        transfer::TransferProofData, transfer_with_fee::TransferWithFeeProofData,
+        withdraw::WithdrawProofData,
+    },
+    std::convert::TryInto,
 };
 
 #[cfg(feature = "zk-ops")]
@@ -49,8 +50,141 @@ const TEST_MAXIMUM_FEE: u64 = 100;
 #[cfg(feature = "zk-ops")]
 const TEST_FEE_BASIS_POINTS: u16 = 250;
 
+async fn configure_account_with_option<S: Signers>(
+    token: &Token<ProgramBanksClientProcessTransaction>,
+    account: &Pubkey,
+    authority: &Pubkey,
+    elgamal_keypair: &ElGamalKeypair,
+    aes_key: &AeKey,
+    signing_keypairs: &S,
+    option: ConfidentialTransferOption,
+) -> TokenResult<()> {
+    match option {
+        ConfidentialTransferOption::InstructionData => {
+            token
+                .confidential_transfer_configure_token_account(
+                    account,
+                    authority,
+                    None,
+                    None,
+                    elgamal_keypair,
+                    aes_key,
+                    signing_keypairs,
+                )
+                .await
+        }
+        ConfidentialTransferOption::RecordAccount => {
+            let pubkey_validity_proof_data = PubkeyValidityProofData::new(elgamal_keypair).unwrap();
+
+            let pubkey_validity_proof_record_account = Keypair::new();
+            let record_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_record_account(
+                    &pubkey_validity_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &pubkey_validity_proof_data,
+                    &pubkey_validity_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let pubkey_validity_proof_account = ProofAccount::RecordAccount(
+                pubkey_validity_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            let result = token
+                .confidential_transfer_configure_token_account(
+                    account,
+                    authority,
+                    Some(&pubkey_validity_proof_account),
+                    None,
+                    elgamal_keypair,
+                    aes_key,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_record_account(
+                    &pubkey_validity_proof_record_account.pubkey(),
+                    account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+        ConfidentialTransferOption::ContextStateAccount => {
+            let pubkey_validity_proof_data = PubkeyValidityProofData::new(elgamal_keypair).unwrap();
+
+            let pubkey_validity_proof_context_account = Keypair::new();
+            let context_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &pubkey_validity_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &pubkey_validity_proof_data,
+                    false,
+                    &[&pubkey_validity_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let pubkey_validity_proof_account =
+                ProofAccount::ContextAccount(pubkey_validity_proof_context_account.pubkey());
+
+            let result = token
+                .confidential_transfer_configure_token_account(
+                    account,
+                    authority,
+                    Some(&pubkey_validity_proof_account),
+                    None,
+                    elgamal_keypair,
+                    aes_key,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &pubkey_validity_proof_context_account.pubkey(),
+                    account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+    }
+}
+
 #[tokio::test]
 async fn confidential_transfer_configure_token_account() {
+    confidential_transfer_configure_token_account_with_option(
+        ConfidentialTransferOption::InstructionData,
+    )
+    .await;
+    confidential_transfer_configure_token_account_with_option(
+        ConfidentialTransferOption::RecordAccount,
+    )
+    .await;
+    confidential_transfer_configure_token_account_with_option(
+        ConfidentialTransferOption::ContextStateAccount,
+    )
+    .await;
+}
+
+async fn confidential_transfer_configure_token_account_with_option(
+    option: ConfidentialTransferOption,
+) {
     let authority = Keypair::new();
     let auto_approve_new_accounts = false;
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
@@ -69,7 +203,39 @@ async fn confidential_transfer_configure_token_account() {
         .unwrap();
 
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
-    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
+    let alice_account_keypair = Keypair::new();
+    token
+        .create_auxiliary_token_account_with_extension_space(
+            &alice_account_keypair,
+            &alice.pubkey(),
+            vec![ExtensionType::ConfidentialTransferAccount],
+        )
+        .await
+        .unwrap();
+    let elgamal_keypair =
+        ElGamalKeypair::new_from_signer(&alice, &alice_account_keypair.pubkey().to_bytes())
+            .unwrap();
+    let aes_key =
+        AeKey::new_from_signer(&alice, &alice_account_keypair.pubkey().to_bytes()).unwrap();
+
+    let alice_meta = ConfidentialTokenAccountMeta {
+        token_account: alice_account_keypair.pubkey(),
+        elgamal_keypair,
+        aes_key,
+    };
+
+    configure_account_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
+
     let alice_elgamal_pubkey = (*alice_meta.elgamal_keypair.pubkey()).into();
 
     let state = token
@@ -109,18 +275,17 @@ async fn confidential_transfer_configure_token_account() {
     assert!(bool::from(&extension.approved));
 
     // Configuring an already initialized account should produce an error
-    let err = token
-        .confidential_transfer_configure_token_account(
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            &[&alice],
-        )
-        .await
-        .unwrap_err();
+    let err = configure_account_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap_err();
 
     assert_eq!(
         err,
@@ -407,8 +572,148 @@ async fn confidential_transfer_enable_disable_non_confidential_credits() {
         .unwrap();
 }
 
+#[cfg(feature = "zk-ops")]
+async fn empty_account_with_option<S: Signers>(
+    token: &Token<ProgramBanksClientProcessTransaction>,
+    account: &Pubkey,
+    authority: &Pubkey,
+    elgamal_keypair: &ElGamalKeypair,
+    signing_keypairs: &S,
+    option: ConfidentialTransferOption,
+) -> TokenResult<()> {
+    match option {
+        ConfidentialTransferOption::InstructionData => {
+            token
+                .confidential_transfer_empty_account(
+                    account,
+                    authority,
+                    None,
+                    None,
+                    elgamal_keypair,
+                    signing_keypairs,
+                )
+                .await
+        }
+        ConfidentialTransferOption::RecordAccount => {
+            let state = token.get_account_info(account).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferAccount>()
+                .unwrap();
+            let account_info = EmptyAccountAccountInfo::new(extension);
+
+            let zero_ciphertext_proof_data =
+                account_info.generate_proof_data(elgamal_keypair).unwrap();
+
+            let zero_ciphertext_proof_record_account = Keypair::new();
+            let record_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_record_account(
+                    &zero_ciphertext_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &zero_ciphertext_proof_data,
+                    &zero_ciphertext_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let zero_ciphertext_account = ProofAccount::RecordAccount(
+                zero_ciphertext_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            let result = token
+                .confidential_transfer_empty_account(
+                    account,
+                    authority,
+                    Some(&zero_ciphertext_account),
+                    None,
+                    elgamal_keypair,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_record_account(
+                    &zero_ciphertext_proof_record_account.pubkey(),
+                    account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+        ConfidentialTransferOption::ContextStateAccount => {
+            let state = token.get_account_info(account).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferAccount>()
+                .unwrap();
+            let account_info = EmptyAccountAccountInfo::new(extension);
+
+            let zero_ciphertext_proof_data =
+                account_info.generate_proof_data(elgamal_keypair).unwrap();
+
+            let zero_ciphertext_proof_context_account = Keypair::new();
+            let context_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &zero_ciphertext_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &zero_ciphertext_proof_data,
+                    false,
+                    &[&zero_ciphertext_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let zero_ciphertext_account =
+                ProofAccount::ContextAccount(zero_ciphertext_proof_context_account.pubkey());
+
+            let result = token
+                .confidential_transfer_empty_account(
+                    account,
+                    authority,
+                    Some(&zero_ciphertext_account),
+                    None,
+                    elgamal_keypair,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &zero_ciphertext_proof_context_account.pubkey(),
+                    account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+    }
+}
+
+#[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn confidential_transfer_empty_account() {
+    confidential_transfer_empty_account_with_option(ConfidentialTransferOption::InstructionData)
+        .await;
+    confidential_transfer_empty_account_with_option(ConfidentialTransferOption::RecordAccount)
+        .await;
+    confidential_transfer_empty_account_with_option(
+        ConfidentialTransferOption::ContextStateAccount,
+    )
+    .await;
+}
+
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_empty_account_with_option(option: ConfidentialTransferOption) {
     let authority = Keypair::new();
     let auto_approve_new_accounts = true;
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
@@ -432,17 +737,16 @@ async fn confidential_transfer_empty_account() {
     let TokenContext { token, alice, .. } = context.token_context.unwrap();
     let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
 
-    token
-        .confidential_transfer_empty_account(
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            None,
-            &alice_meta.elgamal_keypair,
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    empty_account_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        &alice_meta.elgamal_keypair,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 }
 
 #[cfg(feature = "zk-ops")]
@@ -495,18 +799,9 @@ async fn confidential_transfer_deposit() {
     assert_eq!(extension.pending_balance_credit_counter, 0.into());
     assert_eq!(extension.expected_pending_balance_credit_counter, 0.into());
     assert_eq!(extension.actual_pending_balance_credit_counter, 0.into());
-    assert_eq!(
-        extension.pending_balance_lo,
-        pod::ElGamalCiphertext::zeroed()
-    );
-    assert_eq!(
-        extension.pending_balance_hi,
-        pod::ElGamalCiphertext::zeroed()
-    );
-    assert_eq!(
-        extension.available_balance,
-        pod::ElGamalCiphertext::zeroed()
-    );
+    assert_eq!(extension.pending_balance_lo, PodElGamalCiphertext::zeroed());
+    assert_eq!(extension.pending_balance_hi, PodElGamalCiphertext::zeroed());
+    assert_eq!(extension.available_balance, PodElGamalCiphertext::zeroed());
 
     token
         .confidential_transfer_deposit(
@@ -661,9 +956,220 @@ async fn confidential_transfer_deposit() {
     assert_eq!(extension.actual_pending_balance_credit_counter, 2.into());
 }
 
+#[allow(clippy::too_many_arguments)]
+#[cfg(feature = "zk-ops")]
+async fn withdraw_with_option<S: Signers>(
+    token: &Token<ProgramBanksClientProcessTransaction>,
+    source_account: &Pubkey,
+    source_authority: &Pubkey,
+    withdraw_amount: u64,
+    decimals: u8,
+    source_elgamal_keypair: &ElGamalKeypair,
+    source_aes_key: &AeKey,
+    signing_keypairs: &S,
+    option: ConfidentialTransferOption,
+) -> TokenResult<()> {
+    match option {
+        ConfidentialTransferOption::InstructionData => {
+            token
+                .confidential_transfer_withdraw(
+                    source_account,
+                    source_authority,
+                    None,
+                    None,
+                    withdraw_amount,
+                    decimals,
+                    None,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    signing_keypairs,
+                )
+                .await
+        }
+        ConfidentialTransferOption::RecordAccount => {
+            let state = token.get_account_info(source_account).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferAccount>()
+                .unwrap();
+            let withdraw_account_info = WithdrawAccountInfo::new(extension);
+
+            let WithdrawProofData {
+                equality_proof_data,
+                range_proof_data,
+            } = withdraw_account_info
+                .generate_proof_data(withdraw_amount, source_elgamal_keypair, source_aes_key)
+                .unwrap();
+
+            let equality_proof_record_account = Keypair::new();
+            let range_proof_record_account = Keypair::new();
+            let record_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_record_account(
+                    &equality_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &equality_proof_data,
+                    &equality_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let equality_proof_account = ProofAccount::RecordAccount(
+                equality_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            token
+                .confidential_transfer_create_record_account(
+                    &range_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &range_proof_data,
+                    &range_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let range_proof_account = ProofAccount::RecordAccount(
+                range_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            let result = token
+                .confidential_transfer_withdraw(
+                    source_account,
+                    source_authority,
+                    Some(&equality_proof_account),
+                    Some(&range_proof_account),
+                    withdraw_amount,
+                    decimals,
+                    None,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_record_account(
+                    &equality_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_record_account(
+                    &range_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+        ConfidentialTransferOption::ContextStateAccount => {
+            let state = token.get_account_info(source_account).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferAccount>()
+                .unwrap();
+            let withdraw_account_info = WithdrawAccountInfo::new(extension);
+
+            let WithdrawProofData {
+                equality_proof_data,
+                range_proof_data,
+            } = withdraw_account_info
+                .generate_proof_data(withdraw_amount, source_elgamal_keypair, source_aes_key)
+                .unwrap();
+
+            let equality_proof_context_account = Keypair::new();
+            let range_proof_context_account = Keypair::new();
+            let context_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &equality_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &equality_proof_data,
+                    false,
+                    &[&equality_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let equality_proof_account =
+                ProofAccount::ContextAccount(equality_proof_context_account.pubkey());
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &range_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &range_proof_data,
+                    false,
+                    &[&range_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let range_proof_account =
+                ProofAccount::ContextAccount(range_proof_context_account.pubkey());
+
+            let result = token
+                .confidential_transfer_withdraw(
+                    source_account,
+                    source_authority,
+                    Some(&equality_proof_account),
+                    Some(&range_proof_account),
+                    withdraw_amount,
+                    decimals,
+                    None,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &equality_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &range_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+    }
+}
+
 #[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn confidential_transfer_withdraw() {
+    confidential_transfer_withdraw_with_option(ConfidentialTransferOption::InstructionData).await;
+    confidential_transfer_withdraw_with_option(ConfidentialTransferOption::RecordAccount).await;
+    confidential_transfer_withdraw_with_option(ConfidentialTransferOption::ContextStateAccount)
+        .await;
+}
+
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_withdraw_with_option(option: ConfidentialTransferOption) {
     let authority = Keypair::new();
     let auto_approve_new_accounts = true;
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
@@ -718,20 +1224,19 @@ async fn confidential_transfer_withdraw() {
         .await;
 
     // withdraw zero amount
-    token
-        .confidential_transfer_withdraw(
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            0,
-            decimals,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    withdraw_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        0,
+        decimals,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 
     alice_meta
         .check_balances(
@@ -746,20 +1251,19 @@ async fn confidential_transfer_withdraw() {
         .await;
 
     // withdraw entire balance
-    token
-        .confidential_transfer_withdraw(
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            42,
-            decimals,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    withdraw_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        42,
+        decimals,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 
     let state = token
         .get_account_info(&alice_meta.token_account)
@@ -777,41 +1281,318 @@ async fn confidential_transfer_withdraw() {
             },
         )
         .await;
+}
 
-    // attempt to withdraw without enough funds
-    let err = token
-        .confidential_transfer_withdraw(
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            1,
-            decimals,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            &[&alice],
-        )
-        .await
-        .unwrap_err();
+#[allow(clippy::too_many_arguments)]
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_with_option<S: Signers>(
+    token: &Token<ProgramBanksClientProcessTransaction>,
+    source_account: &Pubkey,
+    destination_account: &Pubkey,
+    source_authority: &Pubkey,
+    transfer_amount: u64,
+    source_elgamal_keypair: &ElGamalKeypair,
+    source_aes_key: &AeKey,
+    destination_elgamal_pubkey: &ElGamalPubkey,
+    auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
+    memo: Option<(&str, Vec<Pubkey>)>,
+    signing_keypairs: &S,
+    option: ConfidentialTransferOption,
+) -> TokenResult<()> {
+    match option {
+        ConfidentialTransferOption::InstructionData => {
+            let transfer_token = if let Some((memo, signing_pubkey)) = memo {
+                token.with_memo(memo, signing_pubkey)
+            } else {
+                token
+            };
 
-    assert_eq!(err, TokenClientError::ProofGeneration);
+            transfer_token
+                .confidential_transfer_transfer(
+                    source_account,
+                    destination_account,
+                    source_authority,
+                    None,
+                    None,
+                    None,
+                    transfer_amount,
+                    None,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                    signing_keypairs,
+                )
+                .await
+        }
+        ConfidentialTransferOption::RecordAccount => {
+            let state = token.get_account_info(source_account).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferAccount>()
+                .unwrap();
+            let transfer_account_info = TransferAccountInfo::new(extension);
 
-    token
-        .confidential_transfer_empty_account(
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            None,
-            &alice_meta.elgamal_keypair,
-            &[&alice],
-        )
-        .await
-        .unwrap();
+            let TransferProofData {
+                equality_proof_data,
+                ciphertext_validity_proof_data,
+                range_proof_data,
+            } = transfer_account_info
+                .generate_split_transfer_proof_data(
+                    transfer_amount,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                )
+                .unwrap();
+
+            let equality_proof_record_account = Keypair::new();
+            let ciphertext_validity_proof_record_account = Keypair::new();
+            let range_proof_record_account = Keypair::new();
+            let record_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_record_account(
+                    &equality_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &equality_proof_data,
+                    &equality_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let equality_proof_account = ProofAccount::RecordAccount(
+                equality_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            token
+                .confidential_transfer_create_record_account(
+                    &ciphertext_validity_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &ciphertext_validity_proof_data,
+                    &ciphertext_validity_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let ciphertext_validity_proof_account = ProofAccount::RecordAccount(
+                ciphertext_validity_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            token
+                .confidential_transfer_create_record_account(
+                    &range_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &range_proof_data,
+                    &range_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let range_proof_account = ProofAccount::RecordAccount(
+                range_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            let transfer_token = if let Some((memo, signing_pubkey)) = memo {
+                token.with_memo(memo, signing_pubkey)
+            } else {
+                token
+            };
+
+            let result = transfer_token
+                .confidential_transfer_transfer(
+                    source_account,
+                    destination_account,
+                    source_authority,
+                    Some(&equality_proof_account),
+                    Some(&ciphertext_validity_proof_account),
+                    Some(&range_proof_account),
+                    transfer_amount,
+                    None,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_record_account(
+                    &equality_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_record_account(
+                    &ciphertext_validity_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_record_account(
+                    &range_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+        ConfidentialTransferOption::ContextStateAccount => {
+            let state = token.get_account_info(source_account).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferAccount>()
+                .unwrap();
+            let transfer_account_info = TransferAccountInfo::new(extension);
+
+            let TransferProofData {
+                equality_proof_data,
+                ciphertext_validity_proof_data,
+                range_proof_data,
+            } = transfer_account_info
+                .generate_split_transfer_proof_data(
+                    transfer_amount,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                )
+                .unwrap();
+
+            let equality_proof_context_account = Keypair::new();
+            let ciphertext_validity_proof_context_account = Keypair::new();
+            let range_proof_context_account = Keypair::new();
+            let context_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &equality_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &equality_proof_data,
+                    false,
+                    &[&equality_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let equality_proof_context_proof_account =
+                ProofAccount::ContextAccount(equality_proof_context_account.pubkey());
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &ciphertext_validity_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &ciphertext_validity_proof_data,
+                    false,
+                    &[&ciphertext_validity_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let ciphertext_validity_proof_context_proof_account =
+                ProofAccount::ContextAccount(ciphertext_validity_proof_context_account.pubkey());
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &range_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &range_proof_data,
+                    false,
+                    &[&range_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let range_proof_context_proof_account =
+                ProofAccount::ContextAccount(range_proof_context_account.pubkey());
+
+            let transfer_token = if let Some((memo, signing_pubkey)) = memo {
+                token.with_memo(memo, signing_pubkey)
+            } else {
+                token
+            };
+
+            let result = transfer_token
+                .confidential_transfer_transfer(
+                    source_account,
+                    destination_account,
+                    source_authority,
+                    Some(&equality_proof_context_proof_account),
+                    Some(&ciphertext_validity_proof_context_proof_account),
+                    Some(&range_proof_context_proof_account),
+                    transfer_amount,
+                    None,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &equality_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &ciphertext_validity_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &range_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+    }
 }
 
 #[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn confidential_transfer_transfer() {
+    confidential_transfer_transfer_with_option(ConfidentialTransferOption::InstructionData).await;
+    confidential_transfer_transfer_with_option(ConfidentialTransferOption::RecordAccount).await;
+    confidential_transfer_transfer_with_option(ConfidentialTransferOption::ContextStateAccount)
+        .await;
+}
+
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_transfer_with_option(option: ConfidentialTransferOption) {
     let authority = Keypair::new();
     let auto_approve_new_accounts = true;
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
@@ -853,22 +1634,22 @@ async fn confidential_transfer_transfer() {
     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, Some(2), false, false).await;
 
     // Self-transfer of 0 tokens
-    token
-        .confidential_transfer_transfer(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            0,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            alice_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    confidential_transfer_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        0,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        alice_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        None,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 
     alice_meta
         .check_balances(
@@ -883,22 +1664,22 @@ async fn confidential_transfer_transfer() {
         .await;
 
     // Self-transfer of N tokens
-    token
-        .confidential_transfer_transfer(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            42,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            alice_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    confidential_transfer_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        42,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        alice_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        None,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 
     alice_meta
         .check_balances(
@@ -936,22 +1717,22 @@ async fn confidential_transfer_transfer() {
         )
         .await;
 
-    token
-        .confidential_transfer_transfer(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            None,
-            42,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    confidential_transfer_with_option(
+        &token,
+        &alice_meta.token_account,
+        &bob_meta.token_account,
+        &alice.pubkey(),
+        42,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        bob_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        None,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 
     alice_meta
         .check_balances(
@@ -977,39 +1758,39 @@ async fn confidential_transfer_transfer() {
         )
         .await;
 
-    token
-        .confidential_transfer_transfer(
-            &bob_meta.token_account,
-            &bob_meta.token_account,
-            &bob.pubkey(),
-            None,
-            0,
-            None,
-            &bob_meta.elgamal_keypair,
-            &bob_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &[&bob],
-        )
-        .await
-        .unwrap();
+    confidential_transfer_with_option(
+        &token,
+        &bob_meta.token_account,
+        &bob_meta.token_account,
+        &bob.pubkey(),
+        0,
+        &bob_meta.elgamal_keypair,
+        &bob_meta.aes_key,
+        bob_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        None,
+        &[&bob],
+        option,
+    )
+    .await
+    .unwrap();
 
-    let err = token
-        .confidential_transfer_transfer(
-            &bob_meta.token_account,
-            &bob_meta.token_account,
-            &bob.pubkey(),
-            None,
-            0,
-            None,
-            &bob_meta.elgamal_keypair,
-            &bob_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &[&bob],
-        )
-        .await
-        .unwrap_err();
+    let err = confidential_transfer_with_option(
+        &token,
+        &bob_meta.token_account,
+        &bob_meta.token_account,
+        &bob.pubkey(),
+        0,
+        &bob_meta.elgamal_keypair,
+        &bob_meta.aes_key,
+        bob_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        None,
+        &[&bob],
+        option,
+    )
+    .await
+    .unwrap_err();
 
     assert_eq!(
         err,
@@ -1048,9 +1829,457 @@ async fn confidential_transfer_transfer() {
         .await;
 }
 
+#[allow(clippy::too_many_arguments)]
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_with_fee_with_option<S: Signers>(
+    token: &Token<ProgramBanksClientProcessTransaction>,
+    source_account: &Pubkey,
+    destination_account: &Pubkey,
+    source_authority: &Pubkey,
+    transfer_amount: u64,
+    source_elgamal_keypair: &ElGamalKeypair,
+    source_aes_key: &AeKey,
+    destination_elgamal_pubkey: &ElGamalPubkey,
+    auditor_elgamal_pubkey: Option<&ElGamalPubkey>,
+    withdraw_withheld_authority_elgamal_pubkey: &ElGamalPubkey,
+    fee_rate_basis_points: u16,
+    maximum_fee: u64,
+    memo: Option<(&str, Vec<Pubkey>)>,
+    signing_keypairs: &S,
+    option: ConfidentialTransferOption,
+) -> TokenResult<()> {
+    match option {
+        ConfidentialTransferOption::InstructionData => {
+            let transfer_token = if let Some((memo, signing_pubkey)) = memo {
+                token.with_memo(memo, signing_pubkey)
+            } else {
+                token
+            };
+
+            transfer_token
+                .confidential_transfer_transfer_with_fee(
+                    source_account,
+                    destination_account,
+                    source_authority,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    transfer_amount,
+                    None,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                    withdraw_withheld_authority_elgamal_pubkey,
+                    fee_rate_basis_points,
+                    maximum_fee,
+                    signing_keypairs,
+                )
+                .await
+        }
+        ConfidentialTransferOption::RecordAccount => {
+            let state = token.get_account_info(source_account).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferAccount>()
+                .unwrap();
+            let transfer_account_info = TransferAccountInfo::new(extension);
+
+            let TransferWithFeeProofData {
+                equality_proof_data,
+                transfer_amount_ciphertext_validity_proof_data,
+                percentage_with_cap_proof_data,
+                fee_ciphertext_validity_proof_data,
+                range_proof_data,
+            } = transfer_account_info
+                .generate_split_transfer_with_fee_proof_data(
+                    transfer_amount,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                    withdraw_withheld_authority_elgamal_pubkey,
+                    fee_rate_basis_points,
+                    maximum_fee,
+                )
+                .unwrap();
+
+            let equality_proof_record_account = Keypair::new();
+            let transfer_amount_ciphertext_validity_proof_record_account = Keypair::new();
+            let fee_sigma_proof_record_account = Keypair::new();
+            let fee_ciphertext_validity_proof_record_account = Keypair::new();
+            let range_proof_record_account = Keypair::new();
+            let record_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_record_account(
+                    &equality_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &equality_proof_data,
+                    &equality_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let equality_proof_account = ProofAccount::RecordAccount(
+                equality_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            token
+                .confidential_transfer_create_record_account(
+                    &transfer_amount_ciphertext_validity_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &transfer_amount_ciphertext_validity_proof_data,
+                    &transfer_amount_ciphertext_validity_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let transfer_amount_ciphertext_validity_proof_account = ProofAccount::RecordAccount(
+                transfer_amount_ciphertext_validity_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            token
+                .confidential_transfer_create_record_account(
+                    &fee_sigma_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &percentage_with_cap_proof_data,
+                    &fee_sigma_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let fee_sigma_proof_account = ProofAccount::RecordAccount(
+                fee_sigma_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            token
+                .confidential_transfer_create_record_account(
+                    &fee_ciphertext_validity_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &fee_ciphertext_validity_proof_data,
+                    &fee_ciphertext_validity_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let fee_ciphertext_validity_proof_account = ProofAccount::RecordAccount(
+                fee_ciphertext_validity_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            token
+                .confidential_transfer_create_record_account(
+                    &range_proof_record_account.pubkey(),
+                    &record_account_authority.pubkey(),
+                    &range_proof_data,
+                    &range_proof_record_account,
+                    &record_account_authority,
+                )
+                .await
+                .unwrap();
+
+            let range_proof_account = ProofAccount::RecordAccount(
+                range_proof_record_account.pubkey(),
+                RecordData::WRITABLE_START_INDEX as u32,
+            );
+
+            let transfer_token = if let Some((memo, signing_pubkey)) = memo {
+                token.with_memo(memo, signing_pubkey)
+            } else {
+                token
+            };
+
+            let result = transfer_token
+                .confidential_transfer_transfer_with_fee(
+                    source_account,
+                    destination_account,
+                    source_authority,
+                    Some(&equality_proof_account),
+                    Some(&transfer_amount_ciphertext_validity_proof_account),
+                    Some(&fee_sigma_proof_account),
+                    Some(&fee_ciphertext_validity_proof_account),
+                    Some(&range_proof_account),
+                    transfer_amount,
+                    None,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                    withdraw_withheld_authority_elgamal_pubkey,
+                    fee_rate_basis_points,
+                    maximum_fee,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_record_account(
+                    &equality_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_record_account(
+                    &transfer_amount_ciphertext_validity_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_record_account(
+                    &fee_sigma_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_record_account(
+                    &fee_ciphertext_validity_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_record_account(
+                    &range_proof_record_account.pubkey(),
+                    source_account,
+                    &record_account_authority.pubkey(),
+                    &[&record_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+        ConfidentialTransferOption::ContextStateAccount => {
+            let state = token.get_account_info(source_account).await.unwrap();
+            let extension = state
+                .get_extension::<ConfidentialTransferAccount>()
+                .unwrap();
+            let transfer_account_info = TransferAccountInfo::new(extension);
+
+            let TransferWithFeeProofData {
+                equality_proof_data,
+                transfer_amount_ciphertext_validity_proof_data,
+                percentage_with_cap_proof_data,
+                fee_ciphertext_validity_proof_data,
+                range_proof_data,
+            } = transfer_account_info
+                .generate_split_transfer_with_fee_proof_data(
+                    transfer_amount,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                    withdraw_withheld_authority_elgamal_pubkey,
+                    fee_rate_basis_points,
+                    maximum_fee,
+                )
+                .unwrap();
+
+            let equality_proof_context_account = Keypair::new();
+            let transfer_amount_ciphertext_validity_proof_context_account = Keypair::new();
+            let percentage_with_cap_proof_context_account = Keypair::new();
+            let fee_ciphertext_validity_proof_context_account = Keypair::new();
+            let range_proof_context_account = Keypair::new();
+            let context_account_authority = Keypair::new();
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &equality_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &equality_proof_data,
+                    false,
+                    &[&equality_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let equality_proof_context_proof_account =
+                ProofAccount::ContextAccount(equality_proof_context_account.pubkey());
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &transfer_amount_ciphertext_validity_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &transfer_amount_ciphertext_validity_proof_data,
+                    false,
+                    &[&transfer_amount_ciphertext_validity_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let transfer_amount_ciphertext_validity_proof_context_proof_account =
+                ProofAccount::ContextAccount(
+                    transfer_amount_ciphertext_validity_proof_context_account.pubkey(),
+                );
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &percentage_with_cap_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &percentage_with_cap_proof_data,
+                    false,
+                    &[&percentage_with_cap_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let fee_sigma_proof_context_proof_account =
+                ProofAccount::ContextAccount(percentage_with_cap_proof_context_account.pubkey());
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &fee_ciphertext_validity_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &fee_ciphertext_validity_proof_data,
+                    false,
+                    &[&fee_ciphertext_validity_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let fee_ciphertext_validity_proof_context_proof_account = ProofAccount::ContextAccount(
+                fee_ciphertext_validity_proof_context_account.pubkey(),
+            );
+
+            token
+                .confidential_transfer_create_context_state_account(
+                    &range_proof_context_account.pubkey(),
+                    &context_account_authority.pubkey(),
+                    &range_proof_data,
+                    false,
+                    &[&range_proof_context_account],
+                )
+                .await
+                .unwrap();
+
+            let range_proof_context_proof_account =
+                ProofAccount::ContextAccount(range_proof_context_account.pubkey());
+
+            let transfer_token = if let Some((memo, signing_pubkey)) = memo {
+                token.with_memo(memo, signing_pubkey)
+            } else {
+                token
+            };
+
+            let result = transfer_token
+                .confidential_transfer_transfer_with_fee(
+                    source_account,
+                    destination_account,
+                    source_authority,
+                    Some(&equality_proof_context_proof_account),
+                    Some(&transfer_amount_ciphertext_validity_proof_context_proof_account),
+                    Some(&fee_sigma_proof_context_proof_account),
+                    Some(&fee_ciphertext_validity_proof_context_proof_account),
+                    Some(&range_proof_context_proof_account),
+                    transfer_amount,
+                    None,
+                    source_elgamal_keypair,
+                    source_aes_key,
+                    destination_elgamal_pubkey,
+                    auditor_elgamal_pubkey,
+                    withdraw_withheld_authority_elgamal_pubkey,
+                    fee_rate_basis_points,
+                    maximum_fee,
+                    signing_keypairs,
+                )
+                .await;
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &equality_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &transfer_amount_ciphertext_validity_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &percentage_with_cap_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &fee_ciphertext_validity_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            token
+                .confidential_transfer_close_context_state_account(
+                    &range_proof_context_account.pubkey(),
+                    source_account,
+                    &context_account_authority.pubkey(),
+                    &[&context_account_authority],
+                )
+                .await
+                .unwrap();
+
+            result
+        }
+    }
+}
+
 #[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn confidential_transfer_transfer_with_fee() {
+    confidential_transfer_transfer_with_fee_with_option(
+        ConfidentialTransferOption::InstructionData,
+    )
+    .await;
+    confidential_transfer_transfer_with_fee_with_option(ConfidentialTransferOption::RecordAccount)
+        .await;
+    confidential_transfer_transfer_with_fee_with_option(
+        ConfidentialTransferOption::ContextStateAccount,
+    )
+    .await;
+}
+
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_transfer_with_fee_with_option(option: ConfidentialTransferOption) {
     let transfer_fee_authority = Keypair::new();
     let withdraw_withheld_authority = Keypair::new();
 
@@ -1110,25 +2339,25 @@ async fn confidential_transfer_transfer_with_fee() {
     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, true).await;
 
     // Self-transfer of 0 tokens
-    token
-        .confidential_transfer_transfer_with_fee(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            0,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            alice_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            withdraw_withheld_authority_elgamal_keypair.pubkey(),
-            TEST_FEE_BASIS_POINTS,
-            TEST_MAXIMUM_FEE,
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    confidential_transfer_with_fee_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        0,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        alice_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        withdraw_withheld_authority_elgamal_keypair.pubkey(),
+        TEST_FEE_BASIS_POINTS,
+        TEST_MAXIMUM_FEE,
+        None,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 
     alice_meta
         .check_balances(
@@ -1143,25 +2372,25 @@ async fn confidential_transfer_transfer_with_fee() {
         .await;
 
     // Self-transfers does not incur a fee
-    token
-        .confidential_transfer_transfer_with_fee(
-            &alice_meta.token_account,
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            None,
-            100,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            alice_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            withdraw_withheld_authority_elgamal_keypair.pubkey(),
-            TEST_FEE_BASIS_POINTS,
-            TEST_MAXIMUM_FEE,
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    confidential_transfer_with_fee_with_option(
+        &token,
+        &alice_meta.token_account,
+        &alice_meta.token_account,
+        &alice.pubkey(),
+        100,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        alice_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        withdraw_withheld_authority_elgamal_keypair.pubkey(),
+        TEST_FEE_BASIS_POINTS,
+        TEST_MAXIMUM_FEE,
+        None,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 
     alice_meta
         .check_balances(
@@ -1199,25 +2428,25 @@ async fn confidential_transfer_transfer_with_fee() {
         )
         .await;
 
-    token
-        .confidential_transfer_transfer_with_fee(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            None,
-            100,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            withdraw_withheld_authority_elgamal_keypair.pubkey(),
-            TEST_FEE_BASIS_POINTS,
-            TEST_MAXIMUM_FEE,
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    confidential_transfer_with_fee_with_option(
+        &token,
+        &alice_meta.token_account,
+        &bob_meta.token_account,
+        &alice.pubkey(),
+        100,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        bob_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        withdraw_withheld_authority_elgamal_keypair.pubkey(),
+        TEST_FEE_BASIS_POINTS,
+        TEST_MAXIMUM_FEE,
+        None,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 
     alice_meta
         .check_balances(
@@ -1305,6 +2534,18 @@ async fn confidential_transfer_transfer_with_fee() {
 #[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn confidential_transfer_transfer_memo() {
+    confidential_transfer_transfer_memo_with_option(ConfidentialTransferOption::InstructionData)
+        .await;
+    confidential_transfer_transfer_memo_with_option(ConfidentialTransferOption::RecordAccount)
+        .await;
+    confidential_transfer_transfer_memo_with_option(
+        ConfidentialTransferOption::ContextStateAccount,
+    )
+    .await;
+}
+
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_transfer_memo_with_option(option: ConfidentialTransferOption) {
     let authority = Keypair::new();
     let auto_approve_new_accounts = true;
     let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
@@ -1346,22 +2587,22 @@ async fn confidential_transfer_transfer_memo() {
     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, true, false).await;
 
     // transfer without memo
-    let err = token
-        .confidential_transfer_transfer(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            None,
-            42,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &[&alice],
-        )
-        .await
-        .unwrap_err();
+    let err = confidential_transfer_with_option(
+        &token,
+        &alice_meta.token_account,
+        &bob_meta.token_account,
+        &alice.pubkey(),
+        42,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        bob_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        None,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap_err();
 
     assert_eq!(
         err,
@@ -1374,23 +2615,22 @@ async fn confidential_transfer_transfer_memo() {
     );
 
     // transfer with memo
-    token
-        .with_memo("🦖", vec![alice.pubkey()])
-        .confidential_transfer_transfer(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            None,
-            42,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &[&alice],
-        )
-        .await
-        .unwrap();
+    confidential_transfer_with_option(
+        &token,
+        &alice_meta.token_account,
+        &bob_meta.token_account,
+        &alice.pubkey(),
+        42,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        bob_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        Some(("🦖", vec![alice.pubkey()])),
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap();
 
     alice_meta
         .check_balances(
@@ -1420,6 +2660,24 @@ async fn confidential_transfer_transfer_memo() {
 #[cfg(feature = "zk-ops")]
 #[tokio::test]
 async fn confidential_transfer_transfer_with_fee_and_memo() {
+    confidential_transfer_transfer_with_fee_and_memo_option(
+        ConfidentialTransferOption::InstructionData,
+    )
+    .await;
+    confidential_transfer_transfer_with_fee_and_memo_option(
+        ConfidentialTransferOption::RecordAccount,
+    )
+    .await;
+    confidential_transfer_transfer_with_fee_and_memo_option(
+        ConfidentialTransferOption::ContextStateAccount,
+    )
+    .await;
+}
+
+#[cfg(feature = "zk-ops")]
+async fn confidential_transfer_transfer_with_fee_and_memo_option(
+    option: ConfidentialTransferOption,
+) {
     let transfer_fee_authority = Keypair::new();
     let withdraw_withheld_authority = Keypair::new();
 
@@ -1478,25 +2736,25 @@ async fn confidential_transfer_transfer_with_fee_and_memo() {
 
     let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, true, true).await;
 
-    let err = token
-        .confidential_transfer_transfer_with_fee(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            None,
-            100,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            withdraw_withheld_authority_elgamal_keypair.pubkey(),
-            TEST_FEE_BASIS_POINTS,
-            TEST_MAXIMUM_FEE,
-            &[&alice],
-        )
-        .await
-        .unwrap_err();
+    let err = confidential_transfer_with_fee_with_option(
+        &token,
+        &alice_meta.token_account,
+        &bob_meta.token_account,
+        &alice.pubkey(),
+        100,
+        &alice_meta.elgamal_keypair,
+        &alice_meta.aes_key,
+        bob_meta.elgamal_keypair.pubkey(),
+        Some(auditor_elgamal_keypair.pubkey()),
+        withdraw_withheld_authority_elgamal_keypair.pubkey(),
+        TEST_FEE_BASIS_POINTS,
+        TEST_MAXIMUM_FEE,
+        None,
+        &[&alice],
+        option,
+    )
+    .await
+    .unwrap_err();
 
     assert_eq!(
         err,
@@ -1508,1322 +2766,26 @@ async fn confidential_transfer_transfer_with_fee_and_memo() {
         )))
     );
 
-    token
-        .with_memo("🦖", vec![alice.pubkey()])
-        .confidential_transfer_transfer_with_fee(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            None,
-            100,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            withdraw_withheld_authority_elgamal_keypair.pubkey(),
-            TEST_FEE_BASIS_POINTS,
-            TEST_MAXIMUM_FEE,
-            &[&alice],
-        )
-        .await
-        .unwrap();
-
-    alice_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 0,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-
-    bob_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 97,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-}
-
-#[tokio::test]
-async fn confidential_transfer_configure_token_account_with_proof_context() {
-    let authority = Keypair::new();
-    let auto_approve_new_accounts = false;
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: None,
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token, alice, bob, ..
-    } = context.token_context.unwrap();
-
-    let token_account_keypair = Keypair::new();
-    token
-        .create_auxiliary_token_account_with_extension_space(
-            &token_account_keypair,
-            &alice.pubkey(),
-            vec![ExtensionType::ConfidentialTransferAccount],
-        )
-        .await
-        .unwrap();
-    let token_account = token_account_keypair.pubkey();
-
-    let elgamal_keypair =
-        ElGamalKeypair::new_from_signer(&alice, &token_account.to_bytes()).unwrap();
-    let aes_key = AeKey::new_from_signer(&alice, &token_account.to_bytes()).unwrap();
-
-    let context_state_account = Keypair::new();
-
-    // create context state
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<PubkeyValidityProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyPubkeyValidity;
-
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let proof_data =
-            confidential_transfer::instruction::PubkeyValidityData::new(&elgamal_keypair).unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            last_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    token
-        .confidential_transfer_configure_token_account(
-            &token_account,
-            &alice.pubkey(),
-            Some(&context_state_account.pubkey()),
-            None,
-            &elgamal_keypair,
-            &aes_key,
-            &[&alice],
-        )
-        .await
-        .unwrap();
-
-    let elgamal_pubkey = (*elgamal_keypair.pubkey()).into();
-
-    let state = token.get_account_info(&token_account).await.unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    assert!(!bool::from(&extension.approved));
-    assert!(bool::from(&extension.allow_confidential_credits));
-    assert_eq!(extension.elgamal_pubkey, elgamal_pubkey);
-    assert_eq!(
-        aes_key
-            .decrypt(&(extension.decryptable_available_balance.try_into().unwrap()))
-            .unwrap(),
-        0
-    );
-
-    // attempt to create an account with a wrong proof type context state
-    let token_account_keypair = Keypair::new();
-    token
-        .create_auxiliary_token_account_with_extension_space(
-            &token_account_keypair,
-            &bob.pubkey(),
-            vec![ExtensionType::ConfidentialTransferAccount],
-        )
-        .await
-        .unwrap();
-    let token_account = token_account_keypair.pubkey();
-
-    let elgamal_keypair = ElGamalKeypair::new_from_signer(&bob, &token_account.to_bytes()).unwrap();
-    let aes_key = AeKey::new_from_signer(&bob, &token_account.to_bytes()).unwrap();
-
-    let context_state_account = Keypair::new();
-
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<ZeroBalanceProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyZeroBalance;
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let ciphertext = elgamal_keypair.pubkey().encrypt(0_u64);
-        let proof_data = confidential_transfer::instruction::ZeroBalanceProofData::new(
-            &elgamal_keypair,
-            &ciphertext,
-        )
-        .unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            last_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    let err = token
-        .confidential_transfer_configure_token_account(
-            &token_account,
-            &bob.pubkey(),
-            Some(&context_state_account.pubkey()),
-            None,
-            &elgamal_keypair,
-            &aes_key,
-            &[&bob],
-        )
-        .await
-        .unwrap_err();
-
-    assert_eq!(
-        err,
-        TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(0, InstructionError::InvalidArgument,)
-        )))
-    );
-}
-
-#[tokio::test]
-async fn confidential_transfer_empty_account_with_proof_context() {
-    let authority = Keypair::new();
-    let auto_approve_new_accounts = false;
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: None,
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token, alice, bob, ..
-    } = context.token_context.unwrap();
-
-    let alice_meta = ConfidentialTokenAccountMeta::new(&token, &alice, None, false, false).await;
-    let context_state_account = Keypair::new();
-
-    // create context state
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<ZeroBalanceProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyZeroBalance;
-
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let proof_data = confidential_transfer::instruction::ZeroBalanceProofData::new(
-            &alice_meta.elgamal_keypair,
-            &ElGamalCiphertext::default(),
-        )
-        .unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            last_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    token
-        .confidential_transfer_empty_account(
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            Some(&context_state_account.pubkey()),
-            None,
-            &alice_meta.elgamal_keypair,
-            &[&alice],
-        )
-        .await
-        .unwrap();
-
-    // attempt to create an account with a wrong proof type context state
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
-    let context_state_account = Keypair::new();
-
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<PubkeyValidityProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyPubkeyValidity;
-
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let proof_data =
-            confidential_transfer::instruction::PubkeyValidityData::new(&bob_meta.elgamal_keypair)
-                .unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            last_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    let err = token
-        .confidential_transfer_empty_account(
-            &bob_meta.token_account,
-            &bob.pubkey(),
-            Some(&context_state_account.pubkey()),
-            None,
-            &bob_meta.elgamal_keypair,
-            &[&bob],
-        )
-        .await
-        .unwrap_err();
-
-    assert_eq!(
-        err,
-        TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(0, InstructionError::InvalidArgument,)
-        )))
-    );
-}
-
-#[tokio::test]
-async fn confidential_transfer_withdraw_with_proof_context() {
-    let authority = Keypair::new();
-    let auto_approve_new_accounts = true;
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: None,
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token,
-        alice,
-        bob,
-        mint_authority,
-        decimals,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
+    confidential_transfer_with_fee_with_option(
         &token,
-        &alice,
-        None,
-        false,
-        false,
-        &mint_authority,
-        42,
-        decimals,
-    )
-    .await;
-
-    let context_state_account = Keypair::new();
-
-    // create context state
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<WithdrawProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyWithdraw;
-
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let state = token
-            .get_account_info(&alice_meta.token_account)
-            .await
-            .unwrap();
-        let extension = state
-            .get_extension::<ConfidentialTransferAccount>()
-            .unwrap();
-        let current_ciphertext = extension.available_balance.try_into().unwrap();
-
-        let proof_data = confidential_transfer::instruction::WithdrawData::new(
-            0,
-            &alice_meta.elgamal_keypair,
-            42,
-            &current_ciphertext,
-        )
-        .unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            last_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    token
-        .confidential_transfer_withdraw(
-            &alice_meta.token_account,
-            &alice.pubkey(),
-            Some(&context_state_account.pubkey()),
-            0,
-            decimals,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            &[&alice],
-        )
-        .await
-        .unwrap();
-
-    // attempt to create an account with a wrong proof type context state
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, false).await;
-    let context_state_account = Keypair::new();
-
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<PubkeyValidityProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyPubkeyValidity;
-
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let proof_data =
-            confidential_transfer::instruction::PubkeyValidityData::new(&bob_meta.elgamal_keypair)
-                .unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            last_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    let err = token
-        .confidential_transfer_withdraw(
-            &bob_meta.token_account,
-            &bob.pubkey(),
-            Some(&context_state_account.pubkey()),
-            0,
-            decimals,
-            None,
-            &bob_meta.elgamal_keypair,
-            &bob_meta.aes_key,
-            &[&bob],
-        )
-        .await
-        .unwrap_err();
-
-    assert_eq!(
-        err,
-        TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(0, InstructionError::InvalidArgument,)
-        )))
-    );
-}
-
-#[tokio::test]
-async fn confidential_transfer_transfer_with_proof_context() {
-    let authority = Keypair::new();
-    let auto_approve_new_accounts = true;
-    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
-    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token,
-        alice,
-        bob,
-        mint_authority,
-        decimals,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
-        &token,
-        &alice,
-        None,
-        false,
-        false,
-        &mint_authority,
-        42,
-        decimals,
-    )
-    .await;
-
-    let bob_meta = ConfidentialTokenAccountMeta::new_with_tokens(
-        &token,
-        &bob,
-        None,
-        false,
-        false,
-        &mint_authority,
-        0,
-        decimals,
-    )
-    .await;
-
-    let context_state_account = Keypair::new();
-
-    // create context state
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<TransferProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyTransfer;
-
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let state = token
-            .get_account_info(&alice_meta.token_account)
-            .await
-            .unwrap();
-        let extension = state
-            .get_extension::<ConfidentialTransferAccount>()
-            .unwrap();
-        let current_available_balance = extension.available_balance.try_into().unwrap();
-
-        let proof_data = confidential_transfer::instruction::TransferData::new(
-            42,
-            (42, &current_available_balance),
-            &alice_meta.elgamal_keypair,
-            (
-                bob_meta.elgamal_keypair.pubkey(),
-                auditor_elgamal_keypair.pubkey(),
-            ),
-        )
-        .unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            last_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    token
-        .confidential_transfer_transfer(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            Some(&context_state_account.pubkey()),
-            42,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &[&alice],
-        )
-        .await
-        .unwrap();
-
-    // attempt to create an account with a wrong proof type context state
-    let context_state_account = Keypair::new();
-
-    {
-        let context_state_authority = Keypair::new();
-        let space = size_of::<ProofContextState<WithdrawProofContext>>();
-
-        let instruction_type = ProofInstruction::VerifyWithdraw;
-
-        let context_state_info = ContextStateInfo {
-            context_state_account: &context_state_account.pubkey(),
-            context_state_authority: &context_state_authority.pubkey(),
-        };
-
-        let state = token
-            .get_account_info(&alice_meta.token_account)
-            .await
-            .unwrap();
-        let extension = state
-            .get_extension::<ConfidentialTransferAccount>()
-            .unwrap();
-        let current_ciphertext = extension.available_balance.try_into().unwrap();
-
-        let proof_data = confidential_transfer::instruction::WithdrawData::new(
-            0,
-            &alice_meta.elgamal_keypair,
-            0,
-            &current_ciphertext,
-        )
-        .unwrap();
-
-        let mut ctx = context.context.lock().await;
-        let rent = ctx.banks_client.get_rent().await.unwrap();
-
-        let instructions = vec![
-            system_instruction::create_account(
-                &ctx.payer.pubkey(),
-                &context_state_account.pubkey(),
-                rent.minimum_balance(space),
-                space as u64,
-                &zk_token_proof_program::id(),
-            ),
-            instruction_type.encode_verify_proof(Some(context_state_info), &proof_data),
-        ];
-
-        let last_blockhash = ctx.get_new_latest_blockhash().await.unwrap();
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&ctx.payer.pubkey()),
-            &[&ctx.payer, &context_state_account],
-            last_blockhash,
-        );
-        ctx.banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    let err = token
-        .confidential_transfer_transfer(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            Some(&context_state_account.pubkey()),
-            0,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &[&alice],
-        )
-        .await
-        .unwrap_err();
-
-    assert_eq!(
-        err,
-        TokenClientError::Client(Box::new(TransportError::TransactionError(
-            TransactionError::InstructionError(0, InstructionError::InvalidArgument,)
-        )))
-    )
-}
-
-#[tokio::test]
-async fn confidential_transfer_transfer_with_split_proof_context() {
-    let authority = Keypair::new();
-    let auto_approve_new_accounts = true;
-    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
-    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token,
-        alice,
-        bob,
-        mint_authority,
-        decimals,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
-        &token,
-        &alice,
-        None,
-        false,
-        false,
-        &mint_authority,
-        42,
-        decimals,
-    )
-    .await;
-
-    let bob_meta = ConfidentialTokenAccountMeta::new_with_tokens(
-        &token,
-        &bob,
-        None,
-        false,
-        false,
-        &mint_authority,
-        0,
-        decimals,
-    )
-    .await;
-
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    let transfer_account_info = TransferAccountInfo::new(extension);
-
-    let (
-        equality_proof_data,
-        ciphertext_validity_proof_data,
-        range_proof_data,
-        source_decrypt_handles,
-    ) = transfer_account_info
-        .generate_split_transfer_proof_data(
-            42,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-        )
-        .unwrap();
-
-    let context_state_authority = Keypair::new();
-    let equality_proof_context_state_account = Keypair::new();
-    let ciphertext_validity_proof_context_state_account = Keypair::new();
-    let range_proof_context_state_account = Keypair::new();
-
-    let transfer_context_state_accounts = TransferSplitContextStateAccounts {
-        equality_proof: &equality_proof_context_state_account.pubkey(),
-        ciphertext_validity_proof: &ciphertext_validity_proof_context_state_account.pubkey(),
-        range_proof: &range_proof_context_state_account.pubkey(),
-        authority: &context_state_authority.pubkey(),
-        no_op_on_uninitialized_split_context_state: false,
-        close_split_context_state_accounts: None,
-    };
-
-    // create context state accounts
-    token
-        .create_equality_and_ciphertext_validity_proof_context_states_for_transfer(
-            transfer_context_state_accounts,
-            &equality_proof_data,
-            &ciphertext_validity_proof_data,
-            &[
-                &equality_proof_context_state_account,
-                &ciphertext_validity_proof_context_state_account,
-            ],
-        )
-        .await
-        .unwrap();
-
-    token
-        .create_range_proof_context_state_for_transfer(
-            transfer_context_state_accounts,
-            &range_proof_data,
-            &range_proof_context_state_account,
-        )
-        .await
-        .unwrap();
-
-    // create token22 confidential transfer instruction
-    token
-        .confidential_transfer_transfer_with_split_proofs(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            transfer_context_state_accounts,
-            42,
-            None,
-            &alice_meta.aes_key,
-            &source_decrypt_handles,
-            &[&alice],
-        )
-        .await
-        .unwrap();
-
-    // close context state accounts
-    token
-        .confidential_transfer_close_context_state(
-            &equality_proof_context_state_account.pubkey(),
-            &alice_meta.token_account,
-            &context_state_authority.pubkey(),
-            &[&context_state_authority],
-        )
-        .await
-        .unwrap();
-
-    token
-        .confidential_transfer_close_context_state(
-            &ciphertext_validity_proof_context_state_account.pubkey(),
-            &alice_meta.token_account,
-            &context_state_authority.pubkey(),
-            &[&context_state_authority],
-        )
-        .await
-        .unwrap();
-
-    token
-        .confidential_transfer_close_context_state(
-            &range_proof_context_state_account.pubkey(),
-            &alice_meta.token_account,
-            &context_state_authority.pubkey(),
-            &[&context_state_authority],
-        )
-        .await
-        .unwrap();
-
-    // check balances
-    alice_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 0,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-
-    bob_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 42,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-}
-
-#[tokio::test]
-async fn confidential_transfer_transfer_with_split_proof_contexts_in_parallel() {
-    let authority = Keypair::new();
-    let auto_approve_new_accounts = true;
-    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
-    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token,
-        alice,
-        bob,
-        mint_authority,
-        decimals,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
-        &token,
-        &alice,
-        None,
-        false,
-        false,
-        &mint_authority,
-        42,
-        decimals,
-    )
-    .await;
-
-    let bob_meta = ConfidentialTokenAccountMeta::new_with_tokens(
-        &token,
-        &bob,
-        None,
-        false,
-        false,
-        &mint_authority,
-        0,
-        decimals,
-    )
-    .await;
-
-    let context_state_authority = Keypair::new();
-    let equality_proof_context_state_account = Keypair::new();
-    let ciphertext_validity_proof_context_state_account = Keypair::new();
-    let range_proof_context_state_account = Keypair::new();
-
-    let lamport_destination = Pubkey::new_unique();
-
-    let close_split_context_state_accounts = CloseSplitContextStateAccounts {
-        lamport_destination: &lamport_destination,
-        zk_token_proof_program: &zk_token_proof_program::id(),
-    };
-
-    let transfer_context_state_accounts = TransferSplitContextStateAccounts {
-        equality_proof: &equality_proof_context_state_account.pubkey(),
-        ciphertext_validity_proof: &ciphertext_validity_proof_context_state_account.pubkey(),
-        range_proof: &range_proof_context_state_account.pubkey(),
-        authority: &context_state_authority.pubkey(),
-        no_op_on_uninitialized_split_context_state: true,
-        close_split_context_state_accounts: Some(close_split_context_state_accounts),
-    };
-
-    let equality_and_ciphertext_proof_signers = vec![
-        &alice,
-        &equality_proof_context_state_account,
-        &ciphertext_validity_proof_context_state_account,
-        &context_state_authority,
-    ];
-    let range_proof_signers = vec![
-        &alice,
-        &range_proof_context_state_account,
-        &context_state_authority,
-    ];
-    // With split proofs in parallel, one of the transactions does more work
-    // than the other, which isn't caught during the simulation to discover the
-    // compute unit limit.
-    let token = token.with_compute_unit_limit(ComputeUnitLimit::Static(500_000));
-    token
-        .confidential_transfer_transfer_with_split_proofs_in_parallel(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            transfer_context_state_accounts,
-            42,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            &equality_and_ciphertext_proof_signers,
-            &range_proof_signers,
-        )
-        .await
-        .unwrap();
-
-    alice_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 0,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-
-    bob_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 42,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-
-    let error = token
-        .get_account(equality_proof_context_state_account.pubkey())
-        .await
-        .unwrap_err();
-    assert_eq!(error, TokenClientError::AccountNotFound);
-
-    let error = token
-        .get_account(ciphertext_validity_proof_context_state_account.pubkey())
-        .await
-        .unwrap_err();
-    assert_eq!(error, TokenClientError::AccountNotFound);
-
-    let error = token
-        .get_account(range_proof_context_state_account.pubkey())
-        .await
-        .unwrap_err();
-    assert_eq!(error, TokenClientError::AccountNotFound);
-
-    let lamport_destination = token.get_account(lamport_destination).await.unwrap();
-    assert!(lamport_destination.lamports > 0);
-}
-
-#[tokio::test]
-async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
-    let transfer_fee_authority = Keypair::new();
-    let withdraw_withheld_authority = Keypair::new();
-
-    let confidential_transfer_authority = Keypair::new();
-    let auto_approve_new_accounts = true;
-    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
-    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
-
-    let confidential_transfer_fee_authority = Keypair::new();
-    let withdraw_withheld_authority_elgamal_keypair = ElGamalKeypair::new_rand();
-    let withdraw_withheld_authority_elgamal_pubkey =
-        (*withdraw_withheld_authority_elgamal_keypair.pubkey()).into();
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token,
-        alice,
-        bob,
-        mint_authority,
-        decimals,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
-        &token,
-        &alice,
-        None,
-        false,
-        true,
-        &mint_authority,
-        100,
-        decimals,
-    )
-    .await;
-
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, true).await;
-
-    let state = token
-        .get_account_info(&alice_meta.token_account)
-        .await
-        .unwrap();
-    let extension = state
-        .get_extension::<ConfidentialTransferAccount>()
-        .unwrap();
-    let transfer_account_info = TransferAccountInfo::new(extension);
-
-    let current_source_available_balance =
-        transfer_account_info.available_balance.try_into().unwrap();
-    let current_decryptable_available_balance = transfer_account_info
-        .decryptable_available_balance
-        .try_into()
-        .unwrap();
-
-    let fee_parameters = FeeParameters {
-        fee_rate_basis_points: TEST_FEE_BASIS_POINTS,
-        maximum_fee: TEST_MAXIMUM_FEE,
-    };
-
-    let (
-        equality_proof_data,
-        transfer_amount_ciphertext_validity_proof_data,
-        fee_sigma_proof_data,
-        fee_ciphertext_validity_proof_data,
-        range_proof_data,
-        source_decrypt_handles,
-    ) = transfer_with_fee_split_proof_data(
-        &current_source_available_balance,
-        &current_decryptable_available_balance,
+        &alice_meta.token_account,
+        &bob_meta.token_account,
+        &alice.pubkey(),
         100,
         &alice_meta.elgamal_keypair,
         &alice_meta.aes_key,
         bob_meta.elgamal_keypair.pubkey(),
         Some(auditor_elgamal_keypair.pubkey()),
         withdraw_withheld_authority_elgamal_keypair.pubkey(),
-        &fee_parameters,
+        TEST_FEE_BASIS_POINTS,
+        TEST_MAXIMUM_FEE,
+        Some(("🦖", vec![alice.pubkey()])),
+        &[&alice],
+        option,
     )
+    .await
     .unwrap();
 
-    let context_state_authority = Keypair::new();
-    let equality_proof_context_state_account = Keypair::new();
-    let transfer_amount_ciphertext_validity_proof_context_state_account = Keypair::new();
-    let fee_sigma_proof_context_state_account = Keypair::new();
-    let fee_ciphertext_validity_proof_context_state_account = Keypair::new();
-    let range_proof_context_state_account = Keypair::new();
-
-    let transfer_context_state_accounts = TransferWithFeeSplitContextStateAccounts {
-        equality_proof: &equality_proof_context_state_account.pubkey(),
-        transfer_amount_ciphertext_validity_proof:
-            &transfer_amount_ciphertext_validity_proof_context_state_account.pubkey(),
-        fee_sigma_proof: &fee_sigma_proof_context_state_account.pubkey(),
-        fee_ciphertext_validity_proof: &fee_ciphertext_validity_proof_context_state_account
-            .pubkey(),
-        range_proof: &range_proof_context_state_account.pubkey(),
-        authority: &context_state_authority.pubkey(),
-        no_op_on_uninitialized_split_context_state: false,
-        close_split_context_state_accounts: None,
-    };
-
-    // create context state accounts
-    token
-        .create_equality_and_ciphertext_validity_proof_context_states_for_transfer_with_fee(
-            transfer_context_state_accounts,
-            &equality_proof_data,
-            &transfer_amount_ciphertext_validity_proof_data,
-            &[
-                &equality_proof_context_state_account,
-                &transfer_amount_ciphertext_validity_proof_context_state_account,
-            ],
-        )
-        .await
-        .unwrap();
-
-    token
-        .create_fee_sigma_and_ciphertext_validity_proof_context_states_for_transfer_with_fee(
-            transfer_context_state_accounts,
-            &fee_sigma_proof_data,
-            &fee_ciphertext_validity_proof_data,
-            &[
-                &fee_sigma_proof_context_state_account,
-                &fee_ciphertext_validity_proof_context_state_account,
-            ],
-        )
-        .await
-        .unwrap();
-
-    token
-        .create_range_proof_context_state_for_transfer_with_fee(
-            transfer_context_state_accounts,
-            &range_proof_data,
-            &[&range_proof_context_state_account],
-        )
-        .await
-        .unwrap();
-
-    // create token22 confidential transfer instruction
-    token
-        .confidential_transfer_transfer_with_fee_and_split_proofs(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            transfer_context_state_accounts,
-            100,
-            None,
-            &alice_meta.aes_key,
-            &source_decrypt_handles,
-            &[&alice],
-        )
-        .await
-        .unwrap();
-
-    // close context state accounts
-    token
-        .confidential_transfer_close_context_state(
-            &equality_proof_context_state_account.pubkey(),
-            &alice_meta.token_account,
-            &context_state_authority.pubkey(),
-            &[&context_state_authority],
-        )
-        .await
-        .unwrap();
-
-    token
-        .confidential_transfer_close_context_state(
-            &transfer_amount_ciphertext_validity_proof_context_state_account.pubkey(),
-            &alice_meta.token_account,
-            &context_state_authority.pubkey(),
-            &[&context_state_authority],
-        )
-        .await
-        .unwrap();
-
-    token
-        .confidential_transfer_close_context_state(
-            &fee_sigma_proof_context_state_account.pubkey(),
-            &alice_meta.token_account,
-            &context_state_authority.pubkey(),
-            &[&context_state_authority],
-        )
-        .await
-        .unwrap();
-
-    token
-        .confidential_transfer_close_context_state(
-            &fee_ciphertext_validity_proof_context_state_account.pubkey(),
-            &alice_meta.token_account,
-            &context_state_authority.pubkey(),
-            &[&context_state_authority],
-        )
-        .await
-        .unwrap();
-
-    token
-        .confidential_transfer_close_context_state(
-            &range_proof_context_state_account.pubkey(),
-            &alice_meta.token_account,
-            &context_state_authority.pubkey(),
-            &[&context_state_authority],
-        )
-        .await
-        .unwrap();
-
-    // check balances
     alice_meta
         .check_balances(
             &token,
@@ -2847,193 +2809,4 @@ async fn confidential_transfer_transfer_with_fee_and_split_proof_context() {
             },
         )
         .await;
-}
-
-#[tokio::test]
-async fn confidential_transfer_transfer_with_fee_and_split_proof_context_in_parallel() {
-    let transfer_fee_authority = Keypair::new();
-    let withdraw_withheld_authority = Keypair::new();
-
-    let confidential_transfer_authority = Keypair::new();
-    let auto_approve_new_accounts = true;
-    let auditor_elgamal_keypair = ElGamalKeypair::new_rand();
-    let auditor_elgamal_pubkey = (*auditor_elgamal_keypair.pubkey()).into();
-
-    let confidential_transfer_fee_authority = Keypair::new();
-    let withdraw_withheld_authority_elgamal_keypair = ElGamalKeypair::new_rand();
-    let withdraw_withheld_authority_elgamal_pubkey =
-        (*withdraw_withheld_authority_elgamal_keypair.pubkey()).into();
-
-    let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![
-            ExtensionInitializationParams::TransferFeeConfig {
-                transfer_fee_config_authority: Some(transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
-                transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
-                maximum_fee: TEST_MAXIMUM_FEE,
-            },
-            ExtensionInitializationParams::ConfidentialTransferMint {
-                authority: Some(confidential_transfer_authority.pubkey()),
-                auto_approve_new_accounts,
-                auditor_elgamal_pubkey: Some(auditor_elgamal_pubkey),
-            },
-            ExtensionInitializationParams::ConfidentialTransferFeeConfig {
-                authority: Some(confidential_transfer_fee_authority.pubkey()),
-                withdraw_withheld_authority_elgamal_pubkey,
-            },
-        ])
-        .await
-        .unwrap();
-
-    let TokenContext {
-        token,
-        alice,
-        bob,
-        mint_authority,
-        decimals,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_meta = ConfidentialTokenAccountMeta::new_with_tokens(
-        &token,
-        &alice,
-        None,
-        false,
-        true,
-        &mint_authority,
-        100,
-        decimals,
-    )
-    .await;
-
-    let bob_meta = ConfidentialTokenAccountMeta::new(&token, &bob, None, false, true).await;
-
-    let context_state_authority = Keypair::new();
-    let equality_proof_context_state_account = Keypair::new();
-    let transfer_amount_ciphertext_validity_proof_context_state_account = Keypair::new();
-    let fee_sigma_proof_context_state_account = Keypair::new();
-    let fee_ciphertext_validity_proof_context_state_account = Keypair::new();
-    let range_proof_context_state_account = Keypair::new();
-
-    let lamport_destination = Pubkey::new_unique();
-
-    let close_split_context_state_accounts = CloseSplitContextStateAccounts {
-        lamport_destination: &lamport_destination,
-        zk_token_proof_program: &zk_token_proof_program::id(),
-    };
-
-    let transfer_context_state_accounts = TransferWithFeeSplitContextStateAccounts {
-        equality_proof: &equality_proof_context_state_account.pubkey(),
-        transfer_amount_ciphertext_validity_proof:
-            &transfer_amount_ciphertext_validity_proof_context_state_account.pubkey(),
-        fee_sigma_proof: &fee_sigma_proof_context_state_account.pubkey(),
-        fee_ciphertext_validity_proof: &fee_ciphertext_validity_proof_context_state_account
-            .pubkey(),
-        range_proof: &range_proof_context_state_account.pubkey(),
-        authority: &context_state_authority.pubkey(),
-        no_op_on_uninitialized_split_context_state: true,
-        close_split_context_state_accounts: Some(close_split_context_state_accounts),
-    };
-
-    let equality_and_ciphertext_proof_signers = vec![
-        &alice,
-        &equality_proof_context_state_account,
-        &transfer_amount_ciphertext_validity_proof_context_state_account,
-        &context_state_authority,
-    ];
-    let fee_sigma_proof_signers = vec![
-        &alice,
-        &fee_sigma_proof_context_state_account,
-        &fee_ciphertext_validity_proof_context_state_account,
-        &context_state_authority,
-    ];
-    let range_proof_signers = vec![
-        &alice,
-        &range_proof_context_state_account,
-        &context_state_authority,
-    ];
-    // With split proofs in parallel, one of the transactions does more work
-    // than the other, which isn't caught during the simulation to discover the
-    // compute unit limit.
-    let token = token.with_compute_unit_limit(ComputeUnitLimit::Static(500_000));
-    token
-        .confidential_transfer_transfer_with_fee_and_split_proofs_in_parallel(
-            &alice_meta.token_account,
-            &bob_meta.token_account,
-            &alice.pubkey(),
-            transfer_context_state_accounts,
-            100,
-            None,
-            &alice_meta.elgamal_keypair,
-            &alice_meta.aes_key,
-            bob_meta.elgamal_keypair.pubkey(),
-            Some(auditor_elgamal_keypair.pubkey()),
-            withdraw_withheld_authority_elgamal_keypair.pubkey(),
-            TEST_FEE_BASIS_POINTS,
-            TEST_MAXIMUM_FEE,
-            &equality_and_ciphertext_proof_signers,
-            &fee_sigma_proof_signers,
-            &range_proof_signers,
-        )
-        .await
-        .unwrap();
-
-    // check balances
-    alice_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 0,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-
-    bob_meta
-        .check_balances(
-            &token,
-            ConfidentialTokenAccountBalances {
-                pending_balance_lo: 97,
-                pending_balance_hi: 0,
-                available_balance: 0,
-                decryptable_available_balance: 0,
-            },
-        )
-        .await;
-
-    let error = token
-        .get_account(equality_proof_context_state_account.pubkey())
-        .await
-        .unwrap_err();
-    assert_eq!(error, TokenClientError::AccountNotFound);
-
-    let error = token
-        .get_account(transfer_amount_ciphertext_validity_proof_context_state_account.pubkey())
-        .await
-        .unwrap_err();
-    assert_eq!(error, TokenClientError::AccountNotFound);
-
-    let error = token
-        .get_account(fee_sigma_proof_context_state_account.pubkey())
-        .await
-        .unwrap_err();
-    assert_eq!(error, TokenClientError::AccountNotFound);
-
-    let error = token
-        .get_account(fee_ciphertext_validity_proof_context_state_account.pubkey())
-        .await
-        .unwrap_err();
-    assert_eq!(error, TokenClientError::AccountNotFound);
-
-    let error = token
-        .get_account(range_proof_context_state_account.pubkey())
-        .await
-        .unwrap_err();
-    assert_eq!(error, TokenClientError::AccountNotFound);
-
-    let lamport_destination = token.get_account(lamport_destination).await.unwrap();
-    assert!(lamport_destination.lamports > 0);
 }

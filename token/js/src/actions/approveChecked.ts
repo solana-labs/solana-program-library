@@ -33,7 +33,7 @@ export async function approveChecked(
     decimals: number,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
@@ -46,8 +46,8 @@ export async function approveChecked(
             amount,
             decimals,
             multiSigners,
-            programId
-        )
+            programId,
+        ),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

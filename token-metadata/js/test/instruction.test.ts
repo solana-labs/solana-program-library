@@ -30,7 +30,7 @@ function checkPackUnpack<T extends object>(
     instruction: TransactionInstruction,
     discriminator: Uint8Array,
     decoder: Decoder<T>,
-    values: T
+    values: T,
 ) {
     expect(instruction.data.subarray(0, 8)).to.deep.equal(discriminator);
     const unpacked = decoder.decode(instruction.data.subarray(8));
@@ -69,7 +69,7 @@ describe('Token Metadata Instructions', () => {
                 ['symbol', getStringDecoder()],
                 ['uri', getStringDecoder()],
             ]),
-            { name, symbol, uri }
+            { name, symbol, uri },
         );
     });
 
@@ -89,7 +89,7 @@ describe('Token Metadata Instructions', () => {
                 ['key', getDataEnumCodec(getFieldCodec())],
                 ['value', getStringDecoder()],
             ]),
-            { key: getFieldConfig(field), value }
+            { key: getFieldConfig(field), value },
         );
     });
 
@@ -109,7 +109,7 @@ describe('Token Metadata Instructions', () => {
                 ['key', getDataEnumCodec(getFieldCodec())],
                 ['value', getStringDecoder()],
             ]),
-            { key: getFieldConfig(field), value }
+            { key: getFieldConfig(field), value },
         );
     });
 
@@ -127,7 +127,7 @@ describe('Token Metadata Instructions', () => {
                 ['idempotent', getBooleanDecoder()],
                 ['key', getStringDecoder()],
             ]),
-            { idempotent: true, key: 'MyTestField' }
+            { idempotent: true, key: 'MyTestField' },
         );
     });
 
@@ -142,7 +142,7 @@ describe('Token Metadata Instructions', () => {
             }),
             splDiscriminate('spl_token_metadata_interface:update_the_authority'),
             getStructDecoder([['newAuthority', fixDecoderSize(getBytesDecoder(), 32)]]),
-            { newAuthority: Uint8Array.from(newAuthority.toBuffer()) }
+            { newAuthority: Uint8Array.from(newAuthority.toBuffer()) },
         );
     });
 
@@ -161,7 +161,7 @@ describe('Token Metadata Instructions', () => {
                 ['start', getOptionDecoder(getU64Decoder())],
                 ['end', getOptionDecoder(getU64Decoder())],
             ]),
-            { start, end }
+            { start, end },
         );
     });
 });

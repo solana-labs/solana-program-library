@@ -1,4 +1,4 @@
-import { AnchorProvider } from '@project-serum/anchor';
+import { AnchorProvider } from '@coral-xyz/anchor';
 import { Keypair, SendTransactionError, Signer, Transaction, TransactionInstruction } from '@solana/web3.js';
 import * as crypto from 'crypto';
 
@@ -9,7 +9,7 @@ import { MerkleTree } from '../src/merkle-tree';
 export async function confirmAndLogTx(provider: AnchorProvider, txId: string, verbose = false) {
     const tx = await provider.connection.confirmTransaction(txId, 'confirmed');
     if (tx.value.err || verbose) {
-        console.log((await provider.connection.getConfirmedTransaction(txId, 'confirmed'))!.meta!.logMessages);
+        console.log((await provider.connection.getTransaction(txId, { commitment: 'confirmed' }))!.meta!.logMessages);
     }
     if (tx.value.err) {
         console.log('Transaction failed');
@@ -23,7 +23,7 @@ export async function execute(
     instructions: TransactionInstruction[],
     signers: Signer[],
     skipPreflight = false,
-    verbose = false
+    verbose = false,
 ): Promise<string> {
     let tx = new Transaction();
     instructions.map(ix => {
@@ -38,12 +38,12 @@ export async function execute(
     } catch (e) {
         if (e instanceof SendTransactionError) {
             console.log('Tx error!', e.logs);
-	}
+        }
         throw e;
     }
 
     if (verbose && txid) {
-        console.log((await provider.connection.getConfirmedTransaction(txid, 'confirmed'))!.meta!.logMessages);
+        console.log((await provider.connection.getTransaction(txid, { commitment: 'confirmed' }))!.meta!.logMessages);
     }
 
     return txid;
@@ -54,7 +54,7 @@ export async function createTreeOnChain(
     payer: Keypair,
     numLeaves: number,
     depthSizePair: ValidDepthSizePair,
-    canopyDepth = 0
+    canopyDepth = 0,
 ): Promise<[Keypair, MerkleTree]> {
     const cmtKeypair = Keypair.generate();
 
@@ -69,7 +69,7 @@ export async function createTreeOnChain(
         cmtKeypair.publicKey,
         payer.publicKey,
         depthSizePair,
-        canopyDepth
+        canopyDepth,
     );
 
     const ixs = [allocAccountIx, createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair)];
@@ -97,7 +97,7 @@ export async function createEmptyTreeOnChain(
     provider: AnchorProvider,
     payer: Keypair,
     depthSizePair: ValidDepthSizePair,
-    canopyDepth = 0
+    canopyDepth = 0,
 ): Promise<Keypair> {
     const cmtKeypair = Keypair.generate();
     const allocAccountIx = await createAllocTreeIx(
@@ -105,7 +105,7 @@ export async function createEmptyTreeOnChain(
         cmtKeypair.publicKey,
         payer.publicKey,
         depthSizePair,
-        canopyDepth
+        canopyDepth,
     );
 
     const ixs = [allocAccountIx, createInitEmptyMerkleTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair)];

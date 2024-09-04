@@ -53,15 +53,15 @@ describe('tokenGroup', async () => {
                 mint.publicKey,
                 mintAuthority.publicKey,
                 mint.publicKey,
-                TEST_PROGRAM_ID
+                TEST_PROGRAM_ID,
             ),
             createInitializeMintInstruction(
                 mint.publicKey,
                 TEST_TOKEN_DECIMALS,
                 mintAuthority.publicKey,
                 null,
-                TEST_PROGRAM_ID
-            )
+                TEST_PROGRAM_ID,
+            ),
         );
 
         await sendAndConfirmTransaction(connection, transaction, [payer, mint], undefined);
@@ -76,8 +76,8 @@ describe('tokenGroup', async () => {
         const tokenGroup = {
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         };
 
         // Transfer the required amount for rent exemption
@@ -87,7 +87,7 @@ describe('tokenGroup', async () => {
                 fromPubkey: payer.publicKey,
                 toPubkey: mint.publicKey,
                 lamports,
-            })
+            }),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer], undefined);
 
@@ -100,7 +100,7 @@ describe('tokenGroup', async () => {
             tokenGroup.maxSize,
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
@@ -112,8 +112,8 @@ describe('tokenGroup', async () => {
         const tokenGroup = {
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         };
 
         await tokenGroupInitializeGroupWithRentTransfer(
@@ -125,7 +125,7 @@ describe('tokenGroup', async () => {
             tokenGroup.maxSize,
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
@@ -137,8 +137,8 @@ describe('tokenGroup', async () => {
         const tokenGroup = {
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         };
 
         // Transfer the required amount for rent exemption
@@ -148,7 +148,7 @@ describe('tokenGroup', async () => {
                 fromPubkey: payer.publicKey,
                 toPubkey: mint.publicKey,
                 lamports,
-            })
+            }),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer], undefined);
 
@@ -161,7 +161,7 @@ describe('tokenGroup', async () => {
             tokenGroup.maxSize,
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         await tokenGroupUpdateGroupMaxSize(
@@ -169,10 +169,10 @@ describe('tokenGroup', async () => {
             payer,
             mint.publicKey,
             updateAuthority.publicKey,
-            20,
+            BigInt(20),
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
@@ -180,8 +180,8 @@ describe('tokenGroup', async () => {
         expect(group).to.deep.equal({
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 20,
+            size: BigInt(0),
+            maxSize: BigInt(20),
         });
     });
 
@@ -189,8 +189,8 @@ describe('tokenGroup', async () => {
         const tokenGroup = {
             updateAuthority: updateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         };
 
         // Transfer the required amount for rent exemption
@@ -200,7 +200,7 @@ describe('tokenGroup', async () => {
                 fromPubkey: payer.publicKey,
                 toPubkey: mint.publicKey,
                 lamports,
-            })
+            }),
         );
         await sendAndConfirmTransaction(connection, transaction, [payer], undefined);
 
@@ -213,7 +213,7 @@ describe('tokenGroup', async () => {
             tokenGroup.maxSize,
             [mintAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const newUpdateAuthority = Keypair.generate();
@@ -225,7 +225,7 @@ describe('tokenGroup', async () => {
             newUpdateAuthority.publicKey,
             [updateAuthority],
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
 
         const mintInfo = await getMint(connection, mint.publicKey, undefined, TEST_PROGRAM_ID);
@@ -233,8 +233,8 @@ describe('tokenGroup', async () => {
         expect(group).to.deep.equal({
             updateAuthority: newUpdateAuthority.publicKey,
             mint: mint.publicKey,
-            size: 0,
-            maxSize: 10,
+            size: BigInt(0),
+            maxSize: BigInt(10),
         });
     });
 });

@@ -1,17 +1,9 @@
 #[cfg(not(target_os = "solana"))]
-use crate::{
-    error::TokenError,
-    extension::{
-        confidential_mint_burn::ciphertext_extraction::mint_burn_amount_target_ciphertext,
-        confidential_transfer::processor::verify_and_split_deposit_amount,
-    },
-};
-#[cfg(not(target_os = "solana"))]
 use solana_program::program_error::ProgramError;
 #[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::encryption::{elgamal::ElGamalPubkey, pedersen::PedersenOpening};
+use solana_zk_sdk::encryption::{elgamal::ElGamalPubkey, pedersen::PedersenOpening};
 #[cfg(not(target_os = "solana"))]
-use solana_zk_token_sdk::{
+use solana_zk_sdk::{
     encryption::{
         auth_encryption::{AeCiphertext, AeKey},
         elgamal::ElGamalCiphertext,
@@ -19,11 +11,18 @@ use solana_zk_token_sdk::{
         grouped_elgamal::GroupedElGamal,
         pedersen::Pedersen,
     },
-    instruction::{
+    zk_elgamal_proof_program::proof_data::{
         BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
         BatchedRangeProofU64Data, CiphertextCommitmentEqualityProofData,
     },
-    zk_token_elgamal::ops::subtract_with_lo_hi,
+};
+#[cfg(not(target_os = "solana"))]
+use {
+    crate::{
+        error::TokenError,
+        extension::confidential_transfer::processor::verify_and_split_deposit_amount,
+    },
+    spl_token_confidential_transfer_ciphertext_arithmetic::subtract_with_lo_hi,
 };
 
 /// Generates proof data for mint instruction
@@ -175,16 +174,19 @@ pub fn generate_burn_proofs(
         Pedersen::new(new_decrypted_available_balance);
 
     // Compute the remaining balance at the source as ElGamal ciphertexts
-    let transfer_amount_source_ciphertext_lo =
-        mint_burn_amount_target_ciphertext(&burn_amount_grouped_ciphertext_lo.into());
-    let transfer_amount_source_ciphertext_hi =
-        mint_burn_amount_target_ciphertext(&burn_amount_grouped_ciphertext_hi.into());
+    let transfer_amount_source_ciphertext_lo = burn_amount_grouped_ciphertext_lo
+        .to_elgamal_ciphertext(0)
+        .expect("ElGamalCiphertext for burn incorrectly generated");
+
+    let transfer_amount_source_ciphertext_hi = burn_amount_grouped_ciphertext_hi
+        .to_elgamal_ciphertext(0)
+        .expect("ElGamalCiphertext for burn incorrectly generated");
 
     let current_available_balance = (*current_available_balance).into();
     let new_available_balance_ciphertext = subtract_with_lo_hi(
         &current_available_balance,
-        &transfer_amount_source_ciphertext_lo,
-        &transfer_amount_source_ciphertext_hi,
+        &transfer_amount_source_ciphertext_lo.into(),
+        &transfer_amount_source_ciphertext_hi.into(),
     )
     .ok_or(TokenError::CiphertextArithmeticFailed)?;
     let new_available_balance_ciphertext: ElGamalCiphertext = new_available_balance_ciphertext

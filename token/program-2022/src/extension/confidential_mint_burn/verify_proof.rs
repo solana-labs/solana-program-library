@@ -1,16 +1,16 @@
 use {
-    super::ciphertext_extraction::BurnProofContextInfo, crate::error::TokenError,
-    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalCiphertext,
+    super::ciphertext_extraction::BurnProofContextInfo,
+    crate::{check_zk_elgamal_proof_program_account, error::TokenError},
+    solana_zk_sdk::encryption::pod::elgamal::PodElGamalCiphertext,
 };
 #[cfg(feature = "zk-ops")]
 use {
     super::ciphertext_extraction::{AuditableProofContextInfo, MintProofContextInfo},
     crate::check_system_program_account,
-    crate::check_zk_token_proof_program_account,
-    crate::extension::confidential_transfer::verify_proof::{
-        verify_equality_proof, verify_transfer_range_proof,
-    },
-    crate::proof::decode_proof_instruction_context,
+    //crate::extension::confidential_transfer::verify_proof::{
+    //    verify_equality_proof, verify_transfer_range_proof,
+    //},
+    crate::proof::{decode_proof_instruction_context, verify_and_extract_context},
     solana_program::{
         account_info::{next_account_info, AccountInfo},
         msg,
@@ -18,16 +18,18 @@ use {
         program_error::ProgramError,
         sysvar::instructions::get_instruction_relative,
     },
-    solana_zk_token_sdk::instruction::BatchedRangeProofContext,
-    solana_zk_token_sdk::instruction::BatchedRangeProofU64Data,
-    solana_zk_token_sdk::instruction::{
-        BatchedGroupedCiphertext3HandlesValidityProofContext,
-        BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU128Data,
-        CiphertextCommitmentEqualityProofContext, CiphertextCommitmentEqualityProofData,
+    solana_zk_sdk::encryption::pod::elgamal::PodElGamalPubkey,
+    solana_zk_sdk::zk_elgamal_proof_program::instruction::{
+        self as zk_token_proof_instruction, ContextStateInfo, ProofInstruction,
     },
-    solana_zk_token_sdk::zk_token_elgamal::pod::ElGamalPubkey,
-    solana_zk_token_sdk::zk_token_proof_instruction::{self, ContextStateInfo, ProofInstruction},
-    solana_zk_token_sdk::{instruction::ProofType, zk_token_proof_state::ProofContextState},
+    solana_zk_sdk::zk_elgamal_proof_program::proof_data::{
+        BatchedGroupedCiphertext3HandlesValidityProofContext,
+        BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofContext,
+        BatchedRangeProofU128Data, BatchedRangeProofU64Data,
+        CiphertextCommitmentEqualityProofContext, CiphertextCommitmentEqualityProofData,
+        ProofType,
+    },
+    solana_zk_sdk::zk_elgamal_proof_program::state::ProofContextState,
     spl_pod::bytemuck::pod_from_bytes,
     spl_pod::optional_keys::OptionalNonZeroElGamalPubkey,
     std::slice::Iter,
@@ -99,18 +101,20 @@ pub fn verify_mint_proof(
         let ciphertext_validity_instruction =
             get_instruction_relative(proof_instruction_offset + 1, sysvar_account_info)?;
 
-        let range_proof_context = *decode_proof_instruction_context::<
+        let range_proof_context = decode_proof_instruction_context::<
             BatchedRangeProofU64Data,
             BatchedRangeProofContext,
         >(
+            account_info_iter,
             ProofInstruction::VerifyBatchedRangeProofU64,
             &range_proof_instruction,
         )?;
 
-        let ciphertext_validity_proof_context = *decode_proof_instruction_context::<
+        let ciphertext_validity_proof_context = decode_proof_instruction_context::<
             BatchedGroupedCiphertext3HandlesValidityProofData,
             BatchedGroupedCiphertext3HandlesValidityProofContext,
         >(
+            account_info_iter,
             ProofInstruction::VerifyGroupedCiphertext2HandlesValidity,
             &ciphertext_validity_instruction,
         )?;
@@ -153,13 +157,24 @@ pub fn verify_burn_proof(
             return Err(ProgramError::UninitializedAccount);
         }
 
-        let equality_proof_context =
-            verify_equality_proof(equality_proof_context_state_account_info)?;
+        let equality_proof_context = verify_and_extract_context::<
+            CiphertextCommitmentEqualityProofData,
+            CiphertextCommitmentEqualityProofContext,
+        >(
+            account_info_iter,
+            proof_instruction_offset,
+            None,
+        )?;
         let ciphertext_validity_proof_context = verify_3_ciphertext_validity_proof(
             ciphertext_validity_proof_context_state_account_info,
         )?;
+
         let range_proof_context =
-            verify_transfer_range_proof(range_proof_context_state_account_info)?;
+            verify_and_extract_context::<BatchedRangeProofU128Data, BatchedRangeProofContext>(
+                account_info_iter,
+                proof_instruction_offset,
+                None,
+            )?;
 
         // The `TransferProofContextInfo` constructor verifies the consistency of the
         // individual proof context and generates a `TransferWithFeeProofInfo` struct
@@ -231,31 +246,34 @@ pub fn verify_burn_proof(
         let equality_proof_instruction =
             get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
         let range_proof_instruction =
-            get_instruction_relative(proof_instruction_offset, sysvar_account_info)?;
-
-        let ciphertext_validity_instruction =
             get_instruction_relative(proof_instruction_offset + 1, sysvar_account_info)?;
 
-        let equality_proof_context = *decode_proof_instruction_context::<
+        let ciphertext_validity_instruction =
+            get_instruction_relative(proof_instruction_offset + 2, sysvar_account_info)?;
+
+        let equality_proof_context = decode_proof_instruction_context::<
             CiphertextCommitmentEqualityProofData,
             CiphertextCommitmentEqualityProofContext,
         >(
+            account_info_iter,
             ProofInstruction::VerifyCiphertextCommitmentEquality,
             &equality_proof_instruction,
         )?;
 
-        let range_proof_context = *decode_proof_instruction_context::<
+        let range_proof_context = decode_proof_instruction_context::<
             BatchedRangeProofU128Data,
             BatchedRangeProofContext,
         >(
+            account_info_iter,
             ProofInstruction::VerifyBatchedRangeProofU128,
             &range_proof_instruction,
         )?;
 
-        let ciphertext_validity_proof_context = *decode_proof_instruction_context::<
+        let ciphertext_validity_proof_context = decode_proof_instruction_context::<
             BatchedGroupedCiphertext3HandlesValidityProofData,
             BatchedGroupedCiphertext3HandlesValidityProofContext,
         >(
+            account_info_iter,
             ProofInstruction::VerifyGroupedCiphertext2HandlesValidity,
             &ciphertext_validity_instruction,
         )?;
@@ -273,7 +291,7 @@ pub fn verify_burn_proof(
 pub fn verify_batched_u64_range_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<BatchedRangeProofContext, ProgramError> {
-    check_zk_token_proof_program_account(account_info.owner)?;
+    check_zk_elgamal_proof_program_account(account_info.owner)?;
     let context_state_account_data = account_info.data.borrow();
     let range_proof_context_state =
         pod_from_bytes::<ProofContextState<BatchedRangeProofContext>>(&context_state_account_data)?;
@@ -291,20 +309,20 @@ pub fn verify_batched_u64_range_proof(
 pub fn validate_auditor_ciphertext(
     auditor_elgamal_pubkey: &OptionalNonZeroElGamalPubkey,
     proof_context: &impl AuditableProofContextInfo,
-    auditor_lo: &ElGamalCiphertext,
-    auditor_hi: &ElGamalCiphertext,
+    auditor_lo: &PodElGamalCiphertext,
+    auditor_hi: &PodElGamalCiphertext,
 ) -> Result<(), ProgramError> {
-    if let Some(auditor_pk) = Into::<Option<ElGamalPubkey>>::into(*auditor_elgamal_pubkey) {
+    if let Some(auditor_pk) = Into::<Option<PodElGamalPubkey>>::into(*auditor_elgamal_pubkey) {
         // Check that the auditor encryption public key is consistent with what was
         // actually used to generate the zkp.
         if proof_context.auditor_pubkey() != &auditor_pk {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
-        if auditor_lo != &proof_context.auditor_amount_lo() {
+        if auditor_lo != &proof_context.auditor_amount_lo()? {
             return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
         }
-        if auditor_hi != &proof_context.auditor_amount_hi() {
+        if auditor_hi != &proof_context.auditor_amount_hi()? {
             return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
         }
     }
@@ -317,7 +335,7 @@ pub fn validate_auditor_ciphertext(
 pub fn verify_3_ciphertext_validity_proof(
     account_info: &AccountInfo<'_>,
 ) -> Result<BatchedGroupedCiphertext3HandlesValidityProofContext, ProgramError> {
-    check_zk_token_proof_program_account(account_info.owner)?;
+    check_zk_elgamal_proof_program_account(account_info.owner)?;
     let context_state_account_data = account_info.data.borrow();
     let ciphertext_validity_proof_context_state = pod_from_bytes::<
         ProofContextState<BatchedGroupedCiphertext3HandlesValidityProofContext>,

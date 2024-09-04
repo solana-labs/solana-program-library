@@ -23,7 +23,7 @@ describe('Amount', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
     it('amountToUiAmount', async () => {

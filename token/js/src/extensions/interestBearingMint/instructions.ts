@@ -52,7 +52,7 @@ export function createInitializeInterestBearingMintInstruction(
     mint: PublicKey,
     rateAuthority: PublicKey,
     rate: number,
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ) {
     const keys = [{ pubkey: mint, isSigner: false, isWritable: true }];
     const data = Buffer.alloc(interestBearingMintInitializeInstructionData.span);
@@ -63,7 +63,7 @@ export function createInitializeInterestBearingMintInstruction(
             rateAuthority,
             rate,
         },
-        data
+        data,
     );
     return new TransactionInstruction({ keys, programId, data });
 }
@@ -84,7 +84,7 @@ export function createUpdateRateInterestBearingMintInstruction(
     rateAuthority: PublicKey,
     rate: number,
     multiSigners: (Signer | PublicKey)[] = [],
-    programId = TOKEN_2022_PROGRAM_ID
+    programId = TOKEN_2022_PROGRAM_ID,
 ) {
     const keys = addSigners(
         [
@@ -92,7 +92,7 @@ export function createUpdateRateInterestBearingMintInstruction(
             { pubkey: rateAuthority, isSigner: !multiSigners.length, isWritable: false },
         ],
         rateAuthority,
-        multiSigners
+        multiSigners,
     );
     const data = Buffer.alloc(interestBearingMintUpdateRateInstructionData.span);
     interestBearingMintUpdateRateInstructionData.encode(
@@ -101,7 +101,7 @@ export function createUpdateRateInterestBearingMintInstruction(
             interestBearingMintInstruction: InterestBearingMintInstruction.UpdateRate,
             rate,
         },
-        data
+        data,
     );
     return new TransactionInstruction({ keys, programId, data });
 }

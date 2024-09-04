@@ -32,7 +32,7 @@ describe('freezeThaw', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TEST_PROGRAM_ID
+            TEST_PROGRAM_ID,
         );
     });
     beforeEach(async () => {
@@ -44,8 +44,9 @@ describe('freezeThaw', () => {
     it('freezes', async () => {
         await freezeAccount(connection, payer, account, mint, freezeAuthority, [], undefined, TEST_PROGRAM_ID);
 
-        expect(burn(connection, payer, account, mint, owner, burnAmount, [], undefined, TEST_PROGRAM_ID)).to.be
-            .rejected;
+        expect(
+            burn(connection, payer, account, mint, owner, burnAmount, [], undefined, TEST_PROGRAM_ID),
+        ).to.be.rejectedWith(Error);
     });
     it('thaws', async () => {
         await freezeAccount(connection, payer, account, mint, freezeAuthority, [], undefined, TEST_PROGRAM_ID);

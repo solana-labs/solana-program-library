@@ -28,12 +28,12 @@ export async function mintTo(
     amount: number | bigint,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
     const transaction = new Transaction().add(
-        createMintToInstruction(mint, destination, authorityPublicKey, amount, multiSigners, programId)
+        createMintToInstruction(mint, destination, authorityPublicKey, amount, multiSigners, programId),
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
