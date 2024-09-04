@@ -7,7 +7,19 @@ use {
     futures_util::TryFutureExt,
     solana_program_test::tokio::time,
     solana_sdk::{
-        account::Account as BaseAccount, compute_budget::ComputeBudgetInstruction, hash::Hash, instruction::{AccountMeta, Instruction}, message::Message, packet::PACKET_DATA_SIZE, program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, signature::Signature, signer::{signers::Signers, Signer, SignerError}, system_instruction, transaction::Transaction
+        account::Account as BaseAccount,
+        compute_budget::ComputeBudgetInstruction,
+        hash::Hash,
+        instruction::{AccountMeta, Instruction},
+        message::Message,
+        packet::PACKET_DATA_SIZE,
+        program_error::ProgramError,
+        program_pack::Pack,
+        pubkey::Pubkey,
+        signature::Signature,
+        signer::{signers::Signers, Signer, SignerError},
+        system_instruction,
+        transaction::Transaction,
     },
     spl_associated_token_account::{
         get_associated_token_address_with_program_id,
@@ -29,10 +41,8 @@ use {
                     TransferAccountInfo, WithdrawAccountInfo,
                 },
                 instruction::{
-                    BatchedGroupedCiphertext2HandlesValidityProofContext,
-                    BatchedGroupedCiphertext2HandlesValidityProofData,
-                    BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofContext,
-                    BatchedRangeProofU64Data, ProofContextState, ProofInstruction, ZkProofData,
+                    BatchedGroupedCiphertext3HandlesValidityProofData, BatchedRangeProofU64Data,
+                    ProofContextState, ZkProofData,
                 },
                 ConfidentialTransferAccount, ConfidentialTransferMint, DecryptableBalance,
             },
@@ -56,7 +66,6 @@ use {
             zk_elgamal_proof_program::{
                 self,
                 instruction::{close_context_state, ContextStateInfo},
-                proof_data::BatchedGroupedCiphertext3HandlesValidityProofContext,
             },
         },
         state::{Account, AccountState, Mint, Multisig},
@@ -3479,132 +3488,6 @@ where
                 pedersen_openings,
             )?,
             signing_keypairs,
-        )
-        .await
-    }
-
-    /// Create a range proof context state account for mint
-    pub async fn create_batched_u64_range_proof_context_state<S: Signer>(
-        &self,
-        range_proof_pubkey: &Pubkey,
-        range_proof_authority: &Pubkey,
-        range_proof_data: &BatchedRangeProofU64Data,
-        range_proof_signer: &S,
-    ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyBatchedRangeProofU64;
-        let space = size_of::<ProofContextState<BatchedRangeProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-        let range_proof_context_state_info = ContextStateInfo {
-            context_state_account: range_proof_pubkey,
-            context_state_authority: range_proof_authority,
-        };
-
-        self.process_ixs(
-            &[system_instruction::create_account(
-                &self.payer.pubkey(),
-                range_proof_context_state_info.context_state_account,
-                rent,
-                space as u64,
-                &zk_elgamal_proof_program::id(),
-            )],
-            &[range_proof_signer],
-        )
-        .await?;
-
-        self.process_ixs(
-            &[instruction_type
-                .encode_verify_proof(Some(range_proof_context_state_info), range_proof_data)],
-            &[self.payer.clone()],
-        )
-        .await
-    }
-
-    /// Create a ciphertext validity proof context state account for mint
-    pub async fn create_batched_grouped_2_handles_ciphertext_validity_proof_context_state<
-        S: Signer,
-    >(
-        &self,
-        proof_pubkey: &Pubkey,
-        proof_authority: &Pubkey,
-        ciphertext_validity_proof_data: &BatchedGroupedCiphertext2HandlesValidityProofData,
-        ciphertext_validity_proof_signer: &S,
-    ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyBatchedGroupedCiphertext2HandlesValidity;
-        let space =
-            size_of::<ProofContextState<BatchedGroupedCiphertext2HandlesValidityProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-
-        let ciphertext_validity_proof_context_state_info = ContextStateInfo {
-            context_state_account: proof_pubkey,
-            context_state_authority: proof_authority,
-        };
-
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    proof_pubkey,
-                    rent,
-                    space as u64,
-                    &zk_elgamal_proof_program::id(),
-                ),
-                instruction_type.encode_verify_proof(
-                    Some(ciphertext_validity_proof_context_state_info),
-                    ciphertext_validity_proof_data,
-                ),
-            ],
-            &[ciphertext_validity_proof_signer],
-        )
-        .await
-    }
-
-    /// Create a ciphertext validity proof context state account for mint
-    pub async fn create_batched_grouped_3_handles_ciphertext_validity_proof_context_state<
-        S: Signer,
-    >(
-        &self,
-        proof_pubkey: &Pubkey,
-        proof_authority: &Pubkey,
-        ciphertext_validity_proof_data: &BatchedGroupedCiphertext3HandlesValidityProofData,
-        ciphertext_validity_proof_signer: &S,
-    ) -> TokenResult<T::Output> {
-        let instruction_type = ProofInstruction::VerifyBatchedGroupedCiphertext3HandlesValidity;
-        let space =
-            size_of::<ProofContextState<BatchedGroupedCiphertext3HandlesValidityProofContext>>();
-        let rent = self
-            .client
-            .get_minimum_balance_for_rent_exemption(space)
-            .await
-            .map_err(TokenError::Client)?;
-
-        let ciphertext_validity_proof_context_state_info = ContextStateInfo {
-            context_state_account: proof_pubkey,
-            context_state_authority: proof_authority,
-        };
-
-        self.process_ixs(
-            &[
-                system_instruction::create_account(
-                    &self.payer.pubkey(),
-                    proof_pubkey,
-                    rent,
-                    space as u64,
-                    &zk_elgamal_proof_program::id(),
-                ),
-                instruction_type.encode_verify_proof(
-                    Some(ciphertext_validity_proof_context_state_info),
-                    ciphertext_validity_proof_data,
-                ),
-            ],
-            &[ciphertext_validity_proof_signer],
         )
         .await
     }

@@ -207,6 +207,7 @@ impl Processor {
         };
 
         account.init_account_type()?;
+        println!("initialize account done");
 
         Ok(())
     }

@@ -194,7 +194,6 @@ fn process_confidential_mint(
     let proof_context = verify_mint_proof(
         account_info_iter,
         data.proof_instruction_offset as i64,
-        false,
     )?;
 
     if token_account
@@ -242,7 +241,6 @@ fn process_confidential_mint(
 
     // update supply
     if conf_mint_ext.supply_elgamal_pubkey.is_some() {
-        solana_program::log::sol_log("UPDATING SUPPLY");
         let current_supply = conf_mint_ext.confidential_supply;
         conf_mint_ext.confidential_supply = ciphertext_arithmetic::add_with_lo_hi(
             &current_supply,
@@ -289,7 +287,6 @@ fn process_confidential_burn(
     let proof_context = verify_burn_proof(
         account_info_iter,
         data.proof_instruction_offset as i64,
-        false,
     )?;
 
     let authority_info = next_account_info(account_info_iter)?;

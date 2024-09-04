@@ -36,10 +36,12 @@ use {
     },
     spl_associated_token_account::get_associated_token_address_with_program_id,
     spl_token_2022::{
-        error::TokenError, extension::{
-            confidential_mint_burn::{instruction::BurnSplitContextStateAccounts, proof_generation::{
-                generate_burn_proofs, generate_mint_proofs,
-            }},
+        error::TokenError,
+        extension::{
+            confidential_mint_burn::{
+                instruction::BurnSplitContextStateAccounts,
+                proof_generation::{generate_burn_proofs, generate_mint_proofs},
+            },
             confidential_transfer::{
                 account_info::{
                     ApplyPendingBalanceAccountInfo, TransferAccountInfo, WithdrawAccountInfo,
@@ -59,11 +61,14 @@ use {
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
             transfer_hook::TransferHook,
             BaseStateWithExtensions, ExtensionType, StateWithExtensionsOwned,
-        }, proof::ProofLocation, solana_zk_sdk::encryption::{
+        },
+        proof::ProofLocation,
+        solana_zk_sdk::encryption::{
             auth_encryption::AeKey,
             elgamal::{self, ElGamalKeypair},
             pod::elgamal::PodElGamalPubkey,
-        }, state::{Account, AccountState, Mint}
+        },
+        state::{Account, AccountState, Mint},
     },
     spl_token_client::{
         client::{ProgramRpcClientSendTransaction, RpcClientResponse},
@@ -3457,19 +3462,23 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
                 &supply_elgamal_pubkey,
             )?;
 
+            let range_proof_signer = &[&range_proof_context_state_account];
+            let ciphertext_validity_proof_signer = &[&ciphertext_validity_proof_context_state_account];
             let context_state_auth = payer.pubkey();
             let _ = try_join!(
-                token.create_batched_u64_range_proof_context_state(
+                token.confidential_transfer_create_context_state_account(
                     &range_proof_context_pubkey,
                     &context_state_auth,
                     &range_proof,
-                    &range_proof_context_state_account,
+                    true,
+                    range_proof_signer,
                 ),
-                token.create_batched_grouped_3_handles_ciphertext_validity_proof_context_state(
+                token.confidential_transfer_create_context_state_account(
                     &ciphertext_validity_proof_context_pubkey,
                     &context_state_auth,
                     &ciphertext_validity_proof,
-                    &ciphertext_validity_proof_context_state_account,
+                    false,
+                    ciphertext_validity_proof_signer,
                 ),
             )?;
 
@@ -3495,13 +3504,13 @@ async fn command_deposit_withdraw_mint_confidential_tokens(
             let close_context_auth = payer.pubkey();
             let close_context_state_signers = &[payer];
             let _ = try_join!(
-                token.confidential_transfer_close_context_state(
+                token.confidential_transfer_close_context_state_account(
                     &range_proof_context_pubkey,
                     &close_context_auth,
                     &close_context_auth,
                     close_context_state_signers,
                 ),
-                token.confidential_transfer_close_context_state(
+                token.confidential_transfer_close_context_state_account(
                     &ciphertext_validity_proof_context_pubkey,
                     &close_context_auth,
                     &close_context_auth,
@@ -4920,24 +4929,32 @@ async fn command_confidential_burn(
         )
         .unwrap();
 
+    let range_proof_signer = &[&range_proof_context_state_account];
+    let equality_proof_signer = &[&equality_proof_context_state_account];
+    let ciphertext_validity_proof_signer = &[&ciphertext_validity_proof_context_state_account];
     // setup proofs
     let _ = try_join!(
-        token.create_range_proof_context_state_for_transfer(
-            context_state_accounts,
+        token.confidential_transfer_create_context_state_account(
+            context_state_accounts.range_proof,
+            context_state_accounts.authority,
             &range_proof_data,
-            &range_proof_context_state_account,
+            true,
+            range_proof_signer,
         ),
-        token.create_equality_proof_context_state_for_transfer(
-            context_state_accounts,
+        token.confidential_transfer_create_context_state_account(
+            context_state_accounts.equality_proof,
+            context_state_accounts.authority,
             &equality_proof_data,
-            &equality_proof_context_state_account,
+            false,
+            equality_proof_signer,
         ),
-        token.create_batched_grouped_3_handles_ciphertext_validity_proof_context_state(
+        token.confidential_transfer_create_context_state_account(
             context_state_accounts.ciphertext_validity_proof,
             context_state_accounts.authority,
             &ciphertext_validity_proof_data,
-            &ciphertext_validity_proof_context_state_account,
-        )
+            false,
+            ciphertext_validity_proof_signer,
+        ),
     )?;
 
     // do the burn
@@ -4959,19 +4976,19 @@ async fn command_confidential_burn(
     let context_state_authority_pubkey = context_state_authority.pubkey();
     let close_context_state_signers = &[context_state_authority];
     let _ = try_join!(
-        token.confidential_transfer_close_context_state(
+        token.confidential_transfer_close_context_state_account(
             &equality_proof_pubkey,
             &authority,
             &context_state_authority_pubkey,
             close_context_state_signers,
         ),
-        token.confidential_transfer_close_context_state(
+        token.confidential_transfer_close_context_state_account(
             &ciphertext_validity_proof_pubkey,
             &authority,
             &context_state_authority_pubkey,
             close_context_state_signers,
         ),
-        token.confidential_transfer_close_context_state(
+        token.confidential_transfer_close_context_state_account(
             &range_proof_pubkey,
             &authority,
             &context_state_authority_pubkey,
