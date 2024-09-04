@@ -65,13 +65,6 @@ jobs:
       - name: Build and test
         run: ./ci/cargo-test-sbf.sh token-lending
 
-      - name: Upload programs
-        uses: actions/upload-artifact@v3
-        with:
-          name: token-lending-programs
-          path: "target/deploy/*.so"
-          if-no-files-found: error
-
   js-test:
     runs-on: ubuntu-latest
     env:
