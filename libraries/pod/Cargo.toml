@@ -13,7 +13,7 @@ borsh = ["dep:borsh"]
 
 [dependencies]
 borsh = { version = "1.5.1", optional = true }
-bytemuck = { version = "1.17.1" }
+bytemuck = { version = "1.18.0" }
 bytemuck_derive = { version = "1.7.1" }
 serde = { version = "1.0.209", optional = true }
 solana-program = "2.0.3"
