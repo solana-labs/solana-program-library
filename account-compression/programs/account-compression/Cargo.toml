@@ -18,7 +18,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.29.0"
+anchor-lang = "0.30.1"
 bytemuck = "1.13"
 solana-program = ">=1.18.11,<=2"
 spl-concurrent-merkle-tree = { version = "0.3.0", path = "../../../libraries/concurrent-merkle-tree" }

@@ -8,14 +8,14 @@
 //! deserializing the CPI instruction data.
 
 use crate::events::{AccountCompressionEvent, ApplicationDataEvent, ApplicationDataEventV1};
+use anchor_lang::solana_program::instruction::Instruction;
 use anchor_lang::{prelude::*, solana_program::program::invoke};
-
 #[derive(Clone)]
 pub struct Noop;
 
 impl anchor_lang::Id for Noop {
     fn id() -> Pubkey {
-        spl_noop::id()
+        crate::id()
     }
 }
 
@@ -24,7 +24,11 @@ pub fn wrap_event<'info>(
     noop_program: &Program<'info, Noop>,
 ) -> Result<()> {
     invoke(
-        &spl_noop::instruction(event.try_to_vec()?),
+        &Instruction {
+            program_id: crate::id(),
+            accounts: vec![],
+            data: event.try_to_vec()?,
+        },
         &[noop_program.to_account_info()],
     )?;
     Ok(())

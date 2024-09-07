@@ -8,7 +8,7 @@ use crate::error::AccountCompressionError;
 
 pub const CONCURRENT_MERKLE_TREE_HEADER_SIZE_V1: usize = 2 + 54;
 
-#[derive(Debug, Copy, Clone, PartialEq, BorshDeserialize, BorshSerialize)]
+#[derive(Debug, Copy, Clone, PartialEq, AnchorDeserialize, AnchorSerialize)]
 #[repr(u8)]
 pub enum CompressionAccountType {
     /// Uninitialized
@@ -166,10 +166,10 @@ pub fn merkle_tree_get_size(header: &ConcurrentMerkleTreeHeader) -> Result<usize
         (7, 16) => Ok(size_of::<ConcurrentMerkleTree<7, 16>>()),
         (8, 16) => Ok(size_of::<ConcurrentMerkleTree<8, 16>>()),
         (9, 16) => Ok(size_of::<ConcurrentMerkleTree<9, 16>>()),
-        (10, 32)=> Ok(size_of::<ConcurrentMerkleTree<10, 32>>()),
-        (11, 32)=> Ok(size_of::<ConcurrentMerkleTree<11, 32>>()),
-        (12, 32)=> Ok(size_of::<ConcurrentMerkleTree<12, 32>>()),
-        (13, 32)=> Ok(size_of::<ConcurrentMerkleTree<13, 32>>()),
+        (10, 32) => Ok(size_of::<ConcurrentMerkleTree<10, 32>>()),
+        (11, 32) => Ok(size_of::<ConcurrentMerkleTree<11, 32>>()),
+        (12, 32) => Ok(size_of::<ConcurrentMerkleTree<12, 32>>()),
+        (13, 32) => Ok(size_of::<ConcurrentMerkleTree<13, 32>>()),
         (14, 64) => Ok(size_of::<ConcurrentMerkleTree<14, 64>>()),
         (14, 256) => Ok(size_of::<ConcurrentMerkleTree<14, 256>>()),
         (14, 1024) => Ok(size_of::<ConcurrentMerkleTree<14, 1024>>()),
