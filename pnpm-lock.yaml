@@ -332,8 +332,8 @@ importers:
         specifier: ^8.57.0
         version: 8.57.0
       solana-bankrun:
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.3.1
+        version: 0.3.1
       tsx:
         specifier: ^4.19.0
         version: 4.19.0
@@ -7626,8 +7626,8 @@ packages:
       tslib: 2.7.0
     dev: true
 
-  /solana-bankrun-darwin-arm64@0.2.0:
-    resolution: {integrity: sha512-ENQ5Z/CYeY8ZVWIc2VutY/gMlBaHi93/kDw9w0iVwewoV+/YpQmP2irwrshIKu6ggRPTF3Ehlh2V6fGVIYWcXw==}
+  /solana-bankrun-darwin-arm64@0.3.1:
+    resolution: {integrity: sha512-9LWtH/3/WR9fs8Ve/srdo41mpSqVHmRqDoo69Dv1Cupi+o1zMU6HiEPUHEvH2Tn/6TDbPEDf18MYNfReLUqE6A==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
@@ -7635,16 +7635,16 @@ packages:
     dev: true
     optional: true
 
-  /solana-bankrun-darwin-universal@0.2.0:
-    resolution: {integrity: sha512-HE45TvZXzBipm1fMn87+fkHeIuQ/KFAi5G/S29y/TLuBYt4RDI935RkWiT0rEQ7KwnwO6Y1aTsOaQXldY5R7uQ==}
+  /solana-bankrun-darwin-universal@0.3.1:
+    resolution: {integrity: sha512-muGHpVYWT7xCd8ZxEjs/bmsbMp8XBqroYGbE4lQPMDUuLvsJEIrjGqs3MbxEFr71sa58VpyvgywWd5ifI7sGIg==}
     engines: {node: '>= 10'}
     os: [darwin]
     requiresBuild: true
     dev: true
     optional: true
 
-  /solana-bankrun-darwin-x64@0.2.0:
-    resolution: {integrity: sha512-42UsVrnac2Oo4UaIDo60zfI3Xn1i8W6fmcc9ixJQZNTtdO8o2/sY4mFxcJx9lhLMhda5FPHrQbGYgYdIs0kK0g==}
+  /solana-bankrun-darwin-x64@0.3.1:
+    resolution: {integrity: sha512-oCaxfHyt7RC3ZMldrh5AbKfy4EH3YRMl8h6fSlMZpxvjQx7nK7PxlRwMeflMnVdkKKp7U8WIDak1lilIPd3/lg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
@@ -7652,8 +7652,8 @@ packages:
     dev: true
     optional: true
 
-  /solana-bankrun-linux-x64-gnu@0.2.0:
-    resolution: {integrity: sha512-WnqQjfBBdcI0ZLysjvRStI8gX7vm1c3CI6CC03lgkUztH+Chcq9C4LI9m2M8mXza8Xkn9ryeKAmX36Bx/yoVzg==}
+  /solana-bankrun-linux-x64-gnu@0.3.1:
+    resolution: {integrity: sha512-PfRFhr7igGFNt2Ecfdzh3li9eFPB3Xhmk0Eib17EFIB62YgNUg3ItRnQQFaf0spazFjjJLnglY1TRKTuYlgSVA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -7661,8 +7661,8 @@ packages:
     dev: true
     optional: true
 
-  /solana-bankrun-linux-x64-musl@0.2.0:
-    resolution: {integrity: sha512-8mtf14ZBoah30+MIJBUwb5BlGLRZyK5cZhCkYnC/ROqaIDN8RxMM44NL63gTUIaNHsFwWGA9xR0KSeljeh3PKQ==}
+  /solana-bankrun-linux-x64-musl@0.3.1:
+    resolution: {integrity: sha512-6r8i0NuXg3CGURql8ISMIUqhE7Hx/O7MlIworK4oN08jYrP0CXdLeB/hywNn7Z8d1NXrox/NpYUgvRm2yIzAsQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -7670,18 +7670,18 @@ packages:
     dev: true
     optional: true
 
-  /solana-bankrun@0.2.0:
-    resolution: {integrity: sha512-TS6vYoO/9YJZng7oiLOVyuz8V7yLow5Hp4SLYWW71XM3702v+z9f1fvUBKudRfa4dfpta4tRNufApSiBIALxJQ==}
+  /solana-bankrun@0.3.1:
+    resolution: {integrity: sha512-inRwON7fBU5lPC36HdEqPeDg15FXJYcf77+o0iz9amvkUMJepcwnRwEfTNyMVpVYdgjTOBW5vg+596/3fi1kGA==}
     engines: {node: '>= 10'}
     dependencies:
       '@solana/web3.js': 1.95.3
       bs58: 4.0.1
     optionalDependencies:
-      solana-bankrun-darwin-arm64: 0.2.0
-      solana-bankrun-darwin-universal: 0.2.0
-      solana-bankrun-darwin-x64: 0.2.0
-      solana-bankrun-linux-x64-gnu: 0.2.0
-      solana-bankrun-linux-x64-musl: 0.2.0
+      solana-bankrun-darwin-arm64: 0.3.1
+      solana-bankrun-darwin-universal: 0.3.1
+      solana-bankrun-darwin-x64: 0.3.1
+      solana-bankrun-linux-x64-gnu: 0.3.1
+      solana-bankrun-linux-x64-musl: 0.3.1
     transitivePeerDependencies:
       - bufferutil
       - encoding
