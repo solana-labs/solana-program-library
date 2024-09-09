@@ -72,7 +72,7 @@
         "@typescript-eslint/parser": "^8.4.0",
         "chai": "^5.1.1",
         "chai-as-promised": "^8.0.0",
-        "eslint": "^8.57.0",
+        "eslint": "^9.10.0",
         "eslint-plugin-require-extensions": "^0.1.1",
         "gh-pages": "^6.1.1",
         "mocha": "^10.7.3",
