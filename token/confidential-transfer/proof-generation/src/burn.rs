@@ -62,7 +62,7 @@ pub fn burn_split_proof_data(
         .decrypt(aes_key)
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;
 
-    // copmute the remaining balance ciphertext
+    // compute the remaining balance ciphertext
     let burn_amount_ciphertext_source_lo = burn_amount_ciphertext_lo
         .0
         .to_elgamal_ciphertext(0)

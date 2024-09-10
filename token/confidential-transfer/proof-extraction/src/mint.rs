@@ -30,7 +30,7 @@ impl MintProofContext {
     ) -> Result<Self, TokenProofExtractionError> {
         // The ciphertext validity proof context consists of the destination ElGamal
         // public key, the auditor ElGamal public key, and the grouped ElGamal
-        // ciphertexts for the low and high bits of the burn amount. These
+        // ciphertexts for the low and high bits of the mint amount. These
         // fields should be returned as part of `MintProofContext`.
         let BatchedGroupedCiphertext3HandlesValidityProofContext {
             first_pubkey: destination_elgamal_pubkey,
