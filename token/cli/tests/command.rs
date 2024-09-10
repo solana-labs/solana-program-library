@@ -517,9 +517,10 @@ async fn create_token_2022(test_validator: &TestValidator, payer: &Keypair) {
         &multisig_member_help,
     )
     .get_matches_from(args);
+    let (_, matches) = app_matches.subcommand().unwrap();
 
     let config = Config::new_with_clients_and_ws_url(
-        &app_matches,
+        matches,
         &mut wallet_manager,
         &mut bulk_signers,
         &mut multisigner_ids,

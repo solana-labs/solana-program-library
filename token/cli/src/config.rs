@@ -2,7 +2,7 @@ use {
     crate::clap_app::{Error, COMPUTE_UNIT_LIMIT_ARG, COMPUTE_UNIT_PRICE_ARG, MULTISIG_SIGNER_ARG},
     clap::ArgMatches,
     solana_clap_v3_utils::{
-        input_parsers::{pubkey_of_signer, value_of},
+        input_parsers::pubkey_of_signer,
         input_validators::normalize_to_url_if_moniker,
         keypair::SignerFromPathConfig,
         nonce::{NONCE_ARG, NONCE_AUTHORITY_ARG},
@@ -103,7 +103,10 @@ impl<'a> Config<'a> {
         ));
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
         let program_client: Arc<dyn ProgramClient<ProgramRpcClientSendTransaction>> = if sign_only {
-            let blockhash = value_of(matches, BLOCKHASH_ARG.name).unwrap_or_default();
+            let blockhash = matches
+                .get_one::<Hash>(BLOCKHASH_ARG.name)
+                .copied()
+                .unwrap_or_default();
             Arc::new(ProgramOfflineClient::new(
                 blockhash,
                 ProgramRpcClientSendTransaction,
@@ -175,7 +178,7 @@ impl<'a> Config<'a> {
         let default_keypair = cli_config.keypair_path.clone();
 
         let default_signer: Option<Arc<dyn Signer>> = {
-            if let Some(owner_path) = matches.value_of("owner") {
+            if let Some(owner_path) = matches.try_get_one::<String>("owner").ok().flatten() {
                 signer_from_path_with_config(matches, owner_path, "owner", wallet_manager, &config)
                     .ok()
             } else {

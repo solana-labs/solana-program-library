@@ -825,7 +825,7 @@ pub fn app<'a>(
                         .number_of_values(1)
                         .conflicts_with("transfer_fee")
                         .requires("transfer_fee_maximum_fee")
-                        .validator(is_parsable::<u16>)
+                        .value_parser(clap::value_parser!(u16))
                         .help(
                             "Add transfer fee to the mint. \
                             The mint authority can set the fee.",
@@ -839,7 +839,7 @@ pub fn app<'a>(
                         .number_of_values(1)
                         .conflicts_with("transfer_fee")
                         .requires("transfer_fee_basis_points")
-                        .validator(is_amount)
+                        .value_parser(clap::value_parser!(f64))
                         .help(
                             "Add a UI amount maximum transfer fee to the mint. \
                             The mint authority can set and collect fees"
@@ -896,6 +896,7 @@ pub fn app<'a>(
                         .takes_value(false)
                         .help("Enables group member configurations in the mint. The mint authority must initialize the member."),
                 )
+                .arg(multisig_signer_arg())
                 .nonce_args(true)
                 .arg(memo_arg())
         )
@@ -1433,7 +1434,7 @@ pub fn app<'a>(
                 .arg(
                     Arg::with_name("expected_fee")
                         .long("expected-fee")
-                        .validator(|s| is_amount(s))
+                        .value_parser(clap::value_parser!(f64))
                         .value_name("TOKEN_AMOUNT")
                         .takes_value(true)
                         .help("Expected fee amount collected during the transfer"),

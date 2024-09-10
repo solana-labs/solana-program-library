@@ -7638,7 +7638,7 @@ dependencies = [
  "serde_json",
  "serial_test",
  "solana-account-decoder",
- "solana-clap-utils",
+ "solana-clap-v3-utils",
  "solana-cli-config",
  "solana-cli-output",
  "solana-client",
