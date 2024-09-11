@@ -187,14 +187,26 @@ fn test_withdraw_validity(spendable_balance: u64, withdraw_amount: u64) {
 
 #[test]
 fn test_mint_proof_correctness() {
-    test_mint_validity(0);
-    test_mint_validity(1);
-    test_mint_validity(65535);
-    test_mint_validity(65536);
-    test_mint_validity(281474976710655);
+    test_mint_validity(0, 0);
+    test_mint_validity(1, 0);
+    test_mint_validity(65535, 0);
+    test_mint_validity(65536, 0);
+    test_mint_validity(281474976710655, 0);
+
+    test_mint_validity(0, 65535);
+    test_mint_validity(1, 65535);
+    test_mint_validity(65535, 65535);
+    test_mint_validity(65536, 65535);
+    test_mint_validity(281474976710655, 65535);
+
+    test_mint_validity(0, 281474976710655);
+    test_mint_validity(1, 281474976710655);
+    test_mint_validity(65535, 281474976710655);
+    test_mint_validity(65536, 281474976710655);
+    test_mint_validity(281474976710655, 281474976710655);
 }
 
-fn test_mint_validity(mint_amount: u64) {
+fn test_mint_validity(mint_amount: u64, supply: u64) {
     let destination_keypair = ElGamalKeypair::new_rand();
     let destination_pubkey = destination_keypair.pubkey();
 
@@ -202,23 +214,32 @@ fn test_mint_validity(mint_amount: u64) {
     let auditor_pubkey = auditor_keypair.pubkey();
 
     let supply_keypair = ElGamalKeypair::new_rand();
-    let supply_pubkey = supply_keypair.pubkey();
+    let supply_aes_key = AeKey::new_rand();
+
+    let supply_ciphertext = supply_keypair.pubkey().encrypt(supply);
+    let decryptable_supply = supply_aes_key.encrypt(supply);
 
     let MintProofData {
+        equality_proof_data,
         ciphertext_validity_proof_data,
         range_proof_data,
     } = mint_split_proof_data(
+        &supply_ciphertext,
+        &decryptable_supply,
         mint_amount,
+        &supply_keypair,
+        &supply_aes_key,
         destination_pubkey,
         auditor_pubkey,
-        supply_pubkey,
     )
     .unwrap();
 
+    equality_proof_data.verify_proof().unwrap();
     ciphertext_validity_proof_data.verify_proof().unwrap();
     range_proof_data.verify_proof().unwrap();
 
     MintProofContext::verify_and_extract(
+        equality_proof_data.context_data(),
         ciphertext_validity_proof_data.context_data(),
         range_proof_data.context_data(),
     )
