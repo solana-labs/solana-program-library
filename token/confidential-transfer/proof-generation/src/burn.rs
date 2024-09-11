@@ -34,7 +34,7 @@ pub fn burn_split_proof_data(
     current_decryptable_available_balance: &AeCiphertext,
     burn_amount: u64,
     source_elgamal_keypair: &ElGamalKeypair,
-    aes_key: &AeKey,
+    source_aes_key: &AeKey,
     auditor_elgamal_pubkey: &ElGamalPubkey,
     supply_elgamal_pubkey: &ElGamalPubkey,
 ) -> Result<BurnProofData, TokenProofGenerationError> {
@@ -59,7 +59,7 @@ pub fn burn_split_proof_data(
 
     // decrypt the current available balance at the source
     let current_decrypted_available_balance = current_decryptable_available_balance
-        .decrypt(aes_key)
+        .decrypt(source_aes_key)
         .ok_or(TokenProofGenerationError::IllegalAmountBitLength)?;
 
     // compute the remaining balance ciphertext
