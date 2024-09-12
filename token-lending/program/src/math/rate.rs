@@ -17,6 +17,7 @@
 #![allow(clippy::ptr_offset_with_cast)]
 #![allow(clippy::reversed_empty_ranges)]
 #![allow(clippy::manual_range_contains)]
+#![allow(missing_docs)]
 
 use {
     crate::{
