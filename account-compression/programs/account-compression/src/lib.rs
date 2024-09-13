@@ -184,7 +184,7 @@ pub mod spl_account_compression {
         update_canopy(canopy_bytes, header.get_max_depth(), None)
     }
 
-    /// In order to initialize a tree with a root, we need to create the tree on-chain first with
+    /// (Devnet only) In order to initialize a tree with a root, we need to create the tree on-chain first with
     /// the proper authority. The tree might contain a canopy, which is a cache of the uppermost
     /// nodes. The canopy is used to decrease the size of the proof required to update the tree.
     /// If the tree is expected to have a canopy, it needs to be prefilled with the necessary nodes.
@@ -228,7 +228,7 @@ pub mod spl_account_compression {
         check_canopy_bytes(canopy_bytes)
     }
 
-    /// This instruction pre-initializes the canopy with the specified leaf nodes of the canopy.
+    /// (Devnet only) This instruction pre-initializes the canopy with the specified leaf nodes of the canopy.
     /// This is intended to be used after `prepare_batch_merkle_tree` and in conjunction with the
     /// `init_prepared_tree_with_root` instruction that'll finalize the tree initialization.
     /// The canopy is used to cache the uppermost nodes of the tree, which allows for a smaller
@@ -277,7 +277,7 @@ pub mod spl_account_compression {
         )
     }
 
-    /// Initializes a prepared tree with a root and a rightmost leaf. The rightmost leaf is used to
+    /// (Devnet only) Initializes a prepared tree with a root and a rightmost leaf. The rightmost leaf is used to
     /// verify the canopy if the tree has it. Before calling this instruction, the tree should be
     /// prepared with `prepare_batch_merkle_tree` and the canopy should be filled with the necessary
     /// nodes with `append_canopy_nodes` (if the canopy is used). This method should be used for
