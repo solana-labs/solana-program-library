@@ -1166,21 +1166,44 @@ where
         let multisig_signers = self.get_multisig_signers(authority, &signing_pubkeys);
         let decimals = self.decimals.ok_or(TokenError::MissingDecimals)?;
 
-        self.process_ixs(
-            &[transfer_fee::instruction::transfer_checked_with_fee(
+        let fetch_account_data_fn = |address| {
+            self.client
+                .get_account(address)
+                .map_ok(|opt| opt.map(|acc| acc.data))
+        };
+
+        let instruction = if let Some(transfer_hook_accounts) = &self.transfer_hook_accounts {
+            let mut instruction = transfer_fee::instruction::transfer_checked_with_fee(
                 &self.program_id,
                 source,
-                &self.pubkey,
+                self.get_address(),
                 destination,
                 authority,
                 &multisig_signers,
                 amount,
                 decimals,
                 fee,
-            )?],
-            signing_keypairs,
-        )
-        .await
+            )?;
+            instruction.accounts.extend(transfer_hook_accounts.clone());
+            instruction
+        } else {
+            offchain::create_transfer_checked_with_fee_instruction_with_extra_metas(
+                &self.program_id,
+                source,
+                self.get_address(),
+                destination,
+                authority,
+                &multisig_signers,
+                amount,
+                decimals,
+                fee,
+                fetch_account_data_fn,
+            )
+            .await
+            .map_err(|_| TokenError::AccountNotFound)?
+        };
+
+        self.process_ixs(&[instruction], signing_keypairs).await
     }
 
     /// Burn tokens from account

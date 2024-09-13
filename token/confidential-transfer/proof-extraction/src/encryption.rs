@@ -46,3 +46,11 @@ impl PodFeeCiphertext {
             .map_err(|_| TokenProofExtractionError::CiphertextExtraction)
     }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub struct PodBurnAmountCiphertext(pub(crate) PodGroupedElGamalCiphertext3Handles);
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub struct PodMintAmountCiphertext(pub(crate) PodGroupedElGamalCiphertext3Handles);

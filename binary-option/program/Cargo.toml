@@ -16,7 +16,7 @@ spl-token = { version = "6.0", path = "../../token/program", features = [
 ] }
 arrayref = "0.3.8"
 borsh = "1.5.1"
-uint = "0.9"
+uint = "0.10"
 
 [lib]
 crate-type = ["cdylib", "lib"]

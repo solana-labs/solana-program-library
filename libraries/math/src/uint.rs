@@ -5,6 +5,7 @@
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::ptr_offset_with_cast)]
 #![allow(clippy::manual_range_contains)]
+#![allow(missing_docs)]
 
 use uint::construct_uint;
 

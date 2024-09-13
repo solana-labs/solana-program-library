@@ -43,13 +43,14 @@ Token-2022 are a strict superset of Token.
 ### Instructions
 
 Token-2022 supports the exact same instruction layouts as Token, byte for
-byte. For example, if you want to transfer 100 tokens on a mint with 2 decimals,
-you create a `TransferChecked` instruction, with this byte-represented data:
+byte. For example, if you want to transfer 0.75 tokens in UI amount, on a mint with 2 decimals,
+then the transfer amount is 75 tokens. You create a `TransferChecked` instruction, with
+this byte-represented data:
 
 ```
-[12, 100, 0, 0, 0, 0, 0, 0, 0, 2]
+[12, 75, 0, 0, 0, 0, 0, 0, 0, 2]
  ^^ TransferChecked enum
-     ^^^^^^^^^^^^^^^^^^^^^^^^ 100, as a little-endian 64-bit unsigned integer
+     ^^^^^^^^^^^^^^^^^^^^^^^^ 75, as a little-endian 64-bit unsigned integer
                                ^ 2, as a byte
 ```
 
