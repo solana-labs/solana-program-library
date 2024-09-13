@@ -48,9 +48,9 @@ then the transfer amount is 75 tokens. You create a `TransferChecked` instructio
 this byte-represented data:
 
 ```
-[12, 100, 0, 0, 0, 0, 0, 0, 0, 2]
+[12, 75, 0, 0, 0, 0, 0, 0, 0, 2]
  ^^ TransferChecked enum
-     ^^^^^^^^^^^^^^^^^^^^^^^^ 100, as a little-endian 64-bit unsigned integer
+     ^^^^^^^^^^^^^^^^^^^^^^^^ 75, as a little-endian 64-bit unsigned integer
                                ^ 2, as a byte
 ```
 
