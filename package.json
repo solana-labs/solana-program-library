@@ -25,7 +25,7 @@
         "@solana/eslint-config-solana": "^3.0.3",
         "@solana/prettier-config-solana": "^0.0.5",
         "eslint-config-prettier": "^9.1.0",
-        "eslint-config-turbo": "^2.1.1",
+        "eslint-config-turbo": "^2.1.2",
         "eslint-plugin-prettier": "^5.2.1",
         "prettier": "^3.3.3",
         "turbo": "^2.1.1"
