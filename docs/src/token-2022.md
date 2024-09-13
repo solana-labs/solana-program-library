@@ -43,7 +43,7 @@ Token-2022 are a strict superset of Token.
 ### Instructions
 
 Token-2022 supports the exact same instruction layouts as Token, byte for
-byte. For example, if you want to transfer 100 tokens on a mint with 2 decimals,
+byte. For example, if you want to transfer 1 tokens on a mint with 2 decimals,
 you create a `TransferChecked` instruction, with this byte-represented data:
 
 ```
