@@ -62,4 +62,4 @@ export const accountCompressionEventBeet = beet.dataEnum<AccountCompressionEvent
             'AccountCompressionEventRecord["ApplicationData"]',
         ),
     ],
-]) as beet.FixableBeet<AccountCompressionEvent>;
+]) as beet.FixableBeet<AccountCompressionEvent, AccountCompressionEvent>;

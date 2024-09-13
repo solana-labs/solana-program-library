@@ -49,4 +49,4 @@ export const applicationDataEventBeet = beet.dataEnum<ApplicationDataEventRecord
             'ApplicationDataEventRecord["V1"]',
         ),
     ],
-]) as beet.FixableBeet<ApplicationDataEvent>;
+]) as beet.FixableBeet<ApplicationDataEvent, ApplicationDataEvent>;
