@@ -57,7 +57,7 @@ export function createInitEmptyMerkleTreeIx(
 }
 
 /**
- * Helper function for {@link createPrepareBatchMerkleTreeInstruction}
+ * (Devnet only) Helper function for {@link createPrepareBatchMerkleTreeInstruction}
  * @param merkleTree
  * @param authority
  * @param depthSizePair
@@ -79,7 +79,7 @@ export function prepareTreeIx(
 }
 
 /**
- * Helper function for {@link createAppendCanopyNodesInstruction}
+ * (Devnet only) Helper function for {@link createAppendCanopyNodesInstruction}
  * @param merkleTree
  * @param authority
  * @param canopyNodes
@@ -106,7 +106,7 @@ export function createAppendCanopyNodesIx(
 }
 
 /**
- * Helper function for {@link createInitPreparedTreeWithRootInstruction}
+ * (Devnet only) Helper function for {@link createInitPreparedTreeWithRootInstruction}
  * @param merkleTree
  * @param authority
  * @param root
