@@ -44,7 +44,7 @@
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@types/bn.js": "^5.1.1",
-    "@types/jest": "^29.5.12",
+    "@types/jest": "^29.5.13",
     "@types/node": "^22.5.4",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
