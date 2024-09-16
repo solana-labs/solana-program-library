@@ -65,7 +65,7 @@
     "@metaplex-foundation/solita": "0.20.1",
     "@coral-xyz/anchor": "^0.29.0",
     "@solana/eslint-config-solana": "^3.0.3",
-    "@types/bn.js": "^5.1.0",
+    "@types/bn.js": "^5.1.6",
     "@types/jest": "^29.5.13",
     "@types/node": "^22.5.5",
     "@types/node-fetch": "^2.6.11",

@@ -64,8 +64,8 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3(@typescript-eslint/eslint-plugin@8.4.0)(@typescript-eslint/parser@8.4.0)(eslint-plugin-jest@28.8.3)(eslint-plugin-react-hooks@4.6.0)(eslint-plugin-simple-import-sort@12.1.1)(eslint-plugin-sort-keys-fix@1.1.2)(eslint-plugin-typescript-sort-keys@3.2.0)(eslint@8.57.0)(typescript@5.6.2)
       '@types/bn.js':
-        specifier: ^5.1.0
-        version: 5.1.5
+        specifier: ^5.1.6
+        version: 5.1.6
       '@types/jest':
         specifier: ^29.5.13
         version: 29.5.13
@@ -259,8 +259,8 @@ importers:
         specifier: ^29.7.0
         version: 29.7.0
       '@types/bn.js':
-        specifier: ^5.1.1
-        version: 5.1.5
+        specifier: ^5.1.6
+        version: 5.1.6
       '@types/jest':
         specifier: ^29.5.13
         version: 29.5.13
@@ -412,8 +412,8 @@ importers:
         specifier: ^11.1.6
         version: 11.1.6(rollup@4.21.3)(tslib@2.7.0)(typescript@5.6.2)
       '@types/bn.js':
-        specifier: ^5.1.0
-        version: 5.1.5
+        specifier: ^5.1.6
+        version: 5.1.6
       '@types/jest':
         specifier: ^29.5.13
         version: 29.5.13
@@ -650,8 +650,8 @@ importers:
         specifier: ^1.95.3
         version: 1.95.3
       '@types/bn.js':
-        specifier: ^5.1.0
-        version: 5.1.5
+        specifier: ^5.1.6
+        version: 5.1.6
       '@types/chai':
         specifier: ^4.3.19
         version: 4.3.19
@@ -2643,8 +2643,8 @@ packages:
       '@babel/types': 7.23.0
     dev: true
 
-  /@types/bn.js@5.1.5:
-    resolution: {integrity: sha512-V46N0zwKRF5Q00AZ6hWtN0T8gGmDUaUzLWQvHFo5yThtVwK/VCenFY3wXVbOvNfajEpsTfQM4IN9k/d6gUVX3A==}
+  /@types/bn.js@5.1.6:
+    resolution: {integrity: sha512-Xh8vSwUeMKeYYrj3cX4lGQgFSF/N03r+tv4AiLl1SucqV+uTQpxRcnM8AkXKHwYP9ZPXOYXRr2KPXpVlIvqh9w==}
     dependencies:
       '@types/node': 22.5.5
     dev: true

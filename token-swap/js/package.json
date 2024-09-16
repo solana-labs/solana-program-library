@@ -51,7 +51,7 @@
   "devDependencies": {
     "@solana/spl-token": "0.4.6",
     "@solana/web3.js": "^1.95.3",
-    "@types/bn.js": "^5.1.0",
+    "@types/bn.js": "^5.1.6",
     "@types/chai-as-promised": "^8.0.0",
     "@types/chai": "^4.3.19",
     "@types/mocha": "^10.0.8",
