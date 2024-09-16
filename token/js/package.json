@@ -78,7 +78,7 @@
         "mocha": "^10.7.3",
         "process": "^0.11.10",
         "shx": "^0.3.4",
-        "start-server-and-test": "^2.0.7",
+        "start-server-and-test": "^2.0.8",
         "ts-node": "^10.9.2",
         "typedoc": "^0.26.7",
         "typescript": "^5.6.2"
