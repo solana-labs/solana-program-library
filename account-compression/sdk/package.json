@@ -67,7 +67,7 @@
     "@solana/eslint-config-solana": "^3.0.3",
     "@types/bn.js": "^5.1.0",
     "@types/jest": "^29.5.13",
-    "@types/node": "^22.5.4",
+    "@types/node": "^22.5.5",
     "@types/node-fetch": "^2.6.11",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
