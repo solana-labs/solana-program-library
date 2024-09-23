@@ -22,7 +22,7 @@ serde = "1.0.210"
 serde_derive = "1.0.103"
 solana-program = "2.0.3"
 solana-security-txt = "1.1.1"
-spl-math = { version = "0.2", path = "../../libraries/math", features = [
+spl-math = { version = "0.3", path = "../../libraries/math", features = [
   "no-entrypoint",
 ] }
 spl-pod = { version = "0.4.0", path = "../../libraries/pod", features = [
