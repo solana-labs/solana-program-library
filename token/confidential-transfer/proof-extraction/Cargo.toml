@@ -11,7 +11,7 @@ edition = "2021"
 bytemuck = "1.18.0"
 solana-curve25519 = "2.0.3"
 solana-zk-sdk = "2.0.3"
-thiserror = "1.0.63"
+thiserror = "1.0.64"
 
 [lib]
 crate-type = ["cdylib", "lib"]
