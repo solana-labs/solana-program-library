@@ -25,7 +25,7 @@ title: Presentation
 
 ---
 
-### Are you aware that it's 2023?
+### Are you aware that it's not 2022?
 
 Yes.
 
