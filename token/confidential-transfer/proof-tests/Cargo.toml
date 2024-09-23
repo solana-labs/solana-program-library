@@ -10,6 +10,6 @@ edition = "2021"
 [dev-dependencies]
 curve25519-dalek = "3.2.1"
 solana-zk-sdk = "2.0.3"
-thiserror = "1.0.63"
+thiserror = "1.0.64"
 spl-token-confidential-transfer-proof-extraction = { version = "0.1.0", path = "../proof-extraction" }
 spl-token-confidential-transfer-proof-generation = { version = "0.1.0", path = "../proof-generation" }
