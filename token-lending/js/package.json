@@ -42,7 +42,7 @@
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^28.0.0",
-        "@rollup/plugin-node-resolve": "^15.2.4",
+        "@rollup/plugin-node-resolve": "^15.3.0",
         "@rollup/plugin-typescript": "^12.1.0",
         "@solana/spl-token": "0.4.6",
         "@solana/web3.js": "^1.95.3",
