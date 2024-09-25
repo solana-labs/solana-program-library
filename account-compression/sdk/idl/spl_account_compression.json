@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.1",
   "name": "spl_account_compression",
   "instructions": [
     {
@@ -52,17 +52,170 @@
       ]
     },
     {
+      "name": "prepareBatchMerkleTree",
+      "docs": [
+        "In order to initialize a tree with a root, we need to create the tree on-chain first with",
+        "the proper authority. The tree might contain a canopy, which is a cache of the uppermost",
+        "nodes. The canopy is used to decrease the size of the proof required to update the tree.",
+        "If the tree is expected to have a canopy, it needs to be prefilled with the necessary nodes.",
+        "There are 2 ways to initialize a merkle tree:",
+        "1. Initialize an empty tree",
+        "2. Initialize a tree with a root and leaf",
+        "For the former case, the canopy will be empty which is expected for an empty tree. The",
+        "expected flow is `init_empty_merkle_tree`. For the latter case, the canopy should be",
+        "filled with the necessary nodes to render the tree usable. Thus we need to prefill the",
+        "canopy with the necessary nodes. The expected flow for a tree without canopy is",
+        "`prepare_batch_merkle_tree` -> `init_prepared_tree_with_root`. The expected flow for a tree",
+        "with canopy is `prepare_batch_merkle_tree` -> `append_canopy_nodes` (multiple times",
+        "until all of the canopy is filled) -> `init_prepared_tree_with_root`. This instruction",
+        "initializes the tree header while leaving the tree itself uninitialized. This allows",
+        "distinguishing between an empty tree and a tree prepare to be initialized with a root."
+      ],
+      "accounts": [
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Authority that controls write-access to the tree",
+            "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
+          ]
+        },
+        {
+          "name": "noop",
+          "isMut": false,
+          "isSigner": false,
+          "docs": ["Program used to emit changelogs as cpi instruction data."]
+        }
+      ],
+      "args": [
+        {
+          "name": "maxDepth",
+          "type": "u32"
+        },
+        {
+          "name": "maxBufferSize",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "appendCanopyNodes",
+      "docs": [
+        "This instruction pre-initializes the canopy with the specified leaf nodes of the canopy.",
+        "This is intended to be used after `prepare_batch_merkle_tree` and in conjunction with the",
+        "`init_prepared_tree_with_root` instruction that'll finalize the tree initialization.",
+        "The canopy is used to cache the uppermost nodes of the tree, which allows for a smaller",
+        "proof size when updating the tree. The canopy should be filled with the necessary nodes",
+        "before calling `init_prepared_tree_with_root`. You may call this instruction multiple",
+        "times to fill the canopy with the necessary nodes. The canopy may be filled with the",
+        "nodes in any order. The already filled nodes may be replaced with new nodes before calling",
+        "`init_prepared_tree_with_root` if the step was done in error.",
+        "The canopy should be filled with all the nodes that are to the left of the rightmost",
+        "leaf of the tree before calling `init_prepared_tree_with_root`. The canopy should not",
+        "contain any nodes to the right of the rightmost leaf of the tree.",
+        "This instruction calculates and filles in all the canopy nodes \"above\" the provided ones.",
+        "The validation of the canopy is done in the `init_prepared_tree_with_root` instruction."
+      ],
+      "accounts": [
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Authority that controls write-access to the tree",
+            "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
+          ]
+        },
+        {
+          "name": "noop",
+          "isMut": false,
+          "isSigner": false,
+          "docs": ["Program used to emit changelogs as cpi instruction data."]
+        }
+      ],
+      "args": [
+        {
+          "name": "startIndex",
+          "type": "u32"
+        },
+        {
+          "name": "canopyNodes",
+          "type": {
+            "vec": {
+              "array": ["u8", 32]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initPreparedTreeWithRoot",
+      "docs": [
+        "Initializes a prepared tree with a root and a rightmost leaf. The rightmost leaf is used to",
+        "verify the canopy if the tree has it. Before calling this instruction, the tree should be",
+        "prepared with `prepare_batch_merkle_tree` and the canopy should be filled with the necessary",
+        "nodes with `append_canopy_nodes` (if the canopy is used). This method should be used for",
+        "batch creation of trees. The indexing of such batches should be done off-chain. The",
+        "programs calling this instruction should take care of ensuring the indexing is possible.",
+        "For example, staking may be required to ensure the tree creator has some responsibility",
+        "for what is being indexed. If indexing is not possible, there should be a mechanism to",
+        "penalize the tree creator."
+      ],
+      "accounts": [
+        {
+          "name": "merkleTree",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Authority that controls write-access to the tree",
+            "Typically a program, e.g., the Bubblegum contract validates that leaves are valid NFTs."
+          ]
+        },
+        {
+          "name": "noop",
+          "isMut": false,
+          "isSigner": false,
+          "docs": ["Program used to emit changelogs as cpi instruction data."]
+        }
+      ],
+      "args": [
+        {
+          "name": "root",
+          "type": {
+            "array": ["u8", 32]
+          }
+        },
+        {
+          "name": "rightmostLeaf",
+          "type": {
+            "array": ["u8", 32]
+          }
+        },
+        {
+          "name": "rightmostIndex",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "replaceLeaf",
       "docs": [
-        "Note:",
-        "Supporting this instruction open a security vulnerability for indexers.",
-        "This instruction has been deemed unusable for publicly indexed compressed NFTs.",
-        "Indexing batched data in this way requires indexers to read in the `uri`s onto physical storage",
-        "and then into their database. This opens up a DOS attack vector, whereby this instruction is",
-        "repeatedly invoked, causing indexers to fail.",
-        "",
-        "Because this instruction was deemed insecure, this instruction has been removed",
-        "until secure usage is available on-chain.",
         "Executes an instruction that overwrites a leaf node.",
         "Composing programs should check that the data hashed into previous_leaf",
         "matches the authority information necessary to execute this instruction."
@@ -408,13 +561,22 @@
             "type": "u64"
           },
           {
+            "name": "isBatchInitialized",
+            "docs": [
+              "A flag indicating whether the tree has been initialized with a root.",
+              "This field was added together with the `finalize_tree_with_root` instruction.",
+              "It takes 1 byte of space taken from the previous padding for existing accounts."
+            ],
+            "type": "bool"
+          },
+          {
             "name": "padding",
             "docs": [
               "Needs padding for the account to be 8-byte aligned",
               "8-byte alignment is necessary to zero-copy the SPL ConcurrentMerkleTree"
             ],
             "type": {
-              "array": ["u8", 6]
+              "array": ["u8", 5]
             }
           }
         ]
@@ -570,12 +732,37 @@
       "code": 6008,
       "name": "LeafIndexOutOfBounds",
       "msg": "Leaf index of concurrent merkle tree is out of bounds"
+    },
+    {
+      "code": 6009,
+      "name": "CanopyNotAllocated",
+      "msg": "Tree was initialized without allocating space for the canopy"
+    },
+    {
+      "code": 6010,
+      "name": "TreeAlreadyInitialized",
+      "msg": "Tree was already initialized"
+    },
+    {
+      "code": 6011,
+      "name": "BatchNotInitialized",
+      "msg": "Tree header was not initialized for batch processing"
+    },
+    {
+      "code": 6012,
+      "name": "CanopyRootMismatch",
+      "msg": "Canopy root does not match the root of the tree"
+    },
+    {
+      "code": 6013,
+      "name": "CanopyRightmostLeafMismatch",
+      "msg": "Canopy contains nodes to the right of the rightmost leaf of the tree"
     }
   ],
   "metadata": {
     "address": "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK",
     "origin": "anchor",
-    "binaryVersion": "0.25.0",
-    "libVersion": "0.25.0"
+    "binaryVersion": "0.29.0",
+    "libVersion": "0.29.0"
   }
 }

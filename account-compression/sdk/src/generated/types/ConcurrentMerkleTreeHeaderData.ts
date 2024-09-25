@@ -53,4 +53,4 @@ export const concurrentMerkleTreeHeaderDataBeet = beet.dataEnum<ConcurrentMerkle
             'ConcurrentMerkleTreeHeaderDataRecord["V1"]',
         ),
     ],
-]) as beet.FixableBeet<ConcurrentMerkleTreeHeaderData>;
+]) as beet.FixableBeet<ConcurrentMerkleTreeHeaderData, ConcurrentMerkleTreeHeaderData>;

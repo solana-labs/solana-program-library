@@ -8,15 +8,21 @@ import * as crypto from 'crypto';
 
 import {
     ConcurrentMerkleTreeAccount,
+    createAppendCanopyNodesIx,
     createAppendIx,
     createCloseEmptyTreeInstruction,
+    createCloseEmptyTreeIx,
+    createInitEmptyMerkleTreeIx,
+    createInitPreparedTreeWithRootIx,
     createReplaceIx,
     createTransferAuthorityIx,
     createVerifyLeafIx,
+    prepareTreeIx,
     ValidDepthSizePair,
 } from '../src';
 import { hash, MerkleTree } from '../src/merkle-tree';
-import { createTreeOnChain, execute } from './utils';
+import { assertCMTProperties } from './accounts/concurrentMerkleTreeAccount.test';
+import { createTreeOnChain, execute, prepareTree } from './utils';
 
 // eslint-disable-next-line no-empty
 describe('Account Compression', () => {
@@ -52,6 +58,547 @@ describe('Account Compression', () => {
             await provider.connection.requestAirdrop(payer, 1e10),
             'confirmed',
         );
+    });
+
+    describe('Having prepared a tree without canopy', () => {
+        const depth = 3;
+        const size = 8;
+        const canopyDepth = 0;
+        const leaves = [
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+        ];
+        let anotherKeyPair: Keypair;
+        let another: PublicKey;
+
+        beforeEach(async () => {
+            const cmtKeypair = await prepareTree({
+                canopyDepth,
+                depthSizePair: {
+                    maxBufferSize: size,
+                    maxDepth: depth,
+                },
+                payer: payerKeypair,
+                provider,
+            });
+            cmt = cmtKeypair.publicKey;
+            anotherKeyPair = Keypair.generate();
+            another = anotherKeyPair.publicKey;
+            await provider.connection.confirmTransaction(
+                await provider.connection.requestAirdrop(another, 1e10),
+                'confirmed',
+            );
+        });
+        it('Should be able to finalize the tree', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+            const canopyDepth = 0;
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+
+            await execute(provider, [finalize], [payerKeypair]);
+
+            const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt);
+            assertCMTProperties(splCMT, depth, size, payer, root, canopyDepth, true);
+            assert(splCMT.getBufferSize() == 1, 'Buffer size does not match');
+        });
+        it('Should fail to append canopy node for a tree without canopy', async () => {
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32)], 0);
+            try {
+                await execute(provider, [appendIx], [payerKeypair]);
+                assert(false, 'Canopy appending should have failed to execute for a tree without canopy');
+            } catch {}
+        });
+        it('Should fail to finalize the tree with another payer authority', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                another,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+
+            try {
+                await execute(provider, [finalize], [anotherKeyPair]);
+                assert(false, 'Finalizing with another payer should have failed');
+            } catch {}
+        });
+        it('Should fail to finalize the tree with a wrong proof', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+            // Replace valid proof with random bytes so it is wrong
+            const proof = merkleTreeRaw.getProof(leaves.length - 1);
+            proof.proof = proof.proof.map(_ => {
+                return crypto.randomBytes(32);
+            });
+
+            const finalize = createInitPreparedTreeWithRootIx(cmt, payer, root, leaf, leaves.length - 1, proof.proof);
+
+            try {
+                await execute(provider, [finalize], [payerKeypair]);
+                assert(false, 'Finalizing with a wrong proof should have failed');
+            } catch {}
+        });
+        it('Should fail to double finalize the tree', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+
+            await execute(provider, [finalize], [payerKeypair]);
+
+            try {
+                await execute(provider, [finalize], [payerKeypair]);
+                assert(false, 'Double finalizing should have failed');
+            } catch {}
+        });
+
+        it('Should be able to close a prepared tree', async () => {
+            let payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            let treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed')!;
+
+            const payerLamports = payerInfo!.lamports;
+            const treeLamports = treeInfo!.lamports;
+
+            const closeIx = createCloseEmptyTreeIx(cmt, payer, payer);
+            await execute(provider, [closeIx], [payerKeypair]);
+
+            payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            const finalLamports = payerInfo!.lamports;
+            assert(
+                finalLamports === payerLamports + treeLamports - 5000,
+                'Expected payer to have received the lamports from the closed tree account',
+            );
+
+            treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
+            assert(treeInfo === null, 'Expected the merkle tree account info to be null');
+        });
+    });
+    describe('Having prepared a tree with canopy', () => {
+        const depth = 3;
+        const size = 8;
+        const canopyDepth = 2;
+        const leaves = [
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+            crypto.randomBytes(32),
+        ];
+        let anotherKeyPair: Keypair;
+        let another: PublicKey;
+        beforeEach(async () => {
+            const cmtKeypair = await prepareTree({
+                canopyDepth,
+                depthSizePair: {
+                    maxBufferSize: size,
+                    maxDepth: depth,
+                },
+                payer: payerKeypair,
+                provider,
+            });
+            cmt = cmtKeypair.publicKey;
+            anotherKeyPair = Keypair.generate();
+            another = anotherKeyPair.publicKey;
+            await provider.connection.confirmTransaction(
+                await provider.connection.requestAirdrop(another, 1e10),
+                'confirmed',
+            );
+        });
+        it('Should be able to append a single canopy node', async () => {
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32)], 0);
+            await execute(provider, [appendIx], [payerKeypair]);
+        });
+        it('Should be able to append a single canopy node at the index more then 0', async () => {
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32)], 1);
+            await execute(provider, [appendIx], [payerKeypair]);
+        });
+        it('Should be able to append several canopy nodes at the start of the node leaves', async () => {
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32), crypto.randomBytes(32)], 0);
+            await execute(provider, [appendIx], [payerKeypair]);
+        });
+        it('Should fail to append canopy node with another payer authority', async () => {
+            const appendIx = createAppendCanopyNodesIx(cmt, another, [crypto.randomBytes(32)], 0);
+            try {
+                await execute(provider, [appendIx], [anotherKeyPair]);
+                assert(false, 'Appending with another payer should have failed');
+            } catch {}
+        });
+        it('Should fail to append canopy nodes over the limit', async () => {
+            const appendIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                Array.from({ length: 3 }, () => crypto.randomBytes(32)),
+                0,
+            );
+            try {
+                await execute(provider, [appendIx], [payerKeypair]);
+                assert(false, 'Appending over the limit should have failed');
+            } catch {}
+        });
+        it('Should fail to append canopy nodes over the limit starting from the last index', async () => {
+            const appendIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                Array.from({ length: 2 }, () => crypto.randomBytes(32)),
+                1,
+            );
+            try {
+                await execute(provider, [appendIx], [payerKeypair]);
+                assert(false, 'Appending over the limit should have failed');
+            } catch {}
+        });
+        it('Should fail to append 0 canopy nodes', async () => {
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, [], 0);
+            try {
+                await execute(provider, [appendIx], [payerKeypair]);
+                assert(false, 'Appending 0 nodes should have failed');
+            } catch {}
+        });
+        it('Should fail to finalize the tree without canopy', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+
+            try {
+                await execute(provider, [finalize], [payerKeypair]);
+                assert(false, 'Finalizing without canopy should have failed');
+            } catch {}
+        });
+        it('Should fail to finalize the tree with an incomplete canopy', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, [merkleTreeRaw.leaves[0].parent!.node!], 0);
+            await execute(provider, [appendIx], [payerKeypair]);
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+
+            try {
+                await execute(provider, [finalize], [payerKeypair]);
+                assert(false, 'Finalization for an incomplete canopy should have failed');
+            } catch {}
+        });
+        it('Should finalize the tree with a complete canopy', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            // take every second leaf and append it's parent node to the canopy
+            const appendIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves.filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!),
+                0,
+            );
+            await execute(provider, [appendIx], [payerKeypair]);
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+            await execute(provider, [finalize], [payerKeypair]);
+            const splCMT = await ConcurrentMerkleTreeAccount.fromAccountAddress(connection, cmt);
+            assertCMTProperties(splCMT, depth, size, payer, root, canopyDepth, true);
+        });
+        it('Should be able to setup canopy with several transactions', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+            // take every second leaf of the first half of a tree and append it's parent node to the canopy
+            const appendIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves
+                    .slice(0, leaves.length / 2)
+                    .filter((_, i) => i % 2 === 0)
+                    .map(leaf => leaf.parent!.node!),
+                0,
+            );
+            await execute(provider, [appendIx], [payerKeypair]);
+            // take every second leaf of the second half of a tree and append it's parent node to the canopy
+            const appendIx2 = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves
+                    .slice(leaves.length / 2)
+                    .filter((_, i) => i % 2 === 0)
+                    .map(leaf => leaf.parent!.node!),
+                2,
+            );
+            await execute(provider, [appendIx2], [payerKeypair]);
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+            await execute(provider, [finalize], [payerKeypair]);
+        });
+        it('Should be able to setup canopy with several transactions in reverse order', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            const appendIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves
+                    .slice(leaves.length / 2)
+                    .filter((_, i) => i % 2 === 0)
+                    .map(leaf => leaf.parent!.node!),
+                2,
+            );
+            await execute(provider, [appendIx], [payerKeypair]);
+            const appendIx2 = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves
+                    .slice(0, leaves.length / 2)
+                    .filter((_, i) => i % 2 === 0)
+                    .map(leaf => leaf.parent!.node!),
+                0,
+            );
+            await execute(provider, [appendIx2], [payerKeypair]);
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+            await execute(provider, [finalize], [payerKeypair]);
+        });
+        it('Should be able to replace a canopy node', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            const appendIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves
+                    .slice(0, leaves.length / 2)
+                    .filter((_, i) => i % 2 === 0)
+                    .map(leaf => leaf.parent!.node!),
+                0,
+            );
+            await execute(provider, [appendIx], [payerKeypair]);
+            const appendIx2 = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32)], 2);
+            await execute(provider, [appendIx2], [payerKeypair]);
+            const replaceIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves
+                    .slice(leaves.length / 2)
+                    .filter((_, i) => i % 2 === 0)
+                    .map(leaf => leaf.parent!.node!),
+                2,
+            );
+            await execute(provider, [replaceIx], [payerKeypair]);
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+            await execute(provider, [finalize], [payerKeypair]);
+        });
+        it('Should fail to replace a canopy node for a finalised tree', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            const appendIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves.filter((_, i) => i % 2 === 0).map(leaf => leaf.parent!.node!),
+                0,
+            );
+            await execute(provider, [appendIx], [payerKeypair]);
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+            await execute(provider, [finalize], [payerKeypair]);
+            const replaceIx = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32)], 0);
+            try {
+                await execute(provider, [replaceIx], [payerKeypair]);
+                assert(false, 'Replacing a canopy node for a finalised tree should have failed');
+            } catch {}
+        });
+        it('Should fail to initialize an empty tree after preparing a tree', async () => {
+            const ixs = [
+                createInitEmptyMerkleTreeIx(cmt, payer, {
+                    maxBufferSize: size,
+                    maxDepth: depth,
+                }),
+            ];
+            try {
+                await execute(provider, ixs, [payerKeypair]);
+                assert(false, 'Initializing an empty tree after preparing a tree should have failed');
+            } catch {}
+        });
+        it('Should be able to close a prepared tree after setting the canopy', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+
+            const appendIx = createAppendCanopyNodesIx(
+                cmt,
+                payer,
+                merkleTreeRaw.leaves
+                    .slice(0, leaves.length / 2)
+                    .filter((_, i) => i % 2 === 0)
+                    .map(leaf => leaf.parent!.node!),
+                0,
+            );
+            await execute(provider, [appendIx], [payerKeypair]);
+            let payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            let treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed')!;
+
+            const payerLamports = payerInfo!.lamports;
+            const treeLamports = treeInfo!.lamports;
+
+            const closeIx = createCloseEmptyTreeIx(cmt, payer, payer);
+            await execute(provider, [closeIx], [payerKeypair]);
+
+            payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            const finalLamports = payerInfo!.lamports;
+            assert(
+                finalLamports === payerLamports + treeLamports - 5000,
+                'Expected payer to have received the lamports from the closed tree account',
+            );
+
+            treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
+            assert(treeInfo === null, 'Expected the merkle tree account info to be null');
+        });
+    });
+    describe('Having prepared an empty tree with canopy', () => {
+        const depth = 3;
+        const size = 8;
+        const canopyDepth = 2;
+        // empty leaves represent the empty tree
+        const leaves = [
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+            Buffer.alloc(32),
+        ];
+        let anotherKeyPair: Keypair;
+        let another: PublicKey;
+        beforeEach(async () => {
+            const cmtKeypair = await prepareTree({
+                canopyDepth,
+                depthSizePair: {
+                    maxBufferSize: size,
+                    maxDepth: depth,
+                },
+                payer: payerKeypair,
+                provider,
+            });
+            cmt = cmtKeypair.publicKey;
+            anotherKeyPair = Keypair.generate();
+            another = anotherKeyPair.publicKey;
+            await provider.connection.confirmTransaction(
+                await provider.connection.requestAirdrop(another, 1e10),
+                'confirmed',
+            );
+        });
+
+        it('Should be able to finalize an empty tree with empty canopy and close it afterwards', async () => {
+            const merkleTreeRaw = new MerkleTree(leaves);
+            const root = merkleTreeRaw.root;
+            const leaf = leaves[leaves.length - 1];
+
+            const finalize = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                root,
+                leaf,
+                leaves.length - 1,
+                merkleTreeRaw.getProof(leaves.length - 1).proof,
+            );
+            await execute(provider, [finalize], [payerKeypair]);
+            let payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            let treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed')!;
+
+            const payerLamports = payerInfo!.lamports;
+            const treeLamports = treeInfo!.lamports;
+
+            const closeIx = createCloseEmptyTreeIx(cmt, payer, payer);
+            await execute(provider, [closeIx], [payerKeypair]);
+
+            payerInfo = await provider.connection.getAccountInfo(payer, 'confirmed')!;
+            const finalLamports = payerInfo!.lamports;
+            assert(
+                finalLamports === payerLamports + treeLamports - 5000,
+                'Expected payer to have received the lamports from the closed tree account',
+            );
+
+            treeInfo = await provider.connection.getAccountInfo(cmt, 'confirmed');
+            assert(treeInfo === null, 'Expected the merkle tree account info to be null');
+        });
     });
 
     describe('Having created a tree with a single leaf', () => {
@@ -161,6 +708,30 @@ describe('Account Compression', () => {
                 Buffer.from(onChainRoot).equals(offChainTree.root),
                 'Updated on chain root matches root of updated off chain tree',
             );
+        });
+
+        it('Should fail to prepare a batch ready tree for an existing tree', async () => {
+            const prepareIx = prepareTreeIx(cmt, payer, DEPTH_SIZE_PAIR);
+            try {
+                await execute(provider, [prepareIx], [payerKeypair]);
+                assert(false, 'Prepare a batch tree should have failed for the existing tree');
+            } catch {}
+        });
+
+        it('Should fail to finalize an existing tree', async () => {
+            const index = offChainTree.leaves.length - 1;
+            const finalizeIx = createInitPreparedTreeWithRootIx(
+                cmt,
+                payer,
+                offChainTree.root,
+                offChainTree.leaves[index].node,
+                index,
+                offChainTree.getProof(index).proof,
+            );
+            try {
+                await execute(provider, [finalizeIx], [payerKeypair]);
+                assert(false, 'Finalize an existing tree should have failed');
+            } catch {}
         });
     });
 
@@ -475,6 +1046,22 @@ describe('Account Compression', () => {
                 tree.updateLeaf(i, leaf);
                 await execute(provider, [replaceIx, replaceBackIx], [payerKeypair], true, true);
             }
+        });
+
+        it('Should fail to append a canopy node for an existing tree', async () => {
+            [cmtKeypair, offChainTree] = await createTreeOnChain(
+                provider,
+                payerKeypair,
+                0,
+                { maxBufferSize: 8, maxDepth: DEPTH },
+                DEPTH, // Store full tree on chain
+            );
+            cmt = cmtKeypair.publicKey;
+            const appendIx = createAppendCanopyNodesIx(cmt, payer, [crypto.randomBytes(32)], 0);
+            try {
+                await execute(provider, [appendIx], [payerKeypair]);
+                assert(false, 'Appending a canopy node for an existing tree should have failed');
+            } catch {}
         });
     });
     describe(`Having created a tree with 8 leaves`, () => {

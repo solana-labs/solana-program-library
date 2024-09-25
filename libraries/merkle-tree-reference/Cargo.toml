@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 solana-program = ">=1.18.11,<=2"
-thiserror = "1.0.63"
+thiserror = "1.0.64"
 
 [lib]
 crate-type = ["cdylib", "lib"]

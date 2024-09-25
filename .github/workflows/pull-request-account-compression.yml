@@ -79,7 +79,7 @@ jobs:
   js-test-account-compression:
     runs-on: ubuntu-latest
     env:
-      NODE_VERSION: 16.x
+      NODE_VERSION: 20.5
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.NODE_VERSION }}

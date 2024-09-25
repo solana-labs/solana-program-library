@@ -40,29 +40,32 @@ jobs:
   js-test:
     strategy:
       matrix:
+        node-version: [16.x, 18.x, 20.x]
         package:
           [
             account-compression,
             libraries,
             memo,
             name-service,
-            single-pool,
             stake-pool,
             token,
             token-group,
-            token-lending,
             token-metadata,
             token-swap,
           ]
+        include:
+          # Restrict single-pool and token-lending to supported Node.js versions.
+          - package: single-pool
+            node-version: 20.5
+          - package: token-lending
+            node-version: 18.5
     runs-on: ubuntu-latest
-    env:
-      NODE_VERSION: 20.5
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js ${{ env.NODE_VERSION }}
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node-version }}
       - uses: pnpm/action-setup@v4
       - uses: actions/cache@v4
         with:

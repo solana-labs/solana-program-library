@@ -86,3 +86,55 @@ impl FeeCiphertext {
         self.0.handles.get(1).unwrap()
     }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub struct BurnAmountCiphertext(pub(crate) GroupedElGamalCiphertext<3>);
+
+impl BurnAmountCiphertext {
+    pub fn new(
+        amount: u64,
+        source_pubkey: &ElGamalPubkey,
+        auditor_pubkey: &ElGamalPubkey,
+        supply_pubkey: &ElGamalPubkey,
+    ) -> (Self, PedersenOpening) {
+        let opening = PedersenOpening::new_rand();
+        let grouped_ciphertext = GroupedElGamal::<3>::encrypt_with(
+            [source_pubkey, auditor_pubkey, supply_pubkey],
+            amount,
+            &opening,
+        );
+
+        (Self(grouped_ciphertext), opening)
+    }
+
+    pub fn get_commitment(&self) -> &PedersenCommitment {
+        &self.0.commitment
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub struct MintAmountCiphertext(pub(crate) GroupedElGamalCiphertext<3>);
+
+impl MintAmountCiphertext {
+    pub fn new(
+        amount: u64,
+        source_pubkey: &ElGamalPubkey,
+        auditor_pubkey: &ElGamalPubkey,
+        supply_pubkey: &ElGamalPubkey,
+    ) -> (Self, PedersenOpening) {
+        let opening = PedersenOpening::new_rand();
+        let grouped_ciphertext = GroupedElGamal::<3>::encrypt_with(
+            [source_pubkey, auditor_pubkey, supply_pubkey],
+            amount,
+            &opening,
+        );
+
+        (Self(grouped_ciphertext), opening)
+    }
+
+    pub fn get_commitment(&self) -> &PedersenCommitment {
+        &self.0.commitment
+    }
+}

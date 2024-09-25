@@ -2,7 +2,13 @@ import { AnchorProvider } from '@coral-xyz/anchor';
 import { Keypair, SendTransactionError, Signer, Transaction, TransactionInstruction } from '@solana/web3.js';
 import * as crypto from 'crypto';
 
-import { createAllocTreeIx, createAppendIx, createInitEmptyMerkleTreeIx, ValidDepthSizePair } from '../src';
+import {
+    createAllocTreeIx,
+    createAppendIx,
+    createInitEmptyMerkleTreeIx,
+    prepareTreeIx,
+    ValidDepthSizePair,
+} from '../src';
 import { MerkleTree } from '../src/merkle-tree';
 
 /// Wait for a transaction of a certain id to confirm and optionally log its messages
@@ -113,5 +119,30 @@ export async function createEmptyTreeOnChain(
     const txId = await execute(provider, ixs, [payer, cmtKeypair]);
     await confirmAndLogTx(provider, txId as string);
 
+    return cmtKeypair;
+}
+
+export type PrepareTreeArgs = {
+    canopyDepth: number;
+    depthSizePair: ValidDepthSizePair;
+    payer: Keypair;
+    provider: AnchorProvider;
+};
+
+export async function prepareTree(args: PrepareTreeArgs): Promise<Keypair> {
+    const { provider, payer, depthSizePair, canopyDepth } = args;
+    const cmtKeypair = Keypair.generate();
+    const allocAccountIx = await createAllocTreeIx(
+        provider.connection,
+        cmtKeypair.publicKey,
+        payer.publicKey,
+        depthSizePair,
+        canopyDepth,
+    );
+
+    const ixs = [allocAccountIx, prepareTreeIx(cmtKeypair.publicKey, payer.publicKey, depthSizePair)];
+
+    const txId = await execute(provider, ixs, [payer, cmtKeypair]);
+    await confirmAndLogTx(provider, txId as string);
     return cmtKeypair;
 }

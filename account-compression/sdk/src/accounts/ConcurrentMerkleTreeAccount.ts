@@ -121,6 +121,14 @@ export class ConcurrentMerkleTreeAccount {
     getCanopyDepth(): number {
         return getCanopyDepth(this.canopy.canopyBytes.length);
     }
+
+    /**
+     * Returns the flag that indicates if the tree has been batch initialized
+     * @returns the flag
+     */
+    getIsBatchInitialized(): boolean {
+        return this.getHeaderV1().isBatchInitialized;
+    }
 }
 
 /**

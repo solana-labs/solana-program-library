@@ -195,6 +195,106 @@ createErrorFromCodeLookup.set(0x1778, () => new LeafIndexOutOfBoundsError());
 createErrorFromNameLookup.set('LeafIndexOutOfBounds', () => new LeafIndexOutOfBoundsError());
 
 /**
+ * CanopyNotAllocated: 'Tree was initialized without allocating space for the canopy'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CanopyNotAllocatedError extends Error {
+    readonly code: number = 0x1779;
+    readonly name: string = 'CanopyNotAllocated';
+    constructor() {
+        super('Tree was initialized without allocating space for the canopy');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, CanopyNotAllocatedError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x1779, () => new CanopyNotAllocatedError());
+createErrorFromNameLookup.set('CanopyNotAllocated', () => new CanopyNotAllocatedError());
+
+/**
+ * TreeAlreadyInitialized: 'Tree was already initialized'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class TreeAlreadyInitializedError extends Error {
+    readonly code: number = 0x177a;
+    readonly name: string = 'TreeAlreadyInitialized';
+    constructor() {
+        super('Tree was already initialized');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, TreeAlreadyInitializedError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x177a, () => new TreeAlreadyInitializedError());
+createErrorFromNameLookup.set('TreeAlreadyInitialized', () => new TreeAlreadyInitializedError());
+
+/**
+ * BatchNotInitialized: 'Tree header was not initialized for batch processing'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class BatchNotInitializedError extends Error {
+    readonly code: number = 0x177b;
+    readonly name: string = 'BatchNotInitialized';
+    constructor() {
+        super('Tree header was not initialized for batch processing');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, BatchNotInitializedError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x177b, () => new BatchNotInitializedError());
+createErrorFromNameLookup.set('BatchNotInitialized', () => new BatchNotInitializedError());
+
+/**
+ * CanopyRootMismatch: 'Canopy root does not match the root of the tree'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CanopyRootMismatchError extends Error {
+    readonly code: number = 0x177c;
+    readonly name: string = 'CanopyRootMismatch';
+    constructor() {
+        super('Canopy root does not match the root of the tree');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, CanopyRootMismatchError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x177c, () => new CanopyRootMismatchError());
+createErrorFromNameLookup.set('CanopyRootMismatch', () => new CanopyRootMismatchError());
+
+/**
+ * CanopyRightmostLeafMismatch: 'Canopy contains nodes to the right of the rightmost leaf of the tree'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CanopyRightmostLeafMismatchError extends Error {
+    readonly code: number = 0x177d;
+    readonly name: string = 'CanopyRightmostLeafMismatch';
+    constructor() {
+        super('Canopy contains nodes to the right of the rightmost leaf of the tree');
+        if (typeof Error.captureStackTrace === 'function') {
+            Error.captureStackTrace(this, CanopyRightmostLeafMismatchError);
+        }
+    }
+}
+
+createErrorFromCodeLookup.set(0x177d, () => new CanopyRightmostLeafMismatchError());
+createErrorFromNameLookup.set('CanopyRightmostLeafMismatch', () => new CanopyRightmostLeafMismatchError());
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

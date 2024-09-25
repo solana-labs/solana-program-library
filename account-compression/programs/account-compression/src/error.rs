@@ -47,6 +47,26 @@ pub enum AccountCompressionError {
     /// is out of bounds of tree's maximum leaf capacity
     #[msg("Leaf index of concurrent merkle tree is out of bounds")]
     LeafIndexOutOfBounds,
+
+    /// When initializing a canopy of the tree, the underlying tree was allocated without space for the canopy
+    #[msg("Tree was initialized without allocating space for the canopy")]
+    CanopyNotAllocated,
+
+    /// The tree was already initialized
+    #[msg("Tree was already initialized")]
+    TreeAlreadyInitialized,
+
+    /// The tree header was not initialized for batch processing
+    #[msg("Tree header was not initialized for batch processing")]
+    BatchNotInitialized,
+
+    /// The canopy root doesn't match the root of the tree
+    #[msg("Canopy root does not match the root of the tree")]
+    CanopyRootMismatch,
+
+    /// The canopy contains nodes to the right of the rightmost leaf of the tree
+    #[msg("Canopy contains nodes to the right of the rightmost leaf of the tree")]
+    CanopyRightmostLeafMismatch,
 }
 
 impl From<&ConcurrentMerkleTreeError> for AccountCompressionError {

@@ -43,9 +43,9 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
-    "@types/bn.js": "^5.1.1",
-    "@types/jest": "^29.5.12",
-    "@types/node": "^22.5.2",
+    "@types/bn.js": "^5.1.6",
+    "@types/jest": "^29.5.13",
+    "@types/node": "^22.7.0",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
     "eslint": "^8.57.0",
@@ -53,11 +53,11 @@
     "eslint-plugin-functional": "^7.0.2",
     "eslint-plugin-import": "^2.30.0",
     "jest": "^29.7.0",
-    "start-server-and-test": "^2.0.5",
+    "start-server-and-test": "^2.0.8",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.26.6",
-    "typescript": "^5.5.4"
+    "typedoc": "^0.26.7",
+    "typescript": "^5.6.2"
   },
   "dependencies": {
     "@solana/web3.js": "^1.95.3",
