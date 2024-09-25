@@ -52,7 +52,7 @@
     "@solana/spl-token": "0.4.6",
     "@solana/web3.js": "^1.95.3",
     "@types/bn.js": "^5.1.6",
-    "@types/chai-as-promised": "^8.0.0",
+    "@types/chai-as-promised": "^8.0.1",
     "@types/chai": "^5.0.0",
     "@types/mocha": "^10.0.8",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
