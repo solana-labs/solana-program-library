@@ -137,8 +137,8 @@ importers:
         version: 6.0.3
     devDependencies:
       '@types/chai':
-        specifier: ^4.3.19
-        version: 4.3.19
+        specifier: ^5.0.0
+        version: 5.0.0
       '@types/mocha':
         specifier: ^10.0.8
         version: 10.0.8
@@ -189,8 +189,8 @@ importers:
         specifier: ^1.95.3
         version: 1.95.3
       '@types/chai':
-        specifier: ^4.3.19
-        version: 4.3.19
+        specifier: ^5.0.0
+        version: 5.0.0
       '@types/jest':
         specifier: ^29.5.13
         version: 29.5.13
@@ -467,8 +467,8 @@ importers:
         specifier: ^1.95.3
         version: 1.95.3
       '@types/chai':
-        specifier: ^4.3.19
-        version: 4.3.19
+        specifier: ^5.0.0
+        version: 5.0.0
       '@types/mocha':
         specifier: ^10.0.8
         version: 10.0.8
@@ -589,8 +589,8 @@ importers:
         specifier: ^1.95.3
         version: 1.95.3
       '@types/chai':
-        specifier: ^4.3.19
-        version: 4.3.19
+        specifier: ^5.0.0
+        version: 5.0.0
       '@types/mocha':
         specifier: ^10.0.8
         version: 10.0.8
@@ -653,8 +653,8 @@ importers:
         specifier: ^5.1.6
         version: 5.1.6
       '@types/chai':
-        specifier: ^4.3.19
-        version: 4.3.19
+        specifier: ^5.0.0
+        version: 5.0.0
       '@types/chai-as-promised':
         specifier: ^8.0.0
         version: 8.0.0
@@ -717,8 +717,8 @@ importers:
         specifier: ^1.95.3
         version: 1.95.3
       '@types/chai':
-        specifier: ^4.3.19
-        version: 4.3.19
+        specifier: ^5.0.0
+        version: 5.0.0
       '@types/chai-as-promised':
         specifier: ^8.0.0
         version: 8.0.0
@@ -2636,11 +2636,11 @@ packages:
   /@types/chai-as-promised@8.0.0:
     resolution: {integrity: sha512-YbYaXFqJwSABp9OXQTVrPPmstZgNjkRieWVd/xAl5Yc/e5+F44bXLeQggpvm0sjsS1bg+2Y5cwU+rquwwD2dXA==}
     dependencies:
-      '@types/chai': 4.3.19
+      '@types/chai': 5.0.0
     dev: true
 
-  /@types/chai@4.3.19:
-    resolution: {integrity: sha512-2hHHvQBVE2FiSK4eN0Br6snX9MtolHaTo/batnLjlGRhoQzlCL61iVpxoqO7SfFyOw+P/pwv+0zNHzKoGWz9Cw==}
+  /@types/chai@5.0.0:
+    resolution: {integrity: sha512-+DwhEHAaFPPdJ2ral3kNHFQXnTfscEEFsUxzD+d7nlcLrFK23JtNjH71RGasTcHb88b4vVi4mTyfpf8u2L8bdA==}
     dev: true
 
   /@types/connect@3.4.38:
